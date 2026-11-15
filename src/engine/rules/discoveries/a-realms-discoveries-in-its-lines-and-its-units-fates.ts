@@ -44,7 +44,7 @@ export const A_REALMS_DISCOVERIES_CARRY_A_FALLEN_UNIT_HOME = {
 } satisfies Partial<Record<DiscoveryEffectSlug, TheFateStages["a realm's discoveries carry a fallen unit home"]>>;
 
 /** "fate: a realm's discoveries drag a hero from the field" (Battlefield Surgery, `nearDeathSurvival`): its `pct`, or
- *  0.2 for a row that writes none (discParam's fallback, which no row reads: Parked "discParam's fallbacks"). */
+ *  0.2 for a row that writes none (discParam's fallback, which no row reads: KD-193). */
 export const A_REALMS_DISCOVERIES_DRAG_A_HERO_FROM_THE_FIELD = {
   'battlefield-surgery': (e) => e.pct ?? 0.2,
 } satisfies Partial<Record<DiscoveryEffectSlug, TheFateStages["a realm's discoveries drag a hero from the field"]>>;

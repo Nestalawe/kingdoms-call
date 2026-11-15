@@ -79,8 +79,19 @@ running games, or is already in progress. The rulings to build are in [their own
 
 ## Not yet assessed
 
-Rows whose impact no one has described yet. The known defects start here, as `KD-` rows, and each moves to Next or
-Later once it is assessed. None is listed yet.
+Rows whose impact no one has described yet. The known defects start here, as `KD-` rows, in one file an area. Each
+joins the ordered list (Next or Later) once its impact is assessed. A new defect gets a `KD-` row here, in its area's
+file, with the next id not yet used; the pull request that fixes a defect deletes its row.
+
+- [The battles](known-defects-the-battles.md)
+- The turn's rules, the orders, the items and the save: [part 1](known-defects-the-rules-of-the-turn-the-orders-and-the-save-part-1.md), [part 2](known-defects-the-rules-of-the-turn-the-orders-and-the-save-part-2.md)
+- The words players read: the books, the texts and the lines: [part 1](known-defects-the-words-players-read-part-1.md), [part 2](known-defects-the-words-players-read-part-2.md), [part 3](known-defects-the-words-players-read-part-3.md)
+- [The player portal and the GM page](known-defects-the-player-portal-and-the-gm-page.md)
+- [The bots](known-defects-the-bots.md)
+- Dead code, and conditions that never change a value: [part 1](known-defects-dead-code-and-conditions-that-never-change-a-value-part-1.md), [part 2](known-defects-dead-code-and-conditions-that-never-change-a-value-part-2.md), [part 3](known-defects-dead-code-and-conditions-that-never-change-a-value-part-3.md)
+- The tests, and checks that can't fail: [part 1](known-defects-the-tests-and-checks-that-cannot-fail-part-1.md), [part 2](known-defects-the-tests-and-checks-that-cannot-fail-part-2.md)
+- The tools, CI and the harness: [part 1](known-defects-the-tools-ci-and-the-harness-part-1.md), [part 2](known-defects-the-tools-ci-and-the-harness-part-2.md), [part 3](known-defects-the-tools-ci-and-the-harness-part-3.md)
+- [The docs and the comments in the code](known-defects-the-docs-and-the-comments.md)
 
 ## The decisions in force
 

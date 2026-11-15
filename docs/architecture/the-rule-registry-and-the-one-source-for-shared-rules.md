@@ -217,8 +217,8 @@ A **magic item's effect** (from P1-19m) is one row in
   `theWorthOfItInTheTreasury`; a key no row holds stays `equipment.ts`'s. `itemSlot` reads content's keys.
 - **What checks it:** the two registry tests above, each extended to the items' registry; each row's numbers in the
   desc and lore of every item in play that carries it (`tests/unit/each-magic-item-states-the-numbers-its-effect-has.test.ts`:
-  the known gaps listed with their Parked
-  entries); no item effect key or item named, no item field of its own and no ward's field read, in a function the
+  the known gaps listed with their known
+  defects' ids); no item effect key or item named, no item field of its own and no ward's field read, in a function the
   registry has taken (`tests/static/the-resolvers-the-item-registry-has-taken-name-no-item-effect.test.ts`), and,
   outside the registry, the ratchet's `itemEffectChecksInEngine`, which only falls; the effects no matrix game meets, by
   a case each: the commander's items, the battles', the orders' (their orders'

@@ -98,8 +98,8 @@ export interface AMagicItemEffectAsItsTextsWriteIt {
 }
 
 // The cavalry, infantry, archers and heavy engines the commander's items reach (until P1-19m armStr's CAV_I, INF_I,
-// ARCH_I and HEAVY_I). Each item's texts name fewer (question 21, R-149, not yet built: Parked "Thirty items' texts name fewer
-// units, or another rule, than the battle gives"); these are what the battle gives.
+// ARCH_I and HEAVY_I). Each item's texts name fewer (question 21, R-149, not yet built: KD-092); these are what the
+// battle gives.
 const THE_CAVALRY_THE_LANCERS_ITEMS_REACH: readonly UnitType[] = [
   'Free Lances',
   'Gilded Lances',
@@ -151,7 +151,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
   // Every army the bearer leads fights +2, whatever the item's own bonus: the two relic standards say +4 and +6 and give
-  // +2 too (question 20, R-148, not yet built; Parked "The two relic standards give +2, not their +4 and +6").
+  // +2 too (question 20, R-148, not yet built; KD-036).
   'army-bonus': {
     name: 'Battle Standard',
     carriedAs: { stat: 'armyBonus' },
@@ -237,8 +237,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // realm's own bonuses), in this order: the defender's, then the attacker's (the siege halves what home defence
   // added). ──
   // The defenders' position fights ×1.25 when they defend their founding home and the bearer leads them. Its items'
-  // texts say "+1 quality tier" or "+1 level", and some "your own provinces" (question 22, R-150, not yet built; Parked "The
-  // home-defence items say a quality tier in any province of one's own; the battle gives ×1.25 at the home alone").
+  // texts say "+1 quality tier" or "+1 level", and some "your own provinces" (question 22, R-150, not yet built; KD-260).
   'home-defence-bonus': {
     name: 'Banner of the Realm',
     carriedAs: { stat: 'homeDefBonus' },
@@ -270,8 +269,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: {},
   },
   // The force he leads never retreats from a lost battle against neutral guards: it stands. Its items' texts say
-  // "Shieldwall Levies" or "Infantry"; between heroes it does nothing (question 23, R-151, not yet built; Parked "The
-  // Shield-Wall Rune holds only against neutral guards, and for the whole force").
+  // "Shieldwall Levies" or "Infantry"; between heroes it does nothing (question 23, R-151, not yet built; KD-012).
   'shield-wall-rune': {
     name: 'Shield-Wall Rune',
     carriedAs: { stat: 'infStay' },
@@ -280,7 +278,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── A hero's items in the realm's tax (turnEnd, in Early Winter): flat gold, then gold for each province the realm
   // holds; together capped by the realm's ceiling on bonus gold (capItemTaxGold, in src/engine/discoveries.ts). ──
   // Each copy adds its own `effect.bonus` in gold (the copy's number, not content's: no number here). Four of its items
-  // say "Tax income +3%" and give 3 gold (question 24, R-152, not yet built; Parked "Four tax items say +3% and give 3 gold").
+  // say "Tax income +3%" and give 3 gold (question 24, R-152, not yet built; KD-093).
   'tax-bonus': {
     name: 'Ring of Wealth',
     carriedAs: { stat: 'taxBonus' },
@@ -295,7 +293,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   },
   // ── A hero's items in his orders (orderOutcome), each in its order's resolver. ──
   // His Spy order succeeds without a roll. Only an older save's copy carries `oracle`: the relic a lair deals today
-  // carries `spyAuto`, which nothing reads (Parked "Three more relics never work").
+  // carries `spyAuto`, which nothing reads (KD-048).
   'crystal-orb': {
     name: 'Crystal Orb',
     carriedAs: { stat: 'oracle' },
@@ -322,7 +320,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   },
   // Used (a Use Item order, and the bots' plan), every unit of his realm, led or in a garrison, rises a quality tier
   // (from the tables: no number here). Only an older save's copy carries `massPromote`: the relic a lair deals today
-  // carries `promoteAll`, which nothing reads (Parked "A Philosopher's Stone can never be worked").
+  // carries `promoteAll`, which nothing reads (KD-047).
   'philosophers-stone': {
     name: "Philosopher's Stone",
     carriedAs: { stat: 'massPromote' },
@@ -337,7 +335,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── What a realm sees (visibility, plan P1-19am). ──
   // His face is hidden: no Spy order fixes on him, and no Encounter Character order, Psychic Blast or Curse of another
   // realm names him. Only an older save's copy carries `hidden`: the relic a lair deals today carries `untargetable`,
-  // which nothing reads (Parked "Three more relics never work").
+  // which nothing reads (KD-048).
   'cloak-of-many-faces': {
     name: 'Cloak of Many Faces',
     carriedAs: { stat: 'hidden' },
@@ -709,8 +707,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     theWorthOfItInTheTreasury: { aPointTakenIsWorth: 2.5 },
   },
   // A foe who may flee does so on this chance (the fight's draw); else he is shaken, a penalty to hit. Neither item in
-  // play states the chance (question 26, R-154, not yet built; Parked "The two terror items don't say a foe flees half the
-  // time").
+  // play states the chance (question 26, R-154, not yet built; KD-090).
   'combat-item-terrifies': {
     name: 'Scroll of Terror',
     carriedAs: { use: 'terror' },

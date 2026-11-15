@@ -9,7 +9,7 @@
 // other die is a seeded stream's. What the spell did is read when Flak Screen first runs (applyFlakScreen, stood in
 // likewise), after the battle magic and the units' strikes, before the volley.
 // Control Undead against guards adds the unit drawn to the hero's host twice when the battle's hero is the world's own
-// (Parked "Control Undead against neutral guards may add the turned unit twice"): this pins today's count, so its fix
+// (KD-011): this pins today's count, so its fix
 // changes this test with it.
 // Since P1-19v it plays a hero's units' strike against guards too, which no game reaches with a totem carried: his
 // Totem of the Thunderhead adds its 25 to his Stone Giants' chance, and nothing once he is slain before the battle (his

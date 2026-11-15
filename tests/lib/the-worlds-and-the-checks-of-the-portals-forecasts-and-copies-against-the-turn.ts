@@ -2223,7 +2223,7 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
   };
   const [first, second, third, fourth] = [anItem(items[0]), anItem(items[1]), anItem(items[2]), anItem(items[3])];
   // the Philosopher's Stone as an older save's copy carries it, the copy Use Item works (the relic a lair deals today
-  // carries a power nothing reads: Parked "A Philosopher's Stone can never be worked")
+  // carries a power nothing reads: KD-047)
   const stone = {
     ...anItem(catalogue().find((it) => it['name'] === "Philosopher's Stone")),
     effect: { stat: 'massPromote' },

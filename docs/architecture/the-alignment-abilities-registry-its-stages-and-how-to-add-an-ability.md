@@ -122,7 +122,7 @@ diplomacy card, the forecasts' replay), with empty entries; so is whether a cree
 The line "declares war without warning" keeps its own `'Undead'` (its words, not the rule).
 
 The capture of consecrated land (Undead 100%, Evil 50%: R-045) stays in `fame-and-consecration.ts`: the books state
-50% for every conqueror (parked), so no row's words would be true until they are mended. A unit case pins its rise.
+50% for every conqueror (KD-125), so no row's words would be true until they are mended. A unit case pins its rise.
 
 **The world** (P1-19ay1): world creation asks its rows once, at no stage of a turn, through `rules-on-plain-values/`'s
 `the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts` (empty entries; the join

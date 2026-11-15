@@ -36,7 +36,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   the check of the last save, which no turn loads (`upgradeGameState` from `src/`, on a copy: a game's end is written
   by its last turn). With `KC_SITE` the line is that copy's and the last save's check this checkout's. Not an
   invariant: `checkTurn` also runs on the staged worlds of `turn-fuzz` and the fixtures test, which lack what Turn 0
-  adds. A place found on `main` whose fix waits is parked and let through by a narrow entry (one path and kind) in
+  adds. A place found on `main` whose fix waits gets its backlog row and is let through by a narrow entry (one path and kind) in
   its `KNOWN_PLACES_THE_SAVE_CHECK_FINDS`, empty today; its fix removes the entry. Since the scripted realm sends what
   the portal sends, the matrix also sees what a human realm's plans and orders save (a plan's duel stance
   and doctrine, with no bot's marks), but only for the orders it gives: since P1-15e3 those above, so also Release

@@ -61,8 +61,8 @@ for the maintainers; the rest can be technical.
 
 - **Stays the same:** everything a player sees, and every seeded game: the balance baseline doesn't move.
 - **Gather:** the purpose (what the move makes possible), the code and tests it moves, the ratchet's counts it lowers.
-- **Do:** label `refactor-only`; no behaviour change, however small. A defect found on the way is parked and becomes
-  a fix.
+- **Do:** label `refactor-only`; no behaviour change, however small. A defect found on the way gets its backlog row
+  (a `KD-` row) and becomes a fix.
 - **Prove:** new tests pass both before and after; CI's balance check agrees "no change".
 
 ### Fix

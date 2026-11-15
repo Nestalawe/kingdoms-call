@@ -10,10 +10,10 @@
 // - Each step id (P1-16, P1-11e29) is a row of the backlog (docs/backlog/README.md and its groups' files), or in its
 //   finished list (a finished step, or one dropped: "P0-14, on 2026-10-14").
 // - No backlog row is done or dropped (those leave it for the finished list), and none is in the finished list too.
+// - Each known defect named (KD-001) is a row of the backlog, and no two rows share an id; no file names a known
+//   defect by its old title, `Parked "<title>"`, which no reader can look up (before this check, 37 lines did).
 // - No file git keeps names NEXT.md, PARKED.md or STATUS.md, or a path inside plan/ (naming the folder itself, as
 //   .gitignore and the copies of the tree do, is fine). One file is let off, with its reason (THE_PLANS_FOLDER_ON_PURPOSE).
-// Not checked yet: a code comment's `Parked "<title>"` names a known defect by its title; those titles get their home
-// in docs/backlog/ with Tranche B of the docs' move, and this test checks them then.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -125,6 +125,14 @@ const FINISHED_STEPS = new Set(
 );
 const STEPS = new Set([...OPEN_ROWS.map((r) => r.id), ...FINISHED_STEPS]);
 
+/** The known defects' rows: the id of each table row that starts "| KD-NNN |", once for each row. */
+const KNOWN_DEFECT_ROWS: string[] = BACKLOG.flatMap((f) =>
+  read(f)
+    .split('\n')
+    .flatMap((line) => /^\| (KD-\d{3}) \|/.exec(line)?.slice(1, 2) ?? []),
+);
+const KNOWN_DEFECTS = new Set(KNOWN_DEFECT_ROWS);
+
 // ─── The references ───
 
 interface Reference {
@@ -156,6 +164,7 @@ describe('every fact the repository names has its home in docs/', () => {
     expect(OPEN_ROWS.length).toBeGreaterThan(20);
     expect(FINISHED_STEPS.size).toBeGreaterThan(100);
     expect(FINISHED_STEPS.has('P0-14')).toBe(true);
+    expect(KNOWN_DEFECTS.size).toBeGreaterThan(100);
     expect(ANSWERED_QUESTIONS.size).toBeGreaterThan(20);
     expect(
       questionNumbersIn('Questions 17 (of 2026-10-31) and 31 (2026-11-02); question 45 (a), 2026').map((q) => q.number),
@@ -195,6 +204,17 @@ describe('every fact the repository names has its home in docs/', () => {
   test('each step named is a row of the backlog, or in its finished list', () => {
     const refs = referencesIn(matchesOf(STEP, (m) => m[0]));
     expect(shown(refs.filter((r) => !STEPS.has(r.name)))).toEqual([]);
+  });
+
+  test('each known defect named is a row of the backlog, and no two rows share an id', () => {
+    const refs = referencesIn(matchesOf(/\bKD-\d{3}\b/g, (m) => m[0]));
+    expect(shown(refs.filter((r) => !KNOWN_DEFECTS.has(r.name)))).toEqual([]);
+    expect(KNOWN_DEFECT_ROWS.filter((id, i) => KNOWN_DEFECT_ROWS.indexOf(id) !== i)).toEqual([]);
+  });
+
+  test('no file names a known defect by its old title, Parked "<title>", instead of its KD- id', () => {
+    const refs = referencesIn(matchesOf(/\bParked "/g, () => 'Parked "'));
+    expect(shown(refs)).toEqual([]);
   });
 
   test('no backlog row is done or dropped, and none is in the finished list too', () => {

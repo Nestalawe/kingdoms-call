@@ -101,8 +101,8 @@ the turn reads it.
   place not on its known list stops the turn before anything is written: the orders stay in, and the message says "The
   saved game holds 1 thing this build of Kingdoms Call doesn't know, so the turn did not run." and names each place (at
   most ten, then a count; `src/views/prose/what-the-saves-check-found-in-words.ts`). The known list
-  (`THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON`) holds the Parked leaks of a battle's marks (a garrison company's
-  `_tempStrReduction`, `_archeryRed`, `_died` and `_fromGarrison`; a hero's `_slainBy`), each naming its Parked entry;
+  (`THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON`) holds the known leaks of a battle's marks (a garrison company's
+  `_tempStrReduction`, `_archeryRed`, `_died` and `_fromGarrison`; a hero's `_slainBy`), each naming its known defect;
   each leak's fix removes its entry. On a known place the turn runs, and, as before the stop, its end tells the GM in
   one line of the GM's log, which no realm reads (`[Save check] The saved game holds 1 thing …, and the turn ran on it
   as it was. …`); `resolveTurn` returns the list, and the shell's message says the same, and shows it again once the
@@ -214,7 +214,7 @@ writes, or a battle's mark that leaked into the save).
 - **Name a place by its path and kind, never its value.** The GM's line and the turn's message may be passed on, so
   they hold no name or text from a game: a key that isn't a number or a name as code writes one is shown as "(a key)".
 - **A place reported is a fix of its own**: a field the code saves goes into the schema (optional, with what writes
-  it); a battle's mark that leaked is a Parked bug. Since the stop (P1-15f8), a place not on the known list stops the
+  it); a battle's mark that leaked is a known defect, with its backlog row. Since the stop (P1-15f8), a place not on the known list stops the
   turn on the GM page; a leak's place stays on that list, its turn played and told, until its fix removes the entry.
 - **A staged world in a test is not a save.** A world made by `generateNewGame` alone lacks what Turn 0 adds (the turn
   mode, the bots' settings), and a hero a test stands on the board lacks fields a real one holds, so a turn played on

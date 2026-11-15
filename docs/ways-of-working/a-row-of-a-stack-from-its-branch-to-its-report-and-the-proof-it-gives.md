@@ -26,7 +26,8 @@ skill. The rules themselves are in [CLAUDE.md](../../CLAUDE.md#rules).
   ([traps.md](../traps.md#a-constant-read-at-load-time-must-live-in-a-leaf-module)).
 - **Keep every count another step owns as it is on the base.** A count that falls by itself is lowered in the same
   pull request (CLAUDE.md) and named first under `CHOICES MADE WITHOUT A MAINTAINER`.
-- **A bug found on the way is its own pull request.** Record it as a known defect in the same sitting, and leave the
+- **A bug found on the way is its own pull request.** Give it its backlog row in the same sitting (a `KD-` row in
+  [Not yet assessed](../backlog/README.md#not-yet-assessed)), and leave the
   code as it is.
 - **Read `.github/dangerous-paths` itself** and name every path of it the pull request touches: it lists more than
   `supabase/` and `.github/` (the harness's tests, `tools/balance/`, `.claude/`, the configs).

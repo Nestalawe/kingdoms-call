@@ -38,7 +38,7 @@ also gives his Great Bears ×1.5 in the Elder Wood.
 
 *Assessment:* option 1, because nothing in play changes.
 
-*Unlocks:* the fix of a known defect, "Home of the Wild lifts a Druidic hero's Creatures in any realm, which the books
+*Unlocks:* the fix of a known defect, KD-071, "Home of the Wild lifts a Druidic hero's Creatures in any realm, which the books
 don't say".
 
 *Touches:* [R-030](rulings/R-030-fervour.md) (a Druidic host's fervour),

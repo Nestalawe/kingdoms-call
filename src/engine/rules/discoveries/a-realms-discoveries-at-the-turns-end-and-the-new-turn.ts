@@ -6,7 +6,7 @@
 // SAGE_DISCOVERIES_P) and the facts of its stage; the runners (the-registry-of-discovery-effects.ts) find the realm's
 // effects of the kind and fold them, as the resolvers' and the report's reads did. No effect draws a die: the resolver
 // rolls where it rolled before. A number a row may not write falls back as discParam's did (War Academy's 50%, Herbal
-// Lore's 40%, Taxation Records' 5% and 99g): no row reads a fallback (Parked "discParam's fallbacks").
+// Lore's 40%, Taxation Records' 5% and 99g): no row reads a fallback (KD-193).
 import type { DiscoveryEffectSlug } from '../../../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import { discUnitMatch } from '../../rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';

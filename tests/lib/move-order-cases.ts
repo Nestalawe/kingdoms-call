@@ -479,8 +479,8 @@ export const MOVE_ORDER_CASES: MoveOrderCase[] = [
     },
   },
   {
-    // the old script's last check took "need 3 hulls" for the berths (Parked "Eleven checks … can't fail"): here the
-    // line must count the turtle's two berths
+    // the old script's last check took "need 3 hulls" for the berths (a known defect fixed by P1-14l, "Eleven checks …
+    // can't fail"): here the line must count the turtle's two berths
     name: "a Great Turtle can't carry three heavy companies: the move is blocked, and the line counts the turtle's two berths",
     stage(b) {
       const to = ring1(b, 1);

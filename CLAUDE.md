@@ -42,7 +42,7 @@ the questions, the goal and the backlog: the table below.
 
 - **One home a fact:** the table above names it. Elsewhere, link to it; never restate it.
 - **The PR that changes a fact updates its home** (and any doc it makes wrong): a step's PR its backlog row (a
-  finished step leaves for the finished list); a fix's PR deletes its known-defect entry; a maintainer's answer becomes a
+  finished step leaves for the finished list); a fix's PR deletes its backlog row (a new defect gets a `KD-` row in "Not yet assessed"); a maintainer's answer becomes a
   ruling and leaves the questions file, in one PR.
 - **Present tense only:** a doc says what is true now (`docs/explorations/` excepted); history lives in git and the PRs.
 
