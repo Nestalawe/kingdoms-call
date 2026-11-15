@@ -5,7 +5,7 @@
 | Role | Who | In one line |
 |---|---|---|
 | **Owner** | Toby (GitHub `Nestalawe`) | Decides what the game is; owns the GitHub repository, the Supabase account and every setting; approves every production database change |
-| **Reviewer and helper** | Theo (GitHub `crumblingworld`) | Reviews security, database, CI and deploy changes; runs the plan's steps with agents; helps Toby throughout |
+| **Reviewer and helper** | Theo (GitHub `crumblingworld`) | Reviews security, database, CI and deploy changes; runs the backlog's steps with agents; helps Toby throughout |
 | **Agents** | Claude Code sessions, in Toby's or Theo's account | Do the engineering: code, tests, docs, pull requests |
 | **CI** | GitHub Actions | Runs every check, deploys staging and the live site, applies a migration once Toby approves it |
 
@@ -14,7 +14,7 @@ change its settings: GitHub gives no admin rights to collaborators on a personal
 an organisation would change the live site's address.
 
 **Toby and Theo share the work.** Either can do any step, or start an agent on it, except Toby's keys (below). Toby's
-sessions are mostly for his batches; Theo's for the plan's steps. Both streams use the same CI, the same staging site
+sessions are mostly for his batches; Theo's for the backlog's steps. Both streams use the same CI, the same staging site
 (the `staging` label says whose pull request is on it) and the same rules in [CLAUDE.md](../../CLAUDE.md).
 
 | Stream | Started by | Pull request title | Branch | Commits |

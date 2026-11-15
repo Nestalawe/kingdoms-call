@@ -5,7 +5,7 @@ and don't "fix" something a ruling says is deliberate without a fresh ruling.
 
 A ruling is a decision about the game players experience: combat, magic, movement, the economy, what a report
 shows, who can read what. Not here: how we work (`CLAUDE.md`), the numbers bots are tuned with (code comments
-beside the bot code), and the plan's own decisions.
+beside the bot code), and [the decisions on how the work runs](../decisions/README.md).
 
 ## Status
 
@@ -54,7 +54,8 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
   moved to this repo. It isn't in the repo; Toby and Theo hold it privately. Section numbers and build stamps are
   given so either can find the passage.
 - **PR #N**: this repo's pull requests, from the cutover on 8 October 2026.
-- **Plan decision D-NN**: Toby's answers to the questions in the private plan; each file says what he decided.
+- **Plan decision D-NN**: Toby's answers, one line each in [the decisions](../decisions/README.md); each file says what he
+  decided.
 
 ## Index
 

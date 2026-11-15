@@ -1,5 +1,5 @@
 <!--
-Title: "Batch YYYY-MM-DD: <a few items>" for Toby's batches, "[P0-NN] <step>" for plan steps.
+Title: "Batch YYYY-MM-DD: <a few items>" for Toby's batches, "[P0-NN] <step>" for the backlog's steps.
 Write the top half for Toby, in game terms. Engineering detail goes in the lower sections.
 Public repo: no live-game names, pasted report or dispatch text, account ids, emails or secrets, and
 no description of security weaknesses (keep security fixes neutrally worded). See CLAUDE.md.
@@ -72,8 +72,8 @@ None.
 ## Checklist
 
 - [ ] Needs Theo? Say so in the first line of the description if this changes who can see or change
-      data, is a ✓ plan step or a unit step. (A change to a path in `.github/dangerous-paths` gets a warning
+      data, is a step with Theo ✓ in the backlog, or a unit step. (A change to a path in `.github/dangerous-paths` gets a warning
       comment anyway; talk it through with Theo before merging.)
-- [ ] Updates STATUS? (Plan steps only; batches don't. See "Never" 6 in `CLAUDE.md`.)
+- [ ] Updates the home of each fact it changes? (A step's PR its backlog row; see "Where documentation goes" in `CLAUDE.md`.)
 - [ ] Rule changes are mirrored everywhere the rule is restated (engine, player portal, rulebooks).
 - [ ] `docs/ARCHITECTURE.md` / `docs/traps.md` / `CLAUDE.md` updated, if this makes them wrong.
