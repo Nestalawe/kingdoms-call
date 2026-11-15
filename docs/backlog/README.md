@@ -15,12 +15,23 @@ Finished items are a record, in three files: [Phase 0, and P1-01 to P1-10](finis
 
 ## How to read a row
 
+The backlog is the one place that tracks the work: no other list, file or note says what is open, or its status. Every
+table in it has the same nine columns, in this order: Id, What, Impact, Outcome, Size, Maintainer ✓, Status, PR,
+Why here. An item is one row: no id is an open row twice, or both open and in a finished list. A static test checks
+this (`tests/static/the-backlog-tracks-each-item-one-way.test.ts`).
+
 - **Id:** a step of the old phases keeps its id, `P<phase>-<nn>` (for example `P1-16`), because code and pull requests
   cite it. A new item gets `B-NN`; a known defect `KD-NNN`. A step built in several pull requests gets lettered rows
   (`P1-16q`), and a row split in two gets a number (`P1-16o1`, `P1-16o2`). An id is never reused or renumbered: a
   dropped item keeps its id, and the finished list names it as dropped.
+- **A group, not a row:** a step that is only the sum of its lettered rows (P1-16, P1-17, P1-23) has no row of its
+  own. Its heading, under "The groups" of its file, says what it delivers and holds its decisions in force; its rows
+  sit wherever the order puts them. A step with work of its own beside its rows gives that work a lettered row.
+- **Folded in:** a known defect that is the same fault as another row is no row of its own. That row's What names it
+  ("Folds in KD-005"), so the id still leads somewhere.
 - **Rescoping:** when a row has delivered part of what it says, the id keeps what was delivered, and goes to the
   finished list; the rest is a new row, with a new id.
+- **What:** what the row delivers. A row that must wait for another says so at its end ("After P1-16q").
 - **Impact:** one line: who notices, what changes in play or for the maintainers, and what it unblocks.
 - **Outcome:** the outcome of [the road](../the-goal-and-the-road.md#the-outcomes) the row serves.
 - **Size:** Small is one small pull request; Medium is one larger pull request, or two or three small ones; Large is
@@ -29,18 +40,15 @@ Finished items are a record, in three files: [Phase 0, and P1-01 to P1-10](finis
   ([D-07](../decisions/README.md#the-sites-decisions-d-01-to-d-13)). It touches security, the database, CI and deploy, or
   the harness. **🔑** in the same column: part of it needs the owner's admin access (the repository's settings, a
   production approval, Supabase's live project, or the owner's claude.ai Project). Either maintainer can pick up any
-  other item, or start an agent on it.
-- **Who:** an agent does each item unless the row says otherwise.
+  other item, or start an agent on it. An agent does each item unless the row says otherwise.
+- **Status:** one of three: ⬜ not started · 🟦 in progress · ⏸ waiting or deferred (the What says for what). A row
+  whose PR column lists a merged pull request is 🟦 at least. Once every part is merged, the row leaves for a finished
+  list, with its pull requests; a dropped row leaves too, and the finished list names it as dropped.
+- **PR:** the pull requests so far; a step's finished rows are in the finished list.
+- **Why here:** in the top and in Later's first group, one line of reasoning for the row's place; elsewhere empty.
 - **Unit:** a set of steps that go together, in a fixed order (expand, wait, then contract), because doing only part of
   it would break the live site. Unit A, the cutover (P0-07 to P0-11), and Unit B (P0-20, then P0-21) are done. Unit C
   is P2-06, then a wait, then P2-07.
-- **Status:** ⬜ not started · 🟦 in progress · 👀 in review · ⛔ blocked (the row says why) · ⏸ deferred. A row whose
-  PR column lists a merged pull request is 🟦 at least; once every part is merged, it leaves for the finished list, as
-  does a dropped row (✖).
-- **PR:** the pull requests so far. A step with lettered rows lists its open rows after it; its finished rows are in
-  the finished list.
-- **After:** a row that must wait for another says so at the end of its "What".
-- **Why here:** in the top and in Later's first group, one line of reasoning for the row's place.
 
 ## The top, in order
 
@@ -49,6 +57,7 @@ order; inside a group, the rows' "After" decides the order. The order of work is
 here: each row is placed by [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)
 of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
+T6's rows are the rows left of two groups, [P1-16 and P1-17](the-next-group-the-rebuilds-other-rows.md#the-groups).
 
 ### 1. T6, the types finished: part 4
 

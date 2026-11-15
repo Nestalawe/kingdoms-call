@@ -155,7 +155,7 @@ its line stops and reports.
 
 The tranche's plan goes into its first row's PR description, and each row's PR links to it; its steps join
 [the backlog](../backlog/README.md). A security tranche's plan stays in the private plan
-([CLAUDE.md](../../CLAUDE.md#rules), "Never" 5 and 6).
+([CLAUDE.md](../../CLAUDE.md#rules), "Never" 5 and 6); its place in the order is the backlog's one row B-12.
 
 ### Building a tranche as a stack
 

@@ -32,7 +32,7 @@ the questions, the goal and the backlog: the table below.
 | The rulings, and their index | `docs/rulings/` |
 | The questions waiting for the maintainers | `docs/questions-for-the-maintainers.md` |
 | The goal, the outcomes in order | `docs/the-goal-and-the-road.md` |
-| The backlog: each open step, then the finished ones | `docs/backlog/` |
+| The backlog, the one place that tracks work: each open item and its status, then the finished ones | `docs/backlog/` |
 | Who does what, review, private data, a run's routines | `docs/ways-of-working/` |
 | The overview, one line a part, and the code's guardrails | `docs/ARCHITECTURE.md` |
 | One part's detail | `docs/architecture/<topic>.md` |

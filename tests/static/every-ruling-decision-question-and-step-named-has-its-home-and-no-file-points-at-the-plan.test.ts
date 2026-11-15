@@ -7,11 +7,13 @@
 // - Each D-NN (and D-NNa) is a decision of docs/decisions/README.md.
 // - Each question number ("question 21", "questions 36, 39 and 41") is open in docs/questions-for-the-maintainers.md, or named
 //   by a ruling (its source: the ruling is the answered question's home).
-// - Each step id (P1-16, P1-11e29) is a row of the backlog (docs/backlog/README.md and its groups' files), or in its
-//   finished list (a finished step, or one dropped: "P0-14, on 2026-10-14").
+// - Each step id (P1-16, P1-11e29) is a row of the backlog (docs/backlog/README.md and its groups' files), a group's
+//   heading there ("### P1-16: the UI typed", a step that is only the sum of its rows), or in its finished list (a
+//   finished step, or one dropped: "P0-14, on 2026-10-14").
 // - No backlog row is done or dropped (those leave it for the finished list), and none is in the finished list too.
-// - Each known defect named (KD-001) is a row of the backlog, and no two rows share an id; no file names a known
-//   defect by its old title, `Parked "<title>"`, which no reader can look up (before this check, 37 lines did).
+// - Each known defect named (KD-001) is a row of the backlog, or folded into one ("Folds in KD-005 and KD-080" in
+//   the row's What), and no two rows share an id; no file names a known defect by its old title, `Parked "<title>"`,
+//   which no reader can look up (before this check, 37 lines did).
 // - No file git keeps names NEXT.md, PARKED.md or STATUS.md, or a path inside plan/ (naming the folder itself, as
 //   .gitignore and the copies of the tree do, is fine). One file is let off, with its reason (THE_PLANS_FOLDER_ON_PURPOSE).
 import { execFileSync } from 'node:child_process';
@@ -123,7 +125,15 @@ const FINISHED_STEPS = new Set(
       ]),
   ),
 );
-const STEPS = new Set([...OPEN_ROWS.map((r) => r.id), ...FINISHED_STEPS]);
+/** The groups: a step that is only the sum of its rows is a heading of the backlog, "### P1-16: the UI typed". */
+const GROUPS = new Set(
+  BACKLOG.flatMap((f) =>
+    read(f)
+      .split('\n')
+      .flatMap((line) => /^### (P\d-\d{2}[a-z0-9]*): /.exec(line)?.slice(1, 2) ?? []),
+  ),
+);
+const STEPS = new Set([...OPEN_ROWS.map((r) => r.id), ...GROUPS, ...FINISHED_STEPS]);
 
 /** The known defects' rows: the id of each table row that starts "| KD-NNN |", once for each row. */
 const KNOWN_DEFECT_ROWS: string[] = BACKLOG.flatMap((f) =>
@@ -131,7 +141,15 @@ const KNOWN_DEFECT_ROWS: string[] = BACKLOG.flatMap((f) =>
     .split('\n')
     .flatMap((line) => /^\| (KD-\d{3}) \|/.exec(line)?.slice(1, 2) ?? []),
 );
-const KNOWN_DEFECTS = new Set(KNOWN_DEFECT_ROWS);
+/** The known defects folded into another row: "Folds in KD-074 and KD-080." in that row's What. */
+const KNOWN_DEFECTS_FOLDED_IN: string[] = BACKLOG.flatMap((f) =>
+  read(f)
+    .split('\n')
+    .filter((line) => line.startsWith('| '))
+    .flatMap((line) => [...line.matchAll(/\bFolds in ((?:KD-\d{3}(?:, | and )?)+)/g)])
+    .flatMap((m) => (m[1] ?? '').match(/KD-\d{3}/g) ?? []),
+);
+const KNOWN_DEFECTS = new Set([...KNOWN_DEFECT_ROWS, ...KNOWN_DEFECTS_FOLDED_IN]);
 
 // ─── The references ───
 
@@ -164,6 +182,7 @@ describe('every fact the repository names has its home in docs/', () => {
     expect(OPEN_ROWS.length).toBeGreaterThan(20);
     expect(FINISHED_STEPS.size).toBeGreaterThan(100);
     expect(FINISHED_STEPS.has('P0-14')).toBe(true);
+    expect(GROUPS.has('P1-16') && GROUPS.has('P1-23')).toBe(true);
     expect(KNOWN_DEFECTS.size).toBeGreaterThan(100);
     expect(ANSWERED_QUESTIONS.size).toBeGreaterThan(20);
     expect(
@@ -201,12 +220,12 @@ describe('every fact the repository names has its home in docs/', () => {
     ).toEqual([]);
   });
 
-  test('each step named is a row of the backlog, or in its finished list', () => {
+  test('each step named is a row of the backlog, a group there, or in its finished list', () => {
     const refs = referencesIn(matchesOf(STEP, (m) => m[0]));
     expect(shown(refs.filter((r) => !STEPS.has(r.name)))).toEqual([]);
   });
 
-  test('each known defect named is a row of the backlog, and no two rows share an id', () => {
+  test('each known defect named is a row of the backlog or folded into one, and no two rows share an id', () => {
     const refs = referencesIn(matchesOf(/\bKD-\d{3}\b/g, (m) => m[0]));
     expect(shown(refs.filter((r) => !KNOWN_DEFECTS.has(r.name)))).toEqual([]);
     expect(KNOWN_DEFECT_ROWS.filter((id, i) => KNOWN_DEFECT_ROWS.indexOf(id) !== i)).toEqual([]);

@@ -145,7 +145,8 @@
 - **The nightly run** (`.github/workflows/nightly.yml`, P1-04d) runs `npm run test:full` every night with a random
   `KC_SEED`, printed first in its log and summary. A red night blocks nothing: repeat it with that seed (locally, or
   Run workflow with the seed), then add a test at the lowest level that shows the problem, or, while the refactor
-  runs, ask a maintainer whether to park it in `KNOWN_BREACHES`.
+  runs, give it a `KD-` row in [Not yet assessed](../backlog/README.md#not-yet-assessed) and ask a maintainer whether
+  `KNOWN_BREACHES` lets it pass until that row is fixed.
 - **`lib/report-leaks.ts`** is what no realm's report may show it, as five pure checks on one turn and its
   reports (`turn_logs` rows with `player_index` ≥ 0), run by `checkTurn` (and `checkLeaks`, the leak checks alone):
   - **another realm's private line**: a line on the `PRIVATE_LINES` list (a hit-point rise, Invisibility, moving

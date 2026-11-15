@@ -241,7 +241,8 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-23af: #372 Battle magic follows one rule in every battle: the bolt counted to 5, no storm at sea or on no Tactical
 
 Dropped (ids are never reused): P1-23ap, on 2026-11-15, and P1-23aq, on 2026-11-15, re-planned with the new
-alignment abilities (B-09); B-02, the batch rehearsal, on 2026-11-15; B-04 and B-05, on 2026-11-15, re-planned in B-09.
+alignment abilities (B-09); B-02, on 2026-11-15 (the batch rehearsal); B-04, on 2026-11-15, and B-05, on 2026-11-15,
+re-planned in B-09.
 
 ## P1-25
 
