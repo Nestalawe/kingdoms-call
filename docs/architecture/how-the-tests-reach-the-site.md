@@ -251,3 +251,9 @@
 - **`KC_SITE=<folder>`** points every test, and the browser specs' server, at another copy of the site, e.g. a
   deliberately broken one to prove a check fails. Not the tests that read `src/` (`lib/engine.ts`, `lib/source.ts`,
   the engine's modules, [above](#how-the-tests-reach-the-site)): their fail-first proof is a planted copy of the branch.
+
+## CodeQL reads the tests too, and any alert fails the merge
+
+The rule, and what checks it, are in [traps.md](../traps.md#codeql-reads-the-tests-too-and-any-alert-fails-the-merge).
+CodeQL follows the value, not the meaning: `[was, text] = [text, text.replace(/<[^>]*>/g, '')]` in a loop is still an
+alert, and `was = text; text = text.replace(…)` is not.

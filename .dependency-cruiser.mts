@@ -163,7 +163,7 @@ const config: IConfiguration = {
     tsConfig: { fileName: 'tsconfig.json' },
     doNotFollow: { path: 'node_modules' },
     enhancedResolveOptions: { extensions: ['.ts', '.js'] },
-    // The module map in docs/ARCHITECTURE.md (tools/module-map.ts) is the Mermaid reporter's, one box a folder.
+    // The module map in its topic file (tools/module-map.ts) is the Mermaid reporter's, one box a folder.
     reporterOptions: { mermaid: { minify: false } },
   },
 };

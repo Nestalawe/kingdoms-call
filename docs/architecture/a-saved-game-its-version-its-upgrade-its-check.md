@@ -169,6 +169,8 @@ games.
 - **Items:** `migrateItemTiers` re-stamps only an item's tier. An item's effect stays as it was when
   awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
   design decision for Toby: raise it as a ruling, don't decide it in code.
+  The items' registry reads each held copy's own key and numbers, and its content rows hold only the numbers the code
+  wrote inline, so a held copy acts, fights and is weighed (its role, its tier's floor) by what it carries.
 
 ## A change to the save's shape needs its version
 
@@ -182,7 +184,8 @@ older save.
   save can't meet as it is (a field renamed, moved, retyped, or now required) also bumps the version: a numbered step
   in `THE_NUMBERED_STEPS_OF_THE_UPGRADE` that mends a save of the version before, the new number, and a fixture of the
   new version (`npx tsx tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`). A step runs once, on a save below
-  its version, after the passes before the check, and stays safe to repeat.
+  its version, after the passes before the check, and stays safe to repeat. A field renamed with no step: every live save keeps
+  the old name, which the new code never reads.
 - **A `refactor-only` change retypes no field.** Narrowing a `z.unknown()` field of `src/schemas/saved-game-state.ts`
   (or its elements) is a retype: the check would refuse a live save that holds another value there. A refactor leaves
   the field as it is and narrows the value where the code reads it.

@@ -193,7 +193,7 @@
   with no dice or clock in it.
 - **The engine's functions are modules by area; `resolveTurn` holds no rule of the game.** It is the save's parse
   and upgrades, the turn's context and its start values, the stages' calls, the phase loop calling its stages, and the
-  reports. Find a function with the module map ([ARCHITECTURE.md](../ARCHITECTURE.md#the-layers-and-the-module-map))
+  reports. Find a function with the module map ([the module map](the-layers-of-src-and-the-module-map-generated-from-its-imports.md#the-module-map))
   and a search for its name: the stages of the set-up, the phase loop, Early Winter, the turn's end and the new turn are
   in `engine/turn/` (and the titles' in `engine/titles/`); each order family's `resolve<Order>Order` is in
   `engine/orders/`, called by `processOrder(turnContext, c, o, ph)`

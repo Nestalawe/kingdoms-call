@@ -10,7 +10,7 @@
 // - Each entry of docs/traps.md (a "## " heading and the text under it) stays within its bytes.
 // - Each Claude Code skill (a folder under the skills' folder: its SKILL.md and any file beside it) stays within its
 //   bytes, so a skill stays a few steps that point at the docs.
-// - CLAUDE.md has no line over its cap outside its tables (the file map is one table row a path).
+// - CLAUDE.md has no line over its cap outside its tables (a table is one row a line).
 // - The list of tests has no line over its cap, names every test file, and every file it names exists.
 // The budgets are in a file on .github/dangerous-paths, so raising one is seen in review.
 import fs from 'node:fs';

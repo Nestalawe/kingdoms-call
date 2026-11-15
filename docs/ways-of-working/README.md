@@ -13,6 +13,7 @@ link to it.
 - [A row of a stack: from its branch to its report, and the proof it gives](a-row-of-a-stack-from-its-branch-to-its-report-and-the-proof-it-gives.md)
 - [A mutation session: faults made on purpose, and the tests they leave](a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md)
 - [Explaining a pull request: its intent and its impact](explaining-a-pull-request-its-intent-and-its-impact.md)
+- [Writing for people: plain language and the playtester notes](writing-for-people-plain-language-and-the-playtester-notes.md)
 
 Elsewhere: [the decisions](../decisions/README.md), [the rulings](../rulings/README.md),
 [the questions waiting for Toby](../questions-for-toby.md), [the goal and the road](../the-goal-and-the-road.md),
