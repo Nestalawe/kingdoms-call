@@ -20,21 +20,35 @@ published.
    lines, a few to 2,000 (`src/engine/run-turn.ts` ~380): search the long ones, and edit with unique anchors.
 
 **Toby's rulings are in [docs/rulings/](docs/rulings/README.md)**, one file each, with an index. Before
-changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one.
+changing a rule, read its ruling; never "fix" what a ruling says is deliberate without a fresh one. The decisions,
+the questions for Toby, the goal and the backlog: the table below.
 
 ## Where documentation goes
-
-Every doc says what is true now (`docs/explorations/` excepted); history lives in git and the PRs. A static test
-checks the budgets (`tests/the-docs-budgets.json`): change one only with a reason in the PR, never to make the check pass.
 
 | What | Where | Budget |
 |---|---|---|
 | The rules and the reading order | `CLAUDE.md` | 15 KB; lines ≤ 300 characters |
+| Toby's and Theo's decisions (D-NN, and how the work runs) | `docs/decisions/` | 9 KB a file |
+| Toby's rulings, and their index | `docs/rulings/` | |
+| The questions waiting for Toby | `docs/questions-for-toby.md` | 12 KB |
+| The goal, each phase's exit, the road | `docs/the-goal-and-the-road.md` | 17.5 KB |
+| The backlog: each open step, then the finished ones | `docs/backlog/` | 21 KB a file |
+| Who does what, review, private data, a run's routines | `docs/ways-of-working/` | 10.5 KB a file |
 | The overview, the module map | `docs/ARCHITECTURE.md` | 15 KB |
 | One part's detail | `docs/architecture/<topic>.md` | 30 KB each |
 | A trap: its rule, one example, its check | `docs/traps.md` (its full text: the topic file) | 36 KB; 1.5 KB an entry |
 | How to write and prove a test | `tests/README.md` | 20 KB |
 | One line a test (its *why*: its header) | `tests/every-test-its-level-and-what-it-checks.md` | 300 characters a line |
+
+- **One home a fact:** the table above names it. Elsewhere, link to it; never restate it.
+- **The PR that changes a fact updates its home** (and any doc it makes wrong): a step's PR its backlog row (a
+  finished step leaves for the finished list); a fix's PR deletes its known-defect entry; Toby's answer becomes a
+  ruling and leaves the questions file, in one PR.
+- **Present tense only:** a doc says what is true now (`docs/explorations/` excepted); history lives in git and the PRs.
+- **Security stays private:** no weakness, open or fixed, in any doc ("Never" 5).
+
+Static tests check the budgets (`tests/the-docs-budgets.json`: change one only with a reason in the PR, never to make
+the check pass), that each ruling, decision, question and step named has its home, and that no file points at the plan.
 
 ## File map
 
@@ -44,7 +58,7 @@ checks the budgets (`tests/the-docs-budgets.json`): change one only with a reaso
 | `public/` | Copied as it is: `kc-config.js` (which database), `kc-staging-footer.js` |
 | `supabase/` | The database: `schemas/` (the structure and access rules), `migrations/` (generated, then reviewed), `tests/` (pgTAP): `supabase/README.md` |
 | `tests/` | The tests (the list and README: above); `fixtures/saves/`, a made-up save of each version |
-| `tools/` | The build, dev server, check, hooks, ratchet, lint rules, balance matrix, mutant scorer, the deploy's keep step |
+| `tools/` | The build, dev server, checks, hooks, ratchet, lint rules, balance matrix, mutant scorer, deploy's keep step |
 | Config at the root (`tsconfig.json`, `.nvmrc`, …) | [The toolchain; the full file map](docs/architecture/the-toolchain-the-checks-and-the-harness.md#the-repositorys-files-folder-by-folder) |
 | `.github/` | `workflows/` (`ci.yml` on every PR: `ci` and `db` are the required checks; `deploy.yml` on `main`), `dangerous-paths`, the PR template |
 
@@ -53,31 +67,29 @@ checks the budgets (`tests/the-docs-budgets.json`): change one only with a reaso
 Node exactly as in `.nvmrc` (24.22.0): `npm ci` and `npm test` refuse any other.
 
 Once: `npm ci && npx playwright install chromium`. Then `npm test` (every test, about 60 s; it builds `site/` first),
-`npx playwright test` (the browser specs), `npm run check`, `npm run dev` (local Supabase only), `npm run balance`,
-`npx supabase@2.120.0 test db --local supabase/tests` (access rules) and `npm run test:db` (the access layer). The rest, with `KC_SITE` for fail-first
-proofs: [tests/README.md](tests/README.md#running-the-tests).
+`npx playwright test` (the browser specs), `npm run check`. The rest (the dev server, the balance, the access-rule
+tests, `KC_SITE` for fail-first proofs): [tests/README.md](tests/README.md#running-the-tests).
 
 **The checks run themselves** (hooks in `.claude/settings.json`): each edit is type-checked, linted and format-checked,
 and you can't finish while `npm run check` fails (after three tries, say "`npm run check` still fails: tell Theo").
 Before every push run `npm test` and `npx playwright test` (and the access-rule tests when `supabase/` changes): all
-green. **All new code is TypeScript** (P1-09e), type-checked (no new `@ts-nocheck`; no `as` or `!` in `src/`: lint); new tests in `tests/<level>/` or `tests/browser/` ([tests/README.md](tests/README.md)).
+green. **All new code is TypeScript** (P1-09e), type-checked (no new `@ts-nocheck`; no `as` or `!` in `src/`: lint).
 
 ## How work arrives
 
 - **Start all work with the skill `/making-a-change`**: it names the kind of work and writes its plan
   ([the six kinds](docs/architecture/making-a-change-the-six-kinds-and-the-plans-format.md)).
 - **Toby's batches** (numbered items in game terms) are changes: **one PR per batch, one commit per item** (D-06).
-  Commit message `Item N: <short title>`; PR title `Batch YYYY-MM-DD: <a few items>`; branch `batch/YYYY-MM-DD` (the
-  date you open it). Split out an item that isn't ready; don't hold the batch.
-- **Plan steps:** PR title `[P0-13] Per-environment config`, branch `p0-13-per-environment-config`. Open draft PRs
-  titled `[P` are work in progress. Steps are grouped in phases; a **unit** is a set of steps done together in one
-  sitting (e.g. the cutover).
+- **The steps** are in [the backlog](docs/backlog/README.md), grouped in phases, toward
+  [the goal](docs/the-goal-and-the-road.md). Each stream's titles, branches and commits:
+  [who does what](docs/ways-of-working/who-does-what-the-roles-the-review-by-kind-and-tobys-keys.md#the-roles).
 
-**Staging** is a separate test site with its own database and no real players (how: **[docs/staging.md](docs/staging.md)**).
+**Staging** is a separate test site with its own database and no real players ([how](docs/staging.md)).
 **Whether a PR goes there is your call, from the risk** ([when](docs/staging.md#when-a-change-needs-staging)): say in
 one line of the PR "Staging: needed / not needed, because …". If not needed, move the risks it would close into tests
-or proofs in the PR. Label `staging` rebuilds its database from `main` plus the PR's migrations. A site PR that needs a database PR is stacked on its branch; it merges only after the database PR, once its `merges-into-main` check is green
-([traps.md](docs/traps.md#a-stacked-pull-request-merges-into-its-base-branch-not-main)). Nothing is applied by hand.
+or proofs in the PR. A site PR that needs a database PR is stacked on its branch; it merges only after the database PR, once its `merges-into-main` check is green
+([traps.md](docs/traps.md#a-stacked-pull-request-merges-into-its-base-branch-not-main)). Nothing is applied by hand, but
+in [break-glass](supabase/README.md#break-glass-the-one-exception).
 
 ## Rules
 
@@ -95,10 +107,9 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   restructure it into clear determinism (stage the state directly, or make the odds overwhelming).
   Never fix it with retries, loops, re-runs, re-seeding or a seed that happens to pass.
 - **Never "fix" a test to make it pass**, and never edit a quarantined test to pass. If a test fails on the current
-  build for a reason outside your change, quarantine it in its own commit: move it to `tests/quarantine/` (a test
-  script's line leaves `tests/suite.ts`) and give the one-line reason as the file's first line and in
-  `tests/README.md`. It comes back, in its own PR, only once the reason no longer applies (e.g. Toby confirms what the
-  test should expect); updating it to that confirmed behaviour is fine, loosening it until it passes is not.
+  build for a reason outside your change, quarantine it in its own commit ([how](tests/README.md#quarantined-tests)).
+  It comes back, in its own PR, only once the reason no longer applies (e.g. Toby confirms what the test should
+  expect); updating it to that confirmed behaviour is fine, loosening it until it passes is not.
 - Tests use synthetic, seeded data only. No test, fixture or CI job may read the live database.
 
 **Changes**
@@ -111,12 +122,9 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   [traps.md](docs/traps.md#a-rule-written-twice-must-change-twice). A function the player portal takes through
   `src/shared/` is written once; that entry names the test of its copies left.
 - **A change to the saved game's shape changes its schema too** (`src/schemas/saved-game-state.ts`). One an older save
-  can't meet as it is (a field renamed, moved, retyped or now required) also bumps the save's version: a numbered step
-  in `src/engine/saves/upgrade-a-saved-game-and-check-it.ts`, the number in
-  `the-saved-games-version-this-build-writes.ts` beside it, and a fixture of the new version (`npx tsx
-  tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`; never edited once merged). A new optional field is the
-  schema alone. The fixture test fails until a step mends every older fixture
-  ([traps.md](docs/traps.md#a-change-to-the-saves-shape-needs-its-version)).
+  can't meet as it is (a field renamed, moved, retyped or now required) also bumps the save's version, with a numbered
+  step that mends older saves and a fixture of the new version
+  ([traps.md](docs/traps.md#a-change-to-the-saves-shape-needs-its-version)). A new optional field is the schema alone.
 - **Dice come from `kcRng()`** and the engine's time from `kcClock()`: no `Math.random` or `Date` in the engine ([traps.md](docs/traps.md#dice-come-from-kcrng)).
 - **An engine change carries its balance report** (CI's comment). Unless it says "no change", the PR's top half has
   "What changes in play" (template): predict before the matrix runs, then write it from the report, with anything
@@ -125,14 +133,12 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
   it counts (a finding you fix leaves its list in the same PR: [the import
   rules'](docs/ARCHITECTURE.md#the-layers-and-the-module-map),
   [lint's](docs/traps.md#a-fixed-lint-finding-must-leave-the-suppressions)).
-- Update `docs/ARCHITECTURE.md` and `docs/traps.md` when your change makes them wrong, this file when the workflow changes.
-- Write in plain language: [ISO 24495-1:2023](#plain-language-iso-24495-12023).
 - **The code's guardrails** (plain data, dice, `emit`, the registry, iteration order, types):
   [ARCHITECTURE.md](docs/ARCHITECTURE.md#the-codes-guardrails).
 
 **Never**
-1. **Never merge.** Toby merges. Never push to `main`, never force-push a shared branch, never run
-   `gh pr merge`.
+1. **Never merge.** Toby or Theo merges; agents never. Never push to `main`, never force-push a shared branch, never
+   run `gh pr merge`.
 2. **Never touch production.** Don't deploy, migrate or write to the live database. Don't run
    `supabase link`, `db push` or `db reset --linked` against it. Never ask for, hold or use production
    credentials.
@@ -146,8 +152,8 @@ or proofs in the PR. Label `staging` rebuilds its database from `main` plus the 
    to the person running your session, for Theo; don't write it into an issue, PR, commit, comment or
    doc.
 6. **Never copy from the private plan.** If your clone has a `plan/` folder, it's the private plan repo
-   (git-excluded). Follow `plan/24-agent-brief.md` for updating its STATUS, and never add its files,
-   or text from them, to this repo.
+   (git-excluded): it holds only security work, one machine's run scripts and history. Never add its files, or text
+   from them, to this repo; the facts every session needs are in `docs/` (the table above).
 
 ## Database changes
 
@@ -164,21 +170,17 @@ A migration PR's rules, a site PR's that needs one, and forward-only migrations:
 
 ## Dangerous paths: talk it through with Theo
 
-Some changes get Theo's eye before Toby merges them (decision D-07); nothing on GitHub enforces it.
+Some changes get Theo's eye before they merge (decision D-07); nothing on GitHub enforces it.
 - **Paths:** a PR that changes a path in `.github/dangerous-paths` gets a warning comment that never blocks the merge.
-  The list is read from the PR's base branch, so an edit to it affects later PRs only.
-- **Everything else that needs Theo:** a change to who can see or change data, a plan step whose STATUS row has ✓ in the
-  Theo column, or any step of a unit (e.g. the cutover). Say so in the first line of the PR description. If unsure, say
-  so.
-
-Labels: `staging` (when the PR needs staging and is ready to try: it puts the PR on the staging site, with its own
-database, and comments with the link: [docs/staging.md](docs/staging.md#trying-a-pull-request)), `refactor-only`.
+- **Everything else that needs Theo:** a change to who can see or change data, a step with ✓ in
+  [the backlog](docs/backlog/README.md#how-to-read-a-row)'s Theo column, or any step of a unit (e.g. the cutover). Say
+  so in the first line of the PR description. If unsure, say so.
 
 ## Opening the PR for review
 
 Use the template in `.github/pull_request_template.md`, and fill in every section. Write the top half for Toby, in game terms; keep engineering
-detail in the lower sections for Theo. "Staging" says whether it's needed and why; if it is, a numbered checklist he can
-follow without reading code.
+detail in the lower sections for Theo. Staging, if needed, comes with a numbered checklist Toby can follow without
+reading code.
 
 **Playtester notes, every time.** Any PR that changes something players can notice starts its description with a `## For
 playtesters` section: one short, friendly paragraph per change, written for players (what's new or fixed and how it
@@ -191,9 +193,4 @@ Write everything people read (messages to Toby, PRs, commits, playtester notes, 
 to [ISO 24495-1:2023](https://www.iso.org/standard/78907.html): **relevant** (what readers need, nothing more),
 **findable** (most important first, clear headings), **understandable** (common words, short sentences, active voice,
 terms explained) and **usable** (numbered steps, the next action clear). Keep engineering detail accurate: explain it,
-don't drop it.
-
-## Talking to Toby
-
-Write in game terms. Offer options with a recommendation. Use short examples from inside the game
-world. Keep engineering detail for the PR's lower sections.
+don't drop it. **To Toby**, write in game terms, with options, a recommendation and short examples from the game world.

@@ -125,10 +125,10 @@ concern.
 ### Finding the next tranche
 
 Asked "what next?", the skill proposes tranches before planning one:
-1. **Read the goal first, not the order of a list.** The next tranche is the one that brings the goal closest; a road
+1. **Read [the goal](../the-goal-and-the-road.md) first, not the order of a list.** The next tranche is the one that brings the goal closest; a road
    written earlier is an input, and a recommendation nobody answered isn't a decision.
-2. **Read where things stand:** the open PRs, the steps in progress, the known defects and the questions waiting for
-   Toby (in `plan/`, if the clone has it), and the counts in `tests/ratchet.json` on `main`.
+2. **Read where things stand:** the open PRs, the steps in progress ([the backlog](../backlog/README.md)), the known
+   defects, the [questions waiting for Toby](../questions-for-toby.md), and the counts in `tests/ratchet.json` on `main`.
 3. **Give two or three candidates**, each with what it delivers against the goal, its rows (about how many), its risk
    (the files it shares with other work, staging, the database, Theo's look), and what it leaves for later. Recommend
    one.
@@ -150,8 +150,9 @@ serves the goal and is safe and easy to undo, and says so in its note; a rule of
 decided this way (it waits for Toby). The approved scoping is the go for every row: a row whose own plan goes beyond
 its line stops and reports.
 
-The plan lives where the person keeps their plans (`plan/`, if the clone has it). Otherwise it goes into the first
-row's PR description, and each row's PR links to it.
+The tranche's plan goes into its first row's PR description, and each row's PR links to it; its steps join
+[the backlog](../backlog/README.md). A security tranche's plan stays in the private plan
+([CLAUDE.md](../../CLAUDE.md#rules), "Never" 5 and 6).
 
 ### Building a tranche as a stack
 

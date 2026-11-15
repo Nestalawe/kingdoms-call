@@ -104,9 +104,10 @@ A test that can't fail proves nothing (CLAUDE.md, "Fail first"). Show it red wit
 - **Tests that read `src/`** (`lib/engine.ts`, `lib/source.ts`, the engine's modules) ignore `KC_SITE`: their proof is
   a planted copy of the branch. Copy the branch, plant the fault in the copy's `src/`, and run the test there.
 - **A refactor** (label `refactor-only`): new tests pass both before and after, and CI fails if the balance baseline
-  changes. One exception: a static test that a resolver the rule registry has taken names no unit type, item effect,
-  spell, discovery, guardian perk, alignment order's key or alignment is red on its row's base by design (plan P1-19:
-  `static/the-resolvers-the-*-has-taken-*.test.ts`, `static/the-code-the-*-taken-names-no-*.test.ts`).
+  changes. One exception: a static test of the state the row reaches is red on its row's base by design. A resolver
+  the rule registry has taken names no unit type, item effect, spell, discovery, guardian perk, alignment order's key
+  or alignment (P1-19: `static/the-resolvers-the-*-has-taken-*.test.ts`, `static/the-code-the-*-taken-names-no-*.test.ts`);
+  each ruling, decision, question and step named has its home (`static/every-ruling-decision-question-and-step-*`).
 - **A planted fault that stays green** is staged until it is red, or the pull request says why.
 - **A stand-in must be reached:** a test that stands a function in has a check that fails when it isn't
   ([traps.md](../docs/traps.md#a-stand-in-on-a-module-reaches-calls-from-other-files-only)).
@@ -206,7 +207,8 @@ scenarios (`npm run balance -- <scenario>`, `balance/scenarios/`) answer one foc
 ## Quarantined tests
 
 **Quarantined** tests are not part of `npm test`. Each file's first line says why. They are kept unchanged, never
-edited to pass. A quarantined test comes back only when the reason no longer applies: e.g. the expected tabs are
+edited to pass. To quarantine one, in its own commit: move it to `quarantine/` (a test script's line leaves
+`suite.ts`), and give its one-line reason as its first line and in the table below. A quarantined test comes back only when the reason no longer applies: e.g. the expected tabs are
 confirmed and the test is updated in its own PR.
 
 | Test | Level | Why |

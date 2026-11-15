@@ -98,7 +98,7 @@ export interface AMagicItemEffectAsItsTextsWriteIt {
 }
 
 // The cavalry, infantry, archers and heavy engines the commander's items reach (until P1-19m armStr's CAV_I, INF_I,
-// ARCH_I and HEAVY_I). Each item's texts name fewer (plan NEXT.md question 21: Parked "Thirty items' texts name fewer
+// ARCH_I and HEAVY_I). Each item's texts name fewer (question 21, R-149, not yet built: Parked "Thirty items' texts name fewer
 // units, or another rule, than the battle gives"); these are what the battle gives.
 const THE_CAVALRY_THE_LANCERS_ITEMS_REACH: readonly UnitType[] = [
   'Free Lances',
@@ -151,7 +151,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
   // Every army the bearer leads fights +2, whatever the item's own bonus: the two relic standards say +4 and +6 and give
-  // +2 too (plan NEXT.md question 20; Parked "The two relic standards give +2, not their +4 and +6").
+  // +2 too (question 20, R-148, not yet built; Parked "The two relic standards give +2, not their +4 and +6").
   'army-bonus': {
     name: 'Battle Standard',
     carriedAs: { stat: 'armyBonus' },
@@ -237,7 +237,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // realm's own bonuses), in this order: the defender's, then the attacker's (the siege halves what home defence
   // added). ──
   // The defenders' position fights ×1.25 when they defend their founding home and the bearer leads them. Its items'
-  // texts say "+1 quality tier" or "+1 level", and some "your own provinces" (plan NEXT.md question 22; Parked "The
+  // texts say "+1 quality tier" or "+1 level", and some "your own provinces" (question 22, R-150, not yet built; Parked "The
   // home-defence items say a quality tier in any province of one's own; the battle gives ×1.25 at the home alone").
   'home-defence-bonus': {
     name: 'Banner of the Realm',
@@ -245,7 +245,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: { multiplier: { value: 1.25, theTextsWriteIt: 'a multiplier, as the share it adds' } },
   },
   // The defenders' fortifications, beyond the bare ×1, are halved when the bearer attacks. Five of its items say "Siege
-  // bonus +1" (plan NEXT.md question 21).
+  // bonus +1" (question 21, R-149, not yet built).
   'siege-bonus': {
     name: "Siege Master's Ring",
     carriedAs: { stat: 'siegeBonus' },
@@ -270,7 +270,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: {},
   },
   // The force he leads never retreats from a lost battle against neutral guards: it stands. Its items' texts say
-  // "Shieldwall Levies" or "Infantry"; between heroes it does nothing (plan NEXT.md question 23; Parked "The
+  // "Shieldwall Levies" or "Infantry"; between heroes it does nothing (question 23, R-151, not yet built; Parked "The
   // Shield-Wall Rune holds only against neutral guards, and for the whole force").
   'shield-wall-rune': {
     name: 'Shield-Wall Rune',
@@ -280,7 +280,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── A hero's items in the realm's tax (turnEnd, in Early Winter): flat gold, then gold for each province the realm
   // holds; together capped by the realm's ceiling on bonus gold (capItemTaxGold, in src/engine/discoveries.ts). ──
   // Each copy adds its own `effect.bonus` in gold (the copy's number, not content's: no number here). Four of its items
-  // say "Tax income +3%" and give 3 gold (plan NEXT.md question 24; Parked "Four tax items say +3% and give 3 gold").
+  // say "Tax income +3%" and give 3 gold (question 24, R-152, not yet built; Parked "Four tax items say +3% and give 3 gold").
   'tax-bonus': {
     name: 'Ring of Wealth',
     carriedAs: { stat: 'taxBonus' },
@@ -709,7 +709,7 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     theWorthOfItInTheTreasury: { aPointTakenIsWorth: 2.5 },
   },
   // A foe who may flee does so on this chance (the fight's draw); else he is shaken, a penalty to hit. Neither item in
-  // play states the chance (plan NEXT.md question 26; Parked "The two terror items don't say a foe flees half the
+  // play states the chance (question 26, R-154, not yet built; Parked "The two terror items don't say a foe flees half the
   // time").
   'combat-item-terrifies': {
     name: 'Scroll of Terror',

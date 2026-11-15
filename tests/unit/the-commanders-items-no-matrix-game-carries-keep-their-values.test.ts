@@ -3,7 +3,7 @@
 // src/engine/rules/the-registry-of-magic-item-effects.ts), and the matrix proves those its games meet (the Golden Spur,
 // the Legionnaire's Mark, the Eagle-Eye Pendant, the Engineer's Blueprint, the Black Sceptre, the Tide-Caller's Horn:
 // both sets, every realm's report identical). These five it meets in no game, so they are proved here, each on the
-// value it had before: the Battle Standard's +2 (a relic that says +4: plan NEXT.md question 20 keeps today's +2), the
+// value it had before: the Battle Standard's +2 (a relic that says +4: today's +2 stays until R-148, question 20, is built), the
 // Sea Chart of the Deep's +1 and the Admiral's Spyglass' +2 for the fleets the bearer leads (and none for a unit that
 // isn't a fleet; a second name of the Spyglass counts as it), the Chalice of Dawn's ×1.15 for a Divine realm's armies
 // (and ×1 for another realm's); and, since a step is rounded as it goes, the stage's order: the Standard's +2 before

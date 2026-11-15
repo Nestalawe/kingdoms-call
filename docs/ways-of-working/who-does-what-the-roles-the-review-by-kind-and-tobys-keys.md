@@ -17,10 +17,12 @@ an organisation would change the live site's address.
 sessions are mostly for his batches; Theo's for the plan's steps. Both streams use the same CI, the same staging site
 (the `staging` label says whose pull request is on it) and the same rules in [CLAUDE.md](../../CLAUDE.md).
 
-| Stream | Started by | Pull request title |
-|---|---|---|
-| Toby's batches | Toby | `Batch 2026-10-03: naval retreat, wages, contrast…` |
-| The plan's steps | Theo (or Toby) | `[P0-19] Escape by default` |
+| Stream | Started by | Pull request title | Branch | Commits |
+|---|---|---|---|---|
+| Toby's batches | Toby | `Batch 2026-10-03: naval retreat, wages, contrast…` | `batch/2026-10-03` (the day it opens) | One an item: `Item 3: <short title>`; an item that isn't ready is split out, so the batch isn't held |
+| [The backlog](../backlog/README.md)'s steps | Theo (or Toby) | `[P0-13] Per-environment config` | `p0-13-per-environment-config` | As the step needs |
+
+A draft pull request titled `[P` is a step in progress.
 
 ## Who merges
 
@@ -39,7 +41,7 @@ kind. Then:
 |---|---|---|
 | **A batch, or a fix players notice** | Toby | The top half in game terms, the playtester notes, the balance report; staging when the pull request says it is needed |
 | **A refactor, or a row of a stack** | Theo | The Staging section, CI on the head commit, the open code-scanning alerts. The lower half is a short record; for intent and impact he asks for [an explanation](explaining-a-pull-request-its-intent-and-its-impact.md) |
-| **Theo ✓: security, the database, CI and deploy, the harness, who can see or change data** | Theo talks it through with Toby before the merge (D-07) | The whole change. A dangerous path gets a warning comment that never blocks the merge ([CLAUDE.md](../../CLAUDE.md#dangerous-paths-talk-it-through-with-theo)) |
+| **Theo ✓: security, the database, CI and deploy, the harness, who can see or change data** | Theo talks it through with Toby before the merge (D-07) | The whole change. A dangerous path gets a warning comment that never blocks the merge; the list is read from the pull request's base branch, so an edit to it affects later pull requests only ([CLAUDE.md](../../CLAUDE.md#dangerous-paths-talk-it-through-with-theo)) |
 | **A database change** | Theo reviews it; Toby approves it going live | The migration and its rollback; it is tried on staging first ([how a migration goes live](../../supabase/README.md#how-a-migration-goes-live)) |
 | **An update of dependencies** | Theo | `package.json`, the lock file and `.github/` are dangerous paths |
 
