@@ -3,7 +3,8 @@
 // the value that reaches it, so a fault planted in one is red: the join form (its box, its skills, its checks before the
 // realm is sent, the database's refusals), and the chronicle (the game's end, the heroes' sections by phase, the
 // battles' sides, the tinted names, a name that starts another tinted whole (P1-21s), the intelligence and the
-// dispatches).
+// dispatches). A battle's side is read by the kind the report gives its line alone (a line whose words open with the
+// force marker, with no kind, is a line), and its colour only as six hex digits (any other form: the default grey).
 // Level 4 (page): the file loads the page's start-up (its database client), so no lower level reaches it; the portal is
 // booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every module
 // loaded, and each case stages the screen's state as the tours do.
@@ -295,6 +296,8 @@ describe('the join form', () => {
 });
 
 /** A report the chronicle draws from: its log and its heroes, and the rest the report screen reads, empty. */
+/** The kind a force drawn up for battle carries in a realm's report (the pages draw its rows by it alone). */
+const A_FORCE = 'a force drawn up for battle';
 const aReport = (log: unknown[], more: Record<string, unknown> = {}) => ({
   lastTurnLog: log,
   characters: [
@@ -388,6 +391,7 @@ describe('the chronicle', () => {
   });
   test("a battle's sides: the short view counts each kind, a side of no armies says so; a marker that can't be read is a line", () => {
     const side = (o: Record<string, unknown>) => `⚑FORCE⚑${JSON.stringify(o)}`;
+    const kind = A_FORCE;
     const report = aReport([
       { text: '⚔ The clash at the ford', battleId: 'b1', bTier: 'k', charId: 1, phase: 1 },
       {
@@ -401,6 +405,7 @@ describe('the chronicle', () => {
         bTier: 'k',
         charId: 1,
         phase: 1,
+        kind,
       },
       {
         text: side({ name: 'Vale Guard', neutral: true, verb: 'holds — 3 defending units' }),
@@ -408,6 +413,7 @@ describe('the chronicle', () => {
         bTier: 'k',
         charId: 1,
         phase: 1,
+        kind,
       },
       {
         text: side({ name: 'Lone Scout', armies: [{ type: 'Scouts' }] }),
@@ -415,6 +421,7 @@ describe('the chronicle', () => {
         bTier: 'k',
         charId: 1,
         phase: 1,
+        kind,
       },
       {
         text: side({ name: 'Orc Chief', guard: true, armies: [{ type: 'Orcs' }] }),
@@ -422,10 +429,11 @@ describe('the chronicle', () => {
         bTier: 'd',
         charId: 1,
         phase: 1,
+        kind,
       },
-      { text: '⚑FORCE⚑null', charId: 1, phase: 2 },
-      { text: '⚑FORCE⚑{"name":"Odd","armies":5}', charId: 1, phase: 2 },
-      { text: '⚑FORCE⚑{"name":"Odd","armies":5}', battleId: 'b2', bTier: 'k', charId: 1, phase: 3 },
+      { text: '⚑FORCE⚑null', charId: 1, phase: 2, kind },
+      { text: '⚑FORCE⚑{"name":"Odd","armies":5}', charId: 1, phase: 2, kind },
+      { text: '⚑FORCE⚑{"name":"Odd","armies":5}', battleId: 'b2', bTier: 'k', charId: 1, phase: 3, kind },
       { text: '⚔ **Battle for the Mill**', battleId: 'b2', bTier: 'k', charId: 1, phase: 3 },
       { text: 'A detail', battleId: 'b2', bTier: 'd', charId: 1, phase: 3 },
       { text: 'The Red Lances charge.', charId: 1, phase: 2 },
@@ -449,6 +457,38 @@ describe('the chronicle', () => {
     expect(millShort).toContain('Battle for the Mill</strong></span><span style="flex:1"></span><button');
     expect(html).toMatch(/<span style="color:#[0-9a-f]+">The Red Lances<\/span> charge\./);
     expect(html).toContain('▸ full report');
+  });
+  test("a force's row is read by its kind alone: a line whose words open with the marker but carry no kind is a line", () => {
+    const words = `⚑FORCE⚑${JSON.stringify({ name: 'Brenna', color: '#3366aa', verb: 'attacks', armies: [{ type: 'Archers' }] })}`;
+    const html = theChronicleOf(
+      aReport([
+        { text: words, charId: 1, phase: 1 },
+        { text: words, battleId: 'b1', bTier: 'k', charId: 1, phase: 2 },
+        { text: '⚔ The clash at the weir', battleId: 'b1', bTier: 'k', charId: 1, phase: 2 },
+      ]),
+    );
+    expect(textOf('report-log')).toContain(words);
+    expect(html).not.toContain('>Brenna</span>');
+    expect(html).not.toContain('— no armies —');
+  });
+  test("a force's colour of another form than #rrggbb is drawn in the default grey, and tints no name", () => {
+    const side = (name: string, color: unknown) =>
+      `⚑FORCE⚑${JSON.stringify({ name, color, verb: 'attacks, leading', armies: [{ type: 'Spearmen', unitName: `${name}'s Own` }] })}`;
+    const html = theChronicleOf(
+      aReport([
+        { text: side('Corin', 'red'), charId: 1, phase: 1, kind: A_FORCE },
+        { text: side('Dara', '#a33'), charId: 1, phase: 1, kind: A_FORCE },
+        { text: side('Edric', 7), charId: 1, phase: 1, kind: A_FORCE },
+        { text: "Corin, Dara and Edric ride on; Corin's Own holds the ford.", charId: 1, phase: 2 },
+      ]),
+    );
+    for (const name of ['Corin', 'Dara', 'Edric'])
+      expect(html, name).toContain(`⚔ <span style="color:#555;font-weight:700">${name}</span>`);
+    expect(html).toContain('<span style="color:#555">');
+    expect(html).not.toContain('color:red');
+    expect(html).not.toContain('color:#a33');
+    expect(html).not.toContain('color:7');
+    expect(html).toContain('Edric ride on; ');
   });
   test("names tinted from the report's lairs, sightings, map heroes and names; the realm's own colour none where it has none", () => {
     const report = aReport(

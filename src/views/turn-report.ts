@@ -110,7 +110,10 @@ import type {
  *  lines-each-realm-reads.ts): its chronicle, its spy activity, and the province events it reads, each with its
  *  province's id (none: an event of no province). */
 interface WhatItsLinesShowTheReport {
-  readonly lastTurnLog: { type: string; text: string | null }[];
+  /** Each line the realm reads: a force drawn up for battle carries its kind, THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE
+   *  (the pages draw its rows by it alone; a report from before it, with none, shows the line as words); no other line
+   *  carries one. */
+  readonly lastTurnLog: { type: string; text: string | null; kind?: string }[];
   readonly spyActivity: unknown;
   readonly provinceEvents: readonly { readonly provinceId?: number | null | undefined }[];
 }

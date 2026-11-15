@@ -18,6 +18,8 @@
 // - Both feeds pass over a line by its kind, as the words pass hands it beside each stored line (P1-12d36): a force
 //   drawn up for battle, and in the Clairvoyance feed the roll lines too; any other kind is read, whatever its words
 //   open with. Every other line here is staged with no kind (null), as a line with no fact.
+// - A force drawn up for battle carries its kind into the realm's chronicle, and no other line does, whatever its words
+//   open with: the pages draw a force's rows by it alone.
 // - One realm's report (buildTurnReport, src/views/turn-report.ts, P1-10b30) on its view (playerView) of a world
 //   staged for it, which no game of the matrix builds: a Good realm's Wonder's tax, a skeleton's wage, a Wonder's realm
 //   wherever the map shows it, and the hero it watches by Clairvoyance and the heroes beside a province it spied, each
@@ -66,6 +68,7 @@ interface Line {
   text: string;
   charId: unknown;
   phase: unknown;
+  kind?: unknown;
 }
 interface Entry {
   type: string;
@@ -259,6 +262,40 @@ describe('the Clairvoyance feed', () => {
       '🔮 Clairvoyance — ⚑FORCE⚑ [a battle decided]',
     ]);
   });
+});
+
+test("a force drawn up for battle carries its kind into the realm's chronicle; every other line carries none, whatever its words open with", () => {
+  // Realm 0's king fights; each line is about him, so realm 0 reads all three.
+  const king = G.characters.find((c) => c.player === 0 && c.alive);
+  if (!king) throw new Error('realm 0 has no living hero');
+  const his = (text: string): Entry => ({
+    type: 'combat',
+    text,
+    actor: 0,
+    targets: [0],
+    public: false,
+    provinceId: null,
+    charId: king.id,
+    charIds: null,
+    phase: 1,
+  });
+  const staged: [Entry, string | null][] = [
+    [his('⚑FORCE⚑{"name":"Aldric"}'), 'a force drawn up for battle'],
+    [his('⚑FORCE⚑ [a battle decided]'), 'a battle is decided'],
+    [his('⚑FORCE⚑ [a line with no fact]'), null],
+  ];
+  const read = playerEvents(
+    staged.map(([e]) => ({ ...e })),
+    tc.G,
+    0,
+    sight,
+    staged.map(([, kind]) => kind),
+  ).lastTurnLog.map((l): [string, unknown] => [l.text, l.kind]);
+  expect(read).toEqual([
+    ['⚑FORCE⚑{"name":"Aldric"}', 'a force drawn up for battle'],
+    ['⚑FORCE⚑ [a battle decided]', undefined],
+    ['⚑FORCE⚑ [a line with no fact]', undefined],
+  ]);
 });
 
 describe("the spy feed: what rival heroes do there, never their realm's news (R-118)", () => {
