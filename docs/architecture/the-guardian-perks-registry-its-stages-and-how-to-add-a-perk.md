@@ -102,8 +102,8 @@ same effect, as a hero's item does. Each stage holds one effect, and its runner 
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-guardian-registry-has-taken-name-no-perk.test.ts`, with the ratchet's
-  `guardianPerkChecksInEngine` (42 before P1-19ai, 37 after it, 19 after P1-19aj, 0 after P1-19ak): the functions taken
-  name no kind of perk, and no check of a perk is left in the engine outside the registries.
+  `guardianPerkChecksInEngine`: the functions taken name no kind of perk, and no check of a perk is left in the engine
+  outside the registries.
 - `tests/static/each-guardian-perks-number-is-in-its-words-and-the-rulebooks-table.test.ts`: every perk's `desc` is its
   kind's form with its number, and each kind's value at each grade is in the rulebook's table; the grade's cap, the
   sustain's fade and a second wind's share are in the rulebook. The form a ruling sets (brute strength's, R-137) is

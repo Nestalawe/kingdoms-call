@@ -42,11 +42,11 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   is 77: its own 28, 8 files of `content/`, `kc-safe.ts`, the reload banner's two files, `db/`'s three,
   `src/shared/`'s file and the 34 of the folder `engine/rules-on-plain-values/`.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
-  splits the engine's). The files that were JavaScript start with `// @ts-nocheck` and the reason (142 of 158 at the
-  rename: strict TypeScript found errors in each); P1-10 and P1-16 type them. The ratchet counts the line in two, so
-  each only falls: `tsNocheckEngineSide` (the engine's side: `src/engine/`, `src/views/`, `src/db/`, `src/ui/shared/`,
-  `src/content/`, `src/schemas/`, `src/shared/`; 83, P1-10b's) and `tsNocheckUi` (every other file: the UI's pages and
-  `src/rulebook/`; 34, P1-16's).
+  splits the engine's). A file that was JavaScript, and in which strict TypeScript found
+  errors, starts with `// @ts-nocheck` and the reason until it is typed: P1-10b and P1-17c freed the engine's side, and P1-16 frees the rest. The ratchet counts the
+  line in two, so each only falls: `tsNocheckEngineSide` (the engine's side: `src/engine/`, `src/views/`, `src/db/`,
+  `src/ui/shared/`, `src/content/`, `src/schemas/`, `src/shared/`) and `tsNocheckUi` (every other file: the UI's pages
+  and `src/rulebook/`).
   A new file is checked from the start. `src/globals.d.ts` declares what the modules read without importing it:
   `KC_CONFIG` and `supabase` (the pages' classic scripts), `KC_RNG_SEED` (the tests' seed) and each page's declared
   globals (`tests/static/globals-d-ts.test.ts` checks it names exactly those). No file of `src/` may claim what the

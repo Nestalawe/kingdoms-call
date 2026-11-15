@@ -190,8 +190,8 @@ widens (Parked). The bots' strength estimates (`botEffForce`, `botBattleForce`, 
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/static/the-resolvers-the-discovery-registry-has-taken-name-no-discovery.test.ts`, with the ratchet's
-  `discoveryChecksInEngine` (94 before P1-19aa, 83 after it, 71 after P1-19ab, 59 after P1-19ac, 41 after P1-19ad, 31 after P1-19ae, 23 after P1-19af, 5 after P1-19ag, 0 after P1-19ah): the functions taken name no
-  discovery's id and no kind, and the engine's checks outside the registry only fall. A string that is a kind's name
+  `discoveryChecksInEngine`: the functions taken name no discovery's id and no kind, and the engine's checks outside
+  the registry only fall. A string that is a kind's name
   but means something else (the Evil doctrine `'terror'` in both battles; the Spy skill `'spy'`, a line's type
   `'explore'`) is listed beside its function. The count reads any `.kind` or `.type` compared with such words, whatever
   the object, so a new plain field compared with words is named otherwise (`action`).

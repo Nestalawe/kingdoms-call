@@ -21,8 +21,8 @@ sets too, `strictTypeChecked` and `stylisticTypeChecked`, as the tests and tools
 doesn't, since with nothing checked every value is `any`. `eslint.config.js` reads which files are which from the
 files themselves, so a file freed from the switch-off meets the type-aware sets in that same PR. Only one rule of those
 sets is off: `non-nullable-type-assertion-style`, which asks for `x!` where `no-non-null-assertion` forbids it.
-**Every rule is an error; none warns**. What the rules found when they came in (830 findings: the 346 the
-site's tier found as the code became TypeScript, what the type-aware sets found, and P1-13c's 21 reads of the database) is listed in
+**Every rule is an error; none warns**. What the rules found when they came in (what the site's tier found as
+the code became TypeScript, what the type-aware sets found, and P1-13c's reads of the database) is listed in
 `eslint-suppressions.json`, ESLint's own bulk suppressions, per file and rule with a count. The command line reads it
 (`npm run lint`, `npm run check`, the edit hook): a new finding fails, and a listed one that no longer occurs fails too
 until it is taken out of the list (`npx eslint --prune-suppressions`,
@@ -63,22 +63,22 @@ The harness runs itself. Claude Code hooks, committed in `.claude/settings.json`
 finish (`tools/hooks/before-stop.ts`). `npm run check` (`tools/check.ts`) runs the import rules over all of `src/`
 (`npm run lint:arch`) and checks what the branch changes: the
 TypeScript tests that import a changed file (`vitest related`), or every level but page when anything else changed,
-since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that. `npm run ratchet`
-(`tools/ratchet.ts`) keeps the counts in `tests/ratchet.json` from rising: switched-off checks, allowlist entries,
-JavaScript files, quarantined tests, tests on `tests/lib/stub-db.js`, tests on the engine's `vm` loader
-(`vmLoaderTests`, P1-09d: P1-14 moves them to the engine's modules), the engine's checks of a unit by its type's name
-outside the rule registry (`unitNameChecksInEngine`, P1-19a: each row of P1-19 lowers it), and of an item's effect by
-its key or an item by its name outside it (`itemEffectChecksInEngine`, P1-19m: each row of the items family lowers it), and of a
-spell by its name or its `fn` outside it (`spellChecksInEngine`, P1-19u: each row of the spells family lowers it), and of a
-discovery by its id or an effect by its kind outside it (`discoveryChecksInEngine`, P1-19aa: the discoveries family's rows
-lowered it to 0), and of a guardian's perk outside it (`guardianPerkChecksInEngine`, P1-19ai: a kind of perk compared or
-looked up, a field of the wards a fighter wears or a ward only a perk sets, a rider read in personal combat; each row of
-the perks lowers it), and of an alignment by its name outside it (`alignmentChecksInEngine`, P1-19at1: each row of the
-alignment abilities lowers it), ESLint's suppressed findings
-(`eslintSuppressions`, P1-13b; the site's lint warnings, `eslintWarnings`, before it), the import rules' known violations (`knownArchitectureViolations`) and what knip finds unused (`unusedCode`,
-both P1-13a). `tests/static/harness.test.ts` fails if any
-of these settings, or the strict compiler and lint settings, is missing or weakened, and every harness file is a
-dangerous path.
+since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that.
+
+**The ratchet** (`npm run ratchet`, `tools/ratchet.ts`) lets the harness only get stronger. It counts what weakens
+the harness, or what a step of the backlog is still taking out: switched-off checks, allowlist entries, JavaScript
+files, quarantined tests, tests on the database stand-in (`tests/lib/stub-db.js`) or on the engine's `vm` loader, the
+engine's checks of content by name outside the [rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md)
+(a family each), ESLint's suppressed findings, the import rules' known violations and what knip finds unused. It
+fails when a count is above its baseline, and `tests/static/harness.test.ts` makes `npm test` and CI fail with it.
+When a count falls, lower its baseline in the same pull request (`npm run ratchet -- --update` only ever lowers it);
+never raise one. **Where to look:** `tests/ratchet.json` for each count today, `tools/ratchet.ts` for what each
+counts, and [the backlog](../backlog/README.md) for the steps that lower them. The docs name a count by its key
+(`stubDbTests`, say) and never give its figure, which goes stale the day the count falls
+(`tests/static/no-line-of-the-docs-pairs-a-ratchet-count-with-a-figure.test.ts`).
+
+`tests/static/harness.test.ts` also fails if the hooks, the ratchet, or the strict compiler and lint settings are
+missing or weakened, and every harness file is a dangerous path.
 
 The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine changes: 60 seeded games played in
 the GM portal (48 all-bot, 12 with a realm whose orders the runner chooses and sends as the player portal sends them:
@@ -208,7 +208,7 @@ it answered 1, but `pctRoll`, in `d100`'s own file, kept calling the real `d100`
 
 ## A fixed lint finding must leave the suppressions
 
-Every lint rule is an error. What the rules found when they came in (809 findings) is listed in
+Every lint rule is an error. What the rules found when they came in is listed in
 `eslint-suppressions.json`: ESLint's bulk suppressions, which say, per file and rule, how many findings that file may
 hold. ESLint's command line reads it (`npm run lint`, `npm run check`, the edit hook); its API (`new ESLint()`, as
 `tests/static/harness.test.ts` uses) doesn't. The ratchet counts the list (`eslintSuppressions`), so it only falls.

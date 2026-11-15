@@ -186,8 +186,8 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
 - `tests/unit/the-combat-item-and-guardian-lines-no-matrix-game-reaches-keep-their-values.test.ts`: a plea's odds by
   the foe's alignment (75/50/20), and the Evil and Undead's laughter.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
-  `alignmentChecksInEngine` (162 before P1-19at1, 161 after it and P1-19at2, 151 after P1-19au1, 133 after P1-19au2, 126 after P1-19av1, 119 after P1-19av2, 109 after P1-19ax1, 101 after P1-19ax2, 70 after P1-19ay1): the functions taken name no alignment, and the
-  engine's names of an alignment outside `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
+  `alignmentChecksInEngine`: the functions taken name no alignment, and the engine's names of an alignment outside
+  `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
   the count stays above 0.
 - `tests/unit/the-marks-on-a-province-each-read-laid-lifted-and-faded.test.ts`: each mark read, laid and lifted
   through the turn's own callers (with the cases its header names, each read, lay, lift and fade).

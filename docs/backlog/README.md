@@ -37,22 +37,22 @@ each phase's goal: [the goal and the road](../the-goal-and-the-road.md).
 | P1-12 | Events, perception and prose: every report line a fact through `emit`, each realm's report built from what it sees. Every row is built; the step closes once its "done when" is checked | Large | ✓ | – | P1-09, P1-04 | ⬜ | #195–#501, its rows |
 | P1-12d | Typed events, prose after, for the rest of the engine. Rows d1 to d40 are merged | Large | ✓ | – | P1-12c, P1-19l | 🟦 | #257–#501, its rows |
 | P1-13 | The architecture rules as checks (dependency-cruiser, knip, ESLint). Left: one known import-rule finding, the lore lines' import of the prose, with no row yet | Medium | ✓ | – | P1-09, P1-10a | ⬜ | #180–#543, its rows |
-| P1-14 | Tests moved down a level and into TypeScript Vitest tests. Left: 81 old test files in JavaScript, 72 tests on the engine's vm loader, and `tests/legacy.test.ts` | Large | – | – | P1-01, P1-08a | ⬜ | #193–#406, its rows |
-| P1-16 | Strict TypeScript for the UI and the tools: no `@ts-nocheck` left (9 UI files today). Its rows below; [the decisions in force](#p1-16-the-ui-typed) | Large | – | – | P1-10, P1-17c | ⬜ | #524–#567, its rows |
+| P1-14 | Tests moved down a level and into TypeScript Vitest tests. Left: the old test files in JavaScript, the tests on the engine's vm loader (the ratchet counts both), and `tests/legacy.test.ts` | Large | – | – | P1-01, P1-08a | ⬜ | #193–#406, its rows |
+| P1-16 | Strict TypeScript for the UI and the tools: no `@ts-nocheck` left. Its rows below; [the decisions in force](#p1-16-the-ui-typed) | Large | – | – | P1-10, P1-17c | ⬜ | #524–#567, its rows |
 | P1-16o | `report.ts` and the player's `sign-in` freed, so the whole player page is typed. Split: o1 is done; o2 is left | Large | – | – | P1-16n | ⬜ | #557 (o1) |
 | P1-16o2 | `report.ts` freed, on a maintainer's answer of 14 November: a type predicate at the one read, which checks only that the report is an object | Large | – | – | P1-16o1 | ⬜ | |
 | P1-16q | The Hall of Fame's file freed | Large | – | – | P1-16p | ⬜ | |
 | P1-16r | `stats-tab` freed | Large | – | – | P1-16q | ⬜ | |
 | P1-16s | `game-list`, `turn-log` and `game-detail` freed | Medium | – | – | P1-16r | ⬜ | |
-| P1-16t | `turn-shell`, `auto-turn` and `turn-zero` freed: every page typed, `tsNocheckUi` 0 | Medium | – | – | P1-16s | ⬜ | |
+| P1-16t | `turn-shell`, `auto-turn` and `turn-zero` freed: every page typed, no `@ts-nocheck` line left in the UI | Medium | – | – | P1-16s | ⬜ | |
 | P1-16u | The 17 reads of every column in `src/db/` name their columns, and the compiler proves each page reads only those | Small | – | – | P1-16t | ⬜ | |
 | P1-16v | Lint refuses `@ts-nocheck` everywhere; the ratchet's two counts of it retire | Small | ✓ | – | P1-16u | ⬜ | |
 | P1-17 | The database access layer (`src/db/`), tested against the local Supabase as each role; `stub-db` retires. Its rows below; [the decisions in force](#p1-17-the-database-access-layer) | Large | ✓ | – | P1-09, P0-16, P1-02c | ⬜ | #518–#569, its rows |
-| P1-17q3 | `tests/page/turn-shell.test.ts` onto the typed fake: its expected values become `Db` functions' names (`stubDbTests` 19 → 18) | Small | – | – | P1-17q2 | ⬜ | |
-| P1-17r | The tests of several pages onto the fake (15 files; `stubDbTests` 18 → 3) | Medium | – | – | P1-17q2 | ⬜ | |
+| P1-17q3 | `tests/page/turn-shell.test.ts` onto the typed fake: its expected values become `Db` functions' names | Small | – | – | P1-17q2 | ⬜ | |
+| P1-17r | The tests of several pages onto the fake | Medium | – | – | P1-17q2 | ⬜ | |
 | P1-17s1 | The balance matrix plays on the fake, its `writes` column recorded at `Db`'s calls | Medium | ✓ | – | P1-17r | ⬜ | |
-| P1-17s2 | `stub-db` deleted, each rule it copied named beside the access-layer test that covers it (`stubDbTests` 3 → 0) | Small | – | – | P1-17s1 | ⬜ | |
-| P1-19 | The rule registry for content effects, one family at a time. Every content family is in it; left: the alignments' 70 checks by name (the bots' and the words'), and the alignment orders' portal half (with P1-11) | Large | – | – | P1-10, P1-08 | 🟦 | #229–#587, its rows |
+| P1-17s2 | `stub-db` deleted, each rule it copied named beside the access-layer test that covers it | Small | – | – | P1-17s1 | ⬜ | |
+| P1-19 | The rule registry for content effects, one family at a time. Every content family is in it; left: the alignments' checks by name (the bots' and the words'), and the alignment orders' portal half (with P1-11) | Large | – | – | P1-10, P1-08 | 🟦 | #229–#587, its rows |
 | P1-20 | State reshapes that earn their place: items get ids first | Medium | – | – | P1-15 | ⬜ | |
 | P1-21 | Mutation sessions: faults made on purpose, scored by a script, after each big series. Recurring | Medium | ✓ | – | P1-08a, P1-02 | ⬜ | #192–#588, its rows |
 | P1-22 | What the balance matrix reaches. Its code coverage and the proof tools are built (`tools/proof/`); its content coverage is still to plan | Medium | ✓ | – | P1-19, P1-02 | 🟦 | #287 |
