@@ -1,6 +1,6 @@
 # R-136: The texts that said otherwise follow the game
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 46, built in the pull requests of P1-11e39 (the spell hints and their blurbs), stacked on
   PR #485, and P1-11e40 (the Evil and Pagan texts and the Charm row), stacked on PR #486
@@ -51,4 +51,4 @@ report's Evil and Pagan words, the rulebook's Charm row). Option 1: "the words f
 the game follows the words. The spells' hints and blurbs are P1-11e39's; the Evil and Pagan words and the Charm row are
 P1-11e40's.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

@@ -1,6 +1,6 @@
 # R-129: What the order form says a hero will hold follows the turn
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 42, built from PR #469 on
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
@@ -28,4 +28,4 @@ replayed hand-overs in its heroes' order, put beasts past a leader's command in 
 in the wrong order, and handed risen dead to any comrade. Option 1: "the form follows the turn". Option 2 (not
 taken): the turn follows the form.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

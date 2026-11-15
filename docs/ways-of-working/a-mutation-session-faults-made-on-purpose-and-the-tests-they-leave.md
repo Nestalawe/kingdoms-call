@@ -34,7 +34,7 @@ survivors and no faults. If the person doesn't say which, ask. Never both in one
    Avoid faults that crash at once (anything catches those) and faults that change nothing (equivalent).
 4. **Score them:** `npm run mutants -- <folder>`. A broken patch is the mutator's mistake: fix it and score it again
    with `--only <patch>`. A run that stops carries on with `--resume`.
-5. **Report to Theo:** caught, survived and broken, and which were caught by the balance matrix alone (a weaker catch
+5. **Report to a maintainer:** caught, survived and broken, and which were caught by the balance matrix alone (a weaker catch
    than a red test: a real pull request would read "play changed" and could be waved through with a new baseline).
    **Read the counts from the scorer's table and `results.json`, never from prose.** For each survivor, a view: a
    **real gap** (what changed, and why no test noticed) or **equivalent** (why nothing a player could see changed).
@@ -42,12 +42,12 @@ survivors and no faults. If the person doesn't say which, ask. Never both in one
 
 ## The builder: catching the real survivors
 
-1. Read the session's folder: the survivors Theo marked as real gaps.
+1. Read the session's folder: the survivors a maintainer marked as real gaps.
 2. For each, write a test at the lowest level that catches it ([tests/README.md](../../tests/README.md#the-levels)).
    **Its fail-first proof is the mutant:** commit the test, then `npm run mutants -- <folder> --only <patch>` must score
    it **caught**, by the tests. Quote it.
 3. **No change to the engine.** If a survivor shows a real bug in today's code (the "mutant" is how the code already
-   behaves), stop and tell Theo: it becomes its own fix.
+   behaves), stop and tell a maintainer: it becomes its own fix.
 4. **The pull request:** `[P1-21] Tests for <area> from the mutation session of <date>`, label `refactor-only` (the
    tests pass on `main`). One line a gap, in neutral words ("the warnings now have a test for heroes under
    Invisibility"); **never the patches themselves**. Staging: not needed. For a tranche's session, the tests go into

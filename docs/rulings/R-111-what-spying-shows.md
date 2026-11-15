@@ -1,6 +1,6 @@
 # R-111: What spying shows
 
-- **Decided:** 2026-10-15, Toby
+- **Decided:** 2026-10-15, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #89 item 5 (decisions D2 and D9 on a player's rulebook review)
 - **Enforced by:** [`a-spy-order-shows-a-provinces-heroes-and-their-armies-and-a-spied-heros-skills-items-and-army`](../../tests/scenario/a-spy-order-shows-a-provinces-heroes-and-their-armies-and-a-spied-heros-skills-items-and-army.test.ts), [`the-rulebook-says-what-a-province-spy-and-a-hero-spy-reveal`](../../tests/static/the-rulebook-says-what-a-province-spy-and-a-hero-spy-reveal.test.ts)
@@ -14,7 +14,7 @@ and wanderers keep their chance to slip by). They appear on the map and in the t
 the army units they lead, in the turn report. It works the same on a wandering hero or a local chieftain as on
 another realm's hero.
 
-In Toby's words: "Spying on a province should also show what army units enemy heroes are leading, but not any
+In the maintainer's words: "Spying on a province should also show what army units enemy heroes are leading, but not any
 heroes skills. Spying on a hero should show all their skills and magic items they are carrying, as well as what
 armies they are leading. This information should be shown in the player report. Spying on a province should also
 show all characters in adjacent provinces (as if the player had a hero there)." And: "Yes a player should be able

@@ -9,7 +9,7 @@ environment reviewers and Actions minutes, with no other vendor and no extra cos
 
 | Kind | Example | Lives in | Private? | Why |
 |---|---|---|---|---|
-| **Secrets** | The Supabase access token, the database password, the `service_role` key, a deploy key | GitHub's environment secrets; Toby's Supabase dashboard | **Yes: never in any repository** | Each gives full control of the database or the site. The `anon` key is public by design and is not a secret |
+| **Secrets** | The Supabase access token, the database password, the `service_role` key, a deploy key | GitHub's environment secrets; the owner's Supabase dashboard | **Yes: never in any repository** | Each gives full control of the database or the site. The `anon` key is public by design and is not a secret |
 | **Personal data** | Emails, account ids, profile and display names | Supabase | **Yes** | It identifies people (New Zealand's Privacy Act 2020) |
 | **Private dispatches** | The bodies of private messages between realms | Supabase | **Yes: the most sensitive** | Private talk between people: read only by the realms in it and the site's Overlord, not the GM ([R-073](../rulings/R-073-private-dispatches.md)) |
 | **A running game's hidden state** | The state, orders and reports of a game in play | Supabase | **Yes, while the game runs** | Leaking it breaks the game |
@@ -32,14 +32,14 @@ environment reviewers and Actions minutes, with no other vendor and no extra cos
    (`tools/saves/make-a-save-fixture-from-a-seeded-bot-game.ts`), never from a live game.
 4. **Live data never reaches git.** A turn exported with its names removed is deferred
    ([P2-08](../backlog/README.md#phase-2-the-database-decides-and-turns-are-kept)): a live bug becomes a made-up test
-   from Toby's description ([tests/README.md](../../tests/README.md#what-each-level-is-for-and-what-the-tests-dont-do)).
-5. **A bug report:** Toby's pasted text stays in the Claude Code session. The test and the pull request use made-up
+   from a maintainer's description ([tests/README.md](../../tests/README.md#what-each-level-is-for-and-what-the-tests-dont-do)).
+5. **A bug report:** the text a maintainer pastes stays in the Claude Code session. The test and the pull request use made-up
    names.
 6. **Staging** holds made-up games and test accounts only ([staging](../staging.md)).
 7. **A weakness:** kept outside this repository until it is fixed; its fix has a neutral title and description, and an
-   agent who finds one tells the person running the session, for Theo.
-8. **Backups** are Supabase's own daily backups ([D-03](../decisions/README.md#tobys-decisions-d-01-to-d-13)). A dump
-   made by hand stays on Toby's computer: never in git, never in a CI artifact (`.gitignore` ignores `*.dump` and
+   agent who finds one tells the person running the session, for a maintainer.
+8. **Backups** are Supabase's own daily backups ([D-03](../decisions/README.md#the-sites-decisions-d-01-to-d-13)). A dump
+   made by hand stays on the owner's computer: never in git, never in a CI artifact (`.gitignore` ignores `*.dump` and
    `*.sql.gz`).
 9. **The old development log** never enters the repository. Rulings drawn from it are written afresh in
    `docs/rulings/`, with no names from live games and no detail of a weakness.

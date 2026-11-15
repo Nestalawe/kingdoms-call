@@ -1,6 +1,6 @@
 # R-080: No single blow takes more than half a fighter's HP
 
-- **Decided:** 2026-10-08, Toby
+- **Decided:** 2026-10-08, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #8, ruling 4a
 - **Enforced by:** [`hit-cap`](../../tests/unit/hit-cap.test.ts)

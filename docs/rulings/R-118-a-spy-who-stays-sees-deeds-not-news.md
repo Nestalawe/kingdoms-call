@@ -1,6 +1,6 @@
 # R-118: A spy who stays in a province sees what rival heroes do there, never their realm's news
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 8, built in PR #317
 - **Enforced by:** [`realm-reports`](../../tests/unit/realm-reports.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts), [`hp-gain-private`](../../tests/unit/hp-gain-private.test.ts)
@@ -17,4 +17,4 @@ his own realm's) true for spies too. What a spy sees of a hero after he vanished
 The question was: Sir Aldric spies on Wendmeadow in Spring and stays. Should his realm read everything rival heroes
 do there all turn, their private news too? Option 1, "Everything they do there, but never their private news".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

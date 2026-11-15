@@ -1,6 +1,6 @@
 # R-128: The march forecast follows the turn
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 44, built from PR #463 on
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
@@ -25,4 +25,4 @@ The question was: the forecast kept a hero marching where the turn stops him, re
 number, and knew a Traveller's Cloak only by its name. Option 1: "the forecast follows the turn". Option 2 (not
 taken): the forecast keeps him marching and only warns, and the turn counts only cloaks of that name.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

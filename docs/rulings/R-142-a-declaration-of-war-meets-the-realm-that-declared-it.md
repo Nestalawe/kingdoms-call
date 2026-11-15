@@ -1,8 +1,8 @@
 # R-142: A declaration of war counts as meeting the realm that declared it
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 12 (Toby's answer of 2026-10-31); not yet built
+- **Source:** Plan question 12 (a maintainer's answer of 2026-10-31); not yet built
 - **Enforced by:** no test yet
 
 A realm that is declared war on meets the realm that declared it, as an overture meets its sender
@@ -14,4 +14,4 @@ Varn declares war on her: from then on Varn is on her Diplomacy card, and she ca
 The question was: the war line named Varn, but she still hadn't met Varn. Option 1: "a declaration of war meets the
 realm that declared it too, as an overture does".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

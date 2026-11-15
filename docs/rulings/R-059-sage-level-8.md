@@ -1,6 +1,6 @@
 # R-059: Sage level 8 adds 1 tax a discovery
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-1719 §249 (item 4)
 - **Enforced by:** no test yet

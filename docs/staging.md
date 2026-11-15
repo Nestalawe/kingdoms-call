@@ -5,7 +5,7 @@
 real players. Nothing done there touches the live game.
 
 Staging is used **when a change needs it**: the agent decides for each pull request, from the risk, and says
-in one line of the pull request "Staging: needed / not needed, because …". Toby can always ask for it.
+in one line of the pull request "Staging: needed / not needed, because …". A maintainer can always ask for it.
 
 ## When a change needs staging
 
@@ -16,13 +16,13 @@ Staging is needed when the change involves any of these:
 2. **Sign-in or account flows:** sign-up, the Overlord, Game Master offers, suspension.
 3. **What only a real browser shows:** layout, the map, printing, reload and caching after a deploy.
 4. **Several accounts acting together:** a GM and players, invitations, dispatches, two GM tabs.
-5. **A screen Toby will judge by eye**, where the question is "is this what I meant?".
+5. **A screen a maintainer will judge by eye**, where the question is "is this what I meant?".
 6. **A change to how games are saved,** run on realistic saves, or the first deploy of a change to how the site
    is built.
 
 It's not needed for rules and numbers the tests cover, wording, docs or tests. Before skipping it, list the risks
 staging would close and move each into a test or a proof in the pull request (for example, a comparison of the
-pages before and after the change). If Toby finds a problem on staging, that's a missing test: add it.
+pages before and after the change). If a maintainer finds a problem on staging, that's a missing test: add it.
 
 ## Trying a pull request
 
@@ -49,8 +49,8 @@ be, before anyone has merged anything. If it fails, the run stops before the sit
 request is fixed. Nothing on `main` needs undoing.
 
 **After merging a database change,** the **Deploy** run (Actions tab) stops at **migrate-production** and
-waits; GitHub notifies Toby. He opens the run, clicks **Review deployments** → ticks **production** →
-**Approve and deploy**, once the conditions in the pull request's "What Toby is approving" are met. The run's
+waits; GitHub notifies the owner, who opens the run, clicks **Review deployments** → ticks **production** →
+**Approve and deploy**, once the conditions in the pull request's "What the owner is approving" are met. The run's
 summary says what each migration does to the data already there; only one marked ⚠️ **changes or removes data**
 needs a copy of the database first ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)). The
 live database changes, then the site deploys.
@@ -65,7 +65,7 @@ Nobody changes either database by hand, and nobody pastes SQL into Supabase, exc
 Two pull requests ([why](../supabase/README.md#database-and-site-changes-go-separately)):
 1. the database change, on its own branch from `main`;
 2. the site change, on a branch made **from the database change's branch** ("stacked"). It contains both,
-   so labelling it puts both on staging: Toby tries the whole feature before either is merged.
+   so labelling it puts both on staging: a maintainer tries the whole feature before either is merged.
 
 Merge the database change first, then the site change. Until the database change is merged, the site
 change merges into the database change's branch, not `main`, and its `merges-into-main` check is red.
@@ -83,7 +83,7 @@ on another branch and never go live.
   `main` there, label any open pull request (or push to a labelled one): it's rebuilt from the new `main`.
 - **Test accounts:** `overlord@kingdoms-call.test`, `gm@kingdoms-call.test`,
   `player1@kingdoms-call.test`, `player2@kingdoms-call.test` and `player3@kingdoms-call.test`, all with
-  one password, kept in Toby's password manager as "Kingdoms Call staging test accounts" (it's the staging
+  one password, kept in the owner's password manager as "Kingdoms Call staging test accounts" (it's the staging
   environment's `STAGING_TEST_PASSWORD` secret). `overlord@` is staging's Overlord (the account above
   all others, P0-32a; nothing on the site uses that yet). The GM runs two made-up games: **Two Realms** (players 1
   and 2 have joined; Turn 0 can be run straight away) and **Open Game** (nobody yet; player 3 can join).

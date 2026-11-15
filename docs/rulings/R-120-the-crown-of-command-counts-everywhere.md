@@ -1,6 +1,6 @@
 # R-120: The Crown of Command counts everywhere, while its wearer stands beside the hero
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 13, built in PRs #366 and #368
 - **Enforced by:** [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts), [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
@@ -17,5 +17,5 @@ battle his beasts fought as if it weren't there, and the order form offered fewe
 1: "the Crown counts everywhere: the battle's Druid check counts it, and the order form offers spells at the level
 with it".
 
-In Toby's words: "(1) but if the hero loses the skill advantage during the actual running of the turn, they lose any
+In the maintainer's words: "(1) but if the hero loses the skill advantage during the actual running of the turn, they lose any
 benefit, including being able to cast extra spells etc"

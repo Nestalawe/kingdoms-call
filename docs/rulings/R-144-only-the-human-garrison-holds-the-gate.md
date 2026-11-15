@@ -1,8 +1,8 @@
 # R-144: Only the Human Garrison holds the gate
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 16 (Toby's answer of 2026-10-31); not yet built
+- **Source:** Plan question 16 (a maintainer's answer of 2026-10-31); not yet built
 - **Enforced by:** no test yet
 
 Hold the Gate (never hit from the side when defending) belongs to the Human Garrison alone, as both rulebooks
@@ -15,4 +15,4 @@ the Orc Garrison is hit from the side. Today the turn spares every garrison.
 The question was: the books give Hold the Gate to the Human Garrison, the turn to every garrison. Option 1: "only the
 Human Garrison holds the gate, as the books say".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

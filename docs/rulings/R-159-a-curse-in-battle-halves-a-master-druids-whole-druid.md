@@ -1,8 +1,8 @@
 # R-159: A Curse in battle halves a master Druid's whole Druid
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 50 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 50 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 A Curse cast on a commander during a battle halves his whole Druid in the battle's Druid check, as his Druid
@@ -16,4 +16,4 @@ fight at 80%. Today the check stops him at 5 and halves that to 2, and they figh
 The question was: the Druid check and the mastery halve a cursed Druid differently. Option 1: "the check halves his
 whole Druid, as the mastery does".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

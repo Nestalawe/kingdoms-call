@@ -1,6 +1,6 @@
 # R-033: Garrison troops muster into the garrison and drill themselves
 
-- **Decided:** 2026-09-23, Toby
+- **Decided:** 2026-09-23, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.23-1934 §29–30 (items 3–4)
 - **Enforced by:** no test yet

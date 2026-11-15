@@ -1,6 +1,6 @@
 # R-115: One cast chance for everyone, and what raises it
 
-- **Decided:** 2026-10-15, Toby
+- **Decided:** 2026-10-15, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #89 item 9 (decision D7 on a player's rulebook review, and a follow-up answer on cast chance)
 - **Enforced by:** [`a-guard-casts-battle-magic-at-the-odds-a-players-hero-has`](../../tests/unit/a-guard-casts-battle-magic-at-the-odds-a-players-hero-has.test.ts), [`the-rulebook-says-training-stops-cast-chance-at-80-and-items-carry-it-to-95`](../../tests/static/the-rulebook-says-training-stops-cast-chance-at-80-and-items-carry-it-to-95.test.ts), [`rulebook-review-words`](../../tests/rulebook-review-words.test.js)

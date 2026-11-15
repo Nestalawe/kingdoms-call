@@ -1,6 +1,6 @@
 # R-047: Two recruits a season only in your founding capital
 
-- **Decided:** 2026-09-24, Toby
+- **Decided:** 2026-09-24, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.24-1319 §141 (item 10)
 - **Enforced by:** no test yet

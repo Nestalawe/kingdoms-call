@@ -1,8 +1,8 @@
 # R-151: The Shield-Wall Rune's text says what the battle does
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 23 (Toby's answer of 2026-10-31); not yet built
+- **Source:** Plan question 23 (a maintainer's answer of 2026-10-31); not yet built
 - **Enforced by:** no test yet
 
 The Shield-Wall Rune and the items like it say: "beaten by neutral guards, the host you lead stands its
@@ -15,4 +15,4 @@ retreat.
 The question was: the rune holds only against neutral guards, and for the whole host. Option 1: "the texts say what
 the battle does".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

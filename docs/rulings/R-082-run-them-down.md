@@ -1,6 +1,6 @@
 # R-082: Run Them Down: no chase, the beaten army is cut down on the field
 
-- **Decided:** 2026-10-09, Toby
+- **Decided:** 2026-10-09, a maintainer
 - **Status:** Confirmed
 - **Source:** PRs #11 and #19 (Batch 2026-10-09)
 - **Enforced by:** [`warg-riders-run-the-beaten-down-on-the-field-and-never-take-up-a-chase`](../../tests/scenario/warg-riders-run-the-beaten-down-on-the-field-and-never-take-up-a-chase.test.ts)

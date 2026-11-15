@@ -1,8 +1,8 @@
 # R-173: The Call to Arms note names Muster Rolls' chance of an Average company
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 65 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 65 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 For a realm that holds Muster Rolls, the Call to Arms note says what the turn does: the company raised is
@@ -14,4 +14,4 @@ it says the company is Green.
 The question was: the note says Green; the turn raises an Average company 40% of the time. Option 1: "the note names
 the chance".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

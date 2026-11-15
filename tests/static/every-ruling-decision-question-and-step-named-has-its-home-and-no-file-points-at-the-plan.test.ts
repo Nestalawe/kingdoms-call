@@ -5,7 +5,7 @@
 // Level 0 (static): it reads files and nothing runs.
 // - Each R-NNN named in docs/, src/, tests/, tools/, CLAUDE.md and the skills is a file docs/rulings/R-NNN-*.md.
 // - Each D-NN (and D-NNa) is a decision of docs/decisions/README.md.
-// - Each question number ("question 21", "questions 36, 39 and 41") is open in docs/questions-for-toby.md, or named
+// - Each question number ("question 21", "questions 36, 39 and 41") is open in docs/questions-for-the-maintainers.md, or named
 //   by a ruling (its source: the ruling is the answered question's home).
 // - Each step id (P1-16, P1-11e29) is a row of docs/backlog/README.md, or in its finished list (a finished step, or
 //   one dropped: "P0-14, on 2026-10-14").
@@ -89,7 +89,7 @@ function questionNumbersIn(text: string): { number: string; at: number }[] {
 }
 
 const OPEN_QUESTIONS = new Set(
-  read('docs/questions-for-toby.md')
+  read('docs/questions-for-the-maintainers.md')
     .split('\n')
     .flatMap((line) => /^## (\d+)\. /.exec(line)?.slice(1, 2) ?? []),
 );
@@ -184,7 +184,7 @@ describe('every fact the repository names has its home in docs/', () => {
     ).toEqual([]);
   });
 
-  test('each question named is open in docs/questions-for-toby.md, or answered by a ruling', () => {
+  test('each question named is open in docs/questions-for-the-maintainers.md, or answered by a ruling', () => {
     const refs = referencesIn((text) => questionNumbersIn(text).map((q) => ({ name: q.number, at: q.at })));
     expect(
       shown(

@@ -20,18 +20,18 @@ skill. The rules themselves are in [CLAUDE.md](../../CLAUDE.md#rules).
 - **Do what the row's line says, and only that.** A `refactor-only` row moves and doesn't improve: the same statements,
   the same order, the same random draws, and both balance sets identical, their writes too. It changes no saved shape
   ([traps.md](../traps.md#a-change-to-the-saves-shape-needs-its-version)).
-- **Two copies of a rule that disagree:** that part stays as it is, and the question goes to Toby
+- **Two copies of a rule that disagree:** that part stays as it is, and the question goes to the maintainers
   ([scoping](scoping-a-tranche-and-deciding-a-fork-in-a-run.md#scoping-measure-before-deciding), point 6).
 - **Before writing a second copy of a check to get round an import cycle,** find a home both files can import
   ([traps.md](../traps.md#a-constant-read-at-load-time-must-live-in-a-leaf-module)).
 - **Keep every count another step owns as it is on the base.** A count that falls by itself is lowered in the same
-  pull request (CLAUDE.md) and named first under `CHOICES MADE WITHOUT THEO`.
+  pull request (CLAUDE.md) and named first under `CHOICES MADE WITHOUT A MAINTAINER`.
 - **A bug found on the way is its own pull request.** Record it as a known defect in the same sitting, and leave the
   code as it is.
 - **Read `.github/dangerous-paths` itself** and name every path of it the pull request touches: it lists more than
   `supabase/` and `.github/` (the harness's tests, `tools/balance/`, `.claude/`, the configs).
 - **Edits under `.claude/` are refused** in an agent's session. A row that would rename or delete a path searches
-  `.claude/` first; text meant for a skill goes into the pull request for Theo to place. **A refused edit is reported,
+  `.claude/` first; text meant for a skill goes into the pull request for a maintainer to place. **A refused edit is reported,
   never made another way.**
 
 ## The proof a row gives
@@ -44,7 +44,7 @@ cases it leaves on code they don't. So each row gives the tier its change needs.
 |---|---|---|
 | **0** | Every row | CI green (the compiler, lint, `npm test`, the browser specs); for `refactor-only`, both balance sets and every realm's report identical; the balance comment on the head commit |
 | **1** | A value can change: a statement rewritten (`??` for `\|\|`, a narrowed read, a guard dropped, a rule moved into the registry, a draw moved) | Tier 0, and **a unit case for each changed line no matrix game reaches**, red on a planted fault in that line, or listed by name as made sure by the code. Annotations, a moved type or an import need no tier 1: the compiler is their proof |
-| **2** | A line's words, kind, fact or audience changes, or anything players or Toby read | Tier 1, and the GM log byte for byte the same in every matrix game, and a comparison of the two engines (or a construction check) over the kinds no game reaches, none differing |
+| **2** | A line's words, kind, fact or audience changes, or anything players or the maintainers read | Tier 1, and the GM log byte for byte the same in every matrix game, and a comparison of the two engines (or a construction check) over the kinds no game reaches, none differing |
 
 **Planting, for tier 1:** make one throwaway copy of the row's tree, with `node_modules` linked in, never the row's own
 tree. For each fault: plant it, run only the tests that guard that line (`npx vitest run <files>`), note red or green,
@@ -52,7 +52,7 @@ and put the copy back. Don't replay the balance matrix for a plant. A plant that
 ([tests/README.md](../../tests/README.md#proving-it-fails-first)). Plants in code the matrix reaches are covered by
 the stack's [mutation session](a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md), not by the row.
 
-## What goes first under `CHOICES MADE WITHOUT THEO`
+## What goes first under `CHOICES MADE WITHOUT A MAINTAINER`
 
 Each with why no value changes:
 - a guard that changes when a call is made, not only its type; a call moved earlier or made more often; a pure read, or
@@ -110,8 +110,8 @@ PROOF: <the proof, its figure and its tier>
 CAUGHT BEFORE THE PR: <what the proof caught in the row's own change, or nothing>
 RATCHET: <counts changed and why>
 DECIDED BY THE RUN: <each fork decided by the check, or none>
-CHOICES MADE WITHOUT THEO: <each, or none; the kinds above first>
-QUESTIONS FOR TOBY: <each, or none>
+CHOICES MADE WITHOUT A MAINTAINER: <each, or none; the kinds above first>
+QUESTIONS FOR THE MAINTAINERS: <each, or none>
 STOP REASON: <only if stopped>
 DEFECTS FOUND: <titles, or none>
 FOR THE NEXT ROW: <one or two lines, or none>

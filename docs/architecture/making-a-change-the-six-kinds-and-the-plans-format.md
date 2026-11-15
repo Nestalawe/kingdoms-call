@@ -13,15 +13,15 @@ them and doesn't restate them.
 | **Fix** | A defect mended: the game doesn't do what its rules and rulings say | A beaten fleet's companies are in two places at once | `fix/<what>`; a batch item if it came in a batch |
 | **Update** | Dependencies across the stack brought up to date | Vite, Playwright, the Node pin, the Supabase CLI, a GitHub action | `update/<what>` |
 | **Audit** | The docs, rules and tests worked through, so that every claim is consistent and tested | Both rulebooks' numbers checked against the content rows | `audit/<what>` (only if the audit itself writes a file) |
-| **Change** | An update to the game, big or small | Toby's batch: a number, a new order, a reworded report line | `batch/YYYY-MM-DD`, `Batch YYYY-MM-DD: <a few items>` |
-| **Exploration** | A proposed change worked through: its impact and its options | Toby's new alignment abilities, before any is built | `explore/<what>`, never merged; its write-up in `docs/explorations/` |
+| **Change** | An update to the game, big or small | A batch: a number, a new order, a reworded report line | `batch/YYYY-MM-DD`, `Batch YYYY-MM-DD: <a few items>` |
+| **Exploration** | A proposed change worked through: its impact and its options | The new alignment abilities, before any is built | `explore/<what>`, never merged; its write-up in `docs/explorations/` |
 
 ### Telling the kinds apart
 
 1. **Will a player notice anything?** No: a refactor, an update or an audit. Yes: a fix or a change.
 2. **A fix or a change?** A fix makes the game do what a rule or ruling already says. A change alters the rule. If the
-   rule is unclear, or two copies of it disagree, it is a question for Toby first
-   ([CLAUDE.md](../../CLAUDE.md#rules), "Design forks go to Toby"); his answer makes it a fix or a change.
+   rule is unclear, or two copies of it disagree, it is a question for the maintainers first
+   ([CLAUDE.md](../../CLAUDE.md#rules), "Design forks go to the maintainers"); the answer makes it a fix or a change.
 3. **Is the outcome a decision rather than code on `main`?** Then it is an exploration. Its chosen option becomes a
    change.
 4. **A request of two kinds is split** ([CLAUDE.md](../../CLAUDE.md#rules), "One concern per PR"). A bug found during a
@@ -30,15 +30,15 @@ them and doesn't restate them.
 ## The plan's format
 
 Every plan, of every kind, has these seven parts in this order. Write the first two and the questions in game terms
-for Toby; the rest can be technical.
+for the maintainers; the rest can be technical.
 
 ```text
 1. Kind and purpose      One line each: which kind, and what it is for.
 2. What stays the same   What must not change (below, by kind).
 3. The rows              One row per item (below).
-4. Questions             Numbered; each with options, a recommendation and a short example from the game.
+4. Questions             Numbered; each option with its impact, an assessment, and a short example from the game.
 5. Proof                 How we will know it is done: the checks and what each must show.
-6. The pull requests     How it splits; each PR's branch, title, labels, and who must look (Theo, dangerous paths).
+6. The pull requests     How it splits; each PR's branch, title, labels, and who must look (a maintainer, dangerous paths).
 7. After                 What happens once each PR is merged.
 ```
 
@@ -50,7 +50,7 @@ for Toby; the rest can be technical.
 - its test: the level, why a lower level won't do, and how it fails first
   ([tests/README.md](../../tests/README.md#the-levels));
 - whether the save's shape changes ([the save](a-saved-game-its-version-its-upgrade-its-check.md));
-- whether the database changes (if so, its own PR first, with Theo:
+- whether the database changes (if so, its own PR first, with a maintainer:
   [supabase/README.md](../../supabase/README.md#the-rules-every-database-change-follows));
 - staging: needed or not, and why ([docs/staging.md](../staging.md#when-a-change-needs-staging));
 - for a fix or a change, what changes in play, predicted now.
@@ -79,7 +79,7 @@ for Toby; the rest can be technical.
 - **Stays the same:** what the game does and how it looks; the balance baseline.
 - **Gather:** what moves, from which version to which; the changelogs' breaking changes; what in the repo uses it.
 - **Do:** one tool, or one group of tools that move together, a PR. `package.json`, the lockfile, `.nvmrc` and
-  `.github/` are dangerous paths: Theo looks.
+  `.github/` are dangerous paths: a maintainer looks.
 - **Prove:** `npm test`, `npx playwright test` and the access-rule tests, all green; the balance baseline doesn't move.
 
 ### Audit
@@ -90,7 +90,7 @@ for Toby; the rest can be technical.
 - **Do:** check every claim. Each finding names its doc and line, the code or row it disagrees with, and how it was
   checked.
 - **Prove:** the list is complete for its scope: every claim checked, or named as not checked.
-- **Output:** the findings, each becoming a fix, a refactor, or a question for Toby. A claim no test checks becomes a
+- **Output:** the findings, each becoming a fix, a refactor, or a question for the maintainers. A claim no test checks becomes a
   test (a fix, if the test fails).
 
 ### Change
@@ -99,7 +99,7 @@ for Toby; the rest can be technical.
 - **Gather:** the items in game terms; every place each rule is written (the skill
   `changing-a-rule-everywhere-it-is-written`); the rulings each meets.
 - **Do:** one PR a batch, one commit an item ([CLAUDE.md](../../CLAUDE.md#how-work-arrives)); each item's test first,
-  failing; a ruling for each of Toby's answers ([adding a ruling](../rulings/README.md#adding-a-ruling)). An item
+  failing; a ruling for each of the maintainers' answers ([adding a ruling](../rulings/README.md#adding-a-ruling)). An item
   that isn't ready is split out.
 - **Prove:** each test fails first; "What changes in play" predicted, then written from the balance report; staging
   when needed.
@@ -107,7 +107,7 @@ for Toby; the rest can be technical.
 ### Exploration
 
 - **Stays the same:** `main`. An exploration's branch is never merged.
-- **Gather:** the proposal as Toby wrote it; the rules it touches today; how each option will be measured (the bot
+- **Gather:** the proposal as a maintainer wrote it; the rules it touches today; how each option will be measured (the bot
   matrix, hand-played games) and against what targets.
 - **Do:** branch from current `main`, and start again from `main` rather than let the branch fall far behind. Keep a
   list of **every rule the branch changes**, including any the proposal doesn't mention, as each change is made: the
@@ -128,9 +128,9 @@ Asked "what next?", the skill proposes tranches before planning one:
 1. **Read [the goal](../the-goal-and-the-road.md) first, not the order of a list.** The next tranche is the one that
    brings the goal closest; a road written earlier is an input, and a recommendation nobody answered isn't a decision.
 2. **Read where things stand:** the open PRs, the steps in progress ([the backlog](../backlog/README.md)), the known
-   defects, the [questions waiting for Toby](../questions-for-toby.md), and the counts in `tests/ratchet.json` on `main`.
+   defects, the [questions waiting for the maintainers](../questions-for-the-maintainers.md), and the counts in `tests/ratchet.json` on `main`.
 3. **Give two or three candidates**, each with what it delivers against the goal, its rows (about how many), its risk
-   (the files it shares with other work, staging, the database, Theo's look), and what it leaves for later. Recommend
+   (the files it shares with other work, staging, the database, a maintainer's look), and what it leaves for later. Recommend
    one.
 4. ⏸ **Stop.** The person picks, or changes it.
 
@@ -141,13 +141,13 @@ The tranche's plan is the seven parts above. Its rows (part 3) add, for each row
 - its base (the row before; the first from `main`) and what it depends on;
 - its size (in minutes, from the last tranche's rows of the same kind), and a split it may make if it grows;
 - the counts it lowers, measured on `main` at the scoping, not copied from an older plan;
-- whether Theo must look (a ✓ step, `.github/dangerous-paths`, who can see or change data).
+- whether a maintainer must look (a ✓ step, `.github/dangerous-paths`, who can see or change data).
 
 How a scoping measures, and the check a run makes before it decides a fork:
 [scoping a tranche](../ways-of-working/scoping-a-tranche-and-deciding-a-fork-in-a-run.md). A fork found while
 scoping is a question with a recommendation. In an unattended run, the run takes the recommended option only when it
 serves the goal and is safe and easy to undo, and says so in its note; a rule of the game is never
-decided this way (it waits for Toby). The approved scoping is the go for every row: a row whose own plan goes beyond
+decided this way (it waits for the maintainers). The approved scoping is the go for every row: a row whose own plan goes beyond
 its line stops and reports.
 
 The tranche's plan goes into its first row's PR description, and each row's PR links to it; its steps join
@@ -176,7 +176,7 @@ The tranche's plan goes into its first row's PR description, and each row's PR l
 The skill stops for a person:
 1. **After the plan.** Nothing is built before "go". For a tranche there is one more stop before it: picking the
    tranche. In a run, the scoping the person approved is the go; a new question found during the run is stored for
-   Toby, not decided.
-2. **Before a PR is marked ready.** Staging, if needed, comes with a numbered list Toby can follow.
+   the maintainers, not decided.
+2. **Before a PR is marked ready.** Staging, if needed, comes with a numbered list a maintainer can follow.
 
-Agents never merge: Toby or Theo does ([who merges](../ways-of-working/who-does-what-the-roles-the-review-by-kind-and-tobys-keys.md#who-merges)).
+Agents never merge: a maintainer does ([who merges](../ways-of-working/who-does-what-the-roles-the-review-by-kind-and-the-owners-keys.md#who-merges)).

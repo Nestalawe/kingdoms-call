@@ -1,8 +1,8 @@
 # R-163: Whale Cohorts may sink hulls on every side
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 54 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 54 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 Every side's Whale Cohorts may roll the other side's hulls over, in a battle between heroes and against a
@@ -15,4 +15,4 @@ whales strike at different moments in the two battles.
 The question was: a guard's whales never sink an attacker's hull. Option 1: "every side's whales may sink the other
 side's hulls in both battles, at one moment".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

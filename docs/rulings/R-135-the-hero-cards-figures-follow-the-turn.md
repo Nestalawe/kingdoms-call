@@ -1,6 +1,6 @@
 # R-135: The hero card's figures follow the turn
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 45, built in the pull requests of P1-11e31 (the sea note), stacked on PR #477, and
   P1-11e33 (the magic level), stacked on PR #479, P1-11e34 (the upkeep), stacked on PR #480, and P1-11e38 (the
@@ -49,4 +49,4 @@ cap on a trained magic level and two items of one name (its magic level). Option
 turn". Option 2 (not taken): the turn follows them. The sea note, the magic level, the upkeep and the strength are built; the strength's discoveries wait for the
 report.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

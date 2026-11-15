@@ -1,6 +1,6 @@
 # R-012: Research offers a choice of two discoveries
 
-- **Decided:** 2026-09-21, Toby
+- **Decided:** 2026-09-21, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.21-1459 §4
 - **Enforced by:** no test yet

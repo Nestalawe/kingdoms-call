@@ -1,8 +1,8 @@
 # R-161: A commander slain in the duel before a battle takes his skills out of it
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 52 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 52 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 A commander who falls in the duel before a battle takes his skills out of it, in both kinds of battle: his
@@ -15,4 +15,4 @@ against Lady Wren. Today, against guards, they keep his Druid; and between heroe
 The question was: the two battles count a slain commander's skills otherwise. Option 1: "a slain commander's skills
 leave the battle in both: no Druid, no Archery".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

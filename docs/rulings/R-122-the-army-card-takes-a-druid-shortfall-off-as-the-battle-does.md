@@ -1,6 +1,6 @@
 # R-122: The army card takes a Druid shortfall off as the battle does
 
-- **Decided:** 2026-11-02, Toby
+- **Decided:** 2026-11-02, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 28 (b), built in PR #367
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
@@ -14,4 +14,4 @@ one level short: they fight at 9 in battle, and the card now shows 9, not 10.
 The question was: the card counted kin first, then took the shortfall off rounded to the nearest and never below 1,
 so it could show one more than the battle. Option 1: "each forecast follows the turn".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

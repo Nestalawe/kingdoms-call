@@ -1,6 +1,6 @@
 # R-031: Telekinetic Storm halves the Tactical bonus
 
-- **Decided:** 2026-09-23, Toby
+- **Decided:** 2026-09-23, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.23-1752 §19
 - **Enforced by:** no test yet

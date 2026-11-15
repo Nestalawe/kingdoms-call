@@ -1,6 +1,6 @@
 # R-114: The rulebooks may hint at mastery, never name it
 
-- **Decided:** 2026-10-15, Toby
+- **Decided:** 2026-10-15, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #89 item 8 (decision D6 on a player's rulebook review)
 - **Enforced by:** [`the-rulebooks-hint-at-mastery-but-never-name-a-perk`](../../tests/static/the-rulebooks-hint-at-mastery-but-never-name-a-perk.test.ts)

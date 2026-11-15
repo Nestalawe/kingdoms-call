@@ -1,6 +1,6 @@
 # R-088: Five unit types
 
-- **Decided:** 2026-10-11, Toby
+- **Decided:** 2026-10-11, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #38
 - **Enforced by:** [`unit-types`](../../tests/unit-types.test.js), [`the-five-unit-type-words-are-the-ones-players-read`](../../tests/static/the-five-unit-type-words-are-the-ones-players-read.test.ts)

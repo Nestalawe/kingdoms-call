@@ -1,6 +1,6 @@
 # R-048: A hero being hired is unknown until he joins
 
-- **Decided:** 2026-09-24, Toby
+- **Decided:** 2026-09-24, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.24-1319 §140 (item 8), v2026.09.24-1424 §143 (item 1), v2026.09.24-1453
 - **Enforced by:** no test yet

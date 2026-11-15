@@ -1,6 +1,6 @@
 # R-069: A fighter who steps into range strikes in the same action
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-2339 §319 (item 7)
 - **Enforced by:** [`fuzz-personal-combat`](../../tests/unit/fuzz-personal-combat.test.ts)

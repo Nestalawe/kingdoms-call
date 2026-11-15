@@ -7,7 +7,7 @@ a run decides a fork instead of stopping.
 ## Scoping: measure before deciding
 
 A scoping writes no code in the game's repository and opens no pull request. Its output is the tranche's plan, with
-every choice its rows need made or put to Theo as numbered options with a recommendation.
+every choice its rows need made or put to the maintainers as numbered options with a recommendation.
 
 1. **Start from `main` as it is**, and read it without changing the clone: `git show origin/main:<path>`, or a copy
    (`git archive origin/main | tar -x -C <folder>`, with `node_modules` linked in). Another session may be working in
@@ -22,19 +22,19 @@ every choice its rows need made or put to Theo as numbered options with a recomm
 5. **Say what the method can't see**, each with the row or later step that covers it, or "nothing does". Example: a
    scan for the keys a saved schema doesn't know can't see a field the schema wrongly requires.
 6. **Two copies of a rule that disagree** are found first. No row writes a switch, a parameter or a second path so one
-   function carries both; that part stays as it is, and the question goes to Toby
-   ([the decisions](../decisions/README.md#theos-decisions-on-how-the-work-runs), "An inconsistency is asked").
+   function carries both; that part stays as it is, and the question goes to the maintainers
+   ([the decisions](../decisions/README.md#the-decisions-on-how-the-work-runs), "An inconsistency is asked").
 7. **Each row is one pull request an agent can finish in a sitting:** split rather than grow. A row of mechanical moves
    (4 to 8 files a row where they fit) can run on a faster model.
 
 ## Deciding a fork in a run, instead of stopping
 
 A run that stops for a decision whose answer is the recommended one wastes the day. So when a row or a scoping meets a
-fork, **the run takes the recommended option only if every answer below is yes**, records it, and goes on. Theo reviews
+fork, **the run takes the recommended option only if every answer below is yes**, records it, and goes on. A maintainer reviews
 it afterwards and can undo it.
 
 1. **The goal:** does it move the work towards [the goal](../the-goal-and-the-road.md), and keep or widen what the
-   balance matrix and the tests meet? (The matrix describes a change's effect to Toby and checks refactors; an option
+   balance matrix and the tests meet? (The matrix describes a change's effect to the maintainers and checks refactors; an option
    that lets its games meet less fails here.)
 2. **Inside the harness:** does it change only `tools/`, `tests/` or the docs, with no rule of the game, nothing a
    player sees, no saved shape, no database or access rule, nothing about security or what a realm can see?
@@ -47,12 +47,12 @@ it afterwards and can undo it.
    check exists for.
 
 If the recommended option fails a test but another passes every one, take that one and say why. **If any answer is no,
-stop**, and say which. Always stop for a rule of the game (it waits for Toby), anything players notice, the database or
+stop**, and say which. Always stop for a rule of the game (it waits for the maintainers), anything players notice, the database or
 production, security, what a realm can see, a check loosened, or an outcome resting on luck.
 
 **Recording it:** in the row's report, a line `DECIDED BY THE RUN:` (the fork in one sentence, the options, the one
 taken, the six answers in a few words, who checked the premise); in the pull request's lower half, under "Decided by
-the run, for Theo to undo"; and first in the run's note to the person, with how to undo each.
+the run, for a maintainer to undo"; and first in the run's note to the person, with how to undo each.
 
 **A fork no test lets the run decide** (a ratchet count that would rise, say): the rows that don't build on it go on,
 each told what not to read or edit, and the note puts the fork first.

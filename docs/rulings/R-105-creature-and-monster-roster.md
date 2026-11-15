@@ -1,6 +1,6 @@
 # R-105: The Creature and Monster roster
 
-- **Decided:** 2026-10-13, Toby
+- **Decided:** 2026-10-13, a maintainer
 - **Status:** Confirmed
 - **Source:** PRs #60, #68, #69, #70 (2026-10-12/13)
 - **Enforced by:** [`primal-roster`](../../tests/primal-roster.test.js), [`primal-renames`](../../tests/primal-renames.test.js), [`shark-waters`](../../tests/shark-waters.test.js), [`new-creatures`](../../tests/new-creatures.test.js), [`primal-words`](../../tests/primal-words.test.js)

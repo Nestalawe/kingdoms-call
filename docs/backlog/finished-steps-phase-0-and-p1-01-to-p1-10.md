@@ -18,7 +18,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P0-09: #1 Cutover: git becomes the source
 - P0-10: #1 Cutover: git becomes the source
 - P0-11: #1 Cutover: git becomes the source
-- P0-12: #84 Toby's rulings registry
+- P0-12: #84 The rulings registry
 - P0-13: #17 Per-environment config, part 1: one file for the database address; #18 Staging deploys, part 2: a "staging" label puts a PR on the staging site
 - P0-15: #21 Schema pull: a manual workflow that reads the live database's structure; #22 The database structure, as schema files and a baseline migration
 - P0-16: #23 Access-rule tests in CI

@@ -1,6 +1,6 @@
 # R-121: A Curse spell halves a commander's Druid in battle too, as it does his Druid mastery
 
-- **Decided:** 2026-11-02, Toby
+- **Decided:** 2026-11-02, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 32, built in PR #366
 - **Enforced by:** [`the-commanders-items-no-matrix-game-carries-keep-their-values`](../../tests/unit/the-commanders-items-no-matrix-game-carries-keep-their-values.test.ts)
@@ -15,4 +15,4 @@ A Curse cast on the commander during the battle itself: [R-159](R-159-a-curse-in
 The question was: a cursed commander's beasts fought at full strength, though the turn's Druid mastery counted his
 Druid halved. Option 1: "the battle counts the Curse too, as the mastery does".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

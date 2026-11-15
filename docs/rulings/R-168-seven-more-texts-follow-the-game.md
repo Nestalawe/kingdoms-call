@@ -1,8 +1,8 @@
 # R-168: Seven more texts say what the turn does
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 60 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 60 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 Seven texts say what the turn does; nothing changes in play:
@@ -20,4 +20,4 @@ Seven texts say what the turn does; nothing changes in play:
 
 The question was: seven more texts say otherwise than the turn. Option 1: "the words follow the game".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

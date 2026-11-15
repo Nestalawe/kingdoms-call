@@ -1,6 +1,6 @@
 # R-045: Taking holy ground: experience by the conqueror's crown
 
-- **Decided:** 2026-09-24, Toby
+- **Decided:** 2026-09-24, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.24-1319 §139 (item 7)
 - **Enforced by:** no test yet

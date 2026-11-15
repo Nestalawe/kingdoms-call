@@ -1,8 +1,8 @@
 # R-138: A realm with a hero where two other realms fight reads the battle's one-line summary
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 2 (Toby's answer of 2026-10-31); not yet built
+- **Source:** Plan question 2 (a maintainer's answer of 2026-10-31); not yet built
 - **Enforced by:** no test yet
 
 When two realms fight a battle in a province, a third realm with a hero standing there at the battle's phase
@@ -15,4 +15,4 @@ no hero there reads nothing of it.
 The question was: an onlooker's report said nothing of a battle fought beside his hero. Option 1: "onlookers read the
 one-line summary, as the code's comments promise".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

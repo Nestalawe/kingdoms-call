@@ -1,6 +1,6 @@
 # R-042: Catching a quarry with Encounter Character
 
-- **Decided:** 2026-09-24, Toby
+- **Decided:** 2026-09-24, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.23-2234 §57 (item 1)
 - **Enforced by:** no test yet

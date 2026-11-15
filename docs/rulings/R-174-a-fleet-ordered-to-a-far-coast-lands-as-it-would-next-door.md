@@ -1,8 +1,8 @@
 # R-174: A fleet ordered to a far coast lands as it would next door
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 66 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 66 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 One rule for the step, however far the target: a column of ships alone that may land on the coast next door may
@@ -15,4 +15,4 @@ follows. Today the turn finds no route and she stays put.
 The question was: the step next door and the road to a far target disagree. Option 1: "the road lets her land where
 the step next door would".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

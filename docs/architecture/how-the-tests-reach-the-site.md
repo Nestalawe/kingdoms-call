@@ -132,7 +132,7 @@
   character and mercenary band on the map; no line of a dead character's own after the phase they died in (battle
   lines excepted: a fallen commander's leaderless host fights on under his id, R-019); `orders_submitted` cleared.
   `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
-  `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (Theo, 2026-10-17: no
+  `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (a maintainer, 2026-10-17: no
   engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: none.
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
   rule and let fast-check make up the inputs: heroes, guardians, hits, small worlds, orders. Every dice roll in the
@@ -145,7 +145,7 @@
 - **The nightly run** (`.github/workflows/nightly.yml`, P1-04d) runs `npm run test:full` every night with a random
   `KC_SEED`, printed first in its log and summary. A red night blocks nothing: repeat it with that seed (locally, or
   Run workflow with the seed), then add a test at the lowest level that shows the problem, or, while the refactor
-  runs, ask Theo whether to park it in `KNOWN_BREACHES`.
+  runs, ask a maintainer whether to park it in `KNOWN_BREACHES`.
 - **`lib/report-leaks.ts`** is what no realm's report may show it, as five pure checks on one turn and its
   reports (`turn_logs` rows with `player_index` ≥ 0), run by `checkTurn` (and `checkLeaks`, the leak checks alone):
   - **another realm's private line**: a line on the `PRIVATE_LINES` list (a hit-point rise, Invisibility, moving

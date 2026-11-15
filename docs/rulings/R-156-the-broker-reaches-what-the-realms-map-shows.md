@@ -1,8 +1,8 @@
 # R-156: The Broker reaches what the realm's map shows
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 35 (Toby's answer of 2026-11-05); not yet built
+- **Source:** Plan question 35 (a maintainer's answer of 2026-11-05); not yet built
 - **Enforced by:** no test yet
 
 A Neutral realm's Broker follows one rule of sight, the map's, as the books say: he hires a wandering hero the
@@ -17,4 +17,4 @@ explored.
 The question was: the turn, the order form and the bots disagreed on the Broker's reach. Option 1: "the turn follows
 the form and the books".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

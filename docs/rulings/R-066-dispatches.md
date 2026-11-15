@@ -1,6 +1,6 @@
 # R-066: Dispatches between players
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-2047 §291–297
 - **Enforced by:** no test yet

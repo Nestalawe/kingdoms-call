@@ -1,8 +1,8 @@
 # R-177: Rule changes reach running games
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan questions 69 and 73 (Toby's answers of 2026-11-15)
+- **Source:** Plan questions 69 and 73 (a maintainer's answers of 2026-11-15)
 - **Enforced by:** no test yet
 
 There is one set of rules. A change reaches every game, running ones too, from its next turn; no game keeps the
@@ -17,4 +17,4 @@ The questions were: question 69, whether each game should keep the ruleset it st
 running games, as today"; not the recommendation, and no longer the long-term aim); question 73, running games and the
 new alignment abilities (option 1: "every game gets each ability as it goes live").
 
-In Toby's words: "69: (2); 73: (1) … the shared changes go into every game. No switch."
+In the maintainer's words: "69: (2); 73: (1) … the shared changes go into every game. No switch."

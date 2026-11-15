@@ -7,7 +7,7 @@ link to it.
 
 ## The files
 
-- [Who does what: the roles, the review by kind, who merges, and Toby's keys](who-does-what-the-roles-the-review-by-kind-and-tobys-keys.md)
+- [Who does what: the roles, the review by kind, who merges, and the owner's keys](who-does-what-the-roles-the-review-by-kind-and-the-owners-keys.md)
 - [Private data: what is private, and how each kind is handled](private-data-what-is-private-and-how-each-kind-is-handled.md)
 - [Scoping a tranche, and deciding a fork in a run](scoping-a-tranche-and-deciding-a-fork-in-a-run.md)
 - [A row of a stack: from its branch to its report, and the proof it gives](a-row-of-a-stack-from-its-branch-to-its-report-and-the-proof-it-gives.md)
@@ -16,15 +16,15 @@ link to it.
 - [Writing for people: plain language and the playtester notes](writing-for-people-plain-language-and-the-playtester-notes.md)
 
 Elsewhere: [the decisions](../decisions/README.md), [the rulings](../rulings/README.md),
-[the questions waiting for Toby](../questions-for-toby.md), [the goal and the road](../the-goal-and-the-road.md),
+[the questions waiting for the maintainers](../questions-for-the-maintainers.md), [the goal and the road](../the-goal-and-the-road.md),
 [the backlog](../backlog/README.md), and how any change starts:
 [making a change](../architecture/making-a-change-the-six-kinds-and-the-plans-format.md).
 
 ## What never changes
 
-1. **Toby decides what the game is**, in plain language. A design fork goes to him as numbered options; his answer
+1. **The maintainers decide what the game is**, in plain language. A design fork goes to them as numbered options; the answer
    becomes a [ruling](../rulings/README.md).
-2. **Nothing reaches live players without a merge by Toby or Theo**, and a database change also waits for Toby's
+2. **Nothing reaches live players without a maintainer's merge**, and a database change also waits for the owner's
    approval ([how a migration goes live](../../supabase/README.md#how-a-migration-goes-live)). Agents never merge.
 3. **Live games are never interrupted** by the work on the code.
 4. **The same addresses, and the same two services:** static pages on GitHub Pages and a Supabase database. No new
@@ -44,6 +44,6 @@ Elsewhere: [the decisions](../decisions/README.md), [the rulings](../rulings/REA
   ([traps.md](../traps.md#a-job-after-a-skipped-job-is-skipped-unless-its-if-says-otherwise)).
 - **A red nightly run blocks nothing.** Repeat it with its seed, then add a test
   ([tests/README.md](../../tests/README.md#what-each-level-is-for-and-what-the-tests-dont-do)).
-- **One lane, and stacks for big work:** [the decisions](../decisions/README.md#theos-decisions-on-how-the-work-runs).
+- **One lane, and stacks for big work:** [the decisions](../decisions/README.md#the-decisions-on-how-the-work-runs).
 - Database and site changes in separate pull requests, and each ruling in the pull request that builds it:
   [CLAUDE.md](../../CLAUDE.md).

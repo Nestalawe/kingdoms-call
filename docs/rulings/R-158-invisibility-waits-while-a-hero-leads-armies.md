@@ -1,8 +1,8 @@
 # R-158: Invisibility waits while a hero leads armies
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan questions 29 (Toby's answer of 2026-11-02) and 47 (2026-11-05); not yet built
+- **Source:** Plan questions 29 (a maintainer's answer of 2026-11-02) and 47 (2026-11-05); not yet built
 - **Enforced by:** no test yet
 
 Invisibility has no effect on a hero while he leads armies: he is seen and fought as if he had no spell (spells
@@ -17,4 +17,4 @@ then he is hidden. Lady Wren, hidden since Spring, picks up a garrison in Summer
 The questions were: question 29 (2026-11-02), whose answer added "invisibility should have no effect on a hero
 leading armies"; and question 47, its edges. Option 1: "the spell waits, it isn't lost".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

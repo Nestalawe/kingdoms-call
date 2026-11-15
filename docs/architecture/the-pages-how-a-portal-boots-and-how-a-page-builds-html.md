@@ -32,7 +32,7 @@ copies its browser build (`dist/umd/supabase.js`) unchanged to `assets/supabase-
 The dev server answers it as `supabase-js.js`. `npm test`'s `vendor-supabase` check fails if the pin isn't exact, the
 lock or `node_modules` holds another version, or the published file or its licence isn't the package's, byte for byte.
 
-**To upgrade**, in its own PR (`package.json` and `package-lock.json` are dangerous paths: talk it through with Theo).
+**To upgrade**, in its own PR (`package.json` and `package-lock.json` are dangerous paths: talk it through with a maintainer).
 Dependabot proposes a new version in a pull request of its own (its `site-runtime` group):
 1. Take Dependabot's PR, or run `npm install @supabase/supabase-js@<version>` (`.npmrc` saves it exact).
 2. Read the release notes between the two versions for anything the pages use (sign-in, `rpc`, realtime).
@@ -174,7 +174,7 @@ Every name, message and record on screen was typed by someone, so it goes into a
   context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.ts')`, `tests/lib/source.ts`).
 - **Show it looks the same.** Converting a page must not change it for ordinary names: run
   `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
-- **An exception goes in `HTML_EXCEPTIONS` (`eslint.config.js`)** with a one-line reason, for Theo to review: the
+- **An exception goes in `HTML_EXCEPTIONS` (`eslint.config.js`)** with a one-line reason, for a maintainer to review: the
   file, the check and a piece of the code it refuses. The rule is strict: no page may build HTML outside `kcHtml` /
   `kcEsc`, and an exception that matches nothing fails, so the list can't go stale. The ratchet counts the list
   (`allowlistEntries`), so it only shrinks.

@@ -1,6 +1,6 @@
 # R-117: Only your own realm reads your hero's maximum-HP rise outside a fight
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 9, built in PR #316
 - **Enforced by:** [`hp-gain-private`](../../tests/unit/hp-gain-private.test.ts), [`stalled-battles-unit-gain-and-war-fronts`](../../tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts)
@@ -15,4 +15,4 @@ The question was: Sir Aldric picks up a Girdle of Giants in Wendmeadow and his m
 every realm with eyes in Wendmeadow read it, or only his own? Option 1, "His own realm alone reads it, wherever it
 comes from", matching R-101's "only your own heroes' HP rises are shown".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

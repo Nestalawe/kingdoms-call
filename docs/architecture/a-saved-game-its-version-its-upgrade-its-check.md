@@ -168,7 +168,7 @@ games.
   (brute strength's, R-137).
 - **Items:** `migrateItemTiers` re-stamps only an item's tier. An item's effect stays as it was when
   awarded, so changing an effect doesn't reach items players already hold. Whether it should is a
-  design decision for Toby: raise it as a ruling, don't decide it in code.
+  design decision for the maintainers: raise it as a ruling, don't decide it in code.
   The items' registry reads each held copy's own key and numbers, and its content rows hold only the numbers the code
   wrote inline, so a held copy acts, fights and is weighed (its role, its tier's floor) by what it carries.
 

@@ -1,8 +1,8 @@
 # R-145: New games' guardians have the guardian table's HP; running games keep theirs
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan questions 17 (Toby's answer of 2026-10-31) and 31 (2026-11-02); not yet built
+- **Source:** Plan questions 17 (a maintainer's answer of 2026-10-31) and 31 (2026-11-02); not yet built
 - **Enforced by:** no test yet
 
 A new game's guardians have the hit points the guardian table gives them
@@ -17,4 +17,4 @@ The questions were: question 17, new games' guardians are 5 HP weaker than the t
 table's HP"); question 31 (2026-11-02), what happens to the games started since 14 October (option 1: "leave running
 games as they are").
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

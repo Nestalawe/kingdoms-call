@@ -43,7 +43,7 @@ effects are in `src/engine/rules/guardian-perks/`.
   approach the perk turns (blows, arrows or spells), or nothing. A tough hide turns blows, arrow-proof arrows, spell
   resistance spells. A perk counts by its `ward`, or by a field of the ward's own name (the older form the rule has
   always read). The runner gathers them over his perks, and `monsterTraits` keeps each hidden multiplier of his nature
-  for an approach turned at 1 or below. So a guardian never resists and is weak to the same thing (Toby, 2026-10-08).
+  for an approach turned at 1 or below. So a guardian never resists and is weak to the same thing (a maintainer, 2026-10-08).
   The hidden multipliers themselves, and their clamps, stay in `monsterTraits`: no book states them.
 - `personalCombat`'s **a guardian's perks: his grade's cap beside his own** (`pcMonsterCombatant`, once his perks are on
   him): handed his grade's cap (`GUARDIAN_BODY_CAP_PCT`; 0 for none) and the wards his perks gave him. It returns the

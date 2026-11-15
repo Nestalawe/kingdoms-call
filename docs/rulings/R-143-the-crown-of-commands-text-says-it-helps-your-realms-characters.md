@@ -1,8 +1,8 @@
 # R-143: The Crown of Command's text says it helps your own realm's characters
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 14 (Toby's answer of 2026-10-31); not yet built
+- **Source:** Plan question 14 (a maintainer's answer of 2026-10-31); not yet built
 - **Enforced by:** no test yet
 
 The Crown of Command gives +1 to every skill of its wearer's own realm's characters in his province, as the
@@ -14,4 +14,4 @@ nothing. Today its text says "friend or foe".
 The question was: the text said friend or foe; the turn helps the wearer's realm only. Option 1: "the text follows the
 turn".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

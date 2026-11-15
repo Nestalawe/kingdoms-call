@@ -1,6 +1,6 @@
 # Rulings
 
-Toby's decisions about how the game works, one file each. **Read the ruling before changing a rule it covers**,
+The maintainers' decisions about how the game works, one file each. **Read the ruling before changing a rule it covers**,
 and don't "fix" something a ruling says is deliberate without a fresh ruling.
 
 A ruling is a decision about the game players experience: combat, magic, movement, the economy, what a report
@@ -9,37 +9,37 @@ beside the bot code), and [the decisions on how the work runs](../decisions/READ
 
 ## Status
 
-- **Confirmed:** Toby decided it; the source says where.
+- **Confirmed:** a maintainer decided it; the source says where.
 - **To confirm:** it's how the game works today, but the call was an agent's judgement, or the record doesn't say
-  Toby made it.
+  a maintainer made it.
 - **Superseded:** a later ruling replaced it (the file names which). Kept as the record.
-- **(open question)** in the index: the ruling stands, with one point Toby hasn't settled, written under **Open:**
+- **(open question)** in the index: the ruling stands, with one point the maintainers haven't settled, written under **Open:**
   in the file.
 
 Where a rule is still decided but not yet built, the file says so in a **Note:**.
 
-## Toby: confirming the list (once)
+## The maintainers: confirming the list (once)
 
 Read the index below. For each ruling, either it stands (say nothing), or tell us what's wrong. The **To confirm**
 rows and the **open questions** come first. Your answers go into the files, in one pull request.
 
 ## Adding a ruling
 
-When Toby rules on a design fork, the pull request that builds it adds the ruling:
+When a maintainer rules on a design fork, the pull request that builds it adds the ruling:
 
 1. A new file `R-NNN-short-name.md`, the next number, in this shape:
 
    ```
    # R-NNN: <the rule, as a title>
 
-   - **Decided:** <date>, Toby
+   - **Decided:** <date>, a maintainer
    - **Status:** Confirmed
-   - **Source:** PR #<number> (the question and his answer)
+   - **Source:** PR #<number> (the question and the answer)
    - **Enforced by:** <each test that holds it, linked>, or no test yet
 
    <the rule, in plain words, for a future agent>
 
-   In Toby's words: "<his answer, if he wrote one>"
+   In the maintainer's words: "<the answer, if one was written>"
    ```
 
 2. A row in the index below.
@@ -51,11 +51,11 @@ When Toby rules on a design fork, the pull request that builds it adds the rulin
 ## Sources
 
 - **DEV_LOG §N (build v…)**: the engineering log of the claude.ai Project, 13–30 September 2026, before the game
-  moved to this repo. It isn't in the repo; Toby and Theo hold it privately. Section numbers and build stamps are
+  moved to this repo. It isn't in the repo; the maintainers hold it privately. Section numbers and build stamps are
   given so either can find the passage.
 - **PR #N**: this repo's pull requests, from the cutover on 8 October 2026.
-- **Plan decision D-NN**: Toby's answers, one line each in [the decisions](../decisions/README.md); each file says what he
-  decided.
+- **Plan decision D-NN**: a maintainer's answers, one line each in [the decisions](../decisions/README.md); each file says what
+  was decided.
 
 ## Index
 

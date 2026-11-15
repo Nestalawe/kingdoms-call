@@ -1,6 +1,6 @@
 # R-008: One rite per ritual site per turn
 
-- **Decided:** 2026-09-19, Toby
+- **Decided:** 2026-09-19, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG changelog v2026.09.19-1857; current-state summary
 - **Enforced by:** no test yet

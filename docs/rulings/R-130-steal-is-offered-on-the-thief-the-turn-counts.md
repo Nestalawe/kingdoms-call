@@ -1,6 +1,6 @@
 # R-130: Steal is offered on the Thief the turn counts
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 40, built in PR #472
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts)
@@ -16,4 +16,4 @@ see (hired or charmed this turn) is still offered both, and the turn judges.
 The question was: the form offered Steal only on a trained Thief of 1, while the turn counts the items' too. Option 1:
 "the form follows the turn". Option 2 (not taken): the turn follows the form (Steal needs a trained Thief of 1).
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

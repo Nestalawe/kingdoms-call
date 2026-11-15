@@ -1,6 +1,6 @@
 # R-076: A fallen king's body stays where it was laid
 
-- **Decided:** 2026-10-08, Toby
+- **Decided:** 2026-10-08, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #8 (Batch 2026-10-08 part 2), ruling 1
 - **Enforced by:** [`a-fallen-kings-body-stays-in-his-home-after-it-is-captured`](../../tests/unit/a-fallen-kings-body-stays-in-his-home-after-it-is-captured.test.ts)

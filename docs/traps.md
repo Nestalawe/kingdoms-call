@@ -315,7 +315,7 @@ Add to `RETIRED_DISCOVERY_IDS`; never remove from it or reuse an id. Checks: not
 A running game's save holds its own copies of content (awarded items, uncleared lairs' guardians, held discoveries,
 unit names), so a change to a table reaches running games only through a migration in `upgradeGameState`, which runs
 at the start of every turn and must be safe to repeat. Whether a changed item effect reaches items already held is a
-ruling for Toby, not a code decision. Checks: `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts`
+ruling for the maintainers, not a code decision. Checks: `tests/unit/every-save-fixture-upgrades-parses-and-plays-a-turn.test.ts`
 for the upgrade; nothing for a missed migration.
 [Detail](architecture/a-saved-game-its-version-its-upgrade-its-check.md#live-saves-keep-copies).
 
@@ -347,7 +347,7 @@ A package `src/` imports (Zod, from `src/schemas/`) is left out of a page's sour
 
 ## A migration waiting for approval holds every deploy
 
-Merge a migration when Toby can approve it soon, not ahead of an urgent site fix. If he rejects it, follow quickly
+Merge a migration when the owner can approve it soon, not ahead of an urgent site fix. If it is rejected, follow quickly
 with a pull request whose migration undoes it ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)).
 Checks: nothing; the deploy's run shows it waiting.
 

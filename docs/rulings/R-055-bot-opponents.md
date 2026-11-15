@@ -1,6 +1,6 @@
 # R-055: Bot opponents: one strength, Normal or Aggressive
 
-- **Decided:** 2026-09-26, Toby
+- **Decided:** 2026-09-26, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.26-1218 §197 (item 9), v2026.09.26-1536 §236 item 9
 - **Enforced by:** no test yet

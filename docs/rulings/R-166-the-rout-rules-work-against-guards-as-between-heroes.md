@@ -1,8 +1,8 @@
 # R-166: The rout rules work against a province's guards as between heroes
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 57 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 57 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 Four rules of the rout work in a battle against a province's guards as in one between heroes:
@@ -18,4 +18,4 @@ Today none of the four reaches a battle against guards. No unit's text gives an 
 The question was: four rout rules skip a battle against a province's guards. Option 1: "each ability works against
 guards as between heroes".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

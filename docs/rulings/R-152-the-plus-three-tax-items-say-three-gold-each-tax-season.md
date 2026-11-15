@@ -1,8 +1,8 @@
 # R-152: The "+3% tax" items say +3 gold each tax season
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 24 (Toby's answer of 2026-10-31); not yet built
+- **Source:** Plan question 24 (a maintainer's answer of 2026-10-31); not yet built
 - **Enforced by:** no test yet
 
 The Ring of the Assessor, the Coif of the Ledger-Keeper, the Tally-Sticks of the Reeve and the Plain
@@ -13,4 +13,4 @@ Wedding-Band say "+3g collected each tax season", which is what the turn gives (
 
 The question was: four tax items say +3% and give 3 gold. Option 1: "the texts say what the turn does".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

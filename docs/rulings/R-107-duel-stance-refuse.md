@@ -1,6 +1,6 @@
 # R-107: A player's hero refuses duels unless told otherwise
 
-- **Decided:** 2026-10-13, Toby
+- **Decided:** 2026-10-13, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #76 item 1
 - **Enforced by:** [`a-heros-duel-stance-defaults-to-refuse`](../../tests/unit/a-heros-duel-stance-defaults-to-refuse.test.ts), [`the-orders-forms-duel-stance-selects-open-on-refuse`](../../tests/page/the-orders-forms-duel-stance-selects-open-on-refuse.test.ts)

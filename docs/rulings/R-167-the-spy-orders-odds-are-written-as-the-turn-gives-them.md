@@ -1,8 +1,8 @@
 # R-167: The Spy order's odds are written as the turn gives them
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 59 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 59 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 The order form, the province Spy note and the rulebook give the Spy order's odds as the turn does: spying on a
@@ -15,4 +15,4 @@ a level.
 
 The question was: the Spy order's odds are written otherwise than the turn. Option 1: "the words follow the game".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

@@ -1,6 +1,6 @@
 # R-127: The losses tally follows the battle
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 37, built in PR #446
 - **Enforced by:** [`a-battles-losses-tally-is-written-from-the-facts-of-its-lines`](../../tests/unit/a-battles-losses-tally-is-written-from-the-facts-of-its-lines.test.ts)
@@ -17,4 +17,4 @@ The question was: the tally counted risen trolls as lost, and gave a company nam
 list it followed. Option 1: "the tally follows the battle". Option 2 (not taken): the tally stays and the rulebook
 explains it.
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

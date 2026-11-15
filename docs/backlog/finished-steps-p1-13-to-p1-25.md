@@ -240,7 +240,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-25: done in its rows, below
 - P1-25a: #416 Where a change goes, from an item in game terms to the files
 - P1-25b: #417 The skills' check: their links, frontmatter and bytes
-- P1-25c: #418 Three skills for Toby's batches, drafted for Theo to move into .claude/skills
+- P1-25c: #418 Three skills for the batches, drafted for a maintainer to move into .claude/skills
 - P1-25d: #508 The description's save paragraph; the save's topic file checked against the code
 - P1-25e: #572 One skill for making a change
 - P1-25f: #573 The skill finds, plans and builds a tranche

@@ -1,8 +1,8 @@
 # R-172: A company the Host-Leader leads still pays at least 1 gold
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 64 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 64 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 The Host-Leader's perk does what its words say, "−1 per unit (min 1)": each company the title's holder leads
@@ -15,4 +15,4 @@ pays 1g less, but never less than 1g. Example: a skeleton company (1g) under him
 The question was: the perk's words and the turn disagree. Option 2: "the game follows the words: each company still
 pays at least 1g" (not the recommendation).
 
-In Toby's words: "(2)"
+In the maintainer's words: "(2)"

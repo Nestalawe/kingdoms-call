@@ -1,6 +1,6 @@
 # R-020: A realm sees its own provinces fully
 
-- **Decided:** 2026-09-21, Toby
+- **Decided:** 2026-09-21, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.21-1033 §5 (item 5)
 - **Enforced by:** [`heroes-in-sight-and-features-discovered-called-directly`](../../tests/unit/heroes-in-sight-and-features-discovered-called-directly.test.ts)

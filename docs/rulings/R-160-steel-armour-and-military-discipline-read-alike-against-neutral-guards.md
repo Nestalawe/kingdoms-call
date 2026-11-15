@@ -1,8 +1,8 @@
 # R-160: Steel Armour and Military Discipline work against neutral guards as between heroes
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 51 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 51 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 A realm's Steel Armour and Military Discipline speak of its own companies, in any battle. Against a province's
@@ -16,4 +16,4 @@ Steel Armour spares the beaten guards too, and a beaten host loses Military Disc
 The question was: the battle against guards read the two discoveries otherwise. Option 1: "the battle against guards
 follows the battle between heroes".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

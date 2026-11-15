@@ -245,7 +245,7 @@ perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to
   plain literals. Nothing in the file may reference portal code. `PRIMAL_ARMY_DEFS_P` is the one place a
   Creature's or Monster's cost, strength, move, sub-race and pre-battle strike are written; the GM master
   tables and the player portal's speeds are built from it, and `tests/lib/primal-decided.js` (the wild roster
-  Toby decided on 2026-10-13) holds it, the class lists, the Druid ladder and the books to the decided figures.
+  decided on 2026-10-13) holds it, the class lists, the Druid ladder and the books to the decided figures.
 - **Shared rule tables** (the block headed `SHARED RULE TABLES`): every `KC_*` table, e.g.
   `KC_UNIT_CLASS` (unit classes as ordered lists), `KC_UNIT_TYPE` (each unit's one type word: infantry,
   ranged, cavalry, flyer or naval), `KC_DRUID_LEVELS`, `KC_UNIT_BASE_STR`, `KC_SKILLS`,

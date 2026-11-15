@@ -1,6 +1,6 @@
 # R-061: A realm that has conceded
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-1719 §252 (items 7–8)
 - **Enforced by:** [`when-every-rival-but-one-concedes-the-reckoning-is-called-and-the-last-crown-wins`](../../tests/unit/when-every-rival-but-one-concedes-the-reckoning-is-called-and-the-last-crown-wins.test.ts), [`the-player-portals-diplomacy-card-shows-a-conceded-realm-and-an-extinguished-one`](../../tests/page/the-player-portals-diplomacy-card-shows-a-conceded-realm-and-an-extinguished-one.test.ts)

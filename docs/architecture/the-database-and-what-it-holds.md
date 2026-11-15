@@ -5,7 +5,7 @@
 The structure is in `supabase/` (since P0-15): `supabase/schemas/` is the desired state, one file per
 table with its access rules, and `supabase/migrations/` the changes that build it
 ([supabase/README.md](../../supabase/README.md)). Merging a migration to `main` applies it to staging, then to
-production once Toby approves, and only then deploys the site
+production once the owner approves, and only then deploys the site
 ([supabase/README.md](../../supabase/README.md#how-a-migration-goes-live)). The GM portal carries no SQL (its
 set-up banners went in plan step P0-17). Each feature probes for its table or column first, degrades
 quietly while it's missing, and says so on the game list (`kcMissingMsg`).
@@ -104,7 +104,7 @@ Each page's version is in its HTML, filled in by `tools/build.ts` after Vite:
   time, New Zealand>`, e.g. "Kingdoms Call — GM Portal · build 3f2a9c1 · 22 Oct 2026, 10:15". The commit is git's
   (`git log -1` beside `src/`), its time the commit's, so the same commit always builds the same bytes;
   `KC_BUILD_COMMIT` and `KC_BUILD_TIME` override them. With no git (a copy of `src/` elsewhere) it says "build
-  unknown"; `npm run dev`, "build dev". The two rulebooks keep their typed footers until Toby rules on them.
+  unknown"; `npm run dev`, "build dev". The two rulebooks keep their typed footers until a maintainer rules on them.
 - **Two metas**, on every page: `kc-build` (the commit) and `kc-page-version` (the page's fingerprint: the first 12 hex
   digits of the SHA-256 of its HTML before the build line and the metas are filled in). The HTML names its hashed
   files, so the fingerprint changes exactly when the page or one of its files does; the bundles never hold the commit.
@@ -304,11 +304,11 @@ Ask a `security definer` function instead, as the Hall of Fame record rules ask 
 
 ## A migration waiting for approval holds every deploy
 
-A merge that adds a migration stops at `migrate-production` until Toby approves it, and the site deploys
+A merge that adds a migration stops at `migrate-production` until the owner approves it, and the site deploys
 only after that ([supabase/README.md](../../supabase/README.md#how-a-migration-goes-live)). Deploys run one at a
 time, so **every later merge waits behind it**, site-only fixes included, and ships with it once approved.
-- Merge a migration when Toby can approve it soon, not ahead of an urgent site fix.
-- If he rejects it, the run fails and nothing deploys; the next push to `main` asks again, because the
+- Merge a migration when the owner can approve it soon, not ahead of an urgent site fix.
+- If it is rejected, the run fails and nothing deploys; the next push to `main` asks again, because the
   migration is still new compared with the live site. So follow a rejection quickly with a pull request
   whose migration undoes it: production then gets both in order and ends up unchanged
   ([supabase/README.md](../../supabase/README.md#how-a-migration-goes-live)). (Deleting the rejected migration's

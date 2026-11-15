@@ -1,6 +1,6 @@
 # R-025: Every humanoid coastal province can build its race's fleet
 
-- **Decided:** 2026-09-21, Toby
+- **Decided:** 2026-09-21, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.21-1611 §5 (item 5)
 - **Enforced by:** no test yet

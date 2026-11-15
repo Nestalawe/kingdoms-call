@@ -1,6 +1,6 @@
 # R-063: Ambush and Shield Fort work against neutral defenders
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-1719 §262–263
 - **Enforced by:** [`npc-parity`](../../tests/unit/npc-parity.test.ts)

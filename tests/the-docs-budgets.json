@@ -3,7 +3,7 @@
   "files": {
     "CLAUDE.md": 15000,
     "docs/ARCHITECTURE.md": 15000,
-    "docs/questions-for-toby.md": 12000,
+    "docs/questions-for-the-maintainers.md": 12000,
     "docs/the-goal-and-the-road.md": 17500,
     "docs/traps.md": 36000,
     "tests/README.md": 20000

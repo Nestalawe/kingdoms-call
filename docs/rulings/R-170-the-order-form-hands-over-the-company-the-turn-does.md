@@ -1,8 +1,8 @@
 # R-170: A hand-over that names a kind of company moves the one the turn moves, on the order form too
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 62 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 62 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 A hand-over (or a Disband) that names a kind of company moves the first company whose name or kind matches, and
@@ -14,4 +14,4 @@ goes, and the form says so. Today the form shows the new Green company going.
 
 The question was: the form and the turn move different companies. Option 1: "the form follows the turn".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

@@ -1,6 +1,6 @@
 # R-037: Research into a spent field turns to another
 
-- **Decided:** 2026-09-23, Toby
+- **Decided:** 2026-09-23, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.23-2139 §42 (item 6)
 - **Enforced by:** no test yet

@@ -1,8 +1,8 @@
 # R-165: A stalled battle on a third realm's land leaves the province to its owner
 
-- **Decided:** 2026-11-15, Toby
+- **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Plan question 56 (Toby's answer of 2026-11-15); not yet built
+- **Source:** Plan question 56 (a maintainer's answer of 2026-11-15); not yet built
 - **Enforced by:** no test yet
 
 When two realms at war fight a stalled battle on a province of a third realm (an ally of one of them), the owner
@@ -15,4 +15,4 @@ of Queen Isolde, Lady Wren's ally; Varn wins, and Highmere stays Queen Isolde's.
 The question was: two of the three places say the owner keeps the province. Option 1: "the owner keeps his
 province".
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

@@ -1,54 +1,54 @@
 # The goal and the road
 
 Where the work is, what comes next, and the goal it serves: each phase's goal and exit criteria, each marked met or
-not yet met. The dates are New Zealand dates. Theo checks a phase's exit criteria with evidence, and the result is
+not yet met. The dates are New Zealand dates. A maintainer checks a phase's exit criteria with evidence, and the result is
 recorded here.
 
 ## Where we are (15 November 2026)
 
-- **Batches can start.** `main` has been [batch-ready](#batch-ready) since 10 November. Toby's changes start on
-  Thursday 19 November ([below](#tobys-changes-from-thursday-19-november)).
+- **Batches can start.** `main` has been [batch-ready](#batch-ready) since 10 November. The changes start on
+  Thursday 19 November ([below](#the-changes-from-thursday-19-november)).
 - **The alignment abilities family** (the registry the new alignment abilities are built in) merged on 15 November
   ([its registry](architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md)).
 - **The types are nearly finished.** Every engine file is typed. Nine of the UI's files still start with
   `@ts-nocheck`, and 19 test files still use the old database stub (`stub-db`). Their last rows run overnight after
   Thursday, when no batch is open.
 - **Phase 0 is passed; Phase 1 is under way** (its batch-ready part met); Phases 2 and 3 have steps waiting; Phase 4
-  waits for Toby's design phases.
+  waits for the design phases.
 
 ## What comes next
 
 1. **16 and 17 November:** the plan's public parts move into `docs/` (this file is one of them).
 2. **18 November:** the batch rehearsal: the docs a batch agent reads are checked against `main`, `/making-a-change`
-   is tried on made-up changes, and the open items in Toby's first areas are listed. Its fixes are one pull request.
-3. **From 19 November:** Toby's batches, one lane at a time on `main`
-   ([one lane](decisions/README.md#theos-decisions-on-how-the-work-runs)).
-4. **Not yet decided** (Theo's choice): what runs overnight beside the batches. The options are the rules pulled out
+   is tried on made-up changes, and the open items in the first areas are listed. Its fixes are one pull request.
+3. **From 19 November:** the batches, one lane at a time on `main`
+   ([one lane](decisions/README.md#the-decisions-on-how-the-work-runs)).
+4. **Not yet decided** (a maintainer's choice): what runs overnight beside the batches. The options are the rules pulled out
    (recommended), the design matrix first, or neither until the first batches settle
    ([after Thursday](#the-road-after-thursday)).
 
-## Toby's changes from Thursday 19 November
+## The changes from Thursday 19 November
 
-Toby's first changes are **the new alignment abilities**. They arrive as **one batch an alignment** (his answer of 15
+The first changes are **the new alignment abilities**. They arrive as **one batch an alignment** (a maintainer's answer of 15
 November), and each batch's pull request says what it changes. Two rulings set how they reach the game: each reaches
 every running game as it goes live ([R-177](rulings/R-177-rule-changes-reach-running-games.md)), and they are built as
 the test games played them
 ([R-178](rulings/R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md)). Each batch builds from
-Toby's sheet (below). Three questions wait for his answer before the batches of the alignments they touch
-([the questions](questions-for-toby.md)).
+the abilities sheet (below). Three questions wait for an answer before the batches of the alignments they touch
+([the questions](questions-for-the-maintainers.md)).
 
-## Toby's documents
+## The design documents
 
-Both are Toby's own. They are named here and not copied, until he agrees to it.
-- **His design document** sets out the game he is aiming for: his design targets, and the phases in which he will
-  redesign the game, item by item. The design matrix will score each option of a rule against those targets.
-- **His sheet of the new alignment abilities** says what each ability does. Each batch of Thursday's changes builds
+Both are the owner's own. They are named here and not copied, until the owner agrees to it.
+- **The design document** sets out the game the owner is aiming for: the design targets, and the phases in which the
+  game is redesigned, item by item. The design matrix will score each option of a rule against those targets.
+- **The sheet of the new alignment abilities** says what each ability does. Each batch of Thursday's changes builds
   from it, with the lines [R-178](rulings/R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md)
   adds.
 
 ## Batch-ready
 
-**Batch-ready** is the point at which Toby's batches can start (Theo, 30 October), before the end of Phase 1. The code
+**Batch-ready** is the point at which the batches can start (a maintainer, 30 October), before the end of Phase 1. The code
 is batch-ready when all four of these hold:
 1. **Every content family is in the [rule registry](architecture/the-rule-registry-and-the-one-source-for-shared-rules.md)**:
    unit abilities, items, spells, discoveries, guardian perks and the alignment orders. Met: the ratchet counts 0
@@ -67,21 +67,21 @@ The rest of Phase 1 goes on beside the batches, in the one lane.
 The road to batches was planned on 1 November in levels:
 - **Level 2 is batch-ready** (above). Met on 10 November.
 - **Level 3 is batch-ready plus the parts batches touch, finished:** the player portal on the engine's functions (its
-  copies of the rules gone, each disagreement ruled by Toby), the content families' leftovers in the registry, strict
+  copies of the rules gone, each disagreement ruled by a maintainer), the content families' leftovers in the registry, strict
   types in the battles, the orders and the views, their old test scripts as Vitest tests, the import rules of the
-  views and the prose, and the docs and skills a batch agent uses. **This was the target** (Theo, 1 November). Every
+  views and the prose, and the docs and skills a batch agent uses. **This was the target** (a maintainer, 1 November). Every
   piece is on `main`: the last, the player portal's copies file, was retired on 12 November.
 - **Level 4 is the rest of Phase 1**, done beside the batches as code is touched. Since 8 November, part of it comes
-  first: the whole codebase is typed before Toby's redesign starts
-  ([the decision](decisions/README.md#theos-decisions-on-how-the-work-runs), "Type the whole codebase").
+  first: the whole codebase is typed before the redesign starts
+  ([the decision](decisions/README.md#the-decisions-on-how-the-work-runs), "Type the whole codebase").
 
 ## The road after Thursday
 
-Theo's direction of 8 November sets the road to Toby's redesign. Five of its six points are decisions: [type the
+A maintainer's direction of 8 November sets the road to the redesign. Five of its six points are decisions: [type the
 whole codebase, every rule into the registry, the regression matrix stays, a separate design matrix, and the rulebooks
-rendered from content](decisions/README.md#theos-decisions-on-how-the-work-runs). The sixth: **the bots get a feedback
+rendered from content](decisions/README.md#the-decisions-on-how-the-work-runs). The sixth: **the bots get a feedback
 loop** (their strategy as weights in data, tuned by playing themselves, and their choices compared with players'
-orders), and **a tool reads players' games as totals only**. That tool changes who can see data, so Theo reviews it,
+orders), and **a tool reads players' games as totals only**. That tool changes who can see data, so a maintainer reviews it,
 and its database pull request comes first.
 
 The order, each a tranche of about 15 to 30 rows, a run, and a merge as one group:
@@ -90,18 +90,18 @@ The order, each a tranche of about 15 to 30 rows, a run, and a merge as one grou
 |---|---|---|
 | T5: the saves | Batch-ready: every save versioned and checked before a turn runs; the engine's turn files typed | Done, 10 November |
 | T6: the types finished | No `@ts-nocheck` left; `stub-db` deleted; the pages reach the database only through `src/db/` (done) | The last rows after 19 November |
-| T7: the rules pulled out | A redesign item becomes a content change: a count for each family first, then the families in the order of Toby's design phases, each with its bot valuation hook | Next, if Theo chooses it |
-| Lane B: the instruments, in `tools/` only | The design matrix and its scorecard (the cost a game measured first), then the tool that reads players' games, then the page that shows the game as it is | Beside T6 and T7, if Theo chooses it |
+| T7: the rules pulled out | A redesign item becomes a content change: a count for each family first, then the families in the order of the design phases, each with its bot valuation hook | Next, if a maintainer chooses it |
+| Lane B: the instruments, in `tools/` only | The design matrix and its scorecard (the cost a game measured first), then the tool that reads players' games, then the page that shows the game as it is | Beside T6 and T7, if a maintainer chooses it |
 
 Also on the road:
-- **A long-lived playtest site**, with its own database, where players try a rule's options (Toby's answer of
+- **A long-lived playtest site**, with its own database, where players try a rule's options (a maintainer's answer of
   15 November). Its running cost is checked first. It is a step still to be planned, with a database
   part.
 - **No rulesets.** A rule change reaches every running game, so no game keeps the rules it started with
   ([R-177](rulings/R-177-rule-changes-reach-running-games.md)).
 - **Experiments stay off `main`**, as content overlays or branches tried through the design matrix. Only the chosen
   design takes the full pull-request routine. Each design item names the rulings it replaces.
-- **Can wait, where the redesign will rewrite the code:** the rulings Toby has answered outside the areas a batch
+- **Can wait, where the redesign will rewrite the code:** the rulings the maintainers have answered outside the areas a batch
   touches (each built inside the batch that touches it), the renames (P1-24), the state reshapes (P1-20), and the
   rest of the duplication work.
 
@@ -110,11 +110,11 @@ Also on the road:
 ### Phase 0: the foundation. Passed on 16 October
 
 **Goal.** Every change goes through git, tests and staging. The database is under version control and tested. The
-first security steps are done. Toby no longer uploads files or pastes SQL.
+first security steps are done. The owner no longer uploads files or pastes SQL.
 
-**Exit criteria**, all met (Theo checked each, with evidence, on 16 October):
+**Exit criteria**, all met (a maintainer checked each, with evidence, on 16 October):
 - Every production deploy since the cutover (8 October) came from a merged pull request with green CI.
-- Toby released at least three batches through a pull request, staging and the merge.
+- A maintainer released at least three batches through a pull request, staging and the merge.
 - `npm test` is green on `main`, and every pull request proves its tests fail first (amended: no CI check for it).
 - `supabase/migrations/` holds the baseline and every change since, and production matches it.
 - Phase 0's security steps are done.
@@ -137,7 +137,7 @@ changes.
 | The balance matrix and the invariants run on every engine pull request; the nightly run exists; `KNOWN_BREACHES` is empty | Met |
 | Every report line goes through `emit` and the perception pass; `playerView` exists | Met |
 | No content effect is checked by name outside the registry | Met for every content family; the alignments' 70 checks by name move with "every rule into the registry" |
-| No copy of a rule is left in the player portal; Toby ruled each disagreement | Met as far as the checks find: the copies file was retired on 12 November; the step (P1-11) is still open |
+| No copy of a rule is left in the player portal; a maintainer ruled each disagreement | Met as far as the checks find: the copies file was retired on 12 November; the step (P1-11) is still open |
 | All code is TypeScript; the engine side is strict; database access is typed | Not yet met: 9 UI files with `@ts-nocheck`, 81 old test files in JavaScript |
 | No known import-rule violation and no unused code; no ESLint suppression on the engine side | Not yet met: 1 known violation, 16 unused, 216 suppressions in `src/engine/` and `src/views/` |
 | No hand-typed stamps; hashed assets; the version banner works | Met |
@@ -159,7 +159,7 @@ git or CI. Players can download their own chronicle.
 - The turn lock and its breaker are live.
 - The database's own tests (pgTAP) prove what each role may read and write, the messaging rules included.
 - The chronicle download works on a desktop and a phone; old logs are trimmed, after a reviewed trial run
-  ([D-04](decisions/README.md#tobys-decisions-d-01-to-d-13)).
+  ([D-04](decisions/README.md#the-sites-decisions-d-01-to-d-13)).
 - Strict TypeScript everywhere: no `@ts-nocheck` and no JavaScript outside the root's config files.
 - The plan's public parts are in `docs/`.
 
@@ -171,20 +171,20 @@ rendered from it or checked against it.
 **Exit criteria**, none met yet:
 - The content is checked against its schemas when the site is built.
 - Every number in the rulebooks is rendered from the content
-  ([the decision](decisions/README.md#theos-decisions-on-how-the-work-runs), "The rulebooks rendered from content").
+  ([the decision](decisions/README.md#the-decisions-on-how-the-work-runs), "The rulebooks rendered from content").
   Until then, the words tests check them.
 - The changelog and "What's new" are generated.
 
 ### Phase 4: turns run by a server
 
-**Deferred.** Turns run by themselves only after Toby's design phases (his answer of 15 November).
+**Deferred.** Turns run by themselves only after the design phases (a maintainer's answer of 15 November).
 Until then, a GM's page runs each turn: the turn runs on time only when a GM's page is open, the GM is the game's
-referee, and the engine is part of the page, as in any browser game. Only Game Masters Toby invites create games
+referee, and the engine is part of the page, as in any browser game. Only Game Masters the Overlord invites create games
 ([R-097](rulings/R-097-game-masters-and-the-overlord.md)).
 
-Toby and Theo talk about starting sooner if any of these becomes a real, repeated problem:
+The maintainers talk about starting sooner if any of these becomes a real, repeated problem:
 1. **Missed deadlines:** turns run late because no GM's page was open.
-2. **Strangers running games:** public games run by GMs Toby doesn't know, where a GM's fairness matters.
+2. **Strangers running games:** public games run by GMs the maintainers don't know, where a GM's fairness matters.
 3. **Fairness disputes:** players doubt a GM's fairness, or want proof.
 4. **A rule that needs a server:** one that must act on hidden state at the moment it happens, which the GM's page
    can't publish as a fact.

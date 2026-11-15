@@ -1,6 +1,6 @@
 # R-137: A guardian's brute strength reads as it fights
 
-- **Decided:** 2026-11-05, Toby
+- **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 34, built in the pull request of P1-11e1 (the perk's words, and running games' guardians
   re-stamped), stacked on PR #493
@@ -21,4 +21,4 @@ card had said "+4 damage on every blow and special".
 The question was: the perk's words said a flat bonus on a special, and the fight multiplies it. Option 1: the words
 follow the game. Option 2 (not taken): the game follows the words (a special adds a flat +N after its weight).
 
-In Toby's words: "(1)"
+In the maintainer's words: "(1)"

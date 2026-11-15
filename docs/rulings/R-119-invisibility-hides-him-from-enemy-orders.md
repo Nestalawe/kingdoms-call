@@ -1,6 +1,6 @@
 # R-119: Every enemy order and reaction aimed at a hero whose Invisibility holds misses him
 
-- **Decided:** 2026-10-31, Toby
+- **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
 - **Source:** Plan question 6, built in PR #318
 - **Enforced by:** [`espionage-orders-called-directly`](../../tests/unit/espionage-orders-called-directly.test.ts), [`cast-spell-order-called-directly`](../../tests/unit/cast-spell-order-called-directly.test.ts), [`pursuits-and-the-catch-roll`](../../tests/unit/pursuits-and-the-catch-roll.test.ts), [`war-orders-called-directly`](../../tests/unit/war-orders-called-directly.test.ts), [`defend-watches`](../../tests/unit/defend-watches.test.ts), [`new-turn-war-academy-to-the-final-reconcile-called-directly`](../../tests/unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts), [`report-leaks`](../../tests/unit/report-leaks.test.ts), [`the-spell-texts-say-what-personal-combat-does`](../../tests/static/the-spell-texts-say-what-personal-combat-does.test.ts)
@@ -21,4 +21,4 @@ does acting on a realm reveal him to it? Part 1, option 1: "every enemy order an
 for the rest of the turn (ambushes, Encounter and Pursue, Spy on a hero, Steal, Curse and other spells aimed at
 him)". Part 2, option 1: "acting on you reveals him, as now".
 
-In Toby's words: "part 1: (1) … part 2: (1)"
+In the maintainer's words: "part 1: (1) … part 2: (1)"

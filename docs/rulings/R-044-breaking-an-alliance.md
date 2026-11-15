@@ -1,6 +1,6 @@
 # R-044: Breaking an alliance makes realms neutral
 
-- **Decided:** 2026-09-24, Toby
+- **Decided:** 2026-09-24, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.24-1319 §138 (item 6)
 - **Enforced by:** no test yet

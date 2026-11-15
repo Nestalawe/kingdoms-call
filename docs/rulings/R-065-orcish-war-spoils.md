@@ -1,6 +1,6 @@
 # R-065: Orcish war-spoils: a true half, on every attacking win
 
-- **Decided:** 2026-09-27, Toby
+- **Decided:** 2026-09-27, a maintainer
 - **Status:** Confirmed
 - **Source:** DEV_LOG v2026.09.27-1802 §269–270 (items 8–9)
 - **Enforced by:** [`druid-and-war-spoils`](../../tests/druid-and-war-spoils.test.js), [`fuzz-wages-combat`](../../tests/fuzz-wages-combat.test.js)

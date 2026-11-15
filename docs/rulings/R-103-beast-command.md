@@ -1,10 +1,10 @@
 # R-103: A hero leads at most as many beasts as his Druid level
 
-- **Decided:** 2026-10-12, Toby
+- **Decided:** 2026-10-12, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #75 item 24
 - **Enforced by:** [`a-heros-beast-command-counts-his-living-creatures-and-monsters-only`](../../tests/unit/a-heros-beast-command-counts-his-living-creatures-and-monsters-only.test.ts) (what counts), [`recruit-hire-and-realm-works-orders-in-a-whole-turn`](../../tests/scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn.test.ts) (Recruit Armies), [`item-and-army-orders-in-a-whole-turn`](../../tests/scenario/item-and-army-orders-in-a-whole-turn.test.ts) (Pick Up and Leave/Transfer), [`the-books-and-the-hero-card-say-a-hero-leads-as-many-beasts-as-his-druid-level`](../../tests/static/the-books-and-the-hero-card-say-a-hero-leads-as-many-beasts-as-his-druid-level.test.ts)
 
 A hero leads at most as many beasts as his Druid level, checked wherever a beast joins a column (Recruit Armies, Pick Up Army, Leave/Transfer, Wild Calling).
 
-**Open:** The agent's calls, for Toby to confirm: (1) the cap applies in every realm, so a Druid 0 hero of a Druidic or Evil realm leads no beasts (the waiver still spares the strength penalty); (2) heroes already over the cap in running games keep their beasts but take on no more; (3) skeletons, the temporary Awakened Grove, Wild Hunt beasts and phantoms do not count.
+**Open:** The agent's calls, for a maintainer to confirm: (1) the cap applies in every realm, so a Druid 0 hero of a Druidic or Evil realm leads no beasts (the waiver still spares the strength penalty); (2) heroes already over the cap in running games keep their beasts but take on no more; (3) skeletons, the temporary Awakened Grove, Wild Hunt beasts and phantoms do not count.
