@@ -206,7 +206,7 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   with no account signed in. Never edit them by hand: run `npx supabase@2.120.0 gen types
   typescript --local > src/db/database.types.ts` against the local database with every migration applied, then
   `npx prettier --write src/db/database.types.ts`. CI's `db` job generates them again from its own local database and
-  compares: a stale file fails it.
+  compares: a stale file fails it. So a migration's pull request carries them (the one `src/` file it may change).
 - **The access layer's tests** (`tests/db/`, `npm run test:db`; not in `npm test`): each `Db` function called on a
   supabase-js client of the local Supabase as each role that matters (signed out, a player, a rival, the game's GM,
   another GM, the Overlord), checking what it returns or refuses: the query and the access rules together. CI's `db`
