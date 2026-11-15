@@ -116,7 +116,7 @@ CI's balance job plays it whenever it plays the matrix. Today one: `a-chase-held
 by an unresolved battle, which the matrix's games meet only by luck (20 runs, about 3 s).
 **The mutant scorer** (`npm run mutants -- <folder>`, `tools/mutants/run.ts`, P1-21a) measures the tests themselves:
 "if the code were wrong, would we notice?". A mutant is a small fault in `src/`, written as a patch by a mutation
-session (the plan's protocol), with an `Area:` and an `Imitates:` line (the real bug it imitates) before the diff. The
+session ([its routine](../ways-of-working/a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md)), with an `Area:` and an `Imitates:` line (the real bug it imitates) before the diff. The
 scorer first runs every stage on the checkout's `HEAD` with no patch (the control run; the tree must be clean, and any
 red stops it), then each patch, one at a time, in a throwaway git worktree in the system's temporary folder with
 `node_modules` copied in without its caches: `npm run build` (red means the patch is broken), then the compiler, lint

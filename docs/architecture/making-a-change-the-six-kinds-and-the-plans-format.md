@@ -143,8 +143,10 @@ The tranche's plan is the seven parts above. Its rows (part 3) add, for each row
 - the counts it lowers, measured on `main` at the scoping, not copied from an older plan;
 - whether Theo must look (a ✓ step, `.github/dangerous-paths`, who can see or change data).
 
-A fork found while scoping is a question with a recommendation. In an unattended run, the run takes the recommended
-option only when it serves the goal and is safe and easy to undo, and says so in its note; a rule of the game is never
+How a scoping measures, and the check a run makes before it decides a fork:
+[scoping a tranche](../ways-of-working/scoping-a-tranche-and-deciding-a-fork-in-a-run.md). A fork found while
+scoping is a question with a recommendation. In an unattended run, the run takes the recommended option only when it
+serves the goal and is safe and easy to undo, and says so in its note; a rule of the game is never
 decided this way (it waits for Toby). The approved scoping is the go for every row: a row whose own plan goes beyond
 its line stops and reports.
 
@@ -155,7 +157,8 @@ row's PR description, and each row's PR links to it.
 
 - **One conductor, an agent per row.** The conductor writes no code. It gives each row to its own agent with a brief
   (the row's line of the plan, the lessons so far) and checks the result against the line.
-- **Each row's agent goes through steps 3 to 10 of the skill** as its kind, on a branch from the row before. Its PR
+- **Each row's agent goes through steps 3 to 10 of the skill** as its kind, on a branch from the row before
+  ([a row of a stack](../ways-of-working/a-row-of-a-stack-from-its-branch-to-its-report-and-the-proof-it-gives.md)). Its PR
   opens as a draft and joins one GitHub Stack (`gh stack link`), so each row is reviewed and scanned on its own.
 - **A row commits as it goes**, so a session lost to an error resumes from its last commit, not from the start. The
   conductor checks on each agent regularly and resumes one that has stopped.
@@ -175,4 +178,4 @@ The skill stops for a person:
    Toby, not decided.
 2. **Before a PR is marked ready.** Staging, if needed, comes with a numbered list Toby can follow.
 
-Nobody but Toby merges ([CLAUDE.md](../../CLAUDE.md#rules), "Never" 1).
+Agents never merge: Toby or Theo does ([who merges](../ways-of-working/who-does-what-the-roles-the-review-by-kind-and-tobys-keys.md#who-merges)).
