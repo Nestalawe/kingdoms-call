@@ -7,4 +7,4 @@
 
 A wandering hero's skill levels are not shown until he has joined (only his fame is). On the order card for a hero being hired, every order is offered without level-based odds, and the mastery orders (levels 7 and 9) are not offered at all. From the turn after he joins he is an ordinary character. A Spy on the hero still reads his skills, items and army before he joins (R-111).
 
-**Open:** A charmed hero's card still offers all the mastery orders. Say if it should withdraw them too.
+A wandering hero charmed into service is treated the same in the turn of the charm: [R-181](R-181-a-wandering-hero-charmed-into-service-gives-no-mastery-orders-in-the-turn-of-the-charm.md).

@@ -118,7 +118,7 @@ at once.
 | [R-045](R-045-consecration-capture-experience.md) | Taking holy ground: experience by the conqueror's crown | 2026-09-24 | Confirmed | no test yet |
 | [R-046](R-046-unmet-realms-are-nameless.md) | Realms you have not met are nameless | 2026-09-24 | Confirmed | [`fuzz-advance-masking`](../../tests/fuzz-advance-masking.test.js), [`what-each-realm-may-see-of-the-world`](../../tests/unit/what-each-realm-may-see-of-the-world.test.ts) |
 | [R-047](R-047-two-recruits-at-home.md) | Two recruits a season only in your founding capital | 2026-09-24 | Confirmed (open question) | no test yet |
-| [R-048](R-048-heroes-not-yet-joined.md) | A hero being hired is unknown until he joins | 2026-09-24 | Confirmed (open question) | no test yet |
+| [R-048](R-048-heroes-not-yet-joined.md) | A hero being hired is unknown until he joins | 2026-09-24 | Confirmed | no test yet |
 | [R-049](R-049-charmed-heroes-and-items.md) | A charmed hero handles no items | 2026-09-24 | Confirmed | no test yet |
 | [R-050](R-050-bonus-tax-gold-cap.md) | Bonus tax gold is capped at 5% of base tax | 2026-09-24 | Confirmed (open question) | no test yet |
 | [R-051](R-051-item-tiers-by-role.md) | What each lair grade holds | 2026-09-24 | Confirmed | no test yet |
@@ -249,3 +249,7 @@ at once.
 | [R-176](R-176-enslaves-tax-cut-says-this-turn-and-the-next-3.md) | Enslave's tax cut is written as "this turn and the next 3" | 2026-11-15 | Decided, not built | no test yet |
 | [R-177](R-177-rule-changes-reach-running-games.md) | Rule changes reach running games | 2026-11-15 | Confirmed | no test yet |
 | [R-178](R-178-the-new-alignment-abilities-are-built-as-the-test-games-played-them.md) | The new alignment abilities are built as the test games played them | 2026-11-15 | Decided, not built | no test yet |
+| [R-179](R-179-only-your-own-realm-reads-your-heros-maximum-hp-falling-or-its-new-reckoning.md) | Only your own realm reads your hero's maximum HP falling outside a fight, or its one-time new reckoning | 2026-11-02 | Decided, not built | no test yet |
+| [R-180](R-180-pick-up-army-takes-only-a-garrison-of-a-province-your-realm-holds.md) | Pick Up Army takes only a garrison of a province your realm holds | 2026-11-15 | Decided, not built | no test yet |
+| [R-181](R-181-a-wandering-hero-charmed-into-service-gives-no-mastery-orders-in-the-turn-of-the-charm.md) | A wandering hero charmed into service gives no mastery orders in the turn of the charm | 2026-11-15 | Decided, not built | no test yet |
+| [R-182](R-182-what-a-realm-learns-of-another-realms-heroes-follows-the-maps-sight-rule.md) | What a realm learns of another realm's heroes follows the map's sight rule | 2026-11-15 | Decided, not built | no test yet |
