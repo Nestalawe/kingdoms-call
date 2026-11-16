@@ -42,11 +42,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   is 77: its own 28, 8 files of `content/`, `kc-safe.ts`, the reload banner's two files, `db/`'s three,
   `src/shared/`'s file and the 34 of the folder `engine/rules-on-plain-values/`.
 - **TypeScript checks the site** (`tsconfig.json` includes `src/`, with the browser's types; one project until P1-10
-  splits the engine's). A file that was JavaScript, and in which strict TypeScript found
-  errors, starts with `// @ts-nocheck` and the reason until it is typed: P1-10b and P1-17c freed the engine's side, and P1-16 frees the rest. The ratchet counts the
-  line in two, so each only falls: `tsNocheckEngineSide` (the engine's side: `src/engine/`, `src/views/`, `src/db/`,
-  `src/ui/shared/`, `src/content/`, `src/schemas/`, `src/shared/`) and `tsNocheckUi` (every other file: the UI's pages
-  and `src/rulebook/`).
+  splits the engine's), every file of it: lint refuses the line that switches the check off (`// @ts-nocheck`) in
+  every TypeScript file. The files that were JavaScript and in which strict TypeScript found errors are typed: P1-10b
+  and P1-17c the engine's side, P1-16 the pages.
   A new file is checked from the start. `src/globals.d.ts` declares what the modules read without importing it:
   `KC_CONFIG` and `supabase` (the pages' classic scripts), `KC_RNG_SEED` (the tests' seed) and each page's declared
   globals (`tests/static/globals-d-ts.test.ts` checks it names exactly those). No file of `src/` may claim what the
@@ -102,10 +100,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   orders are in `orders/alignment/`) and the one P1-10b21 freed (`orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts`:
   Explore, Hunting Rumours, Search Lair and two masteries) and the one P1-10b22 freed
   (`orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts`: Spy, Steal and four masteries).
-  The other 53 of those 108 files
-  still say `@ts-nocheck`:
-  each needs a statement changed to pass (a check for a value that may be missing, say), which P1-10b makes and the
-  balance matrix proves ([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)).
+  The other 53 of those 108 files each needed a statement changed to pass (a check for a value that may be missing,
+  say), which P1-10b and P1-17c made, keeping every value, and the balance matrix proved
+  ([freeing a file](freeing-a-file-of-its-ts-nocheck-line.md)).
 - **The content's and the engine's own types**, types only, so no file the build makes changes with them:
   - **In the data file:** `UnitType` (the keys of `KC_UNIT_TYPE`), `PrimalUnitType`, `ElementalUnitType` and
     `HumanoidUnitType` (the rest); `Quality`, `Skill`, `MagicSchool`, `Alignment` and `HumanoidRace` (from its lists, each

@@ -4,17 +4,16 @@
 // time. Formatting is Prettier's job (eslint-config-prettier).
 //
 // The site's code (src/, TypeScript modules since P1-09e) gets its own tier (plan P1-09, Decision 15): ESLint's
-// recommended rules and typescript-eslint's strict set, which read the code alone, not its types. A file of src/ that
-// TypeScript checks (its first line isn't the comment that switches the check off, read from the files here: no list
-// kept by hand) gets the type-aware sets too, strictTypeChecked and stylisticTypeChecked (plan P1-13, Decision 5); a
-// file TypeScript skips doesn't, since with nothing checked every value is any. Four rules are the site's own. no-undef
-// (P1-09d), so a file can't read a name it doesn't import or declare: the engine (src/engine/, src/views/, the data
-// file) only JavaScript's own built-ins and console, not window, document or sb; the rest of src/ the browser's names
-// too, the page's own classic scripts' (KC_CONFIG from kc-config.js, supabase from supabase-js) and its declared
-// globals. ban-ts-comment: a file is left unchecked only with its reason. And no type assertion (`as`, but `as const`)
-// and no non-null assertion (`x!`), each a claim the compiler takes on trust (plan P1-10, Decision 2): a file passes
-// strict TypeScript with what it checks. The other JavaScript (the tests' scripts) isn't linted yet: it
-// becomes TypeScript in Phase 1.
+// recommended rules and typescript-eslint's strict set, which read the code alone, not its types, and the type-aware
+// sets too, strictTypeChecked and stylisticTypeChecked (plan P1-13, Decision 5). TypeScript checks every file of src/:
+// ban-ts-comment, as the strict sets set it, refuses the comment that switches its check off, here as in tests/ and
+// tools/ (plan P1-10, Decision 9; P1-16v). Three rules are the site's own. no-undef (P1-09d), so a file can't read a
+// name it doesn't import or declare: the engine (src/engine/, src/views/, the data file) only JavaScript's own
+// built-ins and console, not window, document or sb; the rest of src/ the browser's names too, the page's own classic
+// scripts' (KC_CONFIG from kc-config.js, supabase from supabase-js) and its declared globals. And no type assertion
+// (`as`, but `as const`) and no non-null assertion (`x!`), each a claim the compiler takes on trust (plan P1-10,
+// Decision 2): a file passes strict TypeScript with what it checks. The other JavaScript (the tests' scripts) isn't
+// linted yet: it becomes TypeScript in Phase 1.
 //
 // The engine runs on plain data (plan P1-13, Decision 7): src/engine/, src/views/, src/content/, src/shared/ and
 // src/schemas/ may read no page's, browser's or timer's name, nor the time (Date: the engine's clock is kcClock(),
@@ -55,19 +54,13 @@ const kc = require('./tools/eslint-rules/index.ts').default;
 // declares exactly these for TypeScript.
 const SITE = ['src/**/*.ts'];
 const ENGINE = ['src/engine/**/*.ts', 'src/views/**/*.ts', 'src/content/**/*.ts'];
-// The comment that leaves a file unchecked, built from parts so this file doesn't count as one (tools/ratchet.ts).
-const UNCHECKED = new RegExp('^// @ts-' + 'nocheck\\b');
-// The files of src/ that TypeScript checks: those whose first line isn't that comment (tests/static/harness.test.ts
-// checks the comment is only ever on the first line).
-const CHECKED = [];
 const declaredGlobals = {};
 for (const entry of fs.readdirSync(path.join(__dirname, 'src'), { recursive: true, withFileTypes: true })) {
   const file = path.join(entry.parentPath, entry.name);
   if (!entry.isFile() || !file.endsWith('.ts')) continue;
-  const text = fs.readFileSync(file, 'utf8');
-  if (!UNCHECKED.test(text)) CHECKED.push(path.relative(__dirname, file).split(path.sep).join('/'));
   if (file.endsWith('.d.ts')) continue;
   if (/[\\/]src[\\/](engine|views|content)[\\/]/.test(file)) continue;
+  const text = fs.readFileSync(file, 'utf8');
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest);
   for (const node of source.statements) {
     const e = ts.isExpressionStatement(node) ? node.expression : null;
@@ -95,11 +88,10 @@ const atError = (configs) =>
   });
 
 // The site's rules (above): ESLint's recommended and typescript-eslint's strict set (its own order: what its
-// eslint-recommended part switches off for TypeScript stays off); then the four of its own.
+// eslint-recommended part switches off for TypeScript stays off); then the three of its own.
 const siteSets = atError([js.configs.recommended, ...tseslint.configs.strict]);
 const siteRules = {
   'no-undef': 'error',
-  '@typescript-eslint/ban-ts-comment': ['error', { 'ts-nocheck': 'allow-with-description' }],
   '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
   '@typescript-eslint/no-non-null-assertion': 'error',
 };
@@ -227,9 +219,9 @@ module.exports = defineConfig(
     rules: { 'no-restricted-globals': pureGlobals() },
   },
   {
-    // The files of src/ that TypeScript checks: the type-aware sets too, after which the site's own four again (the
-    // stylistic set asks for `as` where the site allows no assertion at all).
-    files: CHECKED,
+    // Every file of src/: the type-aware sets too, after which the site's own three again (the stylistic set asks for
+    // `as` where the site allows no assertion at all).
+    files: SITE,
     extends: typedSets,
     languageOptions: projectService,
     rules: { ...typedRules, ...siteRules },

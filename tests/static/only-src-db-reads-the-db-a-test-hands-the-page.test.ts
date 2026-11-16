@@ -49,15 +49,18 @@ describe('only src/db/ reads the Db a test hands the page', () => {
 describe('only src/db/ reads the supabase global', () => {
   const eslint = new ESLint({ cwd: ROOT });
   const PLANTED = 'export const client = supabase.createClient(KC_CONFIG.supabaseUrl, KC_CONFIG.supabaseKey);\n';
+  // Planted in place of a file of each folder: every file of src/ is read with its types, and a path that isn't on disk
+  // can't be (ESLint's parsing error, fatal, refused below, so the folder that finds nothing was read).
   test.for([
-    ['src/ui/gm/planted.ts', ['1 no-restricted-globals']],
-    ['src/ui/overlord/planted.ts', ['1 no-restricted-globals']],
-    ['src/db/planted.ts', []],
+    ['src/ui/gm/start.ts', ['1 no-restricted-globals']],
+    ['src/ui/overlord/page.ts', ['1 no-restricted-globals']],
+    ['src/db/kc-db-guard.ts', []],
   ] as const)(
     'a planted createClient on it in %s: %j',
     timeLimitForTheWork({ typeScriptPrograms: 1 }),
     async ([file, expected]) => {
       const [result] = await eslint.lintText(PLANTED, { filePath: path.join(ROOT, file) });
+      expect((result?.messages ?? []).filter((m) => m.fatal === true).map((m) => m.message)).toEqual([]);
       const found = (result?.messages ?? [])
         .filter((m) => m.severity === 2 && m.ruleId === 'no-restricted-globals')
         .map((m) => `${String(m.line)} ${m.ruleId ?? ''}`);

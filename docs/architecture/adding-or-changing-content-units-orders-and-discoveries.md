@@ -97,10 +97,9 @@ that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `K
 (TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it.
 The engine's `ARMY_COST_MASTER` and `ARMY_SPEED_MASTER` (`engine/army-tables.ts`) end in `satisfies
 Record<HumanoidUnitType, number>` too: a humanoid unit missing from either fails (a primal unit's cost and speed come
-from `PRIMAL_ARMY_DEFS_P`). The engine's other tables (`UNIT_SHORT`, `TERRAIN_MODS`, `ARMY_RACE_OF_TYPE`, …) are
-still unchecked: their files keep `@ts-nocheck`, and a `satisfies` there checks nothing
-([traps.md](../traps.md#ts-nocheck-checks-nothing-in-the-file)). Each gets its `satisfies` when its file loses `@ts-nocheck`
-(P1-10b: none of those files passes with annotations alone, P1-10a3). The lists above are still the whole job.
+from `PRIMAL_ARMY_DEFS_P`). The engine's other tables are keyed by any string (`UNIT_SHORT`, `ARMY_RACE_OF_TYPE`,
+…), so a unit missing from one still compiles, and `TERRAIN_MODS` refuses a misspelt unit but not a missing one. The
+lists above are still the whole job.
 
 **A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`
 first (`tests/primal-roster.test.js` and `tests/primal-words.test.js` then list what is missing), then:

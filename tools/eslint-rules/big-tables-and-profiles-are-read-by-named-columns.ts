@@ -7,8 +7,8 @@
 //   away, even for your own row, and no page shows another player's email (P0-31, ruling D-08).
 // Read from `sb.from('<table>')…select('<columns>')`, a chain written in one expression with the table and the columns
 // as plain strings, and from a resource embedded in the columns (`games(*)`, `profiles(name, email)`). A table or a
-// list of columns held in a variable isn't read. The reads that were already there when the rule came in are in
-// eslint-suppressions.json, for P1-17's access layer to take out.
+// list of columns held in a variable isn't read. Every read in src/ names its columns: none is kept in
+// eslint-suppressions.json.
 import type { Rule } from 'eslint';
 
 // The syntax tree's types, as ESLint's own types give them (ESTree's).

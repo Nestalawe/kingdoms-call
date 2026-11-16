@@ -86,7 +86,7 @@ the module it changes.
 | Every report line goes through `emit` and the perception pass; `playerView` exists | Met |
 | No content effect is checked by name outside the registry | Met for every content family; the alignments' checks by name (the ratchet counts them) move with "every rule into the registry" |
 | No copy of a rule is left in the player portal; a maintainer ruled each disagreement | Met as far as the checks find: the copies file is retired; its rest (P1-11z) is still open |
-| All code is TypeScript; the engine side is strict; database access is typed | Not yet met: some UI files still start with `@ts-nocheck`, and old test files are still JavaScript |
+| All code is TypeScript; the engine side is strict; database access is typed | Not yet met: old test files are still JavaScript (lint refuses `@ts-nocheck` in every TypeScript file) |
 | No known import-rule violation and no unused code; no ESLint suppression on the engine side | Not yet met: the ratchet still counts known violations and unused code, and `src/engine/` and `src/views/` still hold suppressions |
 | No hand-typed stamps; hashed assets; the version banner works | Met |
 | The harness is enforced: hooks, the Node pin, ratchets, coverage thresholds and the harness test, in CI | Met |
