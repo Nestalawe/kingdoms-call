@@ -93,7 +93,7 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 
 - **A database's refusal thrown for the page's own `catch`** (`if (error) throw error;`, the answer's error an object
   with its message, code and hint, not an `Error`) is thrown through a reader typed `unknown` (`theRefusalAsThrown`,
-  `dispatches.ts`): the same object reaches the `catch`, which reads its words and hint; lint's `only-throw-error`
+  `src/ui/shared/`, which both pages import): the same object reaches the `catch`, which reads its words and hint; lint's `only-throw-error`
   refuses an object of a known type that isn't an `Error`, and wrapping it would lose its hint.
 - **A refusal's field its answer type lacks** (`error.code === '23505'`, the join's second realm) is read
   `Reflect.get(error, 'code')` into an `unknown`: the same field of the same object.

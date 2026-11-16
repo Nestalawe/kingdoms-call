@@ -4,9 +4,9 @@ import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts'
 import { thePagesDb } from './startup.ts';
 import { show } from './init.ts';
 import { startUpdatePolling, loadAllGames, theSignedInAccountsId } from './game-lists.ts';
-import { thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
+import { theRefusalAsThrown, thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 import { openReport } from './report.ts';
-import { saveMessageReads, stopMessagePolling, theRefusalAsThrown } from './dispatches.ts';
+import { saveMessageReads, stopMessagePolling } from './dispatches.ts';
 
 /** What was thrown's message, in words, as `'…' + err.message` wrote it: an error's message; `undefined` for a value
  *  with none; nothing thrown (`null`, `undefined`) throws the TypeError reading its message threw. */
