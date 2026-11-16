@@ -72,7 +72,7 @@ function inWords(value: unknown): string {
   return String(value);
 }
 /** The row the database made for a bot's realm: none throws the TypeError reading its id threw. */
-function theRowMade(row: ARealm | null): ARealm {
+function theRowMade(row: Pick<ARealm, 'id'> | null): Pick<ARealm, 'id'> {
   if (row === null) throw new TypeError("Cannot read properties of null (reading 'id')");
   return row;
 }

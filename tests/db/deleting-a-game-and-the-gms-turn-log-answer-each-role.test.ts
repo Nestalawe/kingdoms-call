@@ -181,10 +181,11 @@ describe("the GM's whole log of a turn: read by the game's GM, its players and t
     const reads = role !== 'signed out' && role !== 'another GM';
     expect({
       error: itsError(answer),
-      rows: (answer.data ?? []).map((row) => [row.game_id === world.theGame, row.turn, row.player_index, row.entries]),
+      // the log's lines only: the game, turn and realm are the query's filters (P1-16u)
+      rows: (answer.data ?? []).map((row) => [Object.keys(row), row.entries]),
     }).toEqual({
       error: theErrorFor(role),
-      rows: reads ? [[true, 2, -1, [{ text: 'The GM sees turn 2' }]]] : [],
+      rows: reads ? [[['entries'], [{ text: 'The GM sees turn 2' }]]] : [],
     });
   });
 });

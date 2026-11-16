@@ -169,15 +169,53 @@ describe('the reads: Marchwood by its GM, its players and the Overlord; its real
     expect({
       errors: [itsError(realms), itsError(game)],
       realms: (realms.data ?? []).map((realm) => realm.player_index).sort(),
+      realmsColumns: Object.keys(realms.data?.[0] ?? {}).sort(),
       game: game.data && [
         game.data.id === world.theGame,
         game.data.turn,
         game.data.game_players.map((realm) => realm.player_index).sort(),
+        // every column the GM page reads of the game it has open, and of its realms (P1-16u)
+        Object.keys(game.data).sort(),
+        Object.keys(game.data.game_players[0] ?? {}).sort(),
       ],
     }).toEqual({
       errors: [theErrorFor(role), reads ? null : role === 'signed out' ? NO_GRANT : NO_SUCH_ROW],
       realms: marchwoodsRealmsFor(role),
-      game: reads ? [true, 3, marchwoodsRealmsFor(role)] : null,
+      realmsColumns: marchwoodsRealmsFor(role).length
+        ? ['display_name', 'id', 'player_index', 'turn_report', 'user_id']
+        : [],
+      game: reads
+        ? [
+            true,
+            3,
+            marchwoodsRealmsFor(role),
+            [
+              'block_eliminated_msgs',
+              'created_at',
+              'game_players',
+              'game_state',
+              'gm_user_id',
+              'id',
+              'max_players',
+              'max_turns',
+              'meta',
+              'name',
+              'status',
+              'turn',
+            ],
+            [
+              'display_name',
+              'game_id',
+              'id',
+              'invite_code',
+              'orders',
+              'orders_submitted',
+              'player_index',
+              'turn_report',
+              'user_id',
+            ],
+          ]
+        : null,
     });
   });
 });
@@ -190,11 +228,12 @@ describe("the bots' realms: made, and removed, by Marchwood's GM and the Overlor
     const makes = runsMarchwood(role);
     expect({
       error: itsError(made),
-      answer: made.data && [made.data.game_id === world.theGame, made.data.player_index, made.data.display_name],
+      // its id only (P1-16u): the slots read after show the realm made
+      answer: made.data && [Object.keys(made.data), typeof made.data.id],
       slots,
     }).toEqual({
       error: makes ? null : role === 'signed out' ? NO_GRANT : refusedByTheRulesFor('game_players'),
-      answer: makes ? [true, EASTWICK_SLOT, 'Realm of Eastwick'] : null,
+      answer: makes ? [['id'], 'string'] : null,
       slots: makes ? [0, 1, 2, EASTWICK_SLOT] : [0, 1, 2],
     });
   });

@@ -159,13 +159,17 @@ describe('the reads: Marchwood by its GM, its players and the Overlord; its real
     const reads = readsMarchwood(role);
     expect({
       errors: [itsError(game), itsError(realms), itsError(itsTurn)],
-      game: game.data && [game.data.id === world.theGame, game.data.turn],
+      game: game.data && [Object.keys(game.data).sort(), game.data.turn],
       realms: (realms.data ?? []).map((realm) => realm.player_index).sort(),
+      realmsColumns: Object.keys(realms.data?.[0] ?? {}).sort(),
       turn: itsTurn.data,
     }).toEqual({
       errors: [reads ? null : role === 'signed out' ? NO_GRANT : NO_SUCH_ROW, theErrorFor(role), theErrorFor(role)],
-      game: reads ? [true, 3] : null,
+      game: reads ? [['game_state', 'turn'], 3] : null,
       realms: marchwoodsRealmsFor(role),
+      realmsColumns: marchwoodsRealmsFor(role).length
+        ? ['id', 'orders', 'orders_submitted', 'player_index', 'turn_report', 'user_id']
+        : [],
       turn: reads ? { turn: 3 } : null,
     });
   });
@@ -314,12 +318,15 @@ describe("the statistics: written, and the backfill's reads, by the game's GM an
         full.data.id === world.theGame,
         full.data.game_state,
         full.data.game_players.map((realm) => realm.player_index).sort(),
+        Object.keys(full.data.game_players[0] ?? {}).sort(),
       ],
     }).toEqual({
       errors: [theErrorFor(role), theErrorFor(role), reads ? null : role === 'signed out' ? NO_GRANT : NO_SUCH_ROW],
       finished: runs ? [[true, 'Made-up Westfold', 'complete']] : [],
       withResults: runs ? [true] : [],
-      full: reads ? [true, MARCHWOODS_WORLD, marchwoodsRealmsFor(role)] : null,
+      full: reads
+        ? [true, MARCHWOODS_WORLD, marchwoodsRealmsFor(role), ['player_index', 'turn_report', 'user_id']]
+        : null,
     });
   });
 });

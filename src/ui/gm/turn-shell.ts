@@ -20,7 +20,7 @@ import { theGameOpenNow } from './game-detail.ts';
 import { theField } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 import { asItsGuardReadsIt } from '../../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { KcSafeHtml } from '../shared/kc-safe.ts';
-import type { AGame, ARealm } from '../../db/the-db-interface-and-its-areas.ts';
+import type { AGame, ARealmAsTheTurnRunsIt } from '../../db/the-db-interface-and-its-areas.ts';
 import type { GameState } from '../../schemas/saved-game-state.ts';
 import type { TheGamesSlotRow } from '../../engine/turn/context.ts';
 
@@ -60,13 +60,13 @@ function theGameToRun(game: AGameAsTheShellRunsIt | null): AGameAsTheShellRunsIt
   return game;
 }
 /** The realms as loaded: none throws the TypeError filtering them threw. */
-function theRealmsAsLoaded(realms: ARealm[] | null): ARealm[] {
+function theRealmsAsLoaded(realms: ARealmAsTheTurnRunsIt[] | null): ARealmAsTheTurnRunsIt[] {
   if (realms === null) throw new TypeError("Cannot read properties of null (reading 'filter')");
   return realms;
 }
 /** The realm's row as loaded, for the slot row a report is for: the turn keeps the rows it is handed as they are, so the
  *  report's row is one of them (none throws). */
-function theLoadedRowOf(realms: readonly ARealm[], slot: TheGamesSlotRow): ARealm {
+function theLoadedRowOf(realms: readonly ARealmAsTheTurnRunsIt[], slot: TheGamesSlotRow): ARealmAsTheTurnRunsIt {
   const row = realms.find((r) => r === slot);
   if (row === undefined) throw new TypeError('the report is for a realm the turn was not handed');
   return row;
@@ -131,7 +131,7 @@ export async function runTurn(optsHanded?: WhatTheTurnIsRunWith | null) {
   // catch at the end of runTurn, and runTurn always RETURNS {ok, committed, conflict, error}: it never
   // throws and never returns nothing. ordersSnapshot is what a failed run may put back; the four flags
   // say how far the run got, which decides whether it may.
-  let ordersSnapshot: { id: string; orders: ARealm['orders']; submitted: boolean }[] = []; // each submitted row's orders as loaded: what a failed run puts back
+  let ordersSnapshot: { id: string; orders: ARealmAsTheTurnRunsIt['orders']; submitted: boolean }[] = []; // each submitted row's orders as loaded: what a failed run puts back
   let _ordersCleared = false; // the orders were cleared in the database: a failure before the save restores them
   let _saveSent = false; // the save was sent: a failure from here re-reads the turn before restoring anything
   let _saveConflict = false; // set if the conditional state save finds the turn already advanced elsewhere

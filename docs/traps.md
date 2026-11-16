@@ -40,7 +40,8 @@ order is not changed. Checks: `npm run lint:arch` fails on a new import cycle (n
 Pollers, lists and anything that runs often select named columns (`Db`'s light lists) and read summaries from
 `games.meta`; the full world is loaded only when it's really needed, once. Checks: lint
 (`kc/big-tables-and-profiles-are-read-by-named-columns`) refuses every column of `games`, `game_players`, `turn_logs`
-or `profiles`, and `profiles`' `email`; the reads there when it came in are in `eslint-suppressions.json`.
+or `profiles`, and `profiles`' `email`; `Db`'s answers are typed by the columns each read names, so the compiler
+refuses a read of a column left out.
 [Detail](architecture/the-database-and-what-it-holds.md#select-on-big-tables).
 
 ## A new column must be optional at the write site

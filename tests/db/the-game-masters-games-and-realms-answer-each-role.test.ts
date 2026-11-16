@@ -93,6 +93,35 @@ const THE_LIGHT_COLUMNS = {
   ],
   realm: ['display_name', 'game_id', 'id', 'orders_submitted', 'player_index', 'user_id'],
 };
+/** The columns of the game the GM has open, and of its realms (P1-16u): every column the GM page reads, all but the
+ *  game's last change and its realms' days made and orders last sent. */
+const THE_OPEN_GAMES_COLUMNS = {
+  game: [
+    'block_eliminated_msgs',
+    'created_at',
+    'game_players',
+    'game_state',
+    'gm_user_id',
+    'id',
+    'max_players',
+    'max_turns',
+    'meta',
+    'name',
+    'status',
+    'turn',
+  ],
+  realm: [
+    'display_name',
+    'game_id',
+    'id',
+    'invite_code',
+    'orders',
+    'orders_submitted',
+    'player_index',
+    'turn_report',
+    'user_id',
+  ],
+};
 /** Every column of a game and of a realm, as the service role reads them (beforeAll). */
 let EVERY_COLUMN = { game: [''], realm: [''] };
 
@@ -256,7 +285,7 @@ describe('the reads: a game by its GM, its players and the Overlord; its realms 
         theErrorFor(role),
       ],
       one: reads ? [marchwoodsRealmsFor(role)] : null,
-      columns: reads ? EVERY_COLUMN : theColumnsOf(null),
+      columns: reads ? THE_OPEN_GAMES_COLUMNS : theColumnsOf(null),
       turn: reads ? { id: world.theGame, turn: 3, game_state: MARCHWOODS_WORLD } : null,
       noMeta: reads ? [['Marchwood'], ['game_state', 'id']] : [[], []],
     });
@@ -275,16 +304,20 @@ describe('the writes: a game made by a Game Master; changed by its GM and the Ov
       max_turns: 30,
       game_state: JSON.stringify({ mapSize: 'small' }),
     });
+    // the game made, as the service role reads it (the answer is its id only: P1-16u)
+    const made = answer.data
+      ? await world.theServiceRole.from('games').select('name,gm_user_id,status,turn').eq('id', answer.data.id).single()
+      : null;
     if (answer.data) await world.theServiceRole.from('games').delete().eq('id', answer.data.id);
     const makes = role === "the game's GM" || role === 'another GM';
     expect({
       error: itsError(answer),
-      made: answer.data && [answer.data.name, answer.data.gm_user_id, answer.data.status, answer.data.turn],
+      made: made?.data ? [made.data.name, made.data.gm_user_id, made.data.status, made.data.turn] : null,
       columns: answer.data ? Object.keys(answer.data).sort() : null,
     }).toEqual({
       error: makes ? null : role === 'signed out' ? NO_GRANT : REFUSED_BY_THE_RULES,
       made: makes ? [`Made-up Northreach of ${role}`, gm, 'setup', 0] : null,
-      columns: makes ? EVERY_COLUMN.game.filter((column) => column !== 'game_players') : null,
+      columns: makes ? ['id'] : null,
     });
   });
   test.for(THE_ROLES)('%s: changes a game, and the backfill writes its meta', async (role) => {

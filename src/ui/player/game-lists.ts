@@ -13,9 +13,11 @@ import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-
 import { _msgArr, _msgNum, msgChannelKeyOf, _activeSectionId, fetchGameSlots } from './dispatches.ts';
 import type {
   ADatabaseAnswer,
-  AGame,
   AGameForItsCard,
+  AGameForItsCardWithoutTheMetaColumn,
+  AGameOpenToJoin,
   ARealm,
+  ARealmForItsGameCard,
   ARealmsSlot,
 } from '../../db/the-db-interface-and-its-areas.ts';
 
@@ -145,7 +147,7 @@ export async function loadMyGames() {
   });
   // 2026-09-28 (Toby item 3): unread Dispatches per game, for the ✉ badge on each card.
   const unreadByGame = await fetchUnreadDispatchCounts(mySlots, allSlots);
-  const cardOf = (slot: ARealm) => {
+  const cardOf = (slot: ARealmForItsGameCard) => {
     const g = gamesById[slot.game_id];
     if (!g) return kcHtml`<div class="msg-info">Game data not available yet — the GM may still be setting up.</div>`;
     const statusLabel = slot.orders_submitted
@@ -327,9 +329,10 @@ export function gameArchivedP(g: { readonly meta?: unknown; readonly game_state?
   return !!theField(parseGameStateP(g), 'archived');
 }
 // Light read of games by id; if the meta column does not exist yet (the GM has not run the
-// one-line migration) the query errors on the unknown column and we fall back to the full rows.
+// one-line migration) the query errors on the unknown column and we fall back to the columns the
+// cards read there, the world among them (its settings).
 export async function fetchGamesLite(ids: readonly string[]) {
-  let r: ADatabaseAnswer<AGameForItsCard[]> | ADatabaseAnswer<AGame[]> =
+  let r: ADatabaseAnswer<AGameForItsCard[]> | ADatabaseAnswer<AGameForItsCardWithoutTheMetaColumn[]> =
     await thePagesDb.thePlayersGames.theseGamesForTheirCards(ids);
   if (r.error && /meta/i.test(r.error.message || '')) r = await thePagesDb.thePlayersGames.theseGamesEveryColumn(ids);
   return r;
@@ -475,7 +478,7 @@ export async function loadOpenGames() {
     p9: '9 realms (16×11)',
     p10: '10 realms (16×11)',
   };
-  const gameInfo = (g: AGame) => {
+  const gameInfo = (g: AGameOpenToJoin) => {
     let cfg: unknown = {};
     try {
       cfg = typeof g.game_state === 'string' ? theStateParsed(g.game_state) : thisOrElse(g.game_state, {});
@@ -492,7 +495,7 @@ export async function loadOpenGames() {
   };
   // Human-joinable capacity = max players minus GM bot realms (bots stay hidden from players). An
   // all-bot game has capacity 0 and never appears as joinable.
-  const humanCapOf = (g: AGame) => {
+  const humanCapOf = (g: AGameOpenToJoin) => {
     let cfg: unknown = {};
     try {
       cfg = typeof g.game_state === 'string' ? theStateParsed(g.game_state) : thisOrElse(g.game_state, {});
@@ -510,7 +513,7 @@ export async function loadOpenGames() {
   // every game once it goes active) read as Public, so running games are unaffected. This is a
   // UI-level gate matching the existing client-side capacity filter — see note in DEV_LOG about
   // tightening with RLS later.
-  const visOf = (g: AGame) => {
+  const visOf = (g: AGameOpenToJoin) => {
     let cfg: unknown = {};
     try {
       cfg = typeof g.game_state === 'string' ? theStateParsed(g.game_state) : thisOrElse(g.game_state, {});
@@ -521,7 +524,7 @@ export async function loadOpenGames() {
     const invited = isPrivate ? theField(cfg, 'invited') : undefined;
     return { private: isPrivate, invited: isPrivate && isAList(invited) ? invited : [] };
   };
-  const canSee = (g: AGame) => {
+  const canSee = (g: AGameOpenToJoin) => {
     const v = visOf(g);
     return !v.private || v.invited.includes(theSignedInAccountsId());
   };

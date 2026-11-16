@@ -1,9 +1,4 @@
 {
-  "src/db/the-db-interface-and-its-areas.ts": {
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 16
-    }
-  },
   "src/engine/battle/battle-report-lines-and-force-markers.ts": {
     "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
       "count": 1

@@ -4,14 +4,17 @@ import { computeStandings } from '../../engine/titles/reckoning.ts';
 import { thePagesDb } from './config.ts';
 import { kcHtml } from '../shared/kc-safe.ts';
 import { theField, thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
-import type { AGameWithItsRealms, ARealm } from '../../db/the-db-interface-and-its-areas.ts';
+import type {
+  ARealmOfTheGameTheGmHasOpen,
+  TheGameTheGmHasOpenWithItsRealms,
+} from '../../db/the-db-interface-and-its-areas.ts';
 import type { TheStatisticsOfTheTurn } from '../../views/the-statistics-of-the-turn.ts';
 
 /** The game the GM has opened, as the game screen's read gives it (game-detail.ts and turn-zero.ts set `currentGame`
- *  to it): every column, with its realms'. */
-export type TheGameTheGmHasOpen = AGameWithItsRealms;
+ *  to it): every column the GM page reads, with its realms'. */
+export type TheGameTheGmHasOpen = TheGameTheGmHasOpenWithItsRealms;
 /** The realms of the game the GM has opened, as `currentGamePlayers` holds them (none before a game is opened). */
-export type TheRealmsOfTheGameTheGmHasOpen = readonly ARealm[];
+export type TheRealmsOfTheGameTheGmHasOpen = readonly ARealmOfTheGameTheGmHasOpen[];
 /** A games row as the GM page reads its settings: its `meta` and `game_state` columns, JSON words or parsed. */
 export interface AGamesRowAsItsSettingsAreRead {
   readonly meta?: unknown;

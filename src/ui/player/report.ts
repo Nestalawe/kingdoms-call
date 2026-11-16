@@ -50,7 +50,7 @@ import {
 } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 import { theStateParsed } from './game-lists.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
-import type { AGameForItsReport, ARealm } from '../../db/the-db-interface-and-its-areas.ts';
+import type { AGameForItsReport, ARealmForItsReportScreen } from '../../db/the-db-interface-and-its-areas.ts';
 import type { AHeroAsTheOrderFormBuildsHim, TheReportAsTheOrderFormHoldsIt } from './orders-form.ts';
 
 /** The report as the order form holds it, the type the report screen's report builds on. */
@@ -234,7 +234,10 @@ export interface TheReportAsTheReportScreenReadsIt extends TheReportTheFormHolds
 }
 
 /** A realm's seat as the report screen holds it: its row, the game it hangs on it, and the game's live turn. */
-type TheSeatAsTheReportScreenHoldsIt = ARealm & { games?: AGameForItsReport | null; _liveTurn?: number };
+type TheSeatAsTheReportScreenHoldsIt = ARealmForItsReportScreen & {
+  games?: AGameForItsReport | null;
+  _liveTurn?: number;
+};
 
 /** A row an answer gave, which the code reads unchecked: for none, the TypeError the read threw. */
 function theRowAnswered<T>(row: T | null, field: string): T {
@@ -355,7 +358,7 @@ function isATurnReport(held: unknown): held is TheReportAsTheReportScreenReadsIt
 
 /** The turn report the seat holds, as the page reads it: its JSON parsed, or the value itself, `{}` for none. Anything
  *  but an object throws the TypeError the page's first write on it (`_liveTurn`) threw. */
-function theTurnReportOf(seat: ARealm): TheReportAsTheReportScreenReadsIt {
+function theTurnReportOf(seat: Pick<ARealmForItsReportScreen, 'turn_report'>): TheReportAsTheReportScreenReadsIt {
   const held =
     typeof seat.turn_report === 'string' ? theStateParsed(seat.turn_report) : thisOrElse(seat.turn_report, {});
   if (isATurnReport(held)) return held;
