@@ -6,7 +6,7 @@
 // tables are typed by the generated types (database.types.ts: npx supabase gen types typescript --local, then
 // Prettier; never edited by hand), so a misspelt table, column or function is a compiler error.
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from './database.types.ts';
+import type { Database, Json } from './database.types.ts';
 
 type TheGeneratedTables = Database['public']['Tables'];
 /** A dispatch as the Dispatches panel sends it: its sender's account `null` when no account is signed in (the database
@@ -20,17 +20,25 @@ type ANewDispatch = Omit<TheGeneratedTables['game_messages']['Insert'], 'from_us
 type AGamesChange = Omit<TheGeneratedTables['games']['Update'], 'meta'> & { meta?: unknown };
 
 /** The generated types, but for a database function's argument that takes null on purpose (the generator writes every
- *  argument as never null): account_suspend's p_until (null: until the suspension is lifted) and gm_reported_messages'
- *  p_game (null: every game's); a dispatch's sender, which the page may send as null (`ANewDispatch`); and a game's
- *  meta, which the GM page sends as it built it (`AGamesChange`). */
+ *  argument as never null): account_suspend's p_until (null: until the suspension is lifted), gm_reported_messages'
+ *  p_game (null: every game's) and submit_orders' p_submitted (null: kept as saved; its p_orders, any JSON, takes
+ *  null as it is: the orders kept); a dispatch's sender, which the page may send as null (`ANewDispatch`); and a
+ *  game's meta, which the GM page sends as it built it (`AGamesChange`). */
 export type TheDatabase = Omit<Database, 'public'> & {
   readonly public: Omit<Database['public'], 'Functions' | 'Tables'> & {
     readonly Tables: Omit<TheGeneratedTables, 'game_messages' | 'games'> & {
       readonly game_messages: Omit<TheGeneratedTables['game_messages'], 'Insert'> & { Insert: ANewDispatch };
       readonly games: Omit<TheGeneratedTables['games'], 'Update'> & { Update: AGamesChange };
     };
-    readonly Functions: Omit<Database['public']['Functions'], 'account_suspend' | 'gm_reported_messages'> & {
+    readonly Functions: Omit<
+      Database['public']['Functions'],
+      'account_suspend' | 'gm_reported_messages' | 'submit_orders'
+    > & {
       readonly account_suspend: { Args: { p_user: string; p_until: string | null }; Returns: undefined };
+      readonly submit_orders: {
+        Args: { p_game: string; p_for_turn: number; p_orders: Json; p_submitted: boolean | null };
+        Returns: undefined;
+      };
       readonly gm_reported_messages: {
         Args: { p_game: string | null };
         Returns: Database['public']['Functions']['gm_reported_messages']['Returns'];
@@ -542,23 +550,27 @@ export interface Db {
       realm: number,
     ) => PromiseLike<ADatabaseAnswer<ATurnsLog[]>>;
   };
-  /** The orders (game_players' orders: the realm's draft or submitted orders, one JSON text), as the player writes them,
-   *  and the turn they are for (games). Each writes only the realm `realm` (P2-05 later checks them in the database). */
+  /** The orders (game_players' orders: the realm's draft or submitted orders, one JSON text), as the player saves them,
+   *  each through the database's function submit_orders (P2-05): it saves the orders of the realm the signed-in account
+   *  holds in the game `game`, for the turn `turn` the order form shows, and refuses them in its own words when the game
+   *  isn't running, has moved on to another turn, or is past the turn's deadline (R-184). */
   readonly theOrders: {
-    /** Saves the draft `orders` of the realm `realm`: its orders no longer submitted. */
-    readonly saveThisRealmsDraft: (realm: string, orders: string) => PromiseLike<ADatabaseAnswer<null>>;
-    /** Saves the orders `orders` of the realm `realm` (its hero order merged in), whether submitted or not. */
-    readonly saveThisRealmsHeroOrder: (realm: string, orders: string) => PromiseLike<ADatabaseAnswer<null>>;
-    /** Revise: the realm `realm`'s orders no longer submitted, its orders kept. */
-    readonly reopenThisRealmsOrders: (realm: string) => PromiseLike<ADatabaseAnswer<null>>;
-    /** Submits the orders `orders` of the realm `realm`, at the time `submittedAt`. */
-    readonly submitThisRealmsOrders: (
-      realm: string,
+    /** Saves the draft `orders`: the realm's orders no longer submitted. */
+    readonly saveThisRealmsDraft: (game: string, turn: number, orders: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** Saves the orders `orders` (the hero order merged in), submitted or not as they were. */
+    readonly saveThisRealmsHeroOrder: (
+      game: string,
+      turn: number,
       orders: string,
-      submittedAt: string,
-    ) => PromiseLike<ADatabaseAnswer<null>>;
-    /** The turn the game `game` is on (Submit checks it has not moved on). */
-    readonly theTurnOfThisGame: (game: string) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'turn'>>>;
+    ) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** Revise: the realm's orders no longer submitted, its orders kept. */
+    readonly reopenThisRealmsOrders: (game: string, turn: number) => PromiseLike<ADatabaseAnswer<unknown>>;
+    /** Submits the orders `orders`, stamped with the database's time. */
+    readonly submitThisRealmsOrders: (
+      game: string,
+      turn: number,
+      orders: string,
+    ) => PromiseLike<ADatabaseAnswer<unknown>>;
   };
   /** The GM's games (games), as the GM page lists, opens, makes, sets, archives and backfills them. */
   readonly theGameMastersGames: {
@@ -914,17 +926,14 @@ export function makeTheDbFromItsClient(client: TheDatabaseClient): Db {
         client.from('turn_logs').select('*').eq('game_id', game).eq('turn', turn).eq('player_index', realm).limit(1),
     },
     theOrders: {
-      saveThisRealmsDraft: (realm, orders) =>
-        client.from('game_players').update({ orders, orders_submitted: false }).eq('id', realm),
-      saveThisRealmsHeroOrder: (realm, orders) => client.from('game_players').update({ orders }).eq('id', realm),
-      reopenThisRealmsOrders: (realm) =>
-        client.from('game_players').update({ orders_submitted: false }).eq('id', realm),
-      submitThisRealmsOrders: (realm, orders, submittedAt) =>
-        client
-          .from('game_players')
-          .update({ orders, orders_submitted: true, last_submitted_at: submittedAt })
-          .eq('id', realm),
-      theTurnOfThisGame: (game) => client.from('games').select('turn').eq('id', game).single(),
+      saveThisRealmsDraft: (game, turn, orders) =>
+        client.rpc('submit_orders', { p_game: game, p_for_turn: turn, p_orders: orders, p_submitted: false }),
+      saveThisRealmsHeroOrder: (game, turn, orders) =>
+        client.rpc('submit_orders', { p_game: game, p_for_turn: turn, p_orders: orders, p_submitted: null }),
+      reopenThisRealmsOrders: (game, turn) =>
+        client.rpc('submit_orders', { p_game: game, p_for_turn: turn, p_orders: null, p_submitted: false }),
+      submitThisRealmsOrders: (game, turn, orders) =>
+        client.rpc('submit_orders', { p_game: game, p_for_turn: turn, p_orders: orders, p_submitted: true }),
     },
     theGameMastersGames: {
       oneGamesMeta: () => client.from('games').select('id,meta').limit(1),

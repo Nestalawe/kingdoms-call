@@ -56,7 +56,7 @@ deadline and the moment the GM's tab runs the turn. The deadline is 20:00. At 20
 march for Sir Aldric; the GM's tab runs the turn at 21:00.
 
 1. **Refused too, with the same message.** Impact: after the deadline the order form saves nothing, and the turn runs
-   on what each realm had saved by 20:00. This is how P2-05's database function is built until a maintainer rules.
+   on what each realm had saved by 20:00. This is how the game works now (P2-05), until a maintainer rules.
 2. **Allowed, but they don't count this turn.** Impact: Bram can keep working on his draft after 20:00, and the turn
    still runs on what he had saved by 20:00. The turn would need to tell a draft saved late from one saved in time:
    a change to the turn.

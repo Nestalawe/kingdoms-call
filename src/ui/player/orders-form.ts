@@ -47,6 +47,7 @@ import {
   restoreSubmitWrap,
   doSaveOrders,
   setOrdersSubmittedUI,
+  showTheRefusalOfASaveInTheOrderForm,
 } from './briefing-and-submit.ts';
 import { druidNeedP, formatRace, skillRowHTML, armyLabel } from './skills-and-projections.ts';
 import { buildTargetField, refreshExploreNotes } from './order-targets.ts';
@@ -1101,9 +1102,11 @@ export async function reviseOrders(): Promise<void> {
   // Mark orders as not submitted so the player can edit and resubmit
   const gp = currentGamePlayer;
   if (!gp) return;
-  const { error } = await thePagesDb.theOrders.reopenThisRealmsOrders(String(gp.id));
+  // Opened again for the turn the form shows: refused once the game has moved on or the turn's deadline has passed.
+  const theFormsTurn = (currentReport?._liveTurn ?? 0) || (currentReport?.turn ?? 0) || 1;
+  const { error } = await thePagesDb.theOrders.reopenThisRealmsOrders(String(gp.game_id), theFormsTurn);
   if (error) {
-    console.error(error);
+    showTheRefusalOfASaveInTheOrderForm(error.message);
     return;
   }
   // Update local state and rebuild form with existing orders pre-filled

@@ -2,14 +2,22 @@
 // P1-16m): the lines P1-16m changed in game-lists.ts and briefing-and-submit.ts that the screen tours don't reach, or
 // reach only in part (npm run proof:tours), each run here on the value that reaches it, so a fault planted in one is red:
 // the My Games cards (their tally, deadline, archive and unread marks), the Open Games cards (their capacity, world and
-// GM), the live poll, the Game Master offer, the three descriptions, and the orders saved and sent.
+// GM), the live poll, the Game Master offer, the three descriptions, and the orders saved and sent: the draft, Revise and
+// Submit each through the database's function, for the game and the turn the form shows (the stand-in's player's world,
+// tests/lib/fake-db.ts, saves them as the function does), and a refusal (a turn moved on, the deadline passed) shown in
+// the form in the function's words.
 // Level 4 (page): the two files load the page's start-up (its database client), so no lower level reaches them; the
 // portal is booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every
 // module loaded, and each case stages the screen's state as the tours do.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
-import { makeAFakeDb } from '../lib/fake-db.ts';
-import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
+import {
+  makeAFakeDb,
+  makeAFakeDbHoldingThePlayersWorld,
+  THE_WORDS_SUBMIT_ORDERS_REFUSES_WITH as REFUSED,
+  type ThePlayersWorld,
+} from '../lib/fake-db.ts';
+import type { ADatabaseAnswer, AGame, ARealm, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
 const errs: string[] = [];
 let P: PageWindow;
@@ -45,9 +53,6 @@ const answers: Record<string, () => AnAnswer> = {
   offer: () => ok(null),
   dispatches: () => ok([]),
   readMarks: () => ok([]),
-  draft: () => ok(null),
-  submit: () => ok(null),
-  turn: () => ok({ turn: 3 }),
 };
 const fresh = { ...answers };
 const asked: { readonly what: string; readonly args: unknown[] }[] = [];
@@ -59,6 +64,56 @@ const answering =
     const answer = answers[what];
     if (!answer) throw new Error(`no answer for ${what}`);
     return Promise.resolve(answer() as never);
+  };
+
+/** The game the orders are saved in: running, on turn 3, with no deadline (a case may stage one in its meta). */
+const theRunningGame = (): AGame => ({
+  id: 'G1',
+  name: 'Made-up Marchwood',
+  gm_user_id: 'GM1',
+  status: 'active',
+  turn: 3,
+  meta: null,
+  game_state: null,
+  max_players: 4,
+  max_turns: 30,
+  block_eliminated_msgs: false,
+  created_at: null,
+  updated_at: null,
+});
+/** The realm U1 holds in it, R1, its orders not yet saved. */
+const theSeatsRealm = (): ARealm => ({
+  id: 'R1',
+  game_id: 'G1',
+  user_id: 'U1',
+  player_index: 0,
+  display_name: 'Thornmere',
+  orders: null,
+  orders_submitted: false,
+  turn_report: null,
+  created_at: null,
+  invite_code: null,
+  last_submitted_at: null,
+});
+/** The stand-in's player's world the orders are saved into, as submit_orders saves them (set back before each case). */
+const ordersWorld: ThePlayersWorld = {
+  me: 'U1',
+  names: [],
+  games: [],
+  realms: [],
+  dispatchRefused: null,
+  readsOfAnotherAccountsRealms: [],
+};
+const theWorldsOrders = makeAFakeDbHoldingThePlayersWorld('20261010000000', ordersWorld).db.theOrders;
+/** What a case does while a save is on its way (none unless it sets one). */
+const whileSaving: Partial<Record<string, () => void>> = {};
+/** A save of the orders, asked of the stand-in's world (noted as `what`, with its arguments). */
+const saving =
+  <A extends unknown[]>(what: string, save: (...args: A) => PromiseLike<ADatabaseAnswer<unknown>>) =>
+  (...args: A): PromiseLike<ADatabaseAnswer<unknown>> => {
+    asked.push({ what, args });
+    whileSaving[what]?.();
+    return save(...args);
   };
 
 function theFakeDb(): Db {
@@ -87,10 +142,10 @@ function theFakeDb(): Db {
       thisAccountsReadMarksInTheseGames: answering('readMarks'),
     },
     theOrders: {
-      ...bare.theOrders,
-      saveThisRealmsDraft: answering('draft'),
-      submitThisRealmsOrders: answering('submit'),
-      theTurnOfThisGame: answering('turn'),
+      saveThisRealmsDraft: saving('draft', theWorldsOrders.saveThisRealmsDraft),
+      saveThisRealmsHeroOrder: saving('heroOrder', theWorldsOrders.saveThisRealmsHeroOrder),
+      reopenThisRealmsOrders: saving('revise', theWorldsOrders.reopenThisRealmsOrders),
+      submitThisRealmsOrders: saving('submit', theWorldsOrders.submitThisRealmsOrders),
     },
   };
 }
@@ -123,6 +178,9 @@ beforeAll(async () => {
 beforeEach(() => {
   Object.assign(answers, fresh);
   asked.length = 0;
+  ordersWorld.games.splice(0, Infinity, theRunningGame());
+  ordersWorld.realms.splice(0, Infinity, theSeatsRealm());
+  for (const what of Object.keys(whileSaving)) Reflect.deleteProperty(whileSaving, what);
   stage('currentUser = { id: "U1" }; currentGamePlayer = null; currentReport = null;');
 });
 afterAll(() => {
@@ -550,8 +608,24 @@ describe('Save and Submit', () => {
   const theSaved = (what: 'draft' | 'submit'): Record<string, unknown> => {
     const last = theAsked(what).at(-1);
     if (!last) throw new Error(`nothing sent to ${what}`);
-    return JSON.parse(String(last[1])) as Record<string, unknown>;
+    return JSON.parse(String(last[2])) as Record<string, unknown>;
   };
+  /** The game and the turn each save of `what` named. */
+  const theGameAndTurnAsked = (what: string): unknown[][] => theAsked(what).map((args) => args.slice(0, 2));
+  /** The game the orders are saved in, as the stand-in holds it now. */
+  const theGame = (): AGame => {
+    const g = ordersWorld.games[0];
+    if (!g) throw new Error('no game');
+    return g;
+  };
+  /** The realm R1, as the stand-in holds it now. */
+  const theRealmNow = (): ARealm => {
+    const r = ordersWorld.realms[0];
+    if (!r) throw new Error('no realm');
+    return r;
+  };
+  /** A turn mode whose deadline passed long ago. */
+  const A_PASSED_DEADLINE = { turnMode: { mode: 'deadline', nextDeadlineAt: '2000-01-01T20:00:00.000Z' } };
   const hero = { id: 'h1', name: 'Arlen', locationId: 7 };
   beforeEach(() => {
     theElement('prev-report-banner').style.display = 'none';
@@ -582,9 +656,13 @@ describe('Save and Submit', () => {
       <input type="hidden" id="ep-tactics-h2" value="AR,ME">
       <input id="ep-notes-h2" value="hold the ford">
       <input type="hidden" id="ep-tactics-h3" value="DF">`);
+    ordersWorld.games.splice(0, 1, { ...theGame(), turn: 4 });
     await call('doSaveOrders');
     const saved = theSaved('draft');
-    expect(theAsked('draft')[0]?.[0]).toBe('R1');
+    expect(theGameAndTurnAsked('draft'), "through the database's function, for the game and the form's turn").toEqual([
+      ['G1', 4],
+    ]);
+    expect(theRealmNow()).toMatchObject({ orders: JSON.stringify(saved), orders_submitted: false });
     expect(saved['forTurn']).toBe(4);
     const orders = saved['orders'] as Record<string, Record<string, unknown>[]>;
     expect(orders['h1']?.[0]).toEqual({ action: 'Move', target: '12', extra: '', desc: 'Move — 12' });
@@ -602,7 +680,7 @@ describe('Save and Submit', () => {
     expect(textOf('report-status-pill')).toBe('⏳ Orders needed');
     expect(theElement('save-msg').style.display).toBe('block');
   });
-  test("a draft's turn: the live turn, else the report's, else 1; a refused save keeps the old draft", async () => {
+  test("a draft's turn: the live turn, else the report's, else 1, named to the database too", async () => {
     stage('currentGamePlayer = { id: "R1", game_id: "G1", orders: "old" };');
     form('');
     for (const [report, turn] of [
@@ -610,34 +688,46 @@ describe('Save and Submit', () => {
       [{ _liveTurn: 0, turn: 4 }, 4],
       [{}, 1],
     ] as const) {
+      ordersWorld.games.splice(0, 1, { ...theGame(), turn });
       stage(`currentReport = ${JSON.stringify(report)};`);
       await call('doSaveOrders');
       expect(theSaved('draft')['forTurn']).toBe(turn);
+      expect(theGameAndTurnAsked('draft').at(-1)).toEqual(['G1', turn]);
     }
-    stage('currentGamePlayer.orders = "old"; currentReport = null;');
-    answers['draft'] = () => refused('not saved');
+  });
+  test("a draft refused, its turn moved on or its deadline passed, keeps the old draft and says why in the function's words", async () => {
+    stage('currentGamePlayer = { id: "R1", game_id: "G1", orders: "old" }; currentReport = { _liveTurn: 3 };');
+    theElement('orders-msg').innerHTML = '';
+    form('');
+    ordersWorld.games.splice(0, 1, { ...theGame(), turn: 4 });
+    await call('doSaveOrders');
+    expect(theGameAndTurnAsked('draft')).toEqual([['G1', 3]]);
+    expect(stage('currentGamePlayer.orders')).toBe('old');
+    expect(textOf('orders-msg')).toBe(`Error: ${REFUSED.theTurn(3, 4)}`);
+    ordersWorld.games.splice(0, 1, { ...theGame(), turn: 3, meta: A_PASSED_DEADLINE });
     await call('doSaveOrders');
     expect(stage('currentGamePlayer.orders')).toBe('old');
+    expect(textOf('orders-msg')).toBe(`Error: ${REFUSED.late}`);
+    expect(theRealmNow().orders).toBeNull();
   });
-  test('Submit stops when the turn has moved on, or with no seat, and rebuilds the button', async () => {
+  test("Submit on a form whose turn has moved on is refused in the function's words; with no seat it asks nothing; each rebuilds the button", async () => {
     stage(`currentReport = ${JSON.stringify({ _liveTurn: 3, characters: [] })};`);
     stage('currentGamePlayer = { id: "R1", game_id: "G1" };');
-    answers['turn'] = () => ok({ turn: 4 });
+    form('');
+    ordersWorld.games.splice(0, 1, { ...theGame(), turn: 4 });
     await call('doSubmitOrders');
-    expect(theAsked('turn')).toEqual([['G1']]);
-    expect(textOf('orders-msg')).toContain('The GM has already resolved this turn.');
+    expect(theGameAndTurnAsked('submit'), "the form's turn, not the game's").toEqual([['G1', 3]]);
+    expect(textOf('orders-msg')).toBe(`Error: ${REFUSED.theTurn(3, 4)}`);
     expect(textOf('orders-submit-wrap')).toContain('Submit Orders for Turn 3');
-    expect(theAsked('submit')).toEqual([]);
-    answers['turn'] = () => ok({ turn: 3 });
+    expect(theRealmNow()).toMatchObject({ orders: null, orders_submitted: false });
     stage('currentGamePlayer = { game_id: "G1" };');
     await call('doSubmitOrders');
     expect(textOf('orders-msg')).toBe('Session error — please reload the page.');
     stage('currentGamePlayer = null;');
-    answers['turn'] = () => ok(null);
     await call('doSubmitOrders');
-    // (the turn is asked of no game: the request names `undefined` as the filter writes it, whichever the page hands)
-    expect(theAsked('turn')).toHaveLength(3);
-    expect(theAsked('submit')).toEqual([]);
+    expect(textOf('orders-msg')).toBe('Session error — please reload the page.');
+    expect(textOf('orders-submit-wrap')).toContain('Submit Orders for Turn 3');
+    expect(theAsked('submit')).toHaveLength(1);
   });
   test("Submit sends each hero's orders, the Spy's target by name, a lair's province, and the cards' orders", async () => {
     const spied = { id: 'v9', name: 'Mara' };
@@ -668,6 +758,8 @@ describe('Save and Submit', () => {
       <div id="charm-orders-b"></div>`);
     await call('doSubmitOrders');
     const sent = theSaved('submit');
+    expect(theGameAndTurnAsked('submit')).toEqual([['G1', 3]]);
+    expect(theRealmNow()).toMatchObject({ orders: JSON.stringify(sent), orders_submitted: true });
     const orders = sent['orders'] as Record<string, Record<string, unknown>[]>;
     expect(orders['h1']?.map((o) => o['desc'])).toEqual([
       'Spy — on Mara',
@@ -692,13 +784,14 @@ describe('Save and Submit', () => {
     expect(stage('currentGamePlayer.orders')).toBe(JSON.stringify(sent));
     expect(stage('currentGamePlayer.orders_submitted')).toBe(true);
   });
-  test("a refused Submit says so in the database's words; Cancel empties the message and rebuilds the button", async () => {
+  test("Submit after the deadline is refused in the function's words; Cancel empties the message and rebuilds the button", async () => {
     stage(`currentReport = ${JSON.stringify({ turn: 3, characters: [] })};`);
     stage('currentGamePlayer = { id: "R1", game_id: "G1" };');
     form('');
-    answers['submit'] = () => refused('the orders were refused');
+    ordersWorld.games.splice(0, 1, { ...theGame(), meta: A_PASSED_DEADLINE });
     await call('doSubmitOrders');
-    expect(textOf('orders-msg')).toBe('Error: the orders were refused');
+    expect(textOf('orders-msg')).toBe(`Error: ${REFUSED.late}`);
+    expect(theRealmNow()).toMatchObject({ orders: null, orders_submitted: false });
     expect(textOf('orders-submit-wrap')).toContain('Submit Orders for Turn 3');
     call('cancelSubmit');
     expect(textOf('orders-msg')).toBe('');
@@ -712,13 +805,36 @@ describe('Save and Submit', () => {
     form('');
     call('cancelSubmit');
     let seen: unknown[] = [];
-    answers['turn'] = () => {
+    whileSaving['submit'] = () => {
       const btn = theElement('submit-btn');
       seen = [Reflect.get(btn, 'disabled'), btn.textContent];
-      return ok({ turn: 1 });
     };
+    ordersWorld.games.splice(0, 1, { ...theGame(), turn: 1 });
     await call('doSubmitOrders');
     expect(seen).toEqual([true, 'Saving…']);
     expect(theSaved('submit')['forTurn']).toBe(1);
+  });
+  test("Revise opens the submitted orders again through the database's function, for the form's turn, the orders kept", async () => {
+    ordersWorld.realms.splice(0, 1, { ...theRealmNow(), orders: '{"forTurn":3}', orders_submitted: true });
+    stage(`currentReport = ${JSON.stringify({ _liveTurn: 3, turn: 2, characters: [] })};`);
+    stage(`currentGamePlayer = { id: "R1", game_id: "G1", orders: '{"forTurn":3}', orders_submitted: true };`);
+    await call('reviseOrders');
+    expect(theAsked('revise')).toEqual([['G1', 3]]);
+    expect(theRealmNow()).toMatchObject({ orders: '{"forTurn":3}', orders_submitted: false });
+    expect(textOf('orders-msg')).toContain('Revising orders');
+    expect(textOf('report-status-pill')).toBe('⏳ Orders needed');
+  });
+  test("Revise refused, its turn moved on or its deadline passed, says why in the function's words; the orders stay submitted", async () => {
+    ordersWorld.realms.splice(0, 1, { ...theRealmNow(), orders: '{"forTurn":3}', orders_submitted: true });
+    stage(`currentReport = ${JSON.stringify({ _liveTurn: 3, characters: [] })};`);
+    stage(`currentGamePlayer = { id: "R1", game_id: "G1", orders: '{"forTurn":3}', orders_submitted: true };`);
+    ordersWorld.games.splice(0, 1, { ...theGame(), turn: 4 });
+    await call('reviseOrders');
+    expect(theAsked('revise')).toEqual([['G1', 3]]);
+    expect(textOf('orders-msg')).toBe(`Error: ${REFUSED.theTurn(3, 4)}`);
+    ordersWorld.games.splice(0, 1, { ...theGame(), turn: 3, meta: A_PASSED_DEADLINE });
+    await call('reviseOrders');
+    expect(textOf('orders-msg')).toBe(`Error: ${REFUSED.late}`);
+    expect(theRealmNow().orders_submitted).toBe(true);
   });
 });

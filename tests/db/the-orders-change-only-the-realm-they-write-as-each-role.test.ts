@@ -1,20 +1,26 @@
-// The orders, an area of the page's Db (src/db/the-db-interface-and-its-areas.ts: theOrders; plan P1-17k), on a
+// The orders, an area of the page's Db (src/db/the-db-interface-and-its-areas.ts: theOrders; plan P1-17k, P2-05), on a
 // supabase-js client of the local Supabase, as each role (signed out, a player, a rival, the game's GM, another GM, the
 // Overlord):
-// - the draft, the hero order, Revise and Submit (game_players): each changes only the realm it writes, and only the
-//   columns it names; a realm is changed by its own player, the game's GM and the Overlord, never by a rival or another
-//   GM (no row matched, no error), and a visitor is refused for want of a grant;
-// - the turn check (games): the turn of the game, read by its GM, its players and the Overlord.
-// The orders are written today as they are (P1-17's Open choice 3); P2-05 later checks them in the database.
-// Each test sets every realm's orders back through the local service role first.
+// - the draft, the hero order, Revise and Submit save through the database's function submit_orders, for the game and
+//   the turn the order form shows: each changes only the realm the signed-in account holds in that game (the player's,
+//   the rival's), and only what it saves; the game's GM, another GM and the Overlord hold no realm there and are
+//   refused, and a visitor is refused for want of a grant;
+// - each save for a past turn (a form left open while the turn ran), or after the turn's deadline (staged in the game's
+//   meta, a day long past), is refused with the function's words, and no realm changes; before a deadline still to come
+//   (a year far ahead), it is saved.
+// The refusals' words are the ones the stand-in gives (tests/lib/fake-db.ts, THE_WORDS_SUBMIT_ORDERS_REFUSES_WITH), so
+// the page tests' stand-in says what the database says. Each test sets every realm's orders back through the local
+// service role first.
 // Level db (the access layer, against the local Supabase): the queries and the access rules together, which no lower
-// level holds (pgTAP checks the rules in SQL; the page tests run on the stand-in).
-import { afterAll, beforeAll, beforeEach, describe, expect, inject, test } from 'vitest';
+// level holds (pgTAP checks the function in SQL; the page tests run on the stand-in).
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, inject, test } from 'vitest';
 import {
   makeTheDbFromItsClient,
+  type ADatabaseAnswer,
   type Db,
   type TheDatabaseClient,
 } from '../../src/db/the-db-interface-and-its-areas.ts';
+import { THE_WORDS_SUBMIT_ORDERS_REFUSES_WITH as REFUSED } from '../lib/fake-db.ts';
 import {
   makeAMadeUpWorld,
   THE_ROLES,
@@ -33,9 +39,7 @@ const dbOf = (role: ARole): Db => {
   return makeTheDbFromItsClient(client);
 };
 /** A refusal for want of a grant (signed out: the anon role has none), in its words. */
-const NO_GRANT: unknown = expect.stringMatching(/permission denied/);
-/** A single row's read that found none (or one it may not read), in the database's words. */
-const NO_SUCH_ROW: unknown = expect.stringMatching(/^Cannot coerce the result to a single JSON object$/);
+const NO_GRANT: unknown = expect.stringMatching(/^permission denied for function submit_orders$/);
 /** The error's words a call answered, or null. */
 const itsError = (answer: { readonly error: { readonly message: string } | null }): string | null =>
   answer.error?.message ?? null;
@@ -49,19 +53,18 @@ const idOfRealm = (name: ARealmsName): string => {
   if (id === undefined) throw new Error(`no realm ${name}`);
   return id;
 };
-/** The two realms a test writes: the player's and the rival's. */
-const THE_REALMS_WRITTEN = ['Ashford', 'Brackwater'] as const;
-/** Who changes each realm written: its own player, the game's GM and the Overlord. */
-const changes = (role: ARole, realm: (typeof THE_REALMS_WRITTEN)[number]): boolean =>
-  role === (realm === 'Ashford' ? 'a player' : 'a rival') || role === "the game's GM" || role === 'the Overlord';
-/** Each role's answer to a write: a visitor's refusal for want of a grant, else no error (none matched, or one). */
-const theErrorFor = (role: ARole): unknown => (role === 'signed out' ? NO_GRANT : null);
+/** The realm `role` holds in the game: the player's Ashford, the rival's Brackwater, else none. */
+const theRealmOf = (role: ARole): ARealmsName | null =>
+  role === 'a player' ? 'Ashford' : role === 'a rival' ? 'Brackwater' : null;
+/** Each role's answer to a save for the game's turn: a visitor's refusal for want of a grant, no realm held, or none. */
+const theErrorFor = (role: ARole): unknown =>
+  role === 'signed out' ? NO_GRANT : theRealmOf(role) === null ? REFUSED.noRealm : null;
 
 /** A realm's orders columns, as a test reads them back. */
 interface ARealmsOrders {
   readonly orders: unknown;
   readonly submitted: boolean;
-  readonly submittedAt: number | null;
+  readonly submittedAt: unknown;
 }
 /** The time every realm's orders were last submitted, before a test. */
 const BEFORE = Date.parse('2026-01-02T03:04:05.000Z');
@@ -104,8 +107,23 @@ const everyRealmNow = async (): Promise<Record<ARealmsName, ARealmsOrders>> => {
   });
   return Object.fromEntries(now) as Record<ARealmsName, ARealmsOrders>;
 };
+/** Stages the game's turn mode (null: none saved), through the service role. */
+const stageTheTurnMode = async (turnMode: Record<string, unknown> | null): Promise<void> => {
+  const { error } = await world.theServiceRole
+    .from('games')
+    .update({ meta: turnMode === null ? null : { turnMode } })
+    .eq('id', world.theGame);
+  if (error) throw new Error(`staging the turn mode: ${error.message}`);
+};
+/** A turn mode with its next deadline at `at`. */
+const aDeadlineAt = (at: string): Record<string, unknown> => ({
+  mode: 'deadline',
+  time: '20:00',
+  everyDays: 1,
+  nextDeadlineAt: at,
+});
 
-/** The game's turn (beforeAll): not the other game's, so a read of the wrong game shows. */
+/** The game's turn (beforeAll): not the other game's, so a save for the wrong game shows. */
 const THE_GAMES_TURN = 4;
 
 beforeAll(async () => {
@@ -133,69 +151,57 @@ afterAll(async () => {
   await world.removeIt();
 });
 
-/** Each role and each realm it writes. */
-const EACH_ROLE_AND_REALM = THE_ROLES.flatMap((role) => THE_REALMS_WRITTEN.map((realm) => [role, realm] as const));
-/** The new orders a test writes into `realm`. */
-const theNewOrders = (realm: ARealmsName): string =>
-  JSON.stringify({ orders: { [`hero of ${realm}`]: 'march' }, forTurn: THE_GAMES_TURN });
+/** The new orders `who` sends for the turn `turn` (one JSON text naming its turn, as the order form writes it). */
+const theNewOrders = (who: string, turn: number = THE_GAMES_TURN): string =>
+  JSON.stringify({ orders: { [`hero of ${who}`]: 'march' }, encounterPlans: {}, forTurn: turn });
 
-describe("each write changes only the realm it writes, if the role may change it: its player, the game's GM, the Overlord", () => {
-  describe('the draft: its orders, no longer submitted', () => {
+/** One of the four saves: its name, whether the realms' orders are submitted before it, how the page calls it (for
+ *  the game, the turn the form shows and its orders), and what it leaves of the realm it saves. */
+interface ASave {
+  readonly name: string;
+  readonly submittedBefore: boolean;
+  readonly save: (db: Db, game: string, turn: number, orders: string) => PromiseLike<ADatabaseAnswer<unknown>>;
+  readonly saved: (before: ARealmsOrders, orders: string) => ARealmsOrders;
+}
+/** Stamped with the database's time as it saves (a time later than BEFORE). */
+const STAMPED_NOW: unknown = expect.toSatisfy((at: unknown) => typeof at === 'number' && at > BEFORE);
+const THE_SAVES: readonly ASave[] = [
+  {
+    name: 'the draft: its orders, no longer submitted',
+    submittedBefore: true,
+    save: (db, game, turn, orders) => db.theOrders.saveThisRealmsDraft(game, turn, orders),
+    saved: (before, orders) => ({ ...before, orders, submitted: false }),
+  },
+  {
+    name: 'the hero order: its orders alone, still submitted',
+    submittedBefore: true,
+    save: (db, game, turn, orders) => db.theOrders.saveThisRealmsHeroOrder(game, turn, orders),
+    saved: (before, orders) => ({ ...before, orders }),
+  },
+  {
+    name: 'Revise: no longer submitted, its orders kept',
+    submittedBefore: true,
+    save: (db, game, turn) => db.theOrders.reopenThisRealmsOrders(game, turn),
+    saved: (before) => ({ ...before, submitted: false }),
+  },
+  {
+    name: 'Submit: its orders, submitted, stamped with the time',
+    submittedBefore: false,
+    save: (db, game, turn, orders) => db.theOrders.submitThisRealmsOrders(game, turn, orders),
+    saved: (_before, orders) => ({ orders, submitted: true, submittedAt: STAMPED_NOW }),
+  },
+];
+
+describe('each save changes only the realm the signed-in account holds in the game, for the turn the form shows', () => {
+  describe.each(THE_SAVES)('$name', (s) => {
     beforeEach(async () => {
-      await setEveryRealmBack(true);
+      await setEveryRealmBack(s.submittedBefore);
     });
-    test.for(EACH_ROLE_AND_REALM)('%s, %s', async ([role, realm]) => {
-      const answer = await dbOf(role).theOrders.saveThisRealmsDraft(idOfRealm(realm), theNewOrders(realm));
-      const expected = everyRealmBefore(true);
-      if (changes(role, realm)) expected[realm] = { ...expected[realm], orders: theNewOrders(realm), submitted: false };
-      expect({ error: itsError(answer), realms: await everyRealmNow() }).toEqual({
-        error: theErrorFor(role),
-        realms: expected,
-      });
-    });
-  });
-  describe('the hero order: its orders alone, still submitted', () => {
-    beforeEach(async () => {
-      await setEveryRealmBack(true);
-    });
-    test.for(EACH_ROLE_AND_REALM)('%s, %s', async ([role, realm]) => {
-      const answer = await dbOf(role).theOrders.saveThisRealmsHeroOrder(idOfRealm(realm), theNewOrders(realm));
-      const expected = everyRealmBefore(true);
-      if (changes(role, realm)) expected[realm] = { ...expected[realm], orders: theNewOrders(realm) };
-      expect({ error: itsError(answer), realms: await everyRealmNow() }).toEqual({
-        error: theErrorFor(role),
-        realms: expected,
-      });
-    });
-  });
-  describe('Revise: no longer submitted, its orders kept', () => {
-    beforeEach(async () => {
-      await setEveryRealmBack(true);
-    });
-    test.for(EACH_ROLE_AND_REALM)('%s, %s', async ([role, realm]) => {
-      const answer = await dbOf(role).theOrders.reopenThisRealmsOrders(idOfRealm(realm));
-      const expected = everyRealmBefore(true);
-      if (changes(role, realm)) expected[realm] = { ...expected[realm], submitted: false };
-      expect({ error: itsError(answer), realms: await everyRealmNow() }).toEqual({
-        error: theErrorFor(role),
-        realms: expected,
-      });
-    });
-  });
-  describe('Submit: its orders, submitted, at its time', () => {
-    beforeEach(async () => {
-      await setEveryRealmBack(false);
-    });
-    const SUBMITTED_AT = '2026-03-04T05:06:07.000Z';
-    test.for(EACH_ROLE_AND_REALM)('%s, %s', async ([role, realm]) => {
-      const answer = await dbOf(role).theOrders.submitThisRealmsOrders(
-        idOfRealm(realm),
-        theNewOrders(realm),
-        SUBMITTED_AT,
-      );
-      const expected = everyRealmBefore(false);
-      if (changes(role, realm))
-        expected[realm] = { orders: theNewOrders(realm), submitted: true, submittedAt: Date.parse(SUBMITTED_AT) };
+    test.for(THE_ROLES)('%s', async (role) => {
+      const answer = await s.save(dbOf(role), world.theGame, THE_GAMES_TURN, theNewOrders(role));
+      const expected = everyRealmBefore(s.submittedBefore);
+      const realm = theRealmOf(role);
+      if (realm !== null) expected[realm] = s.saved(expected[realm], theNewOrders(role));
       expect({ error: itsError(answer), realms: await everyRealmNow() }).toEqual({
         error: theErrorFor(role),
         realms: expected,
@@ -204,16 +210,36 @@ describe("each write changes only the realm it writes, if the role may change it
   });
 });
 
-describe("the turn check: the game's turn, read by its GM, its players and the Overlord", () => {
-  /** Who reads the game's turn. */
-  const readsTheGame = (role: ARole): boolean =>
-    role === 'a player' || role === 'a rival' || role === "the game's GM" || role === 'the Overlord';
-  test.for(THE_ROLES)('%s', async (role) => {
-    const answer = await dbOf(role).theOrders.theTurnOfThisGame(world.theGame);
-    expect({ error: itsError(answer), data: answer.data }).toEqual(
-      readsTheGame(role)
-        ? { error: null, data: { turn: THE_GAMES_TURN } }
-        : { error: role === 'signed out' ? NO_GRANT : NO_SUCH_ROW, data: null },
-    );
+describe("the player's save is refused for a past turn, and after the turn's deadline; saved before a deadline to come", () => {
+  afterEach(async () => {
+    await stageTheTurnMode(null);
+  });
+  describe.each(THE_SAVES)('$name', (s) => {
+    beforeEach(async () => {
+      await setEveryRealmBack(s.submittedBefore);
+    });
+    test('for a past turn (the form left open while the turn ran): refused, nothing changed', async () => {
+      const past = THE_GAMES_TURN - 1;
+      const answer = await s.save(dbOf('a player'), world.theGame, past, theNewOrders('a player', past));
+      expect({ error: itsError(answer), realms: await everyRealmNow() }).toEqual({
+        error: REFUSED.theTurn(past, THE_GAMES_TURN),
+        realms: everyRealmBefore(s.submittedBefore),
+      });
+    });
+    test("after the turn's deadline: refused, nothing changed", async () => {
+      await stageTheTurnMode(aDeadlineAt('2000-01-01T20:00:00.000Z'));
+      const answer = await s.save(dbOf('a player'), world.theGame, THE_GAMES_TURN, theNewOrders('a player'));
+      expect({ error: itsError(answer), realms: await everyRealmNow() }).toEqual({
+        error: REFUSED.late,
+        realms: everyRealmBefore(s.submittedBefore),
+      });
+    });
+    test('before a deadline still to come: saved', async () => {
+      await stageTheTurnMode(aDeadlineAt('2999-01-01T20:00:00.000Z'));
+      const answer = await s.save(dbOf('a player'), world.theGame, THE_GAMES_TURN, theNewOrders('a player'));
+      const expected = everyRealmBefore(s.submittedBefore);
+      expected.Ashford = s.saved(expected.Ashford, theNewOrders('a player'));
+      expect({ error: itsError(answer), realms: await everyRealmNow() }).toEqual({ error: null, realms: expected });
+    });
   });
 });

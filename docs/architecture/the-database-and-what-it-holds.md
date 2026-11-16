@@ -14,7 +14,7 @@ quietly while it's missing, and says so on the game list (`kcMissingMsg`).
 |---|---|
 | `profiles` | One row per account: display name |
 | `games` | One row per game: settings, `turn`, `status`, `game_state` (the world), `meta` (below), `block_eliminated_msgs` (the GM's switch "Block eliminated realms from sending dispatches", P0-25; off by default). Created only by a Game Master, in their own name; never by the Overlord. The Overlord reads, saves and deletes any game, as Master GM; no save changes a game's GM: only `reassign_game` (Overlord only, to a Game Master) hands a game over |
-| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's, but the Overlord reads, changes and removes any slot and adds bot slots, as Master GM; one realm per slot number in a game. Other realms' slots are meant to be seen only through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B). `submit_orders()` saves orders for a realm's player, in a running game, for this turn, before its deadline (P2-05, R-184; unused yet) |
+| `game_players` | One row per realm slot: who plays it (a bot slot has no `user_id`), its orders, `orders_submitted`, its latest `turn_report`. No slot is ever the Overlord's, but the Overlord reads, changes and removes any slot and adds bot slots, as Master GM; one realm per slot number in a game. Other realms' slots are seen through `get_game_slots()` (number, bot or not, orders in or not, alignment while in setup), never read directly (Unit B). `submit_orders()` saves orders for a realm's player, in a running game, for this turn, before its deadline (P2-05, R-184): the order form saves through it |
 | `turn_logs` | Per-turn log and report snapshots (`player_index: -1` is the GM's full log). Written by the game's GM or the Overlord |
 | `turn_events` | Telemetry: one row per realm per resolved turn (orders, before/after snapshots, outcomes) |
 | `game_results` | One row per realm when a game ends |
@@ -188,8 +188,8 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   (the games they read). Then the messages: `db.theDispatches` (`game_messages`, `game_message_reads`) and
   `db.theReportedDispatches` (`message_reports`, `gm_reported_messages`). Then the player's games and realms:
   `db.thePlayersRealms` (`game_players`, joining, `get_game_slots`), `db.thePlayersGames` and `db.theChroniclesLogs`
-  (`turn_logs`). Then the orders, as they are: `db.theOrders` (the draft, the hero order, Revise, Submit and its turn
-  check; P2-05 later changes only these). The player page makes no call on `sb`. Then the GM's games:
+  (`turn_logs`). Then the orders: `db.theOrders` (the draft, the hero order, Revise and Submit, through
+  `submit_orders()`). The player page makes no call on `sb`. Then the GM's games:
   `db.theGameMastersGames` (the list, a game, making, changing, archiving, the backfill) and `db.theGameMastersRealms`
   (removing a realm), then the GM's turn log, `db.theGameMastersTurnLogs`, and deleting a game,
   `db.theDeletionOfAGame` (its rows in each of 8 tables, one function a table). Then the turn's shell,

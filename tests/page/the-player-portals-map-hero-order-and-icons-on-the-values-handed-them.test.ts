@@ -6,12 +6,15 @@
 // moved, grouped and written into the orders the seat holds.
 // Level 4 (page): map.ts loads the page's start-up (its database client), so no lower level reaches it; the portal is
 // booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with every
-// module loaded, and the fake records the hero order's write (db.theOrders, plan P1-17k).
+// module loaded, and the fake records the hero order's save (db.theOrders, plan P1-17k): through the database's
+// function, for the game and the turn the form shows (P2-05).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
-const writes: { table: string; val: unknown; eq: unknown[] }[] = [];
+const writes: { game: unknown; turn: unknown; orders: unknown }[] = [];
+/** What the hero order's save answers: none (saved), or a refusal in the database's words. */
+let theHeroOrdersRefusal: string | null = null;
 const errs: string[] = [];
 let P: PageWindow;
 let doc: Document;
@@ -30,9 +33,11 @@ beforeAll(async () => {
       ...theFakeDb,
       theOrders: {
         ...theFakeDb.theOrders,
-        // the hero order's write, as the page's client sent it before (P1-17k): its table, its change, its filter
-        saveThisRealmsHeroOrder: (realm, orders) => {
-          writes.push({ table: 'game_players', val: { orders }, eq: ['id', realm] });
+        // the hero order's save, as the page's Db sends it to submit_orders: its game, its turn, its orders
+        saveThisRealmsHeroOrder: (game, turn, orders) => {
+          writes.push({ game, turn, orders });
+          if (theHeroOrdersRefusal !== null)
+            return Promise.resolve({ data: null, error: { message: theHeroOrdersRefusal }, status: 400 });
           return Promise.resolve({ data: null, error: null, status: 204 });
         },
       },
@@ -321,11 +326,10 @@ describe('map.ts: the hero order', () => {
   };
   const lastWrite = () => {
     const w = writes.at(-1);
-    const val = w?.val;
-    const orders: unknown = val && typeof val === 'object' ? Reflect.get(val, 'orders') : undefined;
+    const orders = w?.orders;
     return {
-      table: w?.table,
-      eq: w?.eq,
+      game: w?.game,
+      turn: w?.turn,
       orders: typeof orders === 'string' ? (JSON.parse(orders) as unknown) : orders,
     };
   };
@@ -333,15 +337,15 @@ describe('map.ts: the hero order', () => {
   test('moved down and up, each card with its hero, the arrangement written into the orders the seat holds', async () => {
     stageForm();
     stage(
-      `currentReport = { _liveTurn: 7, turn: 6 }; currentGamePlayer = { id: 'gp1', orders: ${JSON.stringify(JSON.stringify({ orders: { h1: [1] }, forTurn: 4 }))} };`,
+      `currentReport = { _liveTurn: 7, turn: 6 }; currentGamePlayer = { id: 'gp1', game_id: 'G1', orders: ${JSON.stringify(JSON.stringify({ orders: { h1: [1] }, forTurn: 4 }))} };`,
     );
     call('moveHeroBlock', 'h1', 1);
     expect(blocks()).toEqual(['h2', 'h1', 'h3']);
     expect(doc.getElementById('under-h2')?.previousElementSibling?.getAttribute('data-hero')).toBe('h2');
     expect(stage('_heroOrder.join()')).toBe('h2,h1,h3');
-    expect(lastWrite()).toEqual({
-      table: 'game_players',
-      eq: ['id', 'gp1'],
+    expect(lastWrite(), 'for the turn the form shows, whichever the orders held name').toEqual({
+      game: 'G1',
+      turn: 7,
       orders: { orders: { h1: [1] }, forTurn: 4, encounterPlans: {}, heroOrder: ['h2', 'h1', 'h3'] },
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -357,10 +361,18 @@ describe('map.ts: the hero order', () => {
     });
     stage("currentGamePlayer.orders = 'not json'; currentReport = { _liveTurn: 0, turn: 6 };");
     call('moveHeroBlock', 'h2', 1);
-    expect(lastWrite().orders).toEqual({ orders: {}, encounterPlans: {}, forTurn: 6, heroOrder: ['h3', 'h2', 'h1'] });
+    expect(lastWrite()).toEqual({
+      game: 'G1',
+      turn: 6,
+      orders: { orders: {}, encounterPlans: {}, forTurn: 6, heroOrder: ['h3', 'h2', 'h1'] },
+    });
     stage("currentGamePlayer.orders = ''; currentReport = null;");
     call('moveHeroBlock', 'h1', -1);
-    expect(lastWrite().orders).toEqual({ orders: {}, encounterPlans: {}, forTurn: 1, heroOrder: ['h3', 'h1', 'h2'] });
+    expect(lastWrite()).toEqual({
+      game: 'G1',
+      turn: 1,
+      orders: { orders: {}, encounterPlans: {}, forTurn: 1, heroOrder: ['h3', 'h1', 'h2'] },
+    });
     stage('currentGamePlayer.orders = 5;');
     call('moveHeroBlock', 'h2', -1);
     expect(lastWrite().orders).toEqual({ orders: {}, encounterPlans: {}, forTurn: 1, heroOrder: ['h3', 'h2', 'h1'] });
@@ -373,24 +385,44 @@ describe('map.ts: the hero order', () => {
     expect(blocks(), 'no move past the end, or of a hero not listed').toEqual(['h2', 'h3', 'h1']);
     stage("currentGamePlayer = { id: '' };");
     call('moveHeroBlock', 'h1', -1);
-    stage("currentGamePlayer = { id: 'gp1' }; document.getElementById('prev-report-banner').style.display = 'block';");
+    stage(
+      "currentGamePlayer = { id: 'gp1', game_id: 'G1' }; document.getElementById('prev-report-banner').style.display = 'block';",
+    );
     call('moveHeroBlock', 'h1', -1);
     stage("document.getElementById('prev-report-banner').style.display = '';");
     expect(writes.length, 'no write with no seat, or while a past report shows').toBe(before);
     expect(blocks()).toEqual(['h1', 'h2', 'h3']);
   });
 
+  test("a refused save keeps the orders the seat holds and says why in the form, in the database's words", async () => {
+    stageForm();
+    const held = JSON.stringify({ orders: {}, encounterPlans: {}, forTurn: 5 });
+    stage(
+      `currentReport = { turn: 5 }; currentGamePlayer = { id: 'gp1', game_id: 'G1', orders: ${JSON.stringify(held)} };`,
+    );
+    stage("document.getElementById('orders-msg').innerHTML = '';");
+    theHeroOrdersRefusal = "This turn's deadline has passed: orders can no longer be sent or changed.";
+    call('moveHeroBlock', 'h1', 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    theHeroOrdersRefusal = null;
+    expect(lastWrite().turn).toBe(5);
+    expect(stage('currentGamePlayer.orders')).toBe(held);
+    expect(doc.getElementById('orders-msg')?.textContent).toBe(
+      "Error: This turn's deadline has passed: orders can no longer be sent or changed.",
+    );
+  });
+
   test('grouped by province, first seen first; none held where nothing moves', () => {
     stageForm();
     stage(
-      `currentGamePlayer = { id: 'gp2', orders: null }; currentReport = { turn: 3, characters: [{ id: 'h1', locationId: 11 }, { id: 'h2', locationName: 'Fen' }, { id: 'h3', locationId: 11 }] };`,
+      `currentGamePlayer = { id: 'gp2', game_id: 'G2', orders: null }; currentReport = { turn: 3, characters: [{ id: 'h1', locationId: 11 }, { id: 'h2', locationName: 'Fen' }, { id: 'h3', locationId: 11 }] };`,
     );
     call('groupHeroesByLocation');
     expect(blocks()).toEqual(['h1', 'h3', 'h2']);
     expect(doc.getElementById('under-h2')?.previousElementSibling?.getAttribute('data-hero')).toBe('h2');
     expect(lastWrite()).toEqual({
-      table: 'game_players',
-      eq: ['id', 'gp2'],
+      game: 'G2',
+      turn: 3,
       orders: { orders: {}, encounterPlans: {}, forTurn: 3, heroOrder: ['h1', 'h3', 'h2'] },
     });
     const before = writes.length;

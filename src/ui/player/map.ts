@@ -1404,17 +1404,16 @@ export async function persistHeroOrder(): Promise<void> {
   // form.
   if (Reflect.get(raw, 'orders') === undefined) Reflect.set(raw, 'orders', {});
   if (Reflect.get(raw, 'encounterPlans') === undefined) Reflect.set(raw, 'encounterPlans', {});
-  if (Reflect.get(raw, 'forTurn') == null)
-    Reflect.set(
-      raw,
-      'forTurn',
-      Number(currentReport ? Number(currentReport._liveTurn) || currentReport.turn : currentReport) || 1,
-    );
+  const theFormsTurn =
+    Number(currentReport ? Number(currentReport._liveTurn) || currentReport.turn : currentReport) || 1;
+  if (Reflect.get(raw, 'forTurn') == null) Reflect.set(raw, 'forTurn', theFormsTurn);
   Reflect.set(raw, 'heroOrder', heroOrder.slice());
   const payload = JSON.stringify(raw);
-  const { error } = await thePagesDb.theOrders.saveThisRealmsHeroOrder(gp.id, payload);
+  // Saved for the turn the form shows; a refusal (the game moved on, the deadline passed) is said in the form.
+  const { error } = await thePagesDb.theOrders.saveThisRealmsHeroOrder(String(gp.game_id), theFormsTurn, payload);
   if (error) {
-    console.warn('persistHeroOrder:', error.message);
+    const line = document.getElementById('orders-msg');
+    if (line) line.innerHTML = String(kcHtml`<div class="msg-error">Error: ${error.message}</div>`);
     return;
   }
   gp.orders = payload;
