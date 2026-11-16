@@ -771,7 +771,7 @@ describe('What the merge’s typed reads keep (P1-10b50: each a value the old re
     const h = realmHero(b, 1);
     mergedWith(b, 7, { ...forTurn(b), orders: { [h.id]: [] } });
     expect(collected(merged(b), 'staleOrderWarnings')).toEqual([
-      `⚠ Set aside from a player's orders: what it sent for heroes not in its service (${String(h.id)}).`,
+      `⚠ Set aside from a player's orders: what it sent for heroes not in its service (${h.name}).`,
     ]);
   });
 

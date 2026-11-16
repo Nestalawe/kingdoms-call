@@ -175,6 +175,13 @@ export function cancelSubmit() {
   restoreSubmitWrap('Submit');
 }
 
+/** Shows a save of the orders refused, in the database's words, in the order form's message line. */
+export function showTheRefusalOfASaveInTheOrderForm(message: string): void {
+  theElementWithTheId('orders-msg', HTMLElement).innerHTML = String(
+    kcHtml`<div class="msg-error">Error: ${message}</div>`,
+  );
+}
+
 export async function doSaveOrders(): Promise<void> {
   const chars = currentReport?.characters ?? [];
   const orders: Partial<Record<string, unknown>> = {};
@@ -238,9 +245,10 @@ export async function doSaveOrders(): Promise<void> {
     heroOrder: currentHeroOrderP(),
     forTurn: _draftTurn,
   });
-  const { error: saveErr } = await thePagesDb.theOrders.saveThisRealmsDraft(gp.id, _payload);
+  // Saved for the turn the form shows: a form left open while the turn ran is refused, never saved onto the new turn.
+  const { error: saveErr } = await thePagesDb.theOrders.saveThisRealmsDraft(String(gp.game_id), _draftTurn, _payload);
   if (saveErr) {
-    console.error('Save draft error:', saveErr.message);
+    showTheRefusalOfASaveInTheOrderForm(saveErr.message);
     return;
   }
   if (currentGamePlayer) currentGamePlayer.orders = _payload; // keep the in-memory draft fresh for light re-renders
@@ -265,17 +273,8 @@ export async function doSubmitOrders(): Promise<void> {
     btn.textContent = 'Saving…';
   }
 
-  // Safety: verify the turn hasn't advanced since the player loaded the form
-  const { data: freshGame } = await thePagesDb.theOrders.theTurnOfThisGame(String(currentGamePlayer?.game_id));
+  // The turn the form shows: the database refuses the orders if the game has moved on since (or its deadline passed).
   const expectedTurn = (currentReport?._liveTurn ?? 0) || (currentReport?.turn ?? 0) || 1;
-  if (freshGame && freshGame.turn !== expectedTurn) {
-    const resolved = String(
-      kcHtml`<div class="msg-error">⚠ The GM has already resolved this turn. Your orders were not saved — please reload the page to see your new turn report.</div>`,
-    );
-    theElementWithTheId('orders-msg', HTMLElement).innerHTML = resolved;
-    restoreSubmitWrap('Submit');
-    return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
-  }
   if (!currentGamePlayer?.id) {
     theElementWithTheId('orders-msg', HTMLElement).innerHTML =
       '<div class="msg-error">Session error — please reload the page.</div>';
@@ -423,13 +422,12 @@ export async function doSubmitOrders(): Promise<void> {
     forTurn: expectedTurn,
   });
   const { error } = await thePagesDb.theOrders.submitThisRealmsOrders(
-    currentGamePlayer.id,
+    String(currentGamePlayer.game_id),
+    expectedTurn,
     _subPayload,
-    new Date().toISOString(),
   );
   if (error) {
-    const refused = String(kcHtml`<div class="msg-error">Error: ${error.message}</div>`);
-    theElementWithTheId('orders-msg', HTMLElement).innerHTML = refused;
+    showTheRefusalOfASaveInTheOrderForm(error.message);
     restoreSubmitWrap('Submit');
     return; // rebuild a live #submit-btn (the Submit-Anyway path removed it)
   }

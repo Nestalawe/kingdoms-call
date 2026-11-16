@@ -7,7 +7,9 @@
 // and no report (a new row refused, a change or deletion matching nothing, a single row's read finding none). The
 // Overlord's functions refuse, as the database refuses anyone but the Overlord. Five fakes below hold a world a test
 // stages and reads back: the Overlord's page's and the Hall of Fame's (plan P1-17i), the player's (P1-17l), the GM's
-// turn (P1-17q) and the GM's world (P1-17q2).
+// turn (P1-17q) and the GM's world (P1-17q2). The player's saves its orders as the database's function submit_orders
+// does (P2-05): that function's checks are the one rule the fake keeps, in the words the access layer's test holds the
+// database to.
 import type {
   ADatabaseAnswer,
   AGame,
@@ -73,6 +75,23 @@ const noSuchRow = (): ADatabaseAnswer<never> => ({
 });
 /** At most one row asked for (maybeSingle), and none there: no row and no error. */
 const noneMatchedOfOne = (): ADatabaseAnswer<null> => ({ data: null, error: null, status: 200 });
+/** submit_orders' refusals, in its words (supabase/schemas/public/functions/submit_orders.sql is their one home): the
+ *  stand-in below gives them, and the access layer's test holds the database to the same words, so the two stay in step
+ *  (tests/db/the-orders-change-only-the-realm-they-write-as-each-role.test.ts). */
+export const THE_WORDS_SUBMIT_ORDERS_REFUSES_WITH = {
+  noRealm: 'You hold no realm in this game.',
+  notRunning: "This game isn't running: orders are sent only while it is.",
+  theTurn: (sent: number, now: number): string =>
+    `These orders are for turn ${String(sent)}, but the game is on turn ${String(now)}: reload to see the current turn.`,
+  late: "This turn's deadline has passed: orders can no longer be sent or changed.",
+  notThisTurn: "These orders don't name this turn: reload to see the current turn.",
+} as const;
+/** A function's call with no one signed in, refused for want of a grant (the anon role has none). */
+const refusedAsSignedOut = (): ADatabaseAnswer<null> => ({
+  data: null,
+  error: { message: 'permission denied for function submit_orders' },
+  status: 401,
+});
 /** A new row the access rules refuse (no one signed in), in the database's words. */
 const refusedByTheAccessRules = (table: string): ADatabaseAnswer<never> => ({
   data: null,
@@ -274,11 +293,10 @@ export function makeAFakeDb(versions: readonly [TheFakeVersionAnswer, ...TheFake
       theLogOfThisRealmInThisTurn: answering('from:turn_logs', none),
     },
     theOrders: {
-      saveThisRealmsDraft: answering('from:game_players', nothingMatched),
-      saveThisRealmsHeroOrder: answering('from:game_players', nothingMatched),
-      reopenThisRealmsOrders: answering('from:game_players', nothingMatched),
-      submitThisRealmsOrders: answering('from:game_players', nothingMatched),
-      theTurnOfThisGame: answering('from:games', noSuchRow),
+      saveThisRealmsDraft: answering('rpc:submit_orders', refusedAsSignedOut),
+      saveThisRealmsHeroOrder: answering('rpc:submit_orders', refusedAsSignedOut),
+      reopenThisRealmsOrders: answering('rpc:submit_orders', refusedAsSignedOut),
+      submitThisRealmsOrders: answering('rpc:submit_orders', refusedAsSignedOut),
     },
     theGameMastersGames: {
       oneGamesMeta: answering('from:games', none),
@@ -715,8 +733,10 @@ export type ReadMarksThePlayersWorldHolds = ARealmsReadMarks & { readonly user_i
  *  and their realms (as makeStub, in tests/lib/stub-db.js, held them: a test may add one later, and reads a join
  *  back), and what a dispatch sent is refused with (`dispatchRefused`, none: sent). With `dispatches` and `readMarks`
  *  (plan P1-17l2), it holds the dispatches and the read marks too: a test may add a dispatch later, as another
- *  player's browser would, and a dispatch sent and read marks written are kept (without them, none is held). The fake
- *  answers each read as its query asks (its filters, never the access rules), and notes in
+ *  player's browser would, and a dispatch sent and read marks written are kept (without them, none is held). The
+ *  orders are saved into `realms` as submit_orders saves them (its checks: the realm `me` holds, the game running, its
+ *  turn, its deadline in the game's meta). The fake answers each read as its query asks (its filters, never the access
+ *  rules), and notes in
  *  `readsOfAnotherAccountsRealms` each read of the realms that asks for an account other than `me`'s, or for a realm
  *  not `me`'s. */
 export interface ThePlayersWorld {
@@ -784,6 +804,60 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
     const setup: unknown = typeof report === 'object' && report !== null ? Reflect.get(report, 'playerSetup') : null;
     const alignment: unknown = typeof setup === 'object' && setup !== null ? Reflect.get(setup, 'alignment') : null;
     return typeof alignment === 'string' && alignment !== '' ? alignment : null;
+  };
+  /** The time of the next deadline the game `game`'s meta names (a meta held as JSON text read too), else none. */
+  const theDeadlineOf = (game: AGame): number | null => {
+    let meta: unknown = game.meta;
+    if (typeof meta === 'string') {
+      try {
+        meta = JSON.parse(meta);
+      } catch {
+        meta = null;
+      }
+    }
+    const mode: unknown = typeof meta === 'object' && meta !== null ? Reflect.get(meta, 'turnMode') : null;
+    if (typeof mode !== 'object' || mode === null || Reflect.get(mode, 'mode') !== 'deadline') return null;
+    const at: unknown = Reflect.get(mode, 'nextDeadlineAt');
+    const time = typeof at === 'string' ? Date.parse(at) : Number.NaN;
+    return Number.isNaN(time) ? null : time;
+  };
+  /** submit_orders, as the page tests need it: the realm `me` holds in the game `game` saves `orders` (null: kept) and
+   *  whether they're submitted (null: kept), only while the game runs, for its turn, before its deadline, and the
+   *  orders naming that turn; else refused in the function's words. Not mirrored (no page test needs them): the call
+   *  with nothing to save, the longest orders, and orders of another shape than the form's. */
+  const submitOrders = (
+    game: string,
+    turn: number,
+    orders: string | null,
+    submitted: boolean | null,
+  ): ADatabaseAnswer<null> => {
+    const refused = (message: string): ADatabaseAnswer<null> => ({ data: null, error: { message }, status: 400 });
+    const words = THE_WORDS_SUBMIT_ORDERS_REFUSES_WITH;
+    const at = world.realms.findIndex((r) => r.game_id === game && world.me !== null && r.user_id === world.me);
+    const realm = world.realms[at];
+    if (realm === undefined) return refused(words.noRealm);
+    const theGame = gameOf(game);
+    if (theGame?.status !== 'active') return refused(words.notRunning);
+    if (turn !== theGame.turn) return refused(words.theTurn(turn, theGame.turn));
+    const deadline = theDeadlineOf(theGame);
+    if (deadline !== null && Date.now() >= deadline) return refused(words.late);
+    if (orders !== null) {
+      let sent: unknown;
+      try {
+        sent = JSON.parse(orders);
+      } catch {
+        sent = null;
+      }
+      const named: unknown = typeof sent === 'object' && sent !== null ? Reflect.get(sent, 'forTurn') : null;
+      if (named !== turn) return refused(words.notThisTurn);
+    }
+    world.realms[at] = {
+      ...realm,
+      orders: orders ?? realm.orders,
+      orders_submitted: submitted ?? realm.orders_submitted,
+      last_submitted_at: submitted === true ? new Date().toISOString() : realm.last_submitted_at,
+    };
+    return { data: null, error: null, status: 204 };
   };
   const db: Db = {
     ...fake.db,
@@ -877,6 +951,20 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
       thisGamesWorldAndState: answering('from:games', (id: string) => oneRow(gameOf(id))),
       thisGameForItsReport: answering('from:games', (id: string) => oneRow(gameOf(id))),
       thisGameEveryColumn: answering('from:games', (id: string) => oneRow(gameOf(id))),
+    },
+    theOrders: {
+      saveThisRealmsDraft: answering('rpc:submit_orders', (game: string, turn: number, orders: string) =>
+        submitOrders(game, turn, orders, false),
+      ),
+      saveThisRealmsHeroOrder: answering('rpc:submit_orders', (game: string, turn: number, orders: string) =>
+        submitOrders(game, turn, orders, null),
+      ),
+      reopenThisRealmsOrders: answering('rpc:submit_orders', (game: string, turn: number) =>
+        submitOrders(game, turn, null, false),
+      ),
+      submitThisRealmsOrders: answering('rpc:submit_orders', (game: string, turn: number, orders: string) =>
+        submitOrders(game, turn, orders, true),
+      ),
     },
     theDispatches: {
       ...fake.db.theDispatches,

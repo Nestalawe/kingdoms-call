@@ -13,7 +13,7 @@
 // them; orders sent for another turn refused, and told; the orders written for a hero it means to raise, hire or charm
 // held until that lands; a conceded realm's heroes made to hold; its encounter plans set (or held, for a hero not yet
 // its own); and a new heir's skills, name and temper applied. What a realm sends is taken only for its own heroes (the
-// rest set aside, and the GM told); a phase's order is kept only in a form the game uses (its name, target, extra
+// rest set aside, and the GM told, naming each hero of the game and counting any other key); a phase's order is kept only in a form the game uses (its name, target, extra
 // choice and line each text or left out; the rest set aside, so the hero Defends in that phase, and the GM told); a plan
 // keeps only the fields a plan has, each within what the game offers (at most six known tactics and one school for the
 // pre-battle magic, a battlecry of at most 200 letters, a duel stance and a conquest doctrine from their lists; the rest
@@ -275,9 +275,10 @@ export const heir = (b: Board, pi = 0) => {
 /** A newly crowned heir of realm `pi`, as `heir` makes him, crowned with `skills`. */
 export const heirCrownedWith = (b: Board, pi: number, skills: Record<string, number>) =>
   Object.assign(heir(b, pi), { skills: { ...skills } });
-/** The GM's line when a realm's orders name heroes not in its service (by the ids as sent): those parts are set aside. */
-export const notInService = (realmName: string, ids: (string | number)[]) =>
-  `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${ids.map(String).join(', ')}).`;
+/** The GM's line when a realm's orders name heroes not in its service: those parts are set aside. `named` is what the
+ *  line lists, in order: each hero of the game by his name, then any count of the rest. */
+export const notInService = (realmName: string, named: string[]) =>
+  `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${named.join(', ')}).`;
 /** The GM's line when a realm sends skills for its heir that aren't his crowned skills plus at most `points` more. */
 export const heirSkillsSetAside = (realmName: string, heirName: string, points: number) =>
   `⚠ Set aside from ${realmName}'s orders: skills for its heir ${heirName} that are not his crowned skills plus at most ${String(points)} points (no more than 2 in one skill); he keeps his crowned skills.`;
@@ -1791,9 +1792,13 @@ const namedBy1 = (b: Board, extra: Raw = {}): Staged => {
 };
 const RESTS = [REST, REST, REST, REST, REST];
 /** The GM's line for the case's hero, named by realm 1 (in a whole turn, or called directly). */
-const toldOf1 = (o: Outcome, s: Staged) => told(o, notInService(nm(o, 1), [hero(s).id]));
-const warnedOf1 = (s: Staged) => [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).id])];
+const toldOf1 = (o: Outcome, s: Staged) => told(o, notInService(nm(o, 1), [hero(s).name]));
+const warnedOf1 = (s: Staged) => [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).name])];
 const GM_ONLY = [{ targets: [], public: false }];
+/** A key of the orders that is no hero: a very long text. */
+const A_KEY_OF_LONG_TEXT = 'Q'.repeat(5000);
+/** A key of the orders in a hero's id's form that is no hero of the game. */
+const NO_HEROS_ID = '987654';
 export const OWN_CASES: SetUpCase[] = [
   {
     name: 'a hero takes orders only from his own realm: another realm’s orders for him are set aside, the GM is told, and he does as his own realm ordered',
@@ -1887,12 +1892,56 @@ export const OWN_CASES: SetUpCase[] = [
       };
     },
     check: (o, s) => ({
-      got: { told: told(o, notInService(nm(o, 1), [hero(s).id, other(s, 0).id])) },
+      got: { told: told(o, notInService(nm(o, 1), [hero(s).name, other(s, 0).name])) },
       want: { told: GM_ONLY },
     }),
     merged: (m, s) => ({
       got: { warnings: collected(m, 'staleOrderWarnings') },
-      want: { warnings: [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).id, other(s, 0).id])] },
+      want: { warnings: [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).name, other(s, 0).name])] },
+    }),
+  },
+  {
+    name: 'an order for a key that is no hero is counted: the GM is told how many such keys the realm sent',
+    stage: () => ({
+      sends: {
+        1: {
+          orders: { [A_KEY_OF_LONG_TEXT]: plan(order('rest')), [NO_HEROS_ID]: plan(order('rest')) },
+          encounterPlans: { [A_KEY_OF_LONG_TEXT]: FLEE },
+        },
+      },
+    }),
+    check: (o) => ({
+      got: { told: starting(o, '⚠ Set aside'), copied: o.all.filter((l) => l.text.includes(A_KEY_OF_LONG_TEXT)) },
+      want: { told: [notInService(nm(o, 1), ['2 that name no hero in the game'])], copied: [] },
+    }),
+    merged: (m, s) => ({
+      got: { warnings: collected(m, 'staleOrderWarnings') },
+      want: { warnings: [notInService(nameOf(must(s.board, 'board'), 1), ['2 that name no hero in the game'])] },
+    }),
+  },
+  {
+    name: 'an order for a rival realm’s hero names him, and a key that is no hero is counted after him',
+    stage: (b) => {
+      const h = realmHero(b, 2);
+      return {
+        hero: h,
+        sends: { 1: { orders: { [A_KEY_OF_LONG_TEXT]: plan(order('rest')), [h.id]: plan(order('rest')) } } },
+      };
+    },
+    check: (o, s) => ({
+      got: { told: starting(o, '⚠ Set aside'), copied: o.all.filter((l) => l.text.includes(A_KEY_OF_LONG_TEXT)) },
+      want: {
+        told: [notInService(nm(o, 1), [hero(s).name, 'and 1 more that names no hero in the game'])],
+        copied: [],
+      },
+    }),
+    merged: (m, s) => ({
+      got: { warnings: collected(m, 'staleOrderWarnings') },
+      want: {
+        warnings: [
+          notInService(nameOf(must(s.board, 'board'), 1), [hero(s).name, 'and 1 more that names no hero in the game']),
+        ],
+      },
     }),
   },
   {
@@ -2045,13 +2094,13 @@ export const FORM_CASES: SetUpCase[] = [
     },
     check: (o, s) => ({
       got: { orders: ordersOf(o.first, hero(s)), told: starting(o, '⚠ Set aside') },
-      want: { orders: [REST, REST, REST, REST, REST], told: [notInService(nm(o, 1), [hero(s).id])] },
+      want: { orders: [REST, REST, REST, REST, REST], told: [notInService(nm(o, 1), [hero(s).name])] },
     }),
     merged: (m, s) => ({
       got: { orders: ordersOf(m.G, hero(s)), warnings: collected(m, 'staleOrderWarnings') },
       want: {
         orders: [REST, REST, REST, REST, REST],
-        warnings: [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).id])],
+        warnings: [notInService(nameOf(must(s.board, 'board'), 1), [hero(s).name])],
       },
     }),
   },
@@ -2298,7 +2347,7 @@ export const OFFERED_CASES: SetUpCase[] = [
       got: { plan: planIn(o.world, hero(s)), told: starting(o, '⚠ Set aside') },
       want: {
         plan: { tactics: ['ME'], duelStance: 'refuse' },
-        told: [notInService(nm(o, 1), [other(s, 0).id]), planPartsSetAside(nm(o, 1), [hero(s).id])],
+        told: [notInService(nm(o, 1), [other(s, 0).name]), planPartsSetAside(nm(o, 1), [hero(s).id])],
       },
     }),
     merged: (m, s) => ({
@@ -2306,7 +2355,7 @@ export const OFFERED_CASES: SetUpCase[] = [
       want: {
         plan: { tactics: ['ME'], duelStance: 'refuse' },
         warnings: [
-          notInService(nameOf(must(s.board, 'board'), 1), [other(s, 0).id]),
+          notInService(nameOf(must(s.board, 'board'), 1), [other(s, 0).name]),
           planPartsSetAside(nameOf(must(s.board, 'board'), 1), [hero(s).id]),
         ],
       },

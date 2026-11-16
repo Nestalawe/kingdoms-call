@@ -22,7 +22,8 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The balance matrix's scripted realm sends what the player portal sends (P1-15e's Decision 2): the portal booted once
-// (jsdom, on a client of the test's own that reads and updates the game's row and the realm's slot), then, for each
+// (jsdom, on a client of the test's own that reads the game's row and the realm's slot, and saves its orders as
+// submit_orders does), then, for each
 // state of `scripted-05` and `scripted-06` (set A; the Evil one), played on the engine's modules imported directly, and
 // the states with what those games don't reach staged (a research pair, an heir, the column arranged in another order
 // than the world's, a hero at a mastery's level; and, P1-15e3, the spare heroes beside a wandering hero who will serve,
@@ -256,7 +257,8 @@ const game: Row = {
 };
 const TABLES: Record<string, Row[]> = { games: [game], game_players: [slot] };
 
-/** A client that reads and updates TABLES' rows by `eq`, and answers every other call with nothing. */
+/** A client that reads and updates TABLES' rows by `eq`, saves the realm's orders as submit_orders does, and answers
+ *  every other call with nothing. */
 function aClientOnTwoRows(): unknown {
   const query = (table: string) => {
     const where: [string, unknown][] = [];
@@ -283,7 +285,16 @@ function aClientOnTwoRows(): unknown {
   const channel = { on: () => channel, subscribe: () => channel, unsubscribe: () => undefined };
   return {
     from: query,
-    rpc: () => Promise.resolve({ data: null, error: null }),
+    // submit_orders as the order form calls it: the realm the account holds in the game keeps the orders sent (null:
+    // kept) and whether they're submitted (null: kept). This test checks what the form sends, not the function's checks.
+    rpc: (fn: string, args: Row) => {
+      const realm = (TABLES['game_players'] ?? []).find(
+        (r) => fn === 'submit_orders' && r['game_id'] === args['p_game'] && r['user_id'] === session.user.id,
+      );
+      if (realm && args['p_orders'] !== null) realm['orders'] = args['p_orders'];
+      if (realm && args['p_submitted'] !== null) realm['orders_submitted'] = args['p_submitted'];
+      return Promise.resolve({ data: null, error: null });
+    },
     auth: {
       getSession: () => Promise.resolve({ data: { session }, error: null }),
       getUser: () => Promise.resolve({ data: { user: session.user }, error: null }),

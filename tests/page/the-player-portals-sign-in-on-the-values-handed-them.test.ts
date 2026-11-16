@@ -6,7 +6,7 @@
 // booted in jsdom (tests/lib/boot.js) on a fake Db, at an older database for the forms (it stops at its notice with
 // every module loaded) and at a current one for the start-up's own error.
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import type { Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
@@ -281,9 +281,9 @@ describe('a game opened fresh, and the Game Master offer', () => {
 });
 
 describe("the start-up's connection error", () => {
-  /** The portal booted at a current database, its kept session answering `session`. */
+  /** The portal booted at a current database (the newest migration's), its kept session answering `session`. */
   async function bootedWith(session: () => unknown): Promise<string> {
-    const bare = makeAFakeDb(['20261015062128']).db;
+    const bare = makeAFakeDb([DB_VERSION]).db;
     const W = bootJsdom(readPage('kingdoms-call-player-portal.html'), {
       supabase: { createClient: () => ({}) },
       db: { ...bare, signingIn: { ...bare.signingIn, theSessionKeptInThisBrowser: () => session() as never } },

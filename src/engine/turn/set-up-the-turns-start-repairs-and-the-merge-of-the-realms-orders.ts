@@ -159,6 +159,25 @@ function heroOfTheRealm(G: Pick<GameState, 'characters'>, pi: number, charId: st
   return ch?.player === pi ? ch : null;
 }
 
+/** What the GM's line lists of the heroes a realm sent orders for outside its service, from the keys as it sent them (in
+ *  the order met): each key that is a hero of the game (any realm's, or one with no realm) by the hero's name, then
+ *  the rest counted ("Brannoc, and 2 more that name no hero in the game"). */
+function theHeroesNamedAndTheRestCounted(G: Pick<GameState, 'characters'>, keys: readonly string[]): string {
+  const names: string[] = [];
+  let theRest = 0;
+  keys.forEach((key) => {
+    const ch = /^\d+$/.test(key) ? theCharactersOf(G).find((c) => c && String(c.id) === key) : undefined;
+    if (ch) names.push(ch.name);
+    else theRest++;
+  });
+  if (theRest === 0) return names.join(', ');
+  const nameOrNames = theRest === 1 ? 'names' : 'name';
+  const theRestCounted = names.length
+    ? `and ${String(theRest)} more that ${nameOrNames} no hero in the game`
+    : `${String(theRest)} that ${nameOrNames} no hero in the game`;
+  return [...names, theRestCounted].join(', ');
+}
+
 /** The actions of an encounter a plan may name by their code alone, beside those a duel keeps (`COMBAT_ONLY_TACTICS`:
  *  Melee, Fire Arrow, Cast Spell and Flee, with an older form's names for them): Talk, Steal and Scout, as personal
  *  combat reads them (pcAct), each by its code and its name. */
@@ -552,7 +571,7 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
       });
       if (notItsOwn.length)
         staleOrderWarnings.push(
-          `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${notItsOwn.join(', ')}).`,
+          `⚠ Set aside from ${realmName}'s orders: what it sent for heroes not in its service (${theHeroesNamedAndTheRestCounted(G, notItsOwn)}).`,
         ); // logged (to the GM alone) once the turn's log exists
       if (notInAFormTheGameUses.length)
         staleOrderWarnings.push(

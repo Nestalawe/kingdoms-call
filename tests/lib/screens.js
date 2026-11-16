@@ -582,7 +582,7 @@ const playerPortal={
       {type:'system',text:`👑 THE RECKONING IS CALLED — by ${R.rival}`},{type:'system',text:`   2. ${R.rival} — 20 Legacy`}];
     return {
       hostile:!!N.hostile, report, C, R, P, T, gameEndLog, orders:{report:ordersReport,draft:ordersDraft,pre,turn:turnNow,
-        shown:ordersShown,staleTurn:num('turn',9),turnLater:num('turn',4)}, map:{report:mapReport,shown:mapShown}, dispatches,
+        shown:ordersShown,staleTurn:num('turn',9)}, map:{report:mapReport,shown:mapShown}, dispatches,
       error:N('error',0), password:'kc-test-password', newName:N('player',7), king:N('king',0), kingdom:N('kingdom',0),
       signUp:{name:N('player',8),email:'new@example.test'},
       db:{
@@ -738,8 +738,8 @@ const playerPortal={
           +`addEncounterTactic(${lit(O.pre.hire)},'CA');openPreSchoolPicker(${lit(O.pre.hire)});`)],
         ['a spell school chosen, and the heir\'s skills',step("confirmEPSchool('10','white');await allocateHeirSkill(10,'melee',1)")],
         ['submitting, with orders and a choice still to make',step("document.getElementById('po-action-12-1').value='';discoveryChoices={};await submitOrders()")],
-        ['submitting, the turn has moved on',step(`supabase.stub.DB.games[0].turn=${lit(O.turnLater)};await doSubmitOrders()`)],
-        ['submitting, refused by the database',step(`supabase.stub.DB.games[0].turn=${lit(O.turn)};${fail('game_players.update')}await doSubmitOrders()`)],
+        // a turn moved on, or a deadline passed, is the database's refusal too, in its words, on the same line
+        ['submitting, refused by the database',step(`${fail('rpc.submit_orders')}await doSubmitOrders()`)],
         ['submitted',step(ok+'await doSubmitOrders()')],
         // submitted from an older page: orders this one no longer lists show their Details
         ['the orders as submitted',step(stage(O.draft,',orders_submitted:true')+"await openReport('s10')")],
