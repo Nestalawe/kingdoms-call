@@ -70,7 +70,8 @@ declare var _msgBlockOut: boolean;
 // ui/player/game-lists.ts
 declare var _pollTimer: PageState;
 // ui/player/init.ts
-declare var currentGamePlayerId: PageState;
+/** The realm's seat the report screen last opened (its row's id), none before. */
+declare var currentGamePlayerId: string | null;
 /** A past turn's report the page shows instead (the map reads it). */
 declare var viewingReport: import('./ui/player/map.ts').TheReportAsTheMapDrawsIt | null | undefined;
 declare var viewedTurn: PageState;
@@ -89,9 +90,9 @@ declare var joiningGame: {
 declare var joinSkills: Record<string, number>;
 /** The realm's seat in the open game (the map writes its hero order into it). */
 declare var currentGamePlayer: import('./ui/player/map.ts').TheRealmsSeatAsThePageHoldsIt | null | undefined;
-/** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card, the map
- *  and the target fields read it (its typed readers, P1-16b to f), every part optional. */
-declare var currentReport: import('./ui/player/orders-form.ts').TheReportAsTheOrderFormHoldsIt | null | undefined;
+/** The report the page shows: as the order form's forecasts, the page's lists, the map's popups, the Titles card, the map,
+ *  the target fields and the report screen read it (its typed readers, P1-16b to f and o2), every part optional. */
+declare var currentReport: import('./ui/player/report.ts').TheReportAsTheReportScreenReadsIt | null | undefined;
 declare var diploChoices: Partial<Record<string, unknown>> | null;
 declare var reckoningCall: PageState;
 declare var _heroOrder: (string | null)[] | null | undefined;

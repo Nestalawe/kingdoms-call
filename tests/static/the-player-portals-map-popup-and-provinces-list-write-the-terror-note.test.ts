@@ -21,8 +21,7 @@ test(
     expect(tip.match(/terrorNoteP\(pd\)/g)?.length, 'the map popup writes the note in all three of its branches').toBe(
       3,
     );
-    const list =
-      /document\.getElementById\('report-provinces'\)\.innerHTML=[\s\S]*?No provinces owned yet/.exec(pp)?.[0] ?? '';
+    const list = /const provincesCard=provs\.length\?[\s\S]*?No provinces owned yet/.exec(pp)?.[0] ?? '';
     expect(list, 'the Your Provinces entry writes it too').toMatch(/terrorNoteP\(p[,)]/);
   },
 );

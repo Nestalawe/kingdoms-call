@@ -67,23 +67,26 @@ export interface ARealmAsTheDispatchesKnowIt {
 /** A realm the report names as met (`diplomacy.known`). */
 interface ARealmTheReportNames {
   readonly index?: unknown;
-  readonly name?: string | null;
-  readonly color?: string | null;
-  readonly alignment?: string | null;
+  readonly name?: string | null | undefined;
+  readonly color?: string | null | undefined;
+  readonly alignment?: string | null | undefined;
   readonly conceded?: unknown;
   readonly eliminated?: unknown;
-  readonly relation?: string | null;
+  readonly relation?: string | null | undefined;
 }
 /** The report, as the dispatches read it: who this realm is, whom it has met, and whether the game is over. */
 export interface TheReportAsTheDispatchesReadIt {
-  readonly playerName?: string | null;
-  readonly kingdom?: {
-    readonly color?: string | null;
-    readonly conceded?: unknown;
-    readonly eliminated?: unknown;
-  } | null;
-  readonly diplomacy?: { readonly known?: readonly ARealmTheReportNames[] | null } | null;
-  readonly titles?: { readonly gameOver?: unknown } | null;
+  readonly playerName?: string | null | undefined;
+  readonly kingdom?:
+    | {
+        readonly color?: string | null | undefined;
+        readonly conceded?: unknown;
+        readonly eliminated?: unknown;
+      }
+    | null
+    | undefined;
+  readonly diplomacy?: { readonly known?: readonly ARealmTheReportNames[] | null | undefined } | null | undefined;
+  readonly titles?: { readonly gameOver?: unknown } | null | undefined;
 }
 /** The game, as the dispatches read it: whether it is over, and the GM's switch. */
 export interface TheGameAsTheDispatchesReadIt {

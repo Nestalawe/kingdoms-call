@@ -2,14 +2,14 @@
 // empty database) without an uncaught error, an unhandled rejection or a console.error.
 // The real-browser boot of the three portal pages is tests/browser/chromium-boot.spec.ts.
 const fs=require('fs');
-const {SITE,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {SITE,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 
 (async()=>{
   let fails=0;
   const pages=fs.readdirSync(SITE).filter(f=>f.endsWith('.html')).sort();
   for(const name of pages){
     const errors=[];
-    const dom=bootJsdom(readPage(name),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+name,
+    const dom=bootJsdom(readPage(name),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,url:'https://example.org/'+name,
       setup(w){
         w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message)));
         w.onunhandledrejection=e=>errors.push('unhandled rejection: '+String(e.reason&&e.reason.stack||e.reason));

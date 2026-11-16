@@ -10,7 +10,8 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
 // The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
 const src=sourceFrom('ui/gm/hall-of-fame.ts','_LB_SEA','buildGameRecords');
-const ctx={console, KC_LB_V:3, KC_BUILD_STAMP:'test', currentUser:{id:'gm-1'}, gameMetaOf:()=>null,
+// The block reads the statistics through the shared readers it imports (plan P1-16q), handed in beside the engine's tables.
+const ctx={console, ...require('../src/ui/shared/a-value-of-any-kind-read-as-javascript-reads-it.ts'), KC_LB_V:3, KC_BUILD_STAMP:'test', currentUser:{id:'gm-1'}, gameMetaOf:()=>null,
   KC_UNIT_CLASS:{sea:[],aerial:[],creature:[],monster:[],missile:[],cavalry:[],flying:[],carrier:[],primalSea:[],garrison:[],lightFoot:[],tamedFlyer:[]},
   UNIT_BASE_STR:{Levies:4}, UNIT_Q_MULT:{Average:2}, GUARDIAN_POWER_RANK:{'':0},
   SKILL_LABELS:{melee:'Melee'}, TITLE_DEFS:[{key:'throne',name:'The Throne'}],

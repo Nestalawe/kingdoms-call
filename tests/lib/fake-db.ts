@@ -7,7 +7,8 @@
 // and no report (a new row refused, a change or deletion matching nothing, a single row's read finding none). The
 // Overlord's functions refuse, as the database refuses anyone but the Overlord. Five fakes below hold a world a test
 // stages and reads back: the Overlord's page's and the Hall of Fame's (plan P1-17i), the player's (P1-17l), the GM's
-// turn (P1-17q) and the GM's world (P1-17q2). The player's saves its orders as the database's function submit_orders
+// turn (P1-17q) and the GM's world (P1-17q2); the player's holds the Game Master offers and the dispatches' reports too
+// when a test stages them (P1-17r). The player's saves its orders as the database's function submit_orders
 // does (P2-05): that function's checks are the one rule the fake keeps, in the words the access layer's test holds the
 // database to.
 import type {
@@ -729,6 +730,16 @@ export interface ADispatchRefused {
 export type ADispatchThePlayersWorldHolds = ADispatch & Pick<ADispatchsGameAndRealms, 'game_id'>;
 /** A realm's read marks the player's world holds, with the account that wrote them. */
 export type ReadMarksThePlayersWorldHolds = ARealmsReadMarks & { readonly user_id: string };
+/** A report of a dispatch the player's world holds (a message_reports row, as the page writes it). */
+export interface AReportThePlayersWorldHolds {
+  readonly id: number;
+  readonly message_id: number;
+  readonly game_id: string;
+  readonly reporter_index: number;
+  readonly reporter_user_id?: string;
+  readonly reason: string | null;
+  readonly created_at: string;
+}
 /** What the player page reads, held by the fake: who is signed in (`me`, else no one), the accounts' names, the games
  *  and their realms (as makeStub, in tests/lib/stub-db.js, held them: a test may add one later, and reads a join
  *  back), and what a dispatch sent is refused with (`dispatchRefused`, none: sent). With `dispatches` and `readMarks`
@@ -738,7 +749,10 @@ export type ReadMarksThePlayersWorldHolds = ARealmsReadMarks & { readonly user_i
  *  turn, its deadline in the game's meta). The fake answers each read as its query asks (its filters, never the access
  *  rules), and notes in
  *  `readsOfAnotherAccountsRealms` each read of the realms that asks for an account other than `me`'s, or for a realm
- *  not `me`'s. */
+ *  not `me`'s. With `offers` (plan P1-17r), it holds the Game Master offers: the page reads an account's, and `me`
+ *  accepts or declines its own as gm_accept_offer and gm_decline_offer do (refused in their words when there is none
+ *  to answer); with `reports`, the reports of dispatches: the page reads a game's and writes one (without them, none is
+ *  held). */
 export interface ThePlayersWorld {
   readonly me: string | null;
   readonly names: readonly AnAccountsName[];
@@ -748,6 +762,8 @@ export interface ThePlayersWorld {
   readonly readsOfAnotherAccountsRealms: string[];
   readonly dispatches?: ADispatchThePlayersWorldHolds[];
   readonly readMarks?: ReadMarksThePlayersWorldHolds[];
+  readonly offers?: AFakeGameMasterOffer[];
+  readonly reports?: AReportThePlayersWorldHolds[];
 }
 
 /** A fake database, up to date at `version`, holding the player's `world`. */
@@ -874,6 +890,59 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
         rows(copies(world.names.filter((n) => ids.includes(n.id)))),
       ),
       theNameOfThisAccount: answering('from:profiles', (id: string) => oneRow(world.names.find((n) => n.id === id))),
+    },
+    theRoles: {
+      ...fake.db.theRoles,
+      theGameMasterOfferMadeToThisAccount: (id: string) => {
+        const offers = world.offers;
+        if (offers === undefined) return fake.db.theRoles.theGameMasterOfferMadeToThisAccount(id);
+        const offer = offers.find((o) => o.user_id === id);
+        return answering('from:game_masters', () => ({
+          data: offer === undefined ? null : { accepted_at: offer.accepted_at },
+          error: null,
+          status: 200,
+        }))();
+      },
+      answerTheGameMasterOffer: (answer: Parameters<Db['theRoles']['answerTheGameMasterOffer']>[0]) => {
+        const offers = world.offers;
+        if (offers === undefined) return fake.db.theRoles.answerTheGameMasterOffer(answer);
+        return answering(`rpc:${answer}`, () => {
+          const own = offers.find((o) => world.me !== null && o.user_id === world.me);
+          const refused = (message: string) => ({ data: null, error: { message }, status: 400 });
+          if (answer === 'gm_accept_offer') {
+            if (own === undefined) return refused('You have no offer to accept.');
+            own.accepted_at ??= new Date().toISOString();
+            return { data: null, error: null, status: 200 };
+          }
+          if (own?.accepted_at !== null) return refused('You have no offer to decline.');
+          offers.splice(offers.indexOf(own), 1);
+          return { data: null, error: null, status: 200 };
+        })();
+      },
+    },
+    theReportedDispatches: {
+      ...fake.db.theReportedDispatches,
+      theDispatchesThisAccountReportedInThisGame: (game: string) => {
+        const reports = world.reports;
+        if (reports === undefined)
+          return fake.db.theReportedDispatches.theDispatchesThisAccountReportedInThisGame(game);
+        return answering('from:message_reports', () =>
+          rows(reports.filter((r) => r.game_id === game).map((r) => ({ message_id: r.message_id }))),
+        )();
+      },
+      reportThisDispatch: (report: Parameters<Db['theReportedDispatches']['reportThisDispatch']>[0]) => {
+        const reports = world.reports;
+        if (reports === undefined) return fake.db.theReportedDispatches.reportThisDispatch(report);
+        return answering('from:message_reports', () => {
+          reports.push({
+            ...report,
+            id: reports.reduce((most, r) => Math.max(most, r.id), 0) + 1,
+            reason: report.reason ?? null,
+            created_at: report.created_at ?? new Date().toISOString(),
+          });
+          return { data: null, error: null, status: 201 };
+        })();
+      },
     },
     thePlayersRealms: {
       thisAccountsRealmsAndTheirOrdersFlags: answering('from:game_players', (account: string) =>

@@ -2,8 +2,9 @@
 // writeGameRecord reads the rows 500 at a time ordered by turn alone, but there is one row per realm
 // per turn, so the order of rows within a turn is the database's choice and may differ between page
 // queries: rows at a page edge were skipped or read twice. A failed page was skipped silently and the
-// record saved from whatever had arrived. Unit (level 1): writeGameRecord against a stub that serves
-// the pages as a database may, through the page's Db made on it (plan P1-17g). writeGameRecord and what it calls in its own file are cut out of
+// record saved from whatever had arrived. Unit (level 1): writeGameRecord on the fake Db holding the GM's world
+// (tests/lib/fake-db.ts), which serves the pages in the order the Db's function asks; the access layer's test proves
+// that order against the local database (plan P1-17r). writeGameRecord and what it calls in its own file are cut out of
 // src/ui/gm/hall-of-fame.ts by their syntax tree (tests/lib/source.ts) and run on their own, beside a probe in
 // buildGameRecords' place that keeps what it was given. (Until plan P1-09a they ran on the booted GM portal, with its
 // buildGameRecords stood in from outside, which a page of modules doesn't allow.)
@@ -14,20 +15,34 @@
 // `src/` by its syntax tree and run on its own (P1-09a: on the booted GM portal, `buildGameRecords` stood in from
 // outside)
 const vm=require('vm');
-const {pagedEventsStub}=require('./lib/stub-db'); const {sourceOf}=require('./lib/source.ts');
-const {makeTheDbFromItsClient}=require('../src/db/the-db-interface-and-its-areas.ts');
+const {sourceOf}=require('./lib/source.ts'); const {DB_VERSION}=require('./lib/boot');
+const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 const HOF='ui/gm/hall-of-fame.ts';
-const CUT=sourceOf(HOF,['_kcHasLb','_kcLbLastErr','writeGameRecord','_lbProfCache','_lbProfErr','lbProfileNames','_lbTally','lbCountRow']);
+// (with the readers they call in their own file, and the shared ones they import, handed in: plan P1-16q)
+const CUT=sourceOf(HOF,['_kcHasLb','_kcLbLastErr','theMessageOrTheValueCaught','writeGameRecord','thisGamesSlots','_lbProfCache','_lbProfErr','theNamesKept','lbProfileNames','theNamesKeptAsAWhole','_lbTally','lbCountRow']);
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   // 8 realms × 90 turns = 720 rows: two pages, with the page edge in the middle of a turn.
   const events=[]; for(let t=1;t<=90;t++) for(let pi=0;pi<8;pi++) events.push({turn:t,player_index:pi,is_bot:false,realm:'Realm '+pi,outcomes:{}});
   const results=[{game_id:'g1',player_index:0}];
+  // The GM's world holding the game's turn rows and its result; errorFrom: the first row of the page that fails, as a
+  // statement that times out (each page from it on answers the database's error).
+  function theDb(errorFrom){
+    const world=aGameMastersWorld();
+    world.tables.profiles.length=0;
+    events.forEach(e=>world.tables.turn_events.push({game_id:'g1',...e}));
+    results.forEach(r=>world.tables.game_results.push({...r}));
+    const db=makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION,world).db;
+    const page=db.theStatistics.thisGamesTurnRecordsForItsEntryFromRowToRow;
+    const thisGamesTurnRecordsForItsEntryFromRowToRow=(game,from,to)=>errorFrom!=null&&from>=errorFrom
+      ?Promise.resolve({data:null,error:{message:'canceling statement due to statement timeout'},status:500}):page(game,from,to);
+    return {world,db:{...db,theStatistics:{...db.theStatistics,thisGamesTurnRecordsForItsEntryFromRowToRow}}};
+  }
   async function run(errorFrom){
-    const calls=[]; const errs=[];
+    const {world,db}=theDb(errorFrom), calls=world.calls; const errs=[];
     let got=null;
-    const ctx=vm.createContext({console:{warn(){},log(){},error(){}},
-      thePagesDb:makeTheDbFromItsClient(pagedEventsStub({events,results,errorFrom,calls})),
+    const ctx=vm.createContext({console:{warn(){},log(){},error(){}}, ...require('../src/ui/shared/a-value-of-any-kind-read-as-javascript-reads-it.ts'),
+      thePagesDb:db,
       buildGameRecords:(gid,gameRow,players,res,ev)=>{ got=ev.slice(); return {game_id:gid,standings:[],records:{}}; },
       renderLeaderboardBanner(){}, parseGameState:()=>null});
     vm.runInContext(CUT+'\n_kcHasLb=true;',ctx);
@@ -38,11 +53,11 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   ok(a.got&&a.got.length===events.length,`every turn_events row reaches the record builder (got ${a.got&&a.got.length} of ${events.length})`);
   const keys=new Set((a.got||[]).map(e=>e.turn+'/'+e.player_index));
   ok(keys.size===events.length,`no row is read twice and none is skipped (${keys.size} distinct of ${events.length})`);
-  ok(a.saved===true&&a.calls.some(c=>c.table==='game_records'&&c.op==='upsert'),'the record is saved');
+  ok(a.saved===true&&a.calls.includes('game_records.upsert'),'the record is saved');
 
   const b=await run(500); // the second page fails
   ok(b.saved===false,'a failed page stops the build (writeGameRecord returns false)');
-  ok(!b.calls.some(c=>c.table==='game_records'&&c.op==='upsert'),'…and no partial record is saved over the old one');
+  ok(!b.calls.includes('game_records.upsert'),'…and no partial record is saved over the old one');
   ok(!!b.lastErr,'…and the failure is shown on the Hall-of-Fame banner (_kcLbLastErr is set)');
   const errs=[...a.errs,...b.errs];
   console.log(`\n${pass} pass, ${fail} fail · page errors ${errs.length}`);

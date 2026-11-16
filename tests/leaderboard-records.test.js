@@ -13,8 +13,10 @@ const fs=require('fs'), vm=require('vm'); const {sourceFrom}=require('./lib/sour
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)
 const src=sourceFrom('ui/gm/hall-of-fame.ts','_LB_SEA','buildGameRecords');
 
+// The block reads the statistics through the shared readers it imports (plan P1-16q), handed in beside the engine's tables.
 const ctx={
   console,
+  ...require('../src/ui/shared/a-value-of-any-kind-read-as-javascript-reads-it.ts'),
   KC_UNIT_CLASS:{sea:['Galleons','Whale Cohort'],aerial:['Rocs','Dragons','Eagle Riders'],creature:['Rocs','Wolves'],
     monster:['Dragons','Manticores'],missile:['Archers','Crossbowmen'],cavalry:['Heavy Horse','Light Horse'],
     flying:['Eagle Riders'],carrier:['Galleons'],primalSea:['Whale Cohort'],garrison:[],lightFoot:[],tamedFlyer:[]},

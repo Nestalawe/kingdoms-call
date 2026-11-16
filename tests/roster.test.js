@@ -19,7 +19,7 @@
 // province cells appended after the old ones; the goblins' spears gone from the missile list and the Berserkers'
 // Outnumbered and Uncaring gone from `unitAbilityMult` (booted portal); both portals type and Druid-rate the new units
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {pageInitializer,scriptOf}=require('./lib/source.ts');
 const R=require('./lib/roster-decided'); const {ROSTER,LAND_TERRAINS,NEW_UNITS,NEW_UNIT_PROVINCES,isLand}=R;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -115,7 +115,7 @@ const CELLS_BEFORE={
   ok(ARCH_I&&ARCH_I.has('Black Arrows')&&!ARCH_I.has('Goblin Horde'),"the Eagle-Eye Pendant's archers (the archer-bonus row's reach) have Black Arrows");
 
   // ── The booted portals ──
-  const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+page,
+  const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,url:'https://example.org/'+page,
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
     await new Promise(r=>setTimeout(r,1200)); return {dom,errors,ev:x=>{ try{ return dom.window.eval(x); }catch(e){ return 'THREW: '+e.message; } }}; };
   const g=await boot('kingdoms-call-gm-portal.html');

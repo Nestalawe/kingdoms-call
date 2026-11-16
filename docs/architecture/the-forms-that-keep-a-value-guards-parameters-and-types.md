@@ -237,7 +237,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `src/ui/shared/a-value-of-any-kind-read-as-javascript-reads-it.ts`, which every page may import (P1-16p). A field
   written on a game's state as parsed (`gs.botDiplomacy = v`) is `Reflect.set` after a check that throws, for a value
   that isn't an object, the `TypeError` the write threw in a module. A column the page sends as it built it from such a
-  state (a game's `meta`) takes any value in `TheDatabase` (`AGamesChange`, types only): supabase-js writes it as JSON.
+  state (a game's `meta`) takes any value in `TheDatabase` (`AGamesChange`, types only), as do the JSON columns of the
+  rows the Hall of Fame and the statistics write (`AsTheGmPageWritesIt`): supabase-js writes them as JSON.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does (for `null`, the TypeError that read throws: a game's setup, `bots/setup.ts`).
 - **What a realm sent, parsed from JSON or as its slot row holds it** (its orders, read field by field) goes through one
@@ -281,3 +282,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `TypeError` its first field's read threw, and is read field by field as `unknown` (`theForceTheMarkerHolds`); its
   companies through a check of the same kind typed as the army label takes them (`theCompanyTheMarkerLists`). Inside
   the `try` that drew it as a plain line, every throw still lands there.
+- **A value parsed from JSON that becomes a typed part of the page** (the turn report; a past turn's snapshot, and the
+  GM log's lines and saved heroes its chronicle reads) goes through a type predicate that checks only that it is an
+  object (a maintainer's answer, 14 November): its fields are read as its type claims. A value that is no object keeps
+  its old outcome: the write that threw on it throws the same `TypeError`, a snapshot is shown empty, a line or a hero
+  that names nothing is skipped (`isATurnReport`, `report.ts`). A game's state the GM page parses for its statistics
+  needs only `typeof p === 'object'`: the engine's readers make every field optional, so any object meets them.
+- **A method taken off its object** (`put = rk.put`, lint's `unbound-method`) is an arrow property: the same function.
