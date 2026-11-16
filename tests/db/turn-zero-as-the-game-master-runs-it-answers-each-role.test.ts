@@ -1,8 +1,8 @@
 // Turn 0 as the GM page runs it, an area of the page's Db (src/db/the-db-interface-and-its-areas.ts:
 // theTurnZeroAsTheGameMasterRunsIt; plan P1-17p), on a supabase-js client of the local Supabase, as each role (signed
 // out, a player, a rival, the game's GM, another GM, the Overlord):
-// - the reads: Marchwood's realms, and Marchwood with its realms, by its GM, its players (their own realm) and the
-//   Overlord;
+// - the reads: Marchwood's realms (each its own name), and Marchwood with its realms, by its GM, its players (their own
+//   realm) and the Overlord;
 // - the bots' realms: one made, and every bot's realm of the game removed (no player's, no other game's), by its GM and
 //   the Overlord;
 // - the start: the world saved, each realm's first report with its orders cleared, a realm's turn-0 log, each by those
@@ -47,6 +47,8 @@ const itsError = (answer: { readonly error: { readonly message: string } | null 
 /** Each role's answer: a visitor's refusal for want of a grant, else no error. */
 const theErrorFor = (role: ARole): unknown => (role === 'signed out' ? NO_GRANT : null);
 
+/** The names of Marchwood's realms, by slot, as the made-up world makes them. */
+const MARCHWOODS_REALMS_NAMES = ['Realm of Ashford', 'Realm of Brackwater', 'Realm of Coldharbour'];
 /** Who reads Marchwood: its GM, its two players and the Overlord. */
 const readsMarchwood = (role: ARole): boolean => role !== 'signed out' && role !== 'another GM';
 /** Who reads and changes every realm of Marchwood, and changes the game: its GM and the Overlord. */
@@ -169,6 +171,10 @@ describe('the reads: Marchwood by its GM, its players and the Overlord; its real
     expect({
       errors: [itsError(realms), itsError(game)],
       realms: (realms.data ?? []).map((realm) => realm.player_index).sort(),
+      // each realm's own name, by its slot: the column read is the one the name is held in
+      realmsNames: [...(realms.data ?? [])]
+        .sort((x, y) => x.player_index - y.player_index)
+        .map((realm) => realm.display_name),
       realmsColumns: Object.keys(realms.data?.[0] ?? {}).sort(),
       game: game.data && [
         game.data.id === world.theGame,
@@ -181,6 +187,7 @@ describe('the reads: Marchwood by its GM, its players and the Overlord; its real
     }).toEqual({
       errors: [theErrorFor(role), reads ? null : role === 'signed out' ? NO_GRANT : NO_SUCH_ROW],
       realms: marchwoodsRealmsFor(role),
+      realmsNames: marchwoodsRealmsFor(role).map((slot) => MARCHWOODS_REALMS_NAMES[slot]),
       realmsColumns: marchwoodsRealmsFor(role).length
         ? ['display_name', 'id', 'player_index', 'turn_report', 'user_id']
         : [],

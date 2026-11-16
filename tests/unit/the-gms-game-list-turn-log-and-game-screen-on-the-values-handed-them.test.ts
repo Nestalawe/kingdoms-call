@@ -1,9 +1,10 @@
 // The GM page's game list, turn log and game screen on the values handed them (plan P1-16s): the lines P1-16s changed
 // in src/ui/gm/game-list.ts, turn-log.ts and game-detail.ts that the screen tours and the matrix don't reach, or reach
 // only in part, each pinned to the value it gave before the files were typed: the list's empty and archived halves, the
-// New Game form's hints and its checks, a game made, archived and restored, the invite pickers, the last turn's
-// chronicle on odd lines (a force's rows, a line that is no object, a phase between the whole ones, the intelligence),
-// a game deleted, and the game screen's counts, its refusals, a player removed and the turn mode and invites saved.
+// New Game form's hints and its checks, a game made, archived and restored, the invite pickers (an account of empty
+// name), the last turn's chronicle on odd lines (a force's rows, a line that is no object, a phase between the whole
+// ones, the intelligence, a realm of empty name or none), a game deleted, and the game screen's counts, its refusals, a
+// player removed and the turn mode and invites saved. Some cases came from the mutation session of 2026-11-17.
 // Level 1 (unit): the three files import in Node once the page's config, the `supabase` global and a Db handed in are
 // stood in (as the statistics tab's unit test does); a page test would boot the whole page and sign in to reach each.
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -579,13 +580,14 @@ describe('archiving', () => {
 });
 
 describe('the invite pickers', () => {
-  test('the players read once: the GM left out, a name missing, a month unread; a refusal thrown as it came', async () => {
+  test('the players read once: the GM left out, a name missing or empty, a month unread; a refusal thrown as it came', async () => {
     answers['theAccountsNames.theNameAndJoiningDateOfEveryAccountInNameOrder'] = {
       data: [
         { id: 'gm-1', name: 'The GM', created_at: '2026-01-05T00:00:00Z' },
         { id: 'p-1', name: null, created_at: null },
         { id: 'p-2', name: 'Bryn', created_at: 'not a day' },
         { id: 'p-3', name: 'Cora', created_at: '2026-09-30T23:00:00Z' },
+        { id: 'p-4', name: '', created_at: null },
       ],
       error: null,
     };
@@ -593,8 +595,9 @@ describe('the invite pickers', () => {
       { id: 'p-1', name: '(unnamed)', joined: '' },
       { id: 'p-2', name: 'Bryn', joined: '' },
       { id: 'p-3', name: 'Cora', joined: 'Sep 2026' },
+      { id: 'p-4', name: '(unnamed)', joined: '' },
     ]);
-    expect(gl._invitableRawCount).toBe(4);
+    expect(gl._invitableRawCount).toBe(5);
     await gl.loadInvitablePlayers();
     expect(callsTo('theAccountsNames.theNameAndJoiningDateOfEveryAccountInNameOrder')).toHaveLength(1);
     expect(gl.invitedNames(['p-3', 'p-9', 3])).toEqual(['Cora', '(unknown player)', '(unknown player)']);
@@ -751,6 +754,24 @@ describe("the last turn's chronicle", () => {
       'color:#555',
     ]);
     expect(log.querySelectorAll('strong')).toHaveLength(1);
+  });
+  test("a realm whose name is empty words, and one with no name, are headed Unknown in the turn's chronicle", async () => {
+    G['currentGame'] = anOpenGame({
+      game_state: JSON.stringify({
+        characters: [
+          { id: 1, name: 'Edda', player: 0 },
+          { id: 2, name: 'Osric', player: 1 },
+          { id: 3, name: 'Wynn', player: 2 },
+        ],
+        players: [{ name: '' }, { name: null }, {}],
+      }),
+    });
+    answers['theGameMastersTurnLogs.theWholeLogOfThisGameInThisTurn'] = {
+      data: [{ entries: [{ text: 'Edda rides', charId: 1, phase: 0 }] }],
+      error: null,
+    };
+    await tl.loadTurnLog('g-1', 2);
+    expect(words('detail-log')).toBe('👑 Unknown ⚔ Edda Spring Edda rides 👑 Unknown 👑 Unknown');
   });
   test("a line of none throws; a hero's line in a phase between the whole ones throws; a hero of none throws", async () => {
     G['currentGame'] = anOpenGame({
