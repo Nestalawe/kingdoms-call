@@ -21,11 +21,11 @@ type AGamesChange = Omit<TheGeneratedTables['games']['Update'], 'meta'> & { meta
 /** A new game as the GM page makes it: its meta any value, as for a change (`AGamesChange`). */
 type ANewGame = Omit<TheGeneratedTables['games']['Insert'], 'meta'> & { meta?: unknown };
 
-/** A row the GM page writes to the Hall of Fame or the statistics (plan P1-16q): its JSON columns, and a bot's
- *  difficulty, any value (built from the world and the statistics as read, as a save of any age holds them), which
+/** A row the GM page writes to the Hall of Fame, the statistics (plan P1-16q) or the turns' logs (P1-16t): its JSON
+ *  columns, and a bot's difficulty, any value (built from the world and the statistics as read, as a save of any age holds them), which
  *  supabase-js sends as JSON. */
 type AsTheGmPageWritesIt<
-  T extends 'game_records' | 'game_results' | 'turn_events',
+  T extends 'game_records' | 'game_results' | 'turn_events' | 'turn_logs',
   Columns extends keyof TheGeneratedTables[T]['Insert'],
 > = Omit<TheGeneratedTables[T]['Insert'], Columns> & Partial<Record<Columns, unknown>>;
 /** A Hall of Fame entry as the GM page builds and writes it. */
@@ -41,17 +41,21 @@ export type ATurnRecordAsTheGmPageWritesIt = AsTheGmPageWritesIt<
   'orders' | 'pre' | 'post' | 'outcomes' | 'bot_difficulty'
 >;
 
+/** A turn's log as the GM page writes it: a realm's report kept for its turn, or the GM's whole log, as the page built
+ *  them. */
+type ALogAsTheGmPageWritesIt = AsTheGmPageWritesIt<'turn_logs', 'entries'>;
+
 /** The generated types, but for a database function's argument that takes null on purpose (the generator writes every
  *  argument as never null): account_suspend's p_until (null: until the suspension is lifted), gm_reported_messages'
  *  p_game (null: every game's) and submit_orders' p_submitted (null: kept as saved; its p_orders, any JSON, takes
  *  null as it is: the orders kept); a dispatch's sender, which the page may send as null (`ANewDispatch`); and a
- *  game's meta, which the GM page sends as it built it (`AGamesChange`, `ANewGame`); and the Hall of Fame's and the statistics'
- *  rows the GM page writes (`AsTheGmPageWritesIt`). */
+ *  game's meta, which the GM page sends as it built it (`AGamesChange`, `ANewGame`); and the Hall of Fame's, the statistics' and
+ *  the turns' logs' rows the GM page writes (`AsTheGmPageWritesIt`). */
 export type TheDatabase = Omit<Database, 'public'> & {
   readonly public: Omit<Database['public'], 'Functions' | 'Tables'> & {
     readonly Tables: Omit<
       TheGeneratedTables,
-      'game_messages' | 'games' | 'game_records' | 'game_results' | 'turn_events'
+      'game_messages' | 'games' | 'game_records' | 'game_results' | 'turn_events' | 'turn_logs'
     > & {
       readonly game_messages: Omit<TheGeneratedTables['game_messages'], 'Insert'> & { Insert: ANewDispatch };
       readonly games: Omit<TheGeneratedTables['games'], 'Insert' | 'Update'> & {
@@ -67,6 +71,7 @@ export type TheDatabase = Omit<Database, 'public'> & {
       readonly turn_events: Omit<TheGeneratedTables['turn_events'], 'Insert'> & {
         Insert: ATurnRecordAsTheGmPageWritesIt;
       };
+      readonly turn_logs: Omit<TheGeneratedTables['turn_logs'], 'Insert'> & { Insert: ALogAsTheGmPageWritesIt };
     };
     readonly Functions: Omit<
       Database['public']['Functions'],
@@ -723,7 +728,7 @@ export interface Db {
     /** Gives the realm `realm` its turn report `report` (one JSON text). */
     readonly giveThisRealmItsTurnReport: (realm: string, report: string) => PromiseLike<ADatabaseAnswer<null>>;
     /** Writes the log `log` (a realm's report kept for its turn, or the GM's whole log: realm -1). */
-    readonly writeThisLog: (log: ANewRow<'turn_logs'>) => PromiseLike<ADatabaseAnswer<null>>;
+    readonly writeThisLog: (log: ALogAsTheGmPageWritesIt) => PromiseLike<ADatabaseAnswer<null>>;
     /** The turn the game `game` is on, if it is there (none if not). */
     readonly theTurnOfThisGameIfItIsThere: (game: string) => PromiseLike<ADatabaseAnswer<Pick<AGame, 'turn'> | null>>;
     /** Puts back the orders `orders` of the realm `realm`, submitted or not as `submitted` says. */
@@ -747,7 +752,7 @@ export interface Db {
     /** Gives the realm `realm` its first report `report` (one JSON text), with no orders and none submitted. */
     readonly giveThisRealmItsFirstReport: (realm: string, report: string) => PromiseLike<ADatabaseAnswer<null>>;
     /** Writes the log `log` (a realm's first report, kept for turn 0). */
-    readonly writeThisLog: (log: ANewRow<'turn_logs'>) => PromiseLike<ADatabaseAnswer<null>>;
+    readonly writeThisLog: (log: ALogAsTheGmPageWritesIt) => PromiseLike<ADatabaseAnswer<null>>;
     /** The game `game`, every column, with every column of its realms (an error when there is none). */
     readonly thisGameWithItsRealms: (game: string) => PromiseLike<ADatabaseAnswer<AGameWithItsRealms>>;
   };

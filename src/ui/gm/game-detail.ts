@@ -27,7 +27,7 @@ import type { AGamesRowAsItsSettingsAreRead, TheGameTheGmHasOpen, TheRealmsOfThe
 
 /** The game the GM has open, read again after an await (another handler may have changed it meanwhile): for none, the
  *  TypeError the read or write (`theReadOrWrite`, in V8's words) threw. */
-function theGameOpenNow(theReadOrWrite: string): TheGameTheGmHasOpen {
+export function theGameOpenNow(theReadOrWrite: string): TheGameTheGmHasOpen {
   if (currentGame === null) throw new TypeError(`Cannot ${theReadOrWrite}`);
   return currentGame;
 }

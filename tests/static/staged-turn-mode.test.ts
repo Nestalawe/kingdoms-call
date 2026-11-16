@@ -22,6 +22,8 @@ const SKIPPED = new Set(['tests/quarantine', 'node_modules']);
 const EXEMPT: Record<string, string> = {
   'tests/lib/screens.js':
     "the screenshot tour stages auto and deadline games so the game list and the watcher's own screens show each mode",
+  'tests/unit/the-gms-turn-watcher-turn-shell-and-turn-zero-on-the-values-handed-them.test.ts':
+    "the watcher's own unit test stages auto and deadline games for its tick, which it calls by hand on no booted page",
 };
 
 function sources(dir: string): string[] {

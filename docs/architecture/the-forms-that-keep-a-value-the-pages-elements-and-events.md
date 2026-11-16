@@ -77,7 +77,14 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **`el.innerHTML = kcHtml\`…\``** is `el.innerHTML = String(kcHtml\`…\`)`: the setter writes the marked value by its
   `toString`, which is what `String` calls; the HTML lint rule accepts a call there.
 
+- **A stand-in for an element that takes the marked HTML as it is** (the turn shell's message in a watcher's run, which
+  hands its value to the banner's `kcHtml`) is typed `{ innerHTML: KcSafeHtml | string }`, and the screen's element meets
+  that type: each write hands the same value to the same setter, and `String()` there would escape the banner's HTML.
+
 ## Events and promises
+
+- **`await` of a value that is no promise** (Turn 0's `await generateNewGame(…)`, lint's `await-thenable`) is `await
+  Promise.resolve(…)`: the same one turn of the queue, so what follows runs when it did.
 
 - **A click's target's tag** (`e.target.tagName === 'A'`) is read through a reader typed `unknown` that throws for a
   `null` target, as the read did, and gives `undefined` for a target that isn't an element (`theTagOfWhatWasClicked`,
@@ -141,6 +148,15 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **A field deleted from a game's state as parsed** (`delete gs.archived`, a game restored) is `Reflect.deleteProperty`
   behind `typeof gs === 'object' && gs !== null`: a `delete` on words, a number or a flag deletes nothing and throws
   nothing, where a write on one throws (`theStateToWriteOn`, `game-detail.ts`).
+- **The game the GM has open, read after an await** (the turn shell's refresh, Turn 0's every step) goes through
+  `theGameOpenNow` (`game-detail.ts`) at each read: the game open then, and for none the `TypeError` that read threw.
+- **A slot row the engine hands back** (a report's `gp`, typed by the engine's slot row, which has no id) is found among
+  the rows the shell loaded by `===` (`theLoadedRowOf`): the turn keeps the rows it is handed, so it is the same object,
+  read for its id as before. A report's stamp the views type `null` is written through a local view of the same report,
+  `{ engineStamp: string | null }`.
+- **A world just made, handed to readers of a game in play** (Turn 0's report for each realm) passes the save's first
+  refusal (`refuseASaveThatIsNotAGameInPlay`, an assertion): a world made holds its provinces, realms and heroes, so it
+  never throws; settings and setups parsed from JSON go through a check that they are objects (as the turn report does).
 - **A module's `let` that a rebuild empties while an `await` waits** (the Hall of Fame's names, `_lbProfCache = null`)
   is read and written through a reader that throws, for `null`, the `TypeError` that read or write threw, in its words
   (`theNamesKept`): a local `const` would go on writing into the table the rebuild let go.

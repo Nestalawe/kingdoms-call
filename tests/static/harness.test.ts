@@ -295,7 +295,7 @@ describe('the lint rules', () => {
   const srcFiles = filesUnder(path.join(ROOT, 'src'))
     .filter((f) => f.endsWith('.ts'))
     .map((f) => 'src/' + f);
-  test('src/ has files of both kinds: TypeScript checks some and skips others', () => {
+  test('TypeScript checks every file of src/ (P1-16t freed the last it skipped)', () => {
     for (const f of [
       'src/engine/clock.ts',
       'src/schemas/saved-game-state.ts',
@@ -303,24 +303,21 @@ describe('the lint rules', () => {
       'src/ui/gm/start.ts',
     ])
       expect(typeChecked(f), f).toBe(true);
-    // until P1-17 (src/db/) and P1-16 free the last of them
-    expect(srcFiles.filter((f) => !typeChecked(f)).length).toBeGreaterThan(0);
+    // P1-17 (src/db/) and P1-16 freed them all; from P1-16v lint refuses the line
+    expect(srcFiles.filter((f) => !typeChecked(f))).toEqual([]);
   });
   // A planted finding of a type-aware rule (a `||` that should be `??`: it needs the value's type) is an error in a file
-  // TypeScript checks, and isn't looked for in one it skips. ESLint builds the checked file's program first: over 4 s
-  // on CI.
-  test.for([
-    ['src/engine/clock.ts', true],
-    ['src/ui/gm/turn-shell.ts', false],
-  ] as const)(
-    '%s: a planted type-aware finding is an error: %s',
+  // TypeScript checks (no file of src/ is skipped since P1-16t). ESLint builds the checked file's program first: over
+  // 4 s on CI.
+  test.for(['src/engine/clock.ts'])(
+    '%s: a planted type-aware finding is an error',
     timeLimitForTheWork({ typeScriptPrograms: 1 }),
-    async ([file, isError]) => {
-      expect(typeChecked(file)).toBe(isError);
+    async (file) => {
+      expect(typeChecked(file)).toBe(true);
       const code = read(file) + '\nexport const planted = (x: string | undefined) => x || "a";\n';
       const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
       const found = (result?.messages ?? []).filter((m) => m.ruleId === '@typescript-eslint/prefer-nullish-coalescing');
-      expect(found.map((m) => m.severity)).toEqual(isError ? [2] : []);
+      expect(found.map((m) => m.severity)).toEqual([2]);
     },
   );
   const GENERATED_TYPES_FORMS = [
@@ -2175,7 +2172,8 @@ describe('the ratchet', () => {
       expect(counts).not.toHaveProperty('tsNocheck');
       // the engine's side is at 0 since P1-17c typed src/db/kc-db-guard.ts (P1-10b's Done when), and stays there
       expect(counts['tsNocheckEngineSide']).toBe(0);
-      expect(counts['tsNocheckUi']).toBeGreaterThan(0);
+      // and the UI's since P1-16t typed the GM page's last files (P1-16v retires both counts)
+      expect(counts['tsNocheckUi']).toBe(0);
     }
     expect([...ENGINE_SIDE_FOLDERS]).toEqual([
       'src/engine/',
