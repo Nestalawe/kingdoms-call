@@ -61,6 +61,10 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **A box read for a value nobody reads** (`const race = …('join-race').value`, unused in `joinGame`) is looked up as a
   bare call, `theElementWithTheId('join-race', HTMLSelectElement);`: the same throw for a missing box, nothing else.
 
+- **An element's inline style read with no kind checked** (`full.style.display`, a battle's fold) is
+  `Reflect.get(el, 'style')` checked `instanceof CSSStyleDeclaration` (`theInlineStyleOf`, `report.ts`): an HTML or an
+  SVG element keeps its style; one with none throws the `TypeError` the read did.
+
 ## Writing into the page
 
 - **A helper that makes an element** (the Overlord page's `el(tag, props, ...kids)` and `fill(id, ...kids)`) takes its tag
@@ -127,3 +131,7 @@ row needs that isn't here is added under its kind. P1-16c started this file.
 - **Parts of the report no typed reader declares** (the chronicle's sightings and names to tint) are read through a local
   of a type with only the fields read, each element `object & { … }` (`TheReportAsTheChronicleTintsIt`): the report's
   own types pass, and `viewingReport ?? currentReport ?? {}` is the same object `||` gave.
+- **A draft's field of any kind written onto the report's hero** (the heir's saved name and temper) is
+  `Reflect.set(c, 'name', v)`: the same write, which a field typed as words refuses for `unknown`. **The page's report
+  global** is the report screen's type (`TheReportAsTheReportScreenReadsIt`, P1-16o2), the most derived; the seat it
+  last opened (`currentGamePlayerId`) is its row's id, `string | null`.

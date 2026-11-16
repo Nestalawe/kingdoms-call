@@ -219,3 +219,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   once `k != null` has narrowed it, for lint's `no-base-to-string`), and the read by it `table[String(k)]`: `in` and an index read a key by the same conversion (no log holds a symbol). **Names
   of any kind sorted by their length** (`b.length - a.length`, the chronicle's tinted names) read it through
   `Number(Reflect.get(Object(n), 'length'))` (`theLengthOf`): the same number, or `NaN` where it was `undefined`.
+- **`.includes(x)` on a value of any kind** (a GM log line's targets) goes through a reader that calls a list's or
+  words' own `includes` (words read `x` as words) and throws, for any other value, the `TypeError` the call threw
+  (`theTargetsHold`). **`{ ...x }` of a value of any kind** (an heir's levels in a draft) is
+  `Object.fromEntries(Object.entries(x))`, `{}` for none: the same own fields for any JSON value (`theLevelsCopied`).

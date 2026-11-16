@@ -262,7 +262,7 @@ export async function onSignedIn() {
       .catch(() => {
         // the report opens whether or not the games list loads
       });
-    await openReport(_gm[1]);
+    await openReport(String(_gm[1])); // the group always takes part in the match: the same words
     return;
   }
   show('sec-games');

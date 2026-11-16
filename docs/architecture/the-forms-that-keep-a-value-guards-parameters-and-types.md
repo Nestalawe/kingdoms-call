@@ -281,3 +281,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   `TypeError` its first field's read threw, and is read field by field as `unknown` (`theForceTheMarkerHolds`); its
   companies through a check of the same kind typed as the army label takes them (`theCompanyTheMarkerLists`). Inside
   the `try` that drew it as a plain line, every throw still lands there.
+- **A value parsed from JSON that becomes a typed part of the page** (the turn report; a past turn's snapshot, and the
+  GM log's lines and saved heroes its chronicle reads) goes through a type predicate that checks only that it is an
+  object (a maintainer's answer, 14 November): its fields are read as its type claims. A value that is no object keeps
+  its old outcome: the write that threw on it throws the same `TypeError`, a snapshot is shown empty, a line or a hero
+  that names nothing is skipped (`isATurnReport`, `report.ts`).
