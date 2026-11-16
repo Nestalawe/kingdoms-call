@@ -1,8 +1,9 @@
 // The Hall of Fame's builder and its writes on the values handed them (plan P1-16q): the lines P1-16q changed in
 // src/ui/gm/hall-of-fame.ts that the screen tours and the matrix don't reach, or reach only in part, each pinned to the
-// value it gave before the file was typed: a game's record built from odd statistics (words where numbers were, gaps,
-// lists of the wrong kind), its write and its refusals, the names read for it, the rebuild button, and a finished
-// game's results and turn records. Level 1 (unit): the file imports in Node once the page's config, the `supabase`
+// value it gave before the file was typed: a game's record built from odd statistics (words where numbers were, empty
+// words, gaps, lists of the wrong kind) and its deadliest champion (the hero with the most kills: the matrix reaches
+// it, no other test did), its write and its refusals, the names read for it, the rebuild button, and a finished game's
+// results and turn records. Level 1 (unit): the file imports in Node once the page's config, the `supabase`
 // global and a Db handed in are stood in (as the GM page's start-up tests do); a page test would boot the whole page,
 // sign in and finish a game to reach each of them.
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
@@ -240,7 +241,7 @@ describe("a game's record built from odd statistics", () => {
     expect([world?.setup.seaPct, world?.setup.maxTurns]).toEqual([5, 12]);
     expect(entriesOf(theRecord(world), 'biggest_world')).toEqual([]);
   });
-  test("the realm's totals: words a turn's outcomes held added as `+` adds them, numbers otherwise", () => {
+  test("the realm's totals: words a turn's outcomes held added as `+` adds them, empty words as 0, numbers otherwise", () => {
     const outcomes = (fought: unknown, won: unknown) => ({
       battles: { fought, won, unitsLost: 1, unitsKilled: '2' },
       encounters: { fought: '1', won: 0, fled: 1 },
@@ -285,6 +286,55 @@ describe("a game's record built from odd statistics", () => {
       lairs: '0111',
       events: 3,
     });
+    const emptyWords = hof.buildGameRecords(
+      'g8b',
+      null,
+      [],
+      [result(0)],
+      [
+        { turn: 1, player_index: 0, outcomes: { battles: { fought: '' }, captures: { gained: '' } } },
+        { turn: 2, player_index: 0, outcomes: { battles: { fought: 3 }, captures: { gained: 2 } } },
+      ],
+      null,
+      null,
+    );
+    expect(entriesOf(theRecord(emptyWords), 'battles_game')).toEqual(['0:3:null']);
+    expect(entriesOf(theRecord(emptyWords), 'captures_game')).toEqual(['0:2:null']);
+    expect(theRecord(emptyWords).totals.captures).toBe(2);
+  });
+  test("the deadliest champion: the hero who slew the most heroes, with his count, named from the turn's heroes", () => {
+    const row = hof.buildGameRecords(
+      'g8c',
+      null,
+      [],
+      [result(0)],
+      [
+        {
+          turn: 1,
+          player_index: 0,
+          post: {
+            characters: [
+              { id: 4, name: 'Harrow Vane' },
+              { id: 5, name: 'Odile Marsh' },
+            ],
+          },
+          outcomes: {
+            deaths: {
+              list: [
+                { killerPi: 0, pi: 1, killerId: 5 },
+                { killerPi: 0, pi: 1, killerId: 4 },
+                { killerPi: 0, pi: 1, killerId: 4 },
+                { killerPi: 0, pi: 2, killerId: 4 },
+              ],
+            },
+          },
+        },
+      ],
+      null,
+      null,
+    );
+    expect(entriesOf(theRecord(row), 'deadliest_champion')).toEqual(['0:3:null']);
+    expect(detailOf(theRecord(row), 'deadliest_champion', 'who')).toEqual(['Harrow Vane']);
   });
   test("a turn's heroes, titles, battles, lairs, captures, deaths and spells, each read as the statistics held it", () => {
     const post = {

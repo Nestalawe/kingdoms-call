@@ -380,7 +380,7 @@ const A_HEROES = [
 ];
 
 describe('the read-only view: the realm card', () => {
-  test("the ledger: none as nothing, a sum not a number as 0, the Sage's discoveries summed, the base worked out", () => {
+  test("the ledger: none as nothing (next turn's wages of none show no next-turn line), a sum not a number as 0, the Sage's discoveries summed, the base worked out", () => {
     theViewOf({ kingdom: A_LEDGER, ownedProvinces: [{ id: 1 }, { id: 2 }] });
     const k1 = textOf('report-kingdom');
     expect(k1).toContain('⚖ Neutral Realm Your realm prizes pragmatism above all.');
@@ -391,6 +391,12 @@ describe('the read-only view: the realm card', () => {
       'Army Wages4g/turnafter −2g the Host-Leadernext turn: 6g Hero Wages0g/turnafter −1g wage discounts',
     );
     expect(k1).toContain('Net Income+16g/turn Provinces2');
+    theViewOf({ kingdom: { ...A_LEDGER, nextArmyWages: null, nextHeroWages: null } });
+    const sameWagesNextTurn = textOf('report-kingdom');
+    expect(sameWagesNextTurn).toContain(
+      'Army Wages4g/turnafter −2g the Host-Leader Hero Wages0g/turnafter −1g wage discounts Net Income',
+    );
+    expect(sameWagesNextTurn).not.toContain('next turn:');
     theViewOf({ kingdom: { ...A_LEDGER, sageDiscG: 7, rawTaxBase: 9, alignment: 'Druidic' } });
     const k2 = textOf('report-kingdom');
     expect(k2).toContain('🌿 Druidic Realm');
