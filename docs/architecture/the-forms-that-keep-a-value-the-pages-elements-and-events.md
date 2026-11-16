@@ -135,3 +135,6 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   `Reflect.set(c, 'name', v)`: the same write, which a field typed as words refuses for `unknown`. **The page's report
   global** is the report screen's type (`TheReportAsTheReportScreenReadsIt`, P1-16o2), the most derived; the seat it
   last opened (`currentGamePlayerId`) is its row's id, `string | null`.
+- **A module's `let` that a rebuild empties while an `await` waits** (the Hall of Fame's names, `_lbProfCache = null`)
+  is read and written through a reader that throws, for `null`, the `TypeError` that read or write threw, in its words
+  (`theNamesKept`): a local `const` would go on writing into the table the rebuild let go.

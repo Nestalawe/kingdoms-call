@@ -19,16 +19,49 @@ type ANewDispatch = Omit<TheGeneratedTables['game_messages']['Insert'], 'from_us
  *  supabase-js writes as JSON). */
 type AGamesChange = Omit<TheGeneratedTables['games']['Update'], 'meta'> & { meta?: unknown };
 
+/** A row the GM page writes to the Hall of Fame or the statistics (plan P1-16q): its JSON columns, and a bot's
+ *  difficulty, any value (built from the world and the statistics as read, as a save of any age holds them), which
+ *  supabase-js sends as JSON. */
+type AsTheGmPageWritesIt<
+  T extends 'game_records' | 'game_results' | 'turn_events',
+  Columns extends keyof TheGeneratedTables[T]['Insert'],
+> = Omit<TheGeneratedTables[T]['Insert'], Columns> & Partial<Record<Columns, unknown>>;
+/** A Hall of Fame entry as the GM page builds and writes it. */
+export type AHallOfFameEntryAsTheGmPageWritesIt = AsTheGmPageWritesIt<
+  'game_records',
+  'setup' | 'standings' | 'records' | 'totals'
+>;
+/** A realm's result in a finished game as the GM page writes it. */
+export type AResultAsTheGmPageWritesIt = AsTheGmPageWritesIt<'game_results', 'setup' | 'final' | 'bot_difficulty'>;
+/** A realm's turn record as the GM page writes it. */
+export type ATurnRecordAsTheGmPageWritesIt = AsTheGmPageWritesIt<
+  'turn_events',
+  'orders' | 'pre' | 'post' | 'outcomes' | 'bot_difficulty'
+>;
+
 /** The generated types, but for a database function's argument that takes null on purpose (the generator writes every
  *  argument as never null): account_suspend's p_until (null: until the suspension is lifted), gm_reported_messages'
  *  p_game (null: every game's) and submit_orders' p_submitted (null: kept as saved; its p_orders, any JSON, takes
  *  null as it is: the orders kept); a dispatch's sender, which the page may send as null (`ANewDispatch`); and a
- *  game's meta, which the GM page sends as it built it (`AGamesChange`). */
+ *  game's meta, which the GM page sends as it built it (`AGamesChange`); and the Hall of Fame's and the statistics'
+ *  rows the GM page writes (`AsTheGmPageWritesIt`). */
 export type TheDatabase = Omit<Database, 'public'> & {
   readonly public: Omit<Database['public'], 'Functions' | 'Tables'> & {
-    readonly Tables: Omit<TheGeneratedTables, 'game_messages' | 'games'> & {
+    readonly Tables: Omit<
+      TheGeneratedTables,
+      'game_messages' | 'games' | 'game_records' | 'game_results' | 'turn_events'
+    > & {
       readonly game_messages: Omit<TheGeneratedTables['game_messages'], 'Insert'> & { Insert: ANewDispatch };
       readonly games: Omit<TheGeneratedTables['games'], 'Update'> & { Update: AGamesChange };
+      readonly game_records: Omit<TheGeneratedTables['game_records'], 'Insert'> & {
+        Insert: AHallOfFameEntryAsTheGmPageWritesIt;
+      };
+      readonly game_results: Omit<TheGeneratedTables['game_results'], 'Insert'> & {
+        Insert: AResultAsTheGmPageWritesIt;
+      };
+      readonly turn_events: Omit<TheGeneratedTables['turn_events'], 'Insert'> & {
+        Insert: ATurnRecordAsTheGmPageWritesIt;
+      };
     };
     readonly Functions: Omit<
       Database['public']['Functions'],
@@ -350,7 +383,9 @@ export interface Db {
       game: string,
     ) => PromiseLike<ADatabaseAnswer<AHallOfFameEntrysGameMasterNotes>>;
     /** The entries `entries` written, each over its game's entry if there is one. */
-    readonly writeTheseEntries: (entries: readonly ANewRow<'game_records'>[]) => PromiseLike<ADatabaseAnswer<null>>;
+    readonly writeTheseEntries: (
+      entries: readonly AHallOfFameEntryAsTheGmPageWritesIt[],
+    ) => PromiseLike<ADatabaseAnswer<null>>;
     /** The game `game`'s entry changed by `change`. */
     readonly changeThisGamesEntry: (
       game: string,
@@ -399,9 +434,9 @@ export interface Db {
     /** The turn records of the games `games` deleted. */
     readonly deleteTheseGamesTurnRecords: (games: readonly string[]) => PromiseLike<ADatabaseAnswer<null>>;
     /** The results `results` of a finished game written, each over its realm's in that game if there is one. */
-    readonly writeTheseResults: (results: ANewRow<'game_results'>[]) => PromiseLike<ADatabaseAnswer<null>>;
+    readonly writeTheseResults: (results: AResultAsTheGmPageWritesIt[]) => PromiseLike<ADatabaseAnswer<null>>;
     /** The turn records `records` written, each over its realm's in that game and turn if there is one. */
-    readonly writeTheseTurnRecords: (records: ANewRow<'turn_events'>[]) => PromiseLike<ADatabaseAnswer<null>>;
+    readonly writeTheseTurnRecords: (records: ATurnRecordAsTheGmPageWritesIt[]) => PromiseLike<ADatabaseAnswer<null>>;
     /** The games of the results of the games `games`. */
     readonly theGamesOfTheseGamesResults: (
       games: readonly string[],

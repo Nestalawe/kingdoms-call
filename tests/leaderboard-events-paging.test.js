@@ -17,7 +17,8 @@ const vm=require('vm');
 const {pagedEventsStub}=require('./lib/stub-db'); const {sourceOf}=require('./lib/source.ts');
 const {makeTheDbFromItsClient}=require('../src/db/the-db-interface-and-its-areas.ts');
 const HOF='ui/gm/hall-of-fame.ts';
-const CUT=sourceOf(HOF,['_kcHasLb','_kcLbLastErr','writeGameRecord','_lbProfCache','_lbProfErr','lbProfileNames','_lbTally','lbCountRow']);
+// (with the readers they call in their own file, and the shared ones they import, handed in: plan P1-16q)
+const CUT=sourceOf(HOF,['_kcHasLb','_kcLbLastErr','theMessageOrTheValueCaught','writeGameRecord','thisGamesSlots','_lbProfCache','_lbProfErr','theNamesKept','lbProfileNames','theNamesKeptAsAWhole','_lbTally','lbCountRow']);
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   // 8 realms × 90 turns = 720 rows: two pages, with the page edge in the middle of a turn.
@@ -26,7 +27,7 @@ let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('
   async function run(errorFrom){
     const calls=[]; const errs=[];
     let got=null;
-    const ctx=vm.createContext({console:{warn(){},log(){},error(){}},
+    const ctx=vm.createContext({console:{warn(){},log(){},error(){}}, ...require('../src/ui/shared/a-value-of-any-kind-read-as-javascript-reads-it.ts'),
       thePagesDb:makeTheDbFromItsClient(pagedEventsStub({events,results,errorFrom,calls})),
       buildGameRecords:(gid,gameRow,players,res,ev)=>{ got=ev.slice(); return {game_id:gid,standings:[],records:{}}; },
       renderLeaderboardBanner(){}, parseGameState:()=>null});

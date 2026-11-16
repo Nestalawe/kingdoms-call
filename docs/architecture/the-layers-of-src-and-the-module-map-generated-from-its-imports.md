@@ -125,6 +125,7 @@ src_ui_gm_-->src_content_
 src_ui_gm_-->src_db_
 src_ui_gm_-->src_engine_rules_on_plain_values_
 src_ui_gm_-->src_views_
+src_ui_gm_-->src_schemas_
 src_ui_leaderboard_-->src_db_
 src_ui_leaderboard_-->src_ui_shared_
 src_ui_overlord_-->src_db_

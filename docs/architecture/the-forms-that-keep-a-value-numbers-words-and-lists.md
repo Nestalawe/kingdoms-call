@@ -38,6 +38,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   value (a name, else the address's first part) is a reader that makes the read only for a falsy `x`
   (`theNameOrTheAddress`, `sign-in.ts`): `thisOrElse` would make it first. Such a value is written out through a reader
   typed `unknown` (`inWords`: `String` inside it).
+- **`a || <a call>` on a value of any kind** (a game's map size, else its settings' read) is
+  `thisOrElseWhatIsMade(a, () => <the call>)`: the call is made only for a falsy `a`, as before. **`a && a.b` written
+  into a row** (`gs.world && gs.world.cols`, a result's setup) is `a ? a.b : a`: `a?.b` would write `undefined` for a
+  `null` world, where the row held `null` (`hall-of-fame.ts`).
 ## Numbers, words and conversions
 
 - **A number in a line's words or a key** is `${String(x)}` (the same text); `a + '-' + b` on numbers is
@@ -86,6 +90,14 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   (`src/ui/shared/`): words where either side reads as words, else the two as numbers, as `+` gives; `Number(a) + Number(b)`
   would turn a score held as words into a number. `a - b`, `a / b`, `a < 30` and `Math.max(a, b)` already read each side
   as a number: `Number(a) - Number(b)` is the same.
+- **`x += y || 0` on a total of statistics of any kind** (a realm's battles over a game) is
+  `x = theSumAsJavaScriptMakesIt(x, thisOrElse(y, 0))`, the total typed `number | string`: a count held as words joins
+  as `+` joins it (`'02'`), and is read `Number(x)` where `-`, `>=` or `/` read it. `'…' + v` on a value of any kind is
+  `'…' + asAPlusWritesIt(v)` (`String(theSumAsJavaScriptMakesIt('', v))`, `hall-of-fame.ts`).
+- **Statistics JSON read field by field as it is walked** (a realm's snapshot and a turn's outcomes, which the Hall of
+  Fame's builder reads in a hundred places) is held as `Readonly<Partial<Record<string, unknown>>>`, behind a predicate
+  that checks only `typeof v === 'object'` (`isAnObjectReadByItsFields`), and each field read by its key
+  (`post['provinces']`): the same read, at the same moment, as `post.provinces`.
 - **Database JSON read in many sums and sorts** (the Hall of Fame's `game_records`) is read once, where the page loads it,
   into a view: each field the value `x.field` gave (`unknown`), each list's elements with `!x`'s nothings (`null`, `0`,
   `false`, `''`) kept as they were, and a value that should be a list but isn't kept, so walking it throws as before
