@@ -99,9 +99,11 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-16l: #551 The player page's dispatches, desk and screens freed of their ts-nocheck lines
 - P1-16m: #552 The player page's game lists, join descriptions, Save and Submit freed of their ts-nocheck lines
 - P1-16n: #556 The player page's join form and chronicle freed of their ts-nocheck line
-- P1-16o: done in its row o1, below; the rest is P1-16o2
+- P1-16o: done in its rows, below
 - P1-16o1: #557 The player page's sign-in freed of its ts-nocheck line
+- P1-16o2: #623 The player page's report freed of its ts-nocheck line
 - P1-16p: #565 The GM page's start-up, sign-in and turn-mode files freed of their ts-nocheck line
+- P1-16q: #624 The Hall of Fame freed of its ts-nocheck line
 
 ## P1-17
 
@@ -124,6 +126,8 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-17p: #564 Turn 0 onto Db
 - P1-17q: #568 Nine of the GM page's tests onto the fake
 - P1-17q2: #569 Six more of the GM page's tests onto the fake
+- P1-17q3: #626 The turn shell's page test on the typed fake
+- P1-17r: #627 The tests of several pages on the typed fake (13 of them; the screen tours are P1-17t)
 
 ## P1-18
 
@@ -223,6 +227,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-21r: #553 Tests for the second run's Part 2 mutation survivors
 - P1-21s: #570 Tests for the third run's mutation survivors
 - P1-21t: #588 Tests for the alignment family's two weak catches
+- P1-21u: #628 Tests for the report and the Hall of Fame from the mutation session of 2026-11-17
 
 ## P1-23
 

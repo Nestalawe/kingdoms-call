@@ -59,29 +59,20 @@ of ordering the backlog, and a maintainer validates its place. The rulings and t
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
 T6's rows are the rows left of two groups, [P1-16 and P1-17](the-next-group-the-rebuilds-other-rows.md#the-groups).
 
-### 1. T6, the types finished: part 4
+### 1. T6, the types finished: part 5
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| P1-16o2 | `report.ts` freed, on a maintainer's answer of 14 November: a type predicate at the one read, which checks only that the report is an object | Maintainers: the whole player page is typed | Phase 1 | Large | – | ⬜ | | T6 part 4, the rebuild in progress: `report.ts` freed, so the whole player page is typed; unblocks P1-16q |
-| P1-16q | The Hall of Fame's file freed. After P1-16o2 | Maintainers: one more page typed | Phase 1 | Large | – | ⬜ | | T6 part 4: one more page typed; after P1-16o2, unblocks P1-16r |
-| P1-17q3 | `tests/page/turn-shell.test.ts` onto the typed fake: its expected values become `Db` functions' names | Maintainers: one more page test on the fake | Phase 1 | Small | – | ⬜ | | T6 part 4: the turn shell's page test on the typed fake; unblocks P1-17r |
-| P1-17r | The tests of several pages onto the fake. After P1-17q3 | Maintainers: the page tests stop reading `stub-db` | Phase 1 | Medium | – | ⬜ | | T6 part 4: the page tests off `stub-db` finish part 4; unblocks P1-17s1 |
-
-### 2. T6, the types finished: part 5
-
-| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
-|---|---|---|---|---|---|---|---|---|
-| P1-16r | `stats-tab` freed. After P1-16q | Maintainers: one more page typed | Phase 1 | Large | – | ⬜ | | T6 part 5: one more page typed; after P1-16q, unblocks P1-16s |
+| P1-16r | `stats-tab` freed | Maintainers: one more page typed | Phase 1 | Large | – | ⬜ | | T6 part 5, the rebuild in progress: one more page typed; unblocks P1-16s |
 | P1-16s | `game-list`, `turn-log` and `game-detail` freed. After P1-16r | Maintainers: three more pages typed | Phase 1 | Medium | – | ⬜ | | T6 part 5: three more pages typed; unblocks P1-16t |
 | P1-16t | `turn-shell`, `auto-turn` and `turn-zero` freed: every page typed, no `@ts-nocheck` line left in the UI. After P1-16s | Maintainers: every page typed; unblocks P1-16u | Phase 1 | Medium | – | ⬜ | | T6 part 5: the last pages typed; unblocks P1-16u |
 | P1-16u | The 16 reads of every column in `src/db/` name their columns, and the compiler proves each page reads only those. After P1-16t | Maintainers: each page's reads are typed column by column | Phase 1 | Small | – | ⬜ | | T6 part 5: each page's reads typed column by column; unblocks P1-16v |
 | P1-16v | Lint refuses `@ts-nocheck` everywhere; the ratchet's two counts of it retire. After P1-16u | Maintainers: no file can opt out of the compiler again | Phase 1 | Small | ✓ | ⬜ | | T6 part 5: the ban on `@ts-nocheck` finishes P1-16 |
-| P1-17t | The screen tours onto the fake (`tests/lib/screens.js`: the Hall of Fame's, the Overlord's, the GM's and the player's, in jsdom and Chromium), every tour screen the same. After P1-17r | Maintainers: the tours stop reading `stub-db`; unblocks P1-17s2 | Phase 1 | Medium | – | ⬜ | | T6 part 5: the last page tests off `stub-db`; after P1-17r, unblocks P1-17s2 |
-| P1-17s1 | The balance matrix plays on the fake, its `writes` column recorded at `Db`'s calls. After P1-17r | Maintainers: the matrix records what reaches the database; unblocks P1-17s2 | Phase 1 | Medium | ✓ | ⬜ | | T6 part 5: the matrix plays on the fake; after P1-17r, unblocks P1-17s2 |
+| P1-17t | The screen tours onto the fake (`tests/lib/screens.js`: the Hall of Fame's, the Overlord's, the GM's and the player's, in jsdom and Chromium), every tour screen the same. | Maintainers: the tours stop reading `stub-db`; unblocks P1-17s2 | Phase 1 | Medium | – | ⬜ | | T6 part 5: the last page tests off `stub-db`; unblocks P1-17s2 |
+| P1-17s1 | The balance matrix plays on the fake, its `writes` column recorded at `Db`'s calls. | Maintainers: the matrix records what reaches the database; unblocks P1-17s2 | Phase 1 | Medium | ✓ | ⬜ | | T6 part 5: the matrix plays on the fake; unblocks P1-17s2 |
 | P1-17s2 | `stub-db` deleted, each rule it copied named beside the access-layer test that covers it. After P1-17s1 | Maintainers: one fake of the database instead of two | Phase 1 | Small | – | ⬜ | | T6 part 5: `stub-db` deleted finishes P1-17, and T6 with it |
 
-### 3. Phase 1's rest
+### 2. Phase 1's rest
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
@@ -91,7 +82,7 @@ T6's rows are the rows left of two groups, [P1-16 and P1-17](the-next-group-the-
 | P1-12z | P1-12's "done when" checked on `main`, and the step closed | Maintainers: one Phase 1 criterion confirmed with evidence | Phase 1 | Small | ✓ | ⬜ | | Phase 1's rest: P1-12 confirmed on `main`, and closed |
 | P1-11z | P1-11's rest: the differences the copies test still pins go as the maintainers rule on them; the alignment orders' portal half (with P1-19) | Players: the order form says what the turn does in the cases still pinned; closes P1-11 | Phase 1 | Medium | – | ⬜ | | Phase 1's rest: closes P1-11; its portal half goes with P1-19's |
 
-### 4. T7, the rules pulled out
+### 3. T7, the rules pulled out
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
