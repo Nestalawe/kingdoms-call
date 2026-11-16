@@ -1,5 +1,5 @@
-// Eliminated realms and dispatches, on screen (P0-25, ruling R-075). Page level (jsdom, the in-memory database of
-// lib/stub-db.js). The player portal opens the game as it does for a player (openReport: the realm's turn report and
+// Eliminated realms and dispatches, on screen (P0-25, ruling R-075). Page level (jsdom, the fake database of
+// lib/fake-db.ts: the player's world and the GM's, staged with the same rows). The player portal opens the game as it does for a player (openReport: the realm's turn report and
 // the game's light row), and the dispatch is written through the composer:
 //   - a realm still in the game sends privately and publicly, whatever the GM's switch says;
 //   - a realm that has conceded, or whose dynasty is extinguished, can't send privately (the composer says why) but
@@ -18,7 +18,8 @@
 // realms that are out; the Dispatches note gives the rule. The GM's game screen has the switch "Block eliminated realms
 // from sending dispatches", which saves `games.block_eliminated_msgs` and shows it when the game is opened again, for
 // the game's GM and the Overlord in Master GM mode
-const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot');
+const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld,makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };
@@ -27,27 +28,32 @@ const PRIV='p:0-1';   // Thornmere (realm 0) and Veyholt (realm 1)
 
 // Thornmere (p1, realm 0), Veyholt (p2, realm 1) and a computer realm, Grimfast (realm 2), in Marchwood.
 // me: Thornmere's own state in its report ({conceded} / {eliminated}); them: Veyholt's, as Thornmere's report shows it.
+// S.players: the player's world (its dispatches held, none yet); S.gm: the GM's, holding the same rows.
 function world({status='active',block=false,me={},them={}}={}){
-  const S=makeStub();
-  S.DB.profiles.push({id:'p1',name:'Test Player One'},{id:'p2',name:'Test Player Two'},{id:'ov1',name:'Test Overlord'},{id:'gm2',name:'Test GM Two'});
-  S.DB.site_admins.push({user_id:'ov1'});
-  S.DB.game_masters.push({user_id:'gm2',offered_at:'2026-10-01T00:00:00Z',offered_by:'ov1',accepted_at:'2026-10-01T00:00:00Z'});
+  const gm=aGameMastersWorld(), T=gm.tables;
+  const S={gm,players:{me:null,names:T.profiles,games:T.games,realms:T.game_players,dispatchRefused:null,readsOfAnotherAccountsRealms:[],dispatches:[],readMarks:[]}};
+  T.profiles.push({id:'p1',name:'Test Player One'},{id:'p2',name:'Test Player Two'},{id:'ov1',name:'Test Overlord'},{id:'gm2',name:'Test GM Two'});
+  T.site_admins.push({user_id:'ov1'});
+  T.game_masters.push({user_id:'gm2',offered_at:'2026-10-01T00:00:00Z',offered_by:'ov1',accepted_at:'2026-10-01T00:00:00Z'});
   const game=(id,name,gm)=>({id,name,gm_user_id:gm,status,turn:6,max_players:3,max_turns:0,created_at:'2026-10-01T00:00:00Z',
     meta:{v:1,turnMode:{mode:'manual'}},game_state:'{}',block_eliminated_msgs:block});
-  S.DB.games.push(game('G1','Marchwood','gm1'),game('G2','Fenmoor','gm2'));
+  T.games.push(game('G1','Marchwood','gm1'),game('G2','Fenmoor','gm2'));
   const report={turn:5,playerName:'Thornmere',kingdom:{conceded:false,eliminated:false,color:'#a33',...me},
     diplomacy:{known:[{index:1,name:'Veyholt',color:'#33a',relation:'neutral',conceded:false,eliminated:false,...them},
                       {index:2,name:'Grimfast',color:'#3a3',relation:'neutral'}]}};
-  S.DB.game_players.push(
+  T.game_players.push(
     {id:'s0',game_id:'G1',user_id:'p1',player_index:0,display_name:'Thornmere',orders_submitted:false,turn_report:JSON.stringify(report)},
     {id:'s1',game_id:'G1',user_id:'p2',player_index:1,display_name:'Veyholt',orders_submitted:false,turn_report:'{}'},
     {id:'s2',game_id:'G1',user_id:null,player_index:2,display_name:'Grimfast',orders_submitted:false,turn_report:'{"isBot":true}'});
   return S;
 }
+// The page on the fake holding its own world: the player portal the player's, the GM portal the GM's.
 async function boot(S,page,user,url){
-  S.setUser(user);
+  const forThePlayer=/player-portal/.test(page);
+  if(forThePlayer) S.players.me=user; else S.gm.me=user;
+  const fake=forThePlayer?makeAFakeDbHoldingThePlayersWorld(DB_VERSION,S.players):makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION,S.gm);
   const errs=[];
-  const dom=bootJsdom(readPage(page),{supabase:S.supabase,...(url?{url}:{}),setup(w){
+  const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>({})},db:fake.db,...(url?{url}:{}),setup(w){
     w.addEventListener('error',e=>errs.push(e.error&&e.error.stack||e.message));
     w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
     w.console.warn=()=>{}; w.console.log=()=>{}; w.console.error=(...a)=>errs.push(a.join(' '));
@@ -73,7 +79,7 @@ async function trySend(P,key,body){
   ta.value=body; W.eval('updateMsgComposer()');
   shown.buttonOff=doc.getElementById('msg-send-btn').disabled;
   await W.eval('sendMessage()'); await wait(30);
-  shown.sent=S.DB.game_messages.some(m=>m.body===body&&m.from_index===0);
+  shown.sent=S.players.dispatches.some(m=>m.body===body&&m.from_index===0);
   return shown;
 }
 const can=(r,what)=>check(r.sent&&!r.inputOff&&!r.buttonOff,`${what} (${JSON.stringify(r)})`);
@@ -143,14 +149,14 @@ const noErrors=(errs,who)=>check(!errs.length,`${who}: no page errors`+(errs.len
     check(!!b&&!b.checked&&!!label&&/Block eliminated realms from sending dispatches/.test(label.textContent),
       'the game screen has the switch "Block eliminated realms from sending dispatches", off');
     if(b){ await flip(W,doc,true); }
-    check(S.DB.games[0].block_eliminated_msgs===true,`turning it on saves the game's setting (${S.DB.games[0].block_eliminated_msgs})`);
-    check(S.DB.games[1].block_eliminated_msgs===false,'and no other game\'s');
+    check(S.gm.tables.games[0].block_eliminated_msgs===true,`turning it on saves the game's setting (${S.gm.tables.games[0].block_eliminated_msgs})`);
+    check(S.gm.tables.games[1].block_eliminated_msgs===false,'and no other game\'s');
     noErrors(errs,'GM'); W.close();
     const R=await boot(S,'kingdoms-call-gm-portal.html','gm1');
     await R.W.eval(`openGame('G1')`); await wait(200);
     check(!!box(R.doc)&&box(R.doc).checked,'opened again, the switch shows on');
     if(box(R.doc)) await flip(R.W,R.doc,false);
-    check(S.DB.games[0].block_eliminated_msgs===false,'turning it off saves that too');
+    check(S.gm.tables.games[0].block_eliminated_msgs===false,'turning it off saves that too');
     R.W.close();
   }
   {
@@ -158,7 +164,7 @@ const noErrors=(errs,who)=>check(!errs.length,`${who}: no page errors`+(errs.len
     const {W,doc,errs}=await boot(S,'kingdoms-call-gm-portal.html','ov1');
     await W.eval(`openGame('G2')`); await wait(200);
     if(box(doc)) await flip(W,doc,true);
-    check(S.DB.games[1].block_eliminated_msgs===true,`the Overlord, in Master GM mode, sets it on another GM's game (${S.DB.games[1].block_eliminated_msgs})`);
+    check(S.gm.tables.games[1].block_eliminated_msgs===true,`the Overlord, in Master GM mode, sets it on another GM's game (${S.gm.tables.games[1].block_eliminated_msgs})`);
     noErrors(errs,'Overlord'); W.close();
   }
   process.exit(fails?1:0);

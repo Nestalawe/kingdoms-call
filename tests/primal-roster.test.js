@@ -19,7 +19,7 @@
 // other's) and the player portal's `druidNeedP`; the player portal's speeds built from the one primal table;
 // `KC_PIT_TIERS` in the shared file and both guards' lists; `call_pit` an alignment order
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {pageInitializer,scriptOf}=require('./lib/source.ts');
 const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,LAND_TERRAINS,LIVE,COMING}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
@@ -62,7 +62,7 @@ const near=(a,b)=>Math.abs(a-b)<1e-9;
   }
 
   // ── The booted GM portal ──
-  const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+page,
+  const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,url:'https://example.org/'+page,
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
     await new Promise(r=>setTimeout(r,1200)); return {dom,errors,ev:x=>{ try{ return dom.window.eval(x); }catch(e){ return 'THREW: '+e.message; } }}; };
   const g=await boot('kingdoms-call-gm-portal.html');

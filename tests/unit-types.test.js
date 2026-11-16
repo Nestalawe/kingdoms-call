@@ -18,7 +18,7 @@
 // and the engine's `unitTypeOf`, which both hold (the player portal through `src/shared/`, P1-11a4), answers `infantry`
 // for an unknown type
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {scriptOf}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const TYPES=['infantry','ranged','cavalry','flyer','naval'];
@@ -50,7 +50,7 @@ const TYPES=['infantry','ranged','cavalry','flyer','naval'];
   // file is bundled into each page, and a table a page imports that is missing stops the build.)
   for(const [page,helper] of [['kingdoms-call-gm-portal.html','unitTypeOf'],['kingdoms-call-player-portal.html','unitTypeOf']]){
     const errors=[];
-    const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+page,
+    const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,url:'https://example.org/'+page,
       setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
     await new Promise(r=>setTimeout(r,1200));
     const w=dom.window; const ev=expr=>{ try{ return w.eval(expr); }catch(e){ return 'THREW: '+e.message; } };

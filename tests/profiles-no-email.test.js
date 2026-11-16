@@ -1,34 +1,40 @@
-// No screen shows another player's email (P0-31, ruling D-08). Page level (jsdom, the in-memory database of
-// lib/stub-db.js). Every account has an email in its profile. Twice: as today, and with the email column's
-// privilege taken away (P0-31's database step: a read of '*' or of email is then refused, even of your own row).
+// No screen shows another player's email (P0-31, ruling D-08). Page level (jsdom, the fake database of
+// lib/fake-db.ts: the GM portal on the GM's world, the player portal on the player's). Every account has an email in
+// its profile. Twice: as today, and with the email column taken away (P0-31's database step; the GM's world refuses a
+// query naming it, as it does a column the database lacks; the access layer's test proves the column privilege itself
+// against the local database, for each role).
 //   - the GM portal's invite picker lists other players by name (with the month they joined, to tell two
 //     players of one name apart), never by email, and searches by name;
 //   - the player portal still shows your own name.
-const {readPage,bootJsdom}=require('./lib/boot'); const {makeStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot');
+const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld,makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 
 async function boot(page,user,revoked){
-  const S=makeStub();
-  S.DB.profiles.length=0;
-  S.DB.profiles.push(
+  const gm=aGameMastersWorld(), T=gm.tables;
+  T.profiles.length=0;
+  T.profiles.push(
     {id:'gm1',name:'Test GM',          email:'gm1@example.test', created_at:'2026-09-01T10:00:00Z'},
     {id:'p1', name:'Ada Thorn',        email:'ada@example.test', created_at:'2026-09-14T10:00:00Z'},
     {id:'p2', name:'Ada Thorn',        email:'ada2@example.test',created_at:'2026-10-03T10:00:00Z'},
     {id:'p3', name:'Bram Vey',         email:'bram@example.test',created_at:'2026-10-05T10:00:00Z'});
-  if(revoked) S.REVOKED_COLS.add('profiles.email');
-  S.setUser(user);
+  if(revoked) gm.missingColumns.add('profiles.email');
+  gm.me=user;
+  const fake=/player-portal/.test(page)
+    ?makeAFakeDbHoldingThePlayersWorld(DB_VERSION,{me:user,names:T.profiles,games:[],realms:[],dispatchRefused:null,readsOfAnotherAccountsRealms:[]})
+    :makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION,gm);
   const errs=[];
-  const dom=bootJsdom(readPage(page),{supabase:S.supabase,setup(w){
+  const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>({})},db:fake.db,setup(w){
     w.addEventListener('error',e=>errs.push(e.error&&e.error.stack||e.message));
     w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
     w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));
     w.console.warn=()=>{}; w.console.log=()=>{};
   }});
   await wait(900);
-  return {S,W:dom.window,doc:dom.window.document,errs};
+  return {W:dom.window,doc:dom.window.document,errs};
 }
 
 (async()=>{

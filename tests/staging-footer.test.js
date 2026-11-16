@@ -8,7 +8,7 @@
 //   - (two pages) with a hand-made config whose `deployed` isn't a number and a commit: no line, no markup.
 // Reads site/ (or $KC_SITE).
 const fs=require('fs');
-const {SITE,sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {SITE,sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {configFile}=require('../.github/scripts/staging.js');
 
 const SHA='abcdef1234567890abcdef1234567890abcdef12';
@@ -25,7 +25,7 @@ const shown=doc=>{ const b=doc.body.cloneNode(true); b.querySelectorAll('script'
 
 async function boot(name,config){
   const html=readPage(name).split(LIVE).join(config);
-  const dom=bootJsdom(html,{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+name,
+  const dom=bootJsdom(html,{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,url:'https://example.org/'+name,
     setup(w){ w.console.warn=()=>{}; w.console.log=()=>{}; w.console.error=()=>{}; w.onunhandledrejection=()=>{}; }});
   await new Promise(r=>setTimeout(r,100));
   return dom;

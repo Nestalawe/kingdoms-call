@@ -7,7 +7,7 @@
 //   - no answer twice (network): it stops the same way, after asking twice;
 //   - no answer once, then up to date: it boots (one retry).
 // Reads site/ (or $KC_SITE).
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb,NO_ANSWER}=require('./lib/fake-db.ts');
 
 const PAGES=['kingdoms-call-gm-portal.html','kingdoms-call-player-portal.html','kingdoms-call-leaderboard.html','kingdoms-call-overlord.html'];
 const OLDER='20261010000000';   // older than any KC_DB_MIN (the first is P0-34's own migration)
@@ -16,9 +16,11 @@ let fails=0;
 const fail=m=>{ fails++; console.log('FAIL '+m); };
 const ok=m=>console.log('ok   '+m);
 
+// The answers as the fake gives them: 'offline' is no answer at all.
+const fakeAnswer=a=>a==='offline'?NO_ANSWER:a;
 async function boot(name,dbVersion){
-  const calls=[];
-  const dom=bootJsdom(readPage(name),{supabase:{createClient:()=>nullStub()},url:'https://example.org/'+name,dbVersion,dbCalls:calls,
+  const fake=makeAFakeDb((Array.isArray(dbVersion)?dbVersion:[dbVersion]).map(fakeAnswer)), calls=fake.calls;
+  const dom=bootJsdom(readPage(name),{supabase:{createClient:()=>({})},db:fake.db,url:'https://example.org/'+name,
     setup(w){ w.console.warn=()=>{}; w.console.log=()=>{}; w.console.error=()=>{}; }});
   await new Promise(r=>setTimeout(r,300));
   const sp=dom.window.document.getElementById('spinner');

@@ -49,8 +49,6 @@ import { timeLimitForTheWork } from '../lib/time-limits.ts';
 /** Evaluating calls whose code isn't a string, a template, a function or a constant of their file, and why each is
  *  safe to leave unread. */
 const UNREAD_ON_PURPOSE: Record<string, string[]> = {
-  // the stand-in database for the browser (browserSource): it reads no page name
-  'tests/browser/chromium-boot.spec.ts': ['page.addInitScript(browserSource.null)'],
   // the screen tours' code, which page-globals.ts reads as every string of the file
   'tests/lib/screens.js': ['w.eval(code)', 'p.evaluate(code)'],
 };

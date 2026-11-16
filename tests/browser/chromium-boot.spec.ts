@@ -1,8 +1,8 @@
 // Real-browser boot of the three portal pages, served from one folder over HTTP exactly as they are deployed
-// (claude_lb_chromium_0927.js; a test script until P1-01c). supabase-js is answered with a stand-in that has an empty
-// database, so no network call leaves the machine. Checks: the spinner goes, there are no page errors, the links are
-// present and point at the right files, the GM portal's leaderboard functions exist and its boot order is intact, and
-// its dice seed themselves from the browser's crypto, as on the live site (P1-07).
+// (claude_lb_chromium_0927.js; a test script until P1-01c). Each page is handed the fake database holding no account
+// and no game (tests/lib/fake-db.ts), so no network call leaves the machine. Checks: the spinner goes, there are no
+// page errors, the links are present and point at the right files, the GM portal's leaderboard functions exist and its
+// boot order is intact, and its dice seed themselves from the browser's crypto, as on the live site (P1-07).
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // GM portal, player portal and Hall of Fame boot in real Chromium with no page errors; their links are present, and so
@@ -10,14 +10,12 @@
 // portal, given no seed as when deployed, draws its dice from a seed it took from the browser's `crypto` (P1-07). (The
 // script's optional footer-stamp argument, never given in `npm test`, wasn't brought over.)
 import { expect, test, type Page } from '@playwright/test';
-import { routeExternal } from '../lib/boot.js';
-import { browserSource } from '../lib/stub-db.js';
 import { signedOut, spinnerGone } from './started.ts';
+import { handThePageTheFakeDb } from './the-fake-db-handed-to-chromium.ts';
 
 async function open(page: Page, name: string, started: (page: Page) => Promise<void>): Promise<string[]> {
   const errs: string[] = [];
-  await page.addInitScript(browserSource.null);
-  await routeExternal(page, '');
+  await handThePageTheFakeDb(page);
   page.on('pageerror', (e) => errs.push(e.message));
   page.on('console', (m) => {
     if (m.type() === 'error') errs.push('console: ' + m.text());

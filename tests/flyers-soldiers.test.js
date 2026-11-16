@@ -10,7 +10,7 @@
 // on the player page, which loads it through `src/shared/`), and `primalStrikeChance` gives their strikes a flat 50%
 // while a beast's still runs 30% + 10% a level to 90
 const fs=require('fs'), vm=require('vm');
-const {readPage,bootJsdom,sitePath}=require('./lib/boot'); const {nullStub}=require('./lib/stub-db');
+const {readPage,bootJsdom,sitePath,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
 
@@ -27,7 +27,7 @@ const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
   ok(D.KC_DRUID_LEVELS[3][0]==='Whale Cohort'&&!D.KC_DRUID_LEVELS[3].some(r=>RIDERS.includes(r)),'Druid 3 is left to the sea-beasts, the Whale Cohort first');
   ok(!Object.values(D.KC_DRUID_LEVELS).some(l=>l.includes('Gnomish Gyrocopters')),'Gnomish Gyrocopters still need nobody');
 
-  const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>nullStub()},url:'https://example.org/x',
+  const boot=async(page)=>{ const errors=[]; const dom=bootJsdom(readPage(page),{supabase:{createClient:()=>({})},db:makeAFakeDb([DB_VERSION]).db,url:'https://example.org/x',
     setup(w){ w.addEventListener('error',e=>errors.push(String(e.error&&e.error.stack||e.message))); w.console.error=()=>{}; w.console.warn=()=>{}; w.console.log=()=>{}; }});
     await new Promise(r=>setTimeout(r,1200)); return {dom,errors,ev:x=>dom.window.eval(x)}; };
   const gm=await boot('kingdoms-call-gm-portal.html');
