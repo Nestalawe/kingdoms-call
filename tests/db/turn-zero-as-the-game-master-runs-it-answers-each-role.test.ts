@@ -6,7 +6,8 @@
 // - the bots' realms: one made, and every bot's realm of the game removed (no player's, no other game's), by its GM and
 //   the Overlord;
 // - the start: the world saved, each realm's first report with its orders cleared, a realm's turn-0 log, each by those
-//   the access rules let change them.
+//   the access rules let change them (a player's own realm refuses them with an error: a player changes it only
+//   through the orders function, P2-05).
 // A visitor is refused for want of a grant. Every row is made here through the local service role and removed after.
 // Level db (the access layer, against the local Supabase): the queries and the access rules together, which no lower
 // level holds (pgTAP checks the rules in SQL; the page tests run on the stand-in).
@@ -50,9 +51,18 @@ const theErrorFor = (role: ARole): unknown => (role === 'signed out' ? NO_GRANT 
 const readsMarchwood = (role: ARole): boolean => role !== 'signed out' && role !== 'another GM';
 /** Who reads and changes every realm of Marchwood, and changes the game: its GM and the Overlord. */
 const runsMarchwood = (role: ARole): boolean => role === "the game's GM" || role === 'the Overlord';
-/** The slots of Marchwood's realms `role` reads and changes: every one, its own, or none. */
+/** The slots of Marchwood's realms `role` reads: every one, its own, or none. */
 const marchwoodsRealmsFor = (role: ARole): number[] =>
   runsMarchwood(role) ? [0, 1, 2] : role === 'a player' ? [0] : role === 'a rival' ? [1] : [];
+/** What a write to this slot of Marchwood answers, as `role`: a visitor's refusal for want of a grant; the access
+ *  rules' refusal if the slot is the role's own realm (a player changes it only through the orders function, P2-05);
+ *  else no error. */
+const theErrorOfAWriteToThisSlotFor = (role: ARole, slot: number): unknown =>
+  role === 'signed out'
+    ? NO_GRANT
+    : !runsMarchwood(role) && marchwoodsRealmsFor(role).includes(slot)
+      ? refusedByTheRulesFor('game_players')
+      : null;
 
 /** Marchwood's world as made here, to put back after each change. */
 const MARCHWOODS_WORLD = JSON.stringify({ madeUp: 'Marchwood' });
@@ -225,9 +235,9 @@ describe('the start: the world, the first reports and the logs, by those the rul
     ];
     const after = await marchwoodNow();
     await putMarchwoodBack();
-    const changes = (slot: number): boolean => slot < 2 && marchwoodsRealmsFor(role).includes(slot);
+    const changes = (slot: number): boolean => slot < 2 && runsMarchwood(role);
     expect({ errors: answers.map(itsError), realms: after.realms }).toEqual({
-      errors: answers.map(() => theErrorFor(role)),
+      errors: [theErrorOfAWriteToThisSlotFor(role, 0), theErrorOfAWriteToThisSlotFor(role, 1)],
       realms: [0, 1, 2].map((slot) => (changes(slot) ? [slot, null, false, report] : [slot, ORDERS, true, null])),
     });
   });

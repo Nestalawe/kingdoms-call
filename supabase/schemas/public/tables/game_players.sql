@@ -37,10 +37,16 @@ CREATE POLICY "gp2" ON "public"."game_players"
   TO PUBLIC
   WITH CHECK ((user_id = auth.uid()));
 
-CREATE POLICY "gp3" ON "public"."game_players"
+-- A player changes their own realm only through the orders function, submit_orders (P2-05): this rule lets a player
+-- reach their own realm and refuses every change, with an error. It keeps a page opened before the order form used
+-- the function (#620) from showing unsaved orders as sent: its save fails with an error instead. A later pull
+-- request removes this rule once no such page remains. The table's update grant stays for the GM's and the
+-- Overlord's rules.
+CREATE POLICY "a player changes their realm only through the orders function" ON "public"."game_players"
   FOR UPDATE
   TO PUBLIC
-  USING ((user_id = auth.uid()));
+  USING ((user_id = auth.uid()))
+  WITH CHECK (false);
 
 -- gp4, gp5, gp6: the game's GM adds, changes and removes realms, while still a Game Master (P0-32i, R-097).
 CREATE POLICY "gp4" ON "public"."game_players"

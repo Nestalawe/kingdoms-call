@@ -1,6 +1,7 @@
 -- A realm's orders, saved by its own player (plan step P2-05, the expand; ruling R-184): only by the account that
 -- holds a realm in the game (one realm an account a game, so it's always the caller's own), only while the game is
--- running, only for its current turn, and not after the turn's deadline. Nothing on the site calls it yet.
+-- running, only for its current turn, and not after the turn's deadline. The order form saves through it (#620), and
+-- a player changes their realm in no other way (game_players' rules).
 --
 -- What it saves, by its last two arguments: p_orders, the orders as the order form writes them, or null to keep the
 -- orders saved; p_submitted, true to submit them (stamped with the time), false to keep them as a draft, or null to

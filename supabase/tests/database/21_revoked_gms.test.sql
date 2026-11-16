@@ -93,8 +93,9 @@ select is(pg_temp.kc_writes($$insert into public.game_records (game_id, game_nam
 select is(pg_temp.kc_writes($$delete from public.games where id = pg_temp.kc_game('B')$$), 1, 'still deletes their game');
 
 select pg_temp.kc_as('p1');
-select is(pg_temp.kc_writes($$update public.game_players set orders = '{"orders":"hold the ford"}', orders_submitted = true
-          where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$), 1, 'a player still sends their orders');
+select is(pg_temp.kc_writes($$select public.submit_orders(pg_temp.kc_game('A'), 3,
+          '{"orders":{"7":["hold the ford"]},"encounterPlans":{},"forTurn":3}'::jsonb, true)$$), 1,
+  'a player still sends their orders');
 select pg_temp.kc_as('invitee');
 select is(pg_temp.kc_writes($$insert into public.game_players (game_id, user_id, player_index, display_name)
           values (pg_temp.kc_game('P'), auth.uid(), 0, 'Lunehall')$$), 1, 'an invited player still joins a game');
