@@ -344,27 +344,6 @@
       "count": 3
     }
   },
-  "src/ui/gm/game-detail.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 2
-    }
-  },
-  "src/ui/gm/game-list.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 4
-    },
-    "prefer-const": {
-      "count": 2
-    }
-  },
-  "src/ui/gm/turn-log.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
   "src/ui/gm/turn-shell.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 3

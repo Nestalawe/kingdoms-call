@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
 import { thePagesDb } from './config.ts';
 import { _kcOverlord, show } from './sign-in.ts';
@@ -18,53 +17,123 @@ import { botConfigFor, gameVisibility, isBotRow } from '../../engine/bots/setup.
 import { SEA_PCT_DEFAULT, normSeaPct } from '../../engine/world/generate.ts';
 import { _kcHasMeta, parseGameState } from './startup.ts';
 import { buildGameMeta } from './turn-mode.ts';
+import { asItsGuardReadsIt } from '../../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { KcSafeHtml } from '../shared/kc-safe.ts';
+import type {
+  AGameInTheGameMastersList,
+  AnAccountsNameAndJoiningDate,
+  ARealm,
+} from '../../db/the-db-interface-and-its-areas.ts';
+import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
+import { theDateOf, theField, theRefusalAsThrown } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
+
+/** A game as its card in the GM's list reads it: its light columns, and its realms' (as wide as the card's guards). */
+type AGameAsItsCardReadsIt = Omit<AGameInTheGameMastersList, 'game_players'> & {
+  readonly game_players?: readonly Pick<ARealm, 'user_id' | 'player_index' | 'orders_submitted'>[] | null | undefined;
+};
+/** The settings a new game is made with, in the order they are set (its game_state's words keep that order). */
+interface TheSetUpOfANewGame {
+  mapSize: string;
+  maxTurns: number;
+  maxPlayers: number;
+  botCount: number;
+  allBot: boolean;
+  seaPct?: number;
+  botDiplomacy?: string;
+  safeStart?: boolean;
+  botDifficulty?: string;
+  turnMode?: ReturnType<typeof readTurnModeForm>;
+  visibility?: string;
+  invited?: unknown[];
+}
+/** An element the page looked up and writes into, as the write read it: none throws the TypeError writing it threw. */
+export function theElementFound(el: HTMLElement | null): HTMLElement {
+  if (el === null) throw new TypeError("Cannot set properties of null (setting 'innerHTML')");
+  return el;
+}
+/** The signed-in account's id, where the code reads it unguarded: for none, the TypeError that read threw. */
+function theSignedInAccountsId(): string {
+  if (currentUser === null) throw new TypeError("Cannot read properties of null (reading 'id')");
+  return currentUser.id;
+}
+/** A value of any kind in words, as `String` writes it: the key a table is read by (`table[value]` reads it so). */
+function inWords(value: unknown): string {
+  return String(value);
+}
+/** `document.getElementById(id)?.value`: the field's value, as an element of any kind holds it (none for none). */
+function theValueOfTheField(id: string): unknown {
+  const el = document.getElementById(id);
+  return el ? Reflect.get(el, 'value') : undefined;
+}
+/** `!!document.getElementById(id)?.checked`: whether the box is ticked (an element of another kind, or none, is not). */
+function theBoxTicked(id: string): boolean {
+  const box = document.getElementById(id);
+  return box instanceof HTMLInputElement && box.checked;
+}
+/** The value of the ticked Public / Private choice of the New Game form (none where none is ticked). */
+function theVisibilityTicked(): string | undefined {
+  const box = document.querySelector('input[name="new-game-visibility"]:checked');
+  return box instanceof HTMLInputElement ? box.value : undefined;
+}
+/** The players' cap of a map's size, as the table holds it (none for a size it lacks; a cap is never 0). */
+function theCapOfTheMap(size: string): number | undefined {
+  const caps: Readonly<Partial<Record<string, number>>> = MAP_MAX_PLAYERS;
+  return caps[size];
+}
+/** The ticked ids a picker's list carries (renderInviteCheckboxes writes them on it): none where none was written,
+ *  and any other value the TypeError adding to it threw. */
+function theTicksTheListCarries(list: HTMLElement | null): Set<unknown> | undefined {
+  const set: unknown = list ? Reflect.get(list, '_selectedSet') : list;
+  if (!set) return undefined;
+  if (set instanceof Set) return set;
+  throw new TypeError('set.add is not a function');
+}
 
 // ── GAME LIST ────
-export let _listGames = []; // the last list read: the GM's own games, or every game for the Overlord
-export let _gmNames = {}; // Master GM mode: account id -> name, for grouping by GM
+export let _listGames: readonly AGameInTheGameMastersList[] = []; // the last list read: the GM's own games, or every game for the Overlord
+export let _gmNames: Record<string, string> = {}; // Master GM mode: account id -> name, for grouping by GM
 export async function loadGames() {
   const el = document.getElementById('games-list');
-  el.innerHTML = '<div class="msg-info">Loading…</div>';
+  theElementFound(el).innerHTML = '<div class="msg-info">Loading…</div>';
   // Disk-IO (2026-09-25): the list needs name / turn / status / meta and the slots' submitted flags —
   // never the world or the reports. See src/db's A_GAME_IN_THE_GAME_MASTERS_LIST.
   const { data, error } = _kcOverlord
     ? await loadEveryGame()
     : _kcHasMeta
-      ? await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsNewestFirst(currentUser.id)
-      : await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsNewestFirstEveryColumn(currentUser.id);
+      ? await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsNewestFirst(theSignedInAccountsId())
+      : await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsNewestFirstEveryColumn(theSignedInAccountsId());
   if (error) {
-    el.innerHTML = kcHtml`<div class="msg-error">${error.message}</div>`;
+    theElementFound(el).innerHTML = String(kcHtml`<div class="msg-error">${error.message}</div>`);
     return;
   }
-  _listGames = data || [];
+  _listGames = data ?? [];
   if (_kcOverlord) {
-    const ids = [...new Set(_listGames.map((g) => g.gm_user_id).filter(Boolean))];
+    const ids = [...new Set(_listGames.map((g) => g.gm_user_id).filter((id): id is string => Boolean(id)))];
     const { data: prof } = ids.length ? await thePagesDb.theAccountsNames.theNamesOfTheseAccounts(ids) : { data: [] };
     _gmNames = {};
-    (prof || []).forEach((p) => {
-      _gmNames[p.id] = p.name || '';
+    (prof ?? []).forEach((p) => {
+      _gmNames[p.id] = p.name ?? '';
     });
   }
   renderGameList();
 }
 // Master GM mode: every game, newest first, light columns, in pages of 200.
 export async function loadEveryGame() {
-  const rows = [];
+  const rows: AGameInTheGameMastersList[] = [];
   for (let from = 0; ; from += 200) {
     const { data, error } = _kcHasMeta
       ? await thePagesDb.theGameMastersGames.everyGameNewestFirstFromRowToRow(from, from + 199)
       : await thePagesDb.theGameMastersGames.everyGameNewestFirstFromRowToRowEveryColumn(from, from + 199);
     if (error) return { data: null, error };
-    rows.push(...(data || []));
+    rows.push(...(data ?? []));
     if (!data || data.length < 200) break;
   }
   return { data: rows, error: null };
 }
 export function renderGameList() {
-  const el = document.getElementById('games-list');
   const data = _listGames;
-  if (!data || data.length === 0) {
-    el.innerHTML = _kcOverlord
+  if (data.length === 0) {
+    theElementWithTheId('games-list', HTMLElement).innerHTML = _kcOverlord
       ? '<div class="msg-info">No games yet.</div>'
       : '<div class="msg-info">No games yet. Click "+ New Game" to create your first game.</div>';
     return;
@@ -76,57 +145,56 @@ export function renderGameList() {
   const _switch =
     _archCount > 0 || _showArchived
       ? kcHtml`<div class="topbar" style="display:flex;justify-content:flex-end;margin-bottom:10px">
-         <button class="btn btn-ghost" style="font-size:.7rem" onclick="toggleArchivedView()">${_showArchived ? `← Back to active games (${data.length - _archCount})` : `🗄 Archived games (${_archCount})`}</button>
+         <button class="btn btn-ghost" style="font-size:.7rem" onclick="toggleArchivedView()">${_showArchived ? `← Back to active games (${String(data.length - _archCount)})` : `🗄 Archived games (${String(_archCount)})`}</button>
        </div>`
       : '';
   const _banner = _showArchived
     ? kcHtml`<div class="msg-info" style="margin-bottom:10px">🗄 <strong>Archived games.</strong> Everything is kept — the world, the players, every turn report, the dispatches, the statistics and the Hall-of-Fame record. Archived games are simply out of the way, and the auto-turn watcher leaves them alone. Open one and press <strong>Restore</strong> to bring it back.</div>`
     : '';
   if (_rows.length === 0) {
-    el.innerHTML = kcHtml`${_switch}${_banner}<div class="msg-info">${_showArchived ? 'No archived games.' : _kcOverlord ? 'No active games.' : 'No active games. Click "+ New Game" to start one.'}</div>`;
+    const theEmptyList = String(
+      kcHtml`${_switch}${_banner}<div class="msg-info">${_showArchived ? 'No archived games.' : _kcOverlord ? 'No active games.' : 'No active games. Click "+ New Game" to start one.'}</div>`,
+    );
+    theElementWithTheId('games-list', HTMLElement).innerHTML = theEmptyList;
     return;
   }
   if (_kcOverlord) {
     // Master GM mode: grouped by GM (by name), narrowed by the filter (game or GM name).
-    const q = (document.getElementById('overlord-filter').value || '').trim().toLowerCase();
-    const gmName = (g) => _gmNames[g.gm_user_id] || (g.gm_user_id ? '(unknown GM)' : '(no GM)');
-    const groups = {};
+    const q = (theElementWithTheId('overlord-filter', HTMLInputElement).value || '').trim().toLowerCase();
+    const gmName = (g: AGameInTheGameMastersList) =>
+      (_gmNames[String(g.gm_user_id)] ?? '') || (g.gm_user_id ? '(unknown GM)' : '(no GM)');
+    const groups: Record<string, AGameInTheGameMastersList[]> = {};
     _rows
-      .filter(
-        (g) =>
-          !q ||
-          String(g.name || '')
-            .toLowerCase()
-            .includes(q) ||
-          gmName(g).toLowerCase().includes(q),
-      )
+      .filter((g) => !q || (g.name || '').toLowerCase().includes(q) || gmName(g).toLowerCase().includes(q))
       .forEach((g) => {
-        (groups[gmName(g)] = groups[gmName(g)] || []).push(g);
+        (groups[gmName(g)] ??= []).push(g);
       });
-    const names = Object.keys(groups).sort((a, b) => a.localeCompare(b));
-    el.innerHTML = kcHtml`${_switch}${_banner}${
-      names.length
-        ? names.map(
-            (n) => kcHtml`<div class="gm-group" data-gm="${n}">
-      <h3 style="color:var(--gold);margin:14px 0 8px">${n} <span style="font-size:.75rem;color:var(--parchment)">· ${groups[n].length} game${groups[n].length > 1 ? 's' : ''}</span></h3>
-      ${groups[n].map((g) => gameCardHtml(g))}</div>`,
-          )
-        : kcHtml`<div class="msg-info">No game matches.</div>`
-    }`;
+    const named = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+    const theGroups = String(
+      kcHtml`${_switch}${_banner}${
+        named.length
+          ? named.map(
+              ([n, games]) => kcHtml`<div class="gm-group" data-gm="${n}">
+      <h3 style="color:var(--gold);margin:14px 0 8px">${n} <span style="font-size:.75rem;color:var(--parchment)">· ${games.length} game${games.length > 1 ? 's' : ''}</span></h3>
+      ${games.map((g) => gameCardHtml(g))}</div>`,
+            )
+          : kcHtml`<div class="msg-info">No game matches.</div>`
+      }`,
+    );
+    theElementWithTheId('games-list', HTMLElement).innerHTML = theGroups;
     return;
   }
-  el.innerHTML = kcHtml`${_switch}${_banner}${_rows.map((g) => gameCardHtml(g))}`;
+  const theCards = String(kcHtml`${_switch}${_banner}${_rows.map((g) => gameCardHtml(g))}`);
+  theElementWithTheId('games-list', HTMLElement).innerHTML = theCards;
 }
-export function gameCardHtml(g) {
-  const total = g.game_players?.length || 0;
-  const joined = g.game_players?.filter((p) => p.user_id).length || 0;
-  const submitted = g.game_players?.filter((p) => p.orders_submitted).length || 0;
+export function gameCardHtml(g: AGameAsItsCardReadsIt) {
+  const joined = g.game_players?.filter((p) => p.user_id).length ?? 0;
   const maxP = g.max_players || 4;
   const { botCount: _bc, allBot: _ab } = botConfigFor(g);
   const _plannedBots = _ab ? maxP : _bc;
   const _humanCap = _ab ? 0 : maxP - _plannedBots;
-  const _botTag = _plannedBots ? ` +${_plannedBots}🤖` : '';
-  let pill = '';
+  const _botTag = _plannedBots ? ` +${String(_plannedBots)}🤖` : '';
+  let pill: KcSafeHtml | string = '';
   if (g.status === 'setup')
     pill = kcHtml`<span class="pill pill-amber">Setup — ${joined}/${_humanCap} joined${_botTag}</span>`;
   else if (g.status === 'active') {
@@ -134,7 +202,7 @@ export function gameCardHtml(g) {
     // joined===0 case, where there are no human orders to wait on) — signals the turn is ready to
     // run. Conceded / extinguished realms are exempt (they are never waited on), so count only
     // the rest.
-    const _need = (g.game_players || []).filter((p) => p.user_id && !isBotRow(p) && !realmExemptIn(g, p.player_index));
+    const _need = (g.game_players ?? []).filter((p) => p.user_id && !isBotRow(p) && !realmExemptIn(g, p.player_index));
     const _in = _need.filter((p) => p.orders_submitted).length;
     const _allIn = _in >= _need.length;
     const _tm = turnModeOf(g);
@@ -165,10 +233,10 @@ export function gameCardHtml(g) {
         return a ? ` ${fmtLastRun(a)}` : '';
       })()}</span>`
     : '';
-  return kcHtml`<div class="game-card" data-game="${g.id}" onclick="openGame(${kcArg(String(g.id))})"${gameArchived(g) ? kcHtml` style="opacity:.82"` : ''}>
+  return kcHtml`<div class="game-card" data-game="${g.id}" onclick="openGame(${kcArg(g.id)})"${gameArchived(g) ? kcHtml` style="opacity:.82"` : ''}>
     <div>
       <div class="gc-name">${g.name}${pill}${_visTag}${_archTag}</div>
-      <div class="gc-meta">${maxP} player slots · Sea ${seaPctOf(g)}% · Created ${new Date(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
+      <div class="gc-meta">${maxP} player slots · Sea ${seaPctOf(g)}% · Created ${theDateOf(g.created_at).toLocaleDateString()}${_lastRunTag}</div>
     </div>
     <div class="gc-action"><span style="color:var(--gold);font-size:1.2rem">›</span></div>
   </div>`;
@@ -176,24 +244,24 @@ export function gameCardHtml(g) {
 
 // ── NEW GAME ────
 export function showNewGame() {
-  document.getElementById('new-game-msg').innerHTML = '';
+  theElementWithTheId('new-game-msg', HTMLElement).innerHTML = '';
   updateMaxPlayersForMap(); // ensure the player-count options match the selected map size
   // Reset visibility to Public (the default / current behaviour) each time the form opens.
   const _pub = document.querySelector('input[name="new-game-visibility"][value="public"]');
-  if (_pub) _pub.checked = true;
+  if (_pub instanceof HTMLInputElement) _pub.checked = true;
   _inviteSelected = new Set();
   const _search = document.getElementById('new-game-invite-search');
-  if (_search) _search.value = '';
+  if (_search instanceof HTMLInputElement) _search.value = '';
   {
     const _tmSel = document.getElementById('new-game-turnmode');
-    if (_tmSel) {
+    if (_tmSel instanceof HTMLSelectElement) {
       _tmSel.value = 'manual';
       updateTurnModeFields('new-game');
     }
   }
   {
     const _sp = document.getElementById('new-game-seapct');
-    if (_sp) {
+    if (_sp instanceof HTMLInputElement) {
       _sp.value = String(SEA_PCT_DEFAULT);
       updateSeaHint();
     }
@@ -217,38 +285,38 @@ globalThis._inviteSelected = new Set(); // ids ticked in the New Game picker
 // a permissions problem exactly as it did for a genuinely empty table. Zero raw rows means the
 // query could not even see the signed-in account's own profile: that is an RLS symptom, and the
 // empty-list message now says so.
-export let _invitableRawCount = null;
+export let _invitableRawCount: number | null = null;
 
 // Fetch every registered player's name and the month they joined (never their email: ruling D-08, P0-31).
 // Excludes the signed-in GM. Cached for the session; pass force=true to refetch.
-export async function loadInvitablePlayers(force) {
+export async function loadInvitablePlayers(force?: boolean) {
   if (_invitablePlayers && !force) return _invitablePlayers;
   const { data, error } = await thePagesDb.theAccountsNames.theNameAndJoiningDateOfEveryAccountInNameOrder();
   if (error) {
     _invitablePlayers = null;
     _invitableRawCount = null;
-    throw error;
+    throw theRefusalAsThrown(error);
   }
-  _invitableRawCount = (data || []).length;
-  _invitablePlayers = (data || [])
-    .filter((p) => p && p.id !== currentUser.id) // don't offer the GM as a joinable player
-    .map((p) => ({ id: p.id, name: p.name || '(unnamed)', joined: joinedMonth(p.created_at) }));
+  _invitableRawCount = (data ?? []).length;
+  _invitablePlayers = (data ?? [])
+    .filter((p: AnAccountsNameAndJoiningDate | null) => p && p.id !== theSignedInAccountsId()) // don't offer the GM as a joinable player
+    .map((p) => ({ id: p.id, name: (p.name ?? '') || '(unnamed)', joined: joinedMonth(p.created_at) }));
   return _invitablePlayers;
 }
 // "Oct 2026", to tell two players of one name apart. Fixed month names: browsers differ ("Sep" / "Sept").
-export function joinedMonth(ts) {
-  const d = new Date(ts);
-  if (!ts || isNaN(d)) return '';
+export function joinedMonth(ts: string | null | undefined) {
+  const d = new Date(ts ?? 0); // none is read just below as no month, whatever the date
+  if (!ts || isNaN(d.getTime())) return '';
   return (
-    ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()] +
+    String(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]) +
     ' ' +
-    d.getUTCFullYear()
+    String(d.getUTCFullYear())
   );
 }
 
 // Toggle the picker when Public/Private changes; lazily load the player list the first time.
 export async function updateGameVisibility() {
-  const priv = document.querySelector('input[name="new-game-visibility"]:checked')?.value === 'private';
+  const priv = theVisibilityTicked() === 'private';
   const wrap = document.getElementById('new-game-invite-wrap');
   if (wrap) wrap.style.display = priv ? 'block' : 'none';
   if (!priv) return;
@@ -260,17 +328,20 @@ export async function updateGameVisibility() {
     renderInviteCheckboxes('new-game-invite-list', 'new-game-invite-search', _inviteSelected, 'new-game-invite-count');
   } catch (e) {
     if (list)
-      list.innerHTML = kcHtml`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
+      list.innerHTML = String(
+        kcHtml`<div class="msg-error" style="margin:8px">Couldn't load players: ${theField(e, 'message')}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`,
+      );
   }
 }
 
 // Shared renderer for both the New Game picker and the detail-screen Edit-Invites modal. Reads the
 // cached _invitablePlayers, filters by the search box, and reflects/updates the given Set of ids.
-export function renderInviteCheckboxes(listId, searchId, selectedSet, countId) {
+export function renderInviteCheckboxes(listId: string, searchId: string, selectedSet: Set<unknown>, countId: string) {
   const list = document.getElementById(listId);
   if (!list) return;
-  const q = (document.getElementById(searchId)?.value || '').trim().toLowerCase();
-  const players = _invitablePlayers || [];
+  const search = document.getElementById(searchId);
+  const q = (search instanceof HTMLInputElement ? search.value : '').trim().toLowerCase();
+  const players = _invitablePlayers ?? [];
   const shown = players.filter((p) => !q || p.name.toLowerCase().includes(q));
   if (players.length === 0) {
     list.innerHTML =
@@ -281,39 +352,41 @@ export function renderInviteCheckboxes(listId, searchId, selectedSet, countId) {
     list.innerHTML =
       '<div style="padding:10px;color:var(--stone);font-size:.82rem">No players match that filter.</div>';
   } else {
-    list.innerHTML = kcHtml`${shown.map((p) => {
-      const on = selectedSet.has(p.id);
+    list.innerHTML = String(
+      kcHtml`${shown.map((p) => {
+        const on = selectedSet.has(p.id);
 
-      return kcHtml`<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #2a2015;cursor:pointer;font-weight:normal">
-        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleInvite(${kcArg(listId)},${kcArg(searchId)},${kcArg(countId)},${kcArg(String(p.id))},this.checked)">
+        return kcHtml`<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #2a2015;cursor:pointer;font-weight:normal">
+        <input type="checkbox" ${on ? 'checked' : ''} onchange="toggleInvite(${kcArg(listId)},${kcArg(searchId)},${kcArg(countId)},${kcArg(p.id)},this.checked)">
         <span style="flex:1;min-width:0">
           <span style="color:var(--parchment)">${p.name || ''}</span>
           ${p.joined ? kcHtml`<span style="color:var(--stone);font-size:.78rem"> · joined ${p.joined}</span>` : ''}
         </span>
       </label>`;
-    })}`;
+      })}`,
+    );
   }
   const cnt = document.getElementById(countId);
   if (cnt) {
-    cnt.textContent = `${selectedSet.size} player${selectedSet.size !== 1 ? 's' : ''} invited`;
+    cnt.textContent = `${String(selectedSet.size)} player${selectedSet.size !== 1 ? 's' : ''} invited`;
   }
   // stash the working Set + ids on the list so toggleInvite can reach the right one
-  list._selectedSet = selectedSet;
+  Reflect.set(list, '_selectedSet', selectedSet);
 }
-export function toggleInvite(listId, searchId, countId, id, on) {
+export function toggleInvite(listId: string, searchId: string, countId: string, id: string, on: boolean) {
   const list = document.getElementById(listId);
-  const set = list && list._selectedSet;
+  const set = theTicksTheListCarries(list);
   if (!set) return;
   if (on) set.add(id);
   else set.delete(id);
   const cnt = document.getElementById(countId);
-  if (cnt) cnt.textContent = `${set.size} player${set.size !== 1 ? 's' : ''} invited`;
+  if (cnt) cnt.textContent = `${String(set.size)} player${set.size !== 1 ? 's' : ''} invited`;
 }
 // Map a set/array of invited ids to display names (for the detail screen).
-export function invitedNames(ids) {
-  const byId = {};
-  (_invitablePlayers || []).forEach((p) => (byId[p.id] = p.name));
-  return (ids || []).map((id) => byId[id] || '(unknown player)');
+export function invitedNames(ids: readonly unknown[] | null | undefined) {
+  const byId: Record<string, string> = {};
+  (_invitablePlayers ?? []).forEach((p) => (byId[p.id] = p.name));
+  return (ids ?? []).map((id) => (byId[inWords(id)] ?? '') || '(unknown player)');
 }
 
 // ── EDIT INVITES (game-detail modal, setup-phase private games) ──
@@ -328,7 +401,7 @@ export async function openEditInvites() {
     return;
   }
   const vis = gameVisibility(currentGame);
-  _editInviteSelected = new Set(vis.invited || []);
+  _editInviteSelected = new Set<unknown>(vis.invited);
   // Build the modal shell
   if (document.getElementById('edit-invite-overlay')) return;
   const ov = document.createElement('div');
@@ -354,7 +427,9 @@ export async function openEditInvites() {
   } catch (e) {
     const l = document.getElementById('edit-invite-list');
     if (l)
-      l.innerHTML = kcHtml`<div class="msg-error" style="margin:8px">Couldn't load players: ${e.message}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`;
+      l.innerHTML = String(
+        kcHtml`<div class="msg-error" style="margin:8px">Couldn't load players: ${theField(e, 'message')}<br><small>The GM account needs SELECT access to the <code>profiles</code> table (RLS).</small></div>`,
+      );
   }
 }
 export function closeEditInvites() {
@@ -368,14 +443,14 @@ export const MAP_MAX_PLAYERS = { p2: 2, p3: 3, p4: 4, p5: 5, p6: 6, p7: 7, p8: 8
 export function updateMaxPlayersForMap() {
   const sizeEl = document.getElementById('new-game-mapsize');
   const sel = document.getElementById('new-game-maxplayers');
-  if (!sizeEl || !sel) return;
-  const max = MAP_MAX_PLAYERS[sizeEl.value] || 10;
+  if (!(sizeEl instanceof HTMLSelectElement) || !(sel instanceof HTMLSelectElement)) return;
+  const max = theCapOfTheMap(sizeEl.value) ?? 10;
   const prev = parseInt(sel.value) || max; // keep the GM's choice where possible
   sel.innerHTML = '';
   for (let n = 2; n <= max; n++) {
     const opt = document.createElement('option');
     opt.value = String(n);
-    opt.textContent = `${n} players`;
+    opt.textContent = `${String(n)} players`;
     sel.appendChild(opt);
   }
   sel.value = String(Math.min(Math.max(2, prev), max));
@@ -389,13 +464,16 @@ export function updateSeaHint() {
   const el = document.getElementById('new-game-seapct'),
     lab = document.getElementById('new-game-seapct-label'),
     hint = document.getElementById('new-game-sea-hint');
-  if (!el) return;
+  if (!(el instanceof HTMLInputElement)) return;
   const v = normSeaPct(el.value);
   if (String(v) !== el.value) el.value = String(v);
-  if (lab) lab.textContent = v + '%';
+  if (lab) lab.textContent = String(v) + '%';
   if (!hint) return;
   const sizeEl = document.getElementById('new-game-mapsize');
-  const sizemap = {
+  const sizemap: {
+    readonly p5: { readonly cols: number; readonly rows: number };
+    readonly [size: string]: { readonly cols: number; readonly rows: number } | undefined;
+  } = {
     p2: { cols: 8, rows: 5 },
     p3: { cols: 8, rows: 7 },
     p4: { cols: 9, rows: 7 },
@@ -406,13 +484,13 @@ export function updateSeaHint() {
     p9: { cols: 16, rows: 11 },
     p10: { cols: 16, rows: 11 },
   };
-  const sz = sizemap[sizeEl ? sizeEl.value : 'p5'] || sizemap.p5,
+  const sz = sizemap[inWords(sizeEl ? Reflect.get(sizeEl, 'value') : 'p5')] ?? sizemap.p5,
     cells = sz.cols * sz.rows,
     sea = Math.round((cells * v) / 100),
     land = cells - sea;
   const maxEl = document.getElementById('new-game-maxplayers');
-  const realms = Math.max(2, parseInt(maxEl && maxEl.value) || 2);
-  let flavour;
+  const realms = Math.max(2, parseInt(inWords(maxEl ? Reflect.get(maxEl, 'value') : maxEl)) || 2);
+  let flavour: string;
   if (v <= 25)
     flavour = 'A continent — a few lakes and inland seas. Fleets and Naval matter little; wars are fought overland.';
   else if (v <= 40)
@@ -423,7 +501,7 @@ export function updateSeaHint() {
   else
     flavour =
       'A drowned world — scattered islands in open ocean. Every campaign is amphibious; expect far less land, tax and lairs per realm.';
-  hint.textContent = `${sea} sea · ${land} land of ${cells} provinces — about ${(land / realms).toFixed(1)} land provinces per realm. ${flavour}`;
+  hint.textContent = `${String(sea)} sea · ${String(land)} land of ${String(cells)} provinces — about ${(land / realms).toFixed(1)} land provinces per realm. ${flavour}`;
 }
 // Bot realms (Phase 1): validate the bot count against map capacity and show the GM the resulting
 // human/bot split. Bots consume the same realm capacity as humans.
@@ -432,12 +510,12 @@ export function updateBotHint() {
   const botEl = document.getElementById('new-game-botcount');
   const allEl = document.getElementById('new-game-allbot');
   const hint = document.getElementById('new-game-bot-hint');
-  if (!maxEl || !botEl || !hint) return;
+  if (!(maxEl instanceof HTMLSelectElement) || !(botEl instanceof HTMLInputElement) || !hint) return;
   const maxP = parseInt(maxEl.value) || 2;
-  const allBot = !!(allEl && allEl.checked);
+  const allBot = allEl instanceof HTMLInputElement && allEl.checked;
   // All-bot fills every slot; disable & clamp the bot-count field in that mode.
   botEl.disabled = allBot;
-  let bots = allBot ? maxP : Math.max(0, Math.min(parseInt(botEl.value) || 0, maxP));
+  const bots = allBot ? maxP : Math.max(0, Math.min(parseInt(botEl.value) || 0, maxP));
   if (!allBot && String(bots) !== botEl.value) botEl.value = String(bots);
   if (!allBot && bots === 0) {
     hint.style.display = 'none';
@@ -446,41 +524,52 @@ export function updateBotHint() {
   const humans = allBot ? 0 : maxP - bots;
   hint.style.display = 'block';
   if (allBot) {
-    hint.innerHTML = kcHtml`🤖 <strong>All-bot game:</strong> all ${maxP} realms will be GM-controlled bots. No humans can join. Needs at least 2.`;
+    hint.innerHTML = String(
+      kcHtml`🤖 <strong>All-bot game:</strong> all ${maxP} realms will be GM-controlled bots. No humans can join. Needs at least 2.`,
+    );
   } else if (humans <= 0) {
-    hint.innerHTML = kcHtml`🤖 <strong>${bots} bots</strong>, no room for human players (bots fill all ${maxP} slots). Tick “All-bot game”, or lower the bot count to leave human slots.`;
+    hint.innerHTML = String(
+      kcHtml`🤖 <strong>${bots} bots</strong>, no room for human players (bots fill all ${maxP} slots). Tick “All-bot game”, or lower the bot count to leave human slots.`,
+    );
   } else {
-    hint.innerHTML = kcHtml`🤖 <strong>${bots} bot${bots !== 1 ? 's' : ''}</strong> + up to <strong>${humans} human${humans !== 1 ? 's' : ''}</strong> = ${maxP} realms. Bots are generated when you run Turn 0.`;
+    hint.innerHTML = String(
+      kcHtml`🤖 <strong>${bots} bot${bots !== 1 ? 's' : ''}</strong> + up to <strong>${humans} human${humans !== 1 ? 's' : ''}</strong> = ${maxP} realms. Bots are generated when you run Turn 0.`,
+    );
   }
 }
 
 export async function createGame() {
-  const name = document.getElementById('new-game-name').value.trim();
-  const mapSize = document.getElementById('new-game-mapsize').value;
-  const cap = MAP_MAX_PLAYERS[mapSize] || 10;
-  const maxP = Math.min(Math.max(2, parseInt(document.getElementById('new-game-maxplayers').value) || 2), cap);
+  const name = theElementWithTheId('new-game-name', HTMLInputElement).value.trim();
+  const mapSize = theElementWithTheId('new-game-mapsize', HTMLSelectElement).value;
+  const cap = theCapOfTheMap(mapSize) ?? 10;
+  const maxP = Math.min(
+    Math.max(2, parseInt(theElementWithTheId('new-game-maxplayers', HTMLSelectElement).value) || 2),
+    cap,
+  );
   const maxTurns = 0; // no turn limit — the game ends only at the Reckoning or by elimination (0 = unlimited)
   // ── Bot realms (Phase 1) ──
-  const allBot = !!document.getElementById('new-game-allbot')?.checked;
-  let botCount = allBot
+  const allBot = theBoxTicked('new-game-allbot');
+  const botCount = allBot
     ? maxP
-    : Math.max(0, Math.min(parseInt(document.getElementById('new-game-botcount')?.value) || 0, maxP));
+    : Math.max(0, Math.min(parseInt(inWords(theValueOfTheField('new-game-botcount'))) || 0, maxP));
   const msg = document.getElementById('new-game-msg');
   if (!name) {
-    msg.innerHTML = '<div class="msg-error">Please enter a game name.</div>';
+    theElementFound(msg).innerHTML = '<div class="msg-error">Please enter a game name.</div>';
     return;
   }
   if (allBot && maxP < 2) {
-    msg.innerHTML = '<div class="msg-error">An all-bot game needs at least 2 realms — raise Maximum Players.</div>';
+    theElementFound(msg).innerHTML =
+      '<div class="msg-error">An all-bot game needs at least 2 realms — raise Maximum Players.</div>';
     return;
   }
   if (!allBot && botCount >= maxP && maxP >= 2) {
     // Bots fill every slot but the GM didn't tick all-bot — treat as all-bot rather than lock
     // humans out silently.
-    if (!confirm(`You've set ${botCount} bots with no room for human players. Create this as an all-bot game?`)) return;
+    if (!confirm(`You've set ${String(botCount)} bots with no room for human players. Create this as an all-bot game?`))
+      return;
   }
   // ── Visibility (Public / Private) ──
-  const isPrivate = document.querySelector('input[name="new-game-visibility"]:checked')?.value === 'private';
+  const isPrivate = theVisibilityTicked() === 'private';
   const invited = isPrivate ? [..._inviteSelected] : [];
   if (isPrivate && !allBot && invited.length === 0) {
     if (
@@ -490,26 +579,26 @@ export async function createGame() {
     )
       return;
   }
-  msg.innerHTML = '<div class="msg-info">Creating game…</div>';
-  const _cfg = {
+  theElementFound(msg).innerHTML = '<div class="msg-info">Creating game…</div>';
+  const _cfg: TheSetUpOfANewGame = {
     mapSize,
     maxTurns,
     maxPlayers: maxP,
     botCount: botCount >= maxP ? maxP : botCount,
     allBot: allBot || botCount >= maxP,
   };
-  _cfg.seaPct = normSeaPct(document.getElementById('new-game-seapct')?.value); // 20–80% of the world is water (world gen makes it exact)
-  _cfg.botDiplomacy = document.getElementById('new-game-botdiplomacy')?.value === 'hostile' ? 'hostile' : 'normal'; // 2026-09-26b (Toby item 10)
-  _cfg.safeStart = !!document.getElementById('new-game-safestart')?.checked; // 2026-09-29 (Toby): Safe Start
+  _cfg.seaPct = normSeaPct(theValueOfTheField('new-game-seapct')); // 20–80% of the world is water (world gen makes it exact)
+  _cfg.botDiplomacy = theValueOfTheField('new-game-botdiplomacy') === 'hostile' ? 'hostile' : 'normal'; // 2026-09-26b (Toby item 10)
+  _cfg.safeStart = theBoxTicked('new-game-safestart'); // 2026-09-29 (Toby): Safe Start
   _cfg.botDifficulty = 'hard'; // 2026-09-26 (Toby item 9): one bot strength — the former Hard. Saved with the game so Turn 0 and telemetry read it.
   _cfg.turnMode = readTurnModeForm('new-game'); // manual / auto / deadline (deadline clock starts at Turn 0)
   if (isPrivate) {
     _cfg.visibility = 'private';
     _cfg.invited = invited;
   }
-  const { data: game, error } = await thePagesDb.theGameMastersGames.makeThisGame({
+  const { error } = await thePagesDb.theGameMastersGames.makeThisGame({
     name,
-    gm_user_id: currentUser.id,
+    gm_user_id: theSignedInAccountsId(),
     status: 'setup',
     turn: 0,
     max_players: maxP,
@@ -518,14 +607,20 @@ export async function createGame() {
     ...metaPatch(_cfg),
   });
   if (error) {
-    const isRLS = error.message?.includes('row-level security') || error.code === '42501';
-    msg.innerHTML = kcHtml`<div class="msg-error">${error.message}${isRLS ? kcHtml`<br><small>Add an INSERT policy on the games table in your Supabase dashboard.</small>` : ''}</div>`;
+    const isRLS =
+      (asItsGuardReadsIt(error.message)?.includes('row-level security') ?? false) ||
+      Reflect.get(error, 'code') === '42501';
+    theElementFound(msg).innerHTML = String(
+      kcHtml`<div class="msg-error">${error.message}${isRLS ? kcHtml`<br><small>Add an INSERT policy on the games table in your Supabase dashboard.</small>` : ''}</div>`,
+    );
     return;
   }
-  msg.innerHTML = kcHtml`<div class="msg-success">Game created! ${isPrivate ? `Only your ${invited.length} invited player${invited.length !== 1 ? 's' : ''} will see it.` : 'Any registered player can now see and join it.'}</div>`;
+  theElementFound(msg).innerHTML = String(
+    kcHtml`<div class="msg-success">Game created! ${isPrivate ? `Only your ${String(invited.length)} invited player${invited.length !== 1 ? 's' : ''} will see it.` : 'Any registered player can now see and join it.'}</div>`,
+  );
   setTimeout(() => {
     show('sec-games');
-    loadGames();
+    void loadGames();
   }, 1500);
 }
 
@@ -533,30 +628,35 @@ export let _showArchived = false; // which list the GM is looking at
 // Set or clear the flag. Reads the full row (game_state is the source of truth), writes it back
 // with a conditional guard on `turn` so an archive click can never clobber a turn another tab
 // resolved in the meantime.
-export async function setGameArchived(gameId, archived) {
+export async function setGameArchived(gameId: string | null | undefined, archived: boolean) {
   if (!gameId) return;
-  const msg = document.getElementById('detail-msg') || document.getElementById('msg-games');
-  if (msg) msg.innerHTML = kcHtml`<div class="msg-info">${archived ? 'Archiving' : 'Restoring'}…</div>`;
+  const msg = document.getElementById('detail-msg') ?? document.getElementById('msg-games');
+  if (msg) msg.innerHTML = String(kcHtml`<div class="msg-info">${archived ? 'Archiving' : 'Restoring'}…</div>`);
   const { data: row, error } = await thePagesDb.theGameMastersGames.thisGamesTurnAndWorld(gameId);
   if (error || !row) {
-    if (msg) msg.innerHTML = kcHtml`<div class="msg-error">${(error && error.message) || 'Game not found.'}</div>`;
+    if (msg)
+      msg.innerHTML = String(kcHtml`<div class="msg-error">${(error?.message ?? '') || 'Game not found.'}</div>`);
     return;
   }
   const gs = parseGameState(row);
   if (archived) {
-    gs.archived = true;
-    gs.archivedAt = new Date().toISOString();
-  } else {
-    delete gs.archived;
-    delete gs.archivedAt;
+    if (typeof gs !== 'object' || gs === null)
+      throw new TypeError(`Cannot create property 'archived' on ${typeof gs} '${String(gs)}'`);
+    Reflect.set(gs, 'archived', true);
+    Reflect.set(gs, 'archivedAt', new Date().toISOString());
+  } else if (typeof gs === 'object' && gs !== null) {
+    // a world held as words, a number or a flag has neither field to delete, as before
+    Reflect.deleteProperty(gs, 'archived');
+    Reflect.deleteProperty(gs, 'archivedAt');
   }
   const change = { game_state: JSON.stringify(gs), ...metaPatch(gs) };
+  const turn = asItsGuardReadsIt(row.turn);
   const { data: done, error: e2 } =
-    row.turn != null // the turn must not have moved under us
-      ? await thePagesDb.theGameMastersGames.changeThisGameWhileOnThisTurnAndAnswerItsId(gameId, row.turn, change)
+    turn != null // the turn must not have moved under us
+      ? await thePagesDb.theGameMastersGames.changeThisGameWhileOnThisTurnAndAnswerItsId(gameId, turn, change)
       : await thePagesDb.theGameMastersGames.changeThisGameAndAnswerItsId(gameId, change);
   if (e2) {
-    if (msg) msg.innerHTML = kcHtml`<div class="msg-error">${e2.message}</div>`;
+    if (msg) msg.innerHTML = String(kcHtml`<div class="msg-error">${e2.message}</div>`);
     return;
   }
   if (!done) {
@@ -567,11 +667,11 @@ export async function setGameArchived(gameId, archived) {
   if (msg) msg.innerHTML = '';
   _showArchived = archived; // land on the list the game just moved into
   show('sec-games');
-  loadGames();
+  void loadGames();
 }
 export function toggleArchivedView() {
   _showArchived = !_showArchived;
-  loadGames();
+  void loadGames();
 }
 // One-off: any of this GM's games saved before the column existed gets its meta computed from
 // game_state now, so the light reads never have to fall back for it again.
@@ -579,7 +679,7 @@ export async function backfillGameMeta() {
   if (!_kcHasMeta || !currentUser) return 0;
   try {
     const { data, error } = await thePagesDb.theGameMastersGames.theGamesThisGameMasterRunsWithNoMeta(currentUser.id);
-    if (error || !data || !data.length) return 0;
+    if (error || !data?.length) return 0;
     let n = 0;
     for (const g of data) {
       const { error: e2 } = await thePagesDb.theGameMastersGames.changeThisGame(g.id, {
@@ -587,10 +687,10 @@ export async function backfillGameMeta() {
       });
       if (!e2) n++;
     }
-    if (n) console.log(`[meta] backfilled ${n} game(s)`);
-    if (n && document.getElementById('sec-games')?.classList.contains('section-active')) loadGames();
+    if (n) console.log(`[meta] backfilled ${String(n)} game(s)`);
+    if (n && document.getElementById('sec-games')?.classList.contains('section-active')) void loadGames();
     return n;
-  } catch (e) {
+  } catch {
     return 0;
   }
 }

@@ -18,6 +18,8 @@ type ANewDispatch = Omit<TheGeneratedTables['game_messages']['Insert'], 'from_us
 /** A game's change as the GM page sends it: its meta any value (the summary built from the world as parsed, which
  *  supabase-js writes as JSON). */
 type AGamesChange = Omit<TheGeneratedTables['games']['Update'], 'meta'> & { meta?: unknown };
+/** A new game as the GM page makes it: its meta any value, as for a change (`AGamesChange`). */
+type ANewGame = Omit<TheGeneratedTables['games']['Insert'], 'meta'> & { meta?: unknown };
 
 /** A row the GM page writes to the Hall of Fame or the statistics (plan P1-16q): its JSON columns, and a bot's
  *  difficulty, any value (built from the world and the statistics as read, as a save of any age holds them), which
@@ -43,7 +45,7 @@ export type ATurnRecordAsTheGmPageWritesIt = AsTheGmPageWritesIt<
  *  argument as never null): account_suspend's p_until (null: until the suspension is lifted), gm_reported_messages'
  *  p_game (null: every game's) and submit_orders' p_submitted (null: kept as saved; its p_orders, any JSON, takes
  *  null as it is: the orders kept); a dispatch's sender, which the page may send as null (`ANewDispatch`); and a
- *  game's meta, which the GM page sends as it built it (`AGamesChange`); and the Hall of Fame's and the statistics'
+ *  game's meta, which the GM page sends as it built it (`AGamesChange`, `ANewGame`); and the Hall of Fame's and the statistics'
  *  rows the GM page writes (`AsTheGmPageWritesIt`). */
 export type TheDatabase = Omit<Database, 'public'> & {
   readonly public: Omit<Database['public'], 'Functions' | 'Tables'> & {
@@ -52,7 +54,10 @@ export type TheDatabase = Omit<Database, 'public'> & {
       'game_messages' | 'games' | 'game_records' | 'game_results' | 'turn_events'
     > & {
       readonly game_messages: Omit<TheGeneratedTables['game_messages'], 'Insert'> & { Insert: ANewDispatch };
-      readonly games: Omit<TheGeneratedTables['games'], 'Update'> & { Update: AGamesChange };
+      readonly games: Omit<TheGeneratedTables['games'], 'Insert' | 'Update'> & {
+        Insert: ANewGame;
+        Update: AGamesChange;
+      };
       readonly game_records: Omit<TheGeneratedTables['game_records'], 'Insert'> & {
         Insert: AHallOfFameEntryAsTheGmPageWritesIt;
       };
@@ -640,7 +645,7 @@ export interface Db {
     /** The game `game`, every column, with every column of its realms. */
     readonly thisGameWithItsRealms: (game: string) => PromiseLike<ADatabaseAnswer<AGameWithItsRealms>>;
     /** Makes the game `game`, and answers its row, every column, as the database made it. */
-    readonly makeThisGame: (game: ANewRow<'games'>) => PromiseLike<ADatabaseAnswer<AGame>>;
+    readonly makeThisGame: (game: ANewGame) => PromiseLike<ADatabaseAnswer<AGame>>;
     /** The game `game`'s turn and world (archiving reads them). */
     readonly thisGamesTurnAndWorld: (
       game: string,

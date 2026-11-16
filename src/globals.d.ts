@@ -43,9 +43,14 @@ declare var currentUser: {
 declare var currentGame: import('./ui/gm/startup.ts').TheGameTheGmHasOpen | null;
 declare var currentGamePlayers: import('./ui/gm/startup.ts').TheRealmsOfTheGameTheGmHasOpen | null | undefined;
 // ui/gm/game-list.ts
-declare var _invitablePlayers: PageState;
-declare var _inviteSelected: PageState;
-declare var _editInviteSelected: PageState;
+/** The registered players the GM may invite, as last read (null until read, or after a read that failed): each
+ *  account's id, its name and the month it joined. */
+declare var _invitablePlayers:
+  readonly { readonly id: string; readonly name: string; readonly joined: string }[] | null;
+/** The ids ticked in the New Game picker (the accounts' ids, as the picker's boxes hand them). */
+declare var _inviteSelected: Set<unknown>;
+/** The ids ticked in the game screen's Edit invites picker (the game's invited list, as its setup holds it). */
+declare var _editInviteSelected: Set<unknown>;
 // ui/gm/hall-of-fame.ts
 declare var _kcHasLb: PageState;
 declare var _kcLbLastErr: PageState;

@@ -135,6 +135,12 @@ row needs that isn't here is added under its kind. P1-16c started this file.
   `Reflect.set(c, 'name', v)`: the same write, which a field typed as words refuses for `unknown`. **The page's report
   global** is the report screen's type (`TheReportAsTheReportScreenReadsIt`, P1-16o2), the most derived; the seat it
   last opened (`currentGamePlayerId`) is its row's id, `string | null`.
+- **A guard on a field an answer's type makes sure** (`row.turn != null`, `game.game_players || []`,
+  `error.message?.includes(…)`, the GM's archiving, game screen and New Game form) reads it through `asItsGuardReadsIt`
+  (`src/engine/rules-on-plain-values/`): a `const` typed wider is narrowed by its value, and the guard stays as it was.
+- **A field deleted from a game's state as parsed** (`delete gs.archived`, a game restored) is `Reflect.deleteProperty`
+  behind `typeof gs === 'object' && gs !== null`: a `delete` on words, a number or a flag deletes nothing and throws
+  nothing, where a write on one throws (`theStateToWriteOn`, `game-detail.ts`).
 - **A module's `let` that a rebuild empties while an `await` waits** (the Hall of Fame's names, `_lbProfCache = null`)
   is read and written through a reader that throws, for `null`, the `TypeError` that read or write threw, in its words
   (`theNamesKept`): a local `const` would go on writing into the table the rebuild let go.
