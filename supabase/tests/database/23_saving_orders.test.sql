@@ -1,5 +1,5 @@
--- Saving a realm's orders through submit_orders (plan step P2-05, the expand; ruling R-184). Nothing on the site
--- uses it yet: the order form moves onto it in P2-05's next pull request.
+-- Saving a realm's orders through submit_orders (plan step P2-05; ruling R-184). The order form saves every draft,
+-- hero order, Revise and Submit through it (#620).
 --
 -- What the game needs:
 --   a player submits their realm's orders, saves a draft, saves the order of their heroes, and opens their orders

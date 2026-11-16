@@ -1,16 +1,19 @@
 -- game_players: a realm's slot (who plays it, their orders, their latest report).
 --
 -- What the game needs:
---   a player reads their own slot in full, and saves, submits and revises their own orders;
+--   a player reads their own slot in full, and saves, submits and revises their own orders through the orders
+--   function (submit_orders: its own tests are in 23_saving_orders);
 --   a signed-in account joins an open game (or a private one it's invited to) as itself;
 --   the GM reads every slot of their own game, writes the reports, clears orders, adds bot realms and
 --   removes a realm.
 -- Also checked: nobody reads another realm's slot (other realms are seen only through get_game_slots, P0-20),
--- nobody changes another realm's slot or puts another account into a game, and only
--- the game's GM adds or removes realms.
+-- nobody changes another realm's slot or puts another account into a game, only the game's GM adds or removes
+-- realms, and a player's own slot changes only through the orders function (P2-05): its report, its game, its place
+-- and a finished game's orders stay as they are, and a direct change of its orders is refused with an error (so a
+-- page opened before the order form used the function says the save failed).
 begin;
 \ir ../lib/world.psql
-select plan(21);
+select plan(26);
 
 -- ── what the game needs ──────────────────────────────────────────────────────────────────────
 
@@ -18,12 +21,11 @@ select pg_temp.kc_as('p1');
 select is(pg_temp.kc_count($$select orders, turn_report from public.game_players
           where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$), 1,
   'a player reads their own slot, orders and report');
-select is(pg_temp.kc_writes($$update public.game_players set orders = '{"orders":"draft"}', orders_submitted = false
-          where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$), 1,
+select is(pg_temp.kc_writes($$select public.submit_orders(pg_temp.kc_game('A'), 3,
+          '{"orders":{},"encounterPlans":{},"forTurn":3}'::jsonb, false)$$), 1,
   'a player saves a draft of their orders');
-select is(pg_temp.kc_writes($$update public.game_players
-          set orders = '{"orders":"final"}', orders_submitted = true, last_submitted_at = now()
-          where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$), 1,
+select is(pg_temp.kc_writes($$select public.submit_orders(pg_temp.kc_game('A'), 3,
+          '{"orders":{},"encounterPlans":{},"forTurn":3}'::jsonb, true)$$), 1,
   'a player submits their orders');
 
 select pg_temp.kc_as('stranger');
@@ -79,6 +81,25 @@ select is(pg_temp.kc_writes($$insert into public.game_players (game_id, user_id,
   'a player can''t put another account into a game');
 select is(pg_temp.kc_writes($$delete from public.game_players where game_id = pg_temp.kc_game('A')$$), 0,
   'a player can''t remove any realm, their own included');
+
+-- ── a player's own slot changes only through the orders function (P2-05) ─────────────────────
+
+select pg_temp.kc_as('p1');
+select is(pg_temp.kc_writes($$update public.game_players set turn_report = '{"report":"another report"}'
+          where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$), 0,
+  'a player''s own slot changes only through the orders function: its report stays as the turn wrote it');
+select is(pg_temp.kc_writes($$update public.game_players set game_id = pg_temp.kc_game('P')
+          where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$), 0,
+  'a player''s own slot changes only through the orders function: it stays in the game it joined');
+select is(pg_temp.kc_writes($$update public.game_players set player_index = 5
+          where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$), 0,
+  'a player''s own slot changes only through the orders function: its place in the game stays as it is');
+select is(pg_temp.kc_writes($$update public.game_players set orders = '{"orders":"hold"}', orders_submitted = true
+          where game_id = pg_temp.kc_game('C') and user_id = auth.uid()$$), 0,
+  'a player''s own slot changes only through the orders function: a finished game''s orders stay as they were');
+select throws_ok($$update public.game_players set orders = '{"orders":"hold"}', orders_submitted = true
+          where game_id = pg_temp.kc_game('A') and user_id = auth.uid()$$, '42501', null,
+  'a player''s own slot changes only through the orders function: a direct change of its orders is refused with an error');
 
 select pg_temp.kc_as('gm2');
 select is(pg_temp.kc_writes($$update public.game_players set turn_report = '{}'

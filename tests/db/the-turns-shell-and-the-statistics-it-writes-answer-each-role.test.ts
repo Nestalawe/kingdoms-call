@@ -4,7 +4,8 @@
 // out, a player, a rival, the game's GM, another GM, the Overlord):
 // - the reads: Marchwood, its realms and its turn, by its GM, its players (their own realm) and the Overlord;
 // - the writes: the orders cleared and put back, the world saved while on its turn, a realm's report, a log, and the
-//   statistics (a turn's records, a finished game's results), each by those the access rules let change them;
+//   statistics (a turn's records, a finished game's results), each by those the access rules let change them (a
+//   player's own realm refuses them with an error: a player changes it only through the orders function, P2-05);
 // - the backfill's reads: the GM's finished games, the games that have results, one game with its world and realms.
 // A visitor is refused for want of a grant. Every row is made here through the local service role and removed after.
 // Level db (the access layer, against the local Supabase): the queries and the access rules together, which no lower
@@ -52,6 +53,14 @@ const runsMarchwood = (role: ARole): boolean => role === "the game's GM" || role
 /** The slots of Marchwood's realms `role` reads: every one, its own, or none. */
 const marchwoodsRealmsFor = (role: ARole): number[] =>
   runsMarchwood(role) ? [0, 1, 2] : role === 'a player' ? [0] : role === 'a rival' ? [1] : [];
+/** Whether a write to these slots of Marchwood reaches `role`'s own realm: a player changes it only through the
+ *  orders function (P2-05), so the access rules refuse the write, with an error, and nothing changes. */
+const reachesItsOwnRealm = (role: ARole, slots: readonly number[]): boolean =>
+  !runsMarchwood(role) && slots.some((slot) => marchwoodsRealmsFor(role).includes(slot));
+/** What a write to these slots of Marchwood answers, as `role`: a visitor's refusal for want of a grant, the access
+ *  rules' refusal if it reaches the role's own realm, else no error. */
+const theErrorOfAWriteToTheseSlotsFor = (role: ARole, slots: readonly number[]): unknown =>
+  role === 'signed out' ? NO_GRANT : reachesItsOwnRealm(role, slots) ? refusedByTheRulesFor('game_players') : null;
 
 /** Marchwood's world as made here, to put back after each change. */
 const MARCHWOODS_WORLD = JSON.stringify({ madeUp: 'Marchwood' });
@@ -175,22 +184,15 @@ describe('the writes: the orders, the world, the reports and the logs, by those 
     const cleared = await turn.clearTheOrdersOfEveryRealmOfThisGame(world.theGame);
     const afterClear = await marchwoodNow();
     await putMarchwoodBack();
-    const changes = (slot: number): boolean => marchwoodsRealmsFor(role).includes(slot);
+    const changes = runsMarchwood(role);
     expect({
       errors: [itsError(putBack), itsError(cleared)],
       afterPutBack: afterPutBack.realms,
       afterClear: afterClear.realms,
     }).toEqual({
-      errors: [theErrorFor(role), theErrorFor(role)],
-      afterPutBack: [0, 1, 2].map((slot) => [
-        slot,
-        slot === 0 && changes(0) ? ORDERS : null,
-        slot === 0 && changes(0),
-        null,
-      ]),
-      afterClear: AS_PUT_BACK.map(([slot]) =>
-        changes(Number(slot)) ? [slot, null, false, null] : [slot, ORDERS, true, null],
-      ),
+      errors: [theErrorOfAWriteToTheseSlotsFor(role, [0]), theErrorOfAWriteToTheseSlotsFor(role, [0, 1, 2])],
+      afterPutBack: [0, 1, 2].map((slot) => [slot, slot === 0 && changes ? ORDERS : null, slot === 0 && changes, null]),
+      afterClear: AS_PUT_BACK.map(([slot]) => (changes ? [slot, null, false, null] : [slot, ORDERS, true, null])),
     });
   });
   test.for(THE_ROLES)('%s: saves the world while on its turn, and not once it has moved on', async (role) => {
@@ -228,10 +230,10 @@ describe('the writes: the orders, the world, the reports and the logs, by those 
     ];
     const after = await marchwoodNow();
     await putMarchwoodBack();
-    const changes = (slot: number): boolean => marchwoodsRealmsFor(role).includes(slot);
+    const changes = runsMarchwood(role);
     expect({ errors: answers.map(itsError), reports: after.realms.map((r) => r[3]) }).toEqual({
-      errors: answers.map(() => theErrorFor(role)),
-      reports: [changes(0) ? report : null, changes(1) ? report : null, null],
+      errors: [theErrorOfAWriteToTheseSlotsFor(role, [0]), theErrorOfAWriteToTheseSlotsFor(role, [1])],
+      reports: [changes ? report : null, changes ? report : null, null],
     });
   });
   test.for(THE_ROLES)("%s: writes the GM's whole log and realm 0's", async (role) => {
