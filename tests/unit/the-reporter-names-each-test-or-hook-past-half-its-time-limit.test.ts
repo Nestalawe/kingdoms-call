@@ -9,6 +9,8 @@
 // Level 1 (unit): a pure function on values, and this file's own run read from its meta; no game, no page.
 import { beforeAll, describe, expect, test } from 'vitest';
 import { theLinesNearTheirLimits } from '../setup/reporter.ts';
+import { aCoverageRun, THE_COVERAGE_RUNS_CEILING_MS } from '../lib/the-coverage-runs-ceiling.mts';
+import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
 /** Waits `ms` milliseconds without yielding: the hook takes at least that long, whatever the machine. */
 const busyFor = (ms: number) => {
@@ -43,16 +45,20 @@ describe('the lines', () => {
 });
 
 describe('the times', () => {
+  // this hook's own limit, one no other hook has (but in the coverage run, where every limit is its one ceiling)
+  const MINE = timeLimitGivenAsANumber(1_234).timeout;
   beforeAll(() => {
     busyFor(30);
-  }, 1_234);
+  }, MINE);
 
   test("this file's hooks are timed, each with the limit Vitest holds for it", ({ task }) => {
     const times = task.file.meta.hookTimes ?? [];
-    const mine = times.find((h) => h.limit === 1_234);
-    expect(mine).toMatchObject({ suite: 'the times', hook: 'beforeAll' });
+    const mine = times.find((h) => h.suite === 'the times' && h.hook === 'beforeAll');
+    expect(mine).toMatchObject({ limit: MINE });
     expect(mine?.ms).toBeGreaterThanOrEqual(30);
-    // each.ts's beforeEach, at the file's level, with a hook's default limit
-    expect(times).toContainEqual(expect.objectContaining({ suite: '', hook: 'beforeEach', limit: 10_000 }));
+    // each.ts's beforeEach, at the file's level, with a hook's default limit (Vitest's 10 s; in CI's coverage run, its
+    // one ceiling: tests/lib/the-coverage-runs-ceiling.mts)
+    const aHooksDefault = aCoverageRun() ? THE_COVERAGE_RUNS_CEILING_MS : 10_000;
+    expect(times).toContainEqual(expect.objectContaining({ suite: '', hook: 'beforeEach', limit: aHooksDefault }));
   });
 });

@@ -131,7 +131,8 @@ tests are weak, so they never enter this repository: the scorer refuses a folder
 
 CI runs it all on every pull request, in jobs side by side so the fastest failure shows first
 (`.github/workflows/ci.yml`, P1-01c): the static checks (type check, lint, format, ratchet), the static tests, the
-unit and scenario tests in two halves (Vitest's `--shard`), the simulations, the page tests, the browser specs, the
+unit and scenario tests in two halves (Vitest's `--shard`), then again with coverage, joined to check the
+[coverage limits](../../tests/README.md#the-coverage-limits), the simulations, the page tests, the browser specs, the
 balance matrix in three parts and the job that joins them, and `db` (the access-rule tests, `supabase db lint`, which
 checks the database's functions, the generated types' freshness and the access layer's tests, `npm run test:db`). Each job takes `node_modules` from a cache keyed on the runner, Node's version, the
 lock file and `.npmrc`; `npm ci` runs only on a miss, and the cache is saved straight after it, before a tool can write

@@ -5,7 +5,7 @@
 // deploy's and staging's build in a job that can only read, published by a job that runs no npm (P1-06a), the
 // balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
 // ratchet, the architecture rules (dependency-cruiser and knip, P1-13a), ESLint's bulk suppressions (P1-13b), and the
-// engine's purity, the dice and the project's own lint rules (P1-13c). It
+// engine's purity, the dice and the project's own lint rules (P1-13c), and the coverage limits (P1-10z). It
 // runs ESLint on one file to show the suppressions hold (a few seconds). Every later step that adds a guarantee
 // adds its check here. Level 0 (static): it reads settings files and the counts, and runs no game code.
 //
@@ -23,9 +23,17 @@
 // errors there, planted in an engine file and a page's, in every file of `src/`, with no list of files let through
 // (P1-10a1; P1-10b1 replaced the three kept from before the rule with statements, and an `as` planted in each of their
 // files is refused), `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has
-// no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; a `retry`,
+// no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; the coverage
+// limits (P1-10z) are Vitest's own, for `src/engine/`, `src/views/` and `src/shared/`, a whole percent of each of the
+// four measures, never rewritten by Vitest and left out only in a half of a run, and CI's coverage halves (the unit
+// and scenario tests again, with coverage and Vitest's own limits six times longer; the tests' verdict stays with the
+// halves without coverage) keep their coverage in a blob that the job after them joins and checks (planted copies: the
+// verdict's halves with coverage, the coverage halves without it or with a half left out, the join without it, the
+// join gone); a `retry`,
 // `retries` or `repeats` planted in a test's, a describe's, a helper's or a spec's options is a lint error, and every
-// limit the static tests and the two property tests give comes from `lib/time-limits.ts`, sized to the work; Node is
+// limit the static tests and the two property tests give comes from `lib/time-limits.ts`, sized to the work, and
+// so does every limit a unit or scenario test or hook gives, a number too (read by the syntax tree; planted copies: a
+// number, an options object, a const and `vi.setConfig`, each refused; P1-10z); Node is
 // pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that
 // Node's major; the Claude Code hooks run after Edit and Write and before stopping, block at most three times in a row,
 // and `.claude/` is closed to agents' edits; the browser specs have no retries, no `.only`, the Node check, a fixed
@@ -133,6 +141,7 @@ import {
 } from '../../tools/ratchet.ts';
 import { LEVELS } from '../suite.ts';
 import { ALLOWANCE_MS, timeLimitForPropertyRuns, timeLimitForTheWork } from '../lib/time-limits.ts';
+import { THE_COVERAGE_RUNS_CEILING_MS } from '../lib/the-coverage-runs-ceiling.mts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const read = (f: string) => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -835,6 +844,78 @@ describe('the test run', () => {
     );
   });
 
+  // P1-10z: the coverage limits, for src/engine, src/views and src/shared, each a whole percent of every measure, set
+  // only in this file (Vitest never rewrites them: no autoUpdate), and left out only in a half of a run (--shard),
+  // whose coverage is joined and checked in CI's job after the halves. Coverage is off in npm test.
+  test("the coverage limits: Vitest's own, for the engine, the views and the shared code, never rewritten by Vitest", () => {
+    const coverage = t.coverage ?? {};
+    const FOLDERS = ['src/engine/**', 'src/views/**', 'src/shared/**'];
+    expect(coverage.provider).toBe('v8');
+    expect(coverage.enabled).toBeUndefined();
+    expect('include' in coverage ? coverage.include : undefined).toEqual(FOLDERS);
+    const thresholds = ('thresholds' in coverage ? coverage.thresholds : undefined) ?? {};
+    expect(Object.keys(thresholds)).toEqual(FOLDERS);
+    for (const folder of FOLDERS) {
+      const limits: unknown = Object.entries(thresholds).find(([k]) => k === folder)?.[1];
+      expect(limits, folder).toBeTypeOf('object');
+      const entries = Object.entries(limits ?? {});
+      expect(entries.map(([k]) => k).sort(), folder).toEqual(['branches', 'functions', 'lines', 'statements']);
+      for (const [measure, limit] of entries) {
+        expect(Number.isInteger(limit) && Number(limit) > 0 && Number(limit) <= 100, `${folder} ${measure}`).toBe(true);
+      }
+    }
+    expect(read('vitest.config.mts')).not.toMatch(/autoUpdate\s*:/);
+    expect(read('vitest.config.mts')).toContain(
+      "const aHalfOfTheRun = process.argv.some((a) => a.startsWith('--shard'));",
+    );
+    expect(read('vitest.config.mts')).toContain('...(aHalfOfTheRun ? {} : { thresholds: THE_COVERAGE_LIMITS }),');
+    expect(pkg.scripts['test']).not.toMatch(/--coverage/);
+  });
+
+  // P1-10z: CI's coverage run judges no test's time, so there (KC_COVERAGE_RUN=1, and only there) every limit is one
+  // ceiling: Vitest's own (this file's testTimeout and hookTimeout) and each one tests/lib/time-limits.ts gives (a
+  // longer one kept). Elsewhere the limits are as sized.
+  function theCeilingsProblems(config: string): string[] {
+    const problems: string[] = [];
+    if (
+      !config.includes(
+        '...(aCoverageRun() ? { testTimeout: THE_COVERAGE_RUNS_CEILING_MS, hookTimeout: THE_COVERAGE_RUNS_CEILING_MS } : {}),',
+      )
+    )
+      problems.push("Vitest's own limits don't follow the coverage run");
+    return problems;
+  }
+  test('the coverage run, and only it, gives every time limit one ceiling', ({ onTestFinished }) => {
+    const was = process.env['KC_COVERAGE_RUN'];
+    onTestFinished(() => {
+      if (was === undefined) delete process.env['KC_COVERAGE_RUN'];
+      else process.env['KC_COVERAGE_RUN'] = was;
+    });
+    const limits = (env: string | undefined) => {
+      if (env === undefined) delete process.env['KC_COVERAGE_RUN'];
+      else process.env['KC_COVERAGE_RUN'] = env;
+      return [
+        timeLimitForTheWork({ siteBuilds: 1 }).timeout,
+        timeLimitForTheWork({ matrixGamesPlayed: 7 }).timeout,
+        timeLimitForPropertyRuns(100, 50).timeout,
+      ];
+    };
+    const C = THE_COVERAGE_RUNS_CEILING_MS;
+    expect(C).toBeGreaterThan(60_000);
+    expect(limits(undefined)).toEqual([10_000, 350_000, 5_000]);
+    expect(limits('1')).toEqual([C, 350_000, C]);
+    // Planted: another value than 1 is no coverage run.
+    expect(limits('true')).toEqual([10_000, 350_000, 5_000]);
+    // Vitest's own limits: the ceiling only in the coverage run (this test file runs in none).
+    expect(was).toBeUndefined();
+    expect([t.testTimeout, t.hookTimeout]).toEqual([undefined, undefined]);
+    const config = read('vitest.config.mts');
+    expect(theCeilingsProblems(config)).toEqual([]);
+    const planted = config.replace('...(aCoverageRun() ? {', '...(true ? {');
+    expect(planted).not.toBe(config);
+    expect(theCeilingsProblems(planted)).toEqual(["Vitest's own limits don't follow the coverage run"]);
+  });
+
   // Read here, in a test file, after the setup files ran: what every property test gets.
   test("fast-check's seed is KC_SEED's in every test file, so a property's inputs repeat", () => {
     expect(t.setupFiles).toContain('tests/setup/fast-check.ts');
@@ -866,6 +947,59 @@ describe('the test run', () => {
     }
   });
 
+  // Each time limit a test or hook in `file` gives (an argument of test, it, describe or a hook after the first that
+  // isn't its function, followed through the file's consts) that doesn't come from tests/lib/time-limits.ts, and
+  // each vi.setConfig: `file:line text`. Read by the syntax tree, so a `timeout` of a child process isn't one.
+  function limitsNotFromTheTimeLimitsFile(file: string, text: string): string[] {
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    const consts = new Map<string, ts.Node>();
+    const collect = (n: ts.Node) => {
+      if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer)
+        consts.set(n.name.text, n.initializer);
+      if (ts.isFunctionDeclaration(n) && n.name) consts.set(n.name.text, n);
+      ts.forEachChild(n, collect);
+    };
+    collect(sf);
+    const FROM_THE_FILE = /\b(timeLimitForTheWork|timeLimitForPropertyRuns|timeLimitGivenAsANumber)\(/;
+    const isAFunction = (n: ts.Node) =>
+      ts.isArrowFunction(n) || ts.isFunctionExpression(n) || ts.isFunctionDeclaration(n);
+    const fromTheFile = (a: ts.Node, seen = 0): boolean => {
+      if (FROM_THE_FILE.test(a.getText())) return true;
+      const named = ts.isPropertyAccessExpression(a) && a.name.text === 'timeout' ? a.expression : a;
+      const declared = ts.isIdentifier(named) ? consts.get(named.text) : undefined;
+      return declared !== undefined && seen < 5 && (isAFunction(declared) || fromTheFile(declared, seen + 1));
+    };
+    const start = (e: ts.Expression): ts.Expression => {
+      let x = e;
+      while (ts.isCallExpression(x) || ts.isPropertyAccessExpression(x)) x = x.expression;
+      return x;
+    };
+    const found: string[] = [];
+    const at = (n: ts.Node) =>
+      `${file}:${String(sf.getLineAndCharacterOfPosition(n.getStart()).line + 1)} ${n.getText()}`;
+    const visit = (n: ts.Node) => {
+      if (ts.isCallExpression(n)) {
+        const who = start(n.expression);
+        const callee = n.expression;
+        if (ts.isPropertyAccessExpression(callee) && callee.name.text === 'setConfig') found.push(at(n));
+        else if (
+          ts.isIdentifier(who) &&
+          /^(test|it|describe|beforeAll|beforeEach|afterAll|afterEach)$/.test(who.text)
+        ) {
+          // a test's first argument is its name, a hook's its function (by name too: `afterAll(restoreLog)`)
+          n.arguments.forEach((a, i) => {
+            if (i === 0 || isAFunction(a) || fromTheFile(a)) return;
+            if (ts.isArrayLiteralExpression(a)) return;
+            found.push(at(a));
+          });
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+    return found;
+  }
+
   // A test that builds the site, builds a TypeScript program, runs a tool or reads every file of src/ gets a time limit
   // sized to that work, and a property test one sized to its run count (tests/lib/time-limits.ts): only a limit, the
   // sum of the work's allowances. The static tests take every limit from it, none typed in as a number.
@@ -887,6 +1021,41 @@ describe('the test run', () => {
     const typedIn = /\btimeout\s*:|\},\s*[\d_]+\s*\)/;
     for (const f of fs.readdirSync(path.join(ROOT, 'tests', 'static')))
       expect(read(`tests/static/${f}`), f).not.toMatch(typedIn);
+    // P1-10z: nor do the unit and scenario tests (CI's coverage run, where every limit is one ceiling, runs them): each
+    // limit a test or hook gives comes from tests/lib/time-limits.ts, a number too (timeLimitGivenAsANumber).
+    const typedInUnitsAndScenarios = ['unit', 'scenario'].flatMap((level) =>
+      fs
+        .readdirSync(path.join(ROOT, 'tests', level))
+        .filter((f) => /\.m?ts$/.test(f))
+        .flatMap((f) => limitsNotFromTheTimeLimitsFile(`tests/${level}/${f}`, read(`tests/${level}/${f}`))),
+    );
+    expect(typedInUnitsAndScenarios).toEqual([]);
+    // Planted copies: a limit typed as a test's third argument, in its options, through a const, and by vi.setConfig;
+    // one from the file (by name, as a const, or through .timeout) let through, and a hook's function by name too.
+    const planted = (code: string) => limitsNotFromTheTimeLimitsFile('planted.test.ts', code);
+    expect(planted("test('a', () => undefined, 5_000);")).toEqual(['planted.test.ts:1 5_000']);
+    // (its key quoted, so the line above's check of this file's own text doesn't read it as a limit)
+    expect(planted("test('a', { 'timeout': 9_000 }, () => undefined);")).toEqual([
+      "planted.test.ts:1 { 'timeout': 9_000 }",
+    ]);
+    expect(planted('const L = 60_000;\nbeforeAll(() => undefined, L);')).toEqual(['planted.test.ts:2 L']);
+    expect(planted('vi.setConfig({ testTimeout: 20_000 });')).toEqual([
+      'planted.test.ts:1 vi.setConfig({ testTimeout: 20_000 })',
+    ]);
+    expect(
+      planted(
+        [
+          'const L = timeLimitGivenAsANumber(60_000).timeout;',
+          'const W = timeLimitForTheWork({ toolRuns: 1 });',
+          'const restore = quietly();',
+          "test.for([1])('a %s', W, () => undefined);",
+          "test('b', () => undefined, L);",
+          'beforeAll(() => undefined, W.timeout);',
+          'afterAll(restore);',
+          "test('c', () => undefined, timeLimitForPropertyRuns(10, 5).timeout);",
+        ].join('\n'),
+      ),
+    ).toEqual([]);
     for (const f of ['tests/unit/combat-properties.test.ts', 'tests/unit/realm-reports.test.ts'])
       expect(read(f), f).toMatch(/timeLimitForPropertyRuns\(RUNS, [\d.]+\)/);
   });
@@ -1084,6 +1253,13 @@ describe('the Claude Code hooks', () => {
 });
 
 describe('CI', () => {
+  /** The coverage limits' join (P1-10z): the unit and scenario halves' blobs replayed, the limits checked. */
+  const THE_JOIN = 'npm test -- --merge-reports --coverage';
+  /** The coverage halves (P1-10z): the unit and scenario tests again, with coverage and KC_COVERAGE_RUN=1, which makes
+   *  every time limit one ceiling (this run measures; the halves without coverage give the verdict), each half's blob
+   *  kept. */
+  const THE_COVERAGE_HALVES =
+    'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob';
   // The jobs in ci.yml, read from its text (it keeps one layout: each job's id two spaces in, under "jobs:").
   const ci = read('.github/workflows/ci.yml');
   const jobs = new Map<string, string>();
@@ -1143,7 +1319,8 @@ describe('CI', () => {
   // P1-05: each job that tests builds site/ from src/ before its tests, the balance matrix and the browser specs, so
   // CI never tests anything but this commit's pages.
   test('every job that tests builds the site first', () => {
-    const testing = /^(npm test|npx playwright test|npm run balance)/;
+    // The coverage limits' join (npm test -- --merge-reports) replays the halves' results and runs no test.
+    const testing = /^(npm test(?! -- --merge-reports)|npx playwright test|npm run balance)/;
     const jobsThatTest = ids.filter((id) => runs(id).some((r) => testing.test(r)));
     expect([...jobsThatTest].sort()).toEqual([
       'balance',
@@ -1153,6 +1330,7 @@ describe('CI', () => {
       'simulation',
       'static-tests',
       'unit-scenario',
+      'unit-scenario-coverage-half',
     ]);
     for (const id of jobsThatTest) {
       const r = runs(id);
@@ -1170,6 +1348,7 @@ describe('CI', () => {
     for (const block of (text.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
       const id = /^ {2}([\w-]+):\n/.exec(block)?.[1] ?? '';
       for (const [, r = ''] of block.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)) {
+        if (r === THE_JOIN || r === THE_COVERAGE_HALVES) continue;
         const m = /^npm test -- --project \w+(?: --project \w+)*(?: --shard \$\{\{ matrix\.shard \}\}\/(\d+))?$/.exec(
           r,
         );
@@ -1206,6 +1385,85 @@ describe('CI', () => {
     expect(testLevelProblems(ci.replace('--project page', '--project page --bail 1'))).toEqual([
       'page: npm test -- --project page --bail 1',
       'the levels run: static, unit, scenario, simulation',
+    ]);
+  });
+
+  // P1-10z: the coverage limits. Each half of the unit and scenario tests runs with Vitest's coverage on, prints its
+  // results as before (the config's two reporters) and keeps them, with its coverage, in a blob it uploads; the job
+  // after both halves downloads the two blobs and joins them, which checks the limits on the whole.
+  function coverageLimitsProblems(text: string): string[] {
+    const problems: string[] = [];
+    const block = (id: string) =>
+      new RegExp(`^ {2}${id}:\\n[\\s\\S]*?(?=^ {2}[\\w-]+:\\n|(?![\\s\\S]))`, 'm').exec(text)?.[0] ?? '';
+    const verdict = block('unit-scenario');
+    const halves = block('unit-scenario-coverage-half');
+    const join = block('unit-scenario-coverage');
+    const command = (b: string) => [...b.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)].map((m) => m[1] ?? '');
+    if (command(verdict).some((r) => r.includes('--coverage'))) problems.push("the tests' verdict runs with coverage");
+    if (String(command(halves)) !== THE_COVERAGE_HALVES) problems.push(`the halves run: ${command(halves).join('; ')}`);
+    if (!halves.includes(`run: ${THE_COVERAGE_HALVES}\n        env:\n          KC_COVERAGE_RUN: '1'\n`))
+      problems.push('the coverage halves keep the time limits');
+    if (!/^ {4}timeout-minutes: \d+$/m.test(halves)) problems.push('the coverage halves have no timeout-minutes');
+    const elsewhere = text.replace(halves, '');
+    if (/^ +KC_COVERAGE_RUN:/m.test(elsewhere)) problems.push('a job beside the coverage halves sets KC_COVERAGE_RUN');
+    if (!/^ {6}matrix:\n {8}shard: \[1, 2\]\n/m.test(halves)) problems.push('not both halves run');
+    if (
+      !/uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: unit-scenario-blob-\$\{\{ matrix\.shard \}\}\n {10}path: \.vitest\/blob\/\n {10}if-no-files-found: error\n {10}include-hidden-files: true\n/.test(
+        halves,
+      )
+    )
+      problems.push('the halves upload no blob');
+    if (!/^ {4}needs: unit-scenario-coverage-half$/m.test(join)) problems.push('the join waits for no halves');
+    if (
+      !/uses: actions\/download-artifact@v\d+\n {8}with:\n {10}pattern: unit-scenario-blob-\*\n {10}merge-multiple: true\n {10}path: \.vitest\/blob\n/.test(
+        join,
+      )
+    )
+      problems.push('the join downloads no blobs');
+    if (String(command(join)) !== THE_JOIN) problems.push(`the join runs: ${command(join).join('; ')}`);
+    return problems;
+  }
+  test('the coverage halves keep their coverage, apart from the verdict, and the job after them checks the limits', () => {
+    expect(coverageLimitsProblems(ci)).toEqual([]);
+    // Planted copies: the verdict's halves with coverage; the coverage halves without it, or with a half left out; the
+    // join without it; the join gone.
+    const verdictCovered = ci.replace(
+      'run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2\n',
+      'run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage\n',
+    );
+    expect(verdictCovered).not.toBe(ci);
+    expect(coverageLimitsProblems(verdictCovered)).toEqual(["the tests' verdict runs with coverage"]);
+    const noCoverage = ci.replace(' --coverage --reporter=default', ' --reporter=default');
+    expect(noCoverage).not.toBe(ci);
+    expect(coverageLimitsProblems(noCoverage)).toEqual([
+      `the halves run: ${THE_COVERAGE_HALVES.replace(' --coverage', '')}`,
+      'the coverage halves keep the time limits',
+    ]);
+    // the ceiling: not set in the coverage halves; set in the verdict's halves too
+    const noCeiling = ci.replace("\n        env:\n          KC_COVERAGE_RUN: '1'\n", '\n');
+    expect(noCeiling).not.toBe(ci);
+    expect(coverageLimitsProblems(noCeiling)).toEqual(['the coverage halves keep the time limits']);
+    const verdictCeiling = ci.replace(
+      'run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2\n',
+      "run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2\n        env:\n          KC_COVERAGE_RUN: '1'\n",
+    );
+    expect(verdictCeiling).not.toBe(ci);
+    expect(coverageLimitsProblems(verdictCeiling)).toEqual(['a job beside the coverage halves sets KC_COVERAGE_RUN']);
+    const oneHalf = ci.replace(/(unit-scenario-coverage-half:\n[\s\S]*?shard: )\[1, 2\]/, '$1[1]');
+    expect(oneHalf).not.toBe(ci);
+    expect(coverageLimitsProblems(oneHalf)).toEqual(['not both halves run']);
+    const noLimits = ci.replace(`run: ${THE_JOIN}`, 'run: npm test -- --merge-reports');
+    expect(noLimits).not.toBe(ci);
+    expect(coverageLimitsProblems(noLimits)).toEqual(['the join runs: npm test -- --merge-reports']);
+    const noJoin = ci.replace(
+      /\n {2}# The coverage limits \(plan P1-10z\): the two coverage halves[\s\S]*?\n(?= {2}simulation:\n)/,
+      '\n',
+    );
+    expect(noJoin).not.toBe(ci);
+    expect(coverageLimitsProblems(noJoin)).toEqual([
+      'the join waits for no halves',
+      'the join downloads no blobs',
+      'the join runs: ',
     ]);
   });
 
@@ -1484,6 +1742,8 @@ describe('CI', () => {
         'static',
         'static-tests',
         'unit-scenario',
+        'unit-scenario-coverage-half',
+        'unit-scenario-coverage',
       ].sort(),
     );
     expect(nodeModulesCacheProblems(ci)).toEqual([]);

@@ -134,7 +134,8 @@ gets a limit from `lib/time-limits.ts`: an allowance for each piece of that work
 taken on GitHub's runners (`timeLimitForTheWork({ siteBuilds: 3 })`; a hook: `beforeAll(fn, timeLimitForTheWork({
 matrixGamesPlayed: 1 }).timeout)`). A property test whose inputs grow with `KC_FULL` gets one from its run count
 (`timeLimitForPropertyRuns(RUNS, 50)`), so the nightly's ten times the runs get ten times the time. `harness` and
-`static/a-hook-or-test-that-plays-a-whole-matrix-game-…` check both. The static tests type in no limit of their own.
+`static/a-hook-or-test-that-plays-a-whole-matrix-game-…` check both. The static tests type in no limit of their own, and a unit or scenario test types one only through
+`timeLimitGivenAsANumber` (so CI's coverage run can lift it to its ceiling, below).
 Every run's footer (`setup/reporter.ts`) names each test or hook that used more than half its limit ("Near its limit:
 …, 9.4 s of 10 s"; a hook timed by `setup/hook-times.ts`), or says none did: read it on the nightly, and size the work
 before it fails. It never fails a run. A test on `main` past its limit reds every pull request: size its work in a pull
@@ -154,6 +155,26 @@ What each runs and counts: [the toolchain](../docs/architecture/the-toolchain-th
 - **In CI** (`.github/workflows/ci.yml`) each part runs in its own job; `ci` and `db` are the required checks. A job
   that fails while the runner sets up (`supabase db start`, an `apt-get`) may be re-run once, said in the pull
   request; a failing test is never re-run.
+
+## The coverage limits
+
+How much of `src/engine/`, `src/views/` and `src/shared/` the unit and scenario tests run may never fall. The limits
+are in `vitest.config.mts`, one a folder for each of Vitest's four measures (lines, statements, functions, branches),
+each the figure when it was set, rounded down to a whole percent. Coverage is off in `npm test`. CI runs the unit and
+scenario tests a second time with it on, in two halves of their own (`unit-scenario-coverage-half`), and the job after
+them (`unit-scenario-coverage`) joins the two and fails if a folder is below a limit: a test taken away, or new code no
+test runs, shows there. Coverage slows the code it watches (1.6 to 3.4 times, one file at a time), so that run isn't
+the tests' verdict: the halves without coverage give it, at the usual time limits. In the coverage run alone
+(`KC_COVERAGE_RUN=1`) every time limit, Vitest's own and those of `lib/time-limits.ts`, is one ceiling of five
+minutes (`lib/the-coverage-runs-ceiling.mts`), or the sized limit if longer; the job's own time limit still stops a hang.
+
+- **Measure:** `npx vitest run --project unit --project scenario --coverage` (about a minute). A folder below its
+  limit is named with its figure; to read one that passes, set its limit to 100 for that run only.
+- **Raise a limit by hand** in a pull request when coverage grows: the new figure, rounded down. **Never lower one**,
+  and never let Vitest rewrite them (`thresholds.autoUpdate` stays unset): the file is a dangerous path, so a change
+  is seen. `harness` checks the settings and CI's two steps.
+- **The figures repeat:** the tests are seeded, so the same tree gives the same coverage, file by file, with 2
+  workers or 8 (measured when the limits were set).
 
 ## Browser specs
 

@@ -8,12 +8,14 @@
 // (tests/setup/each.ts). The footer prints the seed, how to repeat each failure, and each test or hook that used more
 // than half its time limit (tests/setup/reporter.ts; the hooks timed by tests/setup/hook-times.ts).
 //
-// This file is .mts and imports only types and constants from tests/: package.json has no "type" (the test scripts
+// This file is .mts and imports only types, constants and one pure check (tests/lib/the-coverage-runs-ceiling.mts) from
+// tests/: package.json has no "type" (the test scripts
 // are CommonJS), so this is how Node and Vite load the config as an ES module without warnings.
 import os from 'node:os';
 import { defineConfig, type TestProjectInlineConfiguration } from 'vitest/config';
 import type { Level } from './tests/suite.ts';
 import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
+import { aCoverageRun, THE_COVERAGE_RUNS_CEILING_MS } from './tests/lib/the-coverage-runs-ceiling.mts';
 
 // The levels, slowest first so the longest script starts at once. tests/legacy.test.ts checks that they are the
 // levels in tests/suite.ts, so no script is left without a project to run it.
@@ -29,6 +31,25 @@ Object.assign(process.env, FIXED, { KC_SEED: (process.env['KC_SEED'] ?? '') || D
 const jobs = Number(process.env['KC_JOBS']) || os.availableParallelism();
 const cores = os.availableParallelism();
 const files = Number(process.env['KC_JOBS']) || Math.min(8, Math.max(2, cores - 2), cores);
+
+// The coverage limits (plan P1-10z): how much of src/engine, src/views and src/shared the unit and scenario tests run,
+// as Vitest's own coverage (@vitest/coverage-v8) measures it, folder by folder. Coverage is off in npm test. CI runs
+// the unit and scenario tests a second time with it on, in two halves of their own, and the job after them joins the
+// halves and checks these limits (.github/workflows/ci.yml, unit-scenario-coverage-half and unit-scenario-coverage). Each limit is the folder's figure when it was set, rounded
+// down to a whole percent, for all four measures (lines, statements, functions, branches): a test dropped or a new
+// file left untested shows as a fall in any of them. Raise a limit by hand, in a pull request, when coverage grows;
+// never lower one. Vitest never rewrites them: thresholds.autoUpdate stays unset, as this file is a dangerous path.
+// src/shared holds only re-exports today, which have no lines to count, and Vitest reads that as 100%: code added
+// there needs its tests. Measure with npx vitest run --project unit --project scenario --coverage; a folder below its
+// limit is named with its figure (tests/README.md#the-coverage-limits says how to read and raise them).
+const THE_COVERAGE_LIMITS = {
+  'src/engine/**': { lines: 87, statements: 85, functions: 90, branches: 75 },
+  'src/views/**': { lines: 72, statements: 72, functions: 91, branches: 64 },
+  'src/shared/**': { lines: 100, statements: 100, functions: 100, branches: 100 },
+};
+// A half of a run (--shard) measures only its own tests, so its limits would fail: a half keeps its coverage for the
+// join (--reporter=blob), and the limits are checked there, on the whole.
+const aHalfOfTheRun = process.argv.some((a) => a.startsWith('--shard'));
 
 const project = (level: Level | 'quarantine'): TestProjectInlineConfiguration => ({
   extends: true,
@@ -65,6 +86,15 @@ export default defineConfig({
     reporters: ['default', './tests/setup/reporter.ts'],
     maxConcurrency: jobs,
     maxWorkers: files,
+    // CI's coverage run (KC_COVERAGE_RUN=1) judges no test's time: Vitest's own limits (5 s a test, 10 s a hook) are
+    // the one ceiling there, as every sized limit is (tests/lib/the-coverage-runs-ceiling.mts says why).
+    ...(aCoverageRun() ? { testTimeout: THE_COVERAGE_RUNS_CEILING_MS, hookTimeout: THE_COVERAGE_RUNS_CEILING_MS } : {}),
+    coverage: {
+      provider: 'v8',
+      include: Object.keys(THE_COVERAGE_LIMITS),
+      reporter: ['text-summary'],
+      ...(aHalfOfTheRun ? {} : { thresholds: THE_COVERAGE_LIMITS }),
+    },
     projects: [
       ...LEVELS.map(project),
       ...(process.env['KC_QUARANTINE'] === '1' ? [project('quarantine')] : []),

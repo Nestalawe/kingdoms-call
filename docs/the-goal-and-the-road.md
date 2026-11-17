@@ -91,7 +91,7 @@ the module it changes.
 | No hand-typed stamps; hashed assets; the version banner works | Met |
 | The harness is enforced: hooks, the Node pin, ratchets, coverage thresholds and the harness test, in CI | Met |
 | Pages reach the database only through the access layer, tested per role against the local Supabase; `stub-db` deleted; property tests with fixed seeds; two mutation sessions or more | Met |
-| The architecture checks run in CI: the layers and cycles, knip, the purity test, the registry and content completeness tests; the module map is generated | Not yet met: the content completeness test isn't written |
+| The architecture checks run in CI: the layers and cycles, knip, the purity test, the registry and content completeness tests; the module map is generated | Met (the content completeness test lists the gaps it found when it came in, each a known defect) |
 | No test injects code into a page's source; every test is TypeScript; saves are versioned and checked; items have ids | Not yet met: the saves part is met; old JavaScript tests are left; items have no ids yet (P1-20) |
 | Names say what the code does: the glossary's renames (P1-24) | Not yet met |
 | A typical batch item needs only `CLAUDE.md`, the architecture overview and one to three modules (checked on three batches) | Not yet met: not yet checked on a batch |

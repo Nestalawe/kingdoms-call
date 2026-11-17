@@ -17,6 +17,7 @@ import vm from 'node:vm';
 import { afterAll, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
 import { callsTo, pageScripts } from '../lib/source.ts';
+import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
 // Every experience roll for Naval in the GM portal's code, read by its syntax tree (tests/lib/source.ts, plan P1-09a:
 // the lines of the built page were matched until then), as the function it is made in and what it is handed: the
@@ -35,7 +36,7 @@ const NAVAL_ROLLS = [
 // It reads every file of the GM page by its syntax tree: under a second here, 3 to 5 s on a CI runner (2.2 s on #169's,
 // 4.9 s on #171's), so it has time enough of its own, as the source test's every-file checks do (Vitest's default, 5 s,
 // failed on a slow runner).
-const EVERY_FILE_MS = 60_000;
+const EVERY_FILE_MS = timeLimitGivenAsANumber(60_000).timeout;
 test(
   'no voyage rolls Naval outside rollNavalVoyage',
   () => {

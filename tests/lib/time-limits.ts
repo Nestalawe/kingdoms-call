@@ -15,6 +15,12 @@
 // eslint.config.js refuses a `retry`, `retries` or `repeats` in any test file, and tests/setup/each.ts fails a test set
 // to retry or repeat; tests/static/harness.test.ts checks both.
 
+import { aCoverageRun, THE_COVERAGE_RUNS_CEILING_MS } from './the-coverage-runs-ceiling.mts';
+
+/** A sized limit, as a run gives it: the ceiling in the coverage run (or the limit, if longer), else the limit. */
+const asThisRunGivesIt = (timeout: number): number =>
+  aCoverageRun() ? Math.max(timeout, THE_COVERAGE_RUNS_CEILING_MS) : timeout;
+
 /** Each piece of work a test may do, and its allowance in milliseconds. */
 export const ALLOWANCE_MS = {
   /** One build of the site with Vite (tools/build.ts), in the test's process or its own: three took 6.4 s on a runner
@@ -49,11 +55,19 @@ export function timeLimitForTheWork(work: TheWork): { timeout: number } {
     (work.matrixGamesPlayed ?? 0) * ALLOWANCE_MS.matrixGamesPlayed;
   if (!(timeout > 0))
     throw new Error('A test given a time limit names the work it does: Vitest keeps 5 s for the rest.');
-  return { timeout };
+  return { timeout: asThisRunGivesIt(timeout) };
+}
+
+/** A test's options for a limit typed as a number, for work no allowance above names (yet): exactly that number,
+ *  but the coverage run's ceiling there (or the number, if longer). Every limit a unit or scenario test gives comes
+ *  from this file, so the coverage run can lift it (tests/static/harness.test.ts checks it). */
+export function timeLimitGivenAsANumber(ms: number): { timeout: number } {
+  if (!(ms > 0)) throw new Error('A time limit is a number of milliseconds above 0.');
+  return { timeout: asThisRunGivesIt(ms) };
 }
 
 /** A property test's options: its time limit, `msEachRun` for each of the `runs` inputs it tries. */
 export function timeLimitForPropertyRuns(runs: number, msEachRun: number): { timeout: number } {
   if (!(runs > 0 && msEachRun > 0)) throw new Error('A property test tries some inputs, each in some time.');
-  return { timeout: Math.ceil(runs * msEachRun) };
+  return { timeout: asThisRunGivesIt(Math.ceil(runs * msEachRun)) };
 }

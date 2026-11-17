@@ -46,6 +46,7 @@ import {
   type KeepResult,
   type PublishedFiles,
 } from '../../tools/deploy/keep-the-previous-deploys-files.ts';
+import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
 const SCRIPT = path.join(ROOT, 'tools', 'deploy', 'keep-the-previous-deploys-files.ts');
 const SRC = path.join(ROOT, 'src');
@@ -53,7 +54,9 @@ const PUBLIC = path.join(ROOT, 'public');
 const BUILD = path.join(ROOT, 'tools', 'build.ts');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-keep-'));
 // Each build is Vite's, one per page: about a second here, up to 6 s on CI's runners with other tests beside it.
-const BUILDS = { timeout: 60_000 };
+const BUILDS_MS = 60_000;
+const BUILDS = timeLimitGivenAsANumber(BUILDS_MS);
+const THREE_BUILDS = timeLimitGivenAsANumber(3 * BUILDS_MS).timeout;
 afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
@@ -192,7 +195,7 @@ beforeAll(() => {
     second(src);
     append(path.join(src, 'ui', 'leaderboard', 'main.ts'), aChangedLine);
   });
-}, 3 * BUILDS.timeout);
+}, THREE_BUILDS);
 
 describe('deploys in a row', () => {
   test("a changed file gets a new name: the GM bundle, and the player portal's stylesheet and bundle", () => {

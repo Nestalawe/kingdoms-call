@@ -16,6 +16,7 @@
 // own order, `phaseInitCompare`); then, with every order's own function stood in by a recorder in the `vm`, what it
 // hands each: every order name the game knows reaches its own function once with the values it reads (so the `switch`'s
 // `default:` is never reached), a name in capitals or with spaces, an unknown, empty or missing name as a Defend, a
+// name every object holds as a key (`constructor`) as nothing (the `default:`, P1-10z), a
 // missing target or extra as empty, a wanderer with no realm, the log's context his while the order runs; no hero, a
 // fallen one or no order does nothing; the superseded order (the leader named, or "another hero"); the battle lock's
 // foes one by one (an enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no companies or elsewhere,
@@ -284,6 +285,20 @@ describe('what processOrder hands each order', () => {
       }),
     ).toEqual([handed(b, c, ord, 0, 'defend')]);
   });
+
+  test.each(['constructor', '__proto__'])(
+    "a name every object holds as a key (%s) reaches the switch's default, which runs no order's function",
+    (name) => {
+      const b = fresh();
+      const c = at(b);
+      const ord: Order = { ...o('x'), action: name };
+      expect(
+        standIn(() => {
+          dispatch(b, c, ord);
+        }),
+      ).toEqual([]);
+    },
+  );
 
   test("every order name the game knows has a function of its own: the switch's default is never reached", () => {
     const values = new Set(Object.values(PHASE_ACTION_MAP));

@@ -31,6 +31,7 @@ import {
   stringsOf,
   topLevelNames,
 } from '../lib/source.ts';
+import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
 const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-source-'));
 afterAll(() => {
@@ -54,7 +55,7 @@ const pretty = { src: copy };
 
 // Each of the two checks below reads every file twice: about 2 s here and 4 to 8 s on a CI runner, so they have time
 // enough of their own (Vitest's default, 5 s, failed on a slow runner).
-const EVERY_FILE_TWICE_MS = 60_000;
+const EVERY_FILE_TWICE_MS = timeLimitGivenAsANumber(60_000).timeout;
 
 describe('every file of the site reads the same laid out otherwise', () => {
   test(
