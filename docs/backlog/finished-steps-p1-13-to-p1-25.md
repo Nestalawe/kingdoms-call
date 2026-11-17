@@ -113,6 +113,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-17
 
+- P1-17: done in its rows, below: every page reads the database through `Db`, the page tests and the matrix on one typed fake, and `stub-db` deleted
 - P1-17a: #518 db/'s page code moves into the GM page
 - P1-17b: #519 supabase-js from npm, served as a hashed file
 - P1-17c: #520 The database client, Db and the fake
@@ -134,6 +135,9 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-17q2: #569 Six more of the GM page's tests onto the fake
 - P1-17q3: #626 The turn shell's page test on the typed fake
 - P1-17r: #627 The tests of several pages on the typed fake (13 of them; the screen tours are P1-17t)
+- P1-17t: #643 The screen tours on the typed fake
+- P1-17s1: #644 The balance matrix plays on the typed fake
+- P1-17s2: #646 The two one-off proofs of the September refactor deleted; #647 The Dispatches end-to-end test back, on the typed fake; #648 The old stand-in database deleted (P1-17 done)
 
 ## P1-18
 
@@ -235,6 +239,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-21t: #588 Tests for the alignment family's two weak catches
 - P1-21u: #628 Tests for the report and the Hall of Fame from the mutation session of 2026-11-17
 - P1-21v: #636 Tests for the GM's pages and the database reads from the mutation session of 2026-11-17
+- P1-21w: #649 Tests for the typed fake, the balance writes and the ratchet from the mutation session of 2026-11-17
 
 ## P1-23
 

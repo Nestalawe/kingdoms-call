@@ -111,8 +111,8 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
     scripted realm's report structure), and only words differ (if the database writes changed too, it says so);
   - **writes only**: every game played out the same, in the same words, and only what the turns wrote to the
     database differs. Nothing in play changed; it lists the games and the first turn that wrote differently, and
-    replays nothing. That's expected only of a change to how the game saves: P1-17's moves of these writes must come
-    out "no change";
+    replays nothing. That's expected only of a change to how the game saves: a move of these writes that keeps what
+    they send must come out "no change";
   - **a reshape:** at least 90% of the games played out differently (`RESHAPE_SHARE`), as when the order of the dice
     changes, counting the games still being played at the first turn any game differs (a change from turn 18 can't
     reach a game that ended at 15). Every game differs, so it's judged as a whole, by the strict overall answer, which

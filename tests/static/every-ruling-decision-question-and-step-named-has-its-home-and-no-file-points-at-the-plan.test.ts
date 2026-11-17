@@ -8,7 +8,7 @@
 // - Each question number ("question 21", "questions 36, 39 and 41") is open in docs/questions-for-the-maintainers.md, or named
 //   by a ruling (its source: the ruling is the answered question's home).
 // - Each step id (P1-16, P1-11e29) is a row of the backlog (docs/backlog/README.md and its groups' files), a group's
-//   heading there ("### P1-17: the database access layer", a step that is only the sum of its rows), or in its finished list (a
+//   heading there ("### P1-23: the rulings tranche", a step that is only the sum of its rows), or in its finished list (a
 //   finished step, or one dropped: "P0-14, on 2026-10-14").
 // - No backlog row is done or dropped (those leave it for the finished list), and none is in the finished list too.
 // - Each known defect named (KD-001) is a row of the backlog, or folded into one ("Folds in KD-005 and KD-080" in
@@ -125,7 +125,7 @@ const FINISHED_STEPS = new Set(
       ]),
   ),
 );
-/** The groups: a step that is only the sum of its rows is a heading of the backlog, "### P1-16: the UI typed". */
+/** The groups: a step that is only the sum of its rows is a heading of the backlog, "### P1-23: the rulings tranche". */
 const GROUPS = new Set(
   BACKLOG.flatMap((f) =>
     read(f)
@@ -182,7 +182,7 @@ describe('every fact the repository names has its home in docs/', () => {
     expect(OPEN_ROWS.length).toBeGreaterThan(20);
     expect(FINISHED_STEPS.size).toBeGreaterThan(100);
     expect(FINISHED_STEPS.has('P0-14')).toBe(true);
-    expect(GROUPS.has('P1-17') && GROUPS.has('P1-23')).toBe(true);
+    expect(GROUPS.has('P1-23')).toBe(true);
     expect(KNOWN_DEFECTS.size).toBeGreaterThan(100);
     expect(ANSWERED_QUESTIONS.size).toBeGreaterThan(20);
     expect(

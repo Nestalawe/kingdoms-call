@@ -172,7 +172,7 @@ and site changes go in separate PRs ([supabase/README.md](../../supabase/README.
 
 ## The access layer: `src/db/`
 
-Pages are moving onto one typed interface to the database, `Db` (plan P1-17), area by area. Today:
+Pages reach the database through one typed interface, `Db` (built area by area in P1-17):
 - **The client:** each page makes its supabase-js client and its `Db` with `makeThePagesDatabase(url, key, options?)`
   (`src/db/the-pages-database-client.ts`), the page's own arguments kept (the Overlord page's `storageKey`). Only
   `src/db/` reads the `supabase` global (ESLint) or imports the package, and only its types (dependency-cruiser).
