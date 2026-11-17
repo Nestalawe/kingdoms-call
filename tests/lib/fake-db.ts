@@ -740,8 +740,10 @@ export interface ADispatchRefused {
   readonly hint: string | null;
   readonly details: string | null;
 }
-/** A dispatch the player's world holds, with its game. */
-export type ADispatchThePlayersWorldHolds = ADispatch & Pick<ADispatchsGameAndRealms, 'game_id'>;
+/** A dispatch the player's world holds, with its game, and its sender's account when the page sent it (as the
+ *  database keeps from_user_id: the account sent, else the signed-in one; a null sent is refused). */
+export type ADispatchThePlayersWorldHolds = ADispatch &
+  Pick<ADispatchsGameAndRealms, 'game_id'> & { readonly from_user_id?: string | null };
 /** A realm's read marks the player's world holds, with the account that wrote them. */
 export type ReadMarksThePlayersWorldHolds = ARealmsReadMarks & { readonly user_id: string };
 /** A report of a dispatch the player's world holds (a message_reports row, as the page writes it). */
@@ -766,7 +768,8 @@ export interface AReportThePlayersWorldHolds {
  *  not `me`'s. With `offers` (plan P1-17r), it holds the Game Master offers: the page reads an account's, and `me`
  *  accepts or declines its own as gm_accept_offer and gm_decline_offer do (refused in their words when there is none
  *  to answer); with `reports`, the reports of dispatches: the page reads a game's and writes one (without them, none is
- *  held). */
+ *  held). While `dispatchesTableMissing` is true (plan P1-17, the Dispatches spec), every call on the dispatches' table (game_messages) is
+ *  refused as a database without that table refuses it, in its words, as the GM's world's missing tables are. */
 export interface ThePlayersWorld {
   readonly me: string | null;
   readonly names: readonly AnAccountsName[];
@@ -778,6 +781,7 @@ export interface ThePlayersWorld {
   readonly readMarks?: ReadMarksThePlayersWorldHolds[];
   readonly offers?: AFakeGameMasterOffer[];
   readonly reports?: AReportThePlayersWorldHolds[];
+  dispatchesTableMissing?: boolean;
 }
 
 /** A fake database, up to date at `version`, holding the player's `world`. */
@@ -1091,11 +1095,23 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
         'from:game_messages',
         (dispatch: Parameters<Db['theDispatches']['sendThisDispatch']>[0]) => {
           if (world.dispatchRefused !== null) return { data: null, error: world.dispatchRefused, status: 400 };
+          // the sender's account is never null: sent as null, the dispatch is refused in the database's words
+          if (dispatch.from_user_id === null)
+            return {
+              data: null,
+              error: {
+                message: 'null value in column "from_user_id" of relation "game_messages" violates not-null constraint',
+                code: '23502',
+              },
+              status: 400,
+            };
           const held = world.dispatches;
           if (held !== undefined)
             held.push({
               id: held.reduce((most, d) => Math.max(most, d.id), 0) + 1,
               game_id: dispatch.game_id,
+              // the column's default, the signed-in account, when the page sends none
+              from_user_id: dispatch.from_user_id ?? world.me,
               turn: dispatch.turn ?? null,
               from_index: dispatch.from_index,
               to_indexes: dispatch.to_indexes ?? [],
@@ -1143,7 +1159,39 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
       ),
     },
   };
-  return { db, calls };
+  /** The call `call` on the dispatches' table, refused while the world lacks that table (relation "does not exist",
+   *  the GM's world's words), else answered as above. */
+  const unlessTheTableIsMissing =
+    <A extends unknown[], T>(call: (...args: A) => PromiseLike<T>) =>
+    (...args: A): PromiseLike<T> => {
+      if (world.dispatchesTableMissing !== true) return call(...args);
+      calls.push('from:game_messages');
+      // the refusal as the database words it: no data, whatever the call's own answer would hold
+      return Promise.resolve({
+        data: null,
+        error: { message: 'relation "public.game_messages" does not exist', code: '42P01' },
+        status: 404,
+      } as T);
+    };
+  const d = db.theDispatches;
+  return {
+    db: {
+      ...db,
+      theDispatches: {
+        ...d,
+        oneDispatchsId: unlessTheTableIsMissing(d.oneDispatchsId),
+        theNewestDispatchesOfThisGame: unlessTheTableIsMissing(d.theNewestDispatchesOfThisGame),
+        theDispatchesOfThisGameAfterThisOne: unlessTheTableIsMissing(d.theDispatchesOfThisGameAfterThisOne),
+        theDispatchesOfThisGameBeforeThisOne: unlessTheTableIsMissing(d.theDispatchesOfThisGameBeforeThisOne),
+        theNewestDispatchesOfTheseGamesGamesAndRealms: unlessTheTableIsMissing(
+          d.theNewestDispatchesOfTheseGamesGamesAndRealms,
+        ),
+        sendThisDispatch: unlessTheTableIsMissing(d.sendThisDispatch),
+        deleteThisDispatch: unlessTheTableIsMissing(d.deleteThisDispatch),
+      },
+    },
+    calls,
+  };
 }
 
 /** A change the GM page sent while it ran a turn (a row's `update`, `insert` or `upsert`, by its table, with what it

@@ -481,6 +481,7 @@ CI's `db` job, not by `npm test`.
 - `tests/browser/hostile-names.spec.ts` (browser): Hostile names in Chromium: every mode and screen of each page's tour (`lib/screens.js`), with hostile names, in a real browser where a broken image really fires its `onerror` …
 - `tests/browser/map-fits-panel.spec.ts` (browser): In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row
 - `tests/browser/orders-buttons-visible.spec.ts` (browser): In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone
+- `tests/browser/the-dispatches-panel-end-to-end.spec.ts` (browser): In real Chromium on the fake, the player portal's Dispatches panel end to end: tabs, channels, sending, unread badges and read marks, a conference, paging back, one human, no table, the phone's tabs, the poll stopped
 - `tests/browser/third-party-requests.spec.ts` (browser): Every page, opened in Chromium with the real supabase-js and no database, asks no other site for anything but Google Fonts; on the pages that use the database the library loads from `assets/`. Level 4 …
 
 ## Quarantined (not run)
@@ -488,5 +489,4 @@ CI's `db` job, not by `npm test`.
 Not part of `npm test` (`npm run test:quarantine` runs them). Each file's first line says why, and so does
 [README.md](README.md#quarantined-tests).
 
-- `tests/quarantine/dispatches-e2e.test.js` (page, quarantined): 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab
 - `tests/quarantine/set-scan.test.js` (static, quarantined): Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives …
