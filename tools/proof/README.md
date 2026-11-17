@@ -1,6 +1,6 @@
 # The proof tools
 
-Seven tools that show what a change to the engine (or to a page's code or its database calls) does, and what the balance
+Eight tools that show what a change to the engine (or to a page's code or its database calls) does, and what the balance
 matrix can't show. The matrix (`npm run balance`) compares its 120 games with their baselines. It is strong on the code those games reach, and
 blind to the rest. These tools tell which lines the games reach, plant a fault and show what catches it, and compare
 the base's words with the branch's where the games don't go.
@@ -14,6 +14,7 @@ trial on four planted faults (plan P1-16a).
 | `npm run proof:coverage` | Which lines of `src/engine/` and `src/views/` the matrix's games reach | about 60 s |
 | `npm run proof:unreached -- --base <ref>` | Which lines this branch changed that no game reaches | a few seconds, or 60 s more if the coverage is out of date |
 | `npm run proof:plant -- <patch>… [--tests <file>,…]` | What a planted fault changes: games, reports and tests | about 2 min a patch, plus the tests' own time |
+| `npm run proof:plants -- <plants.json> [--jobs N]` | Which of a row's planted faults the tests that guard each line catch, several at a time | about 2 s a plant on one test file: 130 plants, four at a time, in about 65 s |
 | `npm run proof:gm-logs -- --base <ref>` | Whether every game's GM log is byte-identical, base against branch | about 70 s |
 | `npm run proof:two-engines -- --cases <module> --base <ref>` | Whether the base's engine and the branch's write the same lines on staged cases | a few seconds, plus the cases' own time |
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the page tests and tours send, to compare base with branch | the tests' own time |
@@ -76,6 +77,29 @@ both. So a line only the page reaches reads "not reached" here. The list errs to
 The copy is removed afterwards; `--keep` keeps it. `--set A` or `--set B` plays one set only. A fault in reached code
 shows as games or reports that differ. A fault in a line no game reaches shows only as a red test, which is that
 line's unit case.
+
+### Many plants, on their tests only
+
+`npm run proof:plants -- <plants.json>` ([many-planted-faults-on-their-tests.ts](many-planted-faults-on-their-tests.ts))
+is the tier-1 proof of a row (each changed line no game reaches, red on a fault planted in it): many plants, each run on
+the tests that guard its line, with no build and no matrix. A plant is a text replaced in one file:
+
+```json
+{ "tests": ["tests/unit/the-gms-statistics-tab-….test.ts"],
+  "plants": [{ "name": "215 who filter", "file": "src/ui/gm/stats-tab.ts",
+               "old": "(who === 'bot') === !!r.is_bot", "new": "(who === 'bot') === !r.is_bot" }] }
+```
+
+`occurrence` (0, the first, unless given) picks which copy of the old text is replaced, and a plant's own `tests` wins
+over the shared ones; a plain list of plants, each with its `tests`, works too. It makes `--jobs` copies of the working
+tree (a quarter of the cores unless given), and each copy takes the next plant: the file planted, `vitest run <its
+tests>`, the file put back. Each plant ends **red** (a test failed on it), **GREEN** (none did: the line needs a unit
+case, or a reason by name), **missing** (the old text isn't there), **broken** (the file no longer compiles, or no test
+ran) or **timed out** (only time limits failed, or it ran past `--limit`, 300 s by default). A plant that timed out isn't
+caught: run it again with `--jobs 1`; the runner never runs a plant twice by itself. It prints a line a plant as each
+ends, then the counts, and keeps `result.json` and each plant's log in the folder it names. The copies are removed
+after (`--keep` keeps them). A test that reads the built site (`site/` isn't in a copy) or plays the matrix needs
+`proof:plant`.
 
 ## 3. The GM logs, byte for byte
 
@@ -183,6 +207,7 @@ site show the same screens (the tours hold the page's short timers and the watch
 
 - `tests/unit/the-matrixs-coverage-lists-the-changed-lines-no-game-reaches.test.ts`
 - `tests/unit/a-planted-fault-names-the-games-reports-and-tests-it-changes.test.ts`
+- `tests/unit/many-planted-faults-run-several-at-a-time-each-on-its-tests.test.ts`
 - `tests/unit/the-gm-logs-compared-names-each-game-whose-log-differs-and-where.test.ts`
 - `tests/unit/the-two-engines-compared-runs-each-side-in-its-own-process.test.ts`
 - `tests/unit/the-database-call-recorder-writes-each-call-a-page-sends-with-its-steps.test.ts`

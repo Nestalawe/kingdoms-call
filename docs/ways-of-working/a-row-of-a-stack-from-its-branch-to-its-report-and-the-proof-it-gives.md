@@ -47,9 +47,10 @@ cases it leaves on code they don't. So each row gives the tier its change needs.
 | **1** | A value can change: a statement rewritten (`??` for `\|\|`, a narrowed read, a guard dropped, a rule moved into the registry, a draw moved) | Tier 0, and **a unit case for each changed line no matrix game reaches**, red on a planted fault in that line, or listed by name as made sure by the code. Annotations, a moved type or an import need no tier 1: the compiler is their proof |
 | **2** | A line's words, kind, fact or audience changes, or anything players or the maintainers read | Tier 1, and the GM log byte for byte the same in every matrix game, and a comparison of the two engines (or a construction check) over the kinds no game reaches, none differing |
 
-**Planting, for tier 1:** make one throwaway copy of the row's tree, with `node_modules` linked in, never the row's own
-tree. For each fault: plant it, run only the tests that guard that line (`npx vitest run <files>`), note red or green,
-and put the copy back. Don't replay the balance matrix for a plant. A plant that stays green is never left silent
+**Planting, for tier 1:** list the row's faults in a plants file and run `npm run proof:plants -- <file>`
+([how](../../tools/proof/README.md#many-plants-on-their-tests-only)): it plants each in a copy of the tree, never the
+row's own, several at a time, runs only the tests that guard its line, and puts the copy back. Don't write a planting
+script of the row's own, and don't replay the balance matrix for a plant. A plant that stays green is never left silent
 ([tests/README.md](../../tests/README.md#proving-it-fails-first)). Plants in code the matrix reaches are covered by
 the stack's [mutation session](a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md), not by the row.
 

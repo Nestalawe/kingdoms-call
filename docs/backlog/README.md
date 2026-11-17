@@ -59,7 +59,14 @@ of ordering the backlog, and a maintainer validates its place. The rulings and t
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
 T6's rows are the rows left of one group, [P1-17](the-next-group-the-rebuilds-other-rows.md#the-groups).
 
-### 1. T6, the types finished: part 5
+### 1. The rows' own speed
+
+| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
+|---|---|---|---|---|---|---|---|---|
+| B-14 | The Stop hook runs `npm run check` only for a session that edited a file of the repository with an edit tool. After B-13 | Maintainers: a conductor, or a session that only reads, no longer runs the whole check on a tree another session is changing, which slowed the rows' own tests twofold and failed time limits | Phase 1 | Small | ✓ | ⬜ | | Speeds every row after it; a dangerous path (`tools/hooks/`) |
+| B-15 | A row's tier 0 leaves set A of the balance matrix to CI's balance job, and keeps set B, which only a row plays. After B-14 | Maintainers: about a minute less a refactor row, with no check lost | Phase 1 | Small | – | ⬜ | | Speeds every refactor row after it |
+
+### 2. T6, the types finished: part 5
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
@@ -67,7 +74,7 @@ T6's rows are the rows left of one group, [P1-17](the-next-group-the-rebuilds-ot
 | P1-17s1 | The balance matrix plays on the fake, its `writes` column recorded at `Db`'s calls. | Maintainers: the matrix records what reaches the database; unblocks P1-17s2 | Phase 1 | Medium | ✓ | ⬜ | | T6 part 5: the matrix plays on the fake; unblocks P1-17s2 |
 | P1-17s2 | `stub-db` deleted, each rule it copied named beside the access-layer test that covers it. After P1-17s1 | Maintainers: one fake of the database instead of two | Phase 1 | Small | – | ⬜ | | T6 part 5: `stub-db` deleted finishes P1-17, and T6 with it |
 
-### 2. Phase 1's rest
+### 3. Phase 1's rest
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
@@ -77,7 +84,7 @@ T6's rows are the rows left of one group, [P1-17](the-next-group-the-rebuilds-ot
 | P1-12z | P1-12's "done when" checked on `main`, and the step closed | Maintainers: one Phase 1 criterion confirmed with evidence | Phase 1 | Small | ✓ | ⬜ | | Phase 1's rest: P1-12 confirmed on `main`, and closed |
 | P1-11z | P1-11's rest: the differences the copies test still pins go as the maintainers rule on them; the alignment orders' portal half (with P1-19) | Players: the order form says what the turn does in the cases still pinned; closes P1-11 | Phase 1 | Medium | – | ⬜ | | Phase 1's rest: closes P1-11; its portal half goes with P1-19's |
 
-### 3. T7, the rules pulled out
+### 4. T7, the rules pulled out
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
