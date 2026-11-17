@@ -43,13 +43,14 @@ cases it leaves on code they don't. So each row gives the tier its change needs.
 
 | Tier | When | The proof |
 |---|---|---|
-| **0** | Every row | CI green (the compiler, lint, `npm test`, the browser specs); for `refactor-only`, both balance sets and every realm's report identical; the balance comment on the head commit |
+| **0** | Every row | CI green (the compiler, lint, `npm test`, the browser specs); for `refactor-only`, both balance sets and every realm's report identical: set A is CI's balance job (on an engine path it plays set A with every realm's report, and fails on any game or report that differs: don't play it locally), set B the row's own `npm run balance -- --set B`, which CI doesn't play; the balance comment on the head commit |
 | **1** | A value can change: a statement rewritten (`??` for `\|\|`, a narrowed read, a guard dropped, a rule moved into the registry, a draw moved) | Tier 0, and **a unit case for each changed line no matrix game reaches**, red on a planted fault in that line, or listed by name as made sure by the code. Annotations, a moved type or an import need no tier 1: the compiler is their proof |
 | **2** | A line's words, kind, fact or audience changes, or anything players or the maintainers read | Tier 1, and the GM log byte for byte the same in every matrix game, and a comparison of the two engines (or a construction check) over the kinds no game reaches, none differing |
 
-**Planting, for tier 1:** make one throwaway copy of the row's tree, with `node_modules` linked in, never the row's own
-tree. For each fault: plant it, run only the tests that guard that line (`npx vitest run <files>`), note red or green,
-and put the copy back. Don't replay the balance matrix for a plant. A plant that stays green is never left silent
+**Planting, for tier 1:** list the row's faults in a plants file and run `npm run proof:plants -- <file>`
+([how](../../tools/proof/README.md#many-plants-on-their-tests-only)): it plants each in a copy of the tree, never the
+row's own, several at a time, runs only the tests that guard its line, and puts the copy back. Don't write a planting
+script of the row's own, and don't replay the balance matrix for a plant. A plant that stays green is never left silent
 ([tests/README.md](../../tests/README.md#proving-it-fails-first)). Plants in code the matrix reaches are covered by
 the stack's [mutation session](a-mutation-session-faults-made-on-purpose-and-the-tests-they-leave.md), not by the row.
 
@@ -83,11 +84,11 @@ Each with why no value changes:
 1. **Each check once.** While working, run the tests being changed. Once the row is done, `npm run check`; then
    **`npx eslint .` over the whole tree**, which the check doesn't do
    ([tests/README.md](../../tests/README.md#the-quick-check-the-ratchet-and-ci)); then what the check didn't run
-   (`npm test`, `npx playwright test`, both balance sets, the access-rule tests if `supabase/` changed).
+   (`npm test`, `npx playwright test`, set B of the balance matrix, the access-rule tests if `supabase/` changed).
 2. **CI counts on the head commit:** every run on it completed and successful (a run cancelled by a newer one aside),
    all but `merges-into-main` on a stacked row. **The balance comment can post a minute after CI is green**: read the
    comments again before saying there is none. A row whose files are on no engine path gets no comment: read CI's
-   balance jobs and the row's own run of both sets. A stack whose base has just moved to `main` needs one more look
+   balance jobs (they end at their first step) and the row's own run of set B. A stack whose base has just moved to `main` needs one more look
    ([traps.md](../traps.md#a-stacked-pull-request-merges-into-its-base-branch-not-main)).
 3. **Leave nothing running** (a watch, a monitor, a background test): it dies with the session. Wait for it, or say
    that it wasn't run.
@@ -104,7 +105,7 @@ The row's last message is this report and nothing else:
 ROW: <id>
 RESULT: done | stopped
 PR: #<n> (branch <branch>, base <base>)
-BALANCE: set A <…>; set B <…>
+BALANCE: set A <CI's balance job's verdict>; set B <…>
 CI: <green but merges-into-main | what failed>; balance report <its verdict, or "none posted">; staging <link, or "not this row">
 TESTS: <totals>; browser <n passed>; moved <n>, retired <n>, new <n>
 PROOF: <the proof, its figure and its tier>

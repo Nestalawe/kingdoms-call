@@ -5,6 +5,8 @@ export interface HookInput {
   // PostToolUse on Edit and Write: the file's absolute path.
   tool_input?: { file_path?: string };
   // Stop: true when the agent is carrying on because a Stop hook blocked it.
+  // Every event: the session's transcript, one JSON entry a line.
+  transcript_path?: string;
   stop_hook_active?: boolean;
 }
 
