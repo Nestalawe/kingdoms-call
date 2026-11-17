@@ -36,5 +36,5 @@ in force:
   records in the database's order); every other column stays identical. The balance report calls this a reshape,
   and the PR has no `refactor-only` label, because it changes the baseline.
 - **P1-17s2:** `stub-db` goes last. The quarantined tests that use it go first, each in its own pull request: the two
-  one-off proofs (`one-source`, `one-source-chromium`) are deleted, and `dispatches-e2e` comes back on today's three
+  one-off proofs of the September refactor are deleted, and `dispatches-e2e` comes back on today's three
   tabs (a maintainer's choice).

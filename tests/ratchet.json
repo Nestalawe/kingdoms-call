@@ -3,10 +3,10 @@
   "counts": {
     "tsIgnore": 0,
     "eslintDisable": 0,
-    "stubDbTests": 4,
+    "stubDbTests": 2,
     "allowlistEntries": 1,
-    "javascriptFiles": 85,
-    "quarantinedTests": 4,
+    "javascriptFiles": 83,
+    "quarantinedTests": 2,
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 72,
     "unitNameChecksInEngine": 0,

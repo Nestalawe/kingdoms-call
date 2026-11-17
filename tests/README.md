@@ -180,8 +180,6 @@ behaviour is fine, loosening it until it passes is not.
 | Test | Level | Why |
 |---|---|---|
 | `quarantine/dispatches-e2e.test.js` | 4 | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
-| `quarantine/one-source.test.js` | 4 | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
-| `quarantine/one-source-chromium.test.js` | 4 | The "good" and "missing data file" cases pass; the "stale data file" case needs the same pre-refactor build |
 | `quarantine/set-scan.test.js` | 0 | Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives. Needs triage before it can gate |
 
 **A running test that can't fail on its own findings:** `home-placement` prints `FAIL` for a too-close capital but

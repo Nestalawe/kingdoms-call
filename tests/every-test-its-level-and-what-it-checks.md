@@ -489,6 +489,4 @@ Not part of `npm test` (`npm run test:quarantine` runs them). Each file's first 
 [README.md](README.md#quarantined-tests).
 
 - `tests/quarantine/dispatches-e2e.test.js` (page, quarantined): 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab
-- `tests/quarantine/one-source-chromium.test.js` (page, quarantined): The "good" and "missing data file" cases pass; the "stale data file" case needs the same pre-refactor build
-- `tests/quarantine/one-source.test.js` (page, quarantined): Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor
 - `tests/quarantine/set-scan.test.js` (static, quarantined): Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives …
