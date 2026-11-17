@@ -163,8 +163,9 @@ each the figure when it was set, rounded down to a whole percent. Coverage is of
 scenario tests a second time with it on, in two halves of their own (`unit-scenario-coverage-half`), and the job after
 them (`unit-scenario-coverage`) joins the two and fails if a folder is below a limit: a test taken away, or new code no
 test runs, shows there. Coverage slows the code it watches (1.6 to 3.4 times, one file at a time), so that run isn't
-the tests' verdict: the halves without coverage give it, at the usual time limits. In the coverage run Vitest's own
-limits (5 s a test, 10 s a hook) are six times longer; the limits sized to the work stay as they are.
+the tests' verdict: the halves without coverage give it, at the usual time limits. In the coverage run alone
+(`KC_COVERAGE_RUN=1`) every time limit, Vitest's own and those of `lib/time-limits.ts`, is one ceiling of five
+minutes (`lib/the-coverage-runs-ceiling.mts`), or the sized limit if longer; the job's own time limit still stops a hang.
 
 - **Measure:** `npx vitest run --project unit --project scenario --coverage` (about a minute). A folder below its
   limit is named with its figure; to read one that passes, set its limit to 100 for that run only.
