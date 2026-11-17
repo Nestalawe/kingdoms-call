@@ -150,7 +150,7 @@ Dropped (ids are never reused): P0-14, on 2026-10-14; P0-26, on 2026-10-15.
 
 ## P1-10
 
-- P1-10: delivered in its rows, below: strict types for the engine, the views, the shared code and the content; the rest is P1-10z
+- P1-10: done in its rows, below: strict types for the engine, the views, the shared code and the content, an order kind with no case that fails to compile, the content checked complete, and the coverage limits
 - P1-10a: done in its rows, below
 - P1-10a1: #177 The saved game state's types, from Zod schemas
 - P1-10a2: #178 The content's and the turn's types: unit tables that fail to compile when a unit is missing
@@ -208,3 +208,7 @@ Dropped (ids are never reused): P0-14, on 2026-10-14; P0-26, on 2026-10-15.
 - P1-10b49: #445 kc-safe.ts typed
 - P1-10b50: #502 The set-up and before the first phase typed
 - P1-10b51: #503 run-turn.ts typed; the turn's context whole at birth (merged through #509)
+- P1-10z: done in its rows, below (merged through #654)
+- P1-10z1: #651 An order kind with no case fails to compile
+- P1-10z2: #652 The content checked complete
+- P1-10z3: #654 Coverage limits for the engine, the views and the shared code
