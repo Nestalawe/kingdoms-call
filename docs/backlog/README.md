@@ -63,6 +63,7 @@ T6's rows are the rows left of one group, [P1-17](the-next-group-the-rebuilds-ot
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
+| B-13 | A runner for a row's planted faults, several at a time, each on the tests that guard its line (`npm run proof:plants`) | Maintainers: a refactor row's tier-1 planting takes about a minute, not ten to twenty, and no row writes a planting script of its own | Phase 1 | Small | ✓ | 🟦 | | Speeds every refactor row after it; `package.json` is a dangerous path |
 | B-14 | The Stop hook runs `npm run check` only for a session that edited a file of the repository with an edit tool. After B-13 | Maintainers: a conductor, or a session that only reads, no longer runs the whole check on a tree another session is changing, which slowed the rows' own tests twofold and failed time limits | Phase 1 | Small | ✓ | ⬜ | | Speeds every row after it; a dangerous path (`tools/hooks/`) |
 | B-15 | A row's tier 0 leaves set A of the balance matrix to CI's balance job, and keeps set B, which only a row plays. After B-14 | Maintainers: about a minute less a refactor row, with no check lost | Phase 1 | Small | – | ⬜ | | Speeds every refactor row after it |
 
