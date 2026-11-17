@@ -24,7 +24,7 @@ this (`tests/static/the-backlog-tracks-each-item-one-way.test.ts`).
   cite it. A new item gets `B-NN`; a known defect `KD-NNN`. A step built in several pull requests gets lettered rows
   (`P1-16q`), and a row split in two gets a number (`P1-16o1`, `P1-16o2`). An id is never reused or renumbered: a
   dropped item keeps its id, and the finished list names it as dropped.
-- **A group, not a row:** a step that is only the sum of its lettered rows (P1-17, P1-23) has no row of its
+- **A group, not a row:** a step that is only the sum of its lettered rows (P1-23) has no row of its
   own. Its heading, under "The groups" of its file, says what it delivers and holds its decisions in force; its rows
   sit wherever the order puts them. A step with work of its own beside its rows gives that work a lettered row.
 - **Folded in:** a known defect that is the same fault as another row is no row of its own. That row's What names it
@@ -57,17 +57,10 @@ order; inside a group, the rows' "After" decides the order. The order of work is
 here: each row is placed by [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)
 of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
-T6's rows are the rows left of one group, [P1-17](the-next-group-the-rebuilds-other-rows.md#the-groups).
+T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
+[the finished list](finished-steps-p1-13-to-p1-25.md).
 
-### 1. T6, the types finished: part 5
-
-| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
-|---|---|---|---|---|---|---|---|---|
-| P1-17t | The screen tours onto the fake (`tests/lib/screens.js`: the Hall of Fame's, the Overlord's, the GM's and the player's, in jsdom and Chromium), every tour screen the same. | Maintainers: the tours stop reading `stub-db`; unblocks P1-17s2 | Phase 1 | Medium | – | ⬜ | | T6 part 5, the rebuild in progress: the last page tests off `stub-db`; unblocks P1-17s2 |
-| P1-17s1 | The balance matrix plays on the fake, its `writes` column recorded at `Db`'s calls. | Maintainers: the matrix records what reaches the database; unblocks P1-17s2 | Phase 1 | Medium | ✓ | ⬜ | | T6 part 5: the matrix plays on the fake; unblocks P1-17s2 |
-| P1-17s2 | `stub-db` deleted, each rule it copied named beside the access-layer test that covers it. After P1-17s1 | Maintainers: one fake of the database instead of two | Phase 1 | Small | – | ⬜ | | T6 part 5: `stub-db` deleted finishes P1-17, and T6 with it |
-
-### 2. Phase 1's rest
+### 1. Phase 1's rest
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
@@ -77,7 +70,7 @@ T6's rows are the rows left of one group, [P1-17](the-next-group-the-rebuilds-ot
 | P1-12z | P1-12's "done when" checked on `main`, and the step closed | Maintainers: one Phase 1 criterion confirmed with evidence | Phase 1 | Small | ✓ | ⬜ | | Phase 1's rest: P1-12 confirmed on `main`, and closed |
 | P1-11z | P1-11's rest: the differences the copies test still pins go as the maintainers rule on them; the alignment orders' portal half (with P1-19) | Players: the order form says what the turn does in the cases still pinned; closes P1-11 | Phase 1 | Medium | – | ⬜ | | Phase 1's rest: closes P1-11; its portal half goes with P1-19's |
 
-### 3. T7, the rules pulled out
+### 2. T7, the rules pulled out
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
