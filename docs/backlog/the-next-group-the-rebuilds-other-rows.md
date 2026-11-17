@@ -8,7 +8,7 @@ defects placed so far come after the rebuild, in [Later](the-later-group-what-se
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
 | P1-19 | The rule registry for content effects, one family at a time. Every content family is in it; left: the alignments' checks by name (the bots' and the words'), and the alignment orders' portal half (with P1-11) | Maintainers: an alignment's rule lives in one place before its new abilities land | Phase 1 | Large | – | 🟦 | #229–#587, its rows | |
-| P1-21 | Mutation sessions: faults made on purpose, scored by a script, after each big series. Recurring | Maintainers: finds what the tests miss after each series | Phase 1 | Medium | ✓ | 🟦 | #192–#588, its rows | |
+| P1-21 | Mutation sessions: faults made on purpose, scored by a script, after each big series. Recurring | Maintainers: finds what the tests miss after each series | Phase 1 | Medium | ✓ | 🟦 | #192–#628, its rows | |
 | P1-22 | What the balance matrix reaches. Its code coverage and the proof tools are built (`tools/proof/`); its content coverage is still to plan | Maintainers: shows which content no matrix game plays | Phase 1 | Medium | ✓ | 🟦 | #287 | |
 | P2-16 | A running game and its logs are read only by its GM, its players and the Overlord (D-10). Live since 16 October; waiting for a maintainer's check on the live site: a running game opened as its GM and as a player, and the Hall of Fame, each reads as before | The maintainers: one check on the live site closes it | Phase 2 | Small | ✓ 🔑 | 🟦 | #106 | |
 | B-01 | The rulings audit: each ruling checked against the code (built, not built or broken), its status set, and each defect a `KD-` row | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Large | – | ⬜ | | |
@@ -27,7 +27,7 @@ recommendations; a maintainer may veto any of them. Each row checks its figures 
 
 Strict TypeScript for the UI and the tools: no `@ts-nocheck` left. Impact: the compiler checks every page; it closes a
 Phase 1 criterion. Planned on 10 November; its decisions in force:
-- **The order:** o2, then q to t, callee before caller, then u (the reads named), then v (the ban).
+- **The order:** r to t, callee before caller, then u (the reads named), then v (the ban).
 - **The forms:** [freeing a file of its `@ts-nocheck` line](../architecture/freeing-a-file-of-its-ts-nocheck-line.md)
   and its forms files: no `!` or `as`, every typed finding fixed and none suppressed, and `||` becomes `??` only
   where the type rules out `''`, `0` and `false`.
@@ -47,8 +47,6 @@ in force:
 - **No row changes who can read or change what:** each sends the same queries as before.
 - **The proof:** `refactor-only`. Every database call the page tests and the tours make is recorded, and is the same
   on the base and the row; both balance sets are identical.
-- **P1-17q3** (a maintainer, 14 November): the test records at `Db`'s functions, so its expected values become the
-  functions' names; the access-layer tests prove the query text.
 - **P1-17s1:** the matrix plays on the fake. Its `writes` column is recorded at `Db`'s calls, so the column changes
   form once and the balance report says "writes only"; every other column stays identical.
 - **P1-17s2:** `stub-db` goes last. The quarantined tests that use it go first, each in its own pull request: the two
