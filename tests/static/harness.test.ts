@@ -31,7 +31,9 @@
 // verdict's halves with coverage, the coverage halves without it or with a half left out, the join without it, the
 // join gone); a `retry`,
 // `retries` or `repeats` planted in a test's, a describe's, a helper's or a spec's options is a lint error, and every
-// limit the static tests and the two property tests give comes from `lib/time-limits.ts`, sized to the work; Node is
+// limit the static tests and the two property tests give comes from `lib/time-limits.ts`, sized to the work, and
+// so does every limit a unit or scenario test or hook gives, a number too (read by the syntax tree; planted copies: a
+// number, an options object, a const and `vi.setConfig`, each refused; P1-10z); Node is
 // pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that
 // Node's major; the Claude Code hooks run after Edit and Write and before stopping, block at most three times in a row,
 // and `.claude/` is closed to agents' edits; the browser specs have no retries, no `.only`, the Node check, a fixed
@@ -945,6 +947,59 @@ describe('the test run', () => {
     }
   });
 
+  // Each time limit a test or hook in `file` gives (an argument of test, it, describe or a hook after the first that
+  // isn't its function, followed through the file's consts) that doesn't come from tests/lib/time-limits.ts, and
+  // each vi.setConfig: `file:line text`. Read by the syntax tree, so a `timeout` of a child process isn't one.
+  function limitsNotFromTheTimeLimitsFile(file: string, text: string): string[] {
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    const consts = new Map<string, ts.Node>();
+    const collect = (n: ts.Node) => {
+      if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer)
+        consts.set(n.name.text, n.initializer);
+      if (ts.isFunctionDeclaration(n) && n.name) consts.set(n.name.text, n);
+      ts.forEachChild(n, collect);
+    };
+    collect(sf);
+    const FROM_THE_FILE = /\b(timeLimitForTheWork|timeLimitForPropertyRuns|timeLimitGivenAsANumber)\(/;
+    const isAFunction = (n: ts.Node) =>
+      ts.isArrowFunction(n) || ts.isFunctionExpression(n) || ts.isFunctionDeclaration(n);
+    const fromTheFile = (a: ts.Node, seen = 0): boolean => {
+      if (FROM_THE_FILE.test(a.getText())) return true;
+      const named = ts.isPropertyAccessExpression(a) && a.name.text === 'timeout' ? a.expression : a;
+      const declared = ts.isIdentifier(named) ? consts.get(named.text) : undefined;
+      return declared !== undefined && seen < 5 && (isAFunction(declared) || fromTheFile(declared, seen + 1));
+    };
+    const start = (e: ts.Expression): ts.Expression => {
+      let x = e;
+      while (ts.isCallExpression(x) || ts.isPropertyAccessExpression(x)) x = x.expression;
+      return x;
+    };
+    const found: string[] = [];
+    const at = (n: ts.Node) =>
+      `${file}:${String(sf.getLineAndCharacterOfPosition(n.getStart()).line + 1)} ${n.getText()}`;
+    const visit = (n: ts.Node) => {
+      if (ts.isCallExpression(n)) {
+        const who = start(n.expression);
+        const callee = n.expression;
+        if (ts.isPropertyAccessExpression(callee) && callee.name.text === 'setConfig') found.push(at(n));
+        else if (
+          ts.isIdentifier(who) &&
+          /^(test|it|describe|beforeAll|beforeEach|afterAll|afterEach)$/.test(who.text)
+        ) {
+          // a test's first argument is its name, a hook's its function (by name too: `afterAll(restoreLog)`)
+          n.arguments.forEach((a, i) => {
+            if (i === 0 || isAFunction(a) || fromTheFile(a)) return;
+            if (ts.isArrayLiteralExpression(a)) return;
+            found.push(at(a));
+          });
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+    return found;
+  }
+
   // A test that builds the site, builds a TypeScript program, runs a tool or reads every file of src/ gets a time limit
   // sized to that work, and a property test one sized to its run count (tests/lib/time-limits.ts): only a limit, the
   // sum of the work's allowances. The static tests take every limit from it, none typed in as a number.
@@ -966,6 +1021,41 @@ describe('the test run', () => {
     const typedIn = /\btimeout\s*:|\},\s*[\d_]+\s*\)/;
     for (const f of fs.readdirSync(path.join(ROOT, 'tests', 'static')))
       expect(read(`tests/static/${f}`), f).not.toMatch(typedIn);
+    // P1-10z: nor do the unit and scenario tests (CI's coverage run, where every limit is one ceiling, runs them): each
+    // limit a test or hook gives comes from tests/lib/time-limits.ts, a number too (timeLimitGivenAsANumber).
+    const typedInUnitsAndScenarios = ['unit', 'scenario'].flatMap((level) =>
+      fs
+        .readdirSync(path.join(ROOT, 'tests', level))
+        .filter((f) => /\.m?ts$/.test(f))
+        .flatMap((f) => limitsNotFromTheTimeLimitsFile(`tests/${level}/${f}`, read(`tests/${level}/${f}`))),
+    );
+    expect(typedInUnitsAndScenarios).toEqual([]);
+    // Planted copies: a limit typed as a test's third argument, in its options, through a const, and by vi.setConfig;
+    // one from the file (by name, as a const, or through .timeout) let through, and a hook's function by name too.
+    const planted = (code: string) => limitsNotFromTheTimeLimitsFile('planted.test.ts', code);
+    expect(planted("test('a', () => undefined, 5_000);")).toEqual(['planted.test.ts:1 5_000']);
+    // (its key quoted, so the line above's check of this file's own text doesn't read it as a limit)
+    expect(planted("test('a', { 'timeout': 9_000 }, () => undefined);")).toEqual([
+      "planted.test.ts:1 { 'timeout': 9_000 }",
+    ]);
+    expect(planted('const L = 60_000;\nbeforeAll(() => undefined, L);')).toEqual(['planted.test.ts:2 L']);
+    expect(planted('vi.setConfig({ testTimeout: 20_000 });')).toEqual([
+      'planted.test.ts:1 vi.setConfig({ testTimeout: 20_000 })',
+    ]);
+    expect(
+      planted(
+        [
+          'const L = timeLimitGivenAsANumber(60_000).timeout;',
+          'const W = timeLimitForTheWork({ toolRuns: 1 });',
+          'const restore = quietly();',
+          "test.for([1])('a %s', W, () => undefined);",
+          "test('b', () => undefined, L);",
+          'beforeAll(() => undefined, W.timeout);',
+          'afterAll(restore);',
+          "test('c', () => undefined, timeLimitForPropertyRuns(10, 5).timeout);",
+        ].join('\n'),
+      ),
+    ).toEqual([]);
     for (const f of ['tests/unit/combat-properties.test.ts', 'tests/unit/realm-reports.test.ts'])
       expect(read(f), f).toMatch(/timeLimitForPropertyRuns\(RUNS, [\d.]+\)/);
   });

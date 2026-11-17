@@ -23,6 +23,7 @@ import {
   type Combatant,
   type FightResult,
 } from '../lib/personal-combat.ts';
+import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
 /** Fights in each test (the scripts' own sizes: 4,000, and 20,000 in npm run test:full). */
 const FIGHTS = process.env['KC_FULL'] === '1' ? 20_000 : 4_000;
@@ -56,80 +57,88 @@ function guardianFight(i: number, hc: Character & { encounterPlan: { tactics: st
   return call('resolvePersonalCombat', hero, mon, { maxRounds: 20, feature }) as FightResult;
 }
 
-test('a hero of any race, temper and level fights every guardian without a fault (fuzz-wages-combat)', () => {
-  const bad: string[] = [];
-  for (let i = 0; i < FIGHTS; i++) {
-    const lv = 1 + (i % 9);
-    const hc = {
-      id: `fz${String(i)}`,
-      name: 'Fz',
+test(
+  'a hero of any race, temper and level fights every guardian without a fault (fuzz-wages-combat)',
+  () => {
+    const bad: string[] = [];
+    for (let i = 0; i < FIGHTS; i++) {
+      const lv = 1 + (i % 9);
+      const hc = {
+        id: `fz${String(i)}`,
+        name: 'Fz',
+        player: null,
+        alive: true,
+        hp: 20 + lv * 6,
+        maxHp: 20 + lv * 6,
+        race: RACES[i % 4],
+        temper: TEMPERS[i % 4],
+        skills: { white: Math.min(9, lv), melee: (i * 7) % 10, archery: (i * 3) % 10 },
+        items: [],
+        armies: [],
+        encounterPlan: { tactics: ['MA', 'AR', 'MA', 'MA', 'MA'], duelStance: 'accept' },
+      };
+      bad.push(...faults(() => guardianFight(i, hc)).map((l) => `fight ${String(i)}: ${l}`));
+    }
+    expect(bad.slice(0, 5)).toEqual([]);
+  },
+  timeLimitGivenAsANumber(120_000).timeout,
+);
+
+test(
+  'heroes fight guardians and each other, with every kind of plan, without a fault (fuzz-advance-masking)',
+  () => {
+    const TACTIC_SETS = [
+      ['ME'],
+      ['FI', 'ME'],
+      ['CA', 'ME'],
+      ['ME', 'FI'],
+      ['FI'],
+      ['MA', 'AR', 'MA'],
+      ['ST', 'ME'],
+      ['FL', 'ME'],
+    ];
+    const mkHero = (i: number, lv: number, id: string) => ({
+      id,
+      name: `H${id}`,
       player: null,
       alive: true,
       hp: 20 + lv * 6,
       maxHp: 20 + lv * 6,
       race: RACES[i % 4],
       temper: TEMPERS[i % 4],
-      skills: { white: Math.min(9, lv), melee: (i * 7) % 10, archery: (i * 3) % 10 },
+      skills: {
+        white: i % 3 === 0 ? Math.min(9, lv) : 0,
+        elemental: i % 5 === 0 ? Math.min(9, lv) : 0,
+        melee: (i * 7) % 10,
+        archery: (i * 3) % 10,
+        thief: i % 6 === 0 ? 3 : 0,
+      },
       items: [],
       armies: [],
-      encounterPlan: { tactics: ['MA', 'AR', 'MA', 'MA', 'MA'], duelStance: 'accept' },
-    };
-    bad.push(...faults(() => guardianFight(i, hc)).map((l) => `fight ${String(i)}: ${l}`));
-  }
-  expect(bad.slice(0, 5)).toEqual([]);
-}, 120_000);
-
-test('heroes fight guardians and each other, with every kind of plan, without a fault (fuzz-advance-masking)', () => {
-  const TACTIC_SETS = [
-    ['ME'],
-    ['FI', 'ME'],
-    ['CA', 'ME'],
-    ['ME', 'FI'],
-    ['FI'],
-    ['MA', 'AR', 'MA'],
-    ['ST', 'ME'],
-    ['FL', 'ME'],
-  ];
-  const mkHero = (i: number, lv: number, id: string) => ({
-    id,
-    name: `H${id}`,
-    player: null,
-    alive: true,
-    hp: 20 + lv * 6,
-    maxHp: 20 + lv * 6,
-    race: RACES[i % 4],
-    temper: TEMPERS[i % 4],
-    skills: {
-      white: i % 3 === 0 ? Math.min(9, lv) : 0,
-      elemental: i % 5 === 0 ? Math.min(9, lv) : 0,
-      melee: (i * 7) % 10,
-      archery: (i * 3) % 10,
-      thief: i % 6 === 0 ? 3 : 0,
-    },
-    items: [],
-    armies: [],
-    encounterPlan: { tactics: (TACTIC_SETS[i % TACTIC_SETS.length] ?? []).slice(), duelStance: 'accept' },
-  });
-  const bad: string[] = [];
-  let pvp = 0;
-  for (let i = 0; i < FIGHTS; i++) {
-    const lv = 1 + (i % 9);
-    const fight =
-      i % 3 === 2
-        ? () => {
-            // character against character
-            const a = mkHero(i, lv, `a${String(i)}`);
-            const b = mkHero(i + 3, 1 + ((i + 4) % 9), `b${String(i)}`);
-            const A = call('pcCharCombatant', a) as Combatant;
-            const B = call('pcCharCombatant', b) as Combatant;
-            A.tactics = a.encounterPlan.tactics.slice();
-            B.tactics = b.encounterPlan.tactics.slice();
-            pvp++;
-            return call('resolvePersonalCombat', A, B, { maxRounds: 20 }) as FightResult;
-          }
-        : () => guardianFight(i, mkHero(i, lv, `fz${String(i)}`));
-    bad.push(...faults(fight).map((l) => `fight ${String(i)}: ${l}`));
-  }
-  expect(pvp).toBe(Math.floor(FIGHTS / 3));
-  expect(bad.slice(0, 5)).toEqual([]);
-}, 120_000);
+      encounterPlan: { tactics: (TACTIC_SETS[i % TACTIC_SETS.length] ?? []).slice(), duelStance: 'accept' },
+    });
+    const bad: string[] = [];
+    let pvp = 0;
+    for (let i = 0; i < FIGHTS; i++) {
+      const lv = 1 + (i % 9);
+      const fight =
+        i % 3 === 2
+          ? () => {
+              // character against character
+              const a = mkHero(i, lv, `a${String(i)}`);
+              const b = mkHero(i + 3, 1 + ((i + 4) % 9), `b${String(i)}`);
+              const A = call('pcCharCombatant', a) as Combatant;
+              const B = call('pcCharCombatant', b) as Combatant;
+              A.tactics = a.encounterPlan.tactics.slice();
+              B.tactics = b.encounterPlan.tactics.slice();
+              pvp++;
+              return call('resolvePersonalCombat', A, B, { maxRounds: 20 }) as FightResult;
+            }
+          : () => guardianFight(i, mkHero(i, lv, `fz${String(i)}`));
+      bad.push(...faults(fight).map((l) => `fight ${String(i)}: ${l}`));
+    }
+    expect(pvp).toBe(Math.floor(FIGHTS / 3));
+    expect(bad.slice(0, 5)).toEqual([]);
+  },
+  timeLimitGivenAsANumber(120_000).timeout,
+);

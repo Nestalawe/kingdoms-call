@@ -46,6 +46,7 @@ import {
   type KeepResult,
   type PublishedFiles,
 } from '../../tools/deploy/keep-the-previous-deploys-files.ts';
+import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
 const SCRIPT = path.join(ROOT, 'tools', 'deploy', 'keep-the-previous-deploys-files.ts');
 const SRC = path.join(ROOT, 'src');
@@ -53,7 +54,8 @@ const PUBLIC = path.join(ROOT, 'public');
 const BUILD = path.join(ROOT, 'tools', 'build.ts');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-keep-'));
 // Each build is Vite's, one per page: about a second here, up to 6 s on CI's runners with other tests beside it.
-const BUILDS = { timeout: 60_000 };
+const BUILDS_MS = 60_000;
+const BUILDS = timeLimitGivenAsANumber(BUILDS_MS);
 afterAll(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
@@ -181,18 +183,21 @@ async function serving(dir: string, status?: number): Promise<{ url: string; clo
 let b1 = '';
 let b2 = '';
 let b3 = '';
-beforeAll(() => {
-  b1 = buildOf('b1');
-  const second = (src: string) => {
-    append(path.join(src, 'ui', 'gm', 'start.ts'), aChangedLine);
-    append(path.join(src, 'ui', 'player', 'style.css'), '\n.a-planted-change { color: red; }\n');
-  };
-  b2 = buildOf('b2', second);
-  b3 = buildOf('b3', (src) => {
-    second(src);
-    append(path.join(src, 'ui', 'leaderboard', 'main.ts'), aChangedLine);
-  });
-}, 3 * BUILDS.timeout);
+beforeAll(
+  () => {
+    b1 = buildOf('b1');
+    const second = (src: string) => {
+      append(path.join(src, 'ui', 'gm', 'start.ts'), aChangedLine);
+      append(path.join(src, 'ui', 'player', 'style.css'), '\n.a-planted-change { color: red; }\n');
+    };
+    b2 = buildOf('b2', second);
+    b3 = buildOf('b3', (src) => {
+      second(src);
+      append(path.join(src, 'ui', 'leaderboard', 'main.ts'), aChangedLine);
+    });
+  },
+  timeLimitGivenAsANumber(3 * BUILDS_MS).timeout,
+);
 
 describe('deploys in a row', () => {
   test("a changed file gets a new name: the GM bundle, and the player portal's stylesheet and bundle", () => {

@@ -58,6 +58,14 @@ export function timeLimitForTheWork(work: TheWork): { timeout: number } {
   return { timeout: asThisRunGivesIt(timeout) };
 }
 
+/** A test's options for a limit typed as a number, for work no allowance above names (yet): exactly that number,
+ *  but the coverage run's ceiling there (or the number, if longer). Every limit a unit or scenario test gives comes
+ *  from this file, so the coverage run can lift it (tests/static/harness.test.ts checks it). */
+export function timeLimitGivenAsANumber(ms: number): { timeout: number } {
+  if (!(ms > 0)) throw new Error('A time limit is a number of milliseconds above 0.');
+  return { timeout: asThisRunGivesIt(ms) };
+}
+
 /** A property test's options: its time limit, `msEachRun` for each of the `runs` inputs it tries. */
 export function timeLimitForPropertyRuns(runs: number, msEachRun: number): { timeout: number } {
   if (!(runs > 0 && msEachRun > 0)) throw new Error('A property test tries some inputs, each in some time.');
