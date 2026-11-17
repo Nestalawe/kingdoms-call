@@ -155,6 +155,22 @@ What each runs and counts: [the toolchain](../docs/architecture/the-toolchain-th
   that fails while the runner sets up (`supabase db start`, an `apt-get`) may be re-run once, said in the pull
   request; a failing test is never re-run.
 
+## The coverage limits
+
+How much of `src/engine/`, `src/views/` and `src/shared/` the unit and scenario tests run may never fall. The limits
+are in `vitest.config.mts`, one a folder for each of Vitest's four measures (lines, statements, functions, branches),
+each the figure when it was set, rounded down to a whole percent. Coverage is off in `npm test`. In CI each half of
+the unit and scenario tests runs with it on, and the job after them (`unit-scenario-coverage`) joins the two halves
+and fails if a folder is below a limit: a test taken away, or new code no test runs, shows there.
+
+- **Measure:** `npx vitest run --project unit --project scenario --coverage` (about a minute). A folder below its
+  limit is named with its figure; to read one that passes, set its limit to 100 for that run only.
+- **Raise a limit by hand** in a pull request when coverage grows: the new figure, rounded down. **Never lower one**,
+  and never let Vitest rewrite them (`thresholds.autoUpdate` stays unset): the file is a dangerous path, so a change
+  is seen. `harness` checks the settings and CI's two steps.
+- **The figures repeat:** the tests are seeded, so the same tree gives the same coverage, file by file, with 2
+  workers or 8 (measured when the limits were set).
+
 ## Browser specs
 
 `npx playwright test` runs the specs in `tests/browser/*.spec.ts` in Chromium (Playwright Test, `playwright.config.ts`):

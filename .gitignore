@@ -12,6 +12,8 @@ node_modules/
 plan/
 # Vitest's coverage report (npm test -- --coverage).
 coverage/
+# Vitest's blob reports: a half of the unit and scenario run keeps its results and coverage there (--reporter=blob).
+.vitest/
 # Playwright Test's output: the traces of failing browser specs, and its report.
 test-results/
 playwright-report/

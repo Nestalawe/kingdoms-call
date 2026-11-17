@@ -5,7 +5,7 @@
 // deploy's and staging's build in a job that can only read, published by a job that runs no npm (P1-06a), the
 // balance job and its engine paths, the nightly random-seed run and fast-check's seed, the dangerous paths, and the
 // ratchet, the architecture rules (dependency-cruiser and knip, P1-13a), ESLint's bulk suppressions (P1-13b), and the
-// engine's purity, the dice and the project's own lint rules (P1-13c). It
+// engine's purity, the dice and the project's own lint rules (P1-13c), and the coverage limits (P1-10z). It
 // runs ESLint on one file to show the suppressions hold (a few seconds). Every later step that adds a guarantee
 // adds its check here. Level 0 (static): it reads settings files and the counts, and runs no game code.
 //
@@ -23,7 +23,11 @@
 // errors there, planted in an engine file and a page's, in every file of `src/`, with no list of files let through
 // (P1-10a1; P1-10b1 replaced the three kept from before the rule with statements, and an `as` planted in each of their
 // files is refused), `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has
-// no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; a `retry`,
+// no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; the coverage
+// limits (P1-10z) are Vitest's own, for `src/engine/`, `src/views/` and `src/shared/`, a whole percent of each of the
+// four measures, never rewritten by Vitest and left out only in a half of a run, and CI's halves keep their coverage
+// in a blob that the job after them joins and checks (planted copies: the halves without coverage, the join without
+// it, the join gone); a `retry`,
 // `retries` or `repeats` planted in a test's, a describe's, a helper's or a spec's options is a lint error, and every
 // limit the static tests and the two property tests give comes from `lib/time-limits.ts`, sized to the work; Node is
 // pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that
@@ -835,6 +839,34 @@ describe('the test run', () => {
     );
   });
 
+  // P1-10z: the coverage limits, for src/engine, src/views and src/shared, each a whole percent of every measure, set
+  // only in this file (Vitest never rewrites them: no autoUpdate), and left out only in a half of a run (--shard),
+  // whose coverage is joined and checked in CI's job after the halves. Coverage is off in npm test.
+  test("the coverage limits: Vitest's own, for the engine, the views and the shared code, never rewritten by Vitest", () => {
+    const coverage = t.coverage ?? {};
+    const FOLDERS = ['src/engine/**', 'src/views/**', 'src/shared/**'];
+    expect(coverage.provider).toBe('v8');
+    expect(coverage.enabled).toBeUndefined();
+    expect('include' in coverage ? coverage.include : undefined).toEqual(FOLDERS);
+    const thresholds = ('thresholds' in coverage ? coverage.thresholds : undefined) ?? {};
+    expect(Object.keys(thresholds)).toEqual(FOLDERS);
+    for (const folder of FOLDERS) {
+      const limits: unknown = Object.entries(thresholds).find(([k]) => k === folder)?.[1];
+      expect(limits, folder).toBeTypeOf('object');
+      const entries = Object.entries(limits ?? {});
+      expect(entries.map(([k]) => k).sort(), folder).toEqual(['branches', 'functions', 'lines', 'statements']);
+      for (const [measure, limit] of entries) {
+        expect(Number.isInteger(limit) && Number(limit) > 0 && Number(limit) <= 100, `${folder} ${measure}`).toBe(true);
+      }
+    }
+    expect(read('vitest.config.mts')).not.toMatch(/autoUpdate\s*:/);
+    expect(read('vitest.config.mts')).toContain(
+      "const aHalfOfTheRun = process.argv.some((a) => a.startsWith('--shard'));",
+    );
+    expect(read('vitest.config.mts')).toContain('...(aHalfOfTheRun ? {} : { thresholds: THE_COVERAGE_LIMITS }),');
+    expect(pkg.scripts['test']).not.toMatch(/--coverage/);
+  });
+
   // Read here, in a test file, after the setup files ran: what every property test gets.
   test("fast-check's seed is KC_SEED's in every test file, so a property's inputs repeat", () => {
     expect(t.setupFiles).toContain('tests/setup/fast-check.ts');
@@ -1084,6 +1116,8 @@ describe('the Claude Code hooks', () => {
 });
 
 describe('CI', () => {
+  /** The coverage limits' join (P1-10z): the unit and scenario halves' blobs replayed, the limits checked. */
+  const THE_JOIN = 'npm test -- --merge-reports --coverage';
   // The jobs in ci.yml, read from its text (it keeps one layout: each job's id two spaces in, under "jobs:").
   const ci = read('.github/workflows/ci.yml');
   const jobs = new Map<string, string>();
@@ -1143,7 +1177,8 @@ describe('CI', () => {
   // P1-05: each job that tests builds site/ from src/ before its tests, the balance matrix and the browser specs, so
   // CI never tests anything but this commit's pages.
   test('every job that tests builds the site first', () => {
-    const testing = /^(npm test|npx playwright test|npm run balance)/;
+    // The coverage limits' join (npm test -- --merge-reports) replays the halves' results and runs no test.
+    const testing = /^(npm test(?! -- --merge-reports)|npx playwright test|npm run balance)/;
     const jobsThatTest = ids.filter((id) => runs(id).some((r) => testing.test(r)));
     expect([...jobsThatTest].sort()).toEqual([
       'balance',
@@ -1170,9 +1205,11 @@ describe('CI', () => {
     for (const block of (text.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
       const id = /^ {2}([\w-]+):\n/.exec(block)?.[1] ?? '';
       for (const [, r = ''] of block.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)) {
-        const m = /^npm test -- --project \w+(?: --project \w+)*(?: --shard \$\{\{ matrix\.shard \}\}\/(\d+))?$/.exec(
-          r,
-        );
+        if (r === THE_JOIN) continue;
+        const m =
+          /^npm test -- --project \w+(?: --project \w+)*(?: --shard \$\{\{ matrix\.shard \}\}\/(\d+)(?: --coverage --reporter=default --reporter=\.\/tests\/setup\/reporter\.ts --reporter=blob)?)?$/.exec(
+            r,
+          );
         if (!m) {
           problems.push(`${id}: ${r}`);
           continue;
@@ -1193,7 +1230,7 @@ describe('CI', () => {
   test('every test level runs in exactly one job, and the browser specs in theirs', () => {
     expect(testLevelProblems(ci)).toEqual([]);
     expect(runs('unit-scenario')).toContain(
-      'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2',
+      'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob',
     );
     expect(ids.filter((id) => runs(id).includes('npx playwright test'))).toEqual(['browser']);
     // Planted copies: a half left out; a level run twice; another option.
@@ -1206,6 +1243,56 @@ describe('CI', () => {
     expect(testLevelProblems(ci.replace('--project page', '--project page --bail 1'))).toEqual([
       'page: npm test -- --project page --bail 1',
       'the levels run: static, unit, scenario, simulation',
+    ]);
+  });
+
+  // P1-10z: the coverage limits. Each half of the unit and scenario tests runs with Vitest's coverage on, prints its
+  // results as before (the config's two reporters) and keeps them, with its coverage, in a blob it uploads; the job
+  // after both halves downloads the two blobs and joins them, which checks the limits on the whole.
+  function coverageLimitsProblems(text: string): string[] {
+    const problems: string[] = [];
+    const block = (id: string) =>
+      new RegExp(`^ {2}${id}:\\n[\\s\\S]*?(?=^ {2}[\\w-]+:\\n|(?![\\s\\S]))`, 'm').exec(text)?.[0] ?? '';
+    const halves = block('unit-scenario');
+    const join = block('unit-scenario-coverage');
+    const command = (b: string) => [...b.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)].map((m) => m[1] ?? '');
+    if (
+      !command(halves).some((r) =>
+        r.endsWith(' --coverage --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob'),
+      )
+    )
+      problems.push('the halves keep no coverage');
+    if (
+      !/uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: unit-scenario-blob-\$\{\{ matrix\.shard \}\}\n {10}path: \.vitest\/blob\/\n {10}if-no-files-found: error\n {10}include-hidden-files: true\n/.test(
+        halves,
+      )
+    )
+      problems.push('the halves upload no blob');
+    if (!/^ {4}needs: unit-scenario$/m.test(join)) problems.push('the join waits for no halves');
+    if (
+      !/uses: actions\/download-artifact@v\d+\n {8}with:\n {10}pattern: unit-scenario-blob-\*\n {10}merge-multiple: true\n {10}path: \.vitest\/blob\n/.test(
+        join,
+      )
+    )
+      problems.push('the join downloads no blobs');
+    if (String(command(join)) !== THE_JOIN) problems.push(`the join runs: ${command(join).join('; ')}`);
+    return problems;
+  }
+  test('the unit and scenario halves keep their coverage, and the job after them checks the limits on the whole', () => {
+    expect(coverageLimitsProblems(ci)).toEqual([]);
+    // Planted copies: the halves without coverage; the join without it; the join gone.
+    const noCoverage = ci.replace(' --coverage --reporter=default', ' --reporter=default');
+    expect(noCoverage).not.toBe(ci);
+    expect(coverageLimitsProblems(noCoverage)).toEqual(['the halves keep no coverage']);
+    const noLimits = ci.replace(`run: ${THE_JOIN}`, 'run: npm test -- --merge-reports');
+    expect(noLimits).not.toBe(ci);
+    expect(coverageLimitsProblems(noLimits)).toEqual(['the join runs: npm test -- --merge-reports']);
+    const noJoin = ci.replace(/\n {2}# The coverage limits[\s\S]*?\n(?= {2}simulation:\n)/, '\n');
+    expect(noJoin).not.toBe(ci);
+    expect(coverageLimitsProblems(noJoin)).toEqual([
+      'the join waits for no halves',
+      'the join downloads no blobs',
+      'the join runs: ',
     ]);
   });
 
@@ -1484,6 +1571,7 @@ describe('CI', () => {
         'static',
         'static-tests',
         'unit-scenario',
+        'unit-scenario-coverage',
       ].sort(),
     );
     expect(nodeModulesCacheProblems(ci)).toEqual([]);
