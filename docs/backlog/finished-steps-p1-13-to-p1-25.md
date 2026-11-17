@@ -266,3 +266,9 @@ re-planned in B-09.
 - P1-25d: #508 The description's save paragraph; the save's topic file checked against the code
 - P1-25e: #572 One skill for making a change
 - P1-25f: #573 The skill finds, plans and builds a tranche
+
+## The new items (B-NN)
+
+- B-13: #638 A runner for planted faults, several at a time
+- B-14: #639 The Stop hook skips a session that changed no file
+- B-15: #640 Tier 0 leaves the matrix to CI
