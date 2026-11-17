@@ -6,10 +6,17 @@
 // The count is kept per session (a git-ignored file keyed by the session id). It starts again when the check passes,
 // and at each new turn (a stop that isn't the agent carrying on after a block). A check that passed is not run again
 // until the files change.
+//
+// It checks only a session that edited a file of this repository with an edit tool (Edit, Write, MultiEdit or
+// NotebookEdit, read from its transcript). A session that edited none (a conductor whose rows' agents do the work, a
+// session that only reads) stops without the check: the changes in the tree are another session's, and the whole
+// check would slow that session's own tests. A session whose transcript can't be read is checked. An edit made only
+// through a shell command isn't seen, as the edit hook doesn't see it: the tests before a push, and CI, still run.
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { z } from 'zod';
 import { CACHE, report, ROOT, runCheck } from '../check.ts';
 import { readInput } from './input.ts';
 
@@ -36,6 +43,55 @@ function fingerprint(): string {
   return hash.digest('hex');
 }
 
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
+const anEntry = z.object({ message: z.object({ content: z.array(z.unknown()) }) });
+const aToolUse = z.object({
+  type: z.literal('tool_use'),
+  name: z.string(),
+  input: z.object({ file_path: z.string().optional(), notebook_path: z.string().optional() }),
+});
+
+/** The JSON in a line, or null when it isn't JSON. */
+function parsedOrNull(line: string): unknown {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+}
+
+/** Whether a session's transcript (Claude Code's, one JSON entry a line) shows an edit tool used on a file inside
+ *  `root`. A line that isn't JSON, or an entry of another shape, is passed over. */
+export function theSessionEditedTheRepository(transcript: string, root: string): boolean {
+  const inside = (file: string | undefined) => {
+    if (!file) return false;
+    const rel = path.relative(root, path.resolve(root, file));
+    return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
+  };
+  return transcript.split('\n').some((line) => {
+    if (!line.includes('"tool_use"')) return false;
+    const entry = anEntry.safeParse(parsedOrNull(line));
+    if (!entry.success) return false;
+    return entry.data.message.content.some((block) => {
+      const use = aToolUse.safeParse(block);
+      if (!use.success || !EDIT_TOOLS.has(use.data.name)) return false;
+      return inside(use.data.input.file_path) || inside(use.data.input.notebook_path);
+    });
+  });
+}
+
+/** Whether this stop runs the check: unless the session's transcript is read and shows no edit of the repository. */
+export function checksThisSession(transcriptPath: string | undefined, root: string): boolean {
+  if (!transcriptPath) return true;
+  let text: string;
+  try {
+    text = fs.readFileSync(transcriptPath, 'utf8');
+  } catch {
+    return true;
+  }
+  return theSessionEditedTheRepository(text, root);
+}
+
 const say = (json: object) => {
   process.stdout.write(JSON.stringify(json) + '\n');
 };
@@ -50,6 +106,7 @@ async function main(): Promise<number> {
     });
     return 0;
   }
+  if (!checksThisSession(input.transcript_path, ROOT)) return 0;
   const dir = path.join(CACHE, 'stops');
   fs.mkdirSync(dir, { recursive: true });
   const countFile = path.join(dir, (input.session_id ?? 'none').replace(/[^\w-]/g, '_'));

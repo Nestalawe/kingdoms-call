@@ -58,7 +58,8 @@ hands each to ESLint's API under the same block, a handler with its page's handl
 
 The harness runs itself. Claude Code hooks, committed in `.claude/settings.json`, check each edited file
 (`tools/hooks/after-edit.ts`: type check, ESLint, Prettier, about 1 s) and run `npm run check` before an agent may
-finish (`tools/hooks/before-stop.ts`). `npm run check` (`tools/check.ts`) runs the import rules over all of `src/`
+finish (`tools/hooks/before-stop.ts`), if its session edited a file of the repository with an edit tool: a conductor,
+or a session that only reads, stops without it. `npm run check` (`tools/check.ts`) runs the import rules over all of `src/`
 (`npm run lint:arch`) and checks what the branch changes: the
 TypeScript tests that import a changed file (`vitest related`), or every level but page when anything else changed,
 since the test scripts load `site/` (built from `src/`) by file name and `vitest related` can't follow that.
