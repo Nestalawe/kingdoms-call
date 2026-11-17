@@ -99,7 +99,9 @@ The engine's `ARMY_COST_MASTER` and `ARMY_SPEED_MASTER` (`engine/army-tables.ts`
 Record<HumanoidUnitType, number>` too: a humanoid unit missing from either fails (a primal unit's cost and speed come
 from `PRIMAL_ARMY_DEFS_P`). The engine's other tables are keyed by any string (`UNIT_SHORT`, `ARMY_RACE_OF_TYPE`,
 …), so a unit missing from one still compiles, and `TERRAIN_MODS` refuses a misspelt unit but not a missing one. The
-lists above are still the whole job.
+lists above are still the whole job. `tests/static/every-unit-order-and-effect-the-content-names-is-in-every-table-that-must-list-it.test.ts` finds
+what the compiler can't: a name in a class list, a Druid level, a province's cell, a discovery or the wild pools that is no
+unit type, a unit of the four races with no race in `ARMY_RACE_OF_TYPE`, and a unit the rulebook never names.
 
 **A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`
 first (`tests/primal-roster.test.js` and `tests/primal-words.test.js` then list what is missing), then:
@@ -188,7 +190,9 @@ bots' `botSignaturePre` case and their two lists of muster-like orders; the play
 `ALIGN_ACTIONS` (both the rows' since P1-11d7), `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
 rulebook's orders table and alignment section, the intro's table and the player portal's three alignment
 texts. Nothing
-throws when one is missed: the order is simply refused, hidden or priced wrong. Copy Harvest the Field's
+throws when one is missed: the order is simply refused, hidden or priced wrong. The content test above finds part of it: a name
+the form offers that the order-name map lacks (it reads as Defend), one left out of `ACTION_DISPLAY_ORDER`, a row the
+form doesn't offer, and an order the rulebook never names. Copy Harvest the Field's
 occurrences (grep `harvest_field` and `Harvest the Field`) and mirror each. Removing one touches the same places;
 keep its `case` as a plain refusal, so an order a save still holds is answered rather than silently dropped.
 
