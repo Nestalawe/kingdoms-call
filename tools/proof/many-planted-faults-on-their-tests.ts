@@ -218,6 +218,13 @@ function runTheTests(
   });
 }
 
+/** The file `name` of the copy `copy`, resolved, and its text: null when it isn't a file inside the copy. */
+function theFileInTheCopy(copy: string, name: string): { file: string; text: string } | null {
+  const file = path.resolve(copy, name);
+  if (file.startsWith(copy + path.sep) && fs.existsSync(file)) return { file, text: fs.readFileSync(file, 'utf8') };
+  return null;
+}
+
 /** A plant's name as a file name. */
 const slug = (name: string) =>
   name
@@ -256,11 +263,10 @@ export async function runThePlants({
       const plant = plants[i];
       if (!plant) continue;
       const t0 = performance.now();
-      const file = path.join(copy, plant.file);
-      const original = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-      const text = original == null ? null : planted(original, plant.old, plant.new, plant.occurrence);
+      const found = theFileInTheCopy(copy, plant.file);
+      const text = found == null ? null : planted(found.text, plant.old, plant.new, plant.occurrence);
       let result: Omit<APlantsResult, 'name' | 'file' | 'seconds'>;
-      if (original == null) result = { verdict: 'missing', red: [], note: `no file ${plant.file}` };
+      if (found == null) result = { verdict: 'missing', red: [], note: `no file ${plant.file} in the copy` };
       else if (text == null)
         result = {
           verdict: 'missing',
@@ -269,7 +275,7 @@ export async function runThePlants({
         };
       else {
         const base = path.join(here, `${String(i + 1).padStart(3, '0')}-${slug(plant.name)}`);
-        fs.writeFileSync(file, text);
+        fs.writeFileSync(found.file, text);
         try {
           const { exit, stopped } = await runTheTests(copy, plant.tests, {
             log: `${base}.log`,
@@ -280,7 +286,7 @@ export async function runThePlants({
           const report = fs.existsSync(`${base}.json`) ? fs.readFileSync(`${base}.json`, 'utf8') : null;
           result = verdictOf(report, exit, stopped, copy);
         } finally {
-          fs.writeFileSync(file, original);
+          fs.writeFileSync(found.file, found.text);
         }
       }
       const r = { name: plant.name, file: plant.file, ...result, seconds: (performance.now() - t0) / 1000 };

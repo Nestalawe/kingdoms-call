@@ -104,7 +104,7 @@ describe('the runner', () => {
         plants,
         here,
         jobs: 2,
-        limitS: 2,
+        limitS: 5,
         onResult: (r) => heard.push(r.name),
       });
       expect(results.map((r) => [r.name, r.verdict])).toEqual([

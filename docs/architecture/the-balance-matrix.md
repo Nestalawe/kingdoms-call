@@ -167,6 +167,8 @@ change" without having looked. Local tools in `tools/proof/` (its
   (the right of a `??`, an `else` no game took). Each needs a unit case that fails on a fault planted in that line.
 - `npm run proof:plant -- <patch>`: a fault planted in a copy of the tree, then both sets, every realm's report and the
   tests named: which games and reports differ, and which tests are red.
+- `npm run proof:plants -- <plants.json>`: a row's faults, each in a line no game reaches, planted in copies of the tree
+  several at a time and run on only the tests that guard each line: which are red, and which no test catches.
 - `npm run proof:gm-logs -- --base <ref>` and `npm run proof:two-engines -- --cases <module> --base <ref>`: the GM log
   of every game, byte for byte, base against branch; and two engines, each in its own process, on the staged cases a
   row brings, for the lines no game reaches.
