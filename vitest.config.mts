@@ -8,12 +8,14 @@
 // (tests/setup/each.ts). The footer prints the seed, how to repeat each failure, and each test or hook that used more
 // than half its time limit (tests/setup/reporter.ts; the hooks timed by tests/setup/hook-times.ts).
 //
-// This file is .mts and imports only types and constants from tests/: package.json has no "type" (the test scripts
+// This file is .mts and imports only types, constants and one pure check (tests/lib/the-coverage-runs-ceiling.mts) from
+// tests/: package.json has no "type" (the test scripts
 // are CommonJS), so this is how Node and Vite load the config as an ES module without warnings.
 import os from 'node:os';
 import { defineConfig, type TestProjectInlineConfiguration } from 'vitest/config';
 import type { Level } from './tests/suite.ts';
 import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
+import { aCoverageRun, THE_COVERAGE_RUNS_CEILING_MS } from './tests/lib/the-coverage-runs-ceiling.mts';
 
 // The levels, slowest first so the longest script starts at once. tests/legacy.test.ts checks that they are the
 // levels in tests/suite.ts, so no script is left without a project to run it.
@@ -84,6 +86,9 @@ export default defineConfig({
     reporters: ['default', './tests/setup/reporter.ts'],
     maxConcurrency: jobs,
     maxWorkers: files,
+    // CI's coverage run (KC_COVERAGE_RUN=1) judges no test's time: Vitest's own limits (5 s a test, 10 s a hook) are
+    // the one ceiling there, as every sized limit is (tests/lib/the-coverage-runs-ceiling.mts says why).
+    ...(aCoverageRun() ? { testTimeout: THE_COVERAGE_RUNS_CEILING_MS, hookTimeout: THE_COVERAGE_RUNS_CEILING_MS } : {}),
     coverage: {
       provider: 'v8',
       include: Object.keys(THE_COVERAGE_LIMITS),

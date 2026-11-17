@@ -139,6 +139,7 @@ import {
 } from '../../tools/ratchet.ts';
 import { LEVELS } from '../suite.ts';
 import { ALLOWANCE_MS, timeLimitForPropertyRuns, timeLimitForTheWork } from '../lib/time-limits.ts';
+import { THE_COVERAGE_RUNS_CEILING_MS } from '../lib/the-coverage-runs-ceiling.mts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const read = (f: string) => fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -869,6 +870,50 @@ describe('the test run', () => {
     expect(pkg.scripts['test']).not.toMatch(/--coverage/);
   });
 
+  // P1-10z: CI's coverage run judges no test's time, so there (KC_COVERAGE_RUN=1, and only there) every limit is one
+  // ceiling: Vitest's own (this file's testTimeout and hookTimeout) and each one tests/lib/time-limits.ts gives (a
+  // longer one kept). Elsewhere the limits are as sized.
+  function theCeilingsProblems(config: string): string[] {
+    const problems: string[] = [];
+    if (
+      !config.includes(
+        '...(aCoverageRun() ? { testTimeout: THE_COVERAGE_RUNS_CEILING_MS, hookTimeout: THE_COVERAGE_RUNS_CEILING_MS } : {}),',
+      )
+    )
+      problems.push("Vitest's own limits don't follow the coverage run");
+    return problems;
+  }
+  test('the coverage run, and only it, gives every time limit one ceiling', ({ onTestFinished }) => {
+    const was = process.env['KC_COVERAGE_RUN'];
+    onTestFinished(() => {
+      if (was === undefined) delete process.env['KC_COVERAGE_RUN'];
+      else process.env['KC_COVERAGE_RUN'] = was;
+    });
+    const limits = (env: string | undefined) => {
+      if (env === undefined) delete process.env['KC_COVERAGE_RUN'];
+      else process.env['KC_COVERAGE_RUN'] = env;
+      return [
+        timeLimitForTheWork({ siteBuilds: 1 }).timeout,
+        timeLimitForTheWork({ matrixGamesPlayed: 7 }).timeout,
+        timeLimitForPropertyRuns(100, 50).timeout,
+      ];
+    };
+    const C = THE_COVERAGE_RUNS_CEILING_MS;
+    expect(C).toBeGreaterThan(60_000);
+    expect(limits(undefined)).toEqual([10_000, 350_000, 5_000]);
+    expect(limits('1')).toEqual([C, 350_000, C]);
+    // Planted: another value than 1 is no coverage run.
+    expect(limits('true')).toEqual([10_000, 350_000, 5_000]);
+    // Vitest's own limits: the ceiling only in the coverage run (this test file runs in none).
+    expect(was).toBeUndefined();
+    expect([t.testTimeout, t.hookTimeout]).toEqual([undefined, undefined]);
+    const config = read('vitest.config.mts');
+    expect(theCeilingsProblems(config)).toEqual([]);
+    const planted = config.replace('...(aCoverageRun() ? {', '...(true ? {');
+    expect(planted).not.toBe(config);
+    expect(theCeilingsProblems(planted)).toEqual(["Vitest's own limits don't follow the coverage run"]);
+  });
+
   // Read here, in a test file, after the setup files ran: what every property test gets.
   test("fast-check's seed is KC_SEED's in every test file, so a property's inputs repeat", () => {
     expect(t.setupFiles).toContain('tests/setup/fast-check.ts');
@@ -1120,10 +1165,11 @@ describe('the Claude Code hooks', () => {
 describe('CI', () => {
   /** The coverage limits' join (P1-10z): the unit and scenario halves' blobs replayed, the limits checked. */
   const THE_JOIN = 'npm test -- --merge-reports --coverage';
-  /** The coverage halves (P1-10z): the unit and scenario tests again, with coverage, Vitest's own limits six times
-   *  longer (this run measures; the halves without coverage give the verdict), each half's blob kept. */
+  /** The coverage halves (P1-10z): the unit and scenario tests again, with coverage and KC_COVERAGE_RUN=1, which makes
+   *  every time limit one ceiling (this run measures; the halves without coverage give the verdict), each half's blob
+   *  kept. */
   const THE_COVERAGE_HALVES =
-    'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage --testTimeout=30000 --hookTimeout=60000 --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob';
+    'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob';
   // The jobs in ci.yml, read from its text (it keeps one layout: each job's id two spaces in, under "jobs:").
   const ci = read('.github/workflows/ci.yml');
   const jobs = new Map<string, string>();
@@ -1265,6 +1311,11 @@ describe('CI', () => {
     const command = (b: string) => [...b.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)].map((m) => m[1] ?? '');
     if (command(verdict).some((r) => r.includes('--coverage'))) problems.push("the tests' verdict runs with coverage");
     if (String(command(halves)) !== THE_COVERAGE_HALVES) problems.push(`the halves run: ${command(halves).join('; ')}`);
+    if (!halves.includes(`run: ${THE_COVERAGE_HALVES}\n        env:\n          KC_COVERAGE_RUN: '1'\n`))
+      problems.push('the coverage halves keep the time limits');
+    if (!/^ {4}timeout-minutes: \d+$/m.test(halves)) problems.push('the coverage halves have no timeout-minutes');
+    const elsewhere = text.replace(halves, '');
+    if (/^ +KC_COVERAGE_RUN:/m.test(elsewhere)) problems.push('a job beside the coverage halves sets KC_COVERAGE_RUN');
     if (!/^ {6}matrix:\n {8}shard: \[1, 2\]\n/m.test(halves)) problems.push('not both halves run');
     if (
       !/uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: unit-scenario-blob-\$\{\{ matrix\.shard \}\}\n {10}path: \.vitest\/blob\/\n {10}if-no-files-found: error\n {10}include-hidden-files: true\n/.test(
@@ -1292,11 +1343,22 @@ describe('CI', () => {
     );
     expect(verdictCovered).not.toBe(ci);
     expect(coverageLimitsProblems(verdictCovered)).toEqual(["the tests' verdict runs with coverage"]);
-    const noCoverage = ci.replace(' --coverage --testTimeout', ' --testTimeout');
+    const noCoverage = ci.replace(' --coverage --reporter=default', ' --reporter=default');
     expect(noCoverage).not.toBe(ci);
     expect(coverageLimitsProblems(noCoverage)).toEqual([
       `the halves run: ${THE_COVERAGE_HALVES.replace(' --coverage', '')}`,
+      'the coverage halves keep the time limits',
     ]);
+    // the ceiling: not set in the coverage halves; set in the verdict's halves too
+    const noCeiling = ci.replace("\n        env:\n          KC_COVERAGE_RUN: '1'\n", '\n');
+    expect(noCeiling).not.toBe(ci);
+    expect(coverageLimitsProblems(noCeiling)).toEqual(['the coverage halves keep the time limits']);
+    const verdictCeiling = ci.replace(
+      'run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2\n',
+      "run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2\n        env:\n          KC_COVERAGE_RUN: '1'\n",
+    );
+    expect(verdictCeiling).not.toBe(ci);
+    expect(coverageLimitsProblems(verdictCeiling)).toEqual(['a job beside the coverage halves sets KC_COVERAGE_RUN']);
     const oneHalf = ci.replace(/(unit-scenario-coverage-half:\n[\s\S]*?shard: )\[1, 2\]/, '$1[1]');
     expect(oneHalf).not.toBe(ci);
     expect(coverageLimitsProblems(oneHalf)).toEqual(['not both halves run']);
