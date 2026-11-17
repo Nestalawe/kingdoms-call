@@ -25,9 +25,11 @@
 // files is refused), `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has
 // no retries, no `.only`, its setup checks, fixed time zone and locale, and no project overriding them; the coverage
 // limits (P1-10z) are Vitest's own, for `src/engine/`, `src/views/` and `src/shared/`, a whole percent of each of the
-// four measures, never rewritten by Vitest and left out only in a half of a run, and CI's halves keep their coverage
-// in a blob that the job after them joins and checks (planted copies: the halves without coverage, the join without
-// it, the join gone); a `retry`,
+// four measures, never rewritten by Vitest and left out only in a half of a run, and CI's coverage halves (the unit
+// and scenario tests again, with coverage and Vitest's own limits six times longer; the tests' verdict stays with the
+// halves without coverage) keep their coverage in a blob that the job after them joins and checks (planted copies: the
+// verdict's halves with coverage, the coverage halves without it or with a half left out, the join without it, the
+// join gone); a `retry`,
 // `retries` or `repeats` planted in a test's, a describe's, a helper's or a spec's options is a lint error, and every
 // limit the static tests and the two property tests give comes from `lib/time-limits.ts`, sized to the work; Node is
 // pinned exactly (`.nvmrc`, `engines`, `engine-strict`, every workflow), and Node's types (`@types/node`) are for that
@@ -1118,6 +1120,10 @@ describe('the Claude Code hooks', () => {
 describe('CI', () => {
   /** The coverage limits' join (P1-10z): the unit and scenario halves' blobs replayed, the limits checked. */
   const THE_JOIN = 'npm test -- --merge-reports --coverage';
+  /** The coverage halves (P1-10z): the unit and scenario tests again, with coverage, Vitest's own limits six times
+   *  longer (this run measures; the halves without coverage give the verdict), each half's blob kept. */
+  const THE_COVERAGE_HALVES =
+    'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage --testTimeout=30000 --hookTimeout=60000 --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob';
   // The jobs in ci.yml, read from its text (it keeps one layout: each job's id two spaces in, under "jobs:").
   const ci = read('.github/workflows/ci.yml');
   const jobs = new Map<string, string>();
@@ -1188,6 +1194,7 @@ describe('CI', () => {
       'simulation',
       'static-tests',
       'unit-scenario',
+      'unit-scenario-coverage-half',
     ]);
     for (const id of jobsThatTest) {
       const r = runs(id);
@@ -1205,11 +1212,10 @@ describe('CI', () => {
     for (const block of (text.split(/^jobs:\n/m)[1] ?? '').split(/^(?= {2}[\w-]+:\n)/m)) {
       const id = /^ {2}([\w-]+):\n/.exec(block)?.[1] ?? '';
       for (const [, r = ''] of block.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)) {
-        if (r === THE_JOIN) continue;
-        const m =
-          /^npm test -- --project \w+(?: --project \w+)*(?: --shard \$\{\{ matrix\.shard \}\}\/(\d+)(?: --coverage --reporter=default --reporter=\.\/tests\/setup\/reporter\.ts --reporter=blob)?)?$/.exec(
-            r,
-          );
+        if (r === THE_JOIN || r === THE_COVERAGE_HALVES) continue;
+        const m = /^npm test -- --project \w+(?: --project \w+)*(?: --shard \$\{\{ matrix\.shard \}\}\/(\d+))?$/.exec(
+          r,
+        );
         if (!m) {
           problems.push(`${id}: ${r}`);
           continue;
@@ -1230,7 +1236,7 @@ describe('CI', () => {
   test('every test level runs in exactly one job, and the browser specs in theirs', () => {
     expect(testLevelProblems(ci)).toEqual([]);
     expect(runs('unit-scenario')).toContain(
-      'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob',
+      'npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2',
     );
     expect(ids.filter((id) => runs(id).includes('npx playwright test'))).toEqual(['browser']);
     // Planted copies: a half left out; a level run twice; another option.
@@ -1253,22 +1259,20 @@ describe('CI', () => {
     const problems: string[] = [];
     const block = (id: string) =>
       new RegExp(`^ {2}${id}:\\n[\\s\\S]*?(?=^ {2}[\\w-]+:\\n|(?![\\s\\S]))`, 'm').exec(text)?.[0] ?? '';
-    const halves = block('unit-scenario');
+    const verdict = block('unit-scenario');
+    const halves = block('unit-scenario-coverage-half');
     const join = block('unit-scenario-coverage');
     const command = (b: string) => [...b.matchAll(/^ +(?:- )?run: (npm test.*)$/gm)].map((m) => m[1] ?? '');
-    if (
-      !command(halves).some((r) =>
-        r.endsWith(' --coverage --reporter=default --reporter=./tests/setup/reporter.ts --reporter=blob'),
-      )
-    )
-      problems.push('the halves keep no coverage');
+    if (command(verdict).some((r) => r.includes('--coverage'))) problems.push("the tests' verdict runs with coverage");
+    if (String(command(halves)) !== THE_COVERAGE_HALVES) problems.push(`the halves run: ${command(halves).join('; ')}`);
+    if (!/^ {6}matrix:\n {8}shard: \[1, 2\]\n/m.test(halves)) problems.push('not both halves run');
     if (
       !/uses: actions\/upload-artifact@v\d+\n {8}with:\n {10}name: unit-scenario-blob-\$\{\{ matrix\.shard \}\}\n {10}path: \.vitest\/blob\/\n {10}if-no-files-found: error\n {10}include-hidden-files: true\n/.test(
         halves,
       )
     )
       problems.push('the halves upload no blob');
-    if (!/^ {4}needs: unit-scenario$/m.test(join)) problems.push('the join waits for no halves');
+    if (!/^ {4}needs: unit-scenario-coverage-half$/m.test(join)) problems.push('the join waits for no halves');
     if (
       !/uses: actions\/download-artifact@v\d+\n {8}with:\n {10}pattern: unit-scenario-blob-\*\n {10}merge-multiple: true\n {10}path: \.vitest\/blob\n/.test(
         join,
@@ -1278,16 +1282,31 @@ describe('CI', () => {
     if (String(command(join)) !== THE_JOIN) problems.push(`the join runs: ${command(join).join('; ')}`);
     return problems;
   }
-  test('the unit and scenario halves keep their coverage, and the job after them checks the limits on the whole', () => {
+  test('the coverage halves keep their coverage, apart from the verdict, and the job after them checks the limits', () => {
     expect(coverageLimitsProblems(ci)).toEqual([]);
-    // Planted copies: the halves without coverage; the join without it; the join gone.
-    const noCoverage = ci.replace(' --coverage --reporter=default', ' --reporter=default');
+    // Planted copies: the verdict's halves with coverage; the coverage halves without it, or with a half left out; the
+    // join without it; the join gone.
+    const verdictCovered = ci.replace(
+      'run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2\n',
+      'run: npm test -- --project unit --project scenario --shard ${{ matrix.shard }}/2 --coverage\n',
+    );
+    expect(verdictCovered).not.toBe(ci);
+    expect(coverageLimitsProblems(verdictCovered)).toEqual(["the tests' verdict runs with coverage"]);
+    const noCoverage = ci.replace(' --coverage --testTimeout', ' --testTimeout');
     expect(noCoverage).not.toBe(ci);
-    expect(coverageLimitsProblems(noCoverage)).toEqual(['the halves keep no coverage']);
+    expect(coverageLimitsProblems(noCoverage)).toEqual([
+      `the halves run: ${THE_COVERAGE_HALVES.replace(' --coverage', '')}`,
+    ]);
+    const oneHalf = ci.replace(/(unit-scenario-coverage-half:\n[\s\S]*?shard: )\[1, 2\]/, '$1[1]');
+    expect(oneHalf).not.toBe(ci);
+    expect(coverageLimitsProblems(oneHalf)).toEqual(['not both halves run']);
     const noLimits = ci.replace(`run: ${THE_JOIN}`, 'run: npm test -- --merge-reports');
     expect(noLimits).not.toBe(ci);
     expect(coverageLimitsProblems(noLimits)).toEqual(['the join runs: npm test -- --merge-reports']);
-    const noJoin = ci.replace(/\n {2}# The coverage limits[\s\S]*?\n(?= {2}simulation:\n)/, '\n');
+    const noJoin = ci.replace(
+      /\n {2}# The coverage limits \(plan P1-10z\): the two coverage halves[\s\S]*?\n(?= {2}simulation:\n)/,
+      '\n',
+    );
     expect(noJoin).not.toBe(ci);
     expect(coverageLimitsProblems(noJoin)).toEqual([
       'the join waits for no halves',
@@ -1571,6 +1590,7 @@ describe('CI', () => {
         'static',
         'static-tests',
         'unit-scenario',
+        'unit-scenario-coverage-half',
         'unit-scenario-coverage',
       ].sort(),
     );

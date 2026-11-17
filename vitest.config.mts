@@ -31,9 +31,9 @@ const cores = os.availableParallelism();
 const files = Number(process.env['KC_JOBS']) || Math.min(8, Math.max(2, cores - 2), cores);
 
 // The coverage limits (plan P1-10z): how much of src/engine, src/views and src/shared the unit and scenario tests run,
-// as Vitest's own coverage (@vitest/coverage-v8) measures it, folder by folder. Coverage is off in npm test. CI's unit
-// and scenario jobs turn it on (--coverage) in both halves, and the job after them joins the halves and checks these
-// limits (.github/workflows/ci.yml, unit-scenario-coverage). Each limit is the folder's figure when it was set, rounded
+// as Vitest's own coverage (@vitest/coverage-v8) measures it, folder by folder. Coverage is off in npm test. CI runs
+// the unit and scenario tests a second time with it on, in two halves of their own, and the job after them joins the
+// halves and checks these limits (.github/workflows/ci.yml, unit-scenario-coverage-half and unit-scenario-coverage). Each limit is the folder's figure when it was set, rounded
 // down to a whole percent, for all four measures (lines, statements, functions, branches): a test dropped or a new
 // file left untested shows as a fall in any of them. Raise a limit by hand, in a pull request, when coverage grows;
 // never lower one. Vitest never rewrites them: thresholds.autoUpdate stays unset, as this file is a dangerous path.
