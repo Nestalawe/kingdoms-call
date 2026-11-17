@@ -83,8 +83,8 @@ The balance matrix (`npm run balance`, `tools/balance/`, P1-02a) measures engine
 the GM portal (48 all-bot, 12 with a realm whose orders the runner chooses and sends as the player portal sends them:
 `tools/balance/scripted.ts`, `tools/balance/the-orders-the-player-portal-sends.ts`, P1-15e2), each game's per-turn hashes and
 statistics compared with the committed baseline in `tests/balance/baseline/`, statistics paired by seed against the
-noise of a second seed set. One of the hashes is of every write the turn sends to the stand-in database
-(`tools/balance/writes.ts`, P1-02c), so a change to how a turn saves shows even when nothing in play changed. After every turn it checks the **invariants** (`tests/lib/invariants.ts`, P1-04b: no NaN or
+noise of a second seed set. The games play on the typed fake (`tests/lib/fake-db.ts`). One of the hashes is of every
+write the turn sends to the database, recorded at the calls to the page's `Db` (`tools/balance/writes.ts`, P1-02c), so a change to how a turn saves shows even when nothing in play changed. After every turn it checks the **invariants** (`tests/lib/invariants.ts`, P1-04b: no NaN or
 `undefined`, HP in range, unique ids, items matching the ledger of found items, armies on the map, the dead taking no
 actions, `orders_submitted` cleared), as `turn-fuzz` does, and the **report-leak check** on the scripted realm's report
 (`tests/lib/report-leaks.ts`, P1-04c: another realm's private line, an unmet realm, a hero under Invisibility); a breach

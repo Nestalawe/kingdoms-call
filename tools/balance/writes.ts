@@ -1,32 +1,34 @@
 // The balance matrix's `writes` column (plan P1-02c): every write and database function (rpc) a turn sends to the
-// stand-in database, in order, with its table, operation, filters, modifiers and payload. The other columns hash what
-// the turn saved; this one hashes how it said it, so a change to a filter, the save's `meta`, a realm's `turn_logs`
-// snapshot or the order of the writes shows even where nothing in play changed. P1-17 moves these writes: the column
-// must stay the same through it.
+// database, in order, as the calls to the page's Db (src/db/the-db-interface-and-its-areas.ts) that sent them: the
+// area and function called, with its arguments. The other columns hash what the turn saved; this one hashes how it
+// said it, so a change to what a call sends (a game's turn it saves on, the save's `meta`, a realm's `turn_logs`
+// snapshot), a call left out or the order of the writes shows even where nothing in play changed.
 //
-// The recorder wraps the stand-in client's `from` and `rpc` once, before the page boots. Reads aren't recorded (a
-// query with no write step); `rpc('kc_db_version')` never reaches the client (bootJsdom answers it). A write is
-// recorded when its query runs (when it is awaited), as a copy: the stand-in keeps references to what it is sent.
+// Since P1-17s1 the matrix plays on the typed fake (tests/lib/fake-db.ts, the GM's world), and the column is recorded at
+// Db's calls (plan P1-17, Decision 9 and Open choice 6), no longer at the stand-in client's query steps: it changed
+// form once. The recorder wraps the Db the page is handed, before the page boots. A call is a write when a query it
+// ran on the fake is one: the fake lists each query it runs ("table.op" or "rpc.name") as it runs it, at the call,
+// before the call answers. Reads aren't recorded; the database's version check never reaches the GM's world (the fake
+// answers it). A write is recorded as a copy, taken as it is called: the fake keeps references to what it is sent.
 // The masking is the other columns' (hash.ts): the stand-in's ids and stamps and the build stamp at the top level of a
-// row or a report, and, when hashed, the prose and clock readings. Payload columns holding JSON as a string are parsed
-// first, so the masking reaches inside them.
+// row or a report, and, when hashed, the prose and clock readings. JSON held as a string (a row's `game_state` or
+// `turn_report`, or a report handed as a whole argument) is parsed first, so the masking reaches inside it.
+import type { Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 import { withoutStamps } from './hash.ts';
 
-/** The stand-in client, as far as the recorder needs it. */
-export interface Client {
-  from(table: string): unknown;
-  rpc(fn: string, ...args: unknown[]): unknown;
-}
-
-/** One call to the database, as recorded: `games.update` with its steps in the order called, e.g.
- *  [['update', [{…}]], ['eq', ['id', 'G1']], ['select', ['id']]], or `rpc.<name>` with [['rpc', [args]]]. */
+/** One call to the Db that wrote, as recorded: the area and function called, e.g.
+ *  `theTurnAsTheGameMasterRunsIt.saveThisGameWhileOnThisTurnAndAnswerItsId`, and its arguments, masked, in order. */
 export interface Call {
   call: string;
-  steps: [string, unknown[]][];
+  args: unknown[];
 }
 
-/** The builder steps that make a query a write; their first argument is the payload. */
+/** The operations of a query that make it a write. */
 const WRITE_OPS = new Set(['insert', 'upsert', 'update', 'delete']);
+
+/** Whether a query the fake ran ("table.op" or "rpc.name") is a write or a database function. */
+export const aQueryThatWrites = (query: string): boolean =>
+  query.startsWith('rpc.') || WRITE_OPS.has(query.slice(query.lastIndexOf('.') + 1));
 
 /** Payload columns that hold JSON as a string, and how each is masked once parsed: the saved world as the `state`
  *  column hashes it, a realm's report as the `report` column does. */
@@ -59,44 +61,49 @@ function maskRow(row: unknown): unknown {
 /** A write's payload (one row or a list of rows), masked. */
 export const maskPayload = (p: unknown): unknown => (Array.isArray(p) ? p.map(maskRow) : maskRow(p));
 
-/** A copy of `call` with its payload masked, taken now. */
-export function snapshot(call: string, steps: [string, unknown[]][]): Call {
-  const masked = steps.map(([name, args]): [string, unknown[]] =>
-    WRITE_OPS.has(name) && args.length ? [name, [maskPayload(args[0]), ...args.slice(1)]] : [name, args],
-  );
-  return { call, steps: structuredClone(masked) };
+/** One argument of a call, masked: a row or a list of rows as a payload; a string holding a JSON object (a realm's
+ *  report, handed whole) parsed and masked as the `report` column masks a report; anything else kept as it is. */
+export function maskArgument(arg: unknown): unknown {
+  if (typeof arg !== 'string') return maskPayload(arg);
+  try {
+    const parsed: unknown = JSON.parse(arg);
+    return isRecord(parsed) ? withoutStamps(parsed) : arg;
+  } catch {
+    return arg; // not JSON: kept as written
+  }
 }
 
-/** Wraps `client` so that every write and rpc it is sent is recorded, in order, into the list returned. Empty the
- *  list (`splice(0)`) to take one turn's calls. */
-export function recordCalls(client: Client): Call[] {
+/** A copy of the call `call` with its arguments masked, taken now. */
+export function snapshot(call: string, args: readonly unknown[]): Call {
+  return { call, args: structuredClone(args.map(maskArgument)) };
+}
+
+/** `db`, each of its calls that ran a query that writes (the fake lists the queries it runs in `theQueriesTheFakeRan`,
+ *  as it runs them) recorded, in order, into `calls`. Empty the list (`splice(0)`) to take one turn's calls. */
+export function recordTheWritesAtTheDbsCalls(
+  db: Db,
+  theQueriesTheFakeRan: readonly string[],
+): { readonly db: Db; readonly calls: Call[] } {
   const calls: Call[] = [];
-  const from = client.from.bind(client);
-  const rpc = client.rpc.bind(client);
-  client.from = (table) => {
-    const q = from(table);
-    if (!isRecord(q)) return q;
-    const steps: [string, unknown[]][] = [];
-    for (const [name, step] of Object.entries(q)) {
-      if (typeof step !== 'function' || name === 'then') continue;
-      q[name] = (...args: unknown[]) => {
-        steps.push([name, args]);
-        return (step as (...a: unknown[]) => unknown).apply(q, args);
-      };
-    }
-    const then = q['then'];
-    if (typeof then === 'function') {
-      q['then'] = (...args: unknown[]) => {
-        const op = steps.find(([name]) => WRITE_OPS.has(name));
-        if (op) calls.push(snapshot(`${table}.${op[0]}`, steps));
-        return (then as (...a: unknown[]) => unknown).apply(q, args);
-      };
-    }
-    return q;
-  };
-  client.rpc = (fn, ...args) => {
-    calls.push(snapshot(`rpc.${fn}`, [['rpc', args]]));
-    return rpc(fn, ...args);
-  };
-  return calls;
+  const theAreaRecorded = (areaName: string, area: object) =>
+    new Proxy(area, {
+      get(target, name, receiver) {
+        const value: unknown = Reflect.get(target, name, receiver);
+        if (typeof value !== 'function' || typeof name !== 'string') return value;
+        return (...args: unknown[]): unknown => {
+          const before = theQueriesTheFakeRan.length;
+          const answer: unknown = Reflect.apply(value, target, args);
+          if (theQueriesTheFakeRan.slice(before).some(aQueryThatWrites))
+            calls.push(snapshot(`${areaName}.${name}`, args));
+          return answer;
+        };
+      },
+    });
+  const recorded = new Proxy(db, {
+    get(target, name, receiver) {
+      const area: unknown = Reflect.get(target, name, receiver);
+      return typeof area === 'object' && area !== null && typeof name === 'string' ? theAreaRecorded(name, area) : area;
+    },
+  });
+  return { db: recorded, calls };
 }

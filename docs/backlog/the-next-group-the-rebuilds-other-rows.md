@@ -32,7 +32,9 @@ in force:
 - **The proof:** `refactor-only`. Every database call the page tests and the tours make is recorded, and is the same
   on the base and the row; both balance sets are identical.
 - **P1-17s1:** the matrix plays on the fake. Its `writes` column is recorded at `Db`'s calls, so the column changes
-  form once and the balance report says "writes only"; every other column stays identical.
+  form once. `results` changes only in the key order of each Hall of Fame entry's `records` (the fake reads turn
+  records in the database's order); every other column stays identical. The balance report calls this a reshape,
+  and the PR has no `refactor-only` label, because it changes the baseline.
 - **P1-17s2:** `stub-db` goes last. The quarantined tests that use it go first, each in its own pull request: the two
   one-off proofs (`one-source`, `one-source-chromium`) are deleted, and `dispatches-e2e` comes back on today's three
   tabs (a maintainer's choice).

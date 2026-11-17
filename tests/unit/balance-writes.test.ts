@@ -1,56 +1,35 @@
-// The balance matrix's `writes` column (tools/balance/writes.ts, P1-02c): what the recorder sees of a turn's calls to
-// the database, when it takes its copy, and what its masking leaves out. A small fake client stands in for the
-// stand-in database (a new test may not use tests/lib/stub-db.js: tests/ratchet.json). Level 1 (unit): pure functions
-// and a recorder over a fake; the matrix (npm run balance) plays the real turns.
+// The balance matrix's `writes` column (tools/balance/writes.ts, P1-02c; recorded at Db's calls since P1-17s1): what
+// the recorder sees of a turn's calls to the page's Db, when it takes its copy, and what its masking leaves out. The
+// calls go to the fake the matrix plays on (tests/lib/fake-db.ts, the GM's world). Level 1 (unit): pure functions and a
+// recorder over the fake; the matrix (npm run balance) plays the real turns.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// The matrix's `writes` column (P1-02c), on a small fake client (not `lib/stub-db.js`): every write and `rpc` recorded
-// in order with its table, operation, steps and arguments, reads not; the copy taken when the query runs; a query never
-// run not recorded; the masking (stamps at a row's top level, `game_state` and `turn_report` parsed, a `turn_logs`
-// snapshot's build stamp, clock readings); a field dropped from `meta`, a filter changed and two writes swapped each
-// change the hash. TypeScript, in `unit/`
+// The matrix's `writes` column (P1-02c), recorded at the calls to the page's Db, on the fake of the GM's world: every
+// call that writes or calls a database function recorded in order, with its area, function and arguments, reads not,
+// and every call still reaching the fake with its answer; the copy taken as the call is made; a write the fake refuses
+// still recorded; the masking (stamps at a row's top level, `game_state` and `turn_report` parsed, a report handed
+// whole as a string parsed, a `turn_logs` snapshot's build stamp, clock readings); a field dropped from `meta`, a turn
+// changed, two writes swapped and one row left out each change the hash. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
+import { DB_VERSION } from '../lib/boot.js';
+import { aGameMastersWorld, makeAFakeDbHoldingTheGameMastersWorld } from '../lib/fake-db.ts';
 import { playHash } from '../../tools/balance/hash.ts';
-import { maskPayload, recordCalls, type Call, type Client } from '../../tools/balance/writes.ts';
+import {
+  aQueryThatWrites,
+  maskArgument,
+  maskPayload,
+  recordTheWritesAtTheDbsCalls,
+  type Call,
+} from '../../tools/balance/writes.ts';
 
-/** A client whose queries chain like supabase-js's and answer when awaited; `ran` lists what ran, in order. */
-function fakeClient() {
-  const ran: string[] = [];
-  const client: Client = {
-    from(table: string) {
-      let op = 'select';
-      const q: Record<string, unknown> = {};
-      for (const name of ['select', 'insert', 'upsert', 'update', 'delete', 'eq', 'in', 'order', 'maybeSingle'])
-        q[name] = () => {
-          if (['insert', 'upsert', 'update', 'delete'].includes(name)) op = name;
-          return q;
-        };
-      q['then'] = (resolve: (v: unknown) => unknown) => {
-        ran.push(`${table}.${op}`);
-        return Promise.resolve({ data: null, error: null }).then(resolve);
-      };
-      return q;
-    },
-    rpc: (fn: string) => {
-      ran.push(`rpc.${fn}`);
-      return Promise.resolve({ data: [], error: null });
-    },
-  };
-  return { client, ran };
+/** The GM's world holding one game, G1, on turn 1, with one realm; its Db recorded. */
+function aRecordedFake() {
+  const world = aGameMastersWorld();
+  world.tables.games.push({ id: 'G1', name: 'Matrix', gm_user_id: 'gm1', status: 'active', turn: 1, meta: {} });
+  world.tables.game_players.push({ id: 'G1gp0', game_id: 'G1', player_index: 0, orders: '{}', orders_submitted: true });
+  const fake = makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION, world);
+  return { world, fake, ...recordTheWritesAtTheDbsCalls(fake.db, world.calls) };
 }
-
-/** The fake's query, as the tests chain it. */
-interface Query extends PromiseLike<unknown> {
-  select(cols: string): Query;
-  insert(row: unknown): Query;
-  upsert(rows: unknown, options?: { onConflict: string }): Query;
-  update(row: unknown): Query;
-  delete(): Query;
-  eq(col: string, v: unknown): Query;
-  in(col: string, v: unknown[]): Query;
-  maybeSingle(): Query;
-}
-const from = (c: Client, table: string) => c.from(table) as Query;
 
 const save = (meta: Record<string, unknown>) => ({
   game_state: JSON.stringify({ turn: 2, turnMode: { turnRanAt: '2026-10-01T12:00:00.035Z' } }),
@@ -59,81 +38,80 @@ const save = (meta: Record<string, unknown>) => ({
 });
 
 /** The calls of one made-up turn: `edit` changes one thing about them. */
-async function turn(edit: { meta?: Record<string, unknown>; turnFilter?: number; swap?: boolean } = {}) {
-  const { client } = fakeClient();
-  const calls = recordCalls(client);
-  const clear = () => from(client, 'game_players').update({ orders: null }).eq('game_id', 'G1');
+async function turn(
+  edit: { meta?: Record<string, unknown>; turn?: number; swap?: boolean; rowLeftOut?: boolean } = {},
+) {
+  const { db, calls } = aRecordedFake();
+  const theTurn = db.theTurnAsTheGameMasterRunsIt;
+  const clear = () => theTurn.clearTheOrdersOfEveryRealmOfThisGame('G1');
   const saveIt = () =>
-    from(client, 'games')
-      .update(save(edit.meta ?? { v: 1, realms: 3 }))
-      .eq('id', 'G1')
-      .eq('turn', edit.turnFilter ?? 1)
-      .select('id')
-      .maybeSingle();
-  for (const q of edit.swap ? [saveIt, clear] : [clear, saveIt]) await q();
+    theTurn.saveThisGameWhileOnThisTurnAndAnswerItsId('G1', edit.turn ?? 1, save(edit.meta ?? { v: 1 }));
+  const realms = [0, 1, 2].filter((i) => !(edit.rowLeftOut && i === 2));
+  const records = () =>
+    db.theStatistics.writeTheseTurnRecords(
+      realms.map((i) => ({ game_id: 'G1', turn: 1, player_index: i, is_bot: true, build: 'GM 2026.10.18-2300' })),
+    );
+  for (const q of edit.swap ? [saveIt, clear, records] : [clear, saveIt, records]) await q();
   return calls;
 }
 
 describe('the recorder', () => {
-  test('records each write and rpc in order: table, operation, every step and its arguments; not reads', async () => {
-    const { client, ran } = fakeClient();
-    const calls = recordCalls(client);
-    await from(client, 'games').select('*').eq('id', 'G1');
-    await from(client, 'games').update({ turn: 2 }).eq('id', 'G1').eq('turn', 1).select('id').maybeSingle();
-    await from(client, 'turn_events').upsert([{ turn: 1 }], { onConflict: 'game_id,turn,player_index' });
-    await client.rpc('get_game_slots', { p_games: ['G1'] });
-    await from(client, 'turn_logs').delete().in('turn', [1, 2]);
-    expect(ran, 'every call still reaches the client').toEqual([
+  test('records each call that writes or calls a database function, in order: its area, function and arguments; not reads', async () => {
+    const { db, calls, world } = aRecordedFake();
+    const theTurn = db.theTurnAsTheGameMasterRunsIt;
+    expect((await theTurn.thisGameEveryColumn('G1')).data, 'a read still answers').toMatchObject({ turn: 1 });
+    await theTurn.everyRealmOfThisGame('G1');
+    expect(await theTurn.saveThisGameWhileOnThisTurnAndAnswerItsId('G1', 1, { turn: 2 }), 'a write too').toMatchObject({
+      data: { id: 'G1' },
+    });
+    await theTurn.clearTheOrdersOfEveryRealmOfThisGame('G1');
+    await db.thePlayersRealms.theSlotsOfTheseGames(['G1']);
+    await db.theHallOfFame.deleteTheseGamesEntries(['G1']);
+    expect((await theTurn.theTurnOfThisGameIfItIsThere('G1')).data, 'a read after the writes').toMatchObject({
+      turn: 2,
+    });
+    expect(world.calls, 'every call still reaches the fake').toEqual([
       'games.select',
+      'game_players.select',
       'games.update',
-      'turn_events.upsert',
+      'game_players.update',
       'rpc.get_game_slots',
-      'turn_logs.delete',
+      'game_records.delete',
+      'games.select',
     ]);
+    expect(world.tables.games[0]?.['turn'], 'and changes what it holds').toBe(2);
     expect(calls).toEqual<Call[]>([
-      {
-        call: 'games.update',
-        steps: [
-          ['update', [{ turn: 2 }]],
-          ['eq', ['id', 'G1']],
-          ['eq', ['turn', 1]],
-          ['select', ['id']],
-          ['maybeSingle', []],
-        ],
-      },
-      {
-        call: 'turn_events.upsert',
-        steps: [['upsert', [[{ turn: 1 }], { onConflict: 'game_id,turn,player_index' }]]],
-      },
-      { call: 'rpc.get_game_slots', steps: [['rpc', [{ p_games: ['G1'] }]]] },
-      {
-        call: 'turn_logs.delete',
-        steps: [
-          ['delete', []],
-          ['in', ['turn', [1, 2]]],
-        ],
-      },
+      { call: 'theTurnAsTheGameMasterRunsIt.saveThisGameWhileOnThisTurnAndAnswerItsId', args: ['G1', 1, { turn: 2 }] },
+      { call: 'theTurnAsTheGameMasterRunsIt.clearTheOrdersOfEveryRealmOfThisGame', args: ['G1'] },
+      { call: 'thePlayersRealms.theSlotsOfTheseGames', args: [['G1']] },
+      { call: 'theHallOfFame.deleteTheseGamesEntries', args: [['G1']] },
     ]);
   });
 
-  test('takes its copy when the query runs: a later change to what was sent is not seen', async () => {
-    const { client } = fakeClient();
-    const calls = recordCalls(client);
-    const row = { gold: 4, army: { units: 2 } };
-    const q = from(client, 'games').update(row).eq('id', 'G1');
-    row.gold = 5; // before it runs: part of the write
-    await q;
-    row.army.units = 9; // after: the stand-in may keep this object, but the write was already sent
-    expect(calls[0]?.steps[0]).toEqual(['update', [{ gold: 5, army: { units: 2 } }]]);
+  test('takes its copy as the call is made: a later change to what was sent is not seen', async () => {
+    const { db, calls } = aRecordedFake();
+    const change = { turn: 2, meta: { realms: 3 } };
+    const sent = db.theTurnAsTheGameMasterRunsIt.saveThisGameWhileOnThisTurnAndAnswerItsId('G1', 1, change);
+    change.meta.realms = 9; // after the call: the fake may keep this object, but the write was already sent
+    await sent;
+    expect(calls[0]?.args).toEqual(['G1', 1, { turn: 2, meta: { realms: 3 } }]);
     expect(calls.splice(0)).toHaveLength(1);
     expect(calls, 'splice(0) takes one turn and leaves the list empty').toEqual([]);
   });
 
-  test("a query built but never run isn't recorded", () => {
-    const { client } = fakeClient();
-    const calls = recordCalls(client);
-    from(client, 'games').update({ turn: 2 }).eq('id', 'G1');
-    expect(calls).toEqual([]);
+  test('a write the fake refuses is still recorded: it was sent', async () => {
+    const { db, calls, world } = aRecordedFake();
+    world.failing['turn_logs.insert'] = { message: 'refused' };
+    const log = { game_id: 'G1', player_index: -1, turn: 1, entries: [] };
+    expect((await db.theTurnAsTheGameMasterRunsIt.writeThisLog(log)).error).toEqual({ message: 'refused' });
+    expect(calls).toEqual<Call[]>([{ call: 'theTurnAsTheGameMasterRunsIt.writeThisLog', args: [log] }]);
+  });
+
+  test('a query is a write by its operation, or a database function', () => {
+    expect(
+      ['games.insert', 'games.upsert', 'games.update', 'games.delete', 'rpc.get_game_slots'].map(aQueryThatWrites),
+    ).toEqual([true, true, true, true, true]);
+    expect(['games.select', 'game_players.select'].map(aQueryThatWrites)).toEqual([false, false]);
   });
 });
 
@@ -154,6 +132,25 @@ describe("the masking (the other columns', hash.ts)", () => {
     expect(maskPayload({ game_state: 'not json' })).toEqual({ game_state: 'not json' });
   });
 
+  test("a realm's report handed whole as a string is parsed and masked as the report column masks it; ids, turns and other strings are kept", async () => {
+    const report = { engineStamp: '2026.10.18-2300', playerIndex: 0, kingdom: { gold: 4, id: 2 } };
+    expect(maskArgument(JSON.stringify(report))).toEqual({ playerIndex: 0, kingdom: { gold: 4, id: 2 } });
+    expect([maskArgument('G1gp0'), maskArgument('2'), maskArgument('[1]'), maskArgument(2)]).toEqual([
+      'G1gp0',
+      '2',
+      '[1]',
+      2,
+    ]);
+    const { db, calls } = aRecordedFake();
+    await db.theTurnAsTheGameMasterRunsIt.giveThisRealmItsTurnReport('G1gp0', JSON.stringify(report));
+    expect(calls).toEqual<Call[]>([
+      {
+        call: 'theTurnAsTheGameMasterRunsIt.giveThisRealmItsTurnReport',
+        args: ['G1gp0', { playerIndex: 0, kingdom: { gold: 4, id: 2 } }],
+      },
+    ]);
+  });
+
   test("a realm's turn_logs snapshot is its report: its build stamp goes too; the GM log's lines are kept", () => {
     expect(maskPayload({ player_index: 0, entries: { engineStamp: 'x', kingdom: { gold: 1 } } })).toEqual({
       player_index: 0,
@@ -165,23 +162,34 @@ describe("the masking (the other columns', hash.ts)", () => {
 
   test('once hashed, clock readings inside the parsed save and a rebuilt stamp make no difference', async () => {
     const a = await turn();
-    const { client } = fakeClient();
-    const calls = recordCalls(client);
-    await from(client, 'game_players').update({ orders: null }).eq('game_id', 'G1');
-    const later = { ...save({ v: 1, realms: 3 }), id: 'G1', updated_at: 'now', build: 'other' };
+    const { db, calls } = aRecordedFake();
+    const theTurn = db.theTurnAsTheGameMasterRunsIt;
+    await theTurn.clearTheOrdersOfEveryRealmOfThisGame('G1');
+    const later = { ...save({ v: 1 }), id: 'G1', updated_at: 'now', build: 'other' };
     later.game_state = later.game_state.replace('12:00:00.035Z', '12:00:00.071Z');
-    await from(client, 'games').update(later).eq('id', 'G1').eq('turn', 1).select('id').maybeSingle();
+    await theTurn.saveThisGameWhileOnThisTurnAndAnswerItsId('G1', 1, later);
+    await db.theStatistics.writeTheseTurnRecords(
+      [0, 1, 2].map((i) => ({ game_id: 'G1', turn: 1, player_index: i, is_bot: true, build: 'GM 2026.11.17-0900' })),
+    );
     expect(playHash(calls)).toBe(playHash(a));
   });
 });
 
-// The three faults P1-02c's Done-when plants on copies of the site, here on one made-up turn.
+// The three faults P1-02c's Done-when plants on copies of the site, and P1-17s1's (one row left out), on one made-up
+// turn.
 describe('what changes the hash', () => {
-  test("a field dropped from the save's meta, a filter changed, two writes swapped", async () => {
-    const base = playHash(await turn());
-    expect(playHash(await turn()), 'the same turn: the same hash').toBe(base);
+  test("a field dropped from the save's meta, a turn changed, two writes swapped, one row left out", async () => {
+    const base = playHash(await turn({ meta: { v: 1, realms: 3 } }));
+    expect(playHash(await turn({ meta: { v: 1, realms: 3 } })), 'the same turn: the same hash').toBe(base);
     expect(playHash(await turn({ meta: { v: 1 } })), 'meta.realms dropped').not.toBe(base);
-    expect(playHash(await turn({ turnFilter: 2 })), 'eq(turn, 2)').not.toBe(base);
-    expect(playHash(await turn({ swap: true })), 'the save before the orders are cleared').not.toBe(base);
+    expect(playHash(await turn({ meta: { v: 1, realms: 3 }, turn: 2 })), 'saved while on turn 2').not.toBe(base);
+    expect(
+      playHash(await turn({ meta: { v: 1, realms: 3 }, swap: true })),
+      'the save before the orders are cleared',
+    ).not.toBe(base);
+    expect(
+      playHash(await turn({ meta: { v: 1, realms: 3 }, rowLeftOut: true })),
+      "a realm's turn record left out",
+    ).not.toBe(base);
   });
 });

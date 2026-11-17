@@ -49,13 +49,15 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   run.
 - **Exact:** per game and turn, 12-character hashes (`tools/balance/hash.ts`) of the saved state without its prose,
   the prose on its own, the GM log's structure and its text, the telemetry, the scripted realm's report
-  (structure and text apart; per section over the game), and **every write** the turn sends to the stand-in database
-  (`writes`, P1-02c: `tools/balance/writes.ts`). That last one is every write and database function (`rpc`) in order,
-  with its table, operation, filters, modifiers and payload, so a changed filter, a field dropped from the save's
-  `meta` or two writes swapped show even when nothing in play changed. The recorder wraps the stand-in client's
-  `from` and `rpc` before the page boots, and copies each write when its query runs. Reads aren't recorded. Left
-  out: the stand-in database's ids and stamps, the build stamp, and clock readings (the pinned clock moves on at each
-  reading). In the writes, the JSON held as a string (`game_state`, `turn_report`) is parsed first so this reaches
+  (structure and text apart; per section over the game), and **every write** the turn sends to the database
+  (`writes`, P1-02c: `tools/balance/writes.ts`). The games play on the typed fake of the GM's world
+  (`lib/fake-db.ts`, since P1-17s1), and that last hash is every call to the page's `Db` that writes or calls a
+  database function, in order, with its area, function and arguments, so a changed argument (the turn a save waits
+  on, a field dropped from the save's `meta`), a row left out or two writes swapped show even when nothing in play
+  changed. The recorder wraps the `Db` the page is handed, before the page boots, and copies each write as it is
+  called; a call is a write when a query it runs on the fake is one. Reads aren't recorded. Left out: the fake's
+  ids and stamps, the build stamp, and clock readings (the pinned clock moves on at each reading). In the writes,
+  the JSON held as a string (`game_state`, `turn_report`, a report handed whole) is parsed first so this reaches
   inside, and words are left out as in the other play hashes. Recording adds about 1.5–2 s on 14 cores.
   A baseline from before a column was added reads with it not kept: never a difference, and `npm run balance`
   refuses to compare with it.
