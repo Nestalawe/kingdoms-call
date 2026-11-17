@@ -25,14 +25,17 @@ recommendations; a maintainer may veto any of them. Each row checks its figures 
 
 ### P1-17: the database access layer
 
-The database access layer (`src/db/`), tested against the local Supabase as each role; `stub-db` retires. Impact: the
-page tests check the real queries; it closes a Phase 1 criterion. Maintainer ✓. Planned on 10 November; its decisions
+The database access layer (`src/db/`), tested against the local Supabase as each role; the tests have one fake of the
+database, and `stub-db` is deleted. Impact: the page tests check the real queries; it closes a Phase 1 criterion. Its
+last row is P1-17s2: the group is done once its rows merge. Maintainer ✓. Planned on 10 November; its decisions
 in force:
 - **No row changes who can read or change what:** each sends the same queries as before.
 - **The proof:** `refactor-only`. Every database call the page tests and the tours make is recorded, and is the same
   on the base and the row; both balance sets are identical.
 - **P1-17s1:** the matrix plays on the fake. Its `writes` column is recorded at `Db`'s calls, so the column changes
-  form once and the balance report says "writes only"; every other column stays identical.
-- **P1-17s2:** `stub-db` goes last. The quarantined tests that use it go first, each in its own pull request: the two
-  one-off proofs (`one-source`, `one-source-chromium`) are deleted, and `dispatches-e2e` comes back on today's three
-  tabs (a maintainer's choice).
+  form once. `results` changes only in the key order of each Hall of Fame entry's `records` (the fake reads turn
+  records in the database's order); every other column stays identical. The balance report calls this a reshape,
+  and the PR has no `refactor-only` label, because it changes the baseline.
+- **P1-17s2:** `stub-db` goes last, each rule it copied named beside the access-layer test that covers it. Before it,
+  each in its own pull request, the quarantined tests on it: the two one-off proofs of the September refactor are
+  deleted, and `dispatches-e2e` is back on today's three tabs (a maintainer's choice).

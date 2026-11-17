@@ -6,8 +6,8 @@
 // - each game gets its own fresh page, with an explicit seed and clock (bootJsdom's `seed` and `now`): some names
 //   drawn in one game survive in the page into the next;
 // - turn mode is manual: in "auto" mode the auto-turn watcher runs a turn by itself, at a moment that depends on load;
-// - the stand-in database's own stamps and ids are left out of the hashes (hash.ts);
-// - the turn's writes are recorded on the stand-in's one client, below bootJsdom's own wrapper (writes.ts);
+// - the fake database's own ids, and the stamps a stand-in adds, are left out of the hashes (hash.ts);
+// - the turn's writes are recorded at the calls to the Db the page is handed (writes.ts);
 // - the runner stops at gameOver: runTurn doesn't stop a finished game.
 // After every turn it checks the invariants (tests/lib/invariants.ts, P1-04b) and, in a scripted game, the scripted
 // realm's report for leaks (tests/lib/report-leaks.ts, P1-04c): a breach fails the game. They only read.
@@ -15,10 +15,14 @@
 // log, and, after the last turn, the check of the last save; and since P1-15f8 a turn the page's stop refuses (a place
 // not on src's known list), as any turn that fails, with the refusal's words. With KC_SITE the line is the other copy's and the last
 // save's check this checkout's.
-import { bootJsdom, readPage, type PageWindow } from '../../tests/lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../../tests/lib/boot.js';
+import {
+  aGameMastersWorld,
+  makeAFakeDbHoldingTheGameMastersWorld,
+  type TheGameMastersTables,
+} from '../../tests/lib/fake-db.ts';
 import { checkTurn, describeBreaches } from '../../tests/lib/invariants.ts';
 import type { RealmReport } from '../../tests/lib/report-leaks.ts';
-import { makeStub, type Row } from '../../tests/lib/stub-db.js';
 import {
   whatTheSaveCheckFindsOnTheLastSave,
   whatTheSaveCheckFoundInATurnsLog,
@@ -35,7 +39,7 @@ import {
   type TelemetryRow,
   type TheKindOfAStoredLine,
 } from './stats.ts';
-import { recordCalls } from './writes.ts';
+import { recordTheWritesAtTheDbsCalls } from './writes.ts';
 
 /** How long the page is given to boot. A fixed wait until a "boot finished" condition is found that doesn't depend on
  *  load; any replacement is proved by identical hashes at 1 and many games side by side. */
@@ -86,7 +90,7 @@ export interface PlayOptions {
   untilTurn?: number;
 }
 
-function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): void {
+function setupGame(W: PageWindow, spec: GameSpec, DB: TheGameMastersTables): void {
   const size = MAP_SIZES[spec.realms];
   if (!size) throw new Error(`${spec.id}: no map for ${String(spec.realms)} realms`);
   const scripted = spec.group === 'scripted';
@@ -108,7 +112,7 @@ function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): vo
   W.eval(`(function(){ const g=generateNewGame(__sp,__sz,0,__opt);
     g.turnMode={mode:'manual',time:'20:00',everyDays:1,nextDeadlineAt:null,turnRanAt:new Date().toISOString()};
     g.botDifficulty='hard'; g.botDiplomacy=${JSON.stringify(spec.diplomacy)}; window.__G=g; })()`);
-  (DB['games'] ??= []).push({
+  DB.games.push({
     id: 'G1',
     name: 'Matrix',
     gm_user_id: 'gm1',
@@ -122,7 +126,7 @@ function setupGame(W: PageWindow, spec: GameSpec, DB: Record<string, Row[]>): vo
   });
   for (let i = 0; i < spec.realms; i++) {
     const human = scripted && i === SCRIPTED_REALM;
-    (DB['game_players'] ??= []).push({
+    DB.game_players.push({
       id: 'G1gp' + String(i),
       game_id: 'G1',
       user_id: human ? 'u' + String(i) : null,
@@ -142,12 +146,17 @@ export async function playGame(
   options: PlayOptions = {},
 ): Promise<GameResult> {
   const t0 = performance.now();
-  const S = makeStub();
-  const DB = S.DB;
-  const calls = recordCalls(S.supabase.createClient());
+  // The GM's world as the stand-in began (gm1 signed in, a Game Master), held by the fake the page is handed (P1-17s1)
+  const world = aGameMastersWorld();
+  const DB = world.tables;
+  const { db, calls } = recordTheWritesAtTheDbsCalls(
+    makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION, world).db,
+    world.calls,
+  );
   const errors: string[] = [];
   const W = bootJsdom(html, {
-    supabase: S.supabase,
+    supabase: { createClient: () => ({}) },
+    db,
     seed: spec.seed,
     now: START,
     setup(w) {
@@ -165,11 +174,11 @@ export async function playGame(
     setupGame(W, spec, DB);
     const scripted = spec.group === 'scripted';
     const game = () => {
-      const g = DB['games']?.[0];
+      const g = DB.games[0];
       if (!g) throw fail('the game row is gone');
       return g;
     };
-    const me = DB['game_players']?.find((p) => p['player_index'] === SCRIPTED_REALM);
+    const me = DB.game_players.find((p) => p['player_index'] === SCRIPTED_REALM);
     const turns: string[] = [];
     const unresolved: number[] = [];
     const gmLog: LogEntry[] = [];
@@ -188,8 +197,8 @@ export async function playGame(
         me['orders_submitted'] = true;
         plan = s.plan;
       }
-      const nLogs = (DB['turn_logs'] ??= []).length;
-      const nEvents = (DB['turn_events'] ??= []).length;
+      const nLogs = DB.turn_logs.length;
+      const nEvents = DB.turn_events.length;
       errors.length = 0;
       calls.length = 0;
       W['__game'] = structuredClone(row);
@@ -203,15 +212,15 @@ export async function playGame(
 
       const after = game();
       const state = JSON.parse(String(after['game_state'])) as State;
-      const rows = DB['turn_logs'].slice(nLogs);
+      const rows = DB.turn_logs.slice(nLogs);
       const log = rows.filter((l) => l['player_index'] === -1).flatMap((l) => l['entries'] as LogEntry[]);
-      const telemetry = DB['turn_events'].slice(nEvents);
+      const telemetry = DB.turn_events.slice(nEvents);
       const breaches = checkTurn({
         before,
         after: state,
         gmLog: log,
         telemetry,
-        players: DB['game_players'] ?? [],
+        players: DB.game_players,
         reports: rows
           .filter((l) => Number(l['player_index']) >= 0)
           .map((l) => ({ realm: Number(l['player_index']), report: l['entries'] as RealmReport['report'] })),
@@ -248,13 +257,13 @@ export async function playGame(
         `the save's check, the last save (after turn ${String(turns.length)}): ${placesInTheLastSave.join('; ')}`,
       );
     const final = JSON.parse(lastSave) as { gameOver?: GameOver };
-    const resultRows = [...(DB['game_results'] ?? []), ...(DB['game_records'] ?? [])].map(withoutStamps);
+    const resultRows = [...DB.game_results, ...DB.game_records].map(withoutStamps);
     const result: GameResult = {
       id: spec.id,
       turns,
       results: resultRows.length ? playHash(resultRows) : '',
       stats: gameStats({
-        telemetry: DB['turn_events'] as unknown as TelemetryRow[],
+        telemetry: DB.turn_events as unknown as TelemetryRow[],
         gmLog,
         unresolved,
         gameOver: final.gameOver ?? null,

@@ -1,6 +1,6 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
-// tests on the hand-written database stand-in, tests on the engine's vm loader, the engine's checks of a unit by its
+// tests on the engine's vm loader, the engine's checks of a unit by its
 // type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
@@ -38,7 +38,6 @@ const CODE = /\.(ts|mts|cts|js|mjs|cjs|html)$/;
 // Built from parts, so this file doesn't count itself.
 const TS_IGNORE = new RegExp('@ts-' + '(ignore|expect-error)');
 const ESLINT_DISABLE = new RegExp('eslint-' + 'disable');
-const STUB_DB = /['"][^'"]*\/stub-db(\.js)?['"]/;
 
 function files(): string[] {
   const out = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: ROOT });
@@ -52,16 +51,17 @@ const lines = (text: string, re: RegExp) => text.split('\n').filter((l) => re.te
 // The ts-nocheck line has no count: lint refuses it in every TypeScript file (eslint.config.js's ban-ts-comment; plan
 // P1-10, Decision 9), so its two counts, on the engine's side and in the UI, retired at 0 (P1-16v), as plan P1-13's
 // Decision 13 retires a baseline at 0.
+// The tests on the old database stand-in have no count: the stand-in is deleted (plan P1-17s2), so an import of it
+// fails to resolve, and the count retired with it.
 
-/** The counts read from the code files' text (the switch-offs of a check and the tests on the database stand-in), for
- *  the files given as [path from the repository's root, text]. */
+/** The counts read from the code files' text (the switch-offs of a check), for the files given as [path from the
+ *  repository's root, text]. */
 export function countsFromTheCodeFiles(codeFiles: readonly (readonly [file: string, text: string])[]): Counts {
-  const counts = { tsIgnore: 0, eslintDisable: 0, stubDbTests: 0 };
+  const counts = { tsIgnore: 0, eslintDisable: 0 };
   for (const [f, text] of codeFiles) {
     if (!CODE.test(f)) continue;
     counts.tsIgnore += lines(text, TS_IGNORE);
     counts.eslintDisable += lines(text, ESLINT_DISABLE);
-    if (f.startsWith('tests/') && !f.startsWith('tests/lib/stub-db.') && STUB_DB.test(text)) counts.stubDbTests++;
   }
   return counts;
 }

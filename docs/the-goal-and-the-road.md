@@ -90,7 +90,7 @@ the module it changes.
 | No known import-rule violation and no unused code; no ESLint suppression on the engine side | Not yet met: the ratchet still counts known violations and unused code, and `src/engine/` and `src/views/` still hold suppressions |
 | No hand-typed stamps; hashed assets; the version banner works | Met |
 | The harness is enforced: hooks, the Node pin, ratchets, coverage thresholds and the harness test, in CI | Met |
-| Pages reach the database only through the access layer, tested per role against the local Supabase; `stub-db` deleted; property tests with fixed seeds; two mutation sessions or more | Not yet met: test files still use `stub-db` |
+| Pages reach the database only through the access layer, tested per role against the local Supabase; `stub-db` deleted; property tests with fixed seeds; two mutation sessions or more | Met |
 | The architecture checks run in CI: the layers and cycles, knip, the purity test, the registry and content completeness tests; the module map is generated | Not yet met: the content completeness test isn't written |
 | No test injects code into a page's source; every test is TypeScript; saves are versioned and checked; items have ids | Not yet met: the saves part is met; old JavaScript tests are left; items have no ids yet (P1-20) |
 | Names say what the code does: the glossary's renames (P1-24) | Not yet met |

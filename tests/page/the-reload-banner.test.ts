@@ -10,7 +10,7 @@
 // The rulebooks and the landing page have no data to go stale: they never read version.json.
 // Level 4 (page): the bar is DOM on a booted page, from the page's own metas and address, with fetch, the page's clock
 // and its 5-minute timer stood in. The decision on plain values is tests/unit/a-newer-version-is-ready.test.ts. The
-// pages boot signed out, on a stand-in client that answers "no session" (no stand-in database, lib/stub-db.js: the bar
+// pages boot signed out, on a stand-in client that answers "no session" (no fake database, lib/fake-db.ts: the bar
 // needs none).
 import { describe, expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';

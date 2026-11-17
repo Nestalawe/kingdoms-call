@@ -19,7 +19,7 @@ separate PRs ([below](#database-and-site-changes-go-separately)), database first
   game needs. It includes the exact SQL, its rollback SQL, and a plain-words description of what the owner is approving.
 - **A site PR** that uses a new table or column either **copes** while it's missing (probe and fall back:
   [traps.md](../docs/traps.md#a-new-column-must-be-optional-at-the-write-site)), with a test that hides it
-  (`MISSING` / `MISSING_COLS` in `tests/lib/stub-db.js`; example: `tests/meta-missing-turn.test.js`), or
+  (the fake's `missingTables` / `missingColumns` in `tests/lib/fake-db.ts`; example: `tests/meta-missing-turn.test.js`), or
   **declares** it by raising the page's `KC_DB_MIN` to the migration's version, so an older database stops
   the page with a clear message ([traps.md](../docs/traps.md#a-site-change-that-needs-a-database-change)).
   Cope for an optional extra; declare when the page can't work without it. Say which in the PR.

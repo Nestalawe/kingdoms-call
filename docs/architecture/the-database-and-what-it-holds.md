@@ -189,7 +189,7 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   `db.theReportedDispatches` (`message_reports`, `gm_reported_messages`). Then the player's games and realms:
   `db.thePlayersRealms` (`game_players`, joining, `get_game_slots`), `db.thePlayersGames` and `db.theChroniclesLogs`
   (`turn_logs`). Then the orders: `db.theOrders` (the draft, the hero order, Revise and Submit, through
-  `submit_orders()`). The player page makes no call on `sb`. Then the GM's games:
+  `submit_orders()`). Then the GM's games:
   `db.theGameMastersGames` (the list, a game, making, changing, archiving, the backfill) and `db.theGameMastersRealms`
   (removing a realm), then the GM's turn log, `db.theGameMastersTurnLogs`, and deleting a game,
   `db.theDeletionOfAGame` (its rows in each of 8 tables, one function a table). Then the turn's shell,
@@ -198,8 +198,8 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   `db.theTurnZeroAsTheGameMasterRunsIt` (the realms read, the bots' realms made afresh, the start saved, the first
   reports and logs). A `Db` function
   sends the query the page sent before and answers as supabase-js does (`data`, `error`, `status`; the sign-in's `data`
-  and `error`), so the page's error paths stay the same. No page code but `src/db/` calls the client now: the pages'
-  `sb` is left only for the tests that reach it.
+  and `error`), so the page's error paths stay the same. No page code but `src/db/` calls the client, and no page
+  puts it on its window.
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
   compiler error. They write every function's argument as never null: `TheDatabase` (beside `Db`) widens the ones that
   take null on purpose (`account_suspend`'s `p_until`), and a dispatch's sender, which the player page sends as null
@@ -246,7 +246,7 @@ or written.
   relies on.
 - The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots a newer GM page when one is ready, so the
   check runs again before that page's first turn.
-- Tests: every stand-in database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.js`).
+- Tests: the fake database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.js`).
   `bootJsdom(..., {dbVersion})` sets another answer (an older version, `null` for a missing function, or
   `'offline'`), as `tests/db-guard.test.js` does.
 
@@ -286,17 +286,16 @@ The player portal reads its **own** `game_players` row directly, and every other
 `fetchGameSlots` (`rpc('get_game_slots')`, P0-20): number, bot or not, orders in or not, alignment while in
 setup. From P0-21 the database answers a direct read of another realm's row with nothing, so a new feature that
 reads other slots directly would quietly see only its own. If it needs more than `get_game_slots` gives, that's
-a database change first. `tests/other-realms-slots.test.js` switches P0-21's rule on in the stand-in database
-(`RULES.ownSlotsOnly`) and fails on any read that asks for another realm's row.
+a database change first. `tests/other-realms-slots.test.js` fails on any read of another account's realm (the fake
+notes each one); `tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
 
 ## Another game reads as nothing
 
 From P2-16 (ruling D-10), an account reads a running or finished game, and its turn logs, only if it runs the game
 or holds a realm in it; the Overlord reads every game. A game in setup is read by any signed-in account if it's
 public, or by the accounts it invites if it's private. Asking for any other game gives no row and no error, so a new
-feature that reads another game directly would quietly find nothing. `tests/games-for-their-players.test.js`
-switches the rule on in the stand-in database (`RULES.ownGamesOnly`) and fails on any read that asks for another
-game or its logs.
+feature that reads another game directly would quietly find nothing. The access layer's tests check the rule as
+each role (`tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts`, "the games" and "the turns' logs").
 
 The same goes for **access rules that look at `games`**: a rule's subquery on another table runs under the caller's
 own read rules on that table. "Is there no such game?" asked that way is also true of a game the caller can't read.

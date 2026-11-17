@@ -1,4 +1,3 @@
-import { sb } from './startup.ts';
 import { setConcede, setDiscoveryChoice, updateEquipTarget, updateRumourTarget } from './items-and-heroes.ts';
 import { jumpToReportSection, show } from './init.ts';
 import { setMobileView, locateOnMap } from './layout.ts';
@@ -226,7 +225,6 @@ Object.assign(window, {
   renderReckoningOrders, // ui/player/titles.ts
   renderReportView, // ui/player/report.ts
   renderTitles, // ui/player/titles.ts
-  sb, // ui/player/startup.ts
   setMsgChannel, // ui/player/dispatches.ts
   terrorNoteP, // ui/player/map-symbols.ts
   unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts

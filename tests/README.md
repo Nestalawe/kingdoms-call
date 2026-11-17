@@ -5,7 +5,7 @@ How to write, place, prove and run a test. Read it when you write a test; it is 
 - **Every test, one line each:** [every-test-its-level-and-what-it-checks.md](every-test-its-level-and-what-it-checks.md).
   A test's own header says the rest: what it checks, its level and why.
 - **How a test loads a page, the engine or the site's code** (`lib/boot.js`, `lib/engine.ts`, `lib/source.ts`, the
-  stand-in database, the seed): [how-the-tests-reach-the-site.md](../docs/architecture/how-the-tests-reach-the-site.md).
+  fake database, the seed): [how-the-tests-reach-the-site.md](../docs/architecture/how-the-tests-reach-the-site.md).
 - **The balance matrix in full:** [the-balance-matrix.md](../docs/architecture/the-balance-matrix.md).
 - **The toolchain, the hooks and the ratchet:** [the-toolchain-the-checks-and-the-harness.md](../docs/architecture/the-toolchain-the-checks-and-the-harness.md).
 
@@ -56,7 +56,7 @@ level and why a lower one wouldn't do.
 | db | access layer | Calls a `Db` function (`src/db/`) against the local Supabase as each role (`lib/made-up-accounts-in-each-role-on-the-local-supabase.ts`), in `db/`: the query and the access rules together. `npm run test:db`, not in `npm test`; run by CI's `db` job ([the database topic file](../docs/architecture/the-database-and-what-it-holds.md#the-access-layer-srcdb)) |
 | 2 | scenario | Plays one real turn on a small staged world |
 | 3 | simulation | Plays whole seeded games (fuzz runs, the report-leak runs) |
-| 4 | page | Boots a page in jsdom against the stand-in database; the browser specs are page tests in Chromium |
+| 4 | page | Boots a page in jsdom against the fake database; the browser specs are page tests in Chromium |
 
 ## What each level is for, and what the tests don't do
 
@@ -87,7 +87,7 @@ level and why a lower one wouldn't do.
   Node process, with the same arguments and environment; it passes when the script exits 0, and a failure shows the
   end of its output. To add or quarantine a script, edit `suite.ts`. Write no new ones.
 - **Load the site the one way:** a page through `lib/boot.js`, the engine through `lib/engine.ts` or its modules, the
-  site's code through `lib/source.ts`, the database through `lib/stub-db.js`
+  site's code through `lib/source.ts`, the database through its fake, `lib/fake-db.ts`
   ([how-the-tests-reach-the-site.md](../docs/architecture/how-the-tests-reach-the-site.md)). Tests use synthetic,
   seeded data only.
 - **Stage a world where a wrong read gives another answer:** a value read off the king needs a world whose first hero
@@ -179,9 +179,6 @@ behaviour is fine, loosening it until it passes is not.
 
 | Test | Level | Why |
 |---|---|---|
-| `quarantine/dispatches-e2e.test.js` | 4 | 70 of 71 checks pass. It expects left-panel tabs Map + Dispatches; the player portal now also has a Report tab |
-| `quarantine/one-source.test.js` | 4 | Needs the pre-refactor build of 27 Sept in `quarantine/before/` (or `KC_BEFORE_DIR`). A one-off proof for that refactor |
-| `quarantine/one-source-chromium.test.js` | 4 | The "good" and "missing data file" cases pass; the "stale data file" case needs the same pre-refactor build |
 | `quarantine/set-scan.test.js` | 0 | Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives. Needs triage before it can gate |
 
 **A running test that can't fail on its own findings:** `home-placement` prints `FAIL` for a too-close capital but
