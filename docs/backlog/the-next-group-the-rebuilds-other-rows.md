@@ -23,22 +23,6 @@ rows are in [the top](README.md#the-top-in-order) (T6), its finished rows in
 recommendations; a maintainer may veto any of them. Each row checks its figures again on its base. P1-23 is a group of
 [the rulings to build](the-rulings-decided-not-built.md#p1-23-the-rulings-tranche).
 
-### P1-16: the UI typed
-
-Strict TypeScript for the UI and the tools: no `@ts-nocheck` left. Impact: the compiler checks every page; it closes a
-Phase 1 criterion. Planned on 10 November; its decisions in force:
-- **The order:** r to t, callee before caller, then u (the reads named), then v (the ban).
-- **The forms:** [freeing a file of its `@ts-nocheck` line](../architecture/freeing-a-file-of-its-ts-nocheck-line.md)
-  and its forms files: no `!` or `as`, every typed finding fixed and none suppressed, and `||` becomes `??` only
-  where the type rules out `''`, `0` and `false`.
-- **The proof:** `refactor-only`. Every tour screen is the same on the base and the row. Each changed line no tour
-  reaches (`tools/proof/the-changed-lines-no-tour-reaches.ts`) gets a case that fails on a planted fault, or is named.
-  On a GM page's row, both balance sets are identical, `writes` included. Staging is not needed.
-- **Copies that disagree stay as they are**, each typed in place
-  ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs)).
-- **Not in this series:** the engine side's lint suppressions, `.github/scripts/` in TypeScript (a later slice, one
-  row a script, Maintainer ✓, tried on staging), and the JavaScript tests (P1-14z).
-
 ### P1-17: the database access layer
 
 The database access layer (`src/db/`), tested against the local Supabase as each role; `stub-db` retires. Impact: the
