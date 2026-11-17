@@ -116,7 +116,7 @@ describe('the recorder', () => {
 });
 
 describe("the masking (the other columns', hash.ts)", () => {
-  test("drops the stand-in's ids and stamps and the build stamp at a row's top level, not deeper", () => {
+  test("drops the fake's ids and stamps and the build stamp at a row's top level, not deeper", () => {
     expect(
       maskPayload([
         { id: 'row7', created_at: 'x', updated_at: 'y', build: 'GM 2026.10.18-2300 tel1', turn: 1, pre: { id: 3 } },

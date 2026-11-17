@@ -13,8 +13,8 @@
   - `serve` and `routeExternal` do the same for Chromium (Playwright): the pages are served from one
     folder, as deployed (`browser/server.ts`); `assets/supabase-js-*.js` gets a stub, `kc-config.js` a database
     address that never answers (so a missed stub reaches no database) and the fonts nothing;
-  - every stand-in database answers `rpc('kc_db_version')` with `DB_VERSION`, the newest migration in
-    `supabase/migrations/`, so pages pass their database version guard. `bootJsdom`'s
+  - the database a page is handed (the fake, or a stub of a client) answers its version (`kc_db_version`) with
+    `DB_VERSION`, the newest migration in `supabase/migrations/`, so pages pass their database version guard. `bootJsdom`'s
     `opts.dbVersion` sets another answer (an older version, `null` for a missing function, `'offline'`, or a
     list used in order) and `opts.dbCalls` records the page's database calls.
 - **`lib/engine.ts`** is the one way to load the engine in Node: `loadEngine({seed})` runs the engine's
@@ -220,18 +220,9 @@
 - **`tests/tools/same-dom.js`** (run by hand, not in `npm test`): every screen of a tour, with ordinary names, on two copies of
   the site (e.g. `main`'s and the branch's), compared as parsed DOM; a string in a handler is compared by its value, however
   it's quoted, and a footer's build line reads as the stamp it replaced. A pull request that converts a page shows its output.
-- **`lib/stub-db.js`** holds every Supabase stand-in the tests use. Nothing connects to a real
-  database. `makeStub()` mirrors the Game Master functions (`is_game_master`, `is_site_admin`,
-  `gm_accept_offer`, `gm_decline_offer`) over its `game_masters` and `site_admins` rows; its default
-  account is a Game Master. It also mirrors `get_game_slots` and the one-realm-per-number and one-per-account
-  rules on `game_players`; `RULES.ownSlotsOnly` applies P0-21's read rule and records any read that asks for
-  another realm's row. `RULES.ownGamesOnly` applies P2-16's read rules on `games` and `turn_logs` (a game for its GM,
-  its players and the Overlord, and in setup for anyone if public, or invited if private; a log for its game's GM,
-  players and the Overlord) and records any read that asks for another running or finished game, or its logs.
-  `INSERT_ERRORS[table]` answers every insert into a table with a given error, as a check or
-  trigger would, and `ERRORS["table.op"]` (or `ERRORS["rpc.name"]`) answers every such call with a given error, so a
-  test chooses the message a screen shows. It also has `message_reports` and mirrors `gm_reported_messages`, and the Overlord's functions (`overlord_accounts`, `gm_offer`, `gm_withdraw_offer`, `gm_revoke`, `reassign_game`, `account_suspend`, `account_unsuspend`, `account_delete`; account emails, dates and suspensions from `DB.accounts`). The harnesses were written with five different stubs; each is kept exactly as it
-  behaved, so moving a harness onto the shared file didn't change what it sees.
+- **`lib/fake-db.ts`** is the tests' one fake of the database, a small in-memory `Db`: a page test hands it to the
+  page; it answers each query as asked and never imitates the access rules, which the access layer's tests check
+  against the local Supabase ([the access layer](the-database-and-what-it-holds.md#the-access-layer-srcdb)).
 - **Fixed seed.** `npm test` sets `KC_SEED`. `boot.js` then replaces the test process's `Math.random` with a seeded
   generator (sfc32), and gives every jsdom page a seed (`KC_RNG_SEED`) before its scripts run. The page's dice,
   `kcRng()` (`src/engine/rng.ts`, P1-07), are the same generator seeded the same way; the page's `Math.random` gets

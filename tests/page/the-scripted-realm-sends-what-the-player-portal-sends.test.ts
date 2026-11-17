@@ -233,7 +233,7 @@ const choicesOf = (s: AState): WhatTheRealmChose => scriptedChoices(s.state, SCR
 
 // ── The page, on a stand-in database of its own ──
 // Two rows the form reads and writes (the game, and the scripted realm's slot), on a client that answers every other
-// read with nothing; no stand-in of lib/stub-db.js, which this test needs no more of.
+// read with nothing; no fake database (lib/fake-db.ts), which this test needs no more of.
 type Row = Record<string, unknown>;
 const slot: Row = {
   id: 'gp0',

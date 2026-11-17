@@ -18,8 +18,8 @@
 // second waits its own 10 minutes; a failed fetch, an error answer, an answer that isn't JSON or isn't `version.json`:
 // no reload and no `console.error`; the page reads `version.json` once as it loads (the reload banner's first check,
 // P1-06d). Level 4: the decision reads the booted page's metas, address and session storage. Red on its base (which
-// read the footer's stamp) and with the comparison or the 10-minute wait planted out (in the PR). No stand-in database
-// (`lib/stub-db.js`): a client that answers "no session"
+// read the footer's stamp) and with the comparison or the 10-minute wait planted out (in the PR). No fake database
+// (`lib/fake-db.ts`): a client that answers "no session"
 import { expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
 

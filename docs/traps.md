@@ -283,15 +283,16 @@ and name; lint refuses a fate it leaves out). Checks:
 
 The player portal reads its own `game_players` row directly, and every other realm's slot only through
 `fetchGameSlots` (`rpc('get_game_slots')`); if a feature needs more than `get_game_slots` gives, that's a database
-change first. Checks: `tests/other-realms-slots.test.js` switches the rule on in the stand-in database
-(`RULES.ownSlotsOnly`) and fails on any read of another realm's row.
+change first. Checks: `tests/other-realms-slots.test.js` fails on any read of another account's realm (the fake
+notes each one); `tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
 
 ## Another game reads as nothing
 
 An account reads a running or finished game, and its turn logs, only if it runs the game or holds a realm in it (the
 Overlord reads every game); a game in setup, if it's public or invites the account. An access rule whose subquery
 reads `games` runs under the caller's own read rules: ask a `security definer` function instead, as the Hall of Fame
-record rules ask `game_exists`. Checks: `tests/games-for-their-players.test.js` (`RULES.ownGamesOnly`).
+record rules ask `game_exists`. Checks: `tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` (the
+games and the turns' logs, as each role).
 
 ## The GM page's shared files are engine paths by name
 

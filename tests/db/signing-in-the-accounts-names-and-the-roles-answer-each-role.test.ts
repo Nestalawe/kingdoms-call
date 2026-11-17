@@ -6,8 +6,8 @@
 //   profile's too; the password and the name kept with the sign-in change for an account, never signed out; signing
 //   out leaves no session;
 // - the accounts' names (profiles): every signed-in account reads each account's id, name and joining day, in the names'
-//   order when asked, never its email (the column privilege tests/lib/stub-db.js holds as REVOKED_COLS); a visitor reads
-//   none; an account names itself, and no other;
+//   order when asked, never its email (the column privilege); a visitor reads none; an account names itself, and no
+//   other;
 // - the roles: is_game_master() is true for the two Game Masters, is_site_admin() for the Overlord, false for the rest,
 //   refused signed out; an account reads its own Game Master offer (the Overlord every one); an open offer is accepted
 //   or declined by its account, and "You have no offer to accept / decline" otherwise (the stand-in's four mirrors).
@@ -182,7 +182,7 @@ describe("the accounts' names", () => {
     );
   });
 
-  test.for(THE_ROLES)('%s is never handed an email (REVOKED_COLS: the column privilege)', async (role) => {
+  test.for(THE_ROLES)('%s is never handed an email (the column privilege)', async (role) => {
     const client = clients.get(role);
     if (!client) throw new Error(`no client for ${role}`);
     expect(inShort(await client.from('profiles').select('id,email').eq('id', idOf('a player')))).toEqual(REFUSED);

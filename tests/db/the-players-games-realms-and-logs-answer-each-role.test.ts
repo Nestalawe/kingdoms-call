@@ -2,13 +2,13 @@
 // thePlayersRealms, thePlayersGames, theChroniclesLogs; plan P1-17j), on a supabase-js client of the local Supabase, as
 // each role (signed out, a player, a rival, the game's GM, another GM, the Overlord):
 // - the realms (game_players): each is read by its own player, the game's GM and the Overlord, never by a rival or
-//   another GM (stub-db's RULES.ownSlotsOnly); an account joins a game only as itself, once a game (the unique index
-//   game_players_one_per_user) and in a free slot (game_players_one_per_number), and the Overlord never holds one;
+//   another GM; an account joins a game only as itself, once a game (the unique index game_players_one_per_user) and
+//   in a free slot (game_players_one_per_number), and the Overlord never holds one;
 // - get_game_slots(): every realm's slot (never its player) in the games the account may see: its own, those it runs,
 //   an open game in setup (a private one if invited) and, for the Overlord, every game; alignment only in setup;
 // - the games (games): read by their GM, their players and the Overlord, and in setup by any account if public or an
-//   invited one if private (RULES.ownGamesOnly);
-// - the turns' logs (turn_logs): read by the game's GM, its players and the Overlord (RULES.ownGamesOnly's logs).
+//   invited one if private;
+// - the turns' logs (turn_logs): read by the game's GM, its players and the Overlord.
 // A visitor reads nothing, for want of a grant. The world's two setup games and its logs are made here through the
 // local service role and removed after; each join made is removed before the next test.
 // Level db (the access layer, against the local Supabase): the queries and the access rules together, which no lower

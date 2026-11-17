@@ -130,7 +130,7 @@ const SEED=process.env.KC_SEED;
 let bootCount=0;
 if(SEED!=null&&SEED!=='') Math.random=seededRandom(SEED);
 
-// opts.supabase   the object installed as window.supabase (e.g. {createClient:()=>nullStub()})
+// opts.supabase   the object installed as window.supabase (e.g. {createClient:()=>({})})
 // opts.setup(w)   the harness's own beforeParse lines (error capture, console handling, overrides)
 // opts.url, opts.pretendToBeVisual   jsdom options; defaults match the original harnesses
 // opts.dbVersion, opts.dbCalls         what rpc('kc_db_version') answers, and a list recording the page's

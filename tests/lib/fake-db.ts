@@ -757,19 +757,19 @@ export interface AReportThePlayersWorldHolds {
   readonly created_at: string;
 }
 /** What the player page reads, held by the fake: who is signed in (`me`, else no one), the accounts' names, the games
- *  and their realms (as makeStub, in tests/lib/stub-db.js, held them: a test may add one later, and reads a join
- *  back), and what a dispatch sent is refused with (`dispatchRefused`, none: sent). With `dispatches` and `readMarks`
- *  (plan P1-17l2), it holds the dispatches and the read marks too: a test may add a dispatch later, as another
- *  player's browser would, and a dispatch sent and read marks written are kept (without them, none is held). The
- *  orders are saved into `realms` as submit_orders saves them (its checks: the realm `me` holds, the game running, its
- *  turn, its deadline in the game's meta). The fake answers each read as its query asks (its filters, never the access
- *  rules), and notes in
- *  `readsOfAnotherAccountsRealms` each read of the realms that asks for an account other than `me`'s, or for a realm
- *  not `me`'s. With `offers` (plan P1-17r), it holds the Game Master offers: the page reads an account's, and `me`
- *  accepts or declines its own as gm_accept_offer and gm_decline_offer do (refused in their words when there is none
- *  to answer); with `reports`, the reports of dispatches: the page reads a game's and writes one (without them, none is
- *  held). While `dispatchesTableMissing` is true (plan P1-17, the Dispatches spec), every call on the dispatches' table (game_messages) is
- *  refused as a database without that table refuses it, in its words, as the GM's world's missing tables are. */
+ *  and their realms (a test may add one later, and reads a join back), and what a dispatch sent is refused with
+ *  (`dispatchRefused`, none: sent). With `dispatches` and `readMarks` (plan P1-17l2), it holds the dispatches and the
+ *  read marks too: a test may add a dispatch later, as another player's browser would, and a dispatch sent and read
+ *  marks written are kept (without them, none is held). The orders are saved into `realms` as submit_orders saves them
+ *  (its checks: the realm `me` holds, the game running, its turn, its deadline in the game's meta). The fake answers
+ *  each read as its query asks (its filters, never the access rules), and notes in `readsOfAnotherAccountsRealms` each
+ *  read of the realms that asks for an account other than `me`'s, or for a realm not `me`'s. With `offers` (plan
+ *  P1-17r), it holds the Game Master offers: the page reads an account's, and `me` accepts or declines its own as
+ *  gm_accept_offer and gm_decline_offer do (refused in their words when there is none to answer); with `reports`, the
+ *  reports of dispatches: the page reads a game's and writes one (without them, none is held). While
+ *  `dispatchesTableMissing` is true (plan P1-17, the Dispatches spec), every call on the dispatches' table
+ *  (game_messages) is refused as a database without that table refuses it, in its words, as the GM's world's missing
+ *  tables are. */
 export interface ThePlayersWorld {
   readonly me: string | null;
   readonly names: readonly AnAccountsName[];
@@ -1195,7 +1195,7 @@ export function makeAFakeDbHoldingThePlayersWorld(version: string, world: ThePla
 }
 
 /** A change the GM page sent while it ran a turn (a row's `update`, `insert` or `upsert`, by its table, with what it
- *  sent: `val`, as the stand-in cannedStub noted it, in tests/lib/stub-db.js), or a deletion (no `val`). */
+ *  sent: `val`), or a deletion (no `val`). */
 export interface AChangeTheGameMastersTurnSent {
   readonly table: string;
   readonly val?: unknown;
@@ -1305,15 +1305,14 @@ export type TheGameMastersTables = Record<
   | 'site_admins',
   ARowTheGameMastersWorldHolds[]
 >;
-/** What the GM page reads and changes, held by the fake (plan P1-17q2), as the stand-in makeStub held it
- *  (tests/lib/stub-db.js): who is signed in (`me`, else no one: gm1, a Game Master, unless a test says otherwise), the
- *  tables, the columns an older database lacks (`missingColumns`, "table.column") and the tables it lacks
- *  (`missingTables`), each refused in the database's words when a query names it, the calls that fail (`failing`,
- *  "table.op" or "rpc.name": that call answers that error), and every call made (`calls`, "table.op" or "rpc.name", in
- *  order). Each function answers as its query asks (its filters, order, limit and single row), never by the access
- *  rules; a change is made to the rows held. The player page's functions answer on the same tables (plan P1-17t, the
- *  player's screen tour): the Game Master offer's answer, and get_game_slots, as their functions do; submit_orders
- *  answers as done and saves nothing, as makeStub answered it. */
+/** What the GM page reads and changes, held by the fake (plan P1-17q2): who is signed in (`me`, else no one: gm1, a
+ *  Game Master, unless a test says otherwise), the tables, the columns an older database lacks (`missingColumns`,
+ *  "table.column") and the tables it lacks (`missingTables`), each refused in the database's words when a query names
+ *  it, the calls that fail (`failing`, "table.op" or "rpc.name": that call answers that error), and every call made
+ *  (`calls`, "table.op" or "rpc.name", in order). Each function answers as its query asks (its filters, order, limit
+ *  and single row), never by the access rules; a change is made to the rows held. The player page's functions answer on
+ *  the same tables (plan P1-17t, the player's screen tour): the Game Master offer's answer, and get_game_slots, as
+ *  their functions do; submit_orders answers as done and saves nothing. */
 export interface TheGameMastersWorld {
   me: string | null;
   readonly tables: TheGameMastersTables;
@@ -1323,7 +1322,7 @@ export interface TheGameMastersWorld {
   readonly calls: string[];
 }
 
-/** The GM's world as makeStub began: gm1 signed in, a Game Master named Test GM, and nothing else. */
+/** The GM's world at its start: gm1 signed in, a Game Master named Test GM, and nothing else. */
 export function aGameMastersWorld(): TheGameMastersWorld {
   return {
     me: 'gm1',
@@ -1778,8 +1777,8 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
         limit: 1,
       })),
     },
-    // submit_orders answers as done and saves nothing, as the stand-in makeStub answered it (the screen tours, plan
-    // P1-17t; the player's world mirrors the function's checks)
+    // submit_orders answers as done and saves nothing (the screen tours, plan P1-17t; the player's world mirrors the
+    // function's checks)
     theOrders: {
       saveThisRealmsDraft: rpc('submit_orders', () => null),
       saveThisRealmsHeroOrder: rpc('submit_orders', () => null),

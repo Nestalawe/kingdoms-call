@@ -11,7 +11,7 @@ in one line of the pull request "Staging: needed / not needed, because …". A m
 
 Staging is needed when the change involves any of these:
 1. **A migration** whose effect on existing rows, or on what a page can read, isn't fully covered by the
-   access-rule tests and the stand-in database (`tests/lib/stub-db.js`): a new rule over data already there, a
+   access-rule tests and the access layer's tests (`tests/db/`): a new rule over data already there, a
    contract step.
 2. **Sign-in or account flows:** sign-up, the Overlord, Game Master offers, suspension.
 3. **What only a real browser shows:** layout, the map, printing, reload and caching after a deploy.
