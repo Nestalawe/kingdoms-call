@@ -25,6 +25,9 @@ import {
 } from '../lib/personal-combat.ts';
 import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
+/** Each test's time limit: its run of fights. */
+const A_RUN_OF_FIGHTS = timeLimitGivenAsANumber(120_000).timeout;
+
 /** Fights in each test (the scripts' own sizes: 4,000, and 20,000 in npm run test:full). */
 const FIGHTS = process.env['KC_FULL'] === '1' ? 20_000 : 4_000;
 const { call, MON, wordsOf } = await personalCombatEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
@@ -81,7 +84,7 @@ test(
     }
     expect(bad.slice(0, 5)).toEqual([]);
   },
-  timeLimitGivenAsANumber(120_000).timeout,
+  A_RUN_OF_FIGHTS,
 );
 
 test(
@@ -140,5 +143,5 @@ test(
     expect(pvp).toBe(Math.floor(FIGHTS / 3));
     expect(bad.slice(0, 5)).toEqual([]);
   },
-  timeLimitGivenAsANumber(120_000).timeout,
+  A_RUN_OF_FIGHTS,
 );
