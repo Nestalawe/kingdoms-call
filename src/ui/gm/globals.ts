@@ -17,7 +17,6 @@ import {
   migrateLegacyUnitNames,
 } from '../../engine/army-tables.ts';
 import { unitAbilityMult } from '../../engine/battle/strength.ts';
-import { sb } from './config.ts';
 import {
   changePassword,
   closeChangePassword,
@@ -180,7 +179,6 @@ Object.assign(window, {
   renderMessagingBanner, // ui/gm/startup.ts
   renderTelemetryBanner, // ui/gm/startup.ts
   SAGE_DISCOVERIES_P, // content/kingdoms-call-data.ts
-  sb, // ui/gm/config.ts
   unitAbilityMult, // engine/battle/strength.ts
   unitTypeOf, // engine/rules-on-plain-values/unit-types-and-base-strength.ts
   writeGameRecord, // ui/gm/hall-of-fame.ts

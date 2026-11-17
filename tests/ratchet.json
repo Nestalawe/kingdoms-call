@@ -3,7 +3,7 @@
   "counts": {
     "tsIgnore": 0,
     "eslintDisable": 0,
-    "stubDbTests": 5,
+    "stubDbTests": 4,
     "allowlistEntries": 1,
     "javascriptFiles": 85,
     "quarantinedTests": 4,

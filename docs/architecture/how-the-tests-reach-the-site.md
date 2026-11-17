@@ -201,7 +201,11 @@
 - **`lib/hostile.js`** and **`lib/screens.js`** are the hostile-name harness. `screens.js` has one tour per
   page: a staged world whose player-chosen strings come from `names(kind)`, the page's modes (who is looking) and its
   screens, run in jsdom (`runJsdom`) or Chromium (`runChromium`, given a browser and a server's address, or a folder
-  to serve) against any copy of the site. `hostile.js` gives the
+  to serve) against any copy of the site. Each page is handed the fake database (`lib/fake-db.ts`) holding its tour's
+  world, as data (`fakesWorld`): the Hall of Fame's, the Overlord's, or the GM's tables, which the player's tour reads
+  too. A step reaches that world as `kcTheFakesWorld` (its tables, and the calls that fail: `failing["table.op"]` or
+  `failing["rpc.name"]`) and the fake as `kcTheDbATestHandsThePage` (a step may put its own answer in place of one of
+  its functions, such as a refused sign-in). `hostile.js` gives the
   names (`'hostile'`: every payload at once, with the field's name in front; `'ordinary'`: apostrophes, accents and
   hyphens) and `inspect(document)`, which finds a value that became an element or code, or a handler that no longer
   parses. `hostileTest(tour)` is a page's hostile-name test in jsdom; `browser/hostile-names.spec.ts` is the same in

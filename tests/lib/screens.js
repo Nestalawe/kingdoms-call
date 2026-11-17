@@ -4,14 +4,30 @@
 //   - the hostile-name tests (hostile names: nothing may become markup or code), and
 //   - tests/tools/same-dom.js (ordinary names, main's site against a branch's: nothing may look different).
 //
-// A tour: {page, modes: {name: {url, ...}}, world(N) → plain data, jsdomSupabase(world, mode), browserSupabase(world, mode)
-// → script text, steps(world, mode) → [[label, code run in the page]], shown(world) → strings that must appear as text,
-// bootWait (optional) → milliseconds the page is given to start}. A mode with bootError: true is a page that can't start:
-// its error is expected, and its screen is the boot-failure message.
+// A tour: {page, modes: {name: {url, ...}}, world(N) → plain data, fakesWorld(world, mode) → the world the fake database
+// holds, as data (lib/fake-db.ts: the Hall of Fame's, the Overlord's, or the GM's tables, which the player's tour reads
+// too; plan P1-17t), steps(world, mode) → [[label, code run in the page]], shown(world) → strings that must appear as
+// text, bootWait (optional) → milliseconds the page is given to start}. A mode with bootError: true is a page that can't
+// start: its database client can't be made, its error is expected, and its screen is the boot-failure message.
+// A step reaches the world the fake holds as FAKE (its tables, the calls that fail) and the fake itself as DB (a step
+// may put its own answer in place of one of its functions); the same in jsdom and in Chromium.
 // A new page's slice of P0-19 adds its tour here.
 const path=require('path');
-const {readPage,bootJsdom,serve,routeExternal,SITE}=require('./boot');
-const {makeStub,leaderboardStub}=require('./stub-db');
+const {readPage,bootJsdom,serve,routeExternal,SITE,DB_VERSION}=require('./boot');
+const {makeAFakeDbHoldingAWorldHandedAsData}=require('./fake-db.ts');
+
+// The names, on the page's window, of the world the fake holds (lib/the-fake-db-a-page-takes-in-chromium.ts's
+// THE_NAME_A_SPEC_STAGES_THE_WORLD_UNDER) and of the fake (src/db/the-pages-database-client.ts's
+// THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER).
+const FAKE='kcTheFakesWorld', DB='kcTheDbATestHandsThePage';
+const copy=v=>JSON.parse(JSON.stringify(v));
+// The GM's world as data (lib/fake-db.ts), holding `tables`, with `me` signed in (null: no one).
+const tablesWorld=(tables,me)=>({me,tables:copy(tables),missingColumns:[],missingTables:[],failing:{},calls:[]});
+// A step's code: the call named "table.op" or "rpc.name" fails with `error`, or every call answers again.
+const failing=(k,error)=>`${FAKE}.failing[${lit(k)}]=${lit(error)};`;
+const noneFailing=`Object.keys(${FAKE}.failing).forEach(k=>{ delete ${FAKE}.failing[k]; });`;
+// A step's code: the sign-in's change to the account (its password, its name) answers `answer`, a function's text.
+const changesToTheAccount=answer=>`{ const s=${DB}.signingIn; s.changeThePassword=s.changeTheNameKeptWithTheSignIn=${answer}; }`;
 
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 // A value as a JavaScript literal to put in code run in the page: JSON, with < > / and the two line separators written
@@ -48,13 +64,8 @@ const leaderboard={
       profiles:[0,1].flatMap(pi=>[1,2,3].map(g=>({id:'u'+(g*10+pi),name:N('profile',g*10+pi)}))),
       renameTo:N('rename',0), search:N('realm',10), error:N('error',0)};
   },
-  stubOptions:(W,m)=>({signedIn:!!m.signedIn,isGm:!!m.isGm,isOverlord:!!m.isOverlord,profiles:W.profiles,
-    error:m.error?W.error:undefined,readError:m.readError?W.error:undefined}),
-  jsdomSupabase(W,m){ const o=this.stubOptions(W,m); return {createClient:()=>leaderboardStub({...o,rows:()=>W.rows,calls:[]})}; },
-  browserSupabase(W,m){
-    return `(function(){var R=${lit(W.rows)},O=${lit(this.stubOptions(W,m))};`
-      +`window.supabase={createClient:function(){return (${leaderboardStub.toString()})(Object.assign({},O,{rows:function(){return R;},calls:[]}));}};})();`;
-  },
+  fakesWorld:(W,m)=>({rows:W.rows,changes:[],signedIn:!!m.signedIn,isGm:!!m.isGm,isOverlord:!!m.isOverlord,names:W.profiles,
+    ...(m.error?{writesRefusedWith:W.error}:{}),...(m.readError?{readRefusedWith:W.error}:{})}),
   steps(W,m){
     if(m.readError) return [['the board, unreadable','']];
     const s=[['champions',"setTab('champions')"],['achievements',"setTab('achievements')"],
@@ -86,24 +97,17 @@ const overlord={
       body:N('dispatch',0), reason:N('reason',0), search:N('player',1),
     };
   },
-  // Self-contained: it also runs inside Chromium, as text.
-  stage:function(S,W){
-    S.DB.profiles.length=0; W.profiles.forEach(p=>S.DB.profiles.push(p));
-    S.DB.accounts={}; Object.keys(W.emails).forEach(id=>{ S.DB.accounts[id]={email:W.emails[id]}; });
-    S.DB.site_admins.push({user_id:'ov1'});
-    S.DB.game_masters.push({user_id:'gm1',offered_at:'2026-10-01T00:00:00Z',offered_by:'ov1',accepted_at:'2026-10-01T00:00:00Z'},
-      {user_id:'gm2',offered_at:'2026-10-01T00:00:00Z',offered_by:'ov1',accepted_at:'2026-10-01T00:00:00Z'});
-    W.games.forEach(([id,name,gm,status],i)=>S.DB.games.push({id,name,gm_user_id:gm,status,turn:i+1,max_turns:12,
-      created_at:'2026-10-0'+(i+1)+'T00:00:00Z',meta:{v:1,turnMode:{mode:'manual'}},game_state:'{}'}));
-    W.realms.forEach(([game_id,player_index,user_id,display_name],i)=>S.DB.game_players.push({id:'s'+i,game_id,user_id,player_index,display_name}));
-    S.DB.game_messages.push({id:7,game_id:'G1',turn:3,from_index:1,to_indexes:[0],scope:'private',body:W.body});
-    S.DB.message_reports.push({id:1,message_id:7,game_id:'G1',reporter_index:0,reason:W.reason,created_at:'2026-10-13T00:00:00Z'});
-    S.setUser('ov1');
-  },
-  jsdomSupabase(W){ const S=makeStub(); this.stage(S,W); return S.supabase; },
-  browserSupabase(W){
-    return `(function(){var S=(${makeStub.toString()})();(${this.stage.toString()})(S,${lit(W)});window.supabase=S.supabase;})();`;
-  },
+  // the Overlord signed in; gm1 (an accepted Game Master from the start) and gm2 (offered and accepted)
+  fakesWorld:W=>({signedIn:'ov1',overlord:'ov1',
+    accounts:W.profiles.map(({id,name})=>({id,name,email:W.emails[id]})),
+    offers:[{user_id:'gm1',offered_at:'2026-10-01T00:00:00Z',offered_by:null,accepted_at:'2026-10-01T00:00:00Z'},
+      ...['gm1','gm2'].map(user_id=>({user_id,offered_at:'2026-10-01T00:00:00Z',offered_by:'ov1',accepted_at:'2026-10-01T00:00:00Z'}))],
+    games:W.games.map(([id,name,gm,status],i)=>({id,name,gm_user_id:gm,status,turn:i+1,max_turns:12,
+      created_at:'2026-10-0'+(i+1)+'T00:00:00Z',meta:{v:1,turnMode:{mode:'manual'}},game_state:'{}'})),
+    realms:W.realms.map(([game_id,player_index,user_id,display_name],i)=>({id:'s'+i,game_id,user_id,player_index,display_name})),
+    dispatches:[{id:7,game_id:'G1',turn:3,from_index:1,to_indexes:[0],scope:'private',body:W.body}],
+    reports:[{id:1,message_id:7,game_id:'G1',reporter_index:0,reason:W.reason,created_at:'2026-10-13T00:00:00Z'}],
+    failingChecks:[]}),
   steps(W){
     return [['accounts, games and reported dispatches',''],
       ['accounts, searched',`$('acct-q').value=${lit(W.search)};renderAccounts()`],
@@ -119,7 +123,7 @@ const overlord={
 // G4 another GM's, G5 an all-bot game the watcher can run. Statistics from G1, G3 and a deleted game. Every string a
 // player or a GM can store comes from N, and so do the turn numbers and slot counts that reach the screen. A GM, the
 // Overlord (Master GM mode, opening G1 from the Overlord page's link), a signed-out visitor and a page that can't start
-// each see their screens; every database error a screen shows comes from N too (stub ERRORS).
+// each see their screens; every database error a screen shows comes from N too (the fake's failing calls).
 const gmPortal={
   page:'kingdoms-call-gm-portal.html',
   bootWait:900,
@@ -199,25 +203,11 @@ const gmPortal={
       },
     };
   },
-  // Self-contained: it also runs inside Chromium, as text. Steps reach the stand-in database as supabase.stub.
-  stage:function(S,W,user){
-    Object.keys(W.db).forEach(t=>{ S.DB[t]=JSON.parse(JSON.stringify(W.db[t])); });
-    S.supabase.stub=S;
-    S.setUser(user);
-  },
-  jsdomSupabase(W,m){
-    if(m.bootError) return {createClient(){ throw new Error(W.error); }};
-    const S=makeStub(); this.stage(S,W,m.user); return S.supabase;
-  },
-  browserSupabase(W,m){
-    if(m.bootError) return `window.supabase={createClient:function(){throw new Error(${lit(W.error)});}};`;
-    return `(function(){var S=(${makeStub.toString()})();(${this.stage.toString()})(S,${lit(W)},${lit(m.user)});window.supabase=S.supabase;})();`;
-  },
+  fakesWorld:(W,m)=>tablesWorld(W.db,m.user),
   steps(W,m){
     if(m.bootError) return [['the page could not start','']];
-    const E=lit({message:W.error});
-    const fail=k=>`supabase.stub.ERRORS[${lit(k)}]=${E};`;
-    const ok='Object.keys(supabase.stub.ERRORS).forEach(k=>{ delete supabase.stub.ERRORS[k]; });';
+    const fail=k=>failing(k,{message:W.error});
+    const ok=noneFailing;
     const val=(id,v)=>`document.getElementById(${lit(id)}).value=${lit(v)};`;
     // the same answers on every run: dialogs say yes, random draws (the bots' names) and the clock's time of day repeat,
     // and the watcher runs only when a step says so
@@ -230,7 +220,7 @@ const gmPortal={
     // cleared) throws, then the dice go back. The throwing dice draw first, so every later draw is the one it was.
     const turnFails=`{ const was=kcRng.use(()=>{ was(); throw new Error(${lit(W.error)}); }); const ce=console.error; console.error=()=>{};`
       +' Promise.resolve(runTurn()).finally(()=>{ console.error=ce; kcRng.use(was); }); }';
-    if(!m.user) return [['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
+    if(!m.user) return [['sign-in refused',fixed+`${DB}.signingIn.signInWithEmailAndPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
       +val('si-email','gm@example.test')+val('si-password',W.password)+'doSignIn()']];
     if(m.user==='ov1') return [
       ['a game opened from the Overlord page',fixed],
@@ -285,9 +275,9 @@ const gmPortal={
       ['banners: writes failed',ok+`_kcTelLastErr=${lit(W.error)};renderTelemetryBanner();_kcLbLastErr=${lit(W.error)};renderLeaderboardBanner();show('sec-games')`],
       ['banners: tables missing','_kcHasTel=false;_kcHasLb=false;_kcHasMsg=false;renderTelemetryBanner();renderLeaderboardBanner();renderMessagingBanner()'],
       ['deleting a game fails',ok+fail('games.delete')+"deleteGame('G3')"],
-      ['change password, refused',`sb.auth.updateUser=async()=>({error:{message:${lit(W.error)}}});changePassword();`
+      ['change password, refused',changesToTheAccount(`async()=>({error:{message:${lit(W.error)}}})`)+'changePassword();'
         +val('cp-new',W.password)+val('cp-new2',W.password)+'submitChangePassword()'],
-      ['change password, failed',`sb.auth.updateUser=async()=>{ throw new Error(${lit(W.error)}); };submitChangePassword()`],
+      ['change password, failed',changesToTheAccount(`async()=>{ throw new Error(${lit(W.error)}); }`)+'submitChangePassword()'],
     ];
   },
   shown:W=>{
@@ -310,7 +300,7 @@ const gmPortal={
 // G2 (in setup, waiting), G3 (archived) and a game whose row it can't read (G9). Open to join: G4 (public, another
 // GM's, Divine taken) and G5 (private, p1 invited); G6 is private to others and never listed. p1 has an open offer to
 // become a Game Master. Every string a player or a GM can store comes from N, and so does the turn number the cards
-// show; every database error a screen shows does too (stub ERRORS). A player, a signed-out visitor and a page that
+// show; every database error a screen shows does too (the fake's failing calls). A player, a signed-out visitor and a page that
 // can't start each see their screens; the reader (p1 again) opens G1's report, its past turns and its title and
 // diplomacy states; in the orders mode, p1's saved draft is restored on that report and every order is given in turn;
 // the map mode opens every kind of province's popup, and the Dispatches mode every conversation and composer state.
@@ -617,25 +607,11 @@ const playerPortal={
       },
     };
   },
-  // Self-contained: it also runs inside Chromium, as text. Steps reach the stand-in database as supabase.stub.
-  stage:function(S,W,user){
-    Object.keys(W.db).forEach(t=>{ S.DB[t]=JSON.parse(JSON.stringify(W.db[t])); });
-    S.supabase.stub=S;
-    S.setUser(user);
-  },
-  jsdomSupabase(W,m){
-    if(m.bootError) return {createClient(){ throw new Error(W.error); }};
-    const S=makeStub(); this.stage(S,W,m.user); return S.supabase;
-  },
-  browserSupabase(W,m){
-    if(m.bootError) return `window.supabase={createClient:function(){throw new Error(${lit(W.error)});}};`;
-    return `(function(){var S=(${makeStub.toString()})();(${this.stage.toString()})(S,${lit(W)},${lit(m.user)});window.supabase=S.supabase;})();`;
-  },
+  fakesWorld:(W,m)=>tablesWorld(W.db,m.user),
   steps(W,m){
     if(m.bootError) return [['the page could not start','']];
-    const E=lit({message:W.error});
-    const fail=k=>`supabase.stub.ERRORS[${lit(k)}]=${E};`;
-    const ok='Object.keys(supabase.stub.ERRORS).forEach(k=>{ delete supabase.stub.ERRORS[k]; });';
+    const fail=k=>failing(k,{message:W.error});
+    const ok=noneFailing;
     const val=(id,v)=>`document.getElementById(${lit(id)}).value=${lit(v)};`;
     // the same answers on every run: dialogs say yes, random draws repeat, and the page's delayed moves (back to My
     // Games after joining, closing a dialog after saving) and the polls (the Dispatches' and the games', timers of a
@@ -649,12 +625,12 @@ const playerPortal={
     const now="{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms===120?(f(...a),0):st(f,ms,...a); }";
     const ledgerNow="{ const st=window.setTimeout; window.setTimeout=(f,ms,...a)=>ms===120||ms===300?(f(...a),0):st(f,ms,...a); }";
     if(!m.user) return [
-      ['sign-in refused',fixed+`sb.auth.signInWithPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
+      ['sign-in refused',fixed+`${DB}.signingIn.signInWithEmailAndPassword=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('si-email','player@example.test')+val('si-password',W.password)+'doSignIn()'],
-      ['registering refused',"setAuthTab('signup');"+`sb.auth.signUp=async()=>({data:{},error:{message:${lit(W.error)}}});`
+      ['registering refused',"setAuthTab('signup');"+`${DB}.signingIn.signUpWithEmailPasswordAndName=async()=>({data:{},error:{message:${lit(W.error)}}});`
         +val('su-name',W.signUp.name)+val('su-email',W.signUp.email)+val('su-password',W.password)+val('su-password2',W.password)+'doSignUp()'],
     ];
-    const row="supabase.stub.DB.game_players.find(r=>r.id==='s10')";
+    const row=`${FAKE}.tables.game_players.find(r=>r.id==='s10')`;
     if(m.map){
       // a click on a hex opens its popup, as a tap does
       const hex=(svg,id)=>`document.querySelector(${lit(`${svg} g[data-prov="${id}"]`)}).dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:40,clientY:40}));`;
@@ -673,8 +649,8 @@ const playerPortal={
     }
     if(m.dispatches){
       const D=W.dispatches;
-      const stage=`supabase.stub.DB.game_players.push(${lit(D.slot)});supabase.stub.DB.game_messages=${lit(D.messages)};`
-        +`supabase.stub.DB.message_reports=${lit(D.reports)};supabase.stub.DB.game_message_reads=${lit([D.reads])};`;
+      const stage=`${FAKE}.tables.game_players.push(${lit(D.slot)});${FAKE}.tables.game_messages=${lit(D.messages)};`
+        +`${FAKE}.tables.message_reports=${lit(D.reports)};${FAKE}.tables.game_message_reads=${lit([D.reads])};`;
       return [
         ['Dispatches, to every realm',fixed+ledgerNow+stage+"openReport('s10')"],
         ['Dispatches, a private conversation',"setMsgChannel('p:0-1')"],
@@ -793,12 +769,13 @@ const playerPortal={
       ['joining a second time','doJoinGame(joiningGame.id)'],
       ['display name, the dialog',"show('sec-games');loadAllGames();changeDisplayName()"],
       ['display name, not saved',val('dn-name',W.newName)+fail('profiles.upsert')+'submitDisplayName()'],
-      ['display name, failing',ok+`{ const f=sb.from; sb.from=function(t){ if(t==='profiles') throw new Error(${lit(W.error)}); return f.apply(this,arguments); };`
-        +'submitDisplayName().finally(()=>{ sb.from=f; }); }'],
+      // every read and change of the accounts' names throws as it is sent
+      ['display name, failing',ok+`{ const n=${DB}.theAccountsNames, was={...n}; Object.keys(n).forEach(k=>{ n[k]=()=>{ throw new Error(${lit(W.error)}); }; });`
+        +'submitDisplayName().finally(()=>{ Object.assign(n,was); }); }'],
       ['display name, saved','submitDisplayName()'],
-      ['change password, refused',`closeDisplayName();sb.auth.updateUser=async()=>({error:{message:${lit(W.error)}}});changePassword();`
+      ['change password, refused','closeDisplayName();'+changesToTheAccount(`async()=>({error:{message:${lit(W.error)}}})`)+'changePassword();'
         +val('cp-new',W.password)+val('cp-new2',W.password)+'submitChangePassword()'],
-      ['change password, failed',`sb.auth.updateUser=async()=>{ throw new Error(${lit(W.error)}); };submitChangePassword()`],
+      ['change password, failed',changesToTheAccount(`async()=>{ throw new Error(${lit(W.error)}); }`)+'submitChangePassword()'],
     ];
   },
   shown:W=>{
@@ -826,8 +803,12 @@ async function runJsdom(tour,mode,W,visit,{site=SITE}={}){
   const rejected=e=>errs.push(String(e&&e.stack||e));
   process.on('unhandledRejection',rejected);
   try{
-    const dom=bootJsdom(readPage(path.join(site,tour.page)),{supabase:tour.jsdomSupabase(W,m),url:'https://example.test/'+tour.page+m.url,
+    // the fake, holding the tour's world; a page that can't start can't make its client
+    const made=m.bootError?null:makeAFakeDbHoldingAWorldHandedAsData(DB_VERSION,tour.fakesWorld(W,m));
+    const supabase=m.bootError?{createClient(){ throw new Error(W.error); }}:{createClient:()=>({})};
+    const dom=bootJsdom(readPage(path.join(site,tour.page)),{supabase,db:made?made.fake.db:undefined,url:'https://example.test/'+tour.page+m.url,
       setup(w){
+        if(made) w[FAKE]=made.world;
         w.addEventListener('error',e=>errs.push(String(e.error&&e.error.stack||e.message)));
         w.onunhandledrejection=e=>errs.push(String(e.reason&&e.reason.stack||e.reason));
         w.console.error=(...a)=>errs.push('console.error: '+a.map(String).join(' '));
@@ -851,8 +832,11 @@ async function runChromium(browser,tour,mode,W,visit,{site=SITE,url}={}){
   const m=tour.modes[mode], errs=[];
   const srv=url?null:await serve(site);
   const ctx=await browser.newContext();
-  await routeExternal(ctx,tour.browserSupabase(W,m));
   const p=await ctx.newPage();
+  // the fake, holding the tour's world, handed over as data (tests/browser/the-fake-db-handed-to-chromium.ts); a page
+  // that can't start can't make its client
+  if(m.bootError) await routeExternal(p,`window.supabase={createClient:function(){throw new Error(${lit(W.error)});}};`);
+  else await require('../browser/the-fake-db-handed-to-chromium.ts').handThePageTheFakeDb(p,tour.fakesWorld(W,m));
   p.on('pageerror',e=>errs.push(String(e.message||e)));
   p.on('console',x=>{ if(x.type()==='error'&&!/Failed to load resource/.test(x.text())) errs.push('console: '+x.text()); });
   await p.goto((url||srv.url)+'/'+tour.page+m.url,{waitUntil:'load'});

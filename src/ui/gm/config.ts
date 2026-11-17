@@ -6,7 +6,6 @@ if (typeof KC_CONFIG === 'undefined') throw new Error('kc-config.js did not load
 export const SUPABASE_URL = KC_CONFIG.supabaseUrl;
 export const SUPABASE_ANON_KEY = KC_CONFIG.supabaseKey;
 const thePagesDatabase = makeThePagesDatabase(SUPABASE_URL, SUPABASE_ANON_KEY);
-export const sb = thePagesDatabase.client;
 export const thePagesDb = thePagesDatabase.db;
 export const SEASONS = KC_SEASONS.slice();
 

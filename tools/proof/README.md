@@ -17,7 +17,7 @@ trial on four planted faults (plan P1-16a).
 | `npm run proof:plants -- <plants.json> [--jobs N]` | Which of a row's planted faults the tests that guard each line catch, several at a time | about 2 s a plant on one test file: 130 plants, four at a time, in about 65 s |
 | `npm run proof:gm-logs -- --base <ref>` | Whether every game's GM log is byte-identical, base against branch | about 70 s |
 | `npm run proof:two-engines -- --cases <module> --base <ref>` | Whether the base's engine and the branch's write the same lines on staged cases | a few seconds, plus the cases' own time |
-| `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the page tests and tours send, to compare base with branch | the tests' own time |
+| `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the tests send a page's client, to compare base with branch | the tests' own time |
 | `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
@@ -152,7 +152,9 @@ The proof of P1-17's area rows, which move a page's database calls onto `Db` (pl
 [every-database-call-a-page-makes.ts](every-database-call-a-page-makes.ts) wraps each client a page makes in jsdom
 (`tests/lib/boot.js` loads it only when `KC_RECORD_DATABASE_CALLS` names a folder). Each call goes as one line of JSON
 into `<folder>/<process id>.jsonl`: a query once awaited, with every step and its arguments; any other call when made.
-Times read as `<time>`. Record the base's site and the branch's, then compare the lines, sorted:
+Times read as `<time>`. A page handed the fake (`tests/lib/fake-db.ts`: the page tests and the screen tours) sends
+its calls to the fake, not to a client, so they aren't recorded. Record the base's site and the branch's, then compare
+the lines, sorted:
 
 ```sh
 KC_SITE=<base's site> KC_RECORD_DATABASE_CALLS=/tmp/rec-base npx vitest run

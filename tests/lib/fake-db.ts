@@ -10,7 +10,10 @@
 // turn (P1-17q) and the GM's world (P1-17q2); the player's holds the Game Master offers and the dispatches' reports too
 // when a test stages them (P1-17r). The player's saves its orders as the database's function submit_orders
 // does (P2-05): that function's checks are the one rule the fake keeps, in the words the access layer's test holds the
-// database to.
+// database to. For the screen tours (tests/lib/screens.js, P1-17t), the Hall of Fame's refuses its changes or its read
+// when a tour asks, the GM's world answers the player page's functions too, on the same tables, and
+// makeAFakeDbHoldingAWorldHandedAsData (at the end) makes any of four worlds from data, as Chromium's init script and
+// the tours hand them.
 import type {
   ADatabaseAnswer,
   AGame,
@@ -636,7 +639,9 @@ export interface AChangeTheHallOfFameSent {
 }
 /** What the Hall of Fame's page reads, held by the fake: its entries (`rows`, read again at each call), who is signed in
  *  (`me`, when `signedIn`), whether they run a game (`isGm`) or are the Overlord (`isOverlord`), and the accounts' names.
- *  The changes it sends are noted in `changes`, and change nothing. */
+ *  The changes it sends are noted in `changes`, and change nothing. With `writesRefusedWith` (plan P1-17t: the
+ *  screen tour), every change and the rename are refused with those words; with `readRefusedWith`, the read of the
+ *  entries is. */
 export interface TheHallOfFamesWorld {
   readonly rows: () => readonly AHallOfFameEntry[];
   readonly changes: AChangeTheHallOfFameSent[];
@@ -645,7 +650,13 @@ export interface TheHallOfFamesWorld {
   readonly isGm?: boolean;
   readonly isOverlord?: boolean;
   readonly names?: readonly AnAccountsName[];
+  readonly writesRefusedWith?: string;
+  readonly readRefusedWith?: string;
 }
+/** The Hall of Fame's world as a spec hands it to Chromium, as data: its entries as a list. */
+export type TheHallOfFamesWorldAsData = Omit<TheHallOfFamesWorld, 'rows'> & {
+  readonly rows: readonly AHallOfFameEntry[];
+};
 
 /** A fake database, up to date at `version`, holding the Hall of Fame's `world`. */
 export function makeAFakeDbHoldingTheHallOfFame(version: string, world: TheHallOfFamesWorld): AFakeDb {
@@ -658,10 +669,13 @@ export function makeAFakeDbHoldingTheHallOfFame(version: string, world: TheHallO
       calls.push(name);
       return Promise.resolve(answer(...args));
     };
-  /** Notes `change` and answers as the database does (no error, no row). */
+  /** Notes `change` and answers as the database does (no error, no row), or the refusal the world names. */
   const noted = (change: AChangeTheHallOfFameSent): ADatabaseAnswer<null> => {
     world.changes.push(change);
-    return { data: null, error: null, status: 204 };
+    const refusal = world.writesRefusedWith;
+    return refusal === undefined
+      ? { data: null, error: null, status: 204 }
+      : { data: null, error: { message: refusal }, status: 400 };
   };
   const db: Db = {
     ...fake.db,
@@ -697,11 +711,11 @@ export function makeAFakeDbHoldingTheHallOfFame(version: string, world: TheHallO
     },
     theHallOfFame: {
       ...fake.db.theHallOfFame,
-      everyEntryNewestFinishedFirstFromRowToRow: answering('from:game_records', (from: number) => ({
-        data: from > 0 ? [] : world.rows().slice(),
-        error: null,
-        status: 200,
-      })),
+      everyEntryNewestFinishedFirstFromRowToRow: answering('from:game_records', (from: number) =>
+        world.readRefusedWith === undefined
+          ? { data: from > 0 ? [] : world.rows().slice(), error: null, status: 200 }
+          : { data: null, error: { message: world.readRefusedWith }, status: 400 },
+      ),
       changeThisGamesEntry: answering('from:game_records', (_game: string, change: unknown) =>
         noted({ table: 'game_records', op: 'update', payload: change }),
       ),
@@ -1249,7 +1263,9 @@ export type TheGameMastersTables = Record<
  *  (`missingTables`), each refused in the database's words when a query names it, the calls that fail (`failing`,
  *  "table.op" or "rpc.name": that call answers that error), and every call made (`calls`, "table.op" or "rpc.name", in
  *  order). Each function answers as its query asks (its filters, order, limit and single row), never by the access
- *  rules; a change is made to the rows held. */
+ *  rules; a change is made to the rows held. The player page's functions answer on the same tables (plan P1-17t, the
+ *  player's screen tour): the Game Master offer's answer, and get_game_slots, as their functions do; submit_orders
+ *  answers as done and saves nothing, as makeStub answered it. */
 export interface TheGameMastersWorld {
   me: string | null;
   readonly tables: TheGameMastersTables;
@@ -1437,9 +1453,19 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
       calls.push('rpc:' + fn);
       world.calls.push('rpc.' + fn);
       const failure = world.failing['rpc.' + fn];
-      const answered = failure
-        ? { data: null, error: failure, status: 400 }
-        : { data: answer(...args), error: null, status: 200 };
+      let answered;
+      if (failure) answered = { data: null, error: failure, status: 400 };
+      else
+        try {
+          answered = { data: answer(...args), error: null, status: 200 };
+        } catch (e) {
+          // a function that raises its refusal (an exception: HTTP 400, in its words)
+          answered = {
+            data: null,
+            error: { message: e instanceof Error ? e.message : String(e), code: 'P0001' },
+            status: 400,
+          };
+        }
       return Promise.resolve(answered as T);
     };
   const eq = (column: string, value: unknown): AFilter => ['eq', column, value];
@@ -1447,6 +1473,7 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
   const newestFirst = [['created_at', false]] as const;
   const A_GAME_IN_THE_LIST =
     'id,name,gm_user_id,status,turn,max_players,max_turns,created_at,meta, game_players(id,game_id,user_id,player_index,display_name,orders_submitted)';
+  const A_DISPATCH = 'id,turn,from_index,to_indexes,scope,body,created_at';
   const isTheOverlord = () => world.tables.site_admins.some((r) => same(r['user_id'], me()));
   const session = () => {
     const id = me();
@@ -1484,6 +1511,19 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
         columns: 'id,name,created_at',
         order: [['name', true]],
       })),
+      theNameOfThisAccount: query('from:profiles', (id: string) => ({
+        table: 'profiles',
+        op: 'select',
+        columns: 'id,name',
+        filters: [eq('id', id)],
+        one: 'single',
+      })),
+      giveThisAccountItsName: query('from:profiles', (id: string, name: string) => ({
+        table: 'profiles',
+        op: 'upsert',
+        payload: { id, name },
+        onConflict: 'id',
+      })),
     },
     theRoles: {
       ...fake.db.theRoles,
@@ -1491,6 +1531,27 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
         world.tables.game_masters.some((r) => same(r['user_id'], me()) && r['accepted_at'] != null),
       ),
       isTheSignedInAccountTheOverlord: rpc('is_site_admin', isTheOverlord),
+      theGameMasterOfferMadeToThisAccount: query('from:game_masters', (id: string) => ({
+        table: 'game_masters',
+        op: 'select',
+        columns: 'accepted_at',
+        filters: [eq('user_id', id)],
+        one: 'maybe',
+      })),
+      // as gm_accept_offer and gm_decline_offer (supabase/schemas/public/functions/), for the signed-in account
+      answerTheGameMasterOffer: (answer: Parameters<Db['theRoles']['answerTheGameMasterOffer']>[0]) =>
+        rpc<[], ADatabaseAnswer<null>>(answer, () => {
+          const offers = world.tables.game_masters;
+          const own = offers.find((r) => same(r['user_id'], me()));
+          if (answer === 'gm_accept_offer') {
+            if (!own) throw new Error('You have no offer to accept.');
+            own['accepted_at'] ??= new Date().toISOString();
+            return null;
+          }
+          if (!own || own['accepted_at'] != null) throw new Error('You have no offer to decline.');
+          offers.splice(offers.indexOf(own), 1);
+          return null;
+        })(),
     },
     theReportedDispatches: {
       ...fake.db.theReportedDispatches,
@@ -1519,6 +1580,163 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
             reported_at: r['created_at'],
           }));
       }),
+      theDispatchesThisAccountReportedInThisGame: query('from:message_reports', (game: string) => ({
+        table: 'message_reports',
+        op: 'select',
+        columns: 'message_id',
+        filters: [eq('game_id', game)],
+      })),
+      reportThisDispatch: query('from:message_reports', (report: unknown) => ({
+        table: 'message_reports',
+        op: 'insert',
+        payload: report,
+      })),
+    },
+    thePlayersRealms: {
+      thisAccountsRealmsAndTheirOrdersFlags: query('from:game_players', (account: string) => ({
+        table: 'game_players',
+        op: 'select',
+        columns: 'id,game_id,player_index,orders_submitted',
+        filters: [eq('user_id', account)],
+      })),
+      everyRealmOfThisAccount: query('from:game_players', (account: string) => ({
+        table: 'game_players',
+        op: 'select',
+        columns: 'id,game_id,player_index,display_name,orders_submitted',
+        filters: [eq('user_id', account)],
+      })),
+      theGamesOfThisAccountsRealms: query('from:game_players', (account: string) => ({
+        table: 'game_players',
+        op: 'select',
+        columns: 'game_id',
+        filters: [eq('user_id', account)],
+      })),
+      thisAccountsRealmsInThisGame: query('from:game_players', (game: string, account: string) => ({
+        table: 'game_players',
+        op: 'select',
+        columns: 'id,player_index',
+        filters: [eq('game_id', game), eq('user_id', account)],
+      })),
+      thisRealm: query('from:game_players', (id: string) => ({
+        table: 'game_players',
+        op: 'select',
+        columns: 'id,game_id,player_index,orders_submitted,turn_report,orders',
+        filters: [eq('id', id)],
+        one: 'single',
+      })),
+      joinWithThisRealm: query('from:game_players', (realm: unknown) => ({
+        table: 'game_players',
+        op: 'insert',
+        payload: realm,
+        one: 'single',
+      })),
+      // as get_game_slots (supabase/schemas/public/functions/get_game_slots.sql): the realms of the games asked
+      // about that the signed-in account runs, plays in or may join (a game in setup, public or inviting it)
+      theSlotsOfTheseGames: rpc('get_game_slots', (games: readonly string[]) => {
+        const t = world.tables;
+        const parsed = (v: unknown): unknown => {
+          if (typeof v !== 'string') return v ?? {};
+          try {
+            return JSON.parse(v);
+          } catch {
+            return {};
+          }
+        };
+        const field = (o: unknown, key: string): unknown =>
+          typeof o === 'object' && o !== null ? Reflect.get(o, key) : undefined;
+        const mayRead = (g: ARowTheGameMastersWorldHolds): boolean => {
+          const setup = parsed(g['game_state']);
+          const invited = field(setup, 'invited');
+          return (
+            same(g['gm_user_id'], me()) ||
+            isTheOverlord() ||
+            t.game_players.some((p) => same(p['game_id'], g['id']) && same(p['user_id'], me())) ||
+            (g['status'] === 'setup' &&
+              (field(setup, 'visibility') !== 'private' || (Array.isArray(invited) && invited.includes(me()))))
+          );
+        };
+        return t.games
+          .filter((g) => games.some((id) => same(id, g['id'])) && mayRead(g))
+          .flatMap((g) =>
+            t.game_players
+              .filter((p) => same(p['game_id'], g['id']))
+              .map((p) => {
+                const alignment = field(field(parsed(p['turn_report']), 'playerSetup'), 'alignment');
+                return {
+                  game_id: p['game_id'],
+                  player_index: p['player_index'],
+                  is_bot: !p['user_id'],
+                  orders_submitted: !!p['orders_submitted'],
+                  alignment:
+                    g['status'] === 'setup' && typeof alignment === 'string' && alignment !== '' ? alignment : null,
+                };
+              }),
+          );
+      }),
+    },
+    thePlayersGames: {
+      theTurnAndStateOfTheseGames: query('from:games', (games: readonly string[]) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,turn,status',
+        filters: [inList('id', games)],
+      })),
+      theseGamesForTheirCards: query('from:games', (games: readonly string[]) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,gm_user_id,status,turn,max_players,created_at,meta',
+        filters: [inList('id', games)],
+      })),
+      theseGamesEveryColumn: query('from:games', (games: readonly string[]) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,status,turn,game_state',
+        filters: [inList('id', games)],
+      })),
+      theGamesInSetup: query('from:games', () => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,gm_user_id,game_state,max_players',
+        filters: [eq('status', 'setup')],
+      })),
+      thisGamesWorldAndState: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'game_state,status',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+      thisGameForItsReport: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'id,name,gm_user_id,status,turn,max_players,block_eliminated_msgs',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+      thisGameEveryColumn: query('from:games', (game: string) => ({
+        table: 'games',
+        op: 'select',
+        columns: 'game_state',
+        filters: [eq('id', game)],
+        one: 'single',
+      })),
+    },
+    theChroniclesLogs: {
+      theLogOfThisRealmInThisTurn: query('from:turn_logs', (game: string, turn: number, realm: number) => ({
+        table: 'turn_logs',
+        op: 'select',
+        columns: 'entries',
+        filters: [eq('game_id', game), eq('turn', turn), eq('player_index', realm)],
+        limit: 1,
+      })),
+    },
+    // submit_orders answers as done and saves nothing, as the stand-in makeStub answered it (the screen tours, plan
+    // P1-17t; the player's world mirrors the function's checks)
+    theOrders: {
+      saveThisRealmsDraft: rpc('submit_orders', () => null),
+      saveThisRealmsHeroOrder: rpc('submit_orders', () => null),
+      reopenThisRealmsOrders: rpc('submit_orders', () => null),
+      submitThisRealmsOrders: rpc('submit_orders', () => null),
     },
     theDispatches: {
       ...fake.db.theDispatches,
@@ -1538,6 +1756,71 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
         table: 'game_messages',
         op: 'delete',
         filters: [eq('id', id)],
+      })),
+      theNewestDispatchesOfThisGame: query('from:game_messages', (game: string, count: number) => ({
+        table: 'game_messages',
+        op: 'select',
+        columns: A_DISPATCH,
+        filters: [eq('game_id', game)],
+        order: [['id', false]],
+        limit: count,
+      })),
+      theDispatchesOfThisGameAfterThisOne: query(
+        'from:game_messages',
+        (game: string, after: number, count: number) => ({
+          table: 'game_messages',
+          op: 'select',
+          columns: A_DISPATCH,
+          filters: [eq('game_id', game), ['gt', 'id', after]],
+          order: [['id', true]],
+          limit: count,
+        }),
+      ),
+      theDispatchesOfThisGameBeforeThisOne: query(
+        'from:game_messages',
+        (game: string, before: number, count: number) => ({
+          table: 'game_messages',
+          op: 'select',
+          columns: A_DISPATCH,
+          filters: [eq('game_id', game), ['lt', 'id', before]],
+          order: [['id', false]],
+          limit: count,
+        }),
+      ),
+      theNewestDispatchesOfTheseGamesGamesAndRealms: query('from:game_messages', (games: readonly string[]) => ({
+        table: 'game_messages',
+        op: 'select',
+        columns: 'id,game_id,from_index,to_indexes,scope',
+        filters: [inList('game_id', games)],
+        order: [['id', false]],
+        limit: 3000,
+      })),
+      sendThisDispatch: query('from:game_messages', (dispatch: unknown) => ({
+        table: 'game_messages',
+        op: 'insert',
+        payload: dispatch,
+      })),
+      thisRealmsReadMarksInThisGame: query('from:game_message_reads', (game: string, realm: number) => ({
+        table: 'game_message_reads',
+        op: 'select',
+        columns: 'reads',
+        filters: [eq('game_id', game), eq('player_index', realm)],
+        one: 'maybe',
+      })),
+      thisAccountsReadMarksInTheseGames: query(
+        'from:game_message_reads',
+        (games: readonly string[], account: string) => ({
+          table: 'game_message_reads',
+          op: 'select',
+          columns: 'game_id,player_index,reads',
+          filters: [inList('game_id', games), eq('user_id', account)],
+        }),
+      ),
+      writeTheseReadMarks: query('from:game_message_reads', (marks: unknown) => ({
+        table: 'game_message_reads',
+        op: 'upsert',
+        payload: marks,
+        onConflict: 'game_id,player_index',
       })),
     },
     theHallOfFame: {
@@ -1955,4 +2238,60 @@ export function makeAFakeDbHoldingTheGameMastersWorld(version: string, world: Th
     },
   };
   return { db, calls };
+}
+
+/** The Overlord's world as a spec hands it to Chromium, as data: the role checks that get no answer as a list. */
+export type TheOverlordsWorldAsData = Omit<TheOverlordsWorld, 'failingChecks'> & {
+  readonly failingChecks: readonly string[];
+};
+/** One of the worlds above as data (JSON brought it: a browser spec's init script, a screen tour): the player's, the
+ *  GM's, the Hall of Fame's or the Overlord's. */
+export type AWorldAsData =
+  ThePlayersWorld | TheGameMastersWorldAsData | TheHallOfFamesWorldAsData | TheOverlordsWorldAsData;
+
+const isAnObject = (v: unknown): v is object => typeof v === 'object' && v !== null;
+const holdsLists = (world: object, keys: readonly string[]): boolean =>
+  keys.every((k) => Array.isArray(Reflect.get(world, k)));
+/** The list `world` holds under `key` (none: empty). */
+const theListUnder = (world: object, key: string): unknown[] => {
+  const list: unknown = Reflect.get(world, key);
+  return Array.isArray(list) ? (list as unknown[]) : [];
+};
+
+/** A fake database, up to date at `version`, holding `world`, a world as data told apart by what it holds (the GM's:
+ *  tables and the missing columns and tables as lists; the player's: names, games, realms and the reads of other
+ *  accounts' realms; the Hall of Fame's: its entries and the changes sent; the Overlord's: the Overlord, the accounts
+ *  and the role checks that fail), made whole (its lists made sets, its entries read through a function); none, or one
+ *  of no kind: the fake holding no account. `world` is the world the fake holds, for a test or spec to stage and read
+ *  back (the one handed in, made whole in place), or null. */
+export function makeAFakeDbHoldingAWorldHandedAsData(
+  version: string,
+  handed: unknown,
+): { readonly fake: AFakeDb; readonly world: object | null } {
+  if (!isAnObject(handed)) return { fake: makeAFakeDb([version]), world: null };
+  const tables: unknown = Reflect.get(handed, 'tables');
+  if (isAnObject(tables) && holdsLists(handed, ['missingColumns', 'missingTables'])) {
+    const sets = {
+      missingColumns: new Set(theListUnder(handed, 'missingColumns').map(String)),
+      missingTables: new Set(theListUnder(handed, 'missingTables').map(String)),
+    };
+    // the rest of the world as handed (its tables, `me`, `failing`, `calls`), its two lists made sets
+    const world = Object.assign(handed, sets) as TheGameMastersWorld;
+    return { fake: makeAFakeDbHoldingTheGameMastersWorld(version, world), world };
+  }
+  if (holdsLists(handed, ['names', 'games', 'realms', 'readsOfAnotherAccountsRealms'])) {
+    const world = handed as ThePlayersWorld;
+    return { fake: makeAFakeDbHoldingThePlayersWorld(version, world), world };
+  }
+  if (holdsLists(handed, ['rows', 'changes'])) {
+    const data = handed as TheHallOfFamesWorldAsData;
+    const world: TheHallOfFamesWorld = { ...data, rows: () => data.rows };
+    return { fake: makeAFakeDbHoldingTheHallOfFame(version, world), world };
+  }
+  if (typeof Reflect.get(handed, 'overlord') === 'string' && holdsLists(handed, ['accounts', 'failingChecks'])) {
+    const failingChecks = new Set(theListUnder(handed, 'failingChecks').map(String));
+    const world = Object.assign(handed, { failingChecks }) as TheOverlordsWorld;
+    return { fake: makeAFakeDbHoldingTheOverlordsWorld(version, world), world };
+  }
+  return { fake: makeAFakeDb([version]), world: null };
 }

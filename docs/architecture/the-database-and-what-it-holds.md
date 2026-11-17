@@ -189,7 +189,7 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   `db.theReportedDispatches` (`message_reports`, `gm_reported_messages`). Then the player's games and realms:
   `db.thePlayersRealms` (`game_players`, joining, `get_game_slots`), `db.thePlayersGames` and `db.theChroniclesLogs`
   (`turn_logs`). Then the orders: `db.theOrders` (the draft, the hero order, Revise and Submit, through
-  `submit_orders()`). The player page makes no call on `sb`. Then the GM's games:
+  `submit_orders()`). Then the GM's games:
   `db.theGameMastersGames` (the list, a game, making, changing, archiving, the backfill) and `db.theGameMastersRealms`
   (removing a realm), then the GM's turn log, `db.theGameMastersTurnLogs`, and deleting a game,
   `db.theDeletionOfAGame` (its rows in each of 8 tables, one function a table). Then the turn's shell,
@@ -198,8 +198,8 @@ Pages are moving onto one typed interface to the database, `Db` (plan P1-17), ar
   `db.theTurnZeroAsTheGameMasterRunsIt` (the realms read, the bots' realms made afresh, the start saved, the first
   reports and logs). A `Db` function
   sends the query the page sent before and answers as supabase-js does (`data`, `error`, `status`; the sign-in's `data`
-  and `error`), so the page's error paths stay the same. No page code but `src/db/` calls the client now: the pages'
-  `sb` is left only for the tests that reach it.
+  and `error`), so the page's error paths stay the same. No page code but `src/db/` calls the client, and no page
+  puts it on its window.
 - **The generated types** (`src/db/database.types.ts`) type the client, so a misspelt table, column or function is a
   compiler error. They write every function's argument as never null: `TheDatabase` (beside `Db`) widens the ones that
   take null on purpose (`account_suspend`'s `p_until`), and a dispatch's sender, which the player page sends as null
