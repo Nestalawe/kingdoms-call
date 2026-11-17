@@ -81,6 +81,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-16
 
+- P1-16: done in its rows, below: every page and tool typed, and lint refuses `@ts-nocheck` everywhere
 - P1-16a: #524 The tours as a proof: the tours hold their timers; npm run proof:tours
 - P1-16b: #525 The two forecast files freed
 - P1-16c: #526 Six player and rulebook files freed; the element helper
@@ -104,6 +105,11 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-16o2: #623 The player page's report freed of its ts-nocheck line
 - P1-16p: #565 The GM page's start-up, sign-in and turn-mode files freed of their ts-nocheck line
 - P1-16q: #624 The Hall of Fame freed of its ts-nocheck line
+- P1-16r: #630 The GM's statistics tab freed of its ts-nocheck line
+- P1-16s: #631 The GM's game list, turn log and game detail freed of their ts-nocheck lines
+- P1-16t: #633 The GM's turn screens freed of their ts-nocheck lines: every page typed
+- P1-16u: #634 The reads of every column name their columns
+- P1-16v: #635 Lint refuses the ts-nocheck line everywhere (P1-16 done: every page typed)
 
 ## P1-17
 
@@ -228,6 +234,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-21s: #570 Tests for the third run's mutation survivors
 - P1-21t: #588 Tests for the alignment family's two weak catches
 - P1-21u: #628 Tests for the report and the Hall of Fame from the mutation session of 2026-11-17
+- P1-21v: #636 Tests for the GM's pages and the database reads from the mutation session of 2026-11-17
 
 ## P1-23
 

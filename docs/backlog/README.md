@@ -24,7 +24,7 @@ this (`tests/static/the-backlog-tracks-each-item-one-way.test.ts`).
   cite it. A new item gets `B-NN`; a known defect `KD-NNN`. A step built in several pull requests gets lettered rows
   (`P1-16q`), and a row split in two gets a number (`P1-16o1`, `P1-16o2`). An id is never reused or renumbered: a
   dropped item keeps its id, and the finished list names it as dropped.
-- **A group, not a row:** a step that is only the sum of its lettered rows (P1-16, P1-17, P1-23) has no row of its
+- **A group, not a row:** a step that is only the sum of its lettered rows (P1-17, P1-23) has no row of its
   own. Its heading, under "The groups" of its file, says what it delivers and holds its decisions in force; its rows
   sit wherever the order puts them. A step with work of its own beside its rows gives that work a lettered row.
 - **Folded in:** a known defect that is the same fault as another row is no row of its own. That row's What names it
@@ -57,18 +57,13 @@ order; inside a group, the rows' "After" decides the order. The order of work is
 here: each row is placed by [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)
 of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
-T6's rows are the rows left of two groups, [P1-16 and P1-17](the-next-group-the-rebuilds-other-rows.md#the-groups).
+T6's rows are the rows left of one group, [P1-17](the-next-group-the-rebuilds-other-rows.md#the-groups).
 
 ### 1. T6, the types finished: part 5
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| P1-16r | `stats-tab` freed | Maintainers: one more page typed | Phase 1 | Large | – | ⬜ | | T6 part 5, the rebuild in progress: one more page typed; unblocks P1-16s |
-| P1-16s | `game-list`, `turn-log` and `game-detail` freed. After P1-16r | Maintainers: three more pages typed | Phase 1 | Medium | – | ⬜ | | T6 part 5: three more pages typed; unblocks P1-16t |
-| P1-16t | `turn-shell`, `auto-turn` and `turn-zero` freed: every page typed, no `@ts-nocheck` line left in the UI. After P1-16s | Maintainers: every page typed; unblocks P1-16u | Phase 1 | Medium | – | ⬜ | | T6 part 5: the last pages typed; unblocks P1-16u |
-| P1-16u | The 16 reads of every column in `src/db/` name their columns, and the compiler proves each page reads only those. After P1-16t | Maintainers: each page's reads are typed column by column | Phase 1 | Small | – | ⬜ | | T6 part 5: each page's reads typed column by column; unblocks P1-16v |
-| P1-16v | Lint refuses `@ts-nocheck` everywhere; the ratchet's two counts of it retire. After P1-16u | Maintainers: no file can opt out of the compiler again | Phase 1 | Small | ✓ | ⬜ | | T6 part 5: the ban on `@ts-nocheck` finishes P1-16 |
-| P1-17t | The screen tours onto the fake (`tests/lib/screens.js`: the Hall of Fame's, the Overlord's, the GM's and the player's, in jsdom and Chromium), every tour screen the same. | Maintainers: the tours stop reading `stub-db`; unblocks P1-17s2 | Phase 1 | Medium | – | ⬜ | | T6 part 5: the last page tests off `stub-db`; unblocks P1-17s2 |
+| P1-17t | The screen tours onto the fake (`tests/lib/screens.js`: the Hall of Fame's, the Overlord's, the GM's and the player's, in jsdom and Chromium), every tour screen the same. | Maintainers: the tours stop reading `stub-db`; unblocks P1-17s2 | Phase 1 | Medium | – | ⬜ | | T6 part 5, the rebuild in progress: the last page tests off `stub-db`; unblocks P1-17s2 |
 | P1-17s1 | The balance matrix plays on the fake, its `writes` column recorded at `Db`'s calls. | Maintainers: the matrix records what reaches the database; unblocks P1-17s2 | Phase 1 | Medium | ✓ | ⬜ | | T6 part 5: the matrix plays on the fake; unblocks P1-17s2 |
 | P1-17s2 | `stub-db` deleted, each rule it copied named beside the access-layer test that covers it. After P1-17s1 | Maintainers: one fake of the database instead of two | Phase 1 | Small | – | ⬜ | | T6 part 5: `stub-db` deleted finishes P1-17, and T6 with it |
 
