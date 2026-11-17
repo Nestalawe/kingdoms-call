@@ -11,6 +11,7 @@ import { theLevelEachMasterySpellNeeds } from '../rules-on-plain-values/spells-t
 import {
   PHASE_ACTION_MAP,
   normaliseAction,
+  type OrderKind,
 } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import { resolveMoveOrder } from './move-order-marches-voyages-and-battles-on-arrival.ts';
 import {
@@ -166,9 +167,10 @@ export function processOrder(
   }
   turnContext._logCtx = { charId: c.id, phase: ph }; // every line emitted inside here inherits this
   const rawAction = (o.action || 'defend').toLowerCase().trim();
-  // the actions by any name an order gives
-  const actionsByName: Readonly<Partial<Record<string, string>>> = PHASE_ACTION_MAP;
-  let action = (actionsByName[rawAction] ?? '') || 'defend';
+  // the kind of order each name gives (a name it doesn't hold gives none, read as a Defend; P1-10z: a kind of
+  // order, so a kind the switch below has no case for fails to compile)
+  const actionsByName: Readonly<Partial<Record<string, OrderKind>>> = PHASE_ACTION_MAP;
+  let action: OrderKind = (actionsByName[rawAction] ?? '') || 'defend';
   let _fmSlip = false; // MARCH L7 Forced March: set below when a forced-march move should try to slip past battle
   // 2026-09-28: a BOT slayer's second / third lair of the year carries _botMinHp — if an earlier fight left him
   // below that share of his HP, he rests instead of walking into another guardian half-dead. (Never set on
@@ -303,9 +305,9 @@ export function processOrder(
   // Re-checking here, at the instant the relocating order executes, closes that window: a live
   // contest pins BOTH sides until resolveStalledBattles settles it at the top of the next phase.
   // The pin only bites while an armed hostile force is actually standing here — a stale flag left
-  // by an enemy who died or withdrew never traps anyone.
+  // by an enemy who died or withdrew never traps anyone. (A Pursue is an Encounter by its kind: no kind is 'pursue'.)
   if (
-    (action === 'move' || action === 'encounter' || action === 'pursue') &&
+    (action === 'move' || action === 'encounter') &&
     prov &&
     prov._battleUnresolved &&
     (asItsGuardReadsIt(c.armies) ?? []).length > 0
@@ -600,5 +602,9 @@ export function processOrder(
       break;
 
     default:
+      // Every kind of order has its case above (a Forced March is a Move by here). So a kind added to OrderKind with no
+      // case fails to compile on this line, which names it (P1-10z). When the turn runs, this line does nothing,
+      // as the empty default did: an order named by a key every object holds (such as `constructor`) still comes here.
+      action satisfies never;
   }
 }

@@ -8,8 +8,8 @@ import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-ke
 
 // The kinds of order (plan P1-10a2): PHASE_ACTION_MAP's values, what an order's action reads as. A phase order's own
 // type is PhaseOrder (src/schemas/orders-a-realm-submits.ts), whose action is a spelling the form or a bot wrote. Every
-// kind is a case of processOrder's switch but forced_march, which is handled before it. The map's `satisfies` checks
-// nothing until this file loses its ts-nocheck line (P1-10b): then a value that is no kind fails to compile.
+// kind is a case of processOrder's switch but forced_march, which is handled before it: a kind added here with no case
+// there fails to compile (P1-10z). A value in the map that is no kind fails to compile too (its `satisfies`).
 export type OrderKind =
   | 'move'
   | 'explore'
