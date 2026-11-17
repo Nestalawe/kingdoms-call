@@ -29,7 +29,8 @@ declare var _kcHasMsg: PageState;
 // ui/gm/auto-turn.ts
 /** The auto-turn watcher's timer, while it runs (setInterval's). */
 declare var _autoWatcherTimer: ReturnType<typeof setInterval> | null;
-declare var _autoRunBusy: PageState;
+/** Whether the watcher's tick is running (a tick that finds it so does nothing). */
+declare var _autoRunBusy: boolean;
 // ui/gm/config.ts (and ui/player/items-and-heroes.ts: each page declares its own)
 /** The signed-in account (null before sign-in): its id, as the player page's dispatches read it, and its address and
  *  sign-up fields, as its sign-in reads them. */
@@ -43,14 +44,45 @@ declare var currentUser: {
 declare var currentGame: import('./ui/gm/startup.ts').TheGameTheGmHasOpen | null;
 declare var currentGamePlayers: import('./ui/gm/startup.ts').TheRealmsOfTheGameTheGmHasOpen | null | undefined;
 // ui/gm/game-list.ts
-declare var _invitablePlayers: PageState;
-declare var _inviteSelected: PageState;
-declare var _editInviteSelected: PageState;
+/** The registered players the GM may invite, as last read (null until read, or after a read that failed): each
+ *  account's id, its name and the month it joined. */
+declare var _invitablePlayers:
+  readonly { readonly id: string; readonly name: string; readonly joined: string }[] | null;
+/** The ids ticked in the New Game picker (the accounts' ids, as the picker's boxes hand them). */
+declare var _inviteSelected: Set<unknown>;
+/** The ids ticked in the game screen's Edit invites picker (the game's invited list, as its setup holds it). */
+declare var _editInviteSelected: Set<unknown>;
 // ui/gm/hall-of-fame.ts
 declare var _kcHasLb: PageState;
 declare var _kcLbLastErr: PageState;
 // ui/gm/turn-zero.ts
-declare var _pendingTurn0: PageState;
+/** The Turn-0 plan the roster preview holds until the GM confirms it (none before, and once it is used): each realm's
+ *  setup (the humans' from their rows, the bots' as generated, each bot's row id once its realm is made), the map and
+ *  the game's settings. */
+declare var _pendingTurn0: {
+  readonly humanSetups: readonly {
+    readonly id: number;
+    readonly gamePlayerId: string;
+    readonly isBot: false;
+    readonly name: string;
+    readonly kingName: string;
+    readonly kingdomName: string;
+    readonly race: string;
+    readonly alignment: string;
+    readonly temper: string;
+    readonly skills: Readonly<Partial<Record<string, number>>>;
+  }[];
+  readonly botSetups: readonly (ReturnType<typeof import('./engine/bots/setup.ts').generateBotSetups>[number] & {
+    gamePlayerId?: string;
+  })[];
+  sz: { readonly cols: number; readonly rows: number };
+  readonly maxTurns: number;
+  readonly mapSize: unknown;
+  readonly seaPct: number;
+  readonly botDifficulty: unknown;
+  readonly botDiplomacy: 'hostile' | 'normal';
+  readonly safeStart: boolean;
+} | null;
 // ui/leaderboard/main.ts
 declare var GAMES: import('./ui/leaderboard/a-game-in-the-hall-of-fame-as-the-board-reads-it.ts').AGameAsTheBoardHoldsIt[];
 // ui/player/dispatches.ts

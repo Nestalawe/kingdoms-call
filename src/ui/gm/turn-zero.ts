@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
 import { SKILL_LABELS } from '../../engine/army-tables.ts';
 import { thePagesDb } from './config.ts';
@@ -14,6 +13,74 @@ import { generateNewGame, normSeaPct } from '../../engine/world/generate.ts';
 import { buildTurnReport } from '../../views/turn-report.ts';
 import { playerView } from '../../views/what-each-realm-may-see-of-the-world.ts';
 import { runningBuildStamp } from './sign-in.ts';
+import { theGameOpenNow } from './game-detail.ts';
+import { theElementFound } from './game-list.ts';
+import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
+import { theField, thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
+import { asItsGuardReadsIt } from '../../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { refuseASaveThatIsNotAGameInPlay } from '../../engine/saves/upgrade-a-saved-game-and-check-it.ts';
+import type { ARealm } from '../../db/the-db-interface-and-its-areas.ts';
+
+/** The Turn-0 plan the roster preview holds until the GM confirms it (src/globals.d.ts types it). */
+type TheTurnZeroPlan = NonNullable<typeof _pendingTurn0>;
+/** A realm's setup in the plan: a human's, from the realm's row, or a generated bot's. */
+type ARealmsSetupInThePlan = TheTurnZeroPlan['humanSetups'][number] | TheTurnZeroPlan['botSetups'][number];
+/** A realm's skills as its setup holds them. */
+type TheSkillsOfASetUp = Readonly<Partial<Record<string, number>>>;
+/** A game's settings as Turn 0 reads them: its state as the New Game form saved it, parsed (each field as held). */
+interface TheSettingsTurnZeroReads {
+  readonly mapSize?: unknown;
+  readonly maxTurns?: number;
+  readonly seaPct?: unknown;
+  readonly botDifficulty?: unknown;
+  readonly botDiplomacy?: unknown;
+  readonly safeStart?: unknown;
+}
+/** A player's setup as his join wrote it into his realm's report (parsed from JSON): each field as he chose it. */
+interface TheSetUpAPlayerJoinedWith {
+  readonly kingName?: string;
+  readonly kingdomName?: string;
+  readonly race?: string;
+  readonly alignment?: string;
+  readonly temper?: string;
+  readonly skills?: TheSkillsOfASetUp;
+}
+/** Settings parsed from JSON, as an object: their fields are read as their type claims (a maintainer's answer, 14
+ *  November). */
+function isTheSettingsTurnZeroReads(settings: unknown): settings is TheSettingsTurnZeroReads {
+  return typeof settings === 'object' && settings !== null;
+}
+/** A game's settings as held: none throws the TypeError reading its map size threw; a value that is no object holds
+ *  none of the fields read (`cfg.mapSize` on words or a number is `undefined`). */
+function theSettingsAsHeld(cfg: unknown): TheSettingsTurnZeroReads {
+  if (cfg === null || cfg === undefined)
+    throw new TypeError(`Cannot read properties of ${String(cfg)} (reading 'mapSize')`);
+  return isTheSettingsTurnZeroReads(cfg) ? cfg : {};
+}
+/** A player's setup parsed from JSON, as an object: its fields are read as their type claims (a maintainer's answer,
+ *  14 November). */
+function isASetUpAPlayerJoinedWith(setup: unknown): setup is TheSetUpAPlayerJoinedWith {
+  return typeof setup === 'object' && setup !== null;
+}
+/** A setup's skills as held, else none (`s || {}`). */
+function theSkillsOrNone(skills: TheSkillsOfASetUp | null | undefined): TheSkillsOfASetUp {
+  if (skills) return skills;
+  return {};
+}
+/** A value of any kind in words, as `String` writes it: the key a table is read by (`table[value]` reads it so). */
+function inWords(value: unknown): string {
+  return String(value);
+}
+/** The row the database made for a bot's realm: none throws the TypeError reading its id threw. */
+function theRowMade(row: Pick<ARealm, 'id'> | null): Pick<ARealm, 'id'> {
+  if (row === null) throw new TypeError("Cannot read properties of null (reading 'id')");
+  return row;
+}
+/** A realm's row id in the plan: every bot's is written when its realm is made, above (none throws). */
+function theRowIdOf(setup: { readonly gamePlayerId?: string | undefined }): string {
+  if (setup.gamePlayerId === undefined) throw new TypeError('a realm of the plan has no row');
+  return setup.gamePlayerId;
+}
 
 // ── TURN 0 — FULL INLINE MAP GENERATION ────
 // Embeds the core map/character generation from kingdoms-call-gm.html so the GM portal is fully
@@ -24,25 +91,32 @@ globalThis._pendingTurn0 = null;
 
 export async function runTurn0() {
   const msg = document.getElementById('detail-msg');
-  msg.innerHTML = '<div class="msg-info">⏳ Preparing world setup…</div>';
+  theElementFound(msg).innerHTML = '<div class="msg-info">⏳ Preparing world setup…</div>';
 
   // Reload player list fresh
   const { data: players, error: pErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.everyRealmOfThisGame(
-    currentGame.id,
+    theGameOpenNow("read properties of null (reading 'id')").id,
   );
   if (pErr) {
-    msg.innerHTML = kcHtml`<div class="msg-error">Could not load players: ${pErr.message}</div>`;
+    theElementFound(msg).innerHTML = String(
+      kcHtml`<div class="msg-error">Could not load players: ${pErr.message}</div>`,
+    );
     return;
   }
+  // the game the GM has open (nothing sets it back to none once a game is open)
+  const theGame = theGameOpenNow("read properties of null (reading 'game_state')");
 
   // Read game config from game_state
-  let cfg = {};
+  let cfgHeld: unknown = {};
   try {
-    cfg =
-      typeof currentGame.game_state === 'string' ? JSON.parse(currentGame.game_state) : currentGame.game_state || {};
-  } catch (e) {}
-  const mapSize = cfg.mapSize || 'p5';
-  const maxTurns = cfg.maxTurns || 12;
+    cfgHeld =
+      typeof theGame.game_state === 'string' ? JSON.parse(theGame.game_state) : thisOrElse(theGame.game_state, {});
+  } catch {
+    // a setup that isn't JSON reads as none
+  }
+  const cfg = theSettingsAsHeld(cfgHeld);
+  const mapSize = thisOrElse(cfg.mapSize, 'p5');
+  const maxTurns = (cfg.maxTurns ?? 0) || 12;
   // ── MAP LADDER ────
   // Every rung is the SMALLEST grid on which generateNewGame's own Phase-1 placement reliably meets
   // its KING_MIN_SPACING=4 floor (>=3 neutral hexes between every pair of capitals) — measured, not
@@ -55,7 +129,7 @@ export async function runTurn0() {
   // 2 8x5=40 (was 8x6=48) 3 8x7=56 (was 10x7=70) 4 9x7=63 (was 12x8=96)
   // 5 12x7=84 (was 13x9=117) 6 15x7=105 (was 15x9=135) 7 16x7=112 (was 16x10=160)
   // 8 17x8=136 (was 17x11=187) 9 16x11=176 (was 18x11=198) 10 16x11=176 (was 19x12=228)
-  const sizemap = {
+  const theSizes = {
     p2: { cols: 8, rows: 5 },
     p3: { cols: 8, rows: 7 },
     p4: { cols: 9, rows: 7 },
@@ -66,38 +140,46 @@ export async function runTurn0() {
     p9: { cols: 16, rows: 11 },
     p10: { cols: 16, rows: 11 },
   };
-  const sz = sizemap[mapSize] || sizemap.p5;
-  const { botCount, allBot } = botConfigFor(currentGame);
+  // the ladder read by any map size's name
+  const sizemap: Readonly<Partial<Record<string, { readonly cols: number; readonly rows: number }>>> = theSizes;
+  const sz = sizemap[inWords(mapSize)] ?? theSizes.p5;
+  const { botCount, allBot } = botConfigFor(theGame);
 
   // Human setups from joined rows (exclude any leftover bot rows from a prior aborted Turn 0).
-  const humanRows = (players || []).filter((p) => !isBotRow(p));
+  const humanRows = (players ?? []).filter((p) => !isBotRow(p));
   const humanSetups = humanRows
-    .map((p) => {
-      let setup = {};
+    .map((p): TheTurnZeroPlan['humanSetups'][number] => {
+      let setup: TheSetUpAPlayerJoinedWith = {};
       try {
-        const r = typeof p.turn_report === 'string' ? JSON.parse(p.turn_report) : p.turn_report || {};
-        setup = r.playerSetup || {};
-      } catch (e) {}
+        const r: unknown =
+          typeof p.turn_report === 'string' ? JSON.parse(p.turn_report) : thisOrElse(p.turn_report, {});
+        const held = thisOrElse(theField(r, 'playerSetup'), {});
+        if (isASetUpAPlayerJoinedWith(held)) setup = held;
+      } catch {
+        // a report that isn't JSON leaves the setup empty
+      }
       return {
         id: p.player_index,
         gamePlayerId: p.id,
         isBot: false,
-        name: p.display_name || `Player ${p.player_index + 1}`,
-        kingName: setup.kingName || p.display_name || `King ${p.player_index + 1}`,
-        kingdomName: setup.kingdomName || p.display_name || `Realm ${p.player_index + 1}`,
-        race: setup.race || 'Human',
-        alignment: setup.alignment || 'Neutral',
-        temper: setup.temper || 'Brave',
-        skills: setup.skills || {},
+        name: p.display_name || `Player ${String(p.player_index + 1)}`,
+        kingName: (setup.kingName ?? '') || p.display_name || `King ${String(p.player_index + 1)}`,
+        kingdomName: (setup.kingdomName ?? '') || p.display_name || `Realm ${String(p.player_index + 1)}`,
+        race: (setup.race ?? '') || 'Human',
+        alignment: (setup.alignment ?? '') || 'Neutral',
+        temper: (setup.temper ?? '') || 'Brave',
+        skills: theSkillsOrNone(setup.skills),
       };
     })
     .sort((a, b) => a.id - b.id);
 
   // How many bots to generate. All-bot fills every slot; otherwise the configured count.
-  const plannedBots = allBot ? currentGame.max_players || 0 : botCount;
+  const plannedBots = allBot ? theGame.max_players || 0 : botCount;
   const totalKingdoms = humanSetups.length + plannedBots;
   if (totalKingdoms < 2) {
-    msg.innerHTML = kcHtml`<div class="msg-error">Need at least 2 realms to start (currently ${humanSetups.length} human${humanSetups.length !== 1 ? 's' : ''} + ${plannedBots} bot${plannedBots !== 1 ? 's' : ''}). ${allBot ? 'Raise Maximum Players.' : 'Wait for another player to join, or add bots at game creation.'}</div>`;
+    theElementFound(msg).innerHTML = String(
+      kcHtml`<div class="msg-error">Need at least 2 realms to start (currently ${humanSetups.length} human${humanSetups.length !== 1 ? 's' : ''} + ${plannedBots} bot${plannedBots !== 1 ? 's' : ''}). ${allBot ? 'Raise Maximum Players.' : 'Wait for another player to join, or add bots at game creation.'}</div>`,
+    );
     return;
   }
 
@@ -109,13 +191,15 @@ export async function runTurn0() {
   // 2026-09-21: the map rung is chosen for the realm count at game creation, but humans + bots can
   // exceed it (extra joins, bots added). Each rung is the smallest grid that reliably keeps >=3
   // provinces between every pair of capitals, so size the map for the realms actually starting.
+  const theCaps: Readonly<Partial<Record<string, number>>> = MAP_MAX_PLAYERS;
   let _szUse = sz,
     _mapUse = mapSize;
-  if (totalKingdoms > (MAP_MAX_PLAYERS[mapSize] || 10)) {
-    _mapUse = 'p' + Math.min(10, totalKingdoms);
-    _szUse = sizemap[_mapUse] || sz;
+  if (totalKingdoms > ((theCaps[inWords(mapSize)] ?? 0) || 10)) {
+    const theMapUsed = 'p' + String(Math.min(10, totalKingdoms));
+    _mapUse = theMapUsed;
+    _szUse = sizemap[theMapUsed] ?? sz;
     console.warn(
-      `Turn 0: ${totalKingdoms} realms on a ${mapSize} map — using the ${_mapUse} map (${_szUse.cols}x${_szUse.rows}) so capitals stay 3+ provinces apart.`,
+      `Turn 0: ${String(totalKingdoms)} realms on a ${inWords(mapSize)} map — using the ${theMapUsed} map (${String(_szUse.cols)}x${String(_szUse.rows)}) so capitals stay 3+ provinces apart.`,
     );
   }
   _pendingTurn0 = {
@@ -125,15 +209,15 @@ export async function runTurn0() {
     maxTurns,
     mapSize: _mapUse,
     seaPct: normSeaPct(cfg.seaPct),
-    botDifficulty: cfg.botDifficulty || null,
+    botDifficulty: thisOrElse(cfg.botDifficulty, null),
     botDiplomacy: cfg.botDiplomacy === 'hostile' ? 'hostile' : 'normal',
-    safeStart: !!cfg.safeStart,
+    safeStart: Boolean(cfg.safeStart),
   };
 
   if (botSetups.length > 0) {
     renderTurn0Preview(); // GM confirms the generated roster before we commit anything
   } else {
-    commitTurn0(); // no bots → straight to generation (unchanged behaviour)
+    void commitTurn0(); // no bots → straight to generation (unchanged behaviour)
   }
 }
 
@@ -141,16 +225,17 @@ export async function runTurn0() {
 export function renderTurn0Preview() {
   const msg = document.getElementById('detail-msg');
   if (!_pendingTurn0) {
-    msg.innerHTML = '';
+    theElementFound(msg).innerHTML = '';
     return;
   }
   const { humanSetups, botSetups } = _pendingTurn0;
-  const skillStr = (s) =>
-    Object.entries(s || {})
-      .filter(([, v]) => v > 0)
-      .map(([k, v]) => `${SKILL_LABELS[k] || k} ${v}`)
+  const theLabels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
+  const skillStr = (s: TheSkillsOfASetUp | null | undefined) =>
+    Object.entries(s ?? {})
+      .filter(([, v]) => Number(v) > 0)
+      .map(([k, v]) => `${(theLabels[k] ?? '') || k} ${String(v)}`)
       .join(', ') || '—';
-  const row = (sp) => kcHtml`
+  const row = (sp: ARealmsSetupInThePlan) => kcHtml`
     <div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;padding:7px 10px;border:1px solid #d8cbb0;border-radius:3px;margin-bottom:6px;background:${sp.isBot ? '#f4efe4' : '#fff'}">
       <strong style="min-width:150px">${sp.isBot ? '🤖 ' : ''}${sp.kingdomName}</strong>
       <span style="color:var(--stone);font-size:.82rem">${sp.kingName} · ${sp.alignment} · ${sp.race} · ${sp.temper}</span>
@@ -160,7 +245,7 @@ export function renderTurn0Preview() {
     ? kcHtml`<div style="font-size:.8rem;color:var(--stone);margin:2px 0 4px">Human players (${humanSetups.length})</div>${humanSetups.map((sp) => row(sp))}`
     : '';
   const botsHtml = kcHtml`<div style="font-size:.8rem;color:var(--stone);margin:8px 0 4px">🤖 Bot realms (${botSetups.length})</div>${botSetups.map((sp) => row(sp))}`;
-  msg.innerHTML = kcHtml`
+  theElementFound(msg).innerHTML = String(kcHtml`
     <div class="card" style="border-color:var(--crimson)">
       <h3 style="margin-top:0">Confirm the starting roster</h3>
       <div class="msg-info" style="margin-bottom:8px">Review the generated bot realms below. Generate the world to lock them in, or re-roll the bots.</div>
@@ -171,27 +256,29 @@ export function renderTurn0Preview() {
         <button class="btn btn-gold" onclick="runTurn0()">🎲 Re-roll Bots</button>
         <button class="btn btn-ghost" onclick="_pendingTurn0=null;document.getElementById('detail-msg').innerHTML=''">Cancel</button>
       </div>
-    </div>`;
+    </div>`);
 }
 
 // Commit the prepared Turn-0 plan: persist bot rows, generate the world, push reports.
 export async function commitTurn0() {
   const msg = document.getElementById('detail-msg');
   if (!_pendingTurn0) {
-    msg.innerHTML = '<div class="msg-error">No pending setup — press Run Turn 0 again.</div>';
+    theElementFound(msg).innerHTML = '<div class="msg-error">No pending setup — press Run Turn 0 again.</div>';
     return;
   }
-  const { humanSetups, botSetups, sz, maxTurns, seaPct, botDifficulty, botDiplomacy, safeStart } = _pendingTurn0;
-  msg.innerHTML = '<div class="msg-info">⏳ Generating world map and starting positions…</div>';
+  const { humanSetups, botSetups, sz, maxTurns, seaPct, botDiplomacy, safeStart } = _pendingTurn0;
+  theElementFound(msg).innerHTML = '<div class="msg-info">⏳ Generating world map and starting positions…</div>';
 
   try {
     // 1. Persist bot rows first (clean slate: remove any leftover bot rows from an aborted run).
     // Bots are the only rows with a null user_id, so this only ever deletes bots.
     if (botSetups.length > 0) {
-      await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.removeEveryBotsRealmOfThisGame(currentGame.id);
+      await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.removeEveryBotsRealmOfThisGame(
+        theGameOpenNow("read properties of null (reading 'id')").id,
+      );
       for (const b of botSetups) {
         const { data: brow, error: bErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.makeThisBotsRealm({
-          game_id: currentGame.id,
+          game_id: theGameOpenNow("read properties of null (reading 'id')").id,
           user_id: null,
           player_index: b.id,
           display_name: b.kingdomName,
@@ -212,19 +299,21 @@ export async function commitTurn0() {
           }),
         });
         if (bErr) {
-          msg.innerHTML = kcHtml`<div class="msg-error">Could not create bot realm: ${bErr.message}</div>`;
+          theElementFound(msg).innerHTML = String(
+            kcHtml`<div class="msg-error">Could not create bot realm: ${bErr.message}</div>`,
+          );
           return;
         }
-        b.gamePlayerId = brow.id;
+        b.gamePlayerId = theRowMade(brow).id;
       }
     }
 
     // 2. Combined, index-sorted setup list — humans then bots, contiguous indices.
     const setupPlayers = [...humanSetups, ...botSetups]
-      .map((sp) => ({
+      .map((sp: ARealmsSetupInThePlan) => ({
         id: sp.id,
         gamePlayerId: sp.gamePlayerId,
-        isBot: !!sp.isBot,
+        isBot: sp.isBot,
         name: sp.kingdomName,
         kingName: sp.kingName,
         kingdomName: sp.kingdomName,
@@ -236,39 +325,50 @@ export async function commitTurn0() {
       .sort((a, b) => a.id - b.id);
 
     // 3. Generate the world.
-    const gameState = await generateNewGame(setupPlayers, sz, maxTurns, { seaPct });
+    // (the world is made at once; the await of its value is kept, so what follows runs on the same tick as before)
+    const gameState: unknown = await Promise.resolve(generateNewGame(setupPlayers, sz, maxTurns, { seaPct }));
+    refuseASaveThatIsNotAGameInPlay(gameState); // a world just made holds its provinces, realms and heroes: never throws
     if (safeStart) gameState.safeStart = true; // 2026-09-29 (Toby): Safe Start — no diplomacy before Turn SAFE_START_TURN
     gameState.botDiplomacy = botDiplomacy === 'hostile' ? 'hostile' : 'normal'; // 2026-09-26b (Toby item 10): 'hostile' = bots always at war with humans, never allied
     gameState.botDifficulty = 'hard'; // 2026-09-26 (Toby item 9): every bot game plays at the one strength (Easy / Normal retired); the saved cfg value is ignored
     // Turn-running mode carries over from the setup config; a deadline clock starts now (Turn 0 =
     // the first "run").
     {
-      const _tm = normalizeTurnMode(parseGameState(currentGame).turnMode);
+      const _tm = normalizeTurnMode(
+        theField(parseGameState(theGameOpenNow("read properties of null (reading 'game_state')")), 'turnMode'),
+      );
       _tm.turnRanAt = new Date().toISOString();
       _tm.nextDeadlineAt = _tm.mode === 'deadline' ? computeNextDeadline(_tm, new Date()) : null;
-      gameState.turnMode = _tm;
+      const theWorldsTurnMode: { turnMode?: unknown } = gameState; // the turn mode as the page keeps it
+      theWorldsTurnMode.turnMode = _tm;
     }
     seedUsedArmyNames(gameState);
     seedUsedHeroNames(gameState);
-    const { error: saveErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.startThisGame(currentGame.id, {
-      status: 'active',
-      turn: 1,
-      game_state: JSON.stringify(gameState),
-      ...metaPatch(gameState),
-    });
+    const { error: saveErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.startThisGame(
+      theGameOpenNow("read properties of null (reading 'id')").id,
+      {
+        status: 'active',
+        turn: 1,
+        game_state: JSON.stringify(gameState),
+        ...metaPatch(gameState),
+      },
+    );
     if (saveErr) {
-      msg.innerHTML = kcHtml`<div class="msg-error">Error saving game: ${saveErr.message}</div>`;
+      theElementFound(msg).innerHTML = String(
+        kcHtml`<div class="msg-error">Error saving game: ${saveErr.message}</div>`,
+      );
       return;
     }
 
     // 4. Push turn reports to every realm (humans and bots alike — a bot report is harmless and
     // lets the GM inspect a bot's starting position).
-    let reportErrors = [];
+    const reportErrors: string[] = [];
     for (const sp of setupPlayers) {
       const report = buildTurnReport(playerView(gameState, sp.id)); // what the realm sees of the new world; no turn's lines yet
-      report.engineStamp = typeof runningBuildStamp === 'function' ? runningBuildStamp() : null; // which GM build wrote it
+      const theReportStamped: { engineStamp: string | null } = report;
+      theReportStamped.engineStamp = runningBuildStamp(); // which GM build wrote it
       const { error: rErr } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.giveThisRealmItsFirstReport(
-        sp.gamePlayerId,
+        theRowIdOf(sp),
         sp.isBot
           ? JSON.stringify({
               isBot: true,
@@ -287,12 +387,12 @@ export async function commitTurn0() {
       if (rErr) reportErrors.push(rErr.message);
       try {
         await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.writeThisLog({
-          game_id: currentGame.id,
+          game_id: theGameOpenNow("read properties of null (reading 'id')").id,
           player_index: sp.id,
           turn: 0,
           entries: report,
         });
-      } catch (snapErr) {
+      } catch {
         /* best-effort */
       }
     }
@@ -300,24 +400,33 @@ export async function commitTurn0() {
     const botN = setupPlayers.filter((s) => s.isBot).length,
       humN = setupPlayers.length - botN;
     if (reportErrors.length > 0) {
-      msg.innerHTML = kcHtml`<div class="msg-error">Game created but some reports failed: ${reportErrors.join(', ')}</div>`;
+      theElementFound(msg).innerHTML = String(
+        kcHtml`<div class="msg-error">Game created but some reports failed: ${reportErrors.join(', ')}</div>`,
+      );
     } else {
-      msg.innerHTML = kcHtml`<div class="msg-success">✅ Turn 0 complete! Map generated for ${humN} human${humN !== 1 ? 's' : ''}${botN ? ` + ${botN} bot${botN !== 1 ? 's' : ''}` : ''}. Players can now log in and see their realms.</div>`;
+      theElementFound(msg).innerHTML = String(
+        kcHtml`<div class="msg-success">✅ Turn 0 complete! Map generated for ${humN} human${humN !== 1 ? 's' : ''}${botN ? ` + ${String(botN)} bot${botN !== 1 ? 's' : ''}` : ''}. Players can now log in and see their realms.</div>`,
+      );
     }
     _pendingTurn0 = null;
-    currentGame.status = 'active';
-    currentGame.turn = 1;
-    document.getElementById('detail-run-turn0-wrap').style.display = 'none';
-    document.getElementById('detail-orders-card').style.display = 'block';
-    document.getElementById('detail-log-card').style.display = 'none';
-    const { data: refreshed } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.thisGameWithItsRealms(currentGame.id);
+    const theGameStarted = theGameOpenNow("set properties of null (setting 'status')");
+    theGameStarted.status = 'active';
+    theGameStarted.turn = 1;
+    theElementWithTheId('detail-run-turn0-wrap', HTMLElement).style.display = 'none';
+    theElementWithTheId('detail-orders-card', HTMLElement).style.display = 'block';
+    theElementWithTheId('detail-log-card', HTMLElement).style.display = 'none';
+    const { data: refreshed } = await thePagesDb.theTurnZeroAsTheGameMasterRunsIt.thisGameWithItsRealms(
+      theGameOpenNow("read properties of null (reading 'id')").id,
+    );
     if (refreshed) {
       currentGame = refreshed;
-      currentGamePlayers = refreshed.game_players || [];
+      currentGamePlayers = asItsGuardReadsIt(refreshed.game_players) ?? [];
     }
-    renderOrdersStatus(currentGame);
+    renderOrdersStatus(theGameOpenNow("read properties of null (reading 'meta')"));
   } catch (e) {
-    msg.innerHTML = kcHtml`<div class="msg-error">Generation error: ${e.message}</div>`;
+    theElementFound(msg).innerHTML = String(
+      kcHtml`<div class="msg-error">Generation error: ${theField(e, 'message')}</div>`,
+    );
     console.error(e);
   }
 }

@@ -50,3 +50,9 @@ function aSideAsAPlusReadsIt(side: unknown): unknown {
   const held: unknown = side;
   return String(held);
 }
+/** A database's refusal (its message, code and hint: not an Error), thrown as it is for the catch that reads it (lint's
+ *  `only-throw-error` refuses an object of a known type that isn't an Error, and wrapping it would lose its hint). Both
+ *  pages throw it (plan P1-16r moved it here from `ui/player/dispatches.ts`). */
+export function theRefusalAsThrown(error: unknown): unknown {
+  return error;
+}

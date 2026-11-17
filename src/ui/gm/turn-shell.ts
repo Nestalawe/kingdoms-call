@@ -1,4 +1,3 @@
-// @ts-nocheck: JavaScript not yet typed (strict TypeScript reports errors here); P1-10 and P1-16 type it.
 import { kcHtml } from '../shared/kc-safe.ts';
 import { kcRng } from '../../engine/rng.ts';
 import { kcClock } from '../../engine/clock.ts';
@@ -17,6 +16,67 @@ import {
 import { whatTheSavesCheckFindsBeforeTheTurn } from '../../engine/saves/the-saves-check-before-a-turn-and-the-known-leaks-it-lets-through.ts';
 import { buildReports } from '../../views/every-realms-report-and-the-lines-each-realm-reads.ts';
 import { runningBuildStamp, setAutoTurnStatus } from './sign-in.ts';
+import { theGameOpenNow } from './game-detail.ts';
+import { theField } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
+import { asItsGuardReadsIt } from '../../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import type { KcSafeHtml } from '../shared/kc-safe.ts';
+import type { AGame, ARealmAsTheTurnRunsIt } from '../../db/the-db-interface-and-its-areas.ts';
+import type { GameState } from '../../schemas/saved-game-state.ts';
+import type { TheGamesSlotRow } from '../../engine/turn/context.ts';
+
+/** A game as the shell runs its turn: its id, its turn and its name (a game of the GM's list, or the game open). */
+type AGameAsTheShellRunsIt = Pick<AGame, 'id' | 'turn' | 'name'>;
+/** What the shell is handed: nothing from the Resolve Turn button; from the watcher, the game and why its turn is due. */
+interface WhatTheTurnIsRunWith {
+  readonly auto?: boolean | undefined;
+  readonly game?: AGameAsTheShellRunsIt | null | undefined;
+  readonly reason?: string | undefined;
+}
+/** Where the shell writes how the run is going: the game screen's message, or the watcher's stand-in for it, which
+ *  takes the marked HTML as it is (the screen's element writes it by its words). */
+interface TheMessageOfTheRun {
+  innerHTML: KcSafeHtml | string;
+}
+/** The world as the turn left it, as the shell reads it to save it (parsed from the words resolveTurn hands back). */
+type TheWorldAsTheShellSavesIt = Pick<GameState, 'turn' | 'maxTurns' | 'gameOver'> & {
+  readonly maxTurnsHardStop?: unknown;
+  turnMode?: unknown;
+};
+/** The world resolveTurn hands back in words, parsed: an object, as the words of a game's state always are; its fields
+ *  are read as its type claims (a maintainer's answer, 14 November). */
+function isTheWorldAsTheShellSavesIt(world: unknown): world is TheWorldAsTheShellSavesIt {
+  return typeof world === 'object' && world !== null;
+}
+/** The world the turn left, parsed from its words: one that is no object (never: the words are a game's state) throws a
+ *  TypeError, as reading or writing its turn mode did. */
+function theWorldTheTurnLeft(words: string): TheWorldAsTheShellSavesIt {
+  const world: unknown = JSON.parse(words);
+  if (isTheWorldAsTheShellSavesIt(world)) return world;
+  throw new TypeError(`Cannot read properties of ${String(world)} (reading 'turnMode')`);
+}
+/** The game to run, where the code reads it unguarded: none throws the TypeError reading its turn threw. */
+function theGameToRun(game: AGameAsTheShellRunsIt | null): AGameAsTheShellRunsIt {
+  if (game === null) throw new TypeError("Cannot read properties of null (reading 'turn')");
+  return game;
+}
+/** The realms as loaded: none throws the TypeError filtering them threw. */
+function theRealmsAsLoaded(realms: ARealmAsTheTurnRunsIt[] | null): ARealmAsTheTurnRunsIt[] {
+  if (realms === null) throw new TypeError("Cannot read properties of null (reading 'filter')");
+  return realms;
+}
+/** The realm's row as loaded, for the slot row a report is for: the turn keeps the rows it is handed as they are, so the
+ *  report's row is one of them (none throws). */
+function theLoadedRowOf(realms: readonly ARealmAsTheTurnRunsIt[], slot: TheGamesSlotRow): ARealmAsTheTurnRunsIt {
+  const row = realms.find((r) => r === slot);
+  if (row === undefined) throw new TypeError('the report is for a realm the turn was not handed');
+  return row;
+}
+/** What a telemetry write threw, in the words the game list shows: its message, else itself in words. */
+function theTelemetrysFailureInWords(e: unknown): unknown {
+  const message: unknown = e ? Reflect.get(Object(e), 'message') : e;
+  if (message) return message;
+  return String(e);
+}
 
 // ── THE TURN SHELL (plan P1-18d, 2026-10-18) ────
 // runTurn runs one turn of a game for the GM: from the Resolve Turn button, or from the auto-turn watcher (auto-turn.ts).
@@ -26,39 +86,38 @@ import { runningBuildStamp, setAutoTurnStatus } from './sign-in.ts';
 // resolveTurn hands over for them) and write each one, the GM's log and the telemetry. It always returns {ok, committed, conflict, error} (and `turn` when it worked); docs/traps.md,
 // "Post-commit work in runTurn".
 // Once the turn has started it returns its `seed` too: the turn's dice (P1-18e, "The turn's dice" below).
-export async function runTurn(opts) {
-  opts = opts || {};
+export async function runTurn(optsHanded?: WhatTheTurnIsRunWith | null) {
+  const opts = optsHanded ?? {};
   const auto = !!opts.auto;
-  const gameRow = opts.game || currentGame;
-  const viewing = !!(currentGame && gameRow && currentGame.id === gameRow.id);
+  const gameRow = opts.game ?? currentGame;
+  const viewing = currentGame != null && currentGame.id === gameRow?.id;
   const _detailMsg = document.getElementById('detail-msg');
   // In auto mode the detail panel may be showing another game (or not at all) — route status to the
   // watcher banner, and mirror it into the detail panel only when the GM is looking at this very
   // game.
-  const msg =
-    !auto && _detailMsg
-      ? _detailMsg
-      : {
-          _v: '',
-          get innerHTML() {
-            return this._v;
-          },
-          set innerHTML(v) {
-            this._v = v;
-            if (v)
-              setAutoTurnStatus(
-                kcHtml`<strong>⚙️ Auto-turn watcher</strong> · ${gameRow.name || ''} (${opts.reason || 'auto'})<br>${v}`,
-              );
-            if (viewing && _detailMsg) _detailMsg.innerHTML = v;
-          },
-        };
+  const theWatchersMessage: TheMessageOfTheRun & { _v: KcSafeHtml | string } = {
+    _v: '',
+    get innerHTML() {
+      return this._v;
+    },
+    set innerHTML(v) {
+      this._v = v;
+      if (v)
+        setAutoTurnStatus(
+          kcHtml`<strong>⚙️ Auto-turn watcher</strong> · ${theGame.name || ''} (${(opts.reason ?? '') || 'auto'})<br>${v}`,
+        );
+      if (viewing && _detailMsg) _detailMsg.innerHTML = String(v);
+    },
+  };
+  const msg: TheMessageOfTheRun = !auto && _detailMsg ? _detailMsg : theWatchersMessage;
 
   // Confirm before running — prevent accidental double-runs
-  const expectedTurnToRun = gameRow.turn;
+  const theGame = theGameToRun(gameRow);
+  const expectedTurnToRun = theGame.turn;
   if (
     !auto &&
     !confirm(
-      `Run Turn ${expectedTurnToRun}? This will resolve all submitted orders and advance the game. This cannot be undone.`,
+      `Run Turn ${String(expectedTurnToRun)}? This will resolve all submitted orders and advance the game. This cannot be undone.`,
     )
   ) {
     msg.innerHTML = '';
@@ -72,7 +131,7 @@ export async function runTurn(opts) {
   // catch at the end of runTurn, and runTurn always RETURNS {ok, committed, conflict, error}: it never
   // throws and never returns nothing. ordersSnapshot is what a failed run may put back; the four flags
   // say how far the run got, which decides whether it may.
-  let ordersSnapshot = []; // each submitted row's orders as loaded: what a failed run puts back
+  let ordersSnapshot: { id: string; orders: ARealmAsTheTurnRunsIt['orders']; submitted: boolean }[] = []; // each submitted row's orders as loaded: what a failed run puts back
   let _ordersCleared = false; // the orders were cleared in the database: a failure before the save restores them
   let _saveSent = false; // the save was sent: a failure from here re-reads the turn before restoring anything
   let _saveConflict = false; // set if the conditional state save finds the turn already advanced elsewhere
@@ -85,20 +144,20 @@ export async function runTurn(opts) {
   // with nobody submitting anything. (The trigger was a TypeError in buildTurnReport: SEA_UNIT_TYPES
   // is a Set and was being called with .includes.)
   let _turnCommitted = false;
-  let G;
-  let seed = null; // the turn's seed, once drawn (below): returned on success, and from the catch
-  let theSavesCheck = ''; // what the save's check found, in words (below), kept on screen after the refresh
+  let G: TheWorldAsTheShellSavesIt;
+  let seed: number | null = null; // the turn's seed, once drawn (below): returned on success, and from the catch
+  let theSavesCheck: KcSafeHtml | string = ''; // what the save's check found, in words (below), kept on screen after the refresh
 
   try {
     // 1. Load fresh data
     const { data: freshGame, error: gErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.thisGameEveryColumn(
-      gameRow.id,
+      theGame.id,
     );
     const { data: freshPlayers, error: pErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.everyRealmOfThisGame(
-      gameRow.id,
+      theGame.id,
     );
     if (gErr || pErr || !freshGame) {
-      msg.innerHTML = kcHtml`<div class="msg-error">Could not load game: ${gErr?.message || pErr?.message}</div>`;
+      msg.innerHTML = kcHtml`<div class="msg-error">Could not load game: ${(gErr?.message ?? '') || pErr?.message}</div>`;
       return { ok: false, committed: false, error: 'could not load game' };
     }
 
@@ -129,11 +188,12 @@ export async function runTurn(opts) {
     // 2026-09-27: the snapshot carries each row's ORIGINAL orders_submitted flag. It used to restore
     // `orders_submitted:true` for every row that held any `orders` value, which promoted a merely
     // SAVED DRAFT into a submitted turn whenever a run failed.
-    ordersSnapshot = freshPlayers
+    const realmsLoaded = theRealmsAsLoaded(freshPlayers);
+    ordersSnapshot = realmsLoaded
       .filter((p) => p.user_id && p.orders)
-      .map((p) => ({ id: p.id, orders: p.orders, submitted: !!p.orders_submitted }));
+      .map((p) => ({ id: p.id, orders: p.orders, submitted: Boolean(asItsGuardReadsIt(p.orders_submitted)) }));
     const { error: clearErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.clearTheOrdersOfEveryRealmOfThisGame(
-      gameRow.id,
+      theGame.id,
     );
     if (clearErr) {
       // Nothing was cleared (one update, all or nothing), so nothing needs putting back. Stop before the
@@ -146,7 +206,7 @@ export async function runTurn(opts) {
 
     // The turn itself (src/engine/run-turn.ts): resolveTurn brings the save up to date, merges the orders and resolves
     // the turn, with no database and no screen. It is synchronous, as the turn always was between the clear and the save.
-    const playersWithOrders = freshPlayers.filter((p) => p.user_id && p.orders).length;
+    const playersWithOrders = realmsLoaded.filter((p) => p.user_id && p.orders).length;
     msg.innerHTML = kcHtml`<div class="msg-info">⏳ Loaded orders from ${playersWithOrders} player${playersWithOrders !== 1 ? 's' : ''}. Resolving 5 phases…</div>`;
     msg.innerHTML = kcHtml`<div class="msg-info">⏳ Resolving 5 phases…</div>`;
     // ── THE TURN'S DICE (P1-18e, 2026-10-18; P1-08m, 2026-10-20) ────
@@ -157,11 +217,11 @@ export async function runTurn(opts) {
     // await, and nothing else the page runs meanwhile (another game's turn, the watcher) draws from them. The reports
     // draw no dice (P1-12b2). runTurn returns the seed.
     seed = Math.floor(kcRng() * 2 ** 32) || 1;
-    const resolved = resolveTurn(freshGame.game_state, freshPlayers, expectedTurnToRun, seed);
+    const resolved = resolveTurn(freshGame.game_state, realmsLoaded, expectedTurnToRun, seed);
 
     // 9. Save updated game state
     msg.innerHTML = kcHtml`<div class="msg-info">⏳ Saving game state…</div>`;
-    G = JSON.parse(resolved.state);
+    G = theWorldTheTurnLeft(resolved.state);
     // Turn-running clock: stamp the run and, in deadline mode, schedule the next fixed-clock deadline
     // from now
     // (an early "all orders in" run also resets the clock, so the next deadline is always relative to the last run).
@@ -177,7 +237,7 @@ export async function runTurn(opts) {
     _saveSent = true;
     const { data: _savedRow, error: saveErr } =
       await thePagesDb.theTurnAsTheGameMasterRunsIt.saveThisGameWhileOnThisTurnAndAnswerItsId(
-        gameRow.id,
+        theGame.id,
         expectedTurnToRun,
         {
           game_state: JSON.stringify(G),
@@ -195,7 +255,7 @@ export async function runTurn(opts) {
     if (!_savedRow) {
       _saveConflict = true;
       throw new Error(
-        `Turn ${expectedTurnToRun} was already run elsewhere (another GM tab or device) — this run was discarded.`,
+        `Turn ${String(expectedTurnToRun)} was already run elsewhere (another GM tab or device) — this run was discarded.`,
       );
     }
     _turnCommitted = true; // from here on the turn is resolved and saved: never put the orders back
@@ -206,14 +266,15 @@ export async function runTurn(opts) {
     // from what the turn hands over for them (P1-12b3), writing nothing.
     resolved.spyStealthAndInvisibilityStampedForTheReports();
     const { reports, tel, gmLog } = buildReports(resolved.whatTheReportsRead());
-    let reportErrors = [];
+    const reportErrors: string[] = [];
     for (const { gp, report } of reports) {
-      report.engineStamp = typeof runningBuildStamp === 'function' ? runningBuildStamp() : null; // which GM build wrote it: the page's to know, not the engine's
+      const theReportStamped: { engineStamp: string | null } = report;
+      theReportStamped.engineStamp = runningBuildStamp(); // which GM build wrote it: the page's to know, not the engine's
       const { error: rErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.giveThisRealmItsTurnReport(
-        gp.id,
+        theLoadedRowOf(realmsLoaded, gp).id,
         JSON.stringify(report),
       );
-      if (rErr) reportErrors.push(gp.player_index + ': ' + rErr.message);
+      if (rErr) reportErrors.push(String(gp.player_index) + ': ' + rErr.message);
 
       // Save a per-player snapshot of this report so the player portal can render the correct MAP and
       // chronicle for this turn later. Keyed by the RESOLVED turn number (G.turn-1), matching the
@@ -221,12 +282,12 @@ export async function runTurn(opts) {
       // (player_index = this player) — the GM full log uses player_index = -1.
       try {
         await thePagesDb.theTurnAsTheGameMasterRunsIt.writeThisLog({
-          game_id: gameRow.id,
+          game_id: theGame.id,
           player_index: gp.player_index,
           turn: G.turn - 1,
           entries: report,
         });
-      } catch (snapErr) {
+      } catch {
         /* snapshot is best-effort — never block the turn on it */
       }
     }
@@ -234,7 +295,7 @@ export async function runTurn(opts) {
     // 11. Save full log to turn_logs table: the turn's lines in words, as the views wrote them (P1-12c3), in the form
     // the GM log has always been stored in.
     await thePagesDb.theTurnAsTheGameMasterRunsIt.writeThisLog({
-      game_id: gameRow.id,
+      game_id: theGame.id,
       player_index: -1, // -1 = full GM log
       turn: G.turn - 1,
       entries: gmLog,
@@ -243,9 +304,9 @@ export async function runTurn(opts) {
     // 12. TELEMETRY (2026-09-25): one turn_events row per realm, and game_results when the game ended.
     // Best-effort: a failure is shown on the game list, never thrown, and the turn is already saved.
     try {
-      await writeTurnTelemetry(tel.gs, gameRow, freshPlayers, tel.collected, G.turn - 1);
+      await writeTurnTelemetry(tel.gs, theGame, realmsLoaded, tel.collected, G.turn - 1);
     } catch (_te) {
-      _kcTelLastErr = (_te && _te.message) || String(_te);
+      _kcTelLastErr = theTelemetrysFailureInWords(_te);
       console.warn('telemetry:', _te);
     }
 
@@ -283,13 +344,13 @@ export async function runTurn(opts) {
     let _savedAnyway = false,
       _saveUnknown = false;
     if (_saveSent && !_turnCommitted && !_saveConflict) {
-      let _turnNow = null;
+      let _turnNow: number | null = null;
       try {
         const { data: _g, error: _gErr } = await thePagesDb.theTurnAsTheGameMasterRunsIt.theTurnOfThisGameIfItIsThere(
-          gameRow.id,
+          theGame.id,
         );
         if (!_gErr && _g) _turnNow = _g.turn;
-      } catch (_re) {
+      } catch {
         /* unknown: handled below */
       }
       if (_turnNow == null) _saveUnknown = true;
@@ -308,44 +369,43 @@ export async function runTurn(opts) {
             thePagesDb.theTurnAsTheGameMasterRunsIt.putBackThisRealmsOrders(snap.id, snap.orders, snap.submitted),
           ),
         );
-        _restoreFailed = _res.some((r) => r && r.error);
-      } catch (_re) {
+        _restoreFailed = _res.some((r) => asItsGuardReadsIt(r) && r.error);
+      } catch {
         _restoreFailed = true;
       }
     }
     const _why = _saveConflict
       ? 'Nothing was changed by this run.'
       : _savedAnyway
-        ? `The save answered with an error, but the game has moved on: Turn ${expectedTurnToRun} WAS saved. The orders for that turn are spent and have not been restored. No turn reports were sent; re-push reports or check the browser console (F12).`
+        ? `The save answered with an error, but the game has moved on: Turn ${String(expectedTurnToRun)} WAS saved. The orders for that turn are spent and have not been restored. No turn reports were sent; re-push reports or check the browser console (F12).`
         : _turnCommitted
-          ? `Turn ${expectedTurnToRun} WAS resolved and saved — the failure came after the save, while writing reports. The orders for that turn are spent and have not been restored. Players may be missing this turn's report; re-push reports or check the browser console (F12).`
+          ? `Turn ${String(expectedTurnToRun)} WAS resolved and saved — the failure came after the save, while writing reports. The orders for that turn are spent and have not been restored. Players may be missing this turn's report; re-push reports or check the browser console (F12).`
           : _saveUnknown
-            ? `The save may or may not have gone through, and the game could not be read again to tell. The orders have NOT been restored, so the turn can't run twice. Reload the page: if the game is on Turn ${expectedTurnToRun + 1}, the turn was saved; if it is still on Turn ${expectedTurnToRun}, ask the players to send their orders again.`
+            ? `The save may or may not have gone through, and the game could not be read again to tell. The orders have NOT been restored, so the turn can't run twice. Reload the page: if the game is on Turn ${String(expectedTurnToRun + 1)}, the turn was saved; if it is still on Turn ${String(expectedTurnToRun)}, ask the players to send their orders again.`
             : !_ordersCleared
               ? 'Nothing was changed by this run.'
               : _restoreFailed
                 ? 'Check browser console (F12) for full details. The orders could NOT all be restored: ask the players to send theirs again.'
                 : 'Check browser console (F12) for full details. Your orders have been restored.';
-    msg.innerHTML = kcHtml`<div class="msg-error">⚠ Resolution error: ${e.message}<br><small>${_why}</small></div>`;
-    return { ok: false, committed: _turnCommitted, conflict: _saveConflict, error: e.message, seed };
+    msg.innerHTML = kcHtml`<div class="msg-error">⚠ Resolution error: ${theField(e, 'message')}<br><small>${_why}</small></div>`;
+    return { ok: false, committed: _turnCommitted, conflict: _saveConflict, error: theField(e, 'message'), seed };
   }
 
   // Refresh UI (only the game the GM is looking at; a watcher run of another game just refreshes
   // the list)
   if (viewing) {
-    currentGame.turn = G.turn;
-    currentGame.status = G.gameOver ? 'complete' : 'active';
+    const theGameOpen = theGameOpenNow("set properties of null (setting 'turn')");
+    theGameOpen.turn = G.turn;
+    theGameOpen.status = G.gameOver ? 'complete' : 'active';
     // the refresh empties the message: what the save's check found is shown again once it is done
-    setTimeout(
-      () =>
-        openGame(currentGame.id).then(() => {
-          const shown = document.getElementById('detail-msg');
-          if (theSavesCheck && shown && !shown.innerHTML) shown.innerHTML = theSavesCheck;
-        }),
-      2000,
-    );
+    setTimeout(() => {
+      void openGame(theGameOpenNow("read properties of null (reading 'id')").id).then(() => {
+        const shown = document.getElementById('detail-msg');
+        if (theSavesCheck && shown && !shown.innerHTML) shown.innerHTML = String(theSavesCheck);
+      });
+    }, 2000);
   } else if (auto && document.getElementById('sec-games')?.classList.contains('section-active')) {
-    loadGames();
+    void loadGames();
   }
   return { ok: true, committed: true, turn: G.turn, seed };
 }

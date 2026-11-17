@@ -36,7 +36,6 @@ export const ALLOWLISTS = [{ file: 'eslint.config.js', name: 'HTML_EXCEPTIONS' }
 
 const CODE = /\.(ts|mts|cts|js|mjs|cjs|html)$/;
 // Built from parts, so this file doesn't count itself.
-const NOCHECK = new RegExp('@ts-' + 'nocheck');
 const TS_IGNORE = new RegExp('@ts-' + '(ignore|expect-error)');
 const ESLINT_DISABLE = new RegExp('eslint-' + 'disable');
 const STUB_DB = /['"][^'"]*\/stub-db(\.js)?['"]/;
@@ -50,28 +49,16 @@ function files(): string[] {
 
 const lines = (text: string, re: RegExp) => text.split('\n').filter((l) => re.test(l)).length;
 
-// The ts-nocheck line is counted in two (plan P1-10, Decision 9; P1-10b's Decision 5), so that the engine's side can
-// reach 0 (P1-10b) before the UI's (P1-16): tsNocheckEngineSide, the files of the folders below, which the engine runs
-// on or the player portal shares; tsNocheckUi, every other file (src/ui/'s pages, src/rulebook/, tests/, tools/).
-export const ENGINE_SIDE_FOLDERS = [
-  'src/engine/',
-  'src/views/',
-  'src/db/',
-  'src/ui/shared/',
-  'src/content/',
-  'src/schemas/',
-  'src/shared/',
-] as const;
-const onTheEngineSide = (file: string) => ENGINE_SIDE_FOLDERS.some((folder) => file.startsWith(folder));
+// The ts-nocheck line has no count: lint refuses it in every TypeScript file (eslint.config.js's ban-ts-comment; plan
+// P1-10, Decision 9), so its two counts, on the engine's side and in the UI, retired at 0 (P1-16v), as plan P1-13's
+// Decision 13 retires a baseline at 0.
 
-/** The counts read from the code files' text (the ts-nocheck lines in their two counts, the other switch-offs, and the
- *  tests on the database stand-in), for the files given as [path from the repository's root, text]. */
+/** The counts read from the code files' text (the switch-offs of a check and the tests on the database stand-in), for
+ *  the files given as [path from the repository's root, text]. */
 export function countsFromTheCodeFiles(codeFiles: readonly (readonly [file: string, text: string])[]): Counts {
-  const counts = { tsNocheckEngineSide: 0, tsNocheckUi: 0, tsIgnore: 0, eslintDisable: 0, stubDbTests: 0 };
+  const counts = { tsIgnore: 0, eslintDisable: 0, stubDbTests: 0 };
   for (const [f, text] of codeFiles) {
     if (!CODE.test(f)) continue;
-    if (onTheEngineSide(f)) counts.tsNocheckEngineSide += lines(text, NOCHECK);
-    else counts.tsNocheckUi += lines(text, NOCHECK);
     counts.tsIgnore += lines(text, TS_IGNORE);
     counts.eslintDisable += lines(text, ESLINT_DISABLE);
     if (f.startsWith('tests/') && !f.startsWith('tests/lib/stub-db.') && STUB_DB.test(text)) counts.stubDbTests++;

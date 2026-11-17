@@ -54,7 +54,8 @@ import {
 // resolves the five phases and the end of the turn. It is synchronous and reads no database, no screen and no clock.
 // Its dice come from its seed (P1-08m, below). The shell around it is runTurn (src/ui/gm/turn-shell.ts): it loads the
 // game, clears the orders, draws the seed, calls this, saves, and only then has the reports built and writes them.
-//   G                 the game's saved state as loaded (games.game_state, a JSON string): parsing it is the turn's copy
+//   save              the game's saved state as loaded (games.game_state, a JSON string, or any value the column holds):
+//                     parsing it is the turn's copy, and the upgrade's first refusal checks it is a game in play
 //   freshPlayers      the game's slot rows as loaded (game_players), each with the orders it sent
 //   expectedTurnToRun the turn being run (the games row's turn, which the save checks)
 //   seed              the turn's seed, a 32-bit integer (kcRngStream reads 0 as 1); none (the tests' turns): the dice
@@ -78,7 +79,7 @@ import {
 //                     shell's message tells the GM, as the GM's log does
 // The body keeps runTurn's two-space indent and names, so the code anchors in tests/README.md still match.
 export function resolveTurn(
-  save: string | GameState,
+  save: unknown,
   freshPlayers: TheGamesSlotRow[],
   expectedTurnToRun: number,
   seed?: number | null,

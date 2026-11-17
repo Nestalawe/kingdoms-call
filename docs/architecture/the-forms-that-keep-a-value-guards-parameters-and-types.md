@@ -238,7 +238,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   written on a game's state as parsed (`gs.botDiplomacy = v`) is `Reflect.set` after a check that throws, for a value
   that isn't an object, the `TypeError` the write threw in a module. A column the page sends as it built it from such a
   state (a game's `meta`) takes any value in `TheDatabase` (`AGamesChange`, types only), as do the JSON columns of the
-  rows the Hall of Fame and the statistics write (`AsTheGmPageWritesIt`): supabase-js writes them as JSON.
+  rows the Hall of Fame, the statistics and the turns' logs write (`AsTheGmPageWritesIt`): supabase-js writes them as JSON.
 - **A value parsed from JSON** is typed `unknown`, each field read through `fieldAsJavaScriptReadsIt(value, key)`, which
   does what `value[key]` does (for `null`, the TypeError that read throws: a game's setup, `bots/setup.ts`).
 - **What a realm sent, parsed from JSON or as its slot row holds it** (its orders, read field by field) goes through one

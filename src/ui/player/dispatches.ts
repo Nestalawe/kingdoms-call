@@ -1,4 +1,5 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
+import { theRefusalAsThrown } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 import type { Json } from '../../db/database.types.ts';
 import type { ADispatch } from '../../db/the-db-interface-and-its-areas.ts';
 import { thePagesDb } from './startup.ts';
@@ -141,10 +142,6 @@ function theWordsOfWhatTheDispatchesMet(e: unknown): string {
     if (message) words = message;
   }
   return String(words);
-}
-// A database's refusal (its message, code and hint: not an Error), thrown as it is for the catch that reads it.
-export function theRefusalAsThrown(error: unknown): unknown {
-  return error;
 }
 // The turn the page marks on its seat or report (`_liveTurn`), or the holder itself where it has none.
 function theLiveTurnHeldBy(holder: unknown): unknown {

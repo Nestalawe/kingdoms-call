@@ -32,6 +32,11 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **`(x != null && list.find(…)) || y`**, the found element else a fallback, is `(x != null ? list.find(…) : undefined)
   ?? y`: `??` on the `false` the left can give would keep it.
 
+- **`(x || {}).f`, `(x || []).forEach` and `Object.values(x || {})` on a value of any kind** (the statistics' JSON, read
+  in a hundred places by the GM page's statistics tab) go through readers that keep each value
+  (`theFieldOfAValueOrOfNothing`, `Reflect.get(Object(thisOrElse(x, {})), f)`; `theListOrNothingToWalk`, a list as it
+  is, none as `[]`, any other value the `TypeError` the call threw; `theValuesOf`), in `stats-tab.ts`. A total summed
+  `s + x || 0` reads as `(s + x) || 0`, and is kept so: `thisOrElse(theSumAsJavaScriptMakesIt(s, x), 0)` (KD-392).
 - **`x || ''` on a value of any kind** (an order field's value as the page's snapshot holds it, `unknown`) goes through a
   reader written with an `if` that hands back `unknown` (`theFieldOrNoWords`): `x ?? ''` keeps a `0` or a `false`, and
   `x || ''` narrows to `{}`, which `no-base-to-string` refuses written out. `x || <a read that may throw>` on such a
@@ -182,6 +187,9 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   type predicate on what it keeps: `.filter((x): x is { f: ALairWithAGuardian; i: number } => …)`. A filter's callback
   typed wider than the list's element (`(it: AnItemItsEffectGuarded) => …`) keeps a guard on a field the schema
   requires and still returns the list's own kind; two such checks stay two (the ratchet counts each).
+- **An object grouped by words** (`m[k] || (m[k] = { n: 0 })`, a race's or a terrain's tally) is `m[k] ??= { n: 0 }`, the
+  table typed `Record<string, …>`: an object is never falsy, and a key the prototype holds (`constructor`) is found and
+  not written, as before. Keyed by a number, lint reads `??=` as never missing: the key is read `String(n)` first.
 - **An object grouped by a number** (`(o[k] = o[k] || v).list.push(x)`) is read, then written back:
   `const here = o[k] ?? v;`, `o[k] = here;`, `here.list.push(x)` (lint reads `o[k] ??= v` as never missing). A `Map`
   grouped so (`if (!m.has(k)) m.set(k, []); m.get(k).push(w)`, the lairs holding an effect) is the same three steps,

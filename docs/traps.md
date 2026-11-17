@@ -40,7 +40,8 @@ order is not changed. Checks: `npm run lint:arch` fails on a new import cycle (n
 Pollers, lists and anything that runs often select named columns (`Db`'s light lists) and read summaries from
 `games.meta`; the full world is loaded only when it's really needed, once. Checks: lint
 (`kc/big-tables-and-profiles-are-read-by-named-columns`) refuses every column of `games`, `game_players`, `turn_logs`
-or `profiles`, and `profiles`' `email`; the reads there when it came in are in `eslint-suppressions.json`.
+or `profiles`, and `profiles`' `email`; `Db`'s answers are typed by the columns each read names, so the compiler
+refuses a read of a column left out.
 [Detail](architecture/the-database-and-what-it-holds.md#select-on-big-tables).
 
 ## A new column must be optional at the write site
@@ -123,7 +124,7 @@ Before adding a new reader, grep for `game_state` reads that don't parse. Checks
 
 When a refactor changes a type (array ↔ `Set`, object ↔ `Map`), test through the consumers, not by comparing
 contents, and grep every method used on the name (`.includes`, `.has`, `.length`, `.size`, indexing) first. Checks:
-the type check, in a file it checks; nothing in a file that keeps its ts-nocheck line.
+the type check.
 
 ## Post-commit work in `runTurn`
 
@@ -192,10 +193,9 @@ with a `Date` and `Math.random` that throw. [Detail](architecture/the-turn-engin
 ## `@ts-nocheck` checks nothing in the file
 
 TypeScript reports no error anywhere in a file that starts with its ts-nocheck line, so a type, annotation or
-`satisfies` written there is a claim nobody checks. A type is checked where a file without the line reads it. To free
-a file: delete the line, type it, and clear each error with a change that **keeps every value** (never `!` or `as`).
-Don't write the line's text in a comment. Checks: the ratchet counts the line (`tsNocheckEngineSide`, `tsNocheckUi`),
-so it only falls; `harness`. How to free a file, form by form:
+`satisfies` written there is a claim nobody checks. So no file has it: lint refuses the line in every TypeScript
+file, with a reason or without. A file that can't pass the compiler is typed, each error cleared with a change that
+**keeps every value** (never `!` or `as`). Checks: lint (`ban-ts-comment`); `harness`. The forms that keep a value:
 [freeing a file](architecture/freeing-a-file-of-its-ts-nocheck-line.md#ts-nocheck-checks-nothing-in-the-file).
 
 ## A battle-only mark is not part of the saved state

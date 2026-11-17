@@ -1,9 +1,4 @@
 {
-  "src/db/the-db-interface-and-its-areas.ts": {
-    "kc/big-tables-and-profiles-are-read-by-named-columns": {
-      "count": 16
-    }
-  },
   "src/engine/battle/battle-report-lines-and-force-markers.ts": {
     "@typescript-eslint/no-unnecessary-boolean-literal-compare": {
       "count": 1
@@ -337,56 +332,6 @@
   "src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
-    }
-  },
-  "src/ui/gm/auto-turn.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
-  "src/ui/gm/game-detail.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-useless-assignment": {
-      "count": 2
-    }
-  },
-  "src/ui/gm/game-list.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 4
-    },
-    "prefer-const": {
-      "count": 2
-    }
-  },
-  "src/ui/gm/stats-tab.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/ui/gm/turn-log.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    }
-  },
-  "src/ui/gm/turn-shell.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    },
-    "prefer-const": {
-      "count": 1
-    }
-  },
-  "src/ui/gm/turn-zero.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 4
-    },
-    "no-empty": {
-      "count": 2
-    },
-    "prefer-const": {
-      "count": 1
     }
   },
   "src/views/every-realms-report-and-the-lines-each-realm-reads.ts": {

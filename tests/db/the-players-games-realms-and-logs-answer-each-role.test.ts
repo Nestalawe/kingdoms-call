@@ -193,21 +193,27 @@ describe("the realms: each is read by its own player, the game's GM and the Over
         : { error: theErrorFor(role), slots: [], flags: role === 'signed out' ? undefined : [], fields: [] },
     );
   });
-  test.for(THE_ROLES)("%s: every column of the player's realms", async (role) => {
+  test.for(THE_ROLES)("%s: the player's realms, the columns their game cards read", async (role) => {
     const answer = await dbOf(role).thePlayersRealms.everyRealmOfThisAccount(thePlayer());
     expect({
       error: itsError(answer),
       slots: theSlotsOf(answer.data),
       names: answer.data?.map((row) => row.display_name),
-      hasItsReport: answer.data?.map((row) => typeof row.turn_report === 'string'),
+      // the columns its game card reads (P1-16u)
+      fields: answer.data?.map((row) => Object.keys(row).sort()),
     }).toEqual(
       readsThePlayersRealm(role)
-        ? { error: null, slots: ['Marchwood 0'], names: ['Realm of Ashford'], hasItsReport: [true] }
+        ? {
+            error: null,
+            slots: ['Marchwood 0'],
+            names: ['Realm of Ashford'],
+            fields: [['display_name', 'game_id', 'id', 'orders_submitted', 'player_index']],
+          }
         : {
             error: theErrorFor(role),
             slots: [],
             names: role === 'signed out' ? undefined : [],
-            hasItsReport: role === 'signed out' ? undefined : [],
+            fields: role === 'signed out' ? undefined : [],
           },
     );
   });
@@ -274,10 +280,18 @@ describe("the realms: each is read by its own player, the game's GM and the Over
     const answer = await dbOf(role).thePlayersRealms.thisRealm(thePlayersRealm);
     expect({
       error: itsError(answer),
-      realm: answer.data && [theSlotsOf([answer.data]), answer.data.display_name, answer.data.orders_submitted],
+      // the columns the report screen reads (P1-16u)
+      realm: answer.data && [theSlotsOf([answer.data]), Object.keys(answer.data).sort(), answer.data.orders_submitted],
     }).toEqual(
       readsThePlayersRealm(role)
-        ? { error: null, realm: [['Marchwood 0'], 'Realm of Ashford', true] }
+        ? {
+            error: null,
+            realm: [
+              ['Marchwood 0'],
+              ['game_id', 'id', 'orders', 'orders_submitted', 'player_index', 'turn_report'],
+              true,
+            ],
+          }
         : { error: role === 'signed out' ? NO_GRANT : NO_SUCH_ROW, realm: null },
     );
   });
@@ -315,18 +329,23 @@ describe('joining: an account joins as itself, once a game, in a free slot; the 
     const account = role === 'signed out' ? thePlayer() : world.accounts[role];
     const answer = await dbOf(role).thePlayersRealms.joinWithThisRealm(aJoin(account, 1));
     const joined = THE_JOIN_AS_ITSELF[role].error === null;
+    // the realm joined, as the service role reads it (the answer is its id only: P1-16u)
+    const row = answer.data
+      ? await world.theServiceRole
+          .from('game_players')
+          .select('game_id,player_index,user_id,display_name')
+          .eq('id', answer.data.id)
+          .single()
+      : null;
     expect({
       error: itsError(answer),
       code: itsCode(answer),
-      realm: answer.data && [
-        theSlotsOf([answer.data]),
-        answer.data.user_id === account,
-        answer.data.display_name,
-        typeof answer.data.id,
-      ],
+      answered: answer.data && Object.keys(answer.data),
+      realm: row?.data ? [theSlotsOf([row.data]), row.data.user_id === account, row.data.display_name] : null,
     }).toEqual({
       ...THE_JOIN_AS_ITSELF[role],
-      realm: joined ? [['the open game 1'], true, 'Realm of Greywater', 'string'] : null,
+      answered: joined ? ['id'] : null,
+      realm: joined ? [['the open game 1'], true, 'Realm of Greywater'] : null,
     });
   });
   test.for(THE_ROLES.filter((role) => role !== 'signed out'))(
@@ -408,7 +427,7 @@ describe('the games: read by their GM, their players and the Overlord, and in se
       marchwood: reads(role, 'Marchwood') ? [3, 'active'] : undefined,
     });
   });
-  test.for(THE_ROLES)('%s: the four games for their cards, and every column', async (role) => {
+  test.for(THE_ROLES)('%s: the four games for their cards, and on a database without the meta column', async (role) => {
     const db = dbOf(role);
     const cards = await db.thePlayersGames.theseGamesForTheirCards(everyGame());
     const whole = await db.thePlayersGames.theseGamesEveryColumn(everyGame());
@@ -417,7 +436,8 @@ describe('the games: read by their GM, their players and the Overlord, and in se
       cards: theGamesOf(cards.data),
       whole: theGamesOf(whole.data),
       cardsFields: Object.keys(cards.data?.[0] ?? {}).sort(),
-      wholeHasTheWorld: whole.data?.map((row) => 'game_state' in row),
+      // on a database without the meta column, the columns the cards read there (P1-16u)
+      wholeFields: Object.keys(whole.data?.[0] ?? {}).sort(),
     }).toEqual({
       errors: [theErrorFor(role), theErrorFor(role)],
       cards: theGamesEachRoleReads(role),
@@ -426,14 +446,21 @@ describe('the games: read by their GM, their players and the Overlord, and in se
         role === 'signed out'
           ? []
           : ['created_at', 'gm_user_id', 'id', 'max_players', 'meta', 'name', 'status', 'turn'],
-      wholeHasTheWorld: role === 'signed out' ? undefined : THE_GAMES_EACH_ROLE_READS[role].map(() => true),
+      wholeFields: role === 'signed out' ? [] : ['game_state', 'id', 'name', 'status', 'turn'],
     });
   });
   test.for(THE_ROLES)('%s: the games in setup', async (role) => {
     const answer = await dbOf(role).thePlayersGames.theGamesInSetup();
-    expect({ error: itsError(answer), games: theGamesOf(answer.data) }).toEqual({
+    const games = theGamesEachRoleReads(role).filter((name) => name === 'the open game' || name === 'the private game');
+    expect({
+      error: itsError(answer),
+      games: theGamesOf(answer.data),
+      // the columns the open games' cards read (P1-16u)
+      fields: Object.keys(answer.data?.[0] ?? {}).sort(),
+    }).toEqual({
       error: theErrorFor(role),
-      games: theGamesEachRoleReads(role).filter((name) => name === 'the open game' || name === 'the private game'),
+      games,
+      fields: games.length ? ['game_state', 'gm_user_id', 'id', 'max_players', 'name'] : [],
     });
   });
   test.for(THE_ROLES)("%s: the private game's world and state", async (role) => {
@@ -447,7 +474,7 @@ describe('the games: read by their GM, their players and the Overlord, and in se
         : { error: role === 'signed out' ? NO_GRANT : NO_SUCH_ROW, game: null },
     );
   });
-  test.for(THE_ROLES)('%s: Marchwood for its report, and every column', async (role) => {
+  test.for(THE_ROLES)('%s: Marchwood for its report, and its world', async (role) => {
     const db = dbOf(role);
     const report = await db.thePlayersGames.thisGameForItsReport(world.theGame);
     const whole = await db.thePlayersGames.thisGameEveryColumn(world.theGame);
@@ -455,7 +482,8 @@ describe('the games: read by their GM, their players and the Overlord, and in se
     expect({
       errors: [itsError(report), itsError(whole)],
       report: report.data && [report.data.name, report.data.turn, Object.keys(report.data).sort()],
-      whole: whole.data && [whole.data.name, 'game_state' in whole.data],
+      // its world only, the chronicle's past turn (P1-16u)
+      whole: whole.data && Object.keys(whole.data),
     }).toEqual(
       reads(role, 'Marchwood')
         ? {
@@ -465,7 +493,7 @@ describe('the games: read by their GM, their players and the Overlord, and in se
               3,
               ['block_eliminated_msgs', 'gm_user_id', 'id', 'max_players', 'name', 'status', 'turn'],
             ],
-            whole: ['Made-up Marchwood', true],
+            whole: ['game_state'],
           }
         : { errors: [theError, theError], report: null, whole: null },
     );
@@ -489,16 +517,17 @@ describe("the turns' logs: read by the game's GM, its players and the Overlord",
     expect(
       answers.map((answer) => ({
         error: itsError(answer),
-        rows: answer.data?.map((row) => [theGamesNamed([row.game_id]), row.turn, row.player_index, row.entries]),
+        // the log's lines only: the game, turn and realm are the query's filters (P1-16u)
+        rows: answer.data?.map((row) => [Object.keys(row), row.entries]),
       })),
     ).toEqual(
       role === 'signed out'
         ? asked.map(() => ({ error: NO_GRANT, rows: undefined }))
         : [
-            { error: null, rows: marchwood ? [[['Marchwood'], 2, 0, [{ text: theLogsWords(2, 0) }]]] : [] },
-            { error: null, rows: marchwood ? [[['Marchwood'], 2, -1, [{ text: theLogsWords(2, -1) }]]] : [] },
-            { error: null, rows: marchwood ? [[['Marchwood'], 1, 1, [{ text: theLogsWords(1, 1) }]]] : [] },
-            { error: null, rows: fenmoor ? [[['Fenmoor'], 2, 0, [{ text: theLogsWords(2, 0) }]]] : [] },
+            { error: null, rows: marchwood ? [[['entries'], [{ text: theLogsWords(2, 0) }]]] : [] },
+            { error: null, rows: marchwood ? [[['entries'], [{ text: theLogsWords(2, -1) }]]] : [] },
+            { error: null, rows: marchwood ? [[['entries'], [{ text: theLogsWords(1, 1) }]]] : [] },
+            { error: null, rows: fenmoor ? [[['entries'], [{ text: theLogsWords(2, 0) }]]] : [] },
           ],
     );
   });

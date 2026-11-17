@@ -150,12 +150,12 @@ down to ~1 KB after the fix).
   the multiplier.
 - Lint refuses every column of `games`, `game_players`, `turn_logs` or `profiles` (`*`, also inside an embedded
   `games(*)`, or `.select()` with no list, as after an insert), and `profiles`' `email`
-  (`kc/big-tables-and-profiles-are-read-by-named-columns`, P1-13c). The 17 reads of every column that were there when
-  the rule came in are in `eslint-suppressions.json`, for P1-17's access layer to take out: the GM page's `hall-of-fame.ts` (games
-  with `game_players(*)`), `game-detail.ts` (opening a game, `*, game_players(*)`), `game-list.ts`
-  (after creating a game), `turn-log.ts` (the turn log), `turn-shell.ts` (the turn's game and its realms, 2) and
-  `turn-zero.ts` (3); the player page's `game-lists.ts` (its slots, and two of `games`, 3),
-  `join-and-chronicle.ts` (after joining, the chronicle's two turn logs, a game: 4) and `report.ts` (the report).
+  (`kc/big-tables-and-profiles-are-read-by-named-columns`, P1-13c). No read in `src/` takes every column of them:
+  each of `Db`'s reads names the columns its readers use, and its answer is typed by them: a page that reads a
+  column left out fails the compiler (P1-16u). The compiler doesn't hold a one-row read (`.single()`) to its type,
+  so each read's access-layer test checks its columns. Nor does it see a column a reader's type makes optional, or
+  one read off a row of any kind (`isBotRow`): follow the row into each function it is handed. The GM's open game
+  keeps every column the GM page reads. Not named: the GM's list without `games.meta`, a constant (KD-133).
 - The leaderboard reads `game_records` with `*`. Since Oct 2026 a row keeps every realm's best for each
   record, not just the game's: roughly 10–40 KB a row, growing with the number of realms. Fine for now;
   if it gets slow, give the list tabs a lighter select.

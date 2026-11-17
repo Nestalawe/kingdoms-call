@@ -66,7 +66,7 @@ tests): [tests/README.md](tests/README.md#running-the-tests).
 **The checks run themselves** (hooks in `.claude/settings.json`): each edit is type-checked, linted and format-checked,
 and you can't finish while `npm run check` fails (after three tries, say "`npm run check` still fails: tell a maintainer").
 Before every push run `npm test` and `npx playwright test` (and the access-rule tests when `supabase/` changes): all
-green. **All new code is TypeScript**, type-checked (no new `@ts-nocheck`; no `as` or `!` in `src/`: lint).
+green. **All new code is TypeScript**, type-checked (no `@ts-nocheck`, and no `as` or `!` in `src/`: lint).
 
 ## How work arrives
 

@@ -55,8 +55,8 @@ A maintainer answered D-01 to D-07 on 2026-09-29, and D-08 to D-13 on 2026-10-11
   Each fix is its own pull request after its answer. How a question is written: [CLAUDE.md](../../CLAUDE.md#rules),
   "Design forks go to the maintainers".
 - **Type the whole codebase** (2026-11-08): every file is typed, so that the redesign's refactors are checked by
-  the compiler. No new `@ts-nocheck` ([CLAUDE.md](../../CLAUDE.md#commands)); the files still marked
-  are freed ([how](../architecture/freeing-a-file-of-its-ts-nocheck-line.md)).
+  the compiler. No `@ts-nocheck` ([CLAUDE.md](../../CLAUDE.md#commands)): lint refuses it in every TypeScript file
+  ([why, and how code is typed](../architecture/freeing-a-file-of-its-ts-nocheck-line.md)).
 - **Every rule into the registry, with a bot valuation hook** (2026-11-08): every rule that can live in the
   [rule registry](../architecture/the-rule-registry-and-the-one-source-for-shared-rules.md) moves there, its numbers in
   data and its effects named in rows. Each kind of effect gets a hook that tells the bots what it is worth, so that

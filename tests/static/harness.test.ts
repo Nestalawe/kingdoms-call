@@ -11,15 +11,15 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The harness checks itself (P1-01b): every strict compiler flag is on, and the compiler checks every file of `src/`
-// with the browser's types, each it skips saying why in its first line (P1-09e); the shared lint rules are at full
+// with the browser's types, and lint refuses the ts-nocheck line (planted first in a file of `src/`, `tests/` and
+// `tools/`, with its reason and without: P1-16v); the shared lint rules are at full
 // strength on the tests, the tools and the configs, typescript-eslint's stylistic type-aware set among them (P1-13b),
 // with only `non-nullable-type-assertion-style` off (it asks for the `!` that `no-non-null-assertion` forbids), and
 // `no-undef` is on for every module of `src/` (the engine's with none of the page's names, the rest with the
 // browser's), and every file of `src/` gets the site's own tier, ESLint's recommended and typescript-eslint's strict
-// rules, each an error, with `ban-ts-comment` an error (P1-09e), and the two type-aware sets too exactly when
-// TypeScript checks it (its first line doesn't switch the check off; a planted `||` that should be `??` is an error in
-// such a file and not looked for in another, P1-13b), and no rule is at warn in any file ESLint lints, `public/`'s
-// scripts among them (P1-13b, P1-13c), and a type assertion (`as`, but `as const`) and a non-null assertion (`!`)
+// rules, each an error, with `ban-ts-comment` as the strict sets set it (P1-09e, P1-16v), and the two type-aware sets
+// too, a new file of `src/` among them (a planted `||` that should be `??` is an error, P1-13b), and no rule is at
+// warn in any file ESLint lints, `public/`'s scripts among them (P1-13b, P1-13c), and a type assertion (`as`, but `as const`) and a non-null assertion (`!`)
 // errors there, planted in an engine file and a page's, in every file of `src/`, with no list of files let through
 // (P1-10a1; P1-10b1 replaced the three kept from before the rule with statements, and an `as` planted in each of their
 // files is refused), `switch-exhaustiveness-check` and the focused and skipped test rules are errors; the test run has
@@ -83,8 +83,7 @@
 // `run-turn.ts`) are found and its quiet ones aren't; ESLint's suppressions (P1-13b): the list is the one ESLint's
 // command line reads by default, `npm run lint` is `eslint .`, nothing lints with another list or lets a stale entry
 // through, and on the smallest file the list names, a finding the list lacks fails (exit 1) and an entry the file no
-// longer holds fails (exit 2); no ratchet count has risen, and the ratchet counts the ts-nocheck line in two, the
-// engine's side and the UI's, a line planted in each folder raising its own count alone (P1-10b1), and the engine's
+// longer holds fails (exit 2); no ratchet count has risen, and the ratchet counts the engine's
 // checks of a unit by its type's name outside the rule registry (`unitNameChecksInEngine`, P1-19a: a comparison planted
 // in `src/engine/battle/` raises it by one and fails the ratchet, one in `src/engine/rules/` or a page's code isn't
 // counted), ESLint's suppressions (P1-13b) and `public/`'s two scripts (P1-09e) and the import rules' known violations
@@ -124,8 +123,6 @@ import {
   BASELINE_FILE,
   compare,
   type Counts,
-  countsFromTheCodeFiles,
-  ENGINE_SIDE_FOLDERS,
   ESLINT_SUPPRESSIONS_FILE,
   eslintSuppressions,
   KNOWN_ARCHITECTURE_VIOLATIONS_FILE,
@@ -200,19 +197,6 @@ describe('the compiler', () => {
     );
     expect(o.lib).toEqual(expect.arrayContaining(['lib.es2024.d.ts', 'lib.dom.d.ts', 'lib.dom.iterable.d.ts']));
   });
-
-  // P1-09e: a file of src/ that TypeScript doesn't check says why in its first line (Decision 15); the ratchet counts
-  // them, the engine's side and the UI's apart (tsNocheckEngineSide and tsNocheckUi, P1-10b1), so they only fall.
-  test('a file of src/ that TypeScript skips says why, in its first line', () => {
-    const without = filesUnder(path.join(ROOT, 'src'))
-      .filter((f) => f.endsWith('.ts'))
-      .filter((f) => {
-        const text = read('src/' + f);
-        const at = text.search(new RegExp('@ts-' + 'nocheck'));
-        return at >= 0 && !new RegExp('^// @ts-' + 'nocheck: \\S.{10,}').test(text);
-      });
-    expect(without).toEqual([]);
-  });
 });
 
 describe('the lint rules', () => {
@@ -283,44 +267,60 @@ describe('the lint rules', () => {
   });
 
   // The site's own tier (plan P1-09, Decision 15, P1-09e; P1-13b): ESLint's recommended rules and typescript-eslint's
-  // strict set, each an error (what they found when they came in is in ESLint's suppressions), no-undef and
-  // ban-ts-comment errors (a file left unchecked only with its reason), no type assertion and no non-null assertion
-  // (P1-10a1, plan P1-10 Decision 2: claims the compiler takes on trust). A file TypeScript checks (its first line
-  // doesn't switch the check off) gets the type-aware sets too, each an error, the one they disagree on off (plan
-  // P1-13, Decisions 5 and 6); a file it skips gets no type-aware rule (no project service: with everything any, they
-  // would only find that). Every file of src/ is read, so a file freed from the switch-off gets them with no list kept.
+  // strict set, each an error (what they found when they came in is in ESLint's suppressions), no-undef, no type
+  // assertion and no non-null assertion (P1-10a1, plan P1-10 Decision 2: claims the compiler takes on trust), and the
+  // type-aware sets too, each an error, the one they disagree on off (plan P1-13, Decisions 5 and 6). Every file of src/
+  // is read, and a new one (planted-new-file.ts, not on disk) gets them too: the config names src/ by its pattern, with
+  // no list of files kept.
   const NO_ASSERTIONS = '@typescript-eslint/consistent-type-assertions';
   const NO_NON_NULL = '@typescript-eslint/no-non-null-assertion';
-  const typeChecked = (file: string) => !new RegExp('^// @ts-' + 'nocheck\\b').test(read(file));
+  const BAN_TS_COMMENT = '@typescript-eslint/ban-ts-comment';
+  const optionsOf = (v: Linter.RuleEntry | undefined): unknown[] => (Array.isArray(v) ? v.slice(1) : []);
+  // Code planted to show a rule's finding is linted in place of a file of the folder, not at a path of its own: every
+  // file of src/ is read with its types, and a path that isn't on disk can't be (ESLint's parsing error, fatal, which
+  // each check below refuses, so a check that finds nothing can't pass on a file that wasn't read).
+  const IN_PLACE_OF = {
+    engine: 'src/engine/graves.ts',
+    engineTurn: 'src/engine/turn/intrusion-warnings.ts',
+    views: 'src/views/the-statistics-of-the-turn.ts',
+    gmPage: 'src/ui/gm/start.ts',
+  } as const;
+  const fatalOf = (result: ESLint.LintResult | undefined): string[] =>
+    (result?.messages ?? []).filter((m) => m.fatal === true).map((m) => m.message);
   const srcFiles = filesUnder(path.join(ROOT, 'src'))
     .filter((f) => f.endsWith('.ts'))
     .map((f) => 'src/' + f);
-  test('src/ has files of both kinds: TypeScript checks some and skips others', () => {
-    for (const f of [
-      'src/engine/clock.ts',
-      'src/schemas/saved-game-state.ts',
-      'src/globals.d.ts',
-      'src/ui/gm/start.ts',
-    ])
-      expect(typeChecked(f), f).toBe(true);
-    // until P1-17 (src/db/) and P1-16 free the last of them
-    expect(srcFiles.filter((f) => !typeChecked(f)).length).toBeGreaterThan(0);
-  });
-  // A planted finding of a type-aware rule (a `||` that should be `??`: it needs the value's type) is an error in a file
-  // TypeScript checks, and isn't looked for in one it skips. ESLint builds the checked file's program first: over 4 s
-  // on CI.
-  test.for([
-    ['src/engine/clock.ts', true],
-    ['src/ui/gm/turn-shell.ts', false],
-  ] as const)(
-    '%s: a planted type-aware finding is an error: %s',
+  // Lint refuses the comment that switches TypeScript's check off (plan P1-10, Decision 9; P1-16v), with its reason
+  // given or not, in src/ as in tests/ and tools/ (ban-ts-comment, as the strict sets set it): planted as the first
+  // line of a file of each, it is an error on that line. So no file is left unchecked, and no count of the line is
+  // kept (the ratchet's two retired at 0). ESLint builds the program first: over 4 s on CI.
+  test.for(['src/engine/clock.ts', 'src/ui/gm/start.ts', 'tests/lib/time-limits.ts', 'tools/check.ts'])(
+    '%s: a planted ts-nocheck line is an error',
     timeLimitForTheWork({ typeScriptPrograms: 1 }),
-    async ([file, isError]) => {
-      expect(typeChecked(file)).toBe(isError);
+    async (file) => {
+      for (const line of [
+        '// @ts-' + 'nocheck: planted, with a reason of more than ten letters',
+        '// @ts-' + 'nocheck',
+      ]) {
+        const [result] = await eslint.lintText(line + '\n' + read(file), { filePath: path.join(ROOT, file) });
+        const found = (result?.messages ?? []).filter((m) => m.ruleId === BAN_TS_COMMENT);
+        expect(
+          found.map((m) => `${String(m.line)} ${String(m.severity)}`),
+          line,
+        ).toEqual(['1 2']);
+      }
+    },
+  );
+  // A planted finding of a type-aware rule (a `||` that should be `??`: it needs the value's type) is an error in a file
+  // of src/. ESLint builds the program first: over 4 s on CI.
+  test.for(['src/engine/clock.ts'])(
+    '%s: a planted type-aware finding is an error',
+    timeLimitForTheWork({ typeScriptPrograms: 1 }),
+    async (file) => {
       const code = read(file) + '\nexport const planted = (x: string | undefined) => x || "a";\n';
       const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
       const found = (result?.messages ?? []).filter((m) => m.ruleId === '@typescript-eslint/prefer-nullish-coalescing');
-      expect(found.map((m) => m.severity)).toEqual(isError ? [2] : []);
+      expect(found.map((m) => m.severity)).toEqual([2]);
     },
   );
   const GENERATED_TYPES_FORMS = [
@@ -329,31 +329,29 @@ describe('the lint rules', () => {
     '@typescript-eslint/consistent-type-definitions',
   ];
   test(
-    "every file of src/ gets the site's rules, each an error, and the type-aware ones exactly when TypeScript checks it",
+    "every file of src/ gets the site's rules and the type-aware ones, each an error, a new file too",
     timeLimitForTheWork({ toolRuns: 1 }),
     async () => {
       const wrong: string[] = [];
-      for (const file of srcFiles) {
+      for (const file of [...srcFiles, 'src/ui/gm/planted-new-file.ts']) {
         expect(await eslint.isPathIgnored(path.join(ROOT, file)), file).toBe(false);
         const config = (await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config;
         const rules = config.rules ?? {};
-        const checked = typeChecked(file);
         // globals.d.ts may write `declare var` (TypeScript's form for a global: eslint.config.js); the generated
         // database types keep the generator's forms (eslint.config.js: three style rules off there, plan P1-17c)
         const allowedOff = [
           ...(file === 'src/globals.d.ts' ? ['no-var'] : []),
           ...(file === 'src/db/database.types.ts' ? GENERATED_TYPES_FORMS : []),
-          ...(checked ? [DISAGREE] : []),
+          DISAGREE,
         ];
-        const off = notAtError({ ...siteExpected, ...(checked ? typedExpected : {}) }, rules);
+        const off = notAtError({ ...siteExpected, ...typedExpected }, rules);
         if (off.join() !== allowedOff.join()) wrong.push(`${file}: not errors: ${off.join(', ')}`);
         if (level(rules['no-undef']) !== 2) wrong.push(`${file}: no-undef`);
-        const ban = rules['@typescript-eslint/ban-ts-comment'];
+        // ban-ts-comment as the strict sets set it (above: it refuses the ts-nocheck line)
         if (
-          level(ban) !== 2 ||
-          JSON.stringify(Array.isArray(ban) ? ban[1] : undefined) !== '{"ts-nocheck":"allow-with-description"}'
+          JSON.stringify(optionsOf(rules[BAN_TS_COMMENT])) !== JSON.stringify(optionsOf(typedExpected[BAN_TS_COMMENT]))
         )
-          wrong.push(`${file}: ban-ts-comment`);
+          wrong.push(`${file}: ${BAN_TS_COMMENT}`);
         if (level(rules[NO_NON_NULL]) !== 2) wrong.push(`${file}: ${NO_NON_NULL}`);
         // no type assertion at all, in every file (P1-10b1 replaced the three let through with statements)
         const assertions = rules[NO_ASSERTIONS];
@@ -365,13 +363,7 @@ describe('the lint rules', () => {
         const parserOptions = (config.languageOptions as { parserOptions?: Record<string, unknown> } | undefined)
           ?.parserOptions;
         const typeAware = (parserOptions?.['projectService'] ?? parserOptions?.['project'] ?? null) !== null;
-        if (typeAware !== checked) wrong.push(`${file}: type-aware ${String(typeAware)}`);
-        // a file TypeScript skips gets no rule of the type-aware sets but the site's own (its four, above)
-        const typedOnly = Object.keys(typedExpected).filter(
-          (r) => !(r in siteExpected) && r !== NO_ASSERTIONS && level(typedExpected[r]) > 0,
-        );
-        if (!checked && typedOnly.some((r) => level(rules[r]) > 0))
-          wrong.push(`${file}: a type-aware set's rule is on`);
+        if (!typeAware) wrong.push(`${file}: not type-aware`);
       }
       expect(wrong).toEqual([]);
     },
@@ -510,21 +502,23 @@ describe('the lint rules', () => {
         "  return { text: 'a line', onlyPlayer: 1 };",
         '}',
       ].join('\n');
+      // planted in place of a file of each folder (above: a path not on disk can't be read with its types)
       const refused = async (file: string) => {
         const [result] = await eslint.lintText(planted, { filePath: path.join(ROOT, file) });
+        expect(fatalOf(result), file).toEqual([]);
         return (result?.messages ?? [])
           .filter((m) => m.ruleId === 'kc/narrative-lines-go-through-emit')
           .map((m) => m.line);
       };
-      expect(await refused('src/engine/turn/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
-      expect(await refused('src/views/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
-      expect(await refused('src/engine/battle/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
-      expect(await refused('src/engine/personal-combat/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
-      expect(await refused('src/engine/orders/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
-      expect(await refused('src/engine/heroes/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
-      expect(await refused('src/engine/planted-here.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused(IN_PLACE_OF.engineTurn)).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused(IN_PLACE_OF.views)).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/battle/fortune.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/personal-combat/duels-and-character-encounters.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/orders/the-facts-the-order-dispatchs-lines-record.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused('src/engine/heroes/the-facts-a-heros-experience-lines-record.ts')).toEqual([2, 3, 4, 5, 6]);
+      expect(await refused(IN_PLACE_OF.engine)).toEqual([2, 3, 4, 5, 6]);
       expect(await refused(EVENTS_FILE)).toEqual([]);
-      expect(await refused('src/ui/gm/planted-here.ts')).toEqual([]);
+      expect(await refused(IN_PLACE_OF.gmPage)).toEqual([]);
     },
   );
 
@@ -553,37 +547,38 @@ describe('the lint rules', () => {
   const RESTRICTED = new Set(['no-restricted-globals', 'no-restricted-properties', 'no-restricted-syntax']);
   const restrictedFindings = async (file: string, code: string): Promise<string[]> => {
     const [result] = await eslint.lintText(code, { filePath: path.join(ROOT, file) });
+    expect(fatalOf(result), file).toEqual([]);
     return (result?.messages ?? [])
       .filter((m) => m.severity === 2 && RESTRICTED.has(m.ruleId ?? ''))
       .map((m) => `${String(m.line)} ${m.ruleId ?? ''}`);
   };
   test.for([
-    ['src/engine/x.ts', 'export function f() {\n  return Math.random();\n}\n', ['2 no-restricted-properties']],
-    ['src/engine/x.ts', 'export const t =\n  new Date().toISOString();\n', ['2 no-restricted-globals']],
-    ['src/views/x.ts', 'export const id = `m_${String(Date.now())}`;\n', ['1 no-restricted-globals']],
+    [IN_PLACE_OF.engine, 'export function f() {\n  return Math.random();\n}\n', ['2 no-restricted-properties']],
+    [IN_PLACE_OF.engine, 'export const t =\n  new Date().toISOString();\n', ['2 no-restricted-globals']],
+    [IN_PLACE_OF.views, 'export const id = `m_${String(Date.now())}`;\n', ['1 no-restricted-globals']],
     [
-      'src/engine/x.ts',
+      IN_PLACE_OF.engine,
       "export const r = Math['random'];\nexport const g = window.Math.random;\n",
       ['1 no-restricted-properties', '2 no-restricted-globals', '2 no-restricted-syntax'],
     ],
     [
-      'src/ui/gm/x.ts',
+      IN_PLACE_OF.gmPage,
       "export const g = window.Math.random;\nexport const h = globalThis.Math['random'];\n",
       ['1 no-restricted-syntax', '2 no-restricted-syntax'],
     ],
     [
-      'src/engine/x.ts',
+      IN_PLACE_OF.engine,
       'export const shuffle = (a: unknown[], rnd = Math.random) => [a, rnd];\n',
       ['1 no-restricted-properties'],
     ],
     [
-      'src/ui/gm/x.ts',
+      IN_PLACE_OF.gmPage,
       'export const tab = Math.random();\nexport const t = new Date();\n',
       ['1 no-restricted-properties'],
     ],
     ['public/x.js', 'var tab = Math.random();\n', ['1 no-restricted-properties']],
     [
-      'src/engine/x.ts',
+      IN_PLACE_OF.engine,
       [
         '// dice = Math.random()*range, read at new Date()',
         '/* Math.random */',
@@ -616,7 +611,7 @@ describe('the lint rules', () => {
   // Each name the engine may not read, planted in an engine file: refused. In each exception's own file its one name
   // passes and another is still refused (the test above pins each file's whole list).
   test.for(NOT_IN_THE_ENGINE)('typeof %s planted in the engine is refused', async (name) => {
-    expect(await restrictedFindings('src/engine/x.ts', `export const planted = typeof ${name};\n`)).toEqual([
+    expect(await restrictedFindings(IN_PLACE_OF.engine, `export const planted = typeof ${name};\n`)).toEqual([
       '1 no-restricted-globals',
     ]);
   });
@@ -2164,50 +2159,6 @@ describe('the ratchet', () => {
   test('npm run ratchet reads tests/ratchet.json', () => {
     expect(pkg.scripts['ratchet']).toBe('tsx tools/ratchet.ts');
     expect(path.relative(ROOT, BASELINE_FILE)).toBe('tests/ratchet.json');
-  });
-
-  // The ts-nocheck line is counted in two (plan P1-10, Decision 9; P1-10b's Decision 5): the engine's side, which P1-10b
-  // takes to 0, and the UI's (P1-16), so neither may rise while the other falls. One planted line in each folder raises
-  // its own count alone, and the ratchet fails on it.
-  test('the ts-nocheck line is counted on the engine side and in the UI, apart, and no longer as one', () => {
-    const baseline = readBaseline();
-    for (const counts of [baseline, counted]) {
-      expect(counts).not.toHaveProperty('tsNocheck');
-      // the engine's side is at 0 since P1-17c typed src/db/kc-db-guard.ts (P1-10b's Done when), and stays there
-      expect(counts['tsNocheckEngineSide']).toBe(0);
-      expect(counts['tsNocheckUi']).toBeGreaterThan(0);
-    }
-    expect([...ENGINE_SIDE_FOLDERS]).toEqual([
-      'src/engine/',
-      'src/views/',
-      'src/db/',
-      'src/ui/shared/',
-      'src/content/',
-      'src/schemas/',
-      'src/shared/',
-    ]);
-  });
-  const NOCHECK_LINE = '// @ts-' + 'nocheck: planted, to show the ratchet counts it\n';
-  test.for([
-    ['src/engine/battle/x.ts', 'tsNocheckEngineSide'],
-    ['src/views/x.ts', 'tsNocheckEngineSide'],
-    ['src/db/x.ts', 'tsNocheckEngineSide'],
-    ['src/ui/shared/x.ts', 'tsNocheckEngineSide'],
-    ['src/content/x.ts', 'tsNocheckEngineSide'],
-    ['src/schemas/x.ts', 'tsNocheckEngineSide'],
-    ['src/shared/x.ts', 'tsNocheckEngineSide'],
-    ['src/ui/gm/x.ts', 'tsNocheckUi'],
-    ['src/ui/player/x.ts', 'tsNocheckUi'],
-    ['src/rulebook/x.ts', 'tsNocheckUi'],
-    ['tests/unit/x.test.ts', 'tsNocheckUi'],
-    ['tools/x.ts', 'tsNocheckUi'],
-  ] as const)('a ts-nocheck line planted in %s raises %s alone, and the ratchet fails', ([file, count]) => {
-    const asTheyAre = { ...readBaseline(), ...countsFromTheCodeFiles(files) };
-    expect(compare(asTheyAre, asTheyAre).rose).toEqual([]);
-    const planted = { ...asTheyAre, ...countsFromTheCodeFiles([...files, [file, NOCHECK_LINE + 'export {};\n']]) };
-    const { rose } = compare(asTheyAre, planted);
-    expect(rose).toEqual([expect.stringMatching(new RegExp(`^${count} rose from \\d+ to \\d+\\.`))]);
-    expect(planted[count]).toBe((asTheyAre[count] ?? 0) + 1);
   });
 
   // The engine's checks of a unit by its type's name (plan P1-19, Decision 7): a comparison planted in a file of
