@@ -6,8 +6,9 @@
 // that comment in place; when nothing dangerous is left, it says so. It never blocks a merge: any problem
 // is logged as a warning and the job still succeeds.
 //
-// match() and commentBody() are pure and unit-tested in tests/dangerous-paths.test.js. main() only reads
-// the PR through the REST API and writes the one comment; it never fetches or runs the PR's code.
+// match() and commentBody() are pure and unit-tested in
+// tests/unit/a-pull-request-that-changes-a-dangerous-path-gets-one-warning-naming-its-files.test.ts. main() only
+// reads the PR through the REST API and writes the one comment; it never fetches or runs the PR's code.
 //
 // Local dry run (read-only, prints instead of commenting):
 //   GITHUB_TOKEN=$(gh auth token) GITHUB_REPOSITORY=Nestalawe/kingdoms-call PR_NUMBER=1 DRY_RUN=1 \

@@ -5,8 +5,9 @@
 //                                                     PR_SHA, and the commit built, BUILT_SHA), and marks the PR
 //                                                     that was on staging before (<prev>, may be empty) as replaced
 // configFile(), onStagingBody() and replacedBody() are pure, and signUpTestAccounts() takes its fetch as an
-// argument; all are unit-tested in tests/staging.test.js. migrations.js (`reset staging`) signs the test
-// accounts up after rebuilding the staging database.
+// argument; all are unit-tested in
+// tests/unit/the-staging-deploy-writes-a-config-only-for-staging-signs-up-made-up-accounts-and-waits-for-ci.test.ts.
+// migrations.js (`reset staging`) signs the test accounts up after rebuilding the staging database.
 const MARKER='<!-- staging -->';
 const SITE='https://kingdoms-call-staging.github.io/';
 const LIVE_REF='yymsnsrpggpgmzgcfrys';   // the live project: staging must never point at it

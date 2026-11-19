@@ -20,11 +20,7 @@ const GM = 'kingdoms-call-gm-portal.html';
 export function suite(full: boolean): Script[] {
   // [level, name, file, args, env]
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
-    ['unit', 'kc-safe', 'tests/kc-safe.test.js'],
-    ['unit', 'dangerous-paths', 'tests/dangerous-paths.test.js'],
-    ['unit', 'staging', 'tests/staging.test.js'],
     ['page', 'staging-footer', 'tests/staging-footer.test.js'],
-    ['unit', 'migrations', 'tests/migrations.test.js'],
     ['static', 'flyers-soldiers-words', 'tests/flyers-soldiers-words.test.js'],
     ['static', 'roster-words', 'tests/roster-words.test.js'],
     ['static', 'abilities-words', 'tests/abilities-words.test.js'],
