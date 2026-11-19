@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-11, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #44 (decisions 7 and 10 of the army-balance session)
-- **Enforced by:** [`flyers-soldiers`](../../tests/flyers-soldiers.test.js), [`flyers-soldiers-words`](../../tests/flyers-soldiers-words.test.js)
+- **Enforced by:** [`flyers-soldiers`](../../tests/flyers-soldiers.test.js), [`the-books-make-the-winged-riders-soldiers-of-their-race-who-need-no-druid`](../../tests/static/the-books-make-the-winged-riders-soldiers-of-their-race-who-need-no-druid.test.ts)
 
 Eagle Riders, Noble Griffons and Wyvern Riders are soldiers of their race, not Creatures or Monsters: they need no Druid, and their strikes are a flat 50%.
 

@@ -121,8 +121,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   change a number in its row or its table and in both books. A unit appears in `UNIT_ABILITIES` once: an object literal
   keeps the last key, so a second entry fails `npm run typecheck` (TS1117), and the words tests check it too. The words
   tests find the blurbs as the player page's because its entry (`src/ui/player/page.ts`) lists the content file: keep
-  that import, or `fileDeclaring(PLAYER, 'UNIT_ABILITIES')` finds no file. `tests/abilities-words.test.js` and
-  `tests/static/every-live-beast-has-its-blurb-and-rulebook-row-and-no-ability-is-still-promised.test.ts` name no ability. The race and beast tests (`tests/unit/the-human-units-abilities-on-the-battle-grid-and-at-their-fate-after-a-defeat.test.ts`, the elven,
+  that import, or `fileDeclaring(PLAYER, 'UNIT_ABILITIES')` finds no file.
+  `tests/static/every-live-beast-has-its-blurb-and-rulebook-row-and-no-ability-is-still-promised.test.ts` names no ability but Purity. The race and beast tests (`tests/unit/the-human-units-abilities-on-the-battle-grid-and-at-their-fate-after-a-defeat.test.ts`, the elven,
   dwarven, orcish and beasts scripts, and the tests that fight a battle with them) check the numbers in
   play. The grid's flyer set is `KC_UNIT_CLASS.aerial` (the riders and the flying beasts); the archers' first-target set
   is `KC_UNIT_CLASS.flying` (the riders only).

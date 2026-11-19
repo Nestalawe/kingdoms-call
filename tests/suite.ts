@@ -21,8 +21,6 @@ export function suite(full: boolean): Script[] {
   // [level, name, file, args, env]
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
     ['page', 'staging-footer', 'tests/staging-footer.test.js'],
-    ['static', 'flyers-soldiers-words', 'tests/flyers-soldiers-words.test.js'],
-    ['static', 'abilities-words', 'tests/abilities-words.test.js'],
     ['page', 'boot-pages', 'tests/boot-pages.test.js'],
     ['page', 'db-guard', 'tests/db-guard.test.js'],
     ['page', 'gm-offer-and-gate', 'tests/gm-offer-and-gate.test.js'],
@@ -65,10 +63,7 @@ export function suite(full: boolean): Script[] {
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
-    ['static', 'lair-readiness-words', 'tests/lair-readiness-words.test.js'], // batch 2026-10-14
-    ['static', 'rulebook-review-words', 'tests/rulebook-review-words.test.js'], // batch 2026-10-15
     ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
-    ['static', 'rulebook-order', 'tests/rulebook-order.test.js'], // 2026-10-15
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
     [
       'simulation',
