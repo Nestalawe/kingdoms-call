@@ -1,8 +1,8 @@
 // tests/lib/primal-decided.ts: the Creature and Monster roster the maintainer decided on 2026-10-13 (the army-balance
 // work, second programme): every wild unit's family, type, cost (recruit price and wage), base strength, land
 // move rate, the Druid level to lead it and its terrain multipliers (a terrain not listed is ×1; naval units have
-// none, and flyers only the woods' ×0.75 that every flyer has since 2026-10-12, item 19). tests/primal-roster reads the
-// game's tables against it and
+// none, and flyers only the woods' ×0.75 that every flyer has since 2026-10-12, item 19).
+// tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides reads the game's tables against it and
 // tests/static/the-rulebooks-and-the-player-portal-give-each-beast-as-the-wild-roster-table-decides reads the
 // rulebooks against it, so the engine and the books cannot drift apart.
 //

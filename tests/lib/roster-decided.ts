@@ -1,6 +1,7 @@
 // tests/lib/roster-decided.ts: the humanoid army roster the maintainer decided on 2026-10-11 (the army-balance
 // work): every unit's race, type, cost (recruit price and wage), base strength, land move rate and
-// terrain multipliers (a terrain not listed is ×1). tests/roster reads the game's tables against it and
+// terrain multipliers (a terrain not listed is ×1).
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides reads the game's tables against it and
 // tests/static/the-rulebooks-and-the-player-portal-give-each-army-unit-as-the-roster-table-decides reads the
 // rulebooks against it, so the engine and the books cannot drift apart.
 //

@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-13, a maintainer
 - **Status:** Confirmed
 - **Source:** PRs #60, #68, #69, #70 (2026-10-12/13)
-- **Enforced by:** [`primal-roster`](../../tests/primal-roster.test.js), [`primal-renames`](../../tests/primal-renames.test.js), [`shark-waters`](../../tests/shark-waters.test.js), [`new-creatures`](../../tests/new-creatures.test.js), [`the-rulebooks-and-the-player-portal-give-each-beast-as-the-wild-roster-table-decides`](../../tests/static/the-rulebooks-and-the-player-portal-give-each-beast-as-the-wild-roster-table-decides.test.ts)
+- **Enforced by:** [`the-engines-tables-give-each-beast-as-the-wild-roster-table-decides`](../../tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts), [`primal-renames`](../../tests/primal-renames.test.js), [`shark-waters`](../../tests/shark-waters.test.js), [`new-creatures`](../../tests/new-creatures.test.js), [`the-rulebooks-and-the-player-portal-give-each-beast-as-the-wild-roster-table-decides`](../../tests/static/the-rulebooks-and-the-player-portal-give-each-beast-as-the-wild-roster-table-decides.test.ts)
 
 Giant Eagles became Thunderbirds; Kraken Tentacles became Eldritch Kraken (Leviathan companies and waters renamed in running games); Leviathan Pods became Dread Hydras, a land infantry beast at 8 gold and strength 19. Shark Shoals (3 gold, strength 5, Druid 3) hold half of the poor whale seas. Four new Creatures (Great Bears, Unicorn Herd, Mammoth Host, Great Turtles) bring Creatures level with Monsters; Great Turtles live in the prosperous primal seas, are recruited where they swim and never awakened. The strength band was set by the battle run-through of 2026-10-13.
 

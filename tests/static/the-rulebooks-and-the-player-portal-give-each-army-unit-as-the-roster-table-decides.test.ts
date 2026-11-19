@@ -8,7 +8,8 @@
 // (tests/lib/source.ts), read, not run. Words in a book need no lower level, and no page needs to run.
 //
 // Moved from the old script tests/roster-words.test.js (P1-14z): each check kept, with a guard that each table was
-// read; the game's own tables are checked against the same roster by tests/roster.test.js.
+// read; the game's own tables are checked against the same roster by
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts.
 import fs from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { sitePath } from '../lib/boot.ts';

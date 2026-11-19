@@ -6,7 +6,7 @@
 //   Shadow Archers   Marksmen (×1.25 shooting archers, and they pick the best target along the enemy front) · Loosed
 //                    From Cover (unchanged)
 //   Stag Riders      Through the Trees (the one cavalry that takes a flank in forest and jungle) · Forest Runners (the
-//                    terrain table, tests/roster)
+//                    terrain table, tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-…)
 //   Eagle Riders     Stoop on the Horses (may hold a flank slot on open ground; ×1.25 facing cavalry) · Eyes of the
 //                    Forest (while they fly with the shooters, an enemy Ambush is spoiled and Shadow Archers can be
 //                    shot at) — Skyward Retreat is gone (tests/static/skyward-retreat-and-dread-are-gone-…)

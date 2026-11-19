@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-11, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #46
-- **Enforced by:** [`roster`](../../tests/roster.test.js)
+- **Enforced by:** [`the-gm-and-player-pages-type-druid-strike-and-home-roster-rules-answer-as-the-rosters-decide`](../../tests/page/the-gm-and-player-pages-type-druid-strike-and-home-roster-rules-answer-as-the-rosters-decide.test.ts)
 
 When new units are added, a running game's capitals gain them at the next turn; other provinces keep the recruit pools they were generated with. Only worlds generated afterwards offer them elsewhere.
 

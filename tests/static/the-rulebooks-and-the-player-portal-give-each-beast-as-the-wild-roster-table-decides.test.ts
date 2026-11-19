@@ -11,7 +11,8 @@
 // object literals. Words in a book need no lower level, and no page needs to run.
 //
 // Moved from the old script tests/primal-words.test.js (P1-14z): each check kept, with a guard that each table and
-// list was read. The game's own tables are checked against the same roster by tests/primal-roster.test.js.
+// list was read. The game's own tables are checked against the same roster by
+// tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts.
 import fs from 'node:fs';
 import { describe, expect, test } from 'vitest';
 import { sitePath } from '../lib/boot.ts';
