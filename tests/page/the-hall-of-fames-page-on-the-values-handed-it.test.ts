@@ -2,7 +2,10 @@
 // src/ui/leaderboard/main.ts that the screen tours don't reach, or reach only in part (its filters, its sums and
 // sorts on a record's odd JSON, the GM's edits, the reads that fail), each pinned to what the untyped page gave.
 // And (P1-21s) each record's best entry first, the most or the least as the record asks, and a third place counted
-// in the top 3.
+// in the top 3. And (until plan P1-14z the script hall-of-fame-controls) who edits the Hall of Fame (ruling R-099): in
+// GM mode a GM gets edit controls on their own games' entries only, the Overlord on every entry and alone a rename
+// button for each player, through rename_player (the name only, trimmed); a player who asks for GM mode gets none; the
+// page never offers SQL to paste.
 // Level 4 (page): the page boots in jsdom on the fake database (tests/lib/fake-db.ts) holding made-up entries; the
 // file can't be imported alone (it boots itself on import), and its sums show only on its screens.
 import { describe, expect, test } from 'vitest';
@@ -53,6 +56,10 @@ interface Booting {
   readonly db?: (db: Db) => Db;
   readonly confirm?: boolean;
   readonly prompt?: string | null;
+  /** Who is signed in: 'gm-1' unless named. */
+  readonly me?: string;
+  /** GM mode asked for (?gm=1) by someone who is neither a GM nor the Overlord. */
+  readonly asksForGmMode?: boolean;
 }
 async function boot(o: Booting): Promise<APage> {
   const changes: AChangeTheHallOfFameSent[] = [];
@@ -62,17 +69,20 @@ async function boot(o: Booting): Promise<APage> {
     rows: () => o.rows,
     changes,
     signedIn: true,
-    me: 'gm-1',
+    me: o.me ?? 'gm-1',
     isGm: o.gm === true,
     isOverlord: o.overlord === true,
     names: o.names ?? [],
   });
   const { window: W } = bootJsdom(readPage('kingdoms-call-leaderboard.html'), {
-    url: 'https://example.test/kingdoms-call-leaderboard.html' + (o.gm === true || o.overlord === true ? '?gm=1' : ''),
+    url:
+      'https://example.test/kingdoms-call-leaderboard.html' +
+      (o.gm === true || o.overlord === true || o.asksForGmMode === true ? '?gm=1' : ''),
     supabase: { createClient: () => ({}) },
     db: o.db ? o.db(fake.db) : fake.db,
     setup(w) {
       w.addEventListener('error', (e) => errors.push(e.message));
+      Object.assign(w.console, { error: (...a: unknown[]) => errors.push('console.error: ' + a.join(' ')) });
       Object.assign(w, {
         alert: (m: string) => errors.push('alert: ' + m),
         confirm: () => o.confirm ?? true,
@@ -637,5 +647,74 @@ describe('the reads that fail, and the page with nothing to show', () => {
     expect(thrown(() => p.call('filtered'))).toMatch(/^TypeError/);
     p.doc.getElementById('foot')?.remove();
     expect(thrown(() => p.call('render'))).toMatch(/^TypeError/);
+  });
+});
+
+describe('who edits the Hall of Fame, in GM mode (ruling R-099)', () => {
+  // Two finished games, one run by gm-1 and one by gm-2, each with the same two players (p-1 and p-2).
+  const theTwoPlayers = [
+    {
+      rank: 1,
+      realm: 'Thornmere',
+      uid: 'p-1',
+      bot: false,
+      score: 120,
+      winner: true,
+      race: 'Human',
+      al: 'Good',
+      titles: [],
+    },
+    { rank: 2, realm: 'Veyholt', uid: 'p-2', bot: false, score: 80, race: 'Elven', al: 'Neutral', titles: [] },
+  ];
+  const anEntryRunBy = (id: string, name: string, gm: string, day: string): AHallOfFameEntry =>
+    anEntry(id, {
+      game_name: name,
+      gm_user_id: gm,
+      build: 'lb2',
+      started_at: `2026-09-${day}T12:00:00Z`,
+      finished_at: `2026-10-${day}T12:00:00Z`,
+      setup: { humans: 2, bots: 0, realms: 2, diplomacy: 'normal', mapSize: 'p2' },
+      standings: theTwoPlayers,
+    });
+  const rows = [anEntryRunBy('g-own', 'Marchwood', 'gm-1', '10'), anEntryRunBy('g-other', 'Fenmoor', 'gm-2', '11')];
+  /** Whether the entry's ✏ button is there: its handler names the entry as kcArg writes it, toggleEdit("g-own"). */
+  const editButtonFor = (p: APage, id: string): boolean =>
+    p.doc.querySelector(`[onclick*='toggleEdit(${JSON.stringify(id)})']`) !== null;
+  const renameButtons = (p: APage): number => p.doc.querySelectorAll('[onclick^="renamePlayer("]').length;
+  const editingOn = (p: APage): boolean => (p.doc.getElementById('gm-pill')?.innerHTML ?? '').includes('editing on');
+
+  test("a GM: editing on, edit controls on their own game's entry only, no rename button, no SQL to paste", async () => {
+    const p = await boot({ gm: true, me: 'gm-1', rows });
+    expect(editingOn(p)).toBe(true);
+    p.call('setTab', 'games');
+    expect([editButtonFor(p, 'g-own'), editButtonFor(p, 'g-other')]).toEqual([true, false]);
+    p.call('setTab', 'champions');
+    expect(renameButtons(p)).toBe(0);
+    expect(p.doc.documentElement.outerHTML).not.toMatch(/SQL Editor|create policy/i);
+    expect(p.errors).toEqual([]);
+  });
+  test('the Overlord: edit controls on every entry, a rename button per player, a rename through rename_player only', async () => {
+    const p = await boot({ overlord: true, me: 'ov-1', prompt: '  Ada of the Ford ', rows });
+    expect(editingOn(p)).toBe(true);
+    p.call('setTab', 'games');
+    expect([editButtonFor(p, 'g-own'), editButtonFor(p, 'g-other')]).toEqual([true, true]);
+    p.call('setTab', 'champions');
+    expect(renameButtons(p)).toBe(2);
+    p.changes.length = 0;
+    await p.call('renamePlayer', 'p-1');
+    await wait(30);
+    expect(p.changes.find((c) => c.rpc === 'rename_player')?.args).toEqual({
+      p_user: 'p-1',
+      p_name: 'Ada of the Ford',
+    });
+    expect(p.changes.filter((c) => c.table === 'profiles')).toEqual([]);
+    expect(p.errors).toEqual([]);
+  });
+  test('a player who asks for GM mode: editing stays off, and no edit controls', async () => {
+    const p = await boot({ asksForGmMode: true, me: 'p-1', rows });
+    expect(editingOn(p)).toBe(false);
+    p.call('setTab', 'games');
+    expect([editButtonFor(p, 'g-own'), editButtonFor(p, 'g-other')]).toEqual([false, false]);
+    expect(p.errors).toEqual([]);
   });
 });

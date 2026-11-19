@@ -14,10 +14,17 @@
 // without a throw into a storable row (100 games, or 3,000 under KC_FULL=1 in npm run test:full). The made-up games
 // come from a fixed seed (12345) of the test's own: every run builds the same games, so the outcome is no luck.
 // computeStandings is stood in for those games only (as the script's sandbox did), so each of them holds two titles.
+// And the builder's half of the script leaderboard-realm-bests (until plan P1-14z): each realm's own best for each
+// record (ruling R-087), a fallen hero's peaks and a title held then lost, on the game of tests/lib/a-finished-game-of-
+// two-realms-each-holding-its-own-best.ts; its board is a page test's.
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 import { bootJsdom, DB_VERSION } from '../lib/boot.ts';
 import { aGameMastersWorld, makeAFakeDbHoldingTheGameMastersWorld } from '../lib/fake-db.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+import {
+  theGameOfTwoRealmsEachHoldingItsOwnBest,
+  theThroneHeldByAshvale,
+} from '../lib/a-finished-game-of-two-realms-each-holding-its-own-best.ts';
 import { computeStandings } from '../../src/engine/titles/reckoning.ts';
 import type {
   ARealmsResultAsItsRecordReadsIt,
@@ -1607,5 +1614,42 @@ describe('made-up games of malformed statistics: the builder never throws and gi
     expect(() => hof.buildGameRecords(anIdOfAnyKind(null), null, [], [], [], null)).not.toThrow();
     expect(() => hof.buildGameRecords('g', null, [], [], [], null)).not.toThrow();
     expect(() => hof.buildGameRecords('g', {}, [], [aResultOfAnyShape(aBareResult)], [], null)).not.toThrow();
+  });
+});
+
+describe("every realm's own best for each record, a fallen hero's peaks and a title held then lost (ruling R-087)", () => {
+  // Until plan P1-14z the unit half of the script leaderboard-realm-bests: its made-up game is tests/lib/a-finished-
+  // game-of-two-realms-each-holding-its-own-best.ts, which says what happens in it; computeStandings is stood in for it
+  // (as the script's sandbox did), so Ashvale holds The Throne at the end.
+  let row: ARecordBuilt;
+  beforeAll(() => {
+    const g = theGameOfTwoRealmsEachHoldingItsOwnBest;
+    vi.mocked(computeStandings).mockImplementation(theThroneHeldByAshvale);
+    try {
+      row = theRecord(
+        hof.buildGameRecords('g1', g.gameRow, g.players, g.results, g.events, aStateOfAnyShape(g.gs), g.names),
+      );
+    } finally {
+      vi.mocked(computeStandings).mockRestore();
+    }
+  });
+  /** Realm `pi`'s entry in record `key`, or none. */
+  const entryOf = (key: string, pi: number) => (row.records[key] ?? []).find((e) => e.pi === pi);
+
+  test('a record holds a list of entries, one per realm, best first', () => {
+    expect(Array.isArray(row.records['biggest_battle'])).toBe(true);
+    expect(row.records['biggest_battle']?.[0]?.pi).toBe(0);
+  });
+  test("each realm keeps its own biggest battle: Ashvale's 500, and Brindmoor's 200 though Ashvale's was bigger", () => {
+    expect(entryOf('biggest_battle', 0)?.v).toBe(500);
+    expect(entryOf('biggest_battle', 1)?.v).toBe(200);
+  });
+  test('a hero who fell that turn still counts for his Melee 9 and his 88 maximum HP', () => {
+    expect([entryOf('sk_melee', 1)?.v, entryOf('sk_melee', 1)?.['who']]).toEqual([9, 'Sir Fallowmere']);
+    expect(entryOf('hardiest', 1)?.v).toBe(88);
+  });
+  test('a title held for a turn and lost is recorded for its holder, as is the holder at the end of the game', () => {
+    expect(entryOf('title_throne', 1)?.v).toBe(30);
+    expect(entryOf('title_throne', 0)?.v).toBe(42);
   });
 });
