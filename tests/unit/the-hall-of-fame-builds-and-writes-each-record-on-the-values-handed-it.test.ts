@@ -6,9 +6,26 @@
 // results and turn records. Level 1 (unit): the file imports in Node once the page's config, the `supabase`
 // global and a Db handed in are stood in (as the GM page's start-up tests do); a page test would boot the whole page,
 // sign in and finish a game to reach each of them.
-import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.ts';
-import type { TheStateAsTheHallOfFameReadsIt } from '../../src/ui/gm/hall-of-fame.ts';
+//
+// Three more checks of the builder and its write, at the end (until plan P1-14z the scripts leaderboard-golden,
+// leaderboard-events-paging and leaderboard-records, which cut the code out of the file and ran it in a vm of their
+// own): one hand-made finished game, value by value; a game's turn rows read in pages on the fake Db (tests/lib/
+// fake-db.ts), every row once, and a failed page saving nothing; and made-up games of malformed statistics, built
+// without a throw into a storable row (100 games, or 3,000 under KC_FULL=1 in npm run test:full). The made-up games
+// come from a fixed seed (12345) of the test's own: every run builds the same games, so the outcome is no luck.
+// computeStandings is stood in for those games only (as the script's sandbox did), so each of them holds two titles.
+import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
+import { bootJsdom, DB_VERSION } from '../lib/boot.ts';
+import { aGameMastersWorld, makeAFakeDbHoldingTheGameMastersWorld } from '../lib/fake-db.ts';
+import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+import { computeStandings } from '../../src/engine/titles/reckoning.ts';
+import type {
+  ARealmsResultAsItsRecordReadsIt,
+  ARealmsTurnAsItsRecordReadsIt,
+  TheStateAsTheHallOfFameReadsIt,
+} from '../../src/ui/gm/hall-of-fame.ts';
+
+vi.mock('../../src/engine/titles/reckoning.ts', { spy: true });
 
 interface AnAnswer {
   data: unknown;
@@ -1053,5 +1070,542 @@ describe('the edges the plants found', () => {
     expect(await hof.backfillGameRecords(false)).toBe(0);
     expect(page.getElementById('lb-build-msg')?.textContent).toMatch(/^Failed: .*find is not a function$/);
     expect(Reflect.get(page.getElementById('lb-build-btn') ?? {}, 'disabled')).toBe(false);
+  });
+});
+
+describe('one hand-made finished game: its entry, value by value', () => {
+  // Thornmere (realm 0) and Veyholt (realm 1), three turns; Thornmere wins.
+  //   gold       Thornmere 100, 250, 180    Veyholt 300, 120, 90
+  //   provinces  Thornmere   3,   5,   6    Veyholt   4,   4,  2
+  //   turn 2     Thornmere fights 2, wins 2, kills 5, loses 1; Veyholt fights 2, wins 0, kills 1, loses 5
+  // The fuzz below checks that no input crashes the builder or gives a value that is no number; this checks that the
+  // right realm holds each record, with the right number and turn: every realm's own best (ruled 2026-10-09), best
+  // first, a realm whose best is 0 left out.
+  const snap = (gold: number, provinces: number) => ({ gold, provinces, chars: 1, heroes: 0, characters: [] });
+  const ev = (turn: number, pi: number, gold: number, prov: number, battles?: object) => ({
+    turn,
+    player_index: pi,
+    is_bot: false,
+    realm: pi ? 'Veyholt' : 'Thornmere',
+    post: snap(gold, prov),
+    outcomes: battles ? { battles: battles } : {},
+  });
+  const events = [
+    ev(1, 0, 100, 3),
+    ev(1, 1, 300, 4),
+    ev(2, 0, 250, 5, { fought: 2, won: 2, unitsKilled: 5, unitsLost: 1, list: [] }),
+    ev(2, 1, 120, 4, { fought: 2, won: 0, unitsKilled: 1, unitsLost: 5, list: [] }),
+    ev(3, 0, 180, 6),
+    ev(3, 1, 90, 2),
+  ];
+  const results = [
+    {
+      game_id: 'g1',
+      game_name: 'The Old War',
+      player_index: 0,
+      is_bot: false,
+      realm: 'Thornmere',
+      race: 'Human',
+      alignment: 'Good',
+      rank: 1,
+      score: 140,
+      winner: true,
+      victory: 'reckoning',
+      turns: 3,
+      setup: { realms: 2, humans: 2, bots: 0 },
+      final: snap(180, 6),
+    },
+    {
+      game_id: 'g1',
+      game_name: 'The Old War',
+      player_index: 1,
+      is_bot: false,
+      realm: 'Veyholt',
+      race: 'Dwarven',
+      alignment: 'Neutral',
+      rank: 2,
+      score: 60,
+      winner: false,
+      victory: 'reckoning',
+      turns: 3,
+      setup: { realms: 2, humans: 2, bots: 0 },
+      final: snap(90, 2),
+    },
+  ];
+  const players = [
+    { player_index: 0, user_id: 'u-ada', display_name: 'Thornmere' },
+    { player_index: 1, user_id: 'u-bram', display_name: 'Veyholt' },
+  ];
+  let row: ARecordBuilt;
+  beforeAll(() => {
+    const built = theRecord(
+      hof.buildGameRecords(
+        'g1',
+        { id: 'g1', name: 'The Old War', gm_user_id: 'gm-1', max_turns: 12 },
+        players,
+        results,
+        events,
+        null,
+      ),
+    );
+    // as the database keeps it: through JSON
+    row = JSON.parse(JSON.stringify(built)) as ARecordBuilt;
+  });
+  /** A record's entries as `pi:v:t`, a missing turn as nothing, joined by spaces. */
+  const list = (k: string): string =>
+    (row.records[k] ?? []).map((e) => [e.pi, e.v, e.t === undefined ? null : e.t].join(':')).join(' ');
+
+  test('the game lasted three turns', () => {
+    expect(row.turns).toBe(3);
+  });
+  test('standings: Thornmere first and the victor, Veyholt second; each realm points at its player’s account', () => {
+    expect(row.standings.map((s) => [s.realm, s.rank, s.winner, s.uid])).toEqual([
+      ['Thornmere', 1, true, 'u-ada'],
+      ['Veyholt', 2, false, 'u-bram'],
+    ]);
+  });
+  test.each([
+    ['richest', '1:300:1 0:250:2', "each realm's own best gold and when, best first"],
+    ['most_provinces', '0:6:3 1:4:1', 'a tie later in the game keeps the turn it was first reached'],
+    ['battles_won_game', '0:2:', 'a realm that won no battle holds no "battles won" entry'],
+    ['kills_game', '0:5: 1:1:', 'units destroyed over the game, per realm'],
+    ['losses_game', '1:5: 0:1:', 'units lost over the game, per realm'],
+    ['final_score', '0:140:3 1:60:3', 'the final scores, at the last turn'],
+    ['final_gold', '0:180:3 1:90:3', 'the gold each realm finished with'],
+  ])('%s: %s (%s)', (key, want) => {
+    expect(list(key)).toBe(want);
+  });
+  test('the game’s length counts as a "shortest game" record (lower is better)', () => {
+    expect(row.records['shortest_game']?.map((e) => [e.v, e.d])).toEqual([[3, 'min']]);
+  });
+});
+
+describe("a game's turn rows read in pages on the fake Db: every row once, and a failed page saves nothing", () => {
+  // 8 realms × 90 turns = 720 rows: two pages, with the page edge in the middle of a turn. The fake Db (tests/lib/
+  // fake-db.ts) serves the pages in the order the Db's function asks; the access layer's test proves that order
+  // against the local database.
+  const events: { turn: number; player_index: number; is_bot: boolean; realm: string; outcomes: object }[] = [];
+  for (let t = 1; t <= 90; t++)
+    for (let pi = 0; pi < 8; pi++)
+      events.push({ turn: t, player_index: pi, is_bot: false, realm: `Realm ${String(pi)}`, outcomes: {} });
+  const results = [{ game_id: 'g1', player_index: 0 }];
+  /** The game's record written on the fake Db holding the GM's world (its turn rows and its result). errorFrom: the
+   *  first row of the page that fails, as a statement that times out (each page from it on answers the database's
+   *  error). Each row served is a copy that, when the builder reads its outcomes, is kept as read. */
+  async function writtenOnTheFakeDb(errorFrom: number | null) {
+    const world = aGameMastersWorld();
+    world.tables.profiles.length = 0;
+    events.forEach((e) => world.tables.turn_events.push({ game_id: 'g1', ...e }));
+    results.forEach((r) => world.tables.game_results.push({ ...r }));
+    const { db } = makeAFakeDbHoldingTheGameMastersWorld(DB_VERSION, world);
+    const rowsRead = new Set<{ turn?: unknown; player_index?: unknown }>();
+    const watched = (served: {
+      readonly turn?: unknown;
+      readonly player_index?: unknown;
+      readonly outcomes?: unknown;
+    }) => {
+      const copy = { ...served };
+      Object.defineProperty(copy, 'outcomes', {
+        enumerable: true,
+        get: () => {
+          rowsRead.add(copy);
+          return served.outcomes;
+        },
+      });
+      return copy;
+    };
+    answers['results'] = async (...args: unknown[]) => await db.theStatistics.theResultsOfThisGame(String(args[0]));
+    answers['turns'] = async (...args: unknown[]) => {
+      const [game, from, to] = args.map(String);
+      if (errorFrom != null && Number(from) >= errorFrom)
+        return { data: null, error: { message: 'canceling statement due to statement timeout' }, status: 500 };
+      const served = await db.theStatistics.thisGamesTurnRecordsForItsEntryFromRowToRow(
+        String(game),
+        Number(from),
+        Number(to),
+      );
+      return { ...served, data: served.data ? served.data.map(watched) : served.data };
+    };
+    answers['notes'] = async (...args: unknown[]) =>
+      await db.theHallOfFame.theGameMastersNotesOnThisGamesEntry(String(args[0]));
+    answers['writeEntries'] = async (...args: unknown[]) =>
+      await db.theHallOfFame.writeTheseEntries(args[0] as Parameters<typeof db.theHallOfFame.writeTheseEntries>[0]);
+    answers['names'] = async () => await db.theAccountsNames.theNameOfEveryAccount();
+    const saved = await hof.writeGameRecord('g1', {
+      gameRow: { id: 'g1' },
+      players: [],
+      gs: aStateOfAnyShape({ players: [] }),
+    });
+    const written = callsTo('writeEntries').map(([entries]) => (entries as { totals: { events: number } }[])[0]);
+    return { saved, written, rowsRead, calls: world.calls, lastErr: G['_kcLbLastErr'] };
+  }
+
+  test('every turn row reaches the record builder, none read twice and none skipped, and the record is saved', async () => {
+    const a = await writtenOnTheFakeDb(null);
+    expect(a.written.map((e) => e?.totals.events)).toEqual([events.length]);
+    expect(a.rowsRead.size).toBe(events.length);
+    expect(new Set([...a.rowsRead].map((e) => `${String(e.turn)}/${String(e.player_index)}`)).size).toBe(events.length);
+    expect(a.saved).toBe(true);
+    expect(a.calls).toContain('game_records.upsert');
+  });
+  test('a failed page stops the build: no partial record saved over the old one, the failure on the banner', async () => {
+    const b = await writtenOnTheFakeDb(500); // the second page fails
+    expect(b.saved).toBe(false);
+    expect(b.calls).not.toContain('game_records.upsert');
+    expect(b.lastErr).toBeTruthy();
+  });
+});
+
+describe('made-up games of malformed statistics: the builder never throws and gives a storable row', () => {
+  // 100 games in the standard run, 3,000 in the full one (npm run test:full): what the fuzz catches, it catches within
+  // the first 50 (a mutation check, 2026-10-13); the full run keeps the long tail. Each record key holds a list, every
+  // realm's best (ruled 2026-10-09), not one entry.
+  const N = process.env['KC_FULL'] === '1' ? 3000 : 100;
+  // a fixed seed, so a failure can be reproduced and every run builds the same games
+  let seed = 12345;
+  const rnd = (): number => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return seed / 0x7fffffff;
+  };
+  const pick = <T>(a: readonly T[]): T | undefined => a[Math.floor(rnd() * a.length)];
+  const maybe = (v: unknown, p?: number): unknown =>
+    rnd() < (p ?? 0.15) ? pick([null, undefined, NaN, '', {}, [], 'nonsense']) : v;
+
+  const TYPES = ['Archers', 'Heavy Horse', 'Galleons', 'Dragons', 'Rocs', 'Whale Cohort', 'Levies', 'Unknown Unit'];
+  const QUALS = ['Green', 'Average', 'Veteran', 'Elite', null, 'Bogus'];
+  const POWERS = ['Weak', 'Moderate', 'Powerful', 'Legendary', null, ''];
+  const RACES = ['Human', 'Elven', 'Dwarven', 'Orcish', null];
+  const ALIGNS = ['Divine', 'Good', 'Evil', 'Druidic', null];
+
+  function mkSnapshot(nChars: number) {
+    const chars: unknown[] = [];
+    for (let i = 0; i < nChars; i++) {
+      const units: unknown[] = [];
+      const n = Math.floor(rnd() * 9);
+      for (let u = 0; u < n; u++)
+        units.push({ t: maybe(pick(TYPES)), q: maybe(pick(QUALS)), ...(rnd() < 0.2 ? { sk: 1 } : {}) });
+      const skills: Record<string, number> = {};
+      ['melee', 'archery', 'tactical', 'white', 'thief'].forEach((k) => {
+        if (rnd() < 0.6) skills[k] = Math.floor(rnd() * 10);
+      });
+      chars.push({
+        id: i,
+        name: maybe(`Hero ${String(i)}`, 0.1),
+        king: i === 0,
+        hp: Math.floor(rnd() * 40),
+        maxHp: Math.floor(rnd() * 60),
+        skills: maybe(skills, 0.1),
+        units: maybe(units, 0.08),
+        items: maybe(['Ring', 'Blade'].slice(0, Math.floor(rnd() * 3)), 0.1),
+      });
+    }
+    return {
+      gold: Math.floor(rnd() * 900),
+      provinces: Math.floor(rnd() * 20),
+      land: Math.floor(rnd() * 15),
+      sea: Math.floor(rnd() * 6),
+      tax: Math.floor(rnd() * 60),
+      taxShare: Math.round(rnd() * 1000) / 10,
+      chars: nChars,
+      heroes: nChars - 1,
+      ledUnits: Math.floor(rnd() * 30),
+      ledStr: Math.floor(rnd() * 400),
+      garUnits: Math.floor(rnd() * 20),
+      garStr: Math.floor(rnd() * 200),
+      units: Math.floor(rnd() * 50),
+      str: Math.floor(rnd() * 600),
+      items: Math.floor(rnd() * 9),
+      relics: Math.floor(rnd() * 3),
+      discoveries: Math.floor(rnd() * 12),
+      consecrated: Math.floor(rnd() * 4),
+      explored: Math.floor(rnd() * 40),
+      characters: maybe(chars, 0.06),
+    };
+  }
+  function mkOutcomes(pi: number, nPlayers: number) {
+    const battles: unknown[] = [];
+    const nb = Math.floor(rnd() * 4);
+    for (let i = 0; i < nb; i++) {
+      const atk = rnd() < 0.5;
+      battles.push({
+        ph: Math.floor(rnd() * 5),
+        prov: Math.floor(rnd() * 80),
+        terrain: pick(['plains', 'forest', 'sea', null]),
+        kind: pick(['pvp', 'neutral', 'garrison', 'guard']),
+        atkPi: atk ? pi : Math.floor(rnd() * nPlayers),
+        defPi: atk ? Math.floor(rnd() * nPlayers) : pi,
+        atkStr: maybe(Math.floor(rnd() * 300), 0.1),
+        defStr: maybe(Math.floor(rnd() * 300), 0.1),
+        S: rnd(),
+        atkUnits: Math.floor(rnd() * 12),
+        defUnits: Math.floor(rnd() * 12),
+        won: rnd() < 0.5,
+        atkLost: Math.floor(rnd() * 6),
+        defLost: Math.floor(rnd() * 6),
+        carry: Math.floor(rnd() * 3),
+        side: atk ? 'atk' : 'def',
+        win: rnd() < 0.5,
+      });
+    }
+    // (each loop below draws its length again at every step, as the script's did)
+    const enc: (Record<string, unknown> & { won: boolean })[] = [];
+    for (let i = 0; i < Math.floor(rnd() * 3); i++)
+      enc.push({
+        ph: 0,
+        pi,
+        charId: Math.floor(rnd() * 4),
+        prov: 1,
+        feature: maybe('A lair'),
+        guardian: maybe('Wyrm'),
+        power: pick(POWERS),
+        won: rnd() < 0.6,
+        fled: rnd() < 0.2,
+        dmg: Math.floor(rnd() * 30),
+        hpAfter: Math.floor(rnd() * 30),
+        killed: rnd() < 0.1,
+        tactics: ['ME'],
+      });
+    const caps: unknown[] = [];
+    for (let i = 0; i < Math.floor(rnd() * 3); i++)
+      caps.push({
+        prov: i,
+        terrain: pick(['plains', 'sea', null]),
+        tax: Math.floor(rnd() * 9),
+        from: Math.floor(rnd() * nPlayers),
+        to: pi,
+      });
+    const deaths: unknown[] = [];
+    for (let i = 0; i < Math.floor(rnd() * 3); i++)
+      deaths.push({
+        charId: i,
+        name: 'X',
+        pi: Math.floor(rnd() * nPlayers),
+        king: rnd() < 0.2,
+        killerPi: pi,
+        killerId: Math.floor(rnd() * 4),
+        how: 'character',
+      });
+    const spells: (Record<string, unknown> & { ok: boolean })[] = [];
+    for (let i = 0; i < Math.floor(rnd() * 4); i++)
+      spells.push({
+        pi,
+        charId: 1,
+        spell: pick(['Fireball', 'Curse', 'Resurrect', null]),
+        school: 'Elemental',
+        lvl: Math.floor(rnd() * 6),
+        chance: Math.floor(rnd() * 100),
+        ok: rnd() < 0.6,
+      });
+    return {
+      battles: maybe(
+        {
+          fought: nb,
+          asAttacker: 1,
+          won: 1,
+          unitsLost: Math.floor(rnd() * 9),
+          unitsKilled: Math.floor(rnd() * 9),
+          list: battles,
+        },
+        0.05,
+      ),
+      encounters: {
+        fought: enc.length,
+        won: enc.filter((e) => e.won).length,
+        fled: 0,
+        heroKilled: 0,
+        list: maybe(enc, 0.05),
+      },
+      captures: { gained: caps.length, lost: Math.floor(rnd() * 3), list: caps },
+      deaths: { own: Math.floor(rnd() * 2), king: false, killed: deaths.length, list: deaths },
+      spells: { cast: spells.length, ok: spells.filter((s) => s.ok).length, list: spells },
+      delta: maybe(
+        {
+          gold: Math.floor(rnd() * 200 - 100),
+          provinces: 1,
+          tax: 2,
+          units: 1,
+          str: Math.floor(rnd() * 80 - 20),
+          heroes: 0,
+          items: 0,
+          discoveries: 0,
+          explored: 1,
+        },
+        0.08,
+      ),
+      rank: 1,
+      score: Math.floor(rnd() * 300),
+    };
+  }
+  function mkGame(i: number) {
+    const n = 2 + Math.floor(rnd() * 7),
+      turns = 1 + Math.floor(rnd() * 22);
+    const results: (ARealmsResultAsItsRecordReadsIt | null | undefined)[] = [];
+    for (let pi = 0; pi < n; pi++) {
+      const result = {
+        game_id: `g${String(i)}`,
+        game_name: `Game ${String(i)}`,
+        player_index: pi,
+        is_bot: rnd() < 0.5,
+        bot_difficulty: 'hard',
+        realm: `Realm ${String(pi)}`,
+        race: pick(RACES),
+        alignment: pick(ALIGNS),
+        rank: pi + 1,
+        score: Math.floor(rnd() * 400),
+        winner: pi === 0,
+        victory: pick(['reckoning', 'elimination', 'concession']),
+        turns,
+        out_turn: rnd() < 0.3 ? Math.floor(rnd() * turns) + 1 : null,
+        out_how: rnd() < 0.3 ? 'eliminated' : null,
+        setup: maybe(
+          {
+            mapSize: 'p5',
+            cols: 12,
+            rows: 7,
+            seaPct: 35,
+            realms: n,
+            bots: 2,
+            humans: n - 2,
+            difficulty: 'hard',
+            diplomacy: pick(['normal', 'hostile']),
+          },
+          0.1,
+        ),
+        final: maybe(mkSnapshot(1 + Math.floor(rnd() * 3)), 0.1),
+        created_at: new Date(Date.now() - i * 86400000).toISOString(),
+      };
+      results.push(result);
+    }
+    const events: (ARealmsTurnAsItsRecordReadsIt | null | undefined)[] = [];
+    for (let t = 1; t <= turns; t++)
+      for (let pi = 0; pi < n; pi++) {
+        if (rnd() < 0.03) continue;
+        const event = {
+          turn: t,
+          player_index: pi,
+          is_bot: rnd() < 0.5,
+          realm: `Realm ${String(pi)}`,
+          race: pick(RACES),
+          alignment: pick(ALIGNS),
+          post: maybe(mkSnapshot(1 + Math.floor(rnd() * 4)), 0.07),
+          outcomes: maybe(mkOutcomes(pi, n), 0.07),
+        };
+        events.push(event);
+      }
+    // now and then an empty row among the turns and results, as a failed or partial write could leave
+    if (rnd() < 0.1) events.splice(Math.floor(rnd() * (events.length + 1)), 0, pick([null, undefined]));
+    if (rnd() < 0.1) results.splice(Math.floor(rnd() * (results.length + 1)), 0, pick([null, undefined]));
+    const players: { player_index: number; user_id: string | null; display_name: string | null }[] = [];
+    for (let pi = 0; pi < n; pi++)
+      players.push({
+        player_index: pi,
+        user_id: rnd() < 0.5 ? `u${String(pi)}` : null,
+        display_name: rnd() < 0.8 ? `Player ${String(pi)}` : null,
+      });
+    const gameRow =
+      rnd() < 0.85
+        ? {
+            id: `g${String(i)}`,
+            name: `Game ${String(i)}`,
+            gm_user_id: 'gm-1',
+            created_at: new Date().toISOString(),
+            max_turns: 20,
+          }
+        : null;
+    const gs =
+      rnd() < 0.7
+        ? aStateOfAnyShape({
+            players: new Array(n).fill(0).map(() => ({})),
+            characters: [
+              { id: 1, name: 'Aldric' },
+              { id: 2, name: 'Bryn' },
+            ],
+            botDiplomacy: pick(['normal', 'hostile']),
+            botDifficulty: 'hard',
+            world: { cols: 12, rows: 7 },
+          })
+        : null;
+    return { id: `g${String(i)}`, gameRow, players, results, events, gs };
+  }
+  /** The standings stood in, as the script's sandbox did: two titles, held by realms 0 and 1 (heroes 1 and 2). */
+  const twoTitlesHeld = (): ReturnType<typeof computeStandings> => ({
+    titles: {
+      throne: { playerIndex: 0, merit: 42, charId: 1, prize: 0, name: 'The Throne' },
+      vault: { playerIndex: 1, merit: 17, charId: 2, prize: 0, name: 'The Vaultkeeper' },
+    },
+    relics: [],
+    standings: [],
+    taxByPlayer: [],
+    worldTax: 0,
+    goldByPlayer: [],
+    threshold: 0,
+    perChar: {},
+  });
+
+  test(
+    `${String(N)} made-up games: each built without a throw into a row JSON keeps, each record a list of finite values, one a realm`,
+    timeLimitForPropertyRuns(N, 50),
+    () => {
+      vi.mocked(computeStandings).mockImplementation(twoTitlesHeld);
+      seed = 12345;
+      const problems: string[] = [];
+      const keySeen = new Set<string>();
+      try {
+        for (let i = 0; i < N; i++) {
+          const g = mkGame(i);
+          let row: ARecordBuilt | null;
+          try {
+            row = hof.buildGameRecords(g.id, g.gameRow, g.players, g.results, g.events, g.gs);
+          } catch (e) {
+            problems.push(`CRASH at ${String(i)}: ${String(e)}`);
+            continue;
+          }
+          if (!row) {
+            problems.push(`NULL ROW at ${String(i)}`);
+            continue;
+          }
+          let json: string;
+          try {
+            json = JSON.stringify(row);
+          } catch {
+            problems.push(`NOT SERIALISABLE at ${String(i)}`);
+            continue;
+          }
+          const m = /.{0,80}(NaN|Infinity|undefined).{0,80}/.exec(json);
+          if (m) problems.push(`BAD VALUE at ${String(i)}: …${m[0]}…`);
+          if (!row.standings.length) problems.push(`NO STANDINGS at ${String(i)}`);
+          if (!isFinite(row.turns)) problems.push(`BAD TURNS at ${String(i)}`);
+          for (const [k, entries] of Object.entries(row.records)) {
+            keySeen.add(k);
+            if (!Array.isArray(entries) || !entries.length) {
+              problems.push(`BAD RECORD LIST ${k} at ${String(i)}`);
+              continue;
+            }
+            const pis = entries.map((r) => r.pi);
+            if (new Set(pis).size !== pis.length) problems.push(`TWO ENTRIES FOR ONE REALM ${k} at ${String(i)}`);
+            for (const r of entries) {
+              if (!isFinite(r.v)) {
+                problems.push(`BAD RECORD ${k} at ${String(i)}`);
+                continue;
+              }
+              if (!['min', 'max'].includes(r.d)) problems.push(`BAD DIR ${k} at ${String(i)}`);
+            }
+          }
+        }
+      } finally {
+        vi.mocked(computeStandings).mockRestore();
+      }
+      expect(problems).toEqual([]);
+      // the stood-in standings were reached: its two titles are records (a stand-in reaches only calls from other files)
+      expect([...keySeen]).toEqual(expect.arrayContaining(['title_throne', 'title_vault']));
+    },
+  );
+  test('no game, no results or one bare result: no throw', () => {
+    const anIdOfAnyKind = (id: unknown) => id as string;
+    const aResultOfAnyShape = (r: object) => r as ARealmsResultAsItsRecordReadsIt;
+    const aBareResult = { game_id: 'g', player_index: 0, turns: 1, setup: {}, final: {} };
+    expect(() => hof.buildGameRecords(anIdOfAnyKind(null), null, [], [], [], null)).not.toThrow();
+    expect(() => hof.buildGameRecords('g', null, [], [], [], null)).not.toThrow();
+    expect(() => hof.buildGameRecords('g', {}, [], [aResultOfAnyShape(aBareResult)], [], null)).not.toThrow();
   });
 });
