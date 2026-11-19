@@ -1,7 +1,7 @@
 // One of the balance runner's worker processes (run.ts starts one per core): it plays the games it is sent, one at a
 // time, each in its own fresh page, and sends back each result or error. A job with `untilTurn` is a replay: the game
 // stops after that turn and keeps its GM log lines (report.ts, where two runs part).
-import { readPage } from '../../tests/lib/boot.js';
+import { readPage } from '../../tests/lib/boot.ts';
 import type { GameSpec } from './matrix.ts';
 import { playGame, type GameResult, type PlayOptions } from './play.ts';
 

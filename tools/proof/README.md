@@ -150,7 +150,7 @@ directly. Return the lines in words, so that a line moving from words to facts c
 
 The proof of P1-17's area rows, which move a page's database calls onto `Db` (plan P1-17, Decision 12).
 [every-database-call-a-page-makes.ts](every-database-call-a-page-makes.ts) wraps each client a page makes in jsdom
-(`tests/lib/boot.js` loads it only when `KC_RECORD_DATABASE_CALLS` names a folder). Each call goes as one line of JSON
+(`tests/lib/boot.ts` loads it only when `KC_RECORD_DATABASE_CALLS` names a folder). Each call goes as one line of JSON
 into `<folder>/<process id>.jsonl`: a query once awaited, with every step and its arguments; any other call when made.
 Times read as `<time>`. A page handed the fake (`tests/lib/fake-db.ts`: the page tests and the screen tours) sends
 its calls to the fake, not to a client, so they aren't recorded. Record the base's site and the branch's, then compare

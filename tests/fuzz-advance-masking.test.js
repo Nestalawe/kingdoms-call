@@ -2,7 +2,7 @@
 // archive meta round-trip. Boots the real GM portal under jsdom with the fake database (tests/lib/fake-db.ts). Its advance-and-strike combat
 // fuzz is tests/unit/fuzz-personal-combat.test.ts (plan P1-08f).
 //   node tests/fuzz-advance-masking.test.js [gm-portal.html] [games] [turns] [bots]
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./lib/fake-db.ts');
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html'; const GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5;
 const html=readPage(GMF);
 let ROWS={}; const WRITES=[];

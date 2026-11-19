@@ -1,7 +1,7 @@
 // Landing page footer: site/index.html's footer reads the agreed wording. Nothing is run.
 const fs=require('fs'), path=require('path');
 const {JSDOM}=require('jsdom');
-const {SITE}=require('./lib/boot');
+const {SITE}=require('./lib/boot.ts');
 
 const EXPECTED='Kingdoms Call · A Strategy Game of Simultaneous Turns';
 const doc=new JSDOM(fs.readFileSync(path.join(SITE,'index.html'),'utf8')).window.document;

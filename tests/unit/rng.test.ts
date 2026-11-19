@@ -1,7 +1,7 @@
 // The game's dice and the engine's clock (P1-07): src/engine/rng.ts and src/engine/clock.ts, each run on its own in a
 // fresh sandbox, as the GM portal runs them first of all its scripts (each a module that imports nothing, run as a
 // classic script: tests/lib/source.ts's scriptOf takes its `export` keywords off).
-// - kcRng() given a seed plays exactly the sequence of the tests' seededRandom (tests/lib/boot.js) for that seed, so
+// - kcRng() given a seed plays exactly the sequence of the tests' seededRandom (tests/lib/boot.ts) for that seed, so
 //   every seeded test and balance game plays as it did when the page's dice were Math.random.
 // - Given no seed (the live site), it seeds itself once from crypto.getRandomValues.
 // - kcRng.seed(n) starts again from seed n; kcRng.use(fn) draws from fn and hands back the stream it replaced, which
@@ -20,7 +20,7 @@
 // in `unit/`
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
-import { pinnedDate, seededRandom, type KcRng } from '../lib/boot.js';
+import { pinnedDate, seededRandom, type KcRng } from '../lib/boot.ts';
 import { importsOf } from '../../tools/pages.ts';
 import { scriptOf } from '../lib/source.ts';
 
@@ -46,7 +46,7 @@ function fixedCrypto(value: number, calls: number[]) {
 }
 
 describe('kcRng', () => {
-  // 0 (read as 1, as seededRandom does), small, the npm test default, a default stream above 2^32 (boot.js adds
+  // 0 (read as 1, as seededRandom does), small, the npm test default, a default stream above 2^32 (boot.ts adds
   // 0x10000 per page booted), and the largest.
   const seeds = [0, 1, 1234, 20261001, 20261001 + 0x10000 * 70000, 0xffffffff];
   test.for(seeds)('seed %i plays the same 2,000 numbers as the tests’ seededRandom', (seed) => {

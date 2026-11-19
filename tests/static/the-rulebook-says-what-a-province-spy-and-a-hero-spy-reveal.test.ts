@@ -7,7 +7,7 @@
 //
 // Until plan P1-14h these were the last four checks of tests/spy-reveals.test.js, kept as they were.
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 
 const stripTags = (s: string) => {
   let t = s;

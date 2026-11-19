@@ -10,7 +10,7 @@
 //     charges a Neutral commander at Druid 0 three levels (×0.4).
 const fs=require('fs');
 const {bootScenario, order, plan}=require('./lib/scenario');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot.ts');
 const {ROSTER}=require('./lib/primal-decided');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 

@@ -5,7 +5,7 @@
 //   - GM portal: after sign-in, an account that is neither a Game Master nor the Overlord sees only "You're not
 //     a Game Master", and nothing else loads (no game list, no watcher, no probes); so does one whose offer is
 //     still open, and one whose check fails; a Game Master, and the Overlord, see their games.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts');
 const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld,makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;

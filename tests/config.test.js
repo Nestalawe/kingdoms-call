@@ -7,7 +7,7 @@
 // Reads site/kc-config.js (or $KC_SITE's), and each page's template and modules in src/ (tools/pages.ts; until P1-09d,
 // the built pages in site/).
 const fs=require('fs'), path=require('path'), vm=require('vm');
-const {SITE}=require('./lib/boot');
+const {SITE}=require('./lib/boot.ts');
 const {SRC}=require('./lib/source.ts'); const {pageModules,pageNames}=require('../tools/pages.ts');
 
 let fails=0;

@@ -18,7 +18,7 @@
 // provinces and a province with no pool (batch 2026-10-15; P1-15f4); the turn
 // passes the loaded world through the save's upgrade, which calls it (by syntax tree; since P1-15a)
 const fs=require('fs'), path=require('path'), vm=require('vm');
-const {sitePath}=require('./lib/boot'); const {loadEngine,engineFn}=require('./lib/engine.ts');
+const {sitePath}=require('./lib/boot.ts'); const {loadEngine,engineFn}=require('./lib/engine.ts');
 const {callsTo,pageScripts,pageSource}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const PP='kingdoms-call-player-portal.html';

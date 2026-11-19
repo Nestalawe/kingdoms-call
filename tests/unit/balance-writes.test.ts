@@ -11,7 +11,7 @@
 // whole as a string parsed, a `turn_logs` snapshot's build stamp, clock readings); a field dropped from `meta`, a turn
 // changed, two writes swapped and one row left out each change the hash. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
-import { DB_VERSION } from '../lib/boot.js';
+import { DB_VERSION } from '../lib/boot.ts';
 import { aGameMastersWorld, makeAFakeDbHoldingTheGameMastersWorld } from '../lib/fake-db.ts';
 import { playHash } from '../../tools/balance/hash.ts';
 import {

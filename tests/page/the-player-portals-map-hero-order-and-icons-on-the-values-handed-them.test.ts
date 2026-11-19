@@ -5,11 +5,11 @@
 // the popup held open and closed, a province lit from the report, an icon kind hidden, the zoom, and the hero order
 // moved, grouped and written into the orders the seat holds.
 // Level 4 (page): map.ts loads the page's start-up (its database client), so no lower level reaches it; the portal is
-// booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with every
+// booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with every
 // module loaded, and the fake records the hero order's save (db.theOrders, plan P1-17k): through the database's
 // function, for the game and the turn the form shows (P2-05).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const writes: { game: unknown; turn: unknown; orders: unknown }[] = [];

@@ -12,7 +12,7 @@
 // 70% both times and the order form's hint states the chance. `unit/encounter-seventy.test.ts`: `pursuitCatchChance`
 // called directly in the bare `vm` (P1-08i3; it was a code-anchor test that ran a turn on the GM portal first)
 import { afterAll, expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
 import { pageText } from '../lib/source.ts';
 

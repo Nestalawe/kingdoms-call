@@ -7,7 +7,7 @@
 // Reads each page's template and modules in src/ (tools/pages.ts; until P1-09d, the built pages in site/) and
 // supabase/migrations/. Since P1-09d kc-db-guard.ts is a module the page imports, not a <script> of its own.
 const fs=require('fs'), path=require('path');
-const {DB_VERSION}=require('./lib/boot');
+const {DB_VERSION}=require('./lib/boot.ts');
 const {SRC}=require('./lib/source.ts'); const {pageModules,pageNames}=require('../tools/pages.ts');
 
 let fails=0;

@@ -13,7 +13,7 @@
 // `unit/spiritwrack-five.test.ts`: `pcCastCombatSpell` called directly on the engine's modules
 // (`lib/personal-combat.ts`; P1-08e: it was a code-anchor test that ran a turn on the GM portal first)
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 import { stringsOf } from '../lib/source.ts';
 import { SPELL_HINTS } from '../../src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts';

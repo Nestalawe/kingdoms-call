@@ -18,7 +18,7 @@
 // test)
 import vm from 'node:vm';
 import { afterAll, describe, expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
 import { pageText } from '../lib/source.ts';
 

@@ -72,7 +72,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import {
   aGameMastersWorld,
   makeAFakeDbHoldingTheGameMastersTurn,

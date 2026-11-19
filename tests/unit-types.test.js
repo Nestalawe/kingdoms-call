@@ -18,7 +18,7 @@
 // and the engine's `unitTypeOf`, which both hold (the player portal through `src/shared/`, P1-11a4), answers `infantry`
 // for an unknown type
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {scriptOf}=require('./lib/source.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const TYPES=['infantry','ranged','cavalry','flyer','naval'];

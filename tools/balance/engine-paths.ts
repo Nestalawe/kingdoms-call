@@ -21,7 +21,7 @@ import path from 'node:path';
  *  (public/), and the build. tests/static/harness.test.ts checks they are exactly those. */
 export const ENGINE_PATHS: readonly string[] = [
   // The engine and its content, the GM portal's other code (one bundle: any of it can change a game), and the files
-  // the page loads beside its bundle, which the matrix loads too (tests/lib/boot.js's readPage).
+  // the page loads beside its bundle, which the matrix loads too (tests/lib/boot.ts's readPage).
   'src/engine/**',
   'src/views/**',
   'src/db/**',
@@ -50,7 +50,7 @@ export const ENGINE_PATHS: readonly string[] = [
   // load the engine in its vm for every realm's report (P1-12a1).
   'tools/balance/**',
   'tests/balance/**',
-  'tests/lib/boot.js',
+  'tests/lib/boot.ts',
   'tests/lib/fake-db.ts',
   'tests/lib/scenario.js',
   'tests/lib/invariants.ts',

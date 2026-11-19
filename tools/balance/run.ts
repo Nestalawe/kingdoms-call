@@ -29,7 +29,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { pageFiles, SITE } from '../../tests/lib/boot.js';
+import { pageFiles, SITE } from '../../tests/lib/boot.ts';
 import { GM_PAGE, pageFiles as pageSourceFiles } from '../pages.ts';
 import {
   BASELINE_FILE,
@@ -195,7 +195,7 @@ export function describeChanges(group: string, changes: Change[]): string[] {
 }
 
 /** The files the matrix's page is built from, as git names them: the GM portal's template, stylesheet and every module
- *  its entry imports (tools/pages.ts), the files beside it that tests/lib/boot.js's readPage inlines but its bundle
+ *  its entry imports (tools/pages.ts), the files beside it that tests/lib/boot.ts's readPage inlines but its bundle
  *  (public/kc-config.js, the staging footer), and the build itself. */
 export const pageSources = (): string[] => [
   ...pageSourceFiles(GM_PAGE).map((f) => 'src/' + f),

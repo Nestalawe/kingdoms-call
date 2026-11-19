@@ -27,7 +27,7 @@
 // portal), where the reports are put together too. TypeScript, in `scenario/`
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
-import type { KcRng } from '../lib/boot.js';
+import type { KcRng } from '../lib/boot.ts';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
 import { scenarioInTheVm, type Order } from '../lib/scenario-in-the-vm.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';

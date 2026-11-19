@@ -18,7 +18,7 @@
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { KC_UNIT_BASE_STR } from '../../src/content/kingdoms-call-data.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { compactPage, entriesOf, fileDeclaring, pageStrings, pageText } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

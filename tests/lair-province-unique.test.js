@@ -4,7 +4,7 @@
 // out and the place-qualified names appear), plus a staged call of the name picker with every name
 // of its element already given out.
 // Simulation level: world generation is one long top-level function; the property is over whole worlds.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const errs=[];

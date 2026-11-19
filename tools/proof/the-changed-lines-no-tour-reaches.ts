@@ -8,7 +8,7 @@
 // The branch is the working tree as it is now (uncommitted changes and new files too), compared with where it left the
 // base (git merge-base <ref> HEAD), as npm run proof:unreached does. The site is built from it with each bundle's source
 // map, into <out>/site; the tours (and the matrix) run on that site under Node's own V8 coverage (NODE_V8_COVERAGE).
-// Each bundle's coverage is matched to it by its length (as tests/lib/boot.js's readPage inlines it), each character
+// Each bundle's coverage is matched to it by its length (as tests/lib/boot.ts's readPage inlines it), each character
 // read as the innermost range around it counts it, in any run, and mapped through the bundle's source map to the line
 // of src/ it was built from.
 //
@@ -31,7 +31,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { buildSite, ROOT } from '../build.ts';
 import { GM_PAGE } from '../pages.ts';
-import { pageFiles } from '../../tests/lib/boot.js';
+import { pageFiles } from '../../tests/lib/boot.ts';
 import { names } from '../../tests/lib/hostile.js';
 import { runJsdom, TOURS } from '../../tests/lib/screens.js';
 import {
@@ -47,7 +47,7 @@ import { NO_CODE, type LinesOfAFile } from './the-matrixs-coverage.ts';
 export const THE_PAGES_SOURCES = ['src/'] as const;
 /** Where the site, the coverage and lines.json go unless --out says otherwise. */
 export const DEFAULT_TOURS_OUT = path.join(ROOT, 'coverage', 'tours');
-/** What readPage puts before a page's bundle when it inlines it (tests/lib/boot.js). */
+/** What readPage puts before a page's bundle when it inlines it (tests/lib/boot.ts). */
 export const BEFORE_AN_INLINED_BUNDLE = '"use strict";\n';
 
 /** A source map, the parts read here. */

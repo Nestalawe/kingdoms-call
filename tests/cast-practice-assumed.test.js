@@ -16,7 +16,7 @@
 // refused because the practice before it failed spends no casting slot, so a later successful practice opens the last
 // cast) moved down in P1-08j4 to `scenario/research-and-practice-orders-in-a-whole-turn.test.ts`, with its hook on the
 // practice roll
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts'); const {bootScenario}=require('./lib/scenario');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts'); const {bootScenario}=require('./lib/scenario');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const sc=await bootScenario({});

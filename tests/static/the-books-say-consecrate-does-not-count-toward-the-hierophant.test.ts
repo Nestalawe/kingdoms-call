@@ -14,7 +14,7 @@
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { TITLE_DEFS } from '../../src/content/kingdoms-call-data.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 
 const R = readPage('kingdoms-call-rules.html');
 

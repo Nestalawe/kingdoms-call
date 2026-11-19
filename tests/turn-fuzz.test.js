@@ -5,7 +5,7 @@
 // The same KC_SEED plays the same games (P1-04a): the page's clock is pinned (some ids are made from
 // it), and the games are in manual turn mode, so the auto-turn watcher neither reads the clock nor
 // runs a turn by itself at a moment that depends on load.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 const {checkTurn,describeBreaches}=require('./lib/invariants.ts');
 
 const GAMES=parseInt(process.argv[2]||'10'), TURNS=parseInt(process.argv[3]||'6');

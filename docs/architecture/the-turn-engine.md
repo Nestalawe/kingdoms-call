@@ -251,7 +251,7 @@ or let the watcher retry the turn: that combination once made live games resolve
 ## Dice come from `kcRng()`
 
 Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.ts`, P1-07): one sfc32
-generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
+generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.ts`) or, on the
 live site, from `crypto.getRandomValues`. Each turn rolls its own dice: the turn's shell draws a seed from
 the page's dice and hands it to `resolveTurn`, which lends itself `kcRngStream(seed)` with `kcRng.use`, once for the
 turn and once for the Spy-stealth step, giving the dice in use back after each. The reports (the views'

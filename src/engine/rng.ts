@@ -2,7 +2,7 @@
 // Every random number the site's own code draws comes from kcRng(): dice, shuffles, bot choices, the world map,
 // id suffixes. Nothing calls Math.random (tests/static/dice-and-clock.test.ts). One generator per page: sfc32,
 // seeded through splitmix32 so nearby seeds give unrelated streams. It is exactly the generator and seeding of
-// seededRandom in tests/lib/boot.js, so a seed plays the sequence the tests have always played.
+// seededRandom in tests/lib/boot.ts, so a seed plays the sequence the tests have always played.
 // It is seeded once, as the page loads: from KC_RNG_SEED when the page was given one before its scripts ran (the
 // tests' bootJsdom sets it), or else from crypto.getRandomValues (the live site). Each turn plays from its own seed
 // (P1-18e): the turn's shell (src/ui/gm/turn-shell.ts) draws it from these dice and hands it to resolveTurn, which lends

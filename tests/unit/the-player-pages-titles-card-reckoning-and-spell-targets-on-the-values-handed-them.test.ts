@@ -4,7 +4,7 @@
 // Level 1 (unit): titles.ts imports in Node (P1-13e8); its functions called on plain values, the cards written into a
 // jsdom document set as the page's own. A page test would boot the whole page to reach each one.
 import { beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import {
   renderMastery,
   renderMinorTitles,

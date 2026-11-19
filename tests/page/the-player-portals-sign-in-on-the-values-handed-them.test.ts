@@ -3,10 +3,10 @@
 // fault planted in one is red: the sign-in and sign-up tabs, the name a player is shown by, the display-name and
 // password boxes, a game opened fresh, the Game Master offer, and the start-up's connection error.
 // Level 4 (page): the file loads the page's start-up (its database client), so no lower level reaches it; the portal is
-// booted in jsdom (tests/lib/boot.js) on a fake Db, at an older database for the forms (it stops at its notice with
+// booted in jsdom (tests/lib/boot.ts) on a fake Db, at an older database for the forms (it stops at its notice with
 // every module loaded) and at a current one for the start-up's own error.
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import type { Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 

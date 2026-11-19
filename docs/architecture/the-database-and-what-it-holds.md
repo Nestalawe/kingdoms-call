@@ -246,7 +246,7 @@ or written.
   relies on.
 - The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots a newer GM page when one is ready, so the
   check runs again before that page's first turn.
-- Tests: the fake database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.js`).
+- Tests: the fake database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.ts`).
   `bootJsdom(..., {dbVersion})` sets another answer (an older version, `null` for a missing function, or
   `'offline'`), as `tests/db-guard.test.js` does.
 

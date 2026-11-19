@@ -10,7 +10,7 @@
 //
 // Until plan P1-14g these were the last six checks of tests/sight-shared-province.test.js, kept as they were.
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { compactPage } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

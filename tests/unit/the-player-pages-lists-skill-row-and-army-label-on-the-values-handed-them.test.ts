@@ -15,7 +15,7 @@
 // Level 1 (unit): the page's three files import in Node (P1-13e8); their functions called on plain values, the
 // controls on a jsdom document set as the page's own. A page test would boot the whole page to reach each one.
 import { beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import {
   gdHintFor,
   itemBoundTag,

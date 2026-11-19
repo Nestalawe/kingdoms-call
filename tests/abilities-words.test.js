@@ -26,7 +26,7 @@
 // counts other orc foot; the four retired abilities (Massed Volley, Shock of the Charge, Skyward Retreat, the Wyverns'
 // Dread) are on no player page
 const fs=require('fs');
-const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageText}=require('./lib/source.ts');
+const {sitePath}=require('./lib/boot.ts'); const {entriesOf,fileDeclaring,pageText}=require('./lib/source.ts');
 const PP='kingdoms-call-player-portal.html';
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const rules=fs.readFileSync(sitePath('kingdoms-call-rules.html'),'utf8'), pp=pageText(PP);

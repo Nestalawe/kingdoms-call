@@ -78,7 +78,7 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   wrapped, or leaves them to a test of their own. A test that only watches the calls to a lifted helper wraps the
   top-level function instead of hooking its first line: the `xp-` tests' `XP_RECORD` wraps `trySkillGain`; one that changes what a helper is
   given wraps it the same way: `lib/scenario-in-the-vm.ts`' `reportEveryRealm` wraps the views' `buildReports` (P1-08d, on
-  the page's `lib/boot.js` until P1-09a), and `pursuit-one-battle` wraps
+  the page's `lib/boot.ts` until P1-09a), and `pursuit-one-battle` wraps
   `pursuitCatchChance` for a certain catch. A `typeof f==='function'` guard
   stays true: a lifted helper is a top-level function.
 - A value the turn changes as it goes (`_logCtx`, `_currentPhase`, `_afterPhases`, since P1-08c `_combatSkillProv`,

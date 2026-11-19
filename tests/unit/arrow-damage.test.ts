@@ -5,7 +5,7 @@
 // script that took it from the "  // 4. Run all 5 phases" hook after a turn on the GM portal). The pages are read as
 // built.
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { clone, personalCombatEngine, type Combatant } from '../lib/personal-combat.ts';
 import { pageText } from '../lib/source.ts';
 

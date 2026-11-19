@@ -10,7 +10,7 @@
 //   - a deletion the database refuses (the account plays in a running game) shows why, and the account stays; one who
 //     runs an unfinished game is told to hand it over first;
 //   - what people wrote is shown as text.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheOverlordsWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDbHoldingTheOverlordsWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

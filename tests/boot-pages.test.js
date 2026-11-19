@@ -2,7 +2,7 @@
 // empty database) without an uncaught error, an unhandled rejection or a console.error.
 // The real-browser boot of the three portal pages is tests/browser/chromium-boot.spec.ts.
 const fs=require('fs');
-const {SITE,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {SITE,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 
 (async()=>{
   let fails=0;

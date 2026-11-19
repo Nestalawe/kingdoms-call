@@ -12,7 +12,7 @@
 //     stranded. (Awaken the Wild was removed on 2026-10-12, Toby item 22: tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-….)
 const fs=require('fs'), vm=require('vm');
 const {bootScenario, order, plan}=require('./lib/scenario');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot.ts');
 const {ROSTER}=require('./lib/primal-decided');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 

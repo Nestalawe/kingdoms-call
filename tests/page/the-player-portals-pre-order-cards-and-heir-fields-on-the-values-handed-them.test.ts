@@ -5,10 +5,10 @@
 // hero's card moved to its earlier caster with its orders carried over, the card of a hero hired by a hero hired this
 // turn, and a card's orders poured back from the saved draft.
 // Level 4 (page): pre-orders.ts loads the page's start-up (its database client), so no lower level reaches it; the
-// portal is booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with
+// portal is booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with
 // every module loaded.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const errs: string[] = [];

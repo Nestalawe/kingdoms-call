@@ -16,7 +16,7 @@
 // `migrateLegacyUnitNames` on a staged running game renames companies, recruit pools, defenders, graves and the
 // province races (Leviathan waters become Kraken waters), and is idempotent
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {compactPage,pageInitializer,scriptOf}=require('./lib/source.ts');
 const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,MIGRATED,RACE_RENAMED}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

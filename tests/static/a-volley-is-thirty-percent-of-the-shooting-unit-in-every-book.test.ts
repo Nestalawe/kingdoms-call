@@ -24,7 +24,7 @@ import {
   MISSILE_CAP_FRACTION,
   MISSILE_SHOT_PCT,
 } from '../../src/engine/battle/terrain-and-unit-strength.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { pageSource, pageText } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

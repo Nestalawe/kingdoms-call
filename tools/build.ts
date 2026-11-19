@@ -3,7 +3,7 @@
 // build it first (tests/setup/global.ts, tools/balance/run.ts), so they never open stale pages.
 //
 // Every src/*.html is a page. Each is built on its own (P1-09's Decision 8), so its bundle stands alone: one script,
-// assets/<page>-<hash>.js, with no import left (jsdom runs no module script, so tests/lib/boot.js inlines it as a
+// assets/<page>-<hash>.js, with no import left (jsdom runs no module script, so tests/lib/boot.ts inlines it as a
 // classic one), and one stylesheet, assets/<page>-<hash>.css. public/ is copied as it is: kc-config.js (staging overwrites it)
 // and kc-staging-footer.js. supabase-js is the pinned npm package's browser build, as it is (plan P1-17b): see
 // supabaseJsFromItsPackage below. The options, in one place for the build and the dev server (tools/dev.ts):

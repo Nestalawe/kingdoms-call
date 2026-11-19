@@ -7,7 +7,7 @@
 //   - no answer twice (network): it stops the same way, after asking twice;
 //   - no answer once, then up to date: it boots (one retry).
 // Reads site/ (or $KC_SITE).
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb,NO_ANSWER}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb,NO_ANSWER}=require('./lib/fake-db.ts');
 
 const PAGES=['kingdoms-call-gm-portal.html','kingdoms-call-player-portal.html','kingdoms-call-leaderboard.html','kingdoms-call-overlord.html'];
 const OLDER='20261010000000';   // older than any KC_DB_MIN (the first is P0-34's own migration)

@@ -9,7 +9,7 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // All-bot turns: no crash; Orc wage discount stays a whole, non-negative number. Its personal-combat fuzz is
 // `unit/fuzz-personal-combat.test.ts` (P1-08f)
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./lib/fake-db.ts');
 const GMF=process.argv[2]||'kingdoms-call-gm-portal.html'; const GAMES=+process.argv[3]||3, TURNS=+process.argv[4]||10, BOTS=+process.argv[5]||5;
 const html=readPage(GMF);
 

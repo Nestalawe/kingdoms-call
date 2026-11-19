@@ -1,7 +1,7 @@
 // Only src/db/ talks to the database (plan P1-17, Decisions 3 and 8):
 // - the name a test hands a page its Db under (THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER) is read only in
 //   src/db/the-pages-database-client.ts: no other file of src/ names it, so no page code can pick up a Db of its own;
-//   and tests/lib/boot.js sets it under that same name;
+//   and tests/lib/boot.ts sets it under that same name;
 // - `supabase`, the client's global, is refused by ESLint in a file of src/ outside src/db/ and allowed in src/db/
 //   (a planted read, linted in place).
 // Level 0 (static): it reads files and lints planted text; nothing runs.
@@ -41,8 +41,8 @@ describe('only src/db/ reads the Db a test hands the page', () => {
     expect(filesOutsideSrcDbNamingIt([...srcFiles, [file, text]])).toEqual(found);
   });
 
-  test("tests/lib/boot.js hands a page its Db under the client function's name", () => {
-    expect(fs.readFileSync(path.join(ROOT, 'tests/lib/boot.js'), 'utf8')).toContain(`w.${NAME}=opts.db`);
+  test("tests/lib/boot.ts hands a page its Db under the client function's name", () => {
+    expect(fs.readFileSync(path.join(ROOT, 'tests/lib/boot.ts'), 'utf8')).toContain(`w.${NAME} = opts.db`);
   });
 });
 

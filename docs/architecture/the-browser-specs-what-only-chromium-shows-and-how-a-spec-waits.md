@@ -7,7 +7,7 @@ How to run them is in [tests/README.md](../../tests/README.md#browser-specs). Pa
 `tests/browser/*.spec.ts` in Chromium: what only a real browser shows (layout, the requests a page makes, a broken
 image's `onerror` really firing). They are not part of `npm test`.
 
-- **The site is served from one folder, as deployed**, by `browser/server.ts` (`lib/boot.js`'s `serve`), which
+- **The site is served from one folder, as deployed**, by `browser/server.ts` (`lib/boot.ts`'s `serve`), which
   Playwright starts on port 4173: `site/`, or the copy in `KC_SITE` (`KC_SITE=/tmp/broken-site npx playwright test`).
   A server already on the port is never reused. Specs open pages by path (`page.goto('/kingdoms-call-gm-portal.html')`)
   and hand the page the fake (`browser/the-fake-db-handed-to-chromium.ts`), the screen tours (`lib/screens.js`)

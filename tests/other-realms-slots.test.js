@@ -7,7 +7,7 @@
 //   - Dispatches: which realms are human;
 // and no read ever asks for another realm's row. A join refused because someone took the number at the same
 // moment says so (it isn't "you have already joined").
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

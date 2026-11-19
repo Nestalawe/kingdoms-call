@@ -13,7 +13,7 @@
 // Grand Cathedral stands, a White 1 priest's Bless in Spring spends no slot (Summer's Holy Symbol open) and Bless is open
 // after Spring's Holy Symbol, both closed without the Wonder. Level 4 (page): the dropdown as the live form builds it;
 // the copies test compares the form's count with the engine's on staged worlds
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const errs=[];

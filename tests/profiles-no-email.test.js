@@ -6,7 +6,7 @@
 //   - the GM portal's invite picker lists other players by name (with the month they joined, to tell two
 //     players of one name apart), never by email, and searches by name;
 //   - the player portal still shows your own name.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts');
 const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld,makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;

@@ -16,7 +16,7 @@
 // the intro's table; the player portal's Evil texts and order list; Wyvern Riders named as a Monster nowhere; the
 // retired multipliers gone from the rows and blurbs
 const fs=require('fs');
-const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageStrings,pageText}=require('./lib/source.ts');
+const {sitePath}=require('./lib/boot.ts'); const {entriesOf,fileDeclaring,pageStrings,pageText}=require('./lib/source.ts');
 const PP='kingdoms-call-player-portal.html';
 const entry=(file,name,key)=>(entriesOf(file,name).find(e=>e.key===key)||{value:''}).value;
 // the first of the page's strings `re` matches, or null (a match never runs from one string into the next)

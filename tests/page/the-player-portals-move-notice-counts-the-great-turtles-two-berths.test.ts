@@ -6,13 +6,13 @@
 // tests/unit/island-back-the-great-turtles-carry-two-units-a-hull.test.ts.
 //
 // Level 4 (page): poSeaAnalysis is the portal's own code, in a module that loads the portal's start-up (which calls
-// supabase.createClient as it loads), so only the booted page reaches it: the portal booted in jsdom (tests/lib/boot.js)
+// supabase.createClient as it loads), so only the booted page reaches it: the portal booted in jsdom (tests/lib/boot.ts)
 // on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and no game).
 //
 // Until plan P1-14e this was the Move notice's part of tests/island-back.test.js, the same boot and the same calls; its
 // six checks are kept as they were.
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 interface Analysis {

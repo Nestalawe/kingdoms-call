@@ -18,7 +18,7 @@
 // realms that are out; the Dispatches note gives the rule. The GM's game screen has the switch "Block eliminated realms
 // from sending dispatches", which saves `games.block_eliminated_msgs` and shows it when the game is opened again, for
 // the game's GM and the Overlord in Master GM mode
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts');
 const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld,makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;

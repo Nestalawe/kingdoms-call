@@ -12,7 +12,7 @@
 // The real-browser side (which requests a page makes) is tests/browser/third-party-requests.spec.ts. Reads site/assets/
 // (or $KC_SITE's), each built page, and each page's template and modules in src/ (tools/pages.ts).
 const fs=require('fs'), path=require('path');
-const {SITE}=require('./lib/boot');
+const {SITE}=require('./lib/boot.ts');
 const {SRC}=require('./lib/source.ts'); const {pageModules,pageNames}=require('../tools/pages.ts');
 
 let fails=0;

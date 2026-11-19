@@ -15,7 +15,7 @@
 // (its own probe, run here as sign-in runs it, finds it on the fake database, tests/lib/fake-db.ts): the balance scenarios
 // (tests/balance/scenarios/) read them. (The code-anchor hooks, `inject`, are gone since plan P1-09a: a test that must
 // reach inside the turn plays it in the engine's bare vm, tests/lib/scenario-in-the-vm.ts.)
-const {readPage,bootJsdom,DB_VERSION}=require('./boot'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./boot.ts'); const {makeAFakeDbHoldingTheGameMastersTurn}=require('./fake-db.ts');
 
 async function bootScenario(opts={}){
   const html=readPage(opts.page||'kingdoms-call-gm-portal.html');

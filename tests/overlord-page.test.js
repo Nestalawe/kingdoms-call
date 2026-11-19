@@ -9,7 +9,7 @@
 //   - every game, with its GM, status, turn mode, Hand over to… and a link to it in the GM portal;
 //   - the reported dispatches of every game, with realm names; Delete removes the dispatch;
 //   - everything people wrote (names, emails, game names, dispatches, reasons) is shown as text, never markup.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheOverlordsWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDbHoldingTheOverlordsWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

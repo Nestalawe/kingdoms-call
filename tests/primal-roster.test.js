@@ -19,7 +19,7 @@
 // other's) and the player portal's `druidNeedP`; the player portal's speeds built from the one primal table;
 // `KC_PIT_TIERS` in the shared file and both guards' lists; `call_pit` an alignment order
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {pageInitializer,scriptOf}=require('./lib/source.ts');
 const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,LAND_TERRAINS,LIVE,COMING}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

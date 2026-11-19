@@ -4,7 +4,7 @@
 // Level 0 (static): reads site/ text; nothing runs.
 // The player portal is read from src/ by its syntax tree (tests/lib/source.ts): its words as the strings it holds, its
 // blurbs as entries of UNIT_ABILITIES. (Until plan P1-09a it was matched in the built page's text.)
-const fs=require('fs'); const {sitePath}=require('./lib/boot');
+const fs=require('fs'); const {sitePath}=require('./lib/boot.ts');
 const {entriesOf,fileDeclaring,pageText}=require('./lib/source.ts');
 const PP='kingdoms-call-player-portal.html';
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

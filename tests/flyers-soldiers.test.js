@@ -10,7 +10,7 @@
 // on the player page, which loads it through `src/shared/`), and `primalStrikeChance` gives their strikes a flat 50%
 // while a beast's still runs 30% + 10% a level to 90
 const fs=require('fs'), vm=require('vm');
-const {readPage,bootJsdom,sitePath,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,sitePath,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const RIDERS=['Eagle Riders','Noble Griffons','Wyvern Riders'];
 

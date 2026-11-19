@@ -4,7 +4,7 @@
 // March example and the recruit-cap sentences in both rulebooks; the player portal names the new units;
 // and no page still carries a retired rule (the goblins' spears, the Berserkers' Outnumbered and Uncaring).
 const fs=require('fs');
-const {sitePath}=require('./lib/boot');
+const {sitePath}=require('./lib/boot.ts');
 const R=require('./lib/roster-decided'); const {ROSTER,SEA_LAND_PENALTY,NEW_UNITS,isLand}=R;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;

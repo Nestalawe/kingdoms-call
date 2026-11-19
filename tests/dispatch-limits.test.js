@@ -8,7 +8,7 @@
 // The Dispatches box keeps to the database's limits (P0-23, D-05): at most 500 characters, counting down from 500; a
 // dispatch refused for its rate shows the database's own words, one refused for its length says "at most 500
 // characters", and the text stays in the box (the fake's `dispatchRefused`)
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

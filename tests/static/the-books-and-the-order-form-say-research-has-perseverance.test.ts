@@ -8,7 +8,7 @@
 //
 // Until plan P1-14f this was tests/research-persevere.test.js. Its two checks are kept as they were.
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { pageText } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

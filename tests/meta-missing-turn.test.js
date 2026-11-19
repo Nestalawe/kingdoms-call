@@ -8,7 +8,7 @@
 // With the `games.meta` column hidden in the fake database, the GM portal notices, says so, and a turn still
 // resolves and saves without writing it. The example to copy for site code that must cope without its database change
 // ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately))
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

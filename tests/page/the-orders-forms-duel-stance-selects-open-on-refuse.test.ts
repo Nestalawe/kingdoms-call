@@ -4,12 +4,12 @@
 //
 // Level 4 (page): the selects are built by the booted portal's own code (buildOrdersForm, on its globals
 // currentGamePlayer and currentReport), so only the page shows how they open: the portal booted in jsdom
-// (tests/lib/boot.js) on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and no
+// (tests/lib/boot.ts) on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and no
 // game), then the form built for a king and a hero of realm 0.
 //
 // Until plan P1-14c this was the second half of tests/duel-refuse-default.test.js, the same boot and the same form.
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const errs: string[] = [];

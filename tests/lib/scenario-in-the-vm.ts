@@ -231,7 +231,7 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
   /** From now on every realm gets a report each turn, bots' too: the engine builds reports only for the realms people
    *  play (slot rows with a user_id), so an all-bot game writes none. buildReports (src/engine/turn/realm-reports-and-
    *  spy-stealth.js) is stood in, in the vm, to see every row as played, on copies of the rows; the shell writes each
-   *  report by the row's id and player_index, which the copies keep. (It was tests/lib/boot.js's reportEveryRealm, on
+   *  report by the row's id and player_index, which the copies keep. (It was tests/lib/boot.ts's reportEveryRealm, on
    *  the booted GM portal, until plan P1-09a.) */
   function reportEveryRealm() {
     run(

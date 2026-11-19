@@ -49,7 +49,7 @@ import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
 import { L79_ORDERS } from '../../src/ui/player/l79-orders.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { PAGE_DRAWS_AS_IT_LOADS, setupsOf, slotRowsJsonOf, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
 import { MAP_SIZES, matrix, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { scriptedChoices, type State } from '../../tools/balance/scripted.ts';

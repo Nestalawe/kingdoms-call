@@ -16,7 +16,7 @@ import type {
   TheSignedInAccount,
 } from '../../src/db/the-db-interface-and-its-areas.ts';
 import { THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER } from '../../src/db/the-pages-database-client.ts';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 /** A made-up game: its id, GM and summary. */

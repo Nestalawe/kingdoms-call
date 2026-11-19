@@ -12,7 +12,7 @@
 // entries of the object literal, the words as the strings each holds. (Until plan P1-09a they were matched in the built
 // files' text.)
 const fs=require('fs');
-const {sitePath}=require('./lib/boot'); const {entriesOf,fileDeclaring,pageText,stringsOf}=require('./lib/source.ts');
+const {sitePath}=require('./lib/boot.ts'); const {entriesOf,fileDeclaring,pageText,stringsOf}=require('./lib/source.ts');
 const PP='kingdoms-call-player-portal.html';
 const {LIVE}=require('./lib/primal-decided');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

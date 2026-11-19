@@ -11,7 +11,7 @@
 //
 // Until plan P1-14f this was part of tests/beast-command.test.js. Its five checks are kept as they were.
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { compactPage, pageSource } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

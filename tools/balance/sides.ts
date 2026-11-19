@@ -9,7 +9,7 @@ import { build, ROOT } from '../build.ts';
 
 /** Sends each job to one of `n` worker processes running `worker` (a .ts file, forked with tsx), one job at a time
  *  each, in the order given, and returns the replies as they came. `site` plays another copy of the site: the
- *  workers get it as KC_SITE (tests/lib/boot.js reads it as it loads). */
+ *  workers get it as KC_SITE (tests/lib/boot.ts reads it as it loads). */
 export async function forkPool<R>(
   worker: string,
   jobs: readonly Serializable[],

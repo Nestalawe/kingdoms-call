@@ -5,7 +5,7 @@
 //   · on the board, searching for a realm shows that realm's own entries in every list.
 // Unit (level 1) on the real builder sliced out of the GM portal, then a page render (level 4, jsdom)
 // of the real leaderboard from the rows it built. Made-up realms and heroes.
-const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
+const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {sourceFrom}=require('./lib/source.ts'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 // The block is cut out of src/ui/gm/hall-of-fame.ts by its syntax tree (tests/lib/source.ts): its declarations from
 // _LB_SEA through buildGameRecords. (Until plan P1-09a it was sliced out of the built GM portal between two lines.)

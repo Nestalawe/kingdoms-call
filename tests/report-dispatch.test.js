@@ -5,7 +5,7 @@
 //     the report as the realm the player plays, and the dispatch then shows as reported (also after a reload);
 //   - GM portal: a game's screen lists its reported dispatches (sender, recipients, reporter, reason, the text, all
 //     escaped), and Delete removes the dispatch; a GM who plays in the game is told its reports go to the Overlord.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts');
 const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld,makeAFakeDbHoldingThePlayersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;

@@ -2,7 +2,7 @@
 // Static scan: consts declared as `new Set(...)` that are later called with .includes(),
 // and consts declared as array literals / .filter() / .map() later called with .has().
 // Catches the "collapse to one source" refactor's Set/Array mix-ups in both portals.
-const fs=require('fs'); const {sitePath}=require('../lib/boot');
+const fs=require('fs'); const {sitePath}=require('../lib/boot.ts');
 const FILES=['kingdoms-call-gm-portal.html','kingdoms-call-player-portal.html','kingdoms-call-data.js'];
 let bad=0;
 for(const f of FILES){

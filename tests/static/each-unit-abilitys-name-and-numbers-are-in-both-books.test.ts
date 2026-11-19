@@ -75,7 +75,7 @@ import {
   UNIT_ABILITIES_THE_REGISTRY_HOLDS,
   type ANumberOfAnAbility,
 } from '../../src/content/unit-abilities-their-names-numbers-and-words.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { entriesOf, fileDeclaring } from '../lib/source.ts';
 
 const PLAYER = 'kingdoms-call-player-portal.html';

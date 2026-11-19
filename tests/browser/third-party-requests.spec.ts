@@ -6,7 +6,7 @@
 // requests a page makes. The static side (the tags in the pages) is vendor-supabase.test.js.
 import fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { SITE } from '../lib/boot.js';
+import { SITE } from '../lib/boot.ts';
 
 const FONTS = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 const pages = fs

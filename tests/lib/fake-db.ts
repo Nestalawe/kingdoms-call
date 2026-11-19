@@ -1,6 +1,6 @@
 // The fake database (plan P1-17, Decision 8): a small in-memory Db (src/db/the-db-interface-and-its-areas.ts), so the
 // compiler keeps it in step with the real one. A page test hands it to the page before the page's scripts run
-// (bootJsdom's opts.db, tests/lib/boot.js); a unit test calls code that takes a Db with it. It doesn't imitate the
+// (bootJsdom's opts.db, tests/lib/boot.ts); a unit test calls code that takes a Db with it. It doesn't imitate the
 // access rules: the access layer's tests prove those against the local database. Each of P1-17's area rows adds its
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
 // role and no offer; and no game, so no realm, no slot, no turn's log, no Hall of Fame entry, no statistics, no dispatch
@@ -43,7 +43,7 @@ export interface AFakeDb {
   readonly calls: string[];
 }
 
-/** The answer a database gives, as supabase-js hands it on (the shapes tests/lib/boot.js's withDbVersion answers). */
+/** The answer a database gives, as supabase-js hands it on (the shapes tests/lib/boot.ts's withDbVersion answers). */
 function versionAnswer(answer: TheFakeVersionAnswer): ADatabaseAnswer<string> {
   if (answer === NO_ANSWER) return { data: null, error: { message: 'TypeError: Failed to fetch' }, status: 0 };
   if (answer === null)

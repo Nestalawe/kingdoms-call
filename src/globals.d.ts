@@ -3,7 +3,7 @@
 //
 // From the page's classic scripts (public/, loaded by a tag before the page's module): KC_CONFIG (kc-config.js, which
 // staging overwrites), supabase (supabase-js, from npm: tools/build.ts; its type, TheSupabaseGlobal, is src/db/'s, the only folder that reads it). KC_RNG_SEED is set by the tests before a page's scripts
-// run (tests/lib/boot.js) and read by src/engine/rng.ts behind typeof; the live site has none.
+// run (tests/lib/boot.ts) and read by src/engine/rng.ts behind typeof; the live site has none.
 //
 // Then each page's declared globals (P1-09b): the variables its files and its tests share, each declared once as
 // `globalThis.<name> = <value>;` in the file named above it, and read and written by its bare name. eslint.config.js

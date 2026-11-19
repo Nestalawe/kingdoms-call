@@ -6,7 +6,7 @@
 // Level 4 (page): the page boots in jsdom on the fake database (tests/lib/fake-db.ts) holding made-up entries; the
 // file can't be imported alone (it boots itself on import), and its sums show only on its screens.
 import { describe, expect, test } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDbHoldingTheHallOfFame, type AChangeTheHallOfFameSent } from '../lib/fake-db.ts';
 import type { AHallOfFameEntry, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 import type { Json } from '../../src/db/database.types.ts';

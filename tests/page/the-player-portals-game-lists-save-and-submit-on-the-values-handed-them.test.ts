@@ -7,10 +7,10 @@
 // tests/lib/fake-db.ts, saves them as the function does), and a refusal (a turn moved on, the deadline passed) shown in
 // the form in the function's words.
 // Level 4 (page): the two files load the page's start-up (its database client), so no lower level reaches them; the
-// portal is booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every
+// portal is booted in jsdom (tests/lib/boot.ts) on a fake Db at an older database, so it stops at its notice with every
 // module loaded, and each case stages the screen's state as the tours do.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import {
   makeAFakeDb,
   makeAFakeDbHoldingThePlayersWorld,

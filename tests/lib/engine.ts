@@ -8,7 +8,7 @@
 // var, so those are the context's properties too).
 //
 // The context has only what the engine may read as it loads: JavaScript's own built-ins, the seed for the dice
-// (KC_RNG_SEED, as tests/lib/boot.js gives a page) and console. No window, document, sb or crypto: the screen, the
+// (KC_RNG_SEED, as tests/lib/boot.ts gives a page) and console. No window, document, sb or crypto: the screen, the
 // database and the browser are the page's, not the engine's. Nor structuredClone, setTimeout, performance,
 // TextEncoder or fetch, which a vm context doesn't have: nothing in the engine reaches them as it loads. Keep it so;
 // don't give the context more to make a file load. A file that needs more as it loads isn't engine code yet.

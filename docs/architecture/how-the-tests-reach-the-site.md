@@ -1,6 +1,6 @@
 # How the tests reach the site
 
-- **`lib/boot.js`** is the one way to load a page from `site/`, which the run builds from `src/` before any test
+- **`lib/boot.ts`** is the one way to load a page from `site/`, which the run builds from `src/` before any test
   (`setup/global.ts`, `npm run build`, Vite since P1-09d; not when `KC_SITE` names another copy). A test script run on
   its own reads `site/` as last built:
   - `readPage` returns the page ready for jsdom, which runs no module script and loads no stylesheet: its bundle
@@ -23,7 +23,7 @@
   the seed and `console`, and returns the context, where the bundle's top-level names are the globals. It reads
   `src/`, not the built site (`src` names another copy, built again whenever the copy changes). The run builds this
   checkout's bundle once (`setup/global.ts`, into `node_modules/.cache/kc/`, its path in `KC_ENGINE_BUNDLE`); another
-  copy's is built the first time a process asks (about a second). P1-14z moves the tests to importing the engine's
+  copy's is built the first time a process asks (about a second). P1-14m moves the tests to importing the engine's
   modules ("The engine's modules", next); until then the ratchet counts the test files on the loader
   (`vmLoaderTests`), which only falls.
   There the turn is `resolveTurn` (`src/engine/run-turn.ts`, P1-18d): give it the saved state (JSON), the slot rows
@@ -223,7 +223,7 @@
 - **`lib/fake-db.ts`** is the tests' one fake of the database, a small in-memory `Db`: a page test hands it to the
   page; it answers each query as asked and never imitates the access rules, which the access layer's tests check
   against the local Supabase ([the access layer](the-database-and-what-it-holds.md#the-access-layer-srcdb)).
-- **Fixed seed.** `npm test` sets `KC_SEED`. `boot.js` then replaces the test process's `Math.random` with a seeded
+- **Fixed seed.** `npm test` sets `KC_SEED`. `boot.ts` then replaces the test process's `Math.random` with a seeded
   generator (sfc32), and gives every jsdom page a seed (`KC_RNG_SEED`) before its scripts run. The page's dice,
   `kcRng()` (`src/engine/rng.ts`, P1-07), are the same generator seeded the same way; the page's `Math.random` gets
   the same seed, for anything outside `src/`. So a run's random choices repeat with the same seed. To fix dice in a

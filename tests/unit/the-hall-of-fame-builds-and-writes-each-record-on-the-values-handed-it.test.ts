@@ -7,7 +7,7 @@
 // global and a Db handed in are stood in (as the GM page's start-up tests do); a page test would boot the whole page,
 // sign in and finish a game to reach each of them.
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import type { TheStateAsTheHallOfFameReadsIt } from '../../src/ui/gm/hall-of-fame.ts';
 
 interface AnAnswer {

@@ -1,13 +1,13 @@
 // The way in for the tests (plan P1-17, Decision 8; src/db/the-pages-database-client.ts): a Db a test hands a page
 // before its scripts run (bootJsdom's opts.db, the fake of tests/lib/fake-db.ts) is the page's own. On each of the four
-// pages that read the database, the fake answers an older database while the stand-in client (tests/lib/boot.js)
+// pages that read the database, the fake answers an older database while the stand-in client (tests/lib/boot.ts)
 // would answer an up-to-date one: the page asks the fake, once, stops with "The game is being updated" and a Reload
 // button, and sends its client nothing; the client is still made, once.
 // Level 4 (page): the way in is read by the page's own bundle as it loads, before its first call, which only a booted
 // page shows; tests/unit/the-pages-database-client-is-made-as-the-page-made-it-and-takes-a-db-a-test-hands-in.test.ts
 // checks the function itself.
 import { describe, expect, test, vi } from 'vitest';
-import { bootJsdom, readPage } from '../lib/boot.js';
+import { bootJsdom, readPage } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const PAGES = [

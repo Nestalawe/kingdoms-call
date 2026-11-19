@@ -13,7 +13,7 @@
 // (the page job), byte for byte. Level 4: the turn runs inside the booted page, on the page's own clock. TypeScript, in
 // `page/`
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, seededRandom } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, seededRandom } from '../lib/boot.ts';
 import { aGameMastersWorld, makeAFakeDbHoldingTheGameMastersWorld } from '../lib/fake-db.ts';
 
 const NOW = '2026-10-01T12:00:00Z';

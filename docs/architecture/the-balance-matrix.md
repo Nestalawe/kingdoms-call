@@ -43,7 +43,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   Hero's `_releasedBy` and a spied hero's entry. Not the orders it never gives (Cast Spell, the item orders, the
   masteries that need a target, the Grand Design, the raise and charm cards) nor a mastery no scripted hero reaches
   the level of.
-- **One fresh page per game** (`tools/balance/play.ts`), booted through `lib/boot.js` with an explicit `seed` and
+- **One fresh page per game** (`tools/balance/play.ts`), booted through `lib/boot.ts` with an explicit `seed` and
   `now`, in manual turn mode, stopping at the Reckoning. Games run side by side, one worker process per core
   (`--jobs N` to change it). The results are identical one game at a time and many side by side, and on a second
   run.

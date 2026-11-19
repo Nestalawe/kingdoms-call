@@ -7,7 +7,7 @@
 // tests/unit/the-two-crowns-have-wild-country-within-two-provinces.test.ts. Until plan P1-14a these were the last two
 // checks of tests/crown-wild-near.test.js.
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { pageStrings } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

@@ -6,14 +6,14 @@
 //
 // Level 4 (page): terrorNoteP is the portal's own code (src/ui/player/map-symbols.ts), in a module that loads the
 // portal's start-up (which calls supabase.createClient as it loads), so only the booted page reaches it: the portal
-// booted in jsdom (tests/lib/boot.js) on the fake database (tests/lib/fake-db.ts's makeAFakeDb), the note's words
+// booted in jsdom (tests/lib/boot.ts) on the fake database (tests/lib/fake-db.ts's makeAFakeDb), the note's words
 // parsed by the page's own DOM (an inert <template>), not by a pattern.
 //
 // Until plan P1-14g this was the note's part of tests/terror-visible.test.js, the same boot and the same calls. Its
 // five checks are kept: "the player portal boots" and "terrorNoteP is declared at module level" as the function found
 // on the booted page with no page error.
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const errs: string[] = [];

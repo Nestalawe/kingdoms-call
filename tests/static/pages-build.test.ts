@@ -6,7 +6,7 @@
 //   named by a hash (P1-17b), and public/ as it is, but public/dev/ (the dev server's config), which is never
 //   published. Two builds of the same src/ are byte-identical.
 // - Each bundle stands alone: it parses as a classic script, with no import or export left, so jsdom can run it
-//   (tests/lib/boot.js), and holds no stitch marker.
+//   (tests/lib/boot.ts), and holds no stitch marker.
 // - Every file under src/ is in a page: in a bundle (Rolldown's own list of the bundle's modules), or a page's
 //   template or stylesheet. A file nothing reaches is found (planted), and a file a module imports that isn't there
 //   stops the build (planted). src/globals.d.ts is for TypeScript only, in no bundle. The schemas of src/schemas/

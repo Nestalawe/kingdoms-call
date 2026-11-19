@@ -5,7 +5,7 @@
 //     and Run turn now resolves that game in the fake's world;
 //   - Stats names every game's turns; ?game=<id> (the Overlord page's link) opens that game for the Overlord only;
 //   - a Game Master's portal is as before: their own games, New Game, the watcher, the backfills on their games.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

@@ -4,7 +4,7 @@ How to write, place, prove and run a test. Read it when you write a test; it is 
 
 - **Every test, one line each:** [every-test-its-level-and-what-it-checks.md](every-test-its-level-and-what-it-checks.md).
   A test's own header says the rest: what it checks, its level and why.
-- **How a test loads a page, the engine or the site's code** (`lib/boot.js`, `lib/engine.ts`, `lib/source.ts`, the
+- **How a test loads a page, the engine or the site's code** (`lib/boot.ts`, `lib/engine.ts`, `lib/source.ts`, the
   fake database, the seed): [how-the-tests-reach-the-site.md](../docs/architecture/how-the-tests-reach-the-site.md).
 - **The balance matrix in full:** [the-balance-matrix.md](../docs/architecture/the-balance-matrix.md).
 - **The toolchain, the hooks and the ratchet:** [the-toolchain-the-checks-and-the-harness.md](../docs/architecture/the-toolchain-the-checks-and-the-harness.md).
@@ -78,7 +78,7 @@ level and why a lower one wouldn't do.
 
 - **New tests are TypeScript Vitest tests in `tests/<level>/`**, e.g. `tests/page/deterministic-boot.test.ts`, or,
   for what only a real browser shows, browser specs in `tests/browser/` ([below](#browser-specs)). Types for the parts
-  of `lib/` they use are in `lib/*.d.ts`. Give the file a long name that says what it checks.
+  of `lib/`'s JavaScript files they use are in `lib/*.d.ts`. Give the file a long name that says what it checks.
 - **Its header says what it checks, its level and why that level.** Then add its line to
   [the list](every-test-its-level-and-what-it-checks.md): the file, the level, what it checks, at most 300 characters
   (`static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts` fails on a test file the list doesn't name).
@@ -86,7 +86,7 @@ level and why a lower one wouldn't do.
   that checks at more than one level sits at its highest. `legacy.test.ts` runs each one as a Vitest test in its own
   Node process, with the same arguments and environment; it passes when the script exits 0, and a failure shows the
   end of its output. To add or quarantine a script, edit `suite.ts`. Write no new ones.
-- **Load the site the one way:** a page through `lib/boot.js`, the engine through `lib/engine.ts` or its modules, the
+- **Load the site the one way:** a page through `lib/boot.ts`, the engine through `lib/engine.ts` or its modules, the
   site's code through `lib/source.ts`, the database through its fake, `lib/fake-db.ts`
   ([how-the-tests-reach-the-site.md](../docs/architecture/how-the-tests-reach-the-site.md)). Tests use synthetic,
   seeded data only.

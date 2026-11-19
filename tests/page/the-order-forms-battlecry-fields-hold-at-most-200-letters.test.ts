@@ -5,11 +5,11 @@
 //
 // Level 4 (page): the fields are built by the booted portal's own code (buildOrdersForm on its globals
 // currentGamePlayer and currentReport, then the cards' own builders), so only the page shows them: the portal booted
-// in jsdom (tests/lib/boot.js) on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and no
+// in jsdom (tests/lib/boot.ts) on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and no
 // game), the form built for a king and a hero of realm 0, then a card for a hero to be raised, one to be charmed and
 // one to be hired.
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const errs: string[] = [];

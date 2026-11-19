@@ -15,7 +15,7 @@
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { MASTERY_UNLOCKS } from '../../src/content/kingdoms-call-data.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 
 // a perk's name: "New order — Forced March: …", "New spell — Sanctuary: …" or "Shimmer — enemy players …"
 const names = new Set<string>();

@@ -16,7 +16,7 @@ import {
   SAGE_DISCOVERIES_P,
   TITLE_DEFS,
 } from '../../src/content/kingdoms-call-data.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { compactPage, pageStrings, pageText } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

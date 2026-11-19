@@ -118,7 +118,7 @@ that in one file, `src/ui/<page>/globals.ts`, the last its entry imports.
   `fetch` or timers; a declared global's fields), stand it in in the engine's `vm` (`tests/lib/scenario-in-the-vm.ts`),
   or build a page from a planted copy (`plantedSite`, `tests/lib/source.ts`). `npm test`'s `page-globals` fails on a
   name missing from a list, a variable that isn't a declared global, or a page stand-in.
-- **jsdom is looser than a browser.** `tests/lib/boot.js` runs the bundle as a classic script, so in jsdom every
+- **jsdom is looser than a browser.** `tests/lib/boot.ts` runs the bundle as a classic script, so in jsdom every
   top-level function and `var` of the bundle is on `window`, listed or not: a check that passes in jsdom can fail in
   Chromium. `page-globals` is what keeps the two the same.
 - **In the engine's `vm`** (`tests/lib/engine.ts`) the bundle's top-level names are the context's globals, so

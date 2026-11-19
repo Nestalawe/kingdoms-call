@@ -19,7 +19,7 @@
 // province cells appended after the old ones; the goblins' spears gone from the missile list and the Berserkers'
 // Outnumbered and Uncaring gone from `unitAbilityMult` (booted portal); both portals type and Druid-rate the new units
 const fs=require('fs'), vm=require('vm');
-const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {pageInitializer,scriptOf}=require('./lib/source.ts');
 const R=require('./lib/roster-decided'); const {ROSTER,LAND_TERRAINS,NEW_UNITS,NEW_UNIT_PROVINCES,isLand}=R;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };

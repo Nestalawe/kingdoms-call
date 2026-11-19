@@ -3,7 +3,7 @@
 //   - a GM gets edit controls on their own games' entries only (the database refuses the others since P0-22);
 //   - only the Overlord renames a player, through rename_player (the name only), and edits every entry;
 //   - a signed-in player gets no controls; the page never offers SQL to paste.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

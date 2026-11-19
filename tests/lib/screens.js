@@ -13,7 +13,7 @@
 // may put its own answer in place of one of its functions); the same in jsdom and in Chromium.
 // A new page's slice of P0-19 adds its tour here.
 const path=require('path');
-const {readPage,bootJsdom,serve,routeExternal,SITE,DB_VERSION}=require('./boot');
+const {readPage,bootJsdom,serve,routeExternal,SITE,DB_VERSION}=require('./boot.ts');
 const {makeAFakeDbHoldingAWorldHandedAsData}=require('./fake-db.ts');
 
 // The names, on the page's window, of the world the fake holds (lib/the-fake-db-a-page-takes-in-chromium.ts's

@@ -5,7 +5,7 @@
 // stood in; each function is called on a jsdom document set as the page's own. A page test would boot the whole page
 // and sign in to reach each of them.
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 
 interface AnAnswer {
   data: unknown;

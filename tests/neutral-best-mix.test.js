@@ -13,7 +13,7 @@
 // battle estimate of a neutral province) with the number of units its wealth band gives, never a garrison or a ship,
 // and its neutral guard leads exactly those units. Simulation level: world generation is one long function and the
 // property is over whole worlds
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
   const errs=[];

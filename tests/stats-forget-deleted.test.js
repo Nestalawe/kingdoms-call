@@ -8,7 +8,7 @@
 // The GM portal's "Forget deleted games' data" forgets only games with no `games` row, whoever runs them: signed in as
 // the Overlord (who sees every game's statistics since P0-22) or a GM, the other games' statistics and Hall of Fame
 // entries stay
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 
 let fails=0;
 const check=(c,m)=>{ if(!c){ fails++; console.log('FAIL '+m); } else console.log('ok   '+m); };

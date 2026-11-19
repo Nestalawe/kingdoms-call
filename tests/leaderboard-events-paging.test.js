@@ -15,7 +15,7 @@
 // `src/` by its syntax tree and run on its own (P1-09a: on the booted GM portal, `buildGameRecords` stood in from
 // outside)
 const vm=require('vm');
-const {sourceOf}=require('./lib/source.ts'); const {DB_VERSION}=require('./lib/boot');
+const {sourceOf}=require('./lib/source.ts'); const {DB_VERSION}=require('./lib/boot.ts');
 const {aGameMastersWorld,makeAFakeDbHoldingTheGameMastersWorld}=require('./lib/fake-db.ts');
 const HOF='ui/gm/hall-of-fame.ts';
 // (with the readers they call in their own file, and the shared ones they import, handed in: plan P1-16q)

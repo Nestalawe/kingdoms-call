@@ -3,7 +3,7 @@
 // leaderboard page through the fake database (lib/fake-db.ts) in JSDOM, then renders every tab and checks the
 // output for exceptions, empty boards, and undefined/NaN leaking into the HTML. Also exercises GM
 // mode (?gm=1) and the edit / hide / delete controls.
-const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {sourceFrom}=require('./lib/source.ts'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
+const fs=require('fs'), vm=require('vm'); const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {sourceFrom}=require('./lib/source.ts'); const {makeAFakeDbHoldingTheHallOfFame}=require('./lib/fake-db.ts');
 const LB_FILE=process.argv[2]||sitePath('kingdoms-call-leaderboard.html');
 
 // ── 1. real builder, stub engine tables ────────────────────────────────────────────────────────

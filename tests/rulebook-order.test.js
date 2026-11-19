@@ -8,7 +8,7 @@
 // Both rulebooks follow the chapter order Toby chose (2026-10-15); each contents list matches its chapters; the "Part"
 // labels count up from One with no repeats; every link that says "above" or "below" points to a chapter on that side;
 // Kings & Heroes points up to Divine; Mastery links back to The Fifteen Skills
-const fs=require('fs'); const {sitePath}=require('./lib/boot');
+const fs=require('fs'); const {sitePath}=require('./lib/boot.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const read=f=>fs.readFileSync(sitePath(f),'utf8');
 const BOOKS=[

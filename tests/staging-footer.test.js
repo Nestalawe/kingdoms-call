@@ -8,7 +8,7 @@
 //   - (two pages) with a hand-made config whose `deployed` isn't a number and a commit: no line, no markup.
 // Reads site/ (or $KC_SITE).
 const fs=require('fs');
-const {SITE,sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {SITE,sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {configFile}=require('../.github/scripts/staging.js');
 
 const SHA='abcdef1234567890abcdef1234567890abcdef12';

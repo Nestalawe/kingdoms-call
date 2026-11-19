@@ -4,10 +4,10 @@
 // hero named), a draft that can't be read, the encounter plan's pickers and tactics (cleared, a spell confirmed, moved,
 // dragged and removed), a spell field for a hero the report doesn't hold, and the heir's points taken back.
 // Level 4 (page): orders-form.ts loads the page's start-up (its database client), so no lower level reaches it; the
-// portal is booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with
+// portal is booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with
 // every module loaded and the orders column in the page.
 import { afterAll, afterEach, beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const errs: string[] = [];

@@ -1,7 +1,7 @@
 // 2026-10-08 (item 5) — the orders column's "group by location" button puts heroes standing in the
 // same province next to each other, keeps each hero's injected cards with them, and keeps the
 // existing collapse-all / expand-all buttons working on every hero.
-const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot'); const {makeAFakeDb}=require('./lib/fake-db.ts');
+const {readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const PPF=process.argv[2]||'kingdoms-call-player-portal.html';
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 (async()=>{
