@@ -7,7 +7,7 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Every harness that runs turns (`runTurn`, in `tests/` and `tools/`) stages its games in manual turn mode, so the
-// auto-turn watcher never reads the clock or runs a turn in a test (P1-04a); the screenshot tour (`lib/screens.js`) is
+// auto-turn watcher never reads the clock or runs a turn in a test (P1-04a); the screenshot tour (`lib/screens.ts`) is
 // exempt, since it shows each mode on purpose. Level 0: a page test would see the watcher only when a run outlasted its
 // first check. TypeScript, in `static/`
 import fs from 'node:fs';
@@ -20,7 +20,7 @@ const SELF = path.relative(ROOT, import.meta.filename);
 const SKIPPED = new Set(['tests/quarantine', 'node_modules']);
 /** Harnesses that stage other modes on purpose, and why. */
 const EXEMPT: Record<string, string> = {
-  'tests/lib/screens.js':
+  'tests/lib/screens.ts':
     "the screenshot tour stages auto and deadline games so the game list and the watcher's own screens show each mode",
   'tests/unit/the-gms-turn-watcher-turn-shell-and-turn-zero-on-the-values-handed-them.test.ts':
     "the watcher's own unit test stages auto and deadline games for its tick, which it calls by hand on no booted page",

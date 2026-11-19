@@ -1,4 +1,4 @@
-// Same for ordinary names (P0-19): renders every screen of a page's tour (tests/lib/screens.js) with ordinary names
+// Same for ordinary names (P0-19): renders every screen of a page's tour (tests/lib/screens.ts) with ordinary names
 // (apostrophes, accents, hyphens) on two copies of the site, and says whether each screen's DOM is the same. A proof run
 // by hand for a pull request that converts a page to kcHtml, with its output in the PR; not part of npm test (it compares
 // against another copy of the site, which CI doesn't have).
@@ -14,8 +14,8 @@
 // Exits 1 if any screen differs.
 const path=require('path');
 const acorn=require('acorn');
-const {TOURS,runJsdom}=require('../lib/screens');
-const {names}=require('../lib/hostile');
+const {TOURS,runJsdom}=require('../lib/screens.ts');
+const {names}=require('../lib/hostile.ts');
 
 const [before,after='site',...only]=process.argv.slice(2);
 if(!before){ console.log('usage: node tests/tools/same-dom.js <before-site> [<after-site>] [tour…]'); process.exit(2); }

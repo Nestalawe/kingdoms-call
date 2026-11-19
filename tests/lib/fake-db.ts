@@ -10,7 +10,7 @@
 // turn (P1-17q) and the GM's world (P1-17q2); the player's holds the Game Master offers and the dispatches' reports too
 // when a test stages them (P1-17r). The player's saves its orders as the database's function submit_orders
 // does (P2-05): that function's checks are the one rule the fake keeps, in the words the access layer's test holds the
-// database to. For the screen tours (tests/lib/screens.js, P1-17t), the Hall of Fame's refuses its changes or its read
+// database to. For the screen tours (tests/lib/screens.ts, P1-17t), the Hall of Fame's refuses its changes or its read
 // when a tour asks, the GM's world answers the player page's functions too, on the same tables, and
 // makeAFakeDbHoldingAWorldHandedAsData (at the end) makes any of four worlds from data, as Chromium's init script and
 // the tours hand them.

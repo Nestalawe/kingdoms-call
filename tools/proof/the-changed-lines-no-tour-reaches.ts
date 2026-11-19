@@ -1,6 +1,6 @@
 // npm run proof:tours -- --base <ref>: the lines of src/ this branch changed that no screen tour reaches (plan P1-16,
 // Decision 6: a page row's tier 1, tools/proof/README.md). The pages' code runs in jsdom: the four screen tours
-// (tests/lib/screens.js, every mode, as tests/tools/same-dom.js runs them) and, when the branch changed a file the GM
+// (tests/lib/screens.ts, every mode, as tests/tools/same-dom.js runs them) and, when the branch changed a file the GM
 // page's bundle holds, the balance matrix's page half (set A, played on that page through KC_SITE). Each listed line
 // needs a case red on a planted fault in it, or a reason by name why the code makes it so. A list, not a gate: it exits
 // 0 whatever it finds (1 only when it can't measure).
@@ -32,8 +32,8 @@ import { parseArgs } from 'node:util';
 import { buildSite, ROOT } from '../build.ts';
 import { GM_PAGE } from '../pages.ts';
 import { pageFiles } from '../../tests/lib/boot.ts';
-import { names } from '../../tests/lib/hostile.js';
-import { runJsdom, TOURS } from '../../tests/lib/screens.js';
+import { names } from '../../tests/lib/hostile.ts';
+import { runJsdom, TOURS } from '../../tests/lib/screens.ts';
 import {
   changedLinesOf,
   theChangedLinesNoGameReaches,

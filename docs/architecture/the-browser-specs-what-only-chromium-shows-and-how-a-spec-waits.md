@@ -10,7 +10,7 @@ image's `onerror` really firing). They are not part of `npm test`.
 - **The site is served from one folder, as deployed**, by `browser/server.ts` (`lib/boot.ts`'s `serve`), which
   Playwright starts on port 4173: `site/`, or the copy in `KC_SITE` (`KC_SITE=/tmp/broken-site npx playwright test`).
   A server already on the port is never reused. Specs open pages by path (`page.goto('/kingdoms-call-gm-portal.html')`)
-  and hand the page the fake (`browser/the-fake-db-handed-to-chromium.ts`), the screen tours (`lib/screens.js`)
+  and hand the page the fake (`browser/the-fake-db-handed-to-chromium.ts`), the screen tours (`lib/screens.ts`)
   among them.
 - **The same answer every time**, as in Vitest: the Node check (`setup/global.ts`), the time zone and locale
   (`setup/fixed.mts`, in Node and in the browser), `KC_SEED` with the same default. No retries, and a `.only` fails

@@ -324,7 +324,7 @@ beforeAll(async () => {
   }).window;
   await new Promise((r) => setTimeout(r, 900));
   // The page's short timers (a field rebuilt "once the DOM exists", the research box) are queued and run in order at
-  // the end of each step, as tests/lib/screens.js does; long ones (polls) are dropped.
+  // the end of each step, as tests/lib/screens.ts does; long ones (polls) are dropped.
   W.eval(`window.__kcQ=[];window.__kcN=0;
     window.setTimeout=(f,ms,...a)=>{ if(ms>=1000) return 0; const id=++window.__kcN; window.__kcQ.push({f,a,ms:+ms||0,id}); return id; };
     window.clearTimeout=id=>{ window.__kcQ=window.__kcQ.filter(t=>t.id!==id); };
