@@ -122,7 +122,7 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   keeps the last key, so a second entry fails `npm run typecheck` (TS1117), and the words tests check it too. The words
   tests find the blurbs as the player page's because its entry (`src/ui/player/page.ts`) lists the content file: keep
   that import, or `fileDeclaring(PLAYER, 'UNIT_ABILITIES')` finds no file. `tests/abilities-words.test.js` and
-  `tests/primal-abilities-words.test.js` name no ability: they check each unit's blurb, roster row and a few of the books' sentences. The race and beast tests (`tests/unit/the-human-units-abilities-on-the-battle-grid-and-at-their-fate-after-a-defeat.test.ts`, the elven,
+  `tests/static/every-live-beast-has-its-blurb-and-rulebook-row-and-no-ability-is-still-promised.test.ts` name no ability. The race and beast tests (`tests/unit/the-human-units-abilities-on-the-battle-grid-and-at-their-fate-after-a-defeat.test.ts`, the elven,
   dwarven, orcish and beasts scripts, and the tests that fight a battle with them) check the numbers in
   play. The grid's flyer set is `KC_UNIT_CLASS.aerial` (the riders and the flying beasts); the archers' first-target set
   is `KC_UNIT_CLASS.flying` (the riders only).
@@ -244,7 +244,7 @@ perks'** (P1-19ai): [its file](the-guardian-perks-registry-its-stages-and-how-to
 - **Content tables** (`ALL_MAGIC_ITEMS_P`, `MONSTERS_P`, `PRIMAL_ARMY_DEFS_P`, `MASTERY_UNLOCKS`, …):
   plain literals. Nothing in the file may reference portal code. `PRIMAL_ARMY_DEFS_P` is the one place a
   Creature's or Monster's cost, strength, move, sub-race and pre-battle strike are written; the GM master
-  tables and the player portal's speeds are built from it, and `tests/lib/primal-decided.js` (the wild roster
+  tables and the player portal's speeds are built from it, and `tests/lib/primal-decided.ts` (the wild roster
   decided on 2026-10-13) holds it, the class lists, the Druid ladder and the books to the decided figures.
 - **Shared rule tables** (the block headed `SHARED RULE TABLES`): every `KC_*` table, e.g.
   `KC_UNIT_CLASS` (unit classes as ordered lists), `KC_UNIT_TYPE` (each unit's one type word: infantry,

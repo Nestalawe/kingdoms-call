@@ -11,7 +11,7 @@
 const fs=require('fs');
 const {bootScenario, order, plan}=require('./lib/scenario');
 const {sitePath}=require('./lib/boot.ts');
-const {ROSTER}=require('./lib/primal-decided');
+const {ROSTER}=require('./lib/primal-decided.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 
 (async()=>{

@@ -13,7 +13,7 @@
 const fs=require('fs'), vm=require('vm');
 const {bootScenario, order, plan}=require('./lib/scenario');
 const {sitePath}=require('./lib/boot.ts');
-const {ROSTER}=require('./lib/primal-decided');
+const {ROSTER}=require('./lib/primal-decided.ts');
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 
 const NEW_LAND={'Great Bears':['forest','mountain'],'Unicorn Herd':['plain','forest'],'Mammoth Host':['plain','desert']};

@@ -21,7 +21,7 @@
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {pageInitializer,scriptOf}=require('./lib/source.ts');
-const R=require('./lib/roster-decided'); const {ROSTER,LAND_TERRAINS,NEW_UNITS,NEW_UNIT_PROVINCES,isLand}=R;
+const R=require('./lib/roster-decided.ts'); const {ROSTER,LAND_TERRAINS,NEW_UNITS,NEW_UNIT_PROVINCES,isLand}=R;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 const UNITS=Object.keys(ROSTER);

@@ -21,7 +21,7 @@
 const fs=require('fs'), vm=require('vm');
 const {sitePath,readPage,bootJsdom,DB_VERSION}=require('./lib/boot.ts'); const {makeAFakeDb}=require('./lib/fake-db.ts');
 const {pageInitializer,scriptOf}=require('./lib/source.ts');
-const P=require('./lib/primal-decided'); const {ROSTER,RENAMED,LAND_TERRAINS,LIVE,COMING}=P;
+const P=require('./lib/primal-decided.ts'); const {ROSTER,RENAMED,LAND_TERRAINS,LIVE,COMING}=P;
 let pass=0, fail=0; const ok=(c,m)=>{ if(c) pass++; else { fail++; console.log('  ✗ '+m); } };
 const near=(a,b)=>Math.abs(a-b)<1e-9;
 

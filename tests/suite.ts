@@ -22,9 +22,7 @@ export function suite(full: boolean): Script[] {
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
     ['page', 'staging-footer', 'tests/staging-footer.test.js'],
     ['static', 'flyers-soldiers-words', 'tests/flyers-soldiers-words.test.js'],
-    ['static', 'roster-words', 'tests/roster-words.test.js'],
     ['static', 'abilities-words', 'tests/abilities-words.test.js'],
-    ['static', 'primal-words', 'tests/primal-words.test.js'],
     ['page', 'boot-pages', 'tests/boot-pages.test.js'],
     ['page', 'db-guard', 'tests/db-guard.test.js'],
     ['page', 'gm-offer-and-gate', 'tests/gm-offer-and-gate.test.js'],
@@ -54,7 +52,6 @@ export function suite(full: boolean): Script[] {
     ['scenario', 'two-crowns', 'tests/two-crowns.test.js'],
     ['scenario', 'shark-waters', 'tests/shark-waters.test.js'],
     ['scenario', 'new-creatures', 'tests/new-creatures.test.js'],
-    ['static', 'primal-abilities-words', 'tests/primal-abilities-words.test.js'],
     ['unit', 'leaderboard-records', 'tests/leaderboard-records.test.js', [], { N: full ? '3000' : '100' }],
     ['unit', 'leaderboard-golden', 'tests/leaderboard-golden.test.js'],
     ['page', 'leaderboard-render', 'tests/leaderboard-render.test.js'],

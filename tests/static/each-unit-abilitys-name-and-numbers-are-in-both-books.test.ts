@@ -10,7 +10,7 @@
 // (KC_CARRIER_BERTHS: "two land units") and Forest Runners' two cells of TERRAIN_MODS (read by its syntax tree: "×1.1
 // in forest", "no penalty in jungle"). A table's number is matched with what it counts or where it acts, since a bare
 // "one" or "×1" is in the books' words already ("where a fleet carries one", "×1.1"). The older words tests
-// (abilities-words, primal-abilities-words) name no ability now; they keep their other checks.
+// (abilities-words, and the beasts' blurbs-and-rows test) name no ability now; they keep their other checks.
 // Three gaps are known and let through, each with its fix parked (the three fleets): the rulebook's Orcish Longships row
 // doesn't name Reaver Crews, nor its Elven Galleys row Sea Archers, nor its Dwarf Ironclads row Armoured Hulls (the test
 // fails once it does, so the exception leaves with the fix). And three numbers: the rulebook's Whale Cohort row names
@@ -19,7 +19,7 @@
 // Hunt's words (plan P1-19j; parked likewise), each checked to be still left out there, so the exception leaves with
 // the fix too. Of the tables: the battle report names the Wyvern Riders' strike "Acid Spit Volley", both books "Acid
 // Spit" (parked: one name), checked to be still so; and the rulebook gives Forest Runners' two numbers in its terrain
-// column, not in Forest Runners' words (a known difference: roster-words holds that column to the decided roster, and
+// column, not in Forest Runners' words (a known difference: the army roster's words test holds that column to the decided roster, and
 // roster holds TERRAIN_MODS to it), checked to be still so. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes:
 // plan P1-19j, Choice 4) are a retired unit's,
 // in no book: checked to be still in none, and nothing else. An ability the books give no number (Rooted, Hold the Gate,
@@ -344,7 +344,7 @@ const NAMES_THE_BOOKS_WRITE_ANOTHER_WAY: Readonly<Record<string, { readonly book
  *  words in the rulebook still leave the numbers out. */
 const NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE: Readonly<Record<string, string>> = {
   'Forest Runners':
-    "the rulebook gives Forest Runners' numbers in the Stag Riders' terrain column (Forest ×1.1; jungle unlisted, ×1), which roster-words holds to the decided roster and roster holds TERRAIN_MODS to",
+    "the rulebook gives Forest Runners' numbers in the Stag Riders' terrain column (Forest ×1.1; jungle unlisted, ×1), which the army roster's words test holds to the decided roster and roster holds TERRAIN_MODS to",
 };
 
 /** A strike's damage range as the books write it: `2–4`, with the books' en dash (U+2013). */

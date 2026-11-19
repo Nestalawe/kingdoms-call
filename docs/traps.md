@@ -229,8 +229,8 @@ an `if`'s condition, and read it in that branch (a check held in a variable isn'
 ## A new army unit is a dozen tables
 
 A unit type is keyed by its name in tables over several files, and nothing throws when one is missed. Add it to
-`tests/lib/roster-decided.js` first (a Creature or Monster: mark it `live` in `tests/lib/primal-decided.js`), then to
-`KC_UNIT_TYPE`. Checks: `tests/roster.test.js` and `tests/roster-words.test.js` (or `primal-roster`, `primal-words`)
+`tests/lib/roster-decided.ts` first (a Creature or Monster: mark it `live` in `tests/lib/primal-decided.ts`), then to
+`KC_UNIT_TYPE`. Checks: `tests/roster.test.js` and `tests/static/the-rulebooks-and-the-player-portal-give-each-army-unit-as-the-roster-table-decides.test.ts` (or `primal-roster` and the wild roster's words test)
 list every table and sentence still missing it, and `npm run typecheck` names the data file's tables that end in
 `satisfies`. Every table: [here](architecture/adding-or-changing-content-units-orders-and-discoveries.md#a-new-army-unit-is-a-dozen-tables).
 
