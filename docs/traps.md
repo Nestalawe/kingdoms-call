@@ -56,7 +56,7 @@ site changes go in separate PRs ([supabase/README.md](../supabase/README.md#data
 A site PR that can't work without a migration raises `KC_DB_MIN` to the migration's 14-digit version in every page
 that needs it, and never lowers it to get past the stop. Otherwise cope
 ([above](#a-new-column-must-be-optional-at-the-write-site)).
-Checks: `db-min` fails if a `KC_DB_MIN` is newer than the newest file in `supabase/migrations/`; `db-guard` boots each
+Checks: [the guard check](../tests/static/every-page-on-the-database-starts-through-its-guard-and-needs-no-unmerged-migration.test.ts) fails if a `KC_DB_MIN` is newer than the newest file in `supabase/migrations/`; `db-guard` boots each
 page on an older database. [Detail](architecture/the-database-and-what-it-holds.md#a-site-change-that-needs-a-database-change).
 
 ## String-anchor harness hooks

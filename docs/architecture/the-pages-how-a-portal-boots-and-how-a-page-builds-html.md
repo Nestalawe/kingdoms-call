@@ -29,7 +29,7 @@ players' logins, and a CDN outage can't stop the portals loading. It is the npm 
 to one exact version in `package.json`'s `dependencies`. The build (`supabaseJsFromItsPackage` in `tools/build.ts`)
 copies its browser build (`dist/umd/supabase.js`) unchanged to `assets/supabase-js-<hash>.js`, its licence beside it
 (`assets/supabase-js-LICENSE-<hash>.txt`), and writes the `<script>` tag where a template has `<!--kc-supabase-js-->`.
-The dev server answers it as `supabase-js.js`. `npm test`'s `vendor-supabase` check fails if the pin isn't exact, the
+The dev server answers it as `supabase-js.js`. `npm test`'s [supabase-js check](../../tests/static/the-pages-load-supabase-js-from-the-site-itself-pinned-and-byte-for-byte-the-packages.test.ts) fails if the pin isn't exact, the
 lock or `node_modules` holds another version, or the published file or its licence isn't the package's, byte for byte.
 
 **To upgrade**, in its own PR (`package.json` and `package-lock.json` are dangerous paths: talk it through with a maintainer).

@@ -105,7 +105,8 @@ export function packagesFromTheRepository(): Plugin {
 /** The marker a template puts where supabase-js's <script> tag goes (plan P1-17b). */
 export const SUPABASE_JS_MARKER = '<!--kc-supabase-js-->';
 /** The package's files the site serves as they are: its browser build (it sets the global `supabase`) and its
- *  licence. The version is package.json's pin (tests/vendor-supabase.test.js). */
+ *  licence. The version is package.json's pin
+ *  (tests/static/the-pages-load-supabase-js-from-the-site-itself-pinned-and-byte-for-byte-the-packages.test.ts). */
 export const supabaseJsFile = (): string =>
   fileURLToPath(import.meta.resolve('@supabase/supabase-js/dist/umd/supabase.js'));
 const supabaseJsLicence = (): string =>

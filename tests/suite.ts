@@ -20,20 +20,11 @@ const GM = 'kingdoms-call-gm-portal.html';
 export function suite(full: boolean): Script[] {
   // [level, name, file, args, env]
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
-    ['static', 'docs', 'tests/docs.test.js'],
-    ['static', 'rulings', 'tests/rulings.test.js'],
-    ['static', 'config', 'tests/config.test.js'],
-    ['static', 'vendor-supabase', 'tests/vendor-supabase.test.js'],
-    ['static', 'db-min', 'tests/db-min.test.js'],
     ['unit', 'kc-safe', 'tests/kc-safe.test.js'],
-    ['static', 'workflow-api-auth', 'tests/workflow-api-auth.test.js'],
-    ['static', 'sql-banners', 'tests/sql-banners.test.js'],
-    ['static', 'gm-portal-no-signup', 'tests/gm-portal-no-signup.test.js'],
     ['unit', 'dangerous-paths', 'tests/dangerous-paths.test.js'],
     ['unit', 'staging', 'tests/staging.test.js'],
     ['page', 'staging-footer', 'tests/staging-footer.test.js'],
     ['unit', 'migrations', 'tests/migrations.test.js'],
-    ['static', 'landing-footer', 'tests/landing-footer.test.js'],
     ['static', 'flyers-soldiers-words', 'tests/flyers-soldiers-words.test.js'],
     ['static', 'roster-words', 'tests/roster-words.test.js'],
     ['static', 'abilities-words', 'tests/abilities-words.test.js'],

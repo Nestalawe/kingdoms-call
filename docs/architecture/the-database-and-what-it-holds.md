@@ -240,8 +240,8 @@ or written.
 - **Raising `KC_DB_MIN` is how a site PR says "needs migration X".** Use it when the page can't sensibly
   work without the change; otherwise cope ([traps.md](../traps.md#a-new-column-must-be-optional-at-the-write-site)).
   Raise it in every page that needs the change, not only the one you edited.
-- `npm test`'s `db-min` check fails if a `KC_DB_MIN` is newer than the newest file in
-  `supabase/migrations/`: the migration must be merged, or the site branch stacked on its pull request.
+- [A static test](../../tests/static/every-page-on-the-database-starts-through-its-guard-and-needs-no-unmerged-migration.test.ts) fails if a `KC_DB_MIN` is newer than the newest
+  migration: merge it first, or stack the site branch on its pull request.
 - Never lower `KC_DB_MIN` to get a page past the stop. It means the database is missing something the page
   relies on.
 - The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots a newer GM page when one is ready, so the

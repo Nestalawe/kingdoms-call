@@ -3,7 +3,8 @@
 // database, the library has loaded (window.supabase.createClient) from the site's own assets/ (from npm, P1-17b).
 // No database is reached: kc-config.js is answered with an address on the test's own server, which has no database
 // there, and every request to another site is refused and recorded. Level 4: only a real browser shows which
-// requests a page makes. The static side (the tags in the pages) is vendor-supabase.test.js.
+// requests a page makes. The static side (the tags in the pages) is
+// tests/static/the-pages-load-supabase-js-from-the-site-itself-pinned-and-byte-for-byte-the-packages.test.ts.
 import fs from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { SITE } from '../lib/boot.ts';
