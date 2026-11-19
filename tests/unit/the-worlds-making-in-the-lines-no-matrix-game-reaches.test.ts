@@ -9,7 +9,8 @@
 // Level 1 (unit): generateNewGame called directly on the engine's modules, the dice seeded (kcRng), no turn played.
 // Not lower: each value is made inside the one function, from the dice and the passes before it. The guarantees a
 // world keeps around its homes are tests/unit/the-two-crowns-have-wild-country-within-two-provinces.test.ts, and the
-// spacing of the homes tests/home-placement.test.js.
+// spacing of the homes
+// tests/unit/the-home-placement-gives-each-king-a-cell-of-their-own-off-the-edge-rows-and-prints-the-spacing.test.ts.
 // The wide sea's case leaves out the lair stocking (items/lair-items.ts' ensureAllLairHoards, a spy that runs the real
 // one in every other case): it runs after the provinces are named, so their names are the same without it, and on the
 // 60 by 40 world it took nine tenths of the case's time (1.9 s of the case's 2.2 s locally; past 5 s on CI).

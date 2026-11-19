@@ -202,8 +202,8 @@ behaviour is fine, loosening it until it passes is not.
 |---|---|---|
 | `quarantine/set-scan.test.js` | 0 | Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives. Needs triage before it can gate |
 
-**A running test that can't fail on its own findings:** `home-placement` prints `FAIL` for a too-close capital but
-only exits non-zero when it throws (duplicate home cell, home on an edge row). It is kept as written.
+**A running test that can't fail on its own findings:** `tests/unit/the-home-placement-gives-each-king-a-cell-of-their-own-off-the-edge-rows-and-prints-the-spacing.test.ts` prints `FAIL` for a too-close capital but
+fails only on a duplicate home cell or a home on an edge row. It is kept as written (KD-276).
 
 ## Code-anchor hooks
 

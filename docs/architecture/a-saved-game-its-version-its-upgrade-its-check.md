@@ -50,7 +50,7 @@ the turn reads it.
 - **What checks it:** `tests/unit/a-saved-games-old-shapes-are-mended-before-the-turn.test.ts` (each old shape staged on
   a new world and mended, version 2's on the version-1 fixture; the upgrade run twice equals once; a new world changes only by a known list: Mithril Armour's
   tier, the guardians' cut) and
-  `corsairs-retired` (the turn passes the loaded world through the upgrade, which calls the pass).
+  `tests/static/no-book-or-player-portal-text-names-the-corsairs-and-letters-of-marque-lifts-the-galleons.test.ts` (the turn passes the loaded world through the upgrade, which calls the pass).
 - **A pass that names a unit** reads the name from a content row, as `migrateLegacyUnitNames` reads its table: the Corsair Fleet
   and the Galleon Fleet in its place are `src/content/the-corsair-fleet-retired-from-the-pools-and-the-unit-in-its-place.ts`,
   read by `retireCorsairPools` (`src/engine/saves/retire-the-corsair-pools.ts`); the engine names no unit for it (P1-15f4).

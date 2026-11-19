@@ -234,7 +234,7 @@
   Around `runTurn` that pins only the turn's seed: each turn plays on dice of its own, made from one number of the
   page's.
   A test that cuts code out of `src/` by its syntax tree and runs it on its own gives it a `kcRng` or `kcClock` of its own
-  (`home-placement`, `leaderboard-records`, `leaderboard-golden`). A page's clock (`Date`) is pinned only when a test
+  (`tests/unit/the-home-placement-gives-each-king-a-cell-of-their-own-off-the-edge-rows-and-prints-the-spacing.test.ts`, `leaderboard-records`, `leaderboard-golden`). A page's clock (`Date`) is pinned only when a test
   asks: `bootJsdom(html, {seed, now})` gives the page its own seed and a clock that starts at `now` and moves on 1 ms at each reading, so a turn
   run that way is byte-identical every time (`deterministic-boot`; `turn-fuzz` pins it too, so the same seed plays the same games). Otherwise runs are repeatable in practice but
   not guaranteed byte-identical. The engine reads that clock through `kcClock()` (`src/engine/clock.ts`). Pages opened

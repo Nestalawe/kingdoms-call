@@ -40,9 +40,6 @@ export function suite(full: boolean): Script[] {
     ['page', 'stats-forget-deleted', 'tests/stats-forget-deleted.test.js'],
     ['scenario', 'meta-missing-turn', 'tests/meta-missing-turn.test.js'],
     ['simulation', 'turn-fuzz', 'tests/turn-fuzz.test.js', full ? ['16', '12'] : ['4', '6']],
-    ['unit', 'home-placement', 'tests/home-placement.test.js', [], { RUNS: full ? '1000' : '200' }],
-    ['unit', 'druid-and-war-spoils', 'tests/druid-and-war-spoils.test.js'],
-    ['unit', 'primal-renames', 'tests/primal-renames.test.js'],
     ['scenario', 'two-crowns', 'tests/two-crowns.test.js'],
     ['scenario', 'shark-waters', 'tests/shark-waters.test.js'],
     ['scenario', 'new-creatures', 'tests/new-creatures.test.js'],
@@ -51,7 +48,6 @@ export function suite(full: boolean): Script[] {
     ['page', 'leaderboard-render', 'tests/leaderboard-render.test.js'],
     ['unit', 'leaderboard-events-paging', 'tests/leaderboard-events-paging.test.js'],
     ['page', 'leaderboard-realm-bests', 'tests/leaderboard-realm-bests.test.js'],
-    ['unit', 'guardian-traits', 'tests/guardian-traits.test.js'],
     ['page', 'orders-group-by-location', 'tests/orders-group-by-location.test.js'],
     ['page', 'cast-practice-projection', 'tests/cast-practice-projection.test.js'],
     ['simulation', 'lair-province-unique', 'tests/lair-province-unique.test.js'],
@@ -59,7 +55,6 @@ export function suite(full: boolean): Script[] {
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
     ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
     ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
-    ['unit', 'corsairs-retired', 'tests/corsairs-retired.test.js'], // batch 2026-10-15
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
     [
       'simulation',

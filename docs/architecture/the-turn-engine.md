@@ -279,7 +279,7 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 - Never lend the dice across an `await`. Another turn (the watcher's, or the GM's button on another game) can run in
   the gap and would draw from them, and the page could be handed the wrong dice back. `resolveTurn` lends them twice,
   for itself and for the Spy-stealth step, two synchronous calls, and gives them back in a `finally`.
-- Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (`home-placement`,
+- Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (the home-placement unit test,
   `leaderboard-records`).
 - Keep the generator in an object's property (`_kcRng.next`), not in a top-level `let`. With a `let`, V8 (Node 24.22)
   sometimes runs an optimised `kcRng` built against the old value: after `kcRng.seed` or `kcRng.use`, the dice quietly
