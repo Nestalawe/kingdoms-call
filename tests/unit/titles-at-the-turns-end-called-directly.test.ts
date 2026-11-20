@@ -53,7 +53,6 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   LANDS,
   MAJOR_KEYS,
@@ -81,7 +80,15 @@ import { kingOf, seatOf } from '../lib/new-turn-succession-and-summons-cases.ts'
 import { fallenHero } from '../lib/new-turn-war-academy-to-the-final-reconcile-cases.ts';
 import { taxes } from '../lib/diplomacy-and-victory-cases.ts';
 import { realm, ring1, ring2, wanderer } from '../lib/cast-spell-order-cases.ts';
-import { board, must, playTurn, withDice, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  must,
+  playTurn,
+  withDice,
+  withCaseDice,
+  type Board,
+  type Character,
+} from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

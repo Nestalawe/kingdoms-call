@@ -1,14 +1,14 @@
 // After the phases (plan P1-08k3, the first stage of resolveTurn's own body lifted out): what the turn settles once its
-// five seasons are played, staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each
-// with what must be true after it in game terms. A stand-off struck in the last season is flagged. The dead need a
-// master: skeletal companies led by a character with no Necromancy, or left in a garrison, crumble, and their realm is
-// told. A necromancer who never moved senses the graves where he stands. A wandering hero may learn a skill. A
-// consecrated province that has changed hands loses its blessing. Couriers deliver the parcels sent across provinces;
-// Elven companies that slipped a lost battle reach home. A fallen commander's host is settled; intrusions are told once;
-// wounded lair guardians recover; Mass Healing mends the friends standing with a White master. Every maximum HP is
-// resynced (with an old save's one-time note). A coward spared on the field makes his way home, his host left behind.
-// Every hero's location name is brought up to date.
-// scenario/after-the-phases-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
+// five seasons are played, staged on the middle of a bot world (either board:
+// lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each with what must be true after it in game
+// terms. A stand-off struck in the last season is flagged. The dead need a master: skeletal companies led by a
+// character with no Necromancy, or left in a garrison, crumble, and their realm is told. A necromancer who never moved
+// senses the graves where he stands. A wandering hero may learn a skill. A consecrated province that has changed hands
+// loses its blessing. Couriers deliver the parcels sent across provinces; Elven companies that slipped a lost battle
+// reach home. A fallen commander's host is settled; intrusions are told once; wounded lair guardians recover; Mass
+// Healing mends the friends standing with a White master. Every maximum HP is resynced (with an old save's one-time
+// note). A coward spared on the field makes his way home, his host left behind. Every hero's location name is brought
+// up to date. scenario/after-the-phases-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/after-the-phases-called-directly.test.ts calls the stage directly on the staged world. A case stages its world
 // and the heroes' orders; after them, it reads what it needs from the world and the log (`got`) beside what must be so
 // (`want`), and the test compares the two. Every outcome is certain: every case fixes the dice for the whole turn
@@ -16,6 +16,7 @@
 // the turn draws before it. Realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace (the board's relations).
 import {
   must,
+  withCaseDice,
   order,
   playTurn,
   type Board,
@@ -24,9 +25,9 @@ import {
   type Order,
   type Province,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, skeletal, type Item } from './item-and-army-order-cases.ts';
-import { withCaseDice, type Dice } from './espionage-order-cases.ts';
+import type { Dice } from './espionage-order-cases.ts';
 import { at, bury, holding, leads, realm, ring1, ring2, rival, wanderer } from './cast-spell-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 import { holdsOnly, unit } from './early-winter-cases.ts';
@@ -66,7 +67,7 @@ export interface AfterThePhasesCase {
 
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with the case's dice. */
 export const playCase = (b: Board, c: AfterThePhasesCase, s: Staged): Outcome => {
-  const result = withCaseDice(b.engine, c.dice ?? LANDS, () =>
+  const result = withCaseDice(b, c.dice ?? LANDS, () =>
     playTurn(b, Object.fromEntries(s.orders.map(([h, os]) => [h.id, os]))),
   );
   return { world: result.after, all: result.lines, turn: b.G.turn };

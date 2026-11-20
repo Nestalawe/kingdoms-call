@@ -45,7 +45,6 @@
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   LANDS,
   NEW_TURN_SECOND_PART_CASES,
@@ -88,7 +87,15 @@ import {
   unit,
   wanderer,
 } from '../lib/new-turn-succession-and-summons-cases.ts';
-import { board, must, withDice, type Board, type Character, type Province } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  must,
+  withDice,
+  withCaseDice,
+  type Board,
+  type Character,
+  type Province,
+} from '../lib/middle-of-a-bot-world.ts';
 import { knows, leads, realm, ring1, ring2 } from '../lib/cast-spell-order-cases.ts';
 import type { WhatTheSavesUpgradeFound } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
 

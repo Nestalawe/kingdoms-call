@@ -40,15 +40,15 @@ import {
   board,
   hero,
   must,
+  withDice,
+  recordExperienceRolls,
   type Board,
   type Character,
   type HeroSpec,
   type Line,
   type Order,
   type Province,
-  withDice,
 } from '../lib/middle-of-a-bot-world.ts';
-import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
 import { compactDeclaration } from '../lib/source.ts';
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';

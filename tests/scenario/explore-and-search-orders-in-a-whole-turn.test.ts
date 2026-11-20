@@ -26,8 +26,7 @@
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { EXPLORE_AND_SEARCH_ORDER_CASES } from '../lib/explore-and-search-order-cases.ts';
-import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
-import { board, playTurn } from '../lib/middle-of-a-bot-world.ts';
+import { board, playTurn, recordExperienceRolls } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

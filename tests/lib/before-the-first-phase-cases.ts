@@ -7,18 +7,19 @@
 // Library, the Grand Cathedral's ward; the three between, the save's upgrade's since P1-15f1, are whole-turn cases);
 // (4) once the bots have planned, every empty phase of a living realm hero set to Defend, the orders recorded for the
 // turn's statistics, and the hosts standing on a war front as the turn begins.
-// Staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms each holding only its seat with
-// a living king there (P1-08k5a's `stageCase`), every realm having met every other, each sending its heroes Resting for
-// this turn (P1-08k7's slot rows), each case with what must be true after it in game terms.
-// scenario/before-the-first-phase-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn) and reads the
-// world, and the turn's context, as the first phase begins; unit/before-the-first-phase-called-directly.test.ts calls
-// the four stages directly after the merge, as resolveTurn calls them (the bots' passes between them aside). A case's
-// `check` reads the same outcome from either. Every outcome is certain: every case fixes the dice for the whole turn
-// (default LANDS: every percentile roll lands, every other die at its highest).
-import vm from 'node:vm';
-import { engineFn } from './engine.ts';
+// Staged on the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain
+// realms each holding only its seat with a living king there (P1-08k5a's `stageCase`), every realm having met every
+// other, each sending its heroes Resting for this turn (P1-08k7's slot rows), each case with what must be true after it
+// in game terms. scenario/before-the-first-phase-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn)
+// and reads the world, and the turn's context, as the first phase begins;
+// unit/before-the-first-phase-called-directly.test.ts calls the four stages directly after the merge, as resolveTurn
+// calls them (the bots' passes between them aside). A case's `check` reads the same outcome from either. Every outcome
+// is certain: every case fixes the dice for the whole turn (default LANDS: every percentile roll lands, every other die
+// at its highest).
 import {
+  linesInWords,
   must,
+  withCaseDice,
   order,
   plan,
   type Board,
@@ -27,8 +28,8 @@ import {
   type Order,
   type Province,
   type World,
-} from './middle-of-a-bot-world.ts';
-import { withCaseDice, type Dice } from './espionage-order-cases.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
+import type { Dice } from './espionage-order-cases.ts';
 import { at, realm, wanderer } from './cast-spell-order-cases.ts';
 import { LANDS } from './war-order-cases.ts';
 import { companies } from './item-and-army-order-cases.ts';
@@ -147,8 +148,7 @@ export const snapshot = (tc: Raw, seasons: unknown): Ctx => ({
 
 /** A turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3): a
  *  line that records a fact has its words there alone (P1-12d6: the orders' lines are facts). */
-const inWords = (engine: vm.Context, log: unknown): Line[] =>
-  (engineFn(engine, 'theTurnsLinesInWords') as (l: unknown) => { gmLog: Line[] })(log).gmLog;
+const inWords = linesInWords;
 
 // ── Playing a case ───────────────────────────────────────────────────────────────────────────────────────────────
 const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
@@ -157,19 +157,17 @@ const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
  *  length), and the turn's record of orders from the reports built after it. `live` is handed the turn's context
  *  itself, for a test that reads it after the turn. */
 export const playCase = (b: Board, c: BeforeCase, s: Staged, live?: (tc: Raw) => void): Outcome => {
-  const g: Raw = b.engine;
-  const was = g[FIRST_PHASE] as (tc: Raw, ph: number) => unknown;
-  const seasons = vm.runInContext('KC_SEASONS', b.engine) as unknown;
+  const seasons = b.theEnginesFunctionOrTable('KC_SEASONS');
   const seen: { first?: string; ctx?: Ctx } = {};
-  g[FIRST_PHASE] = (tc: Raw, ph: number) => {
+  const putBack = b.standInForTheEnginesFunction(FIRST_PHASE, (was) => (tc: Raw, ph: number) => {
     if (!seen.first) {
       seen.first = JSON.stringify(tc['G']);
       seen.ctx = snapshot(tc, seasons);
       live?.(tc);
     }
     return was(tc, ph);
-  };
-  const resolveTurn = engineFn(b.engine, 'resolveTurn') as (
+  });
+  const resolveTurn = b.theEnginesFunctionOrTable('resolveTurn') as (
     state: string,
     rows: unknown,
     turn: number,
@@ -179,28 +177,28 @@ export const playCase = (b: Board, c: BeforeCase, s: Staged, live?: (tc: Raw) =>
     spyStealthAndInvisibilityStampedForTheReports: () => void;
     whatTheReportsRead: () => unknown;
   };
-  const buildReports = engineFn(b.engine, 'buildReports') as (whatTheReportsRead: unknown) => {
+  const buildReports = b.theEnginesFunctionOrTable('buildReports') as (whatTheReportsRead: unknown) => {
     tel: { collected: { orders: Record<string, Raw> } };
   };
-  const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
+  const inVm = (j: string) => b.parsedInTheEnginesRealm(j);
   try {
     const turn = b.G.turn;
     const slotRows = rows(b, s);
     const state = JSON.stringify(b.G);
-    const [result, record] = withCaseDice(b.engine, c.dice ?? LANDS, () => {
+    const [result, record] = withCaseDice(b, c.dice ?? LANDS, () => {
       const r = resolveTurn(state, inVm(slotRows), turn);
       r.spyStealthAndInvisibilityStampedForTheReports();
       return [r, json(buildReports(r.whatTheReportsRead()).tel.collected.orders) as Record<string, Raw>] as const;
     });
     return {
       first: JSON.parse(must(seen.first, 'the first phase')) as World,
-      all: inWords(b.engine, result.log),
+      all: inWords(b, result.log),
       turn,
       record,
       ctx: must(seen.ctx, 'the context'),
     };
   } finally {
-    g[FIRST_PHASE] = was;
+    putBack();
   }
 };
 /** The four stages, in the order resolveTurn calls them. */
@@ -211,22 +209,35 @@ export const STAGES = [
   'missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart',
 ] as const;
 /** What the stages before these leave in the context that the four make afresh: last turn's, as a stale context would
- *  hold them, so a stage that fails to make one anew shows. */
-export const STALE_CONTEXT = `(tc)=>{ tc.movePoints={1:9}; tc.seaMovePoints={1:9}; tc.seaMoveActive={1:true}; tc.seaCap={1:'x'};
-  tc.moveMax={1:9}; tc.seaMoveMax={1:9}; tc.lightLandMoves={1:1}; tc.lightSeaMoves={1:1}; tc.SEASONS=['Stale'];
-  tc.recruitedThisTurn={1:{}}; tc.presenceByPhase=[{}]; tc.enteredThisPhase={1:[1]}; tc._intrusionAcc=new Map([[1,1]]);
-  tc._distCache=new Map([[1,1]]); tc._warFrontAtStart=new Map([[1,1]]); tc._warFrontProvs=new Set([1]); }`;
+ *  hold them, so a stage that fails to make one anew shows. Each is made in the engine's realm, in this order. */
+export const leaveTheContextStale = (b: Board, tc: Raw) => {
+  const made = (json: string) => b.parsedInTheEnginesRealm(json);
+  tc['movePoints'] = made('{"1":9}');
+  tc['seaMovePoints'] = made('{"1":9}');
+  tc['seaMoveActive'] = made('{"1":true}');
+  tc['seaCap'] = made('{"1":"x"}');
+  tc['moveMax'] = made('{"1":9}');
+  tc['seaMoveMax'] = made('{"1":9}');
+  tc['lightLandMoves'] = made('{"1":1}');
+  tc['lightSeaMoves'] = made('{"1":1}');
+  tc['SEASONS'] = made('["Stale"]');
+  tc['recruitedThisTurn'] = made('{"1":{}}');
+  tc['presenceByPhase'] = made('[{}]');
+  tc['enteredThisPhase'] = made('{"1":[1]}');
+  tc['_intrusionAcc'] = b.aMapMadeInTheEnginesRealm('[[1,1]]');
+  tc['_distCache'] = b.aMapMadeInTheEnginesRealm('[[1,1]]');
+  tc['_warFrontAtStart'] = b.aMapMadeInTheEnginesRealm('[[1,1]]');
+  tc['_warFrontProvs'] = b.aSetMadeInTheEnginesRealm('[1]');
+};
 /** Readies the context for the four stages on `b`, staged as `s`, as resolveTurn has it when it reaches them: P1-08k7's
  *  two stages run (the context given the slot rows and the turn run), the bot realms set, the context's values the four
- *  make afresh left stale (`STALE_CONTEXT`), the log's context clear and no phase. */
+ *  make afresh left stale (`leaveTheContextStale`), the log's context clear and no phase. */
 export const prepare = (b: Board, s: Staged) => {
   const tc = b.tc as unknown as Raw;
   mergeCase(b, s);
-  tc['freshPlayers'] = (vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown)(rows(b, s));
-  tc['_botPlayerIdx'] = (vm.runInContext('(a)=>new Set(JSON.parse(a))', b.engine) as (a: string) => unknown)(
-    JSON.stringify(s.bots ?? []),
-  );
-  (vm.runInContext(STALE_CONTEXT, b.engine) as (t: Raw) => void)(tc);
+  tc['freshPlayers'] = b.parsedInTheEnginesRealm(rows(b, s));
+  tc['_botPlayerIdx'] = b.aSetMadeInTheEnginesRealm(JSON.stringify(s.bots ?? []));
+  leaveTheContextStale(b, tc);
   tc['_currentPhase'] = null;
   tc['_logCtx'] = { charId: null, phase: null };
   return tc;
@@ -236,18 +247,18 @@ export const outcomeOf = (b: Board): Outcome => {
   const tc = b.tc as unknown as Raw;
   return {
     first: json(b.G) as World,
-    all: json(inWords(b.engine, tc['turnLog'])) as Line[],
+    all: json(inWords(b, tc['turnLog'])) as Line[],
     turn: b.G.turn,
     record: json((tc['_tel'] as Raw)['orders']) as Record<string, Raw>,
-    ctx: snapshot(tc, vm.runInContext('KC_SEASONS', b.engine)),
+    ctx: snapshot(tc, b.theEnginesFunctionOrTable('KC_SEASONS')),
   };
 };
 /** Calls the four stages directly on `b`, staged as `s` and readied as `prepare` readies it, in turn, with the case's
  *  dice. */
 export const stagesCase = (b: Board, c: BeforeCase, s: Staged): Outcome =>
-  withCaseDice(b.engine, c.dice ?? LANDS, () => {
+  withCaseDice(b, c.dice ?? LANDS, () => {
     const tc = prepare(b, s);
-    for (const f of STAGES) (engineFn(b.engine, f) as (t: Raw) => void)(tc);
+    for (const f of STAGES) (b.theEnginesFunctionOrTable(f) as (t: Raw) => void)(tc);
     return outcomeOf(b);
   });
 
@@ -283,7 +294,7 @@ export const host = (b: Board, pi: number, p: Province, n = 2) => {
 };
 /** Sage discovery `id` as the data file has it. */
 export const disc = (b: Board, id: string) =>
-  JSON.parse(vm.runInContext(`JSON.stringify(DISC_BY_ID[${JSON.stringify(id)}]||null)`, b.engine) as string) as {
+  JSON.parse(JSON.stringify((b.theEnginesFunctionOrTable('DISC_BY_ID') as Record<string, unknown>)[id] ?? null)) as {
     id: string;
     name: string;
     category: string;
@@ -655,7 +666,7 @@ export const RESEARCH_CASES: BeforeCase[] = [
     },
     check: (o, s) => {
       const b = board_(s);
-      const pick = vm.runInContext(`botResearchPick`, b.engine) as (g: unknown, pi: number, opts: string[]) => string;
+      const pick = b.theEnginesFunctionOrTable('botResearchPick') as (g: unknown, pi: number, opts: string[]) => string;
       const want = pick(b.G, 2, ['sd04', 'sd03']);
       return {
         got: { pursued: starting(o, `💡 ${nameOf(b, 2)} pursues`).length, found: found(o, 2).map(([id]) => id) },

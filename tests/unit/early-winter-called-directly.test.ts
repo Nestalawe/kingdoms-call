@@ -24,7 +24,6 @@
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   EARLY_WINTER_CASES,
   LANDS,
@@ -46,7 +45,15 @@ import {
   type EarlyWinterCase,
   type Outcome,
 } from '../lib/early-winter-cases.ts';
-import { board, must, withDice, type Board, type Character, type Unit } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  must,
+  withDice,
+  withCaseDice,
+  type Board,
+  type Character,
+  type Unit,
+} from '../lib/middle-of-a-bot-world.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { holding } from '../lib/cast-spell-order-cases.ts';
 import { item } from '../lib/item-and-army-order-cases.ts';

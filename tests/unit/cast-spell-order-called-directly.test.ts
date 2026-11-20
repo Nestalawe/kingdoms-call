@@ -39,13 +39,14 @@ import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { CAST_SPELL_ORDER_CASES, LANDS, stageCase, type CastSpellOrderCase } from '../lib/cast-spell-order-cases.ts';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls, withCaseDice } from '../lib/espionage-order-cases.ts';
 import { companies, item } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
   hero,
   must,
   withDice,
+  recordExperienceRolls,
+  withCaseDice,
   type Board,
   type Character,
   type HeroSpec,

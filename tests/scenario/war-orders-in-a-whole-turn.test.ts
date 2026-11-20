@@ -31,8 +31,7 @@
 // pre-sets a watch, `processOrder` checks a mastery before its order, and a flag shows only in a later battle
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls, withCaseDice } from '../lib/espionage-order-cases.ts';
-import { board, playTurn } from '../lib/middle-of-a-bot-world.ts';
+import { board, playTurn, recordExperienceRolls, withCaseDice } from '../lib/middle-of-a-bot-world.ts';
 import { LANDS, WAR_ORDER_CASES, stageCase } from '../lib/war-order-cases.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });

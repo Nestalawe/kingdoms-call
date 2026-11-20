@@ -29,8 +29,7 @@
 // watch
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import { board, recordExperienceRolls } from '../lib/middle-of-a-bot-world.ts';
 import { PHASE_STAGE_CASES, playCase, stageCase } from '../lib/phase-stage-cases.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });

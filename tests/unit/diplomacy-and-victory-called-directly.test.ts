@@ -41,7 +41,6 @@
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   DIPLOMACY_AND_VICTORY_CASES,
   LANDS,
@@ -74,7 +73,7 @@ import {
   type DiplomacyAndVictoryCase,
   type Outcome,
 } from '../lib/diplomacy-and-victory-cases.ts';
-import { board, must, type Board, type RealmSends } from '../lib/middle-of-a-bot-world.ts';
+import { board, must, withCaseDice, type Board, type RealmSends } from '../lib/middle-of-a-bot-world.ts';
 import { realm } from '../lib/cast-spell-order-cases.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });

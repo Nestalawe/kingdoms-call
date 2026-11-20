@@ -1,19 +1,19 @@
 // The titles at the turn's end (plan P1-08k6, the last two stages of resolveTurn's own body lifted out): once the new
 // turn is done, the realm holding each Imperial Title is told what it shows of the realms it has met (the title intel),
 // then each realm's titles won and lost since last turn are worked out for its report (the title changes). Staged on
-// the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms each holding only its seat with a living
-// king there (P1-08k5a's `stageCase`), each case with what must be true after it in game terms.
-// The intel is told only from turn 5 (or once the game is over): the Throne (each realm's share of the world tax base),
-// the Vaultkeeper (each treasury), the Grand Marshal and the Sea Lord (each realm's strongest land army and fleet, its
-// commander and where he stands), the Monster-Bane (each realm's foremost monster-slayer), the Loremaster (every
-// discovery each realm holds; one made last turn the holder lacks is copied), the Archmage (the foremost mage of each
-// school outside the holder's realm), the Hierophant (the skills of every fallen hero the realm can see), the
-// Deathpriest (each province with crack or elite dead, filed under Graveyards Known), the Spymaster (every act of
-// espionage against the realm's land this turn, and who worked it), the Cartographer (each realm's atlas), the
-// Beastlord and the Wildwarden (each realm's monsters and creatures under arms). A realm the holder hasn't met is
-// neither named nor measured; one line says how many there are. The title changes: the first turn titles are public,
-// every title a realm holds is announced; after it, only a title that changed hands, to its new holder, and its loss
-// to the realm that held it; then this turn's holders are kept for the next.
+// the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms each
+// holding only its seat with a living king there (P1-08k5a's `stageCase`), each case with what must be true after it in
+// game terms. The intel is told only from turn 5 (or once the game is over): the Throne (each realm's share of the
+// world tax base), the Vaultkeeper (each treasury), the Grand Marshal and the Sea Lord (each realm's strongest land
+// army and fleet, its commander and where he stands), the Monster-Bane (each realm's foremost monster-slayer), the
+// Loremaster (every discovery each realm holds; one made last turn the holder lacks is copied), the Archmage (the
+// foremost mage of each school outside the holder's realm), the Hierophant (the skills of every fallen hero the realm
+// can see), the Deathpriest (each province with crack or elite dead, filed under Graveyards Known), the Spymaster
+// (every act of espionage against the realm's land this turn, and who worked it), the Cartographer (each realm's
+// atlas), the Beastlord and the Wildwarden (each realm's monsters and creatures under arms). A realm the holder hasn't
+// met is neither named nor measured; one line says how many there are. The title changes: the first turn titles are
+// public, every title a realm holds is announced; after it, only a title that changed hands, to its new holder, and its
+// loss to the realm that held it; then this turn's holders are kept for the next.
 // scenario/titles-at-the-turns-end-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/titles-at-the-turns-end-called-directly.test.ts calls the two stages directly on the staged world. A case
 // stages its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`)
@@ -22,7 +22,6 @@
 // however many dice the turn draws before it. By default each realm holds only its seat (tax 10, 30g) with a living
 // king there, with no skill a title counts, realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace (the board's
 // relations), no realm has met another, every realm is Divine and Human, and the turn is turn 1.
-import vm from 'node:vm';
 import {
   LANDS,
   NO_TITLE_SKILLS,
@@ -49,7 +48,15 @@ import {
 import { fallenHero } from './new-turn-war-academy-to-the-final-reconcile-cases.ts';
 import { concededBefore, decidedBefore, taxes } from './diplomacy-and-victory-cases.ts';
 import { bury, realm } from './cast-spell-order-cases.ts';
-import { must, order, type Board, type Character, type Province, type Unit } from './middle-of-a-bot-world.ts';
+import {
+  must,
+  order,
+  type AFunctionOrTableOfTheEngines,
+  type Board,
+  type Character,
+  type Province,
+  type Unit,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 
 export { LANDS };
 export type { Outcome, Staged };
@@ -244,22 +251,31 @@ export const holders = (o: Outcome) => {
 };
 /** The game's own table of titles, as a case reads it (name, perk, requirement). */
 export const titleDef = (s: Staged, key: string) => {
-  const defs = vmJson(s, 'TITLE_DEFS') as Raw[];
+  const defs = theEnginesTableAsJson(s, 'TITLE_DEFS') as Raw[];
   return must(
     defs.find((t) => t['key'] === key),
     'title ' + key,
   );
 };
 export const minorDef = (s: Staged, key: string) => {
-  const defs = vmJson(s, 'MINOR_TITLES.map(t=>({key:t.key,name:t.name,perk:t.perk,req:t.req}))') as Raw[];
+  const defs = asJson(
+    (board(s).theEnginesFunctionOrTable('MINOR_TITLES') as Raw[]).map((t) => ({
+      key: t['key'],
+      name: t['name'],
+      perk: t['perk'],
+      req: t['req'],
+    })),
+  ) as Raw[];
   return must(
     defs.find((t) => t['key'] === key),
     'minor title ' + key,
   );
 };
-/** `expr` read in the engine's vm (a top-level `const` is no property of its global object). */
-export const vmJson = (s: Staged, expr: string) =>
-  JSON.parse(vm.runInContext(`JSON.stringify(${expr})`, board(s).engine) as string) as unknown;
+/** `table` of the engine's, as JSON (a copy). */
+const theEnginesTableAsJson = (s: Staged, table: AFunctionOrTableOfTheEngines) =>
+  JSON.parse(JSON.stringify(board(s).theEnginesFunctionOrTable(table))) as unknown;
+/** `v` as JSON (a copy). */
+const asJson = (v: unknown) => JSON.parse(JSON.stringify(v)) as unknown;
 /** A gain as the report reads it: an Imperial Title (`major`) or a minor one. */
 export const majorGain = (
   s: Staged,
@@ -308,8 +324,8 @@ export const loss = (
 };
 /** The strength of a hero's companies after the turn, as the game reckons it. */
 export const strengthOf = (o: Outcome, s: Staged, c: Character, naval: boolean) => {
-  const f = board(s).engine['unitBaseStrength'] as (u: unknown) => number;
-  const sea = new Set(vmJson(s, '[...SEA_TYPES]') as string[]);
+  const f = board(s).theEnginesFunctionOrTable('unitBaseStrength') as (u: unknown) => number;
+  const sea = new Set(asJson([...(board(s).theEnginesFunctionOrTable('SEA_TYPES') as Iterable<string>)]) as string[]);
   return char(o, c)
     .armies.filter((u) => sea.has(u.type) === naval)
     .reduce((n, u) => n + f(u), 0);
@@ -798,9 +814,9 @@ export const MONSTER_BANE_CASES: TitleCase[] = [
 // ── The Loremaster ───────────────────────────────────────────────────────────────────────────────────────────────
 /** Discovery `id` as the game's table has it, as a realm holds it, made on turn `turn`. */
 const found = (s: Staged | Board, id: string, turn: number) => {
-  const b = 'engine' in s ? s : board(s);
-  const d = JSON.parse(
-    vm.runInContext(`JSON.stringify((SAGE_DISCOVERIES_P.find(d=>d.id===${JSON.stringify(id)})))`, b.engine) as string,
+  const b = 'tc' in s ? s : board(s);
+  const d = asJson(
+    (b.theEnginesFunctionOrTable('SAGE_DISCOVERIES_P') as { id: string }[]).find((x) => x.id === id),
   ) as { id: string; name: string; category: string; desc: string };
   return { id: d.id, name: d.name, category: d.category, desc: d.desc, turnDiscovered: turn };
 };
@@ -983,7 +999,7 @@ const remembers = (b: Board, d: Character, skills: Record<string, number>) => {
   g['skills'] = skills;
   return d;
 };
-const label = (s: Staged, k: string) => (vmJson(s, 'SKILL_LABELS') as Record<string, string>)[k];
+const label = (s: Staged, k: string) => (theEnginesTableAsJson(s, 'SKILL_LABELS') as Record<string, string>)[k];
 export const HIEROPHANT_CASES: TitleCase[] = [
   {
     name: 'the Hierophant reads every fallen hero its realm can see: its own dead anywhere, and the dead in its land or where its heroes stand, each with the skills he carried, highest first',

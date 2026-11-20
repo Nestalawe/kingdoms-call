@@ -6,22 +6,27 @@
 // pass is a top-level function of src/engine/bots/ (or titles/reckoning.ts), not part of what moved: what moved is the
 // calls, in order, with what each is handed, and the duel forecast (copies of the hunter and his quarry fight `n`
 // times, 20 by default, with no skill rising, for the share won and the share in which the hunter fell).
-// Staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), as P1-08k8's cases are: plain realms each
-// holding only its seat with a living king there, every realm having met every other, realms 0 and 1 at war, 0 and 2
-// allied, Safe Start over, each realm a player's but those the case makes bots'.
+// Staged on the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), as P1-08k8's
+// cases are: plain realms each holding only its seat with a living king there, every realm having met every other,
+// realms 0 and 1 at war, 0 and 2 allied, Safe Start over, each realm a player's but those the case makes bots'.
 // scenario/the-bots-plan-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/the-bots-plan-called-directly.test.ts calls the plan once, on a context readied as resolveTurn readies it. Each
-// pass is wrapped in the vm for the turn's length by a recorder that still calls it (or, where a case says so, stands
+// pass is stood in for the turn's length by a recorder that still calls it (or, where a case says so, stands
 // it in), so a case reads the order of the passes and what each was handed; the movement pass's recorder also asks the
 // forecast it is handed about the heroes a case names, as a hunter would. Every outcome is certain: every case fixes
 // the dice for the whole turn (LANDS: every percentile roll lands, every other die at its highest).
-import vm from 'node:vm';
-import { engineFn } from './engine.ts';
-import { must, type Board, type Character, type Line, type World } from './middle-of-a-bot-world.ts';
-import { withCaseDice } from './espionage-order-cases.ts';
+import {
+  linesInWords,
+  must,
+  withCaseDice,
+  type Board,
+  type Character,
+  type Line,
+  type World,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { at } from './cast-spell-order-cases.ts';
 import { seatOf, taxes, turnIs } from './diplomacy-and-victory-cases.ts';
-import { BOT_DIPLOMACY } from './bot-diplomacy-cases.ts';
+import { BOT_DIPLOMACY, eachBotRealmsRivalsMetAsTheTurnBegan } from './bot-diplomacy-cases.ts';
 import {
   LANDS,
   STAGES,
@@ -172,14 +177,23 @@ const third = (r: Recorder, v: unknown): unknown => {
   return Object.prototype.toString.call(v);
 };
 /** The strength figure `f` read on every company type and terrain, against the engine's own. */
-const strengthOf = (engine: vm.Context, f: (t: string, tr: string) => number): Outcome['strength'] => {
-  const { types, terrains } = vm.runInContext(
-    `({ types:[...new Set([].concat(...Object.values(TERRAIN_MODS).map(Object.keys), [...SEA_TYPES], [...AERIAL_TYPES], ['Men-at-Arms']))],
-        terrains:[...new Set([...Object.keys(TERRAIN_MODS), 'sea', 'plains'])] })`,
-    engine,
-  ) as { types: string[]; terrains: string[] };
-  const terrainMod = engineFn(engine, 'terrainMod') as (t: string, tr: string) => number;
-  const seaPenalty = engineFn(engine, 'seaPenalty') as (t: string, tr: string) => number;
+const strengthOf = (b: Board, f: (t: string, tr: string) => number): Outcome['strength'] => {
+  const TERRAIN_MODS = b.theEnginesFunctionOrTable('TERRAIN_MODS') as Record<string, Record<string, unknown>>;
+  const SEA_TYPES = b.theEnginesFunctionOrTable('SEA_TYPES') as Iterable<string>;
+  const AERIAL_TYPES = b.theEnginesFunctionOrTable('AERIAL_TYPES') as Iterable<string>;
+  const types = [
+    ...new Set(
+      ([] as string[]).concat(
+        ...Object.values(TERRAIN_MODS).map((m) => Object.keys(m)),
+        [...SEA_TYPES],
+        [...AERIAL_TYPES],
+        ['Men-at-Arms'],
+      ),
+    ),
+  ];
+  const terrains = [...new Set([...Object.keys(TERRAIN_MODS), 'sea', 'plains'])];
+  const terrainMod = b.theEnginesFunctionOrTable('terrainMod') as (t: string, tr: string) => number;
+  const seaPenalty = b.theEnginesFunctionOrTable('seaPenalty') as (t: string, tr: string) => number;
   const out: Outcome['strength'] = { pairs: 0, wrong: [], terrainBites: 0, seaBites: 0 };
   for (const t of types)
     for (const tr of terrains) {
@@ -194,8 +208,7 @@ const strengthOf = (engine: vm.Context, f: (t: string, tr: string) => number): O
   return out;
 };
 /** Asks the forecast `sim` (as the movement pass is handed it) what the case's asks name, on the world `G`. */
-const ask = (engine: vm.Context, r: Recorder, G: World, sim: Fn, asks: Ask[]) => {
-  const g = engine;
+const ask = (b: Board, r: Recorder, G: World, sim: Fn, asks: Ask[]) => {
   const tc = must(r.tc, 'the context');
   for (const a of asks) {
     const find = (c: Character) =>
@@ -208,25 +221,27 @@ const ask = (engine: vm.Context, r: Recorder, G: World, sim: Fn, asks: Ask[]) =>
     const before = JSON.stringify([h, q]);
     const lines = (tc['turnLog'] as unknown[]).length;
     const fights: Fight[] = [];
-    const was = g['resolvePersonalCombat'] as Fn;
-    g['resolvePersonalCombat'] = (t: Raw, A: Raw, B: Raw, opts: unknown) => {
-      fights.push({
-        muted: t['_pcSimulating'] === true,
-        context: t === tc,
-        a: { id: (A['ref'] as Raw)['id'], tactics: json(A['tactics']) },
-        b: { id: (B['ref'] as Raw)['id'], tactics: json(B['tactics']) },
-        opts: json(opts),
-      });
-      if (a.fails) throw new Error('a fight that fails');
-      return was(t, A, B, opts);
-    };
+    const putBack = b.standInForTheEnginesFunction(
+      'resolvePersonalCombat',
+      (was) => (t: Raw, A: Raw, B: Raw, opts: unknown) => {
+        fights.push({
+          muted: t['_pcSimulating'] === true,
+          context: t === tc,
+          a: { id: (A['ref'] as Raw)['id'], tactics: json(A['tactics']) },
+          b: { id: (B['ref'] as Raw)['id'], tactics: json(B['tactics']) },
+          opts: json(opts),
+        });
+        if (a.fails) throw new Error('a fight that fails');
+        return was(t, A, B, opts);
+      },
+    );
     const mutedWas = tc['_pcSimulating'];
     if (a.muted) tc['_pcSimulating'] = true;
     let result: unknown;
     try {
       result = json(a.n === undefined ? sim(h, q) : sim(h, q, a.n));
     } finally {
-      g['resolvePersonalCombat'] = was;
+      putBack();
     }
     const mutedAfter = tc['_pcSimulating'] === true;
     tc['_pcSimulating'] = mutedWas;
@@ -239,12 +254,10 @@ const ask = (engine: vm.Context, r: Recorder, G: World, sim: Fn, asks: Ask[]) =>
     });
   }
 };
-/** Wraps each pass in the vm for the length of `body`: each call recorded, then called through (or stood in). */
-function recording<T>(engine: vm.Context, s: Staged, r: Recorder, body: () => T): T {
-  const g = engine;
-  const was = PASSES.map((f) => [f, g[f] as Fn] as const);
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
+/** Wraps each pass for the length of `body`: each call recorded, then called through (or stood in). */
+function recording<T>(b: Board, s: Staged, r: Recorder, body: () => T): T {
+  const putBack = PASSES.map((f) =>
+    b.standInForTheEnginesFunction(f, (w) => (...args: unknown[]) => {
       const tc = must(r.tc, 'the context');
       r.passes.push({
         fn: f,
@@ -262,16 +275,17 @@ function recording<T>(engine: vm.Context, s: Staged, r: Recorder, body: () => T)
           strength: typeof hooks['terrainMult'] === 'function',
         };
         if (typeof hooks['terrainMult'] === 'function')
-          r.strength = strengthOf(engine, hooks['terrainMult'] as (t: string, tr: string) => number);
-        if (s.asks?.length) ask(engine, r, args[0] as World, hooks['duelSim'] as Fn, s.asks);
+          r.strength = strengthOf(b, hooks['terrainMult'] as (t: string, tr: string) => number);
+        if (s.asks?.length) ask(b, r, args[0] as World, hooks['duelSim'] as Fn, s.asks);
       }
       const stood = s.standIn?.[f];
       return stood ? stood(...args) : w(...args);
-    };
+    }),
+  );
   try {
     return body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const back of putBack) back();
   }
 }
 const ordersOf = (G: World) => json((G as World & Raw).turnOrders) as Record<string, unknown[]>;
@@ -279,8 +293,7 @@ const concessions = (G: World) => G.players.map((p) => !!(p as Raw | null)?.['co
 
 /** A turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3): a
  *  line that records a fact has its words there alone (P1-12d6: the orders' lines are facts). */
-const inWords = (engine: vm.Context, log: unknown): Line[] =>
-  (engineFn(engine, 'theTurnsLinesInWords') as (l: unknown) => { gmLog: Line[] })(log).gmLog;
+const inWords = linesInWords;
 
 // ── Playing a case ───────────────────────────────────────────────────────────────────────────────────────────────
 /** resolveTurn's stages either side of the plan (P1-08k8's third and fourth), and victory (P1-08k4's). */
@@ -289,21 +302,18 @@ const AFTER = STAGES[3];
 const VICTORY = 'victoryTheReckoningEliminationConcessionAndTheAnnouncement';
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with every die fixed (LANDS); the context is taken as the
  *  stage before the plan begins, the heroes' orders as the stage after it begins, and the Reckoning calls as victory
- *  begins (each wrapped in the vm for the turn's length). */
+ *  begins (each stood in for the turn's length). */
 export const playCase = (b: Board, _c: BotsPlanCase, s: Staged): Outcome => {
-  const g = b.engine;
-  const was = [BEFORE, AFTER, VICTORY].map((f) => [f, g[f] as Fn] as const);
+  const putBack: (() => void)[] = [];
   const r = recorder();
   const seen: { orders?: Record<string, unknown[]>; calls?: number[]; conceded?: boolean[] } = {};
-  const wrap = (f: string, before: (tc: Raw) => void) => {
-    const w = must(
-      was.find(([n]) => n === f),
-      f,
-    )[1];
-    g[f] = (tc: Raw, ...rest: unknown[]) => {
-      before(tc);
-      return w(tc, ...rest);
-    };
+  const wrap = (f: typeof BEFORE | typeof AFTER | typeof VICTORY, before: (tc: Raw) => void) => {
+    putBack.push(
+      b.standInForTheEnginesFunction(f, (w) => (tc: Raw, ...rest: unknown[]) => {
+        before(tc);
+        return w(tc, ...rest);
+      }),
+    );
   };
   wrap(BEFORE, (tc) => {
     r.tc = tc;
@@ -315,17 +325,17 @@ export const playCase = (b: Board, _c: BotsPlanCase, s: Staged): Outcome => {
   wrap(VICTORY, (tc) => {
     seen.calls = [...(tc['reckoningCalls'] as Iterable<number>)];
   });
-  const resolveTurn = engineFn(b.engine, 'resolveTurn') as (
+  const resolveTurn = b.theEnginesFunctionOrTable('resolveTurn') as (
     state: string,
     rows: unknown,
     turn: number,
   ) => { state: string; log: Line[] };
-  const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
+  const inVm = (j: string) => b.parsedInTheEnginesRealm(j);
   try {
     const slotRows = rows(b, s);
     const state = JSON.stringify(b.G);
-    return recording(b.engine, s, r, () => {
-      const t = withCaseDice(b.engine, LANDS, () => resolveTurn(state, inVm(slotRows), b.G.turn));
+    return recording(b, s, r, () => {
+      const t = withCaseDice(b, LANDS, () => resolveTurn(state, inVm(slotRows), b.G.turn));
       return {
         passes: r.passes,
         hooks: r.hooks,
@@ -334,13 +344,13 @@ export const playCase = (b: Board, _c: BotsPlanCase, s: Staged): Outcome => {
         orders: must(seen.orders, 'the orders after the plan'),
         calls: must(seen.calls, 'the calls at victory'),
         conceded: must(seen.conceded, 'the concessions after the plan'),
-        all: inWords(b.engine, t.log),
+        all: inWords(b, t.log),
         world: JSON.parse(t.state) as World,
         whole: true,
       };
     });
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const back of putBack) back();
   }
 };
 /** Readies the context on `b`, staged as `s`, as resolveTurn has it when it calls the plan: P1-08k8's `prepare` (the
@@ -356,25 +366,20 @@ export const ready = (b: Board, s: Staged) => {
     bots,
     slots: { ...s.slots, ...Object.fromEntries(bots.map((i) => [i, { ...s.slots?.[i], user: null }])) },
   });
-  (
-    vm.runInContext(
-      `(tc)=>{ const m={}; tc._botPlayerIdx.forEach(idx=>{ m[idx]=[...(((tc.G.players||[])[idx]||{})._encountered||[])]; });
-      tc._botEncounteredAtStart=m; }`,
-      b.engine,
-    ) as (t: Raw) => void
-  )(tc);
-  for (const f of [STAGES[0], BOT_DIPLOMACY, STAGES[1], STAGES[2]]) (engineFn(b.engine, f) as (t: Raw) => void)(tc);
+  eachBotRealmsRivalsMetAsTheTurnBegan(b, tc);
+  for (const f of [STAGES[0], BOT_DIPLOMACY, STAGES[1], STAGES[2]] as const)
+    (b.theEnginesFunctionOrTable(f) as (t: Raw) => void)(tc);
   return tc;
 };
 /** Calls the plan once on `b`, staged as `s` and readied as `ready` readies it, with every die fixed. */
 export const directCase = (b: Board, _c: BotsPlanCase, s: Staged): Outcome =>
-  withCaseDice(b.engine, LANDS, () => {
+  withCaseDice(b, LANDS, () => {
     const tc = ready(b, s);
     const r = recorder();
     r.tc = tc;
     const lines = (tc['turnLog'] as unknown[]).length;
-    return recording(b.engine, s, r, () => {
-      (engineFn(b.engine, PLAN) as (t: Raw) => void)(tc);
+    return recording(b, s, r, () => {
+      (b.theEnginesFunctionOrTable(PLAN) as (t: Raw) => void)(tc);
       return {
         passes: r.passes,
         hooks: r.hooks,
@@ -383,7 +388,7 @@ export const directCase = (b: Board, _c: BotsPlanCase, s: Staged): Outcome =>
         orders: ordersOf(b.G),
         calls: [...(tc['reckoningCalls'] as Iterable<number>)],
         conceded: concessions(b.G),
-        all: json(inWords(b.engine, (tc['turnLog'] as unknown[]).slice(lines))) as Line[],
+        all: json(inWords(b, (tc['turnLog'] as unknown[]).slice(lines))) as Line[],
         world: json(b.G) as World,
         whole: false,
       };

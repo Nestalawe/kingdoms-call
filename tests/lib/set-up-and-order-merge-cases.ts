@@ -1,14 +1,14 @@
 // The set-up (plan P1-08k7, two stages of resolveTurn's own body lifted out): once the save is read and the bots'
 // flags stamped, the turn's start repairs, then the merge of the realms' orders. Staged on the middle of a bot world
-// (lib/middle-of-a-bot-world.ts), from plain realms each holding only its seat with a living king there (P1-08k5a's
-// `stageCase`), every realm having met every other, each case with what must be true after it in game terms.
-// The repairs (the save's upgrade's since P1-15f2, run in resolveTurn before the stages: whole-turn cases): a wandering
-// hero wearing a beast's race is given a people's race; a neutral guard with no companies, or standing in a realm's
-// land, becomes a wanderer; no company carries a stranded hull's marker into the turn; a hero in a realm's service loses
-// his "(wandering)" tag, told at the turn's end (the set-up keeps the count); last turn's orders and scratch lists are gone;
-// every living hero of a realm notes the realm he serves. The merge: each realm that sent orders has them read, as text
-// or as an object, in the form of today or an older one; its heroes' order in its column kept (its own living heroes,
-// each once, in the order sent); its declarations (or the
+// (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms each holding only its seat with a
+// living king there (P1-08k5a's `stageCase`), every realm having met every other, each case with what must be true
+// after it in game terms. The repairs (the save's upgrade's since P1-15f2, run in resolveTurn before the stages:
+// whole-turn cases): a wandering hero wearing a beast's race is given a people's race; a neutral guard with no
+// companies, or standing in a realm's land, becomes a wanderer; no company carries a stranded hull's marker into the
+// turn; a hero in a realm's service loses his "(wandering)" tag, told at the turn's end (the set-up keeps the count);
+// last turn's orders and scratch lists are gone; every living hero of a realm notes the realm he serves. The merge:
+// each realm that sent orders has them read, as text or as an object, in the form of today or an older one; its heroes'
+// order in its column kept (its own living heroes, each once, in the order sent); its declarations (or the
 // Safe Start's refusal), research choices, Reckoning call, messages and concession taken for the stages that act on
 // them; orders sent for another turn refused, and told; the orders written for a hero it means to raise, hire or charm
 // held until that lands; a conceded realm's heroes made to hold; its encounter plans set (or held, for a hero not yet
@@ -25,10 +25,10 @@
 // the dice for the whole turn (default LANDS: every percentile roll lands, every other die at its highest). By default
 // every realm is a player's, sending every living hero of its own Resting, nothing else, for this turn, with Safe Start
 // over, and the turn is turn 1.
-import vm from 'node:vm';
-import { engineFn } from './engine.ts';
 import {
+  linesInWords,
   must,
+  withCaseDice,
   order,
   plan,
   type Board,
@@ -38,8 +38,8 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
-import { withCaseDice, type Dice } from './espionage-order-cases.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
+import type { Dice } from './espionage-order-cases.ts';
 import { at, realm, ring1, wanderer } from './cast-spell-order-cases.ts';
 import { LANDS } from './war-order-cases.ts';
 import { companies } from './item-and-army-order-cases.ts';
@@ -158,23 +158,20 @@ export const rowsOf = (b: Board, s: Staged) => {
 
 /** A turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3): a
  *  line that records a fact has its words there alone (P1-12d6: the orders' lines are facts). */
-const inWords = (engine: vm.Context, log: unknown): Line[] =>
-  (engineFn(engine, 'theTurnsLinesInWords') as (l: unknown) => { gmLog: Line[] })(log).gmLog;
+const inWords = linesInWords;
 
 // ── Playing a case ───────────────────────────────────────────────────────────────────────────────────────────────
 const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with the case's dice; the world as the first phase began is
- *  read when the turn starts its first phase (P1-08k1's stage, wrapped in the vm for the turn's length), and the
+ *  read when the turn starts its first phase (P1-08k1's stage, stood in for the turn's length), and the
  *  turn's record of orders from the reports built after it. */
 export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
-  const g: Raw = b.engine;
-  const was = g[FIRST_PHASE] as (tc: Raw, ph: number) => unknown;
   const seen: { first?: string } = {};
-  g[FIRST_PHASE] = (tc: Raw, ph: number) => {
+  const putBack = b.standInForTheEnginesFunction(FIRST_PHASE, (was) => (tc: Raw, ph: number) => {
     seen.first ??= JSON.stringify(tc['G']);
     return was(tc, ph);
-  };
-  const resolveTurn = engineFn(b.engine, 'resolveTurn') as (
+  });
+  const resolveTurn = b.theEnginesFunctionOrTable('resolveTurn') as (
     state: string,
     rows: unknown,
     turn: number,
@@ -184,15 +181,15 @@ export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
     spyStealthAndInvisibilityStampedForTheReports: () => void;
     whatTheReportsRead: () => unknown;
   };
-  const buildReports = engineFn(b.engine, 'buildReports') as (whatTheReportsRead: unknown) => {
+  const buildReports = b.theEnginesFunctionOrTable('buildReports') as (whatTheReportsRead: unknown) => {
     tel: { collected: { orders: Record<string, Raw> } };
   };
-  const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
+  const inVm = (j: string) => b.parsedInTheEnginesRealm(j);
   try {
     const turn = b.G.turn;
     const rows = rowsOf(b, s);
     const state = JSON.stringify(b.G);
-    const [result, record] = withCaseDice(b.engine, c.dice ?? LANDS, () => {
+    const [result, record] = withCaseDice(b, c.dice ?? LANDS, () => {
       const r = resolveTurn(state, inVm(rows), turn);
       r.spyStealthAndInvisibilityStampedForTheReports();
       return [
@@ -203,12 +200,12 @@ export const playCase = (b: Board, c: SetUpCase, s: Staged): Outcome => {
     return {
       world: JSON.parse(result.state) as World,
       first: JSON.parse(must(seen.first, 'the first phase')) as World,
-      all: inWords(b.engine, result.log),
+      all: inWords(b, result.log),
       turn,
       record,
     };
   } finally {
-    g[FIRST_PHASE] = was;
+    putBack();
   }
 };
 const SET_UP = 'turnStartRepairsAndAFreshSlateOfOrdersForEveryHero';
@@ -216,12 +213,11 @@ const MERGE = 'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlan
 /** Calls the two stages directly on `b`, staged as `s`: the context given the slot rows and the turn, as resolveTurn
  *  makes it (Safe Start as the case stages it), then the repairs, then the merge. */
 export const mergeCase = (b: Board, s: Staged): Merged => {
-  const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
   const tc = b.tc as unknown as Raw;
-  tc['freshPlayers'] = inVm(rowsOf(b, s));
+  tc['freshPlayers'] = b.parsedInTheEnginesRealm(rowsOf(b, s));
   tc['expectedTurnToRun'] = b.G.turn;
-  (engineFn(b.engine, SET_UP) as (t: Raw) => void)(tc);
-  (engineFn(b.engine, MERGE) as (t: Raw) => void)(tc);
+  (b.theEnginesFunctionOrTable(SET_UP) as (t: Raw) => void)(tc);
+  (b.theEnginesFunctionOrTable(MERGE) as (t: Raw) => void)(tc);
   return { G: b.G as World & Raw, tc, turn: b.G.turn };
 };
 
@@ -284,14 +280,13 @@ export const heirSkillsSetAside = (realmName: string, heirName: string, points: 
   `⚠ Set aside from ${realmName}'s orders: skills for its heir ${heirName} that are not his crowned skills plus at most ${String(points)} points (no more than 2 in one skill); he keeps his crowned skills.`;
 /** The game's Sage discovery `id`, as the data file has it. */
 export const discovery = (b: Board, id: string) =>
-  JSON.parse(vm.runInContext(`JSON.stringify(DISC_BY_ID[${JSON.stringify(id)}])`, b.engine) as string) as {
+  JSON.parse(JSON.stringify((b.theEnginesFunctionOrTable('DISC_BY_ID') as Record<string, unknown>)[id])) as {
     id: string;
     name: string;
     category: string;
   };
 /** The people's races a wanderer may be given, in the game's order. */
-export const races = (b: Board) =>
-  JSON.parse(vm.runInContext('JSON.stringify(RACES_P)', b.engine) as string) as string[];
+export const races = (b: Board) => JSON.parse(JSON.stringify(b.theEnginesFunctionOrTable('RACES_P'))) as string[];
 /** The race a wanderer wearing a beast's race is given: the people's race at his id, round the list. */
 export const raceFor = (b: Board, c: Character) => {
   const rs = races(b);
@@ -348,7 +343,7 @@ const REST = 'rest';
 const nameOf = (b: Board, pi: number) => realm(b, pi).name;
 /** A hero's province after the turn (or as the first phase began). */
 const whereIs = (w: World, c: Character) => charIn(w, c).location;
-/** What the merge left in a collector of the context, as JSON (a set, made in the vm, as a list). */
+/** What the merge left in a collector of the context, as JSON (a set, made in the engine's realm, as a list). */
 export const collected = (m: Merged, key: string) => {
   const v = m.tc[key];
   return Object.prototype.toString.call(v) === '[object Set]'

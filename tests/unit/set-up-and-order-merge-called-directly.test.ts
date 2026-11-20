@@ -44,7 +44,6 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   LANDS,
   SET_UP_CASES,
@@ -70,7 +69,7 @@ import { realm } from '../lib/cast-spell-order-cases.ts';
 import { ENCOUNTER_TACTICS, ENCOUNTER_VALID } from '../../src/ui/player/move-analysis.ts';
 import { NPC_SCHOOL_SPELL } from '../../src/engine/army-tables.ts';
 import { KC_MAGIC_SCHOOLS } from '../../src/content/kingdoms-call-data.ts';
-import { board, must, order, plan, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
+import { board, must, order, plan, withCaseDice, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

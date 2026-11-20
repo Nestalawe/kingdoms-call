@@ -1,15 +1,15 @@
 // The four stages of a phase (plan P1-08k1, the phase loop's stages lifted out of resolveTurn), staged on the middle of
-// a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each with what must be true after it in game terms.
-// The start of the phase: each season opens with its line; Herbal Lore dresses the wounds of last season's fight;
-// the marks of a season gone (a fight joined, a stalled battle fought, a hunt met) are cleared; a hero a save carries
-// as hired this season is told he waits. Intents and reactions: a column still in a battle left unresolved can't march
-// away, nor one that has fought again this season; a general whose province is invaded before he leaves is held; a
-// Defend given this season keeps watch from its start; a column ordered home to meet an invader arrives first, and
-// marches no further. The orders in two tiers: what doesn't move resolves before the Defend step, the Defend step
-// before any march, and a host raised in a watch is settled there; a hero on a chase does nothing else; a coward who
-// begged for mercy does nothing more; a fallen hero's orders go unanswered, told once. The end of the phase: a Move
-// next season ends a watch; a fallen commander's host is dispersed once its battle is over, and kept while it isn't.
-// scenario/phase-stages-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
+// a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each with what must
+// be true after it in game terms. The start of the phase: each season opens with its line; Herbal Lore dresses the
+// wounds of last season's fight; the marks of a season gone (a fight joined, a stalled battle fought, a hunt met) are
+// cleared; a hero a save carries as hired this season is told he waits. Intents and reactions: a column still in a
+// battle left unresolved can't march away, nor one that has fought again this season; a general whose province is
+// invaded before he leaves is held; a Defend given this season keeps watch from its start; a column ordered home to
+// meet an invader arrives first, and marches no further. The orders in two tiers: what doesn't move resolves before the
+// Defend step, the Defend step before any march, and a host raised in a watch is settled there; a hero on a chase does
+// nothing else; a coward who begged for mercy does nothing more; a fallen hero's orders go unanswered, told once. The
+// end of the phase: a Move next season ends a watch; a fallen commander's host is dispersed once its battle is over,
+// and kept while it isn't. scenario/phase-stages-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/phase-stages-called-directly.test.ts plays them through the four stages called one phase at a time. A case
 // stages its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`)
 // beside what must be so (`want`), and the test compares the two. Every outcome is certain: every case fixes the dice
@@ -18,6 +18,7 @@
 // peace (the board's relations).
 import {
   must,
+  withCaseDice,
   order,
   playTurn,
   type Board,
@@ -25,9 +26,9 @@ import {
   type Line,
   type Order,
   type Province,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies } from './item-and-army-order-cases.ts';
-import { withCaseDice, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
+import type { Dice, ExperienceRoll } from './espionage-order-cases.ts';
 import {
   anySays,
   at,
@@ -68,7 +69,7 @@ export const playCase = (
   recording: <T>(body: () => T) => { result: T; xp: ExperienceRoll[] },
 ): Outcome => {
   const { result, xp } = recording(() =>
-    withCaseDice(b.engine, c.dice ?? LANDS, () =>
+    withCaseDice(b, c.dice ?? LANDS, () =>
       playTurn(b, Object.fromEntries(s.orders.map(([h, os]) => [h.id, os])), s.written ?? {}),
     ),
   );

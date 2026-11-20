@@ -41,9 +41,7 @@ import {
   ESPIONAGE_ORDER_CASES,
   oldCloakOfManyFaces,
   oldCrystalOrb,
-  recordExperienceRolls,
   stageCase,
-  withCaseDice,
   type EspionageOrderCase,
 } from '../lib/espionage-order-cases.ts';
 import { companies, item, type Item } from '../lib/item-and-army-order-cases.ts';
@@ -52,6 +50,8 @@ import {
   hero,
   must,
   withDice,
+  recordExperienceRolls,
+  withCaseDice,
   type Board,
   type Character,
   type HeroSpec,

@@ -51,6 +51,9 @@
   makes them all plain). **`lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts`** is the same board on
   the engine's modules (P1-14m), with the same names and members: `loadTheEngineOnItsModules({ seed })` gives fresh
   modules, seeded as `loadEngine` seeds the `vm`, and its `botWorld` is the `vm`'s, byte for byte (`unit/engine-loads`).
+  **`lib/the-board-a-case-is-staged-on-either-way.ts`** is what both boards give a case: the types, `hero`, `playTurn`,
+  `withCaseDice`, and the members that reach the engine (the dice, a function or table by name, a stand-in, values made
+  in the engine's realm); the case files (`lib/*-cases.ts`) import it, not a board, so each serves either board.
 - **The engine's modules**: how a new test, or one moved off the loader,
   reaches the engine.
   - It **imports the functions it calls from their modules**, typed (`import { generateNewGame } from

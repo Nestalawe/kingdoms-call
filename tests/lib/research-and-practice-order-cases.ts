@@ -1,13 +1,13 @@
 // The research and practice orders' cases (plan P1-08j4): Research, Practice Skill, Rest and Research Breakthrough,
-// staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each with what must be true
-// after it in game terms. scenario/research-and-practice-orders-in-a-whole-turn.test.ts plays each through a whole
-// turn (resolveTurn); unit/research-and-practice-orders-called-directly.test.ts calls each order's own function on
-// them, one phase at a time. A case stages its world and the heroes' orders; after them, it reads what it needs from
-// the world and the log (`got`) beside what must be so (`want`), and the test compares the two. Every outcome is
-// certain: a case reads the chance a roll was made at, or checks that what the roll decided holds together (a
-// discovery and the line that tells it), never what the dice gave. A realm that knows every discovery of the hidden
-// fields (Heroic and Special) can't make an unlooked-for find, so its Research always reaches the ordinary roll.
-import vm from 'node:vm';
+// staged on the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain
+// realms, each with what must be true after it in game terms.
+// scenario/research-and-practice-orders-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
+// unit/research-and-practice-orders-called-directly.test.ts calls each order's own function on them, one phase at a
+// time. A case stages its world and the heroes' orders; after them, it reads what it needs from the world and the log
+// (`got`) beside what must be so (`want`), and the test compares the two. Every outcome is certain: a case reads the
+// chance a roll was made at, or checks that what the roll decided holds together (a discovery and the line that tells
+// it), never what the dice gave. A realm that knows every discovery of the hidden fields (Heroic and Special) can't
+// make an unlooked-for find, so its Research always reaches the ordinary roll.
 import {
   hero,
   must,
@@ -19,7 +19,7 @@ import {
   type Line,
   type Order,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 
 export interface Staged {
@@ -63,7 +63,7 @@ export interface Discovery {
 }
 /** Every discovery of the game's, as the engine holds them. */
 export const discoveries = (b: Board): Discovery[] =>
-  JSON.parse(vm.runInContext('JSON.stringify(SAGE_DISCOVERIES_P)', b.engine) as string) as Discovery[];
+  JSON.parse(JSON.stringify(b.theEnginesFunctionOrTable('SAGE_DISCOVERIES_P'))) as Discovery[];
 /** The fields a Research order can't name: they turn up only as an unlooked-for find. */
 export const HIDDEN_FIELDS = ['Heroic', 'Special'];
 /** What a realm of `alignment` and `race` may study (as discEligible has it). */

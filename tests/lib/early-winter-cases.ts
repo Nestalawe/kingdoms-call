@@ -1,22 +1,23 @@
 // Early Winter (plan P1-08k2, a stage of resolveTurn's phase loop lifted out): what the realms settle once the last
-// season's orders are done, staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each
-// with what must be true after it in game terms. A hero an enemy Charm seized goes home to his own lord, before anyone
-// pays him. Each realm is told its treasury and collects its taxes: each province's tax with its marks (an earthquake,
-// sabotage, a blessing, holy ground, enslavement, earthquake damage), the province-tax discoveries and the Free City
-// Charter, the heroes' tax gold, interest, Taxation Records, neutral trade, the Thief network and the minor titles. It
-// owes and pays its wages (every company in the field and in garrison, every hero but the king), after the discounts;
-// a realm that can't pay loses its rawest companies first, garrison or field alike, the dead last, a ship carrying
-// troops at sea kept, then its heroes may desert. Raiders' Muster draws a Goblin Horde to an orcish province an orc
-// realm won. Every unled garrison company may rise a grade.
-// scenario/early-winter-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
-// unit/early-winter-called-directly.test.ts calls the stage directly on the staged world. A case stages its world and
-// the heroes' orders; after them, it reads what it needs from the world and the log (`got`) beside what must be so
-// (`want`), and the test compares the two. Every outcome is certain: every case fixes the dice for the whole turn
-// (default LANDS: every percentile roll lands, every other die at its highest, so no garrison company rises and every
-// unpaid hero deserts), so the outcome holds however many dice the turn draws before it. Realm 0's lands are only the
-// provinces a case gives it (`holdsOnly`), so its taxes and wages are exactly the case's.
+// season's orders are done, staged on the middle of a bot world (either board:
+// lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each with what must be true after it in game
+// terms. A hero an enemy Charm seized goes home to his own lord, before anyone pays him. Each realm is told its
+// treasury and collects its taxes: each province's tax with its marks (an earthquake, sabotage, a blessing, holy
+// ground, enslavement, earthquake damage), the province-tax discoveries and the Free City Charter, the heroes' tax
+// gold, interest, Taxation Records, neutral trade, the Thief network and the minor titles. It owes and pays its wages
+// (every company in the field and in garrison, every hero but the king), after the discounts; a realm that can't pay
+// loses its rawest companies first, garrison or field alike, the dead last, a ship carrying troops at sea kept, then
+// its heroes may desert. Raiders' Muster draws a Goblin Horde to an orcish province an orc realm won. Every unled
+// garrison company may rise a grade. scenario/early-winter-in-a-whole-turn.test.ts plays each through a whole turn
+// (resolveTurn); unit/early-winter-called-directly.test.ts calls the stage directly on the staged world. A case stages
+// its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`) beside what
+// must be so (`want`), and the test compares the two. Every outcome is certain: every case fixes the dice for the whole
+// turn (default LANDS: every percentile roll lands, every other die at its highest, so no garrison company rises and
+// every unpaid hero deserts), so the outcome holds however many dice the turn draws before it. Realm 0's lands are only
+// the provinces a case gives it (`holdsOnly`), so its taxes and wages are exactly the case's.
 import {
   must,
+  withCaseDice,
   playTurn,
   type Board,
   type Character,
@@ -25,9 +26,9 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, skeletal } from './item-and-army-order-cases.ts';
-import { withCaseDice, type Dice } from './espionage-order-cases.ts';
+import type { Dice } from './espionage-order-cases.ts';
 import { at, holding, knows, leads, realm, ring1 } from './cast-spell-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 import { LANDS } from './war-order-cases.ts';
@@ -63,7 +64,7 @@ export interface EarlyWinterCase {
 
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with the case's dice. */
 export const playCase = (b: Board, c: EarlyWinterCase, s: Staged): Outcome => {
-  const result = withCaseDice(b.engine, c.dice ?? LANDS, () =>
+  const result = withCaseDice(b, c.dice ?? LANDS, () =>
     playTurn(b, Object.fromEntries(s.orders.map(([h, os]) => [h.id, os]))),
   );
   return { world: result.after, all: result.lines, turn: b.G.turn };

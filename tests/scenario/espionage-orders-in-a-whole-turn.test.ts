@@ -37,8 +37,8 @@
 // a later order finds, and the turn's end delivers parcels
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { ESPIONAGE_ORDER_CASES, recordExperienceRolls, stageCase, withCaseDice } from '../lib/espionage-order-cases.ts';
-import { board, playTurn } from '../lib/middle-of-a-bot-world.ts';
+import { ESPIONAGE_ORDER_CASES, stageCase } from '../lib/espionage-order-cases.ts';
+import { board, playTurn, recordExperienceRolls, withCaseDice } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

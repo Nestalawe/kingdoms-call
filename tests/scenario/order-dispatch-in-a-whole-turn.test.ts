@@ -38,9 +38,8 @@
 // turn
 import { describe, expect, test } from 'vitest';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
-import { ORDER_DISPATCH_CASES, asTheBotsPlan, playCase, stageCase } from '../lib/order-dispatch-cases.ts';
+import { board, recordExperienceRolls, asTheBotsPlan } from '../lib/middle-of-a-bot-world.ts';
+import { ORDER_DISPATCH_CASES, playCase, stageCase } from '../lib/order-dispatch-cases.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

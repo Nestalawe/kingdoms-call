@@ -1,14 +1,14 @@
 // The new turn, first part (plan P1-08k5a, a stage of resolveTurn's own body lifted out): once diplomacy and victory
 // are settled, the turn counter moves on and the new turn begins. Staged on the middle of a bot world
-// (lib/middle-of-a-bot-world.ts), from plain realms, each case with what must be true after it in game terms.
-// A Divine king awaiting his return loses it when his realm holds no consecrated ground. A realm whose king has fallen
-// crowns an heir in its wealthiest province, with the skills of its creed and his own to allocate, or, with no
-// province left, its dynasty ends; a Divine king still awaiting his return is not replaced. What was summoned for the
-// turn leaves (temporary companies on heroes, in garrisons and among the mercenaries; Wild Hunt bindings past their
-// last turn), a hero hired this turn acts from every phase, and the one-turn spell marks on heroes, companies and
-// provinces end: Illusory Terrain and hidden lairs may fade, Part Sea and Flood give the land back. Then the Grand
-// Designs: the Iron Throne's skeleton rises join their winners, and the Grand Library gives a Neutral realm one Sage
-// discovery.
+// (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each case with what must be true
+// after it in game terms. A Divine king awaiting his return loses it when his realm holds no consecrated ground. A
+// realm whose king has fallen crowns an heir in its wealthiest province, with the skills of its creed and his own to
+// allocate, or, with no province left, its dynasty ends; a Divine king still awaiting his return is not replaced. What
+// was summoned for the turn leaves (temporary companies on heroes, in garrisons and among the mercenaries; Wild Hunt
+// bindings past their last turn), a hero hired this turn acts from every phase, and the one-turn spell marks on heroes,
+// companies and provinces end: Illusory Terrain and hidden lairs may fade, Part Sea and Flood give the land back. Then
+// the Grand Designs: the Iron Throne's skeleton rises join their winners, and the Grand Library gives a Neutral realm
+// one Sage discovery.
 // scenario/new-turn-succession-and-summons-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/new-turn-succession-and-summons-called-directly.test.ts calls the stage directly on the staged world. A case
 // stages its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`)
@@ -16,9 +16,9 @@
 // for the whole turn (default LANDS: every percentile roll lands, every other die at its highest), so the outcome holds
 // however many dice the turn draws before it. By default each realm holds only its seat (tax 10) with a living king
 // there, realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace (the board's relations), and the turn is turn 1.
-import vm from 'node:vm';
 import {
   must,
+  withCaseDice,
   order,
   playTurn,
   type Board,
@@ -29,9 +29,9 @@ import {
   type RealmSends,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies } from './item-and-army-order-cases.ts';
-import { withCaseDice, type Dice } from './espionage-order-cases.ts';
+import type { Dice } from './espionage-order-cases.ts';
 import { at, knows, leads, realm, ring1, ring2, wanderer } from './cast-spell-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 import { holdsOnly, unit } from './early-winter-cases.ts';
@@ -76,7 +76,7 @@ export interface NewTurnCase {
 
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with the case's dice. */
 export const playCase = (b: Board, c: NewTurnCase, s: Staged): Outcome => {
-  const result = withCaseDice(b.engine, c.dice ?? LANDS, () =>
+  const result = withCaseDice(b, c.dice ?? LANDS, () =>
     playTurn(b, Object.fromEntries(s.orders.map(([h, os]) => [h.id, os])), {}, [], s.sends ?? {}),
   );
   return { world: result.after, all: result.lines, turn: b.G.turn };
@@ -161,7 +161,7 @@ export const bound = (name: string | undefined, until: number, type = 'Dire Wolv
   }) as Unit;
 /** The game's Sage discoveries, in their order. */
 export const sage = (b: Board) =>
-  JSON.parse(vm.runInContext('JSON.stringify(SAGE_DISCOVERIES_P)', b.engine) as string) as {
+  JSON.parse(JSON.stringify(b.theEnginesFunctionOrTable('SAGE_DISCOVERIES_P'))) as {
     id: string;
     name: string;
     category: string;
@@ -230,7 +230,7 @@ export const crownedAs = (
   maxHp: 15,
   skills,
   aptitude: Object.fromEntries(
-    (JSON.parse(vm.runInContext('JSON.stringify(KC_SKILLS)', b.engine) as string) as string[]).map((k) => [k, 4]),
+    (JSON.parse(JSON.stringify(b.theEnginesFunctionOrTable('KC_SKILLS'))) as string[]).map((k) => [k, 4]),
   ),
   armies: [],
   items: [],

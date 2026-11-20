@@ -3,82 +3,45 @@
 // (tests/lib/engine.ts) in one phase: the province at row 4, column 5 (X), its six neighbours (ring1) and theirs
 // (ring2) are open plain, unowned, with no garrison, guard or lair; nobody stands anywhere and nobody has orders.
 // Realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace. playTurn (plan P1-08j1) plays a whole turn from a board
-// as staged, for a scenario test (level 2) of an order.
+// as staged, for a scenario test (level 2) of an order. Its types, `hero`, `playTurn` and the members a case reaches
+// the engine through are tests/lib/the-board-a-case-is-staged-on-either-way.ts's, which the case files import instead.
 import vm from 'node:vm';
-import { engineFn, turnContext, type TurnContext } from './engine.ts';
+import { engineFn, turnContext } from './engine.ts';
+import {
+  must,
+  type AFunctionOfTheEngines,
+  type AFunctionOrTableOfTheEngines,
+  type Board as TheBoardACaseIsStagedOn,
+  type Dice,
+  type ExperienceRoll,
+  type Line,
+  type Order,
+  type Province,
+  type World,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 
-export interface Unit {
-  type: string;
-  quality: string;
-  race: string;
-  unitName: string;
-  _died?: boolean;
-  _disbanded?: boolean;
-  [key: string]: unknown;
-}
-export interface Province {
-  id: number;
-  row: number;
-  col: number;
-  name: string;
-  terrain: string;
-  owner: number | null;
-  characters: number[];
-  garrisonArmies: Unit[];
-  neutralDefenders: Unit[];
-  npcArmies: number;
-  visitedBy?: number[];
-  _battleUnresolved?: boolean;
-  _hadBattleThisTurn?: boolean;
-  _leaderlessDefenders?: boolean;
-  [key: string]: unknown;
-}
-export interface Character {
-  id: number;
-  name: string;
-  player: number | null;
-  isKing: boolean;
-  alive: boolean;
-  location: number;
-  armies: Unit[];
-  skills: Record<string, number>;
-  hp: number;
-  maxHp: number;
-  items: Record<string, unknown>[];
-  _pursuit?: { active: boolean; targetId: number; setPhase?: number };
-  _foughtStalledBattlePhase?: number;
-  _encounteredThisPhase?: number;
-  _isNeutralGuard?: boolean;
-  _leaderlessHost?: boolean;
-  _defend?: { active: boolean };
-  [key: string]: unknown;
-}
-export interface World {
-  turn: number;
-  relations: Record<string, string>;
-  players: { name: string; provinces: number[]; [key: string]: unknown }[];
-  characters: Character[];
-  mercenaries?: { type: string; quality: string; location: number; id: string; [key: string]: unknown }[];
-  turnOrders: Record<number, ({ action: string; target?: string } | null)[]>;
-  world: { cols: number; rows: number; provinces: Province[] };
-}
-export interface Line {
-  type: string;
-  text: string;
-  charId: number | null;
-  provinceId: number | null;
-  actor?: number | null;
-  targets?: number[];
-  /** The phase (0–4; 99 for the end of the turn), or null. */
-  phase?: number | null;
-  [key: string]: unknown;
-}
-
-const must = <T>(x: T | undefined | null, what: string): T => {
-  if (x == null) throw new Error('missing ' + what);
-  return x;
-};
-export { must };
+// The shared types and the functions that go through the board a case is handed: one home, both boards
+// (tests/lib/the-board-a-case-is-staged-on-either-way.ts).
+export {
+  allText,
+  hero,
+  linesOf,
+  must,
+  order,
+  plan,
+  playTurn,
+  points,
+  type Character,
+  type HeroSpec,
+  type Line,
+  type Order,
+  type PlayedTurn,
+  type Province,
+  type RealmSends,
+  type TurnContext,
+  type Unit,
+  type World,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 
 /** Runs `body` with the dice the engine draws pinned, in turn, to `dice` (each in [0, 1)); once they run out, the
  *  last one repeats. */
@@ -174,158 +137,79 @@ export function board(engine: vm.Context, world: string, ph: number) {
   // The turn's lines so far in words, as the views write them (theTurnsLinesInWords, P1-12c3).
   const inWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
   const lines = () => inWords(tc.turnLog).gmLog;
-  return { engine, tc, G, ph, X, ring1, ring2, near, nbrs, own, lines };
+  // What the board gives a case that reaches its engine (the-board-a-case-is-staged-on-either-way.ts): the vm's own
+  // names, and its realm's JSON, Sets and Maps.
+  const inTheVm = (code: string): unknown => vm.runInContext(code, engine);
+  const reach = {
+    withDice: <T>(dice: number[], body: () => T): T => withDice(engine, dice, body),
+    firstDie: <T>(first: number, body: () => T): T => firstDie(engine, first, body),
+    withRolls: <T>(roll: number, body: () => T): T => withRolls(engine, roll, body),
+    theEnginesFunctionOrTable: (name: AFunctionOrTableOfTheEngines): unknown => inTheVm(name),
+    standInForTheEnginesFunction: (
+      name: AFunctionOrTableOfTheEngines,
+      insteadOf: (was: AFunctionOfTheEngines) => (...args: never[]) => unknown,
+    ) => {
+      const was = engine[name] as AFunctionOfTheEngines;
+      engine[name] = insteadOf(was);
+      return () => {
+        engine[name] = was;
+      };
+    },
+    parsedInTheEnginesRealm: (json: string): unknown => (inTheVm('(j)=>JSON.parse(j)') as (j: string) => unknown)(json),
+    aSetMadeInTheEnginesRealm: (json: string): unknown =>
+      (inTheVm('(a)=>new Set(JSON.parse(a))') as (a: string) => unknown)(json),
+    aMapMadeInTheEnginesRealm: (json: string): unknown =>
+      (inTheVm('(a)=>new Map(JSON.parse(a))') as (a: string) => unknown)(json),
+  };
+  const b = { engine, tc, G, ph, X, ring1, ring2, near, nbrs, own, lines, ...reach };
+  return b satisfies TheBoardACaseIsStagedOn;
 }
 export type Board = ReturnType<typeof board>;
 
-export interface HeroSpec {
-  player: number | null;
-  at: Province;
-  /** Companies of `type` (default Men-at-Arms) of `quality` (default Regular). */
-  troops?: number;
-  type?: string;
-  quality?: string;
-  land?: number;
-  sea?: number;
-  king?: boolean;
-  skills?: Record<string, number>;
-  hp?: number;
-}
-let nextId = 9000;
-/** Stands a new hero of `player` in `at`, leading `troops` companies, with `land` and `sea` points of movement left. */
-export function hero(b: Board, s: HeroSpec): Character {
-  const id = ++nextId;
-  const type = s.type ?? 'Men-at-Arms';
-  const armies: Unit[] = Array.from({ length: s.troops ?? 0 }, (_, k) => ({
-    type,
-    quality: s.quality ?? 'Regular',
-    race: 'Human',
-    unitName: `${type} #${String(id)}.${String(k)}`,
-  }));
-  const c: Character = {
-    id,
-    name: `Hero ${String(id)}`,
-    isKing: !!s.king,
-    player: s.player,
-    race: 'Human',
-    alignment: 'Divine',
-    temper: 'Cautious',
-    hp: s.hp ?? 20,
-    maxHp: s.hp ?? 20,
-    skills: s.skills ?? { melee: 2, tactical: 2, march: 1, spy: 0 },
-    aptitude: {},
-    armies,
-    items: [],
-    location: s.at.id,
-    locationName: s.at.name,
-    alive: true,
-    merits: 0,
-    spellsUsedThisTurn: [],
+// ── What the tests that call the engine themselves hand the vm, until they leave it ─────────────────────────────────
+/** Runs `body` with the case's dice, if it fixes them (the-board-a-case-is-staged-on-either-way.ts' withCaseDice, on
+ *  the vm `engine` itself). */
+export const withCaseDice = <T>(engine: vm.Context, dice: Dice | undefined, body: () => T): T =>
+  dice ? withDice(engine, [dice.die], () => withRolls(engine, dice.roll, body)) : body();
+
+/** Records every experience roll the engine starts, by wrapping the top-level trySkillGain (plan P1-08c), into the
+ *  list `recordExperienceRolls` hands back for the length of `body`. Wrap once per engine. */
+export const recordExperienceRolls = (engine: vm.Context) => {
+  vm.runInContext(
+    `{ const tryOne=trySkillGain;
+       trySkillGain=function(turnContext, char, skill, base){
+         if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base});
+         return tryOne.apply(this, arguments); }; }`,
+    engine,
+  );
+  return <T>(body: () => T): { result: T; xp: ExperienceRoll[] } => {
+    const xp: ExperienceRoll[] = [];
+    engine['__xp'] = xp;
+    try {
+      return { result: body(), xp };
+    } finally {
+      engine['__xp'] = undefined;
+    }
   };
-  b.G.characters.push(c);
-  s.at.characters.push(id);
-  const pools = b.tc as unknown as Record<string, Record<number, unknown>>;
-  must(pools['movePoints'], 'movePoints')[id] = s.land ?? 1;
-  must(pools['seaMovePoints'], 'seaMovePoints')[id] = s.sea ?? 0;
-  must(pools['seaMoveActive'], 'seaMoveActive')[id] = false;
-  must(pools['seaCap'], 'seaCap')[id] = 'land';
-  return c;
-}
-/** One phase's order, as a realm sends it. */
-export interface Order {
-  action: string;
-  target: string;
-  extra: string;
-  desc: string;
-}
-/** An order: `order('move', 12)`. */
-export const order = (action: string, target: string | number = '', extra: string | number = ''): Order => ({
-  action,
-  target: String(target),
-  extra: String(extra),
-  desc: '',
-});
-/** Five orders: the given ones first, then Rest. */
-export const plan = (...orders: Order[]): Order[] => [
-  ...orders.slice(0, 5),
-  ...Array.from({ length: Math.max(0, 5 - orders.length) }, () => order('rest')),
-];
-/** What a realm sends with its orders beside them: its declarations (realm index → 'treat' or 'enemy'), a call for
- *  the Reckoning, a concession. */
-export interface RealmSends {
-  diplomacy?: Record<number, 'treat' | 'enemy'>;
-  callReckoning?: boolean;
-  concede?: boolean;
-}
-export interface PlayedTurn {
-  /** The world after the turn, as saved. */
-  after: World;
-  /** The GM's log of the turn, in words (as the views write it: theTurnsLinesInWords, P1-12c3). */
-  lines: Line[];
-}
-/** Plays one whole turn (resolveTurn) from the board as staged (plan P1-08j1): every realm human-held, each hero given
- *  orders here doing them, every other hero Resting, safe start over. The turn works out its own move points; the
- *  board's context isn't used. `written` adds orders a realm sends under a key of its own (plan P1-08j3: the orders
- *  written for a hero it means to hire, `hired_<hero>_via_<hirer>_ph<phase>`), by realm. The realms in `bots` are
- *  bot realms (plan P1-08j9: a slot row with no player and `isBot` in its report), which plan their own orders in the
- *  turn. `sends` gives what a realm sends with its orders beside them (plan P1-08k4: its declarations toward other
- *  realms, a call for the Reckoning, a concession), by realm; by default nothing. */
-export function playTurn(
-  b: Board,
-  orders: Record<number, Order[]>,
-  written: Record<number, Record<string, Order[]>> = {},
-  bots: number[] = [],
-  sends: Record<number, RealmSends> = {},
-): PlayedTurn {
-  const G = b.G as World & { safeStart?: boolean };
-  G.safeStart = false;
-  const rows = G.players.map((_, i) => ({
-    id: 'G1gp' + String(i),
-    game_id: 'G1',
-    user_id: bots.includes(i) ? null : 'u' + String(i),
-    player_index: i,
-    display_name: 'Realm ' + String(i),
-    orders_submitted: true,
-    orders: JSON.stringify({
-      orders: {
-        ...Object.fromEntries(
-          G.characters.filter((c) => c.alive && c.player === i).map((c) => [c.id, orders[c.id] ?? plan()]),
-        ),
-        ...written[i],
-      },
-      encounterPlans: {},
-      kingSkills: {},
-      diplomacy: sends[i]?.diplomacy ?? {},
-      discoveryChoices: {},
-      callReckoning: sends[i]?.callReckoning ?? false,
-      concede: sends[i]?.concede ?? false,
-      messages: [],
-      heroOrder: [],
-      forTurn: G.turn,
-    }),
-    turn_report: bots.includes(i) ? '{"isBot":true}' : '{}',
-  }));
-  const resolveTurn = engineFn(b.engine, 'resolveTurn') as (
-    state: string,
-    rows: unknown,
-    turn: number,
-  ) => { state: string; log: Line[] };
-  const inWords = engineFn(b.engine, 'theTurnsLinesInWords') as (log: Line[]) => { gmLog: Line[] };
-  const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
-  const resolved = resolveTurn(JSON.stringify(G), inVm(JSON.stringify(rows)), G.turn);
-  return { after: JSON.parse(resolved.state) as World, lines: inWords(resolved.log).gmLog };
-}
-/** A hero's points of movement left. */
-export const points = (b: Board, c: Character) => {
-  const pools = b.tc as unknown as Record<string, Record<number, number>>;
-  return { land: pools['movePoints']?.[c.id] ?? 0, sea: pools['seaMovePoints']?.[c.id] ?? 0 };
 };
-/** A hero's own lines in the log. */
-export const linesOf = (b: Board, c: Character) => b.lines().filter((l) => l.charId === c.id);
-/** Every line of the log, as one string, for matching. */
-export const allText = (b: Board) =>
-  b
-    .lines()
-    .map((l) => l.text)
-    .join('\n');
-export type { TurnContext };
+
+/** Writes the orders `writes` gives (by hero) into the turn after the bots have planned theirs, by wrapping the
+ *  top-level runBotOrderHygiene (the bots' last pass) in the vm, for the length of a body. Wrap once per engine. */
+export const asTheBotsPlan = (engine: vm.Context) => {
+  vm.runInContext(
+    `{ const lastPass=runBotOrderHygiene;
+       runBotOrderHygiene=function(G, botIdxSet){
+         const r=lastPass.apply(this, arguments); const w=globalThis.__botWrites;
+         if(w) Object.keys(w).forEach(id=>{ G.turnOrders[id]=JSON.parse(JSON.stringify(w[id])); });
+         return r; }; }`,
+    engine,
+  );
+  return <T>(writes: Record<number, Order[]> | undefined, body: () => T): T => {
+    engine['__botWrites'] = writes;
+    try {
+      return body();
+    } finally {
+      engine['__botWrites'] = undefined;
+    }
+  };
+};

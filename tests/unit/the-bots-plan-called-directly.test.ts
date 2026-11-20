@@ -52,7 +52,6 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   BOTS_PLAN_CASES,
   FORECAST,
@@ -70,7 +69,14 @@ import {
   type Staged,
 } from '../lib/the-bots-plan-cases.ts';
 import { STAGES, rows } from '../lib/before-the-first-phase-cases.ts';
-import { board, hero as standAHero, must, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  hero as standAHero,
+  must,
+  withCaseDice,
+  type Board,
+  type Character,
+} from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

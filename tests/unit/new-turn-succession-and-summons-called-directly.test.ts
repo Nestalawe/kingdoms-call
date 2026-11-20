@@ -35,7 +35,6 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   CHARM_MARKS,
   COMPANY_MARKS,
@@ -73,6 +72,7 @@ import {
   board,
   must,
   withDice,
+  withCaseDice,
   type Board,
   type Character,
   type Province,

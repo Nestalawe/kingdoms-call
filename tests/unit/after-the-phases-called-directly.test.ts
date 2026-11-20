@@ -32,7 +32,6 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   AFTER_THE_PHASES_CASES,
   LANDS,
@@ -53,7 +52,15 @@ import {
   type AfterThePhasesCase,
   type Outcome,
 } from '../lib/after-the-phases-cases.ts';
-import { board, must, type Board, type Character, type Province, type Unit } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  must,
+  withCaseDice,
+  type Board,
+  type Character,
+  type Province,
+  type Unit,
+} from '../lib/middle-of-a-bot-world.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { at, leads, rival, wanderer } from '../lib/cast-spell-order-cases.ts';
 import { companies, item, skeletal } from '../lib/item-and-army-order-cases.ts';

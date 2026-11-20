@@ -1,13 +1,12 @@
 // The explore and search orders' cases (plan P1-08j2): Explore, Perform Rite, Hunting Rumours, Search Lair, Chart the
 // Unknown (Explorer 7) and Discover Lost Ruin (Explorer 9), staged on the middle of a bot world
-// (lib/middle-of-a-bot-world.ts), each with what must be true after it in game terms.
+// (either board: lib/the-board-a-case-is-staged-on-either-way.ts), each with what must be true after it in game terms.
 // scenario/explore-and-search-orders-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/explore-and-search-orders-called-directly.test.ts calls each order's own function on them, one phase at a time.
 // A case stages its world and the hero's five orders; after them, it reads what it needs from the world and the log
 // (`got`) beside what must be so (`want`), and the test compares the two. Every outcome is certain: no case leans on
 // the dice (a hero who fights a guardian is overwhelming, or overwhelmed; an Explore's share is fixed by the terrain and
 // the hero's Explorer skill, and only one Explore is played, so a skill rise from it can't change the next).
-import vm from 'node:vm';
 import {
   hero,
   must,
@@ -20,7 +19,7 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import type { ExperienceRoll } from './espionage-order-cases.ts';
 
 export interface Staged {
@@ -131,9 +130,11 @@ export const ritualSite = (name = 'Circle of Test Stones'): Feature => ({
 });
 /** A real magic item of the game's (or the Mithril Armour), by name, as a hoard holds it. */
 export const magicItem = (b: Board, name: string): Record<string, unknown> => {
-  const json = vm.runInContext(
-    `JSON.stringify([...ALL_MAGIC_ITEMS_P, MITHRIL_ARMOUR].find(i=>i.name===${JSON.stringify(name)}))`,
-    b.engine,
+  const json = JSON.stringify(
+    [
+      ...(b.theEnginesFunctionOrTable('ALL_MAGIC_ITEMS_P') as { name: string }[]),
+      b.theEnginesFunctionOrTable('MITHRIL_ARMOUR') as { name: string },
+    ].find((i) => i.name === name),
   ) as string | undefined;
   return { ...(JSON.parse(must(json, 'the item ' + name)) as Record<string, unknown>), id: 7000 };
 };

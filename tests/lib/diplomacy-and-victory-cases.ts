@@ -1,11 +1,11 @@
 // Diplomacy resolution and victory (plan P1-08k4, two stages of resolveTurn's own body lifted out): what the turn
 // settles once its seasons are over and the bots have spoken, staged on the middle of a bot world
-// (lib/middle-of-a-bot-world.ts), from plain realms, each with what must be true after it in game terms.
-// Diplomacy: the declarations the realms sent with this turn's orders take effect. A realm offered a Treat is told of the
-// overture, and has met the realm that sent it; a mutual Treat makes peace between enemies, or an alliance between
-// realms at peace (never in a game of three realms or fewer); any declaration of war makes both realms enemies, but
-// breaking an alliance leaves them at peace; an overture not answered in kind changes nothing, and its sender is told
-// so; a new war warns both realms of every host standing on the foe's ground, or beside his host.
+// (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each with what must be true after
+// it in game terms. Diplomacy: the declarations the realms sent with this turn's orders take effect. A realm offered a
+// Treat is told of the overture, and has met the realm that sent it; a mutual Treat makes peace between enemies, or an
+// alliance between realms at peace (never in a game of three realms or fewer); any declaration of war makes both realms
+// enemies, but breaking an alliance leaves them at peace; an overture not answered in kind changes nothing, and its
+// sender is told so; a new war warns both realms of every host standing on the foe's ground, or beside his host.
 // Victory: a king may call the Reckoning from turn 10 if his bloc holds the bar (raised by every ally) and his own realm
 // half of it; a claim stands for two turns, then the world is judged, unless the bloc falls below the bar or the
 // claimant below half of it; while no claim stands the bar erodes from turn 15, to a floor. The game also ends when
@@ -21,6 +21,7 @@
 // world is exactly what the case gives it.
 import {
   must,
+  withCaseDice,
   order,
   playTurn,
   type Board,
@@ -30,9 +31,9 @@ import {
   type Province,
   type RealmSends,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies } from './item-and-army-order-cases.ts';
-import { withCaseDice, type Dice } from './espionage-order-cases.ts';
+import type { Dice } from './espionage-order-cases.ts';
 import { at, leads, realm } from './cast-spell-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 import { holdsOnly } from './early-winter-cases.ts';
@@ -74,7 +75,7 @@ export interface DiplomacyAndVictoryCase {
 
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with the case's dice. */
 export const playCase = (b: Board, c: DiplomacyAndVictoryCase, s: Staged): Outcome => {
-  const result = withCaseDice(b.engine, c.dice ?? LANDS, () =>
+  const result = withCaseDice(b, c.dice ?? LANDS, () =>
     playTurn(b, Object.fromEntries(s.orders.map(([h, os]) => [h.id, os])), {}, [], s.sends),
   );
   return { world: result.after, all: result.lines, turn: b.G.turn };

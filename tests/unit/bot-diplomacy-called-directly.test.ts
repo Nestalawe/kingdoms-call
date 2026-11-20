@@ -32,7 +32,6 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   BOT_DIPLOMACY,
   BOT_DIPLOMACY_CASES,
@@ -56,7 +55,7 @@ import {
   type Staged,
 } from '../lib/bot-diplomacy-cases.ts';
 import { rows } from '../lib/before-the-first-phase-cases.ts';
-import { board, must, type Board } from '../lib/middle-of-a-bot-world.ts';
+import { board, must, withCaseDice, type Board } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

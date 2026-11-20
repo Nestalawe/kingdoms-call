@@ -41,7 +41,6 @@ import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
 import {
   BEFORE_CASES,
   LANDS,
@@ -66,7 +65,8 @@ import {
   type Staged,
 } from '../lib/before-the-first-phase-cases.ts';
 import { dispatch, ordersOf, sentTo } from '../lib/set-up-and-order-merge-cases.ts';
-import { board, must, order, type Board, type Character, type Line } from '../lib/middle-of-a-bot-world.ts';
+import { board, must, order, withCaseDice, type Character, type Line } from '../lib/middle-of-a-bot-world.ts';
+import type { Board } from '../lib/the-board-a-case-is-staged-on-either-way.ts';
 import { relate, unmet } from '../lib/diplomacy-and-victory-cases.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });

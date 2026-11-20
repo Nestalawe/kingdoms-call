@@ -40,8 +40,7 @@
 import { describe, expect, test } from 'vitest';
 import { CAST_SPELL_ORDER_CASES, LANDS, stageCase } from '../lib/cast-spell-order-cases.ts';
 import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls, withCaseDice } from '../lib/espionage-order-cases.ts';
-import { board, playTurn } from '../lib/middle-of-a-bot-world.ts';
+import { board, playTurn, recordExperienceRolls, withCaseDice } from '../lib/middle-of-a-bot-world.ts';
 
 const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);

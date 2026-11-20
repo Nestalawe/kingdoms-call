@@ -1,23 +1,23 @@
 // The checks processOrder makes before any hero's order (plan P1-08j9, processOrder lifted out of resolveTurn), staged
-// on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each with what must be true after it
-// in game terms: a hero who joined another's assault has his own order superseded; the order's name is read as the
-// order form or an old save writes it, and an unknown one is a Defend; a bot's Practice on a skill already at 5
-// switches skill, and a bot's Search too hurt, on talk not heard, or out of the province it was written for becomes a
-// Rest; a Move or an Encounter out of an unresolved battle is refused; a charmed enemy hero won't disband, perform the
-// rites or spend a mastery; a mastery is charged once a turn; a Forced March is a Move that may slip past a battle; a
-// spell item's Use Item is a cast. scenario/order-dispatch-in-a-whole-turn.test.ts plays each through a whole turn
-// (resolveTurn); unit/order-dispatch-called-directly.test.ts calls processOrder on them, one phase at a time. A case
-// stages its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`) beside
-// what must be so (`want`), and the test compares the two.
+// on the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each
+// with what must be true after it in game terms: a hero who joined another's assault has his own order superseded; the
+// order's name is read as the order form or an old save writes it, and an unknown one is a Defend; a bot's Practice on
+// a skill already at 5 switches skill, and a bot's Search too hurt, on talk not heard, or out of the province it was
+// written for becomes a Rest; a Move or an Encounter out of an unresolved battle is refused; a charmed enemy hero won't
+// disband, perform the rites or spend a mastery; a mastery is charged once a turn; a Forced March is a Move that may
+// slip past a battle; a spell item's Use Item is a cast. scenario/order-dispatch-in-a-whole-turn.test.ts plays each
+// through a whole turn (resolveTurn); unit/order-dispatch-called-directly.test.ts calls processOrder on them, one phase
+// at a time. A case stages its world and the heroes' orders; after them, it reads what it needs from the world and the
+// log (`got`) beside what must be so (`want`), and the test compares the two.
 // A case with `bots` makes those realms bots: the orders it gives their heroes are the bots' own, written in after the
 // bots have planned (`asTheBotsPlan`), as a bot's planner writes them (`_botMinHp`, `_botIfRumour`, `prov`). Every
 // outcome is certain: every case fixes the dice for the whole turn (default LANDS), every percentile roll at one number
 // and every other die at one value, so the outcome holds however many dice the turn draws before the order. Realms 0
 // and 1 are at war, 0 and 2 allied, 1 and 2 at peace (the board's relations).
-import vm from 'node:vm';
 import {
   hero,
   must,
+  withCaseDice,
   order,
   playTurn,
   type Board,
@@ -25,9 +25,9 @@ import {
   type Line,
   type Order,
   type Province,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, type Item } from './item-and-army-order-cases.ts';
-import { withCaseDice, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
+import type { Dice, ExperienceRoll } from './espionage-order-cases.ts';
 import {
   at,
   char,
@@ -62,41 +62,21 @@ export interface OrderDispatchCase {
 /** Every roll lands; every other die at its lowest (a skill rises at every lesson, a Forced March slips past). */
 export const LUCKY: Dice = { roll: 1, die: 0 };
 
-/** Writes the orders `writes` gives (by hero) into the turn after the bots have planned theirs, by wrapping the
- *  top-level runBotOrderHygiene (the bots' last pass) in the vm, for the length of a body. Wrap once per engine. */
-export const asTheBotsPlan = (engine: vm.Context) => {
-  vm.runInContext(
-    `{ const lastPass=runBotOrderHygiene;
-       runBotOrderHygiene=function(G, botIdxSet){
-         const r=lastPass.apply(this, arguments); const w=globalThis.__botWrites;
-         if(w) Object.keys(w).forEach(id=>{ G.turnOrders[id]=JSON.parse(JSON.stringify(w[id])); });
-         return r; }; }`,
-    engine,
-  );
-  return <T>(writes: Record<number, Order[]> | undefined, body: () => T): T => {
-    engine['__botWrites'] = writes;
-    try {
-      return body();
-    } finally {
-      engine['__botWrites'] = undefined;
-    }
-  };
-};
-
 /** Plays `c`, staged as `s` on `b`, through a whole turn: the bots' heroes' orders written in as theirs, every other
- *  hero's sent by his realm, with the case's dice. `recording` records the experience rolls (recordExperienceRolls). */
+ *  hero's sent by his realm, with the case's dice. `bots` writes the bots' heroes' orders in as the bots plan
+ *  (asTheBotsPlan); `recording` records the experience rolls (recordExperienceRolls): both the board's. */
 export const playCase = (
   b: Board,
   c: OrderDispatchCase,
   s: Staged,
-  bots: ReturnType<typeof asTheBotsPlan>,
+  bots: <T>(writes: Record<number, Order[]> | undefined, body: () => T) => T,
   recording: <T>(body: () => T) => { result: T; xp: ExperienceRoll[] },
 ): Outcome => {
   const isBot = (h: Character) => h.player != null && (c.bots ?? []).includes(h.player);
   const theirs = Object.fromEntries(s.orders.filter(([h]) => isBot(h)).map(([h, os]) => [h.id, os]));
   const sent = Object.fromEntries(s.orders.filter(([h]) => !isBot(h)).map(([h, os]) => [h.id, os]));
   const { result, xp } = recording(() =>
-    withCaseDice(b.engine, c.dice ?? LANDS, () => bots(theirs, () => playTurn(b, sent, s.written ?? {}, c.bots ?? []))),
+    withCaseDice(b, c.dice ?? LANDS, () => bots(theirs, () => playTurn(b, sent, s.written ?? {}, c.bots ?? []))),
   );
   return {
     world: result.after,

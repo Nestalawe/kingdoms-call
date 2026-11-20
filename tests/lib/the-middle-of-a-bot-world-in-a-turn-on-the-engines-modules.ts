@@ -22,84 +22,47 @@
 // vi.spyOn) is the same fresh one the board and the turn use. withDice and firstDie pin the modules' kcRng; withRolls
 // fixes the modules' d100 (and pctRoll, which calls d100 inside its own file, where a stand-in doesn't reach).
 //
+// The types, `hero`, `playTurn` and the members a case reaches the engine through are
+// tests/lib/the-board-a-case-is-staged-on-either-way.ts's (the case files import that file). On the modules a name is
+// the export of the one module that defines it (`theModuleThatDefines`), and a stand-in is vi.spyOn on that module,
+// which reaches the calls from other files only (docs/traps.md).
+//
 // tests/lib/the-middle-of-a-bot-world-on-the-engines-modules.ts (aBotBoard) is the bots' board: no turn's context, a
 // world made on each call, and its own types; this file is the turn's board the vm board's users move to.
 import { vi } from 'vitest';
-import type { TheGamesSlotRow } from '../../src/engine/turn/context.ts';
-import { addTheFieldsResolveTurnAdds, type TurnContext } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
+import { addTheFieldsResolveTurnAdds } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
+import {
+  must,
+  type AFunctionOfTheEngines,
+  type AFunctionOrTableOfTheEngines,
+  type Board as TheBoardACaseIsStagedOn,
+  type Line,
+  type Province,
+  type World,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 
-export interface Unit {
-  type: string;
-  quality: string;
-  race: string;
-  unitName: string;
-  _died?: boolean;
-  _disbanded?: boolean;
-  [key: string]: unknown;
-}
-export interface Province {
-  id: number;
-  row: number;
-  col: number;
-  name: string;
-  terrain: string;
-  owner: number | null;
-  characters: number[];
-  garrisonArmies: Unit[];
-  neutralDefenders: Unit[];
-  npcArmies: number;
-  visitedBy?: number[];
-  _battleUnresolved?: boolean;
-  _hadBattleThisTurn?: boolean;
-  _leaderlessDefenders?: boolean;
-  [key: string]: unknown;
-}
-export interface Character {
-  id: number;
-  name: string;
-  player: number | null;
-  isKing: boolean;
-  alive: boolean;
-  location: number;
-  armies: Unit[];
-  skills: Record<string, number>;
-  hp: number;
-  maxHp: number;
-  items: Record<string, unknown>[];
-  _pursuit?: { active: boolean; targetId: number; setPhase?: number };
-  _foughtStalledBattlePhase?: number;
-  _encounteredThisPhase?: number;
-  _isNeutralGuard?: boolean;
-  _leaderlessHost?: boolean;
-  _defend?: { active: boolean };
-  [key: string]: unknown;
-}
-export interface World {
-  turn: number;
-  relations: Record<string, string>;
-  players: { name: string; provinces: number[]; [key: string]: unknown }[];
-  characters: Character[];
-  mercenaries?: { type: string; quality: string; location: number; id: string; [key: string]: unknown }[];
-  turnOrders: Record<number, ({ action: string; target?: string } | null)[]>;
-  world: { cols: number; rows: number; provinces: Province[] };
-}
-export interface Line {
-  type: string;
-  text: string;
-  charId: number | null;
-  provinceId: number | null;
-  actor?: number | null;
-  targets?: number[];
-  /** The phase (0–4; 99 for the end of the turn), or null. */
-  phase?: number | null;
-  [key: string]: unknown;
-}
-
-const must = <T>(x: T | undefined | null, what: string): T => {
-  if (x == null) throw new Error('missing ' + what);
-  return x;
-};
-export { must };
+// The shared types and the functions that go through the board a case is handed: one home, both boards
+// (tests/lib/the-board-a-case-is-staged-on-either-way.ts).
+export {
+  allText,
+  hero,
+  linesOf,
+  must,
+  order,
+  plan,
+  playTurn,
+  points,
+  type Character,
+  type HeroSpec,
+  type Line,
+  type Order,
+  type PlayedTurn,
+  type Province,
+  type RealmSends,
+  type TurnContext,
+  type Unit,
+  type World,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 
 /** The engine's modules, fresh, with the dice seeded `seed`: lib/engine.ts's loadEngine({ seed }), on the modules. It
  *  holds what the board, the dice and the turn call; a test imports the rest after it (`await import(…)`). */
@@ -115,6 +78,7 @@ export async function loadTheEngineOnItsModules({ seed }: { seed: number }) {
   const { createTurnContext } = await import('../../src/engine/turn/context.ts');
   const { resolveTurn } = await import('../../src/engine/run-turn.ts');
   const { theTurnsLinesInWords } = await import('../../src/views/prose/the-words-of-each-line.ts');
+  const theModuleThatDefines = await theModulesThatDefineWhatACaseReads();
   kcRng.seed(seed);
   return {
     /** The console the modules log to (emit echoes each line of the GM's log there): this process's, as the vm's was. */
@@ -129,9 +93,97 @@ export async function loadTheEngineOnItsModules({ seed }: { seed: number }) {
     createTurnContext,
     resolveTurn,
     theTurnsLinesInWords,
+    theModuleThatDefines,
   };
 }
 export type TheEngineOnItsModules = Awaited<ReturnType<typeof loadTheEngineOnItsModules>>;
+
+/** The module of the engine's that defines each function and table a case reads by name (after the whole engine, so
+ *  the fresh one the turn uses). */
+async function theModulesThatDefineWhatACaseReads() {
+  const data = await import('../../src/content/kingdoms-call-data.ts');
+  const theTurn = await import('../../src/engine/run-turn.ts');
+  const theReports = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
+  const theWords = await import('../../src/views/prose/the-words-of-each-line.ts');
+  const setUp =
+    await import('../../src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts');
+  const beforeTheFirstPhase =
+    await import('../../src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts');
+  const phaseStages =
+    await import('../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts');
+  const afterThePhases =
+    await import('../../src/engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.ts');
+  const diplomacyAndVictory =
+    await import('../../src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts');
+  const botDiplomacy =
+    await import('../../src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts');
+  const botWar = await import('../../src/engine/bots/war.ts');
+  const botIntel = await import('../../src/engine/bots/intel.ts');
+  const botsPlan =
+    await import('../../src/engine/bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.ts');
+  const botMissions = await import('../../src/engine/bots/missions.ts');
+  const botMovement = await import('../../src/engine/bots/movement.ts');
+  const botPhaseOne = await import('../../src/engine/bots/phase-one.ts');
+  const botEconomy = await import('../../src/engine/bots/economy.ts');
+  const botSpellcraft = await import('../../src/engine/bots/spellcraft.ts');
+  const reckoning = await import('../../src/engine/titles/reckoning.ts');
+  const personalCombat = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
+  const terrain = await import('../../src/engine/battle/terrain-and-unit-strength.ts');
+  const baseStrength = await import('../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts');
+  const flyOrSail =
+    await import('../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts');
+  const fame = await import('../../src/engine/heroes/fame-and-consecration.ts');
+  const discoveries = await import('../../src/engine/rules/the-registry-of-discovery-effects.ts');
+  const worldTables = await import('../../src/engine/world/tables.ts');
+  const armyTables = await import('../../src/engine/army-tables.ts');
+  return {
+    resolveTurn: theTurn,
+    buildReports: theReports,
+    theTurnsLinesInWords: theWords,
+    turnStartRepairsAndAFreshSlateOfOrdersForEveryHero: setUp,
+    mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans: setUp,
+    relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks: beforeTheFirstPhase,
+    warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages: beforeTheFirstPhase,
+    movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan: beforeTheFirstPhase,
+    missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart: beforeTheFirstPhase,
+    startPhaseHealingSnapshotsAndStalledBattles: phaseStages,
+    afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames: afterThePhases,
+    diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings: diplomacyAndVictory,
+    victoryTheReckoningEliminationConcessionAndTheAnnouncement: diplomacyAndVictory,
+    botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim: botDiplomacy,
+    botWarAssess: botWar,
+    botOwnPower: botWar,
+    botRivalPower: botWar,
+    botAlignFriendly: botIntel,
+    botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning: botsPlan,
+    runBotConcessions: botMissions,
+    runBotMovement: botMovement,
+    runBotPhaseOne: botPhaseOne,
+    runBotEconomy: botEconomy,
+    runBotActions: botSpellcraft,
+    runBotOrderHygiene: botEconomy,
+    runBotReckoning: reckoning,
+    botResearchPick: botMissions,
+    resolvePersonalCombat: personalCombat,
+    terrainMod: terrain,
+    seaPenalty: terrain,
+    unitBaseStrength: baseStrength,
+    ALL_MAGIC_ITEMS_P: data,
+    LEGENDARY_ITEMS_P: data,
+    MITHRIL_ARMOUR: fame,
+    SAGE_DISCOVERIES_P: data,
+    DISC_BY_ID: discoveries,
+    KC_SKILLS: data,
+    KC_SEASONS: data,
+    RACES_P: worldTables,
+    TERRAIN_MODS: terrain,
+    SEA_TYPES: flyOrSail,
+    AERIAL_TYPES: flyOrSail,
+    TITLE_DEFS: data,
+    MINOR_TITLES: reckoning,
+    SKILL_LABELS: armyTables,
+  } satisfies { [Name in AFunctionOrTableOfTheEngines]: Record<Name, unknown> };
+}
 
 /** A new world of bot realms, made by the engine itself, as JSON: lib/engine.ts's botWorld, on the modules. `realms`
  *  bot setups (generateBotSetups), on a map of `size`, with the world options `opts` (e.g. `{ seaPct: 45 }`). */
@@ -263,154 +315,31 @@ export function board(engine: TheEngineOnItsModules, world: string, ph: number) 
   // The turn's lines so far in words, as the views write them (theTurnsLinesInWords, P1-12c3).
   const inWords = engine.theTurnsLinesInWords as unknown as (log: unknown) => { gmLog: Line[] };
   const lines = () => inWords(tc.turnLog).gmLog;
-  return { engine, tc, G, ph, X, ring1, ring2, near, nbrs, own, lines };
+  // What the board gives a case that reaches its engine (the-board-a-case-is-staged-on-either-way.ts): each name's
+  // export from the module that defines it, and this realm's JSON, Sets and Maps.
+  const theModuleOf = (name: AFunctionOrTableOfTheEngines) =>
+    engine.theModuleThatDefines[name] as unknown as Record<string, AFunctionOfTheEngines>;
+  const reach = {
+    withDice: <T>(dice: number[], body: () => T): T => withDice(engine, dice, body),
+    firstDie: <T>(first: number, body: () => T): T => firstDie(engine, first, body),
+    withRolls: <T>(roll: number, body: () => T): T => withRolls(engine, roll, body),
+    theEnginesFunctionOrTable: (name: AFunctionOrTableOfTheEngines): unknown => theModuleOf(name)[name],
+    standInForTheEnginesFunction: (
+      name: AFunctionOrTableOfTheEngines,
+      insteadOf: (was: AFunctionOfTheEngines) => (...args: never[]) => unknown,
+    ) => {
+      const theModule = theModuleOf(name);
+      const was = must(theModule[name], name);
+      const standIn = vi.spyOn(theModule, name).mockImplementation(insteadOf(was) as AFunctionOfTheEngines);
+      return () => {
+        standIn.mockRestore();
+      };
+    },
+    parsedInTheEnginesRealm: (json: string): unknown => JSON.parse(json),
+    aSetMadeInTheEnginesRealm: (json: string): unknown => new Set(JSON.parse(json) as unknown[]),
+    aMapMadeInTheEnginesRealm: (json: string): unknown => new Map(JSON.parse(json) as [unknown, unknown][]),
+  };
+  const b = { engine, tc, G, ph, X, ring1, ring2, near, nbrs, own, lines, ...reach };
+  return b satisfies TheBoardACaseIsStagedOn;
 }
 export type Board = ReturnType<typeof board>;
-
-export interface HeroSpec {
-  player: number | null;
-  at: Province;
-  /** Companies of `type` (default Men-at-Arms) of `quality` (default Regular). */
-  troops?: number;
-  type?: string;
-  quality?: string;
-  land?: number;
-  sea?: number;
-  king?: boolean;
-  skills?: Record<string, number>;
-  hp?: number;
-}
-let nextId = 9000;
-/** Stands a new hero of `player` in `at`, leading `troops` companies, with `land` and `sea` points of movement left. */
-export function hero(b: Board, s: HeroSpec): Character {
-  const id = ++nextId;
-  const type = s.type ?? 'Men-at-Arms';
-  const armies: Unit[] = Array.from({ length: s.troops ?? 0 }, (_, k) => ({
-    type,
-    quality: s.quality ?? 'Regular',
-    race: 'Human',
-    unitName: `${type} #${String(id)}.${String(k)}`,
-  }));
-  const c: Character = {
-    id,
-    name: `Hero ${String(id)}`,
-    isKing: !!s.king,
-    player: s.player,
-    race: 'Human',
-    alignment: 'Divine',
-    temper: 'Cautious',
-    hp: s.hp ?? 20,
-    maxHp: s.hp ?? 20,
-    skills: s.skills ?? { melee: 2, tactical: 2, march: 1, spy: 0 },
-    aptitude: {},
-    armies,
-    items: [],
-    location: s.at.id,
-    locationName: s.at.name,
-    alive: true,
-    merits: 0,
-    spellsUsedThisTurn: [],
-  };
-  b.G.characters.push(c);
-  s.at.characters.push(id);
-  const pools = b.tc as unknown as Record<string, Record<number, unknown>>;
-  must(pools['movePoints'], 'movePoints')[id] = s.land ?? 1;
-  must(pools['seaMovePoints'], 'seaMovePoints')[id] = s.sea ?? 0;
-  must(pools['seaMoveActive'], 'seaMoveActive')[id] = false;
-  must(pools['seaCap'], 'seaCap')[id] = 'land';
-  return c;
-}
-/** One phase's order, as a realm sends it. */
-export interface Order {
-  action: string;
-  target: string;
-  extra: string;
-  desc: string;
-}
-/** An order: `order('move', 12)`. */
-export const order = (action: string, target: string | number = '', extra: string | number = ''): Order => ({
-  action,
-  target: String(target),
-  extra: String(extra),
-  desc: '',
-});
-/** Five orders: the given ones first, then Rest. */
-export const plan = (...orders: Order[]): Order[] => [
-  ...orders.slice(0, 5),
-  ...Array.from({ length: Math.max(0, 5 - orders.length) }, () => order('rest')),
-];
-/** What a realm sends with its orders beside them: its declarations (realm index → 'treat' or 'enemy'), a call for
- *  the Reckoning, a concession. */
-export interface RealmSends {
-  diplomacy?: Record<number, 'treat' | 'enemy'>;
-  callReckoning?: boolean;
-  concede?: boolean;
-}
-export interface PlayedTurn {
-  /** The world after the turn, as saved. */
-  after: World;
-  /** The GM's log of the turn, in words (as the views write it: theTurnsLinesInWords, P1-12c3). */
-  lines: Line[];
-}
-/** Plays one whole turn (resolveTurn) from the board as staged: every realm human-held, each hero given orders here
- *  doing them, every other hero Resting, safe start over. The turn works out its own move points; the board's context
- *  isn't used. `written` adds orders a realm sends under a key of its own (the orders written for a hero it means to
- *  hire, `hired_<hero>_via_<hirer>_ph<phase>`), by realm. The realms in `bots` are bot realms (a slot row with no player
- *  and `isBot` in its report), which plan their own orders in the turn. `sends` gives what a realm sends with its
- *  orders beside them (its declarations toward other realms, a call for the Reckoning, a concession), by realm; by
- *  default nothing. No seed is given: the turn draws from the engine's dice, as the vm board's did. */
-export function playTurn(
-  b: Board,
-  orders: Record<number, Order[]>,
-  written: Record<number, Record<string, Order[]>> = {},
-  bots: number[] = [],
-  sends: Record<number, RealmSends> = {},
-): PlayedTurn {
-  const G = b.G as World & { safeStart?: boolean };
-  G.safeStart = false;
-  const rows = G.players.map((_, i) => ({
-    id: 'G1gp' + String(i),
-    game_id: 'G1',
-    user_id: bots.includes(i) ? null : 'u' + String(i),
-    player_index: i,
-    display_name: 'Realm ' + String(i),
-    orders_submitted: true,
-    orders: JSON.stringify({
-      orders: {
-        ...Object.fromEntries(
-          G.characters.filter((c) => c.alive && c.player === i).map((c) => [c.id, orders[c.id] ?? plan()]),
-        ),
-        ...written[i],
-      },
-      encounterPlans: {},
-      kingSkills: {},
-      diplomacy: sends[i]?.diplomacy ?? {},
-      discoveryChoices: {},
-      callReckoning: sends[i]?.callReckoning ?? false,
-      concede: sends[i]?.concede ?? false,
-      messages: [],
-      heroOrder: [],
-      forTurn: G.turn,
-    }),
-    turn_report: bots.includes(i) ? '{"isBot":true}' : '{}',
-  }));
-  // (the rows as the test stages them, a copy as the vm's was parsed there)
-  const slotRows = JSON.parse(JSON.stringify(rows)) as TheGamesSlotRow[];
-  const resolved = b.engine.resolveTurn(JSON.stringify(G), slotRows, G.turn);
-  const inWords = b.engine.theTurnsLinesInWords as unknown as (log: unknown) => { gmLog: Line[] };
-  return { after: JSON.parse(resolved.state) as World, lines: inWords(resolved.log).gmLog };
-}
-/** A hero's points of movement left. */
-export const points = (b: Board, c: Character) => {
-  const pools = b.tc as unknown as Record<string, Record<number, number>>;
-  return { land: pools['movePoints']?.[c.id] ?? 0, sea: pools['seaMovePoints']?.[c.id] ?? 0 };
-};
-/** A hero's own lines in the log. */
-export const linesOf = (b: Board, c: Character) => b.lines().filter((l) => l.charId === c.id);
-/** Every line of the log, as one string, for matching. */
-export const allText = (b: Board) =>
-  b
-    .lines()
-    .map((l) => l.text)
-    .join('\n');
-export type { TurnContext };
