@@ -150,4 +150,4 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-12d38: #362 Every event of an untyped file names its phase, emit throws on one left out, and the lint rule refuses it
 - P1-12d39: #500 The GM log stores each line's kind (merged through #509)
 - P1-12d40: #501 The matrix reads the stored kinds (merged through #509)
-- P1-12z: #695 P1-12's promises checked on `main`: the lint rule keeps every line to `emit`; a realm's report is built from `playerView` and `playerEvents` alone; the leak check reads every turn of the balance games and the random games; no P1-12 row changed a game's state, and the one that changed reports (#218) only took out lines their realms should never have read (a leak fix, on a maintainer's decision of 2026-10-24)
+- P1-12z: #695 P1-12's promises checked on main, and the step closed
