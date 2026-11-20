@@ -1,4 +1,4 @@
-// Small battle rulings of 2026-10-12 (Toby's batch), one block each:
+// Small battle rulings of 2026-10-12 (the maintainer's batch), one block each:
 //   • Reign of Fear fires only when attacking: an Evil realm's Monsters fight ×1.5 on ground its own Terror grips when
 //     they ATTACK there, and at ×1 when they defend it.
 //   • Purity breaks a Spear Hedge or a Boulder Wall: the Unicorn Herd facing Shieldwall Levies or Stone Giants keeps
@@ -6,23 +6,33 @@
 //   • Item 19 (ruling R-100): every flyer (the winged riders and the flying beasts) fights at ×0.75 in forest and
 //     jungle, and still at ×1 on open ground, in the mountains and over the sea.
 // Level 1 (unit): armStr and terrainMod (src/engine/battle/terrain-and-unit-strength.ts, plan P1-08b) and the battle
-// grid and facing (module level) are called directly in the bare vm (tests/lib/engine.ts), on a world the engine
-// makes. They were three blocks of tests/battle-tweaks.test.js, which ran one turn on the GM portal for the anchor
-// hook to hand armStr back; the checks are the same. Its fourth block, Terror's three stacks, needs spreadTerror,
-// still nested in resolveTurn: it is tests/terror-three-stacks.test.js until it moves (plan P1-08c).
-import vm from 'node:vm';
+// grid and facing (module level) are called directly on the engine's modules (since P1-14m; the bare vm before), on a
+// world the engine makes. They were three blocks of tests/battle-tweaks.test.js, which ran one turn on the GM portal
+// for the anchor hook to hand armStr back; the checks are the same. Its fourth block, Terror's three stacks, needs
+// spreadTerror, still nested in resolveTurn: it is tests/terror-three-stacks.test.js until it moves (plan P1-08c).
+import '../lib/the-whole-engine.ts';
 import { afterAll, describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
-const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
+const tc = aFreshTurnsContextOnTheWorld(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
+// (the engine's own modules, fresh with it)
+const theStrength = await import('../../src/engine/battle/terrain-and-unit-strength.ts');
+const theBattleLines = await import('../../src/engine/battle/lines.ts');
+const theWordsOfTheLines = await import('../../src/views/prose/the-words-of-a-battles-lines.ts');
+const { KC_UNIT_CLASS } = await import('../../src/content/kingdoms-call-data.ts');
 type Trace = { reason: unknown }[];
 /** The words the prose writes of a modifier armStr records on the strength ladder. */
-const modifierWords = engineFn(engine, 'theWordsOfAUnitsModifier') as (reason: unknown) => string;
+const modifierWords = theWordsOfTheLines.theWordsOfAUnitsModifier as unknown as (reason: unknown) => string;
 /** The words the prose writes of why a unit fights as it does (battleFaceSide's why). */
-const facingWords = engineFn(engine, 'theWordsOfWhyAUnitFacesAsItDoes') as (why: unknown) => string;
+const facingWords = theWordsOfTheLines.theWordsOfWhyAUnitFacesAsItDoes as unknown as (why: unknown) => string;
 interface StrengthContext {
   force: unknown[];
   enemyForce: unknown[];
@@ -30,7 +40,7 @@ interface StrengthContext {
   reignOfFear?: boolean;
   trace?: Trace;
 }
-const armStr = engineFn(engine, 'armStr') as (
+const armStr = theStrength.armStr as unknown as (
   t: typeof tc,
   army: object,
   heroChar: null,
@@ -38,7 +48,7 @@ const armStr = engineFn(engine, 'armStr') as (
   terrain: string,
   ctx: StrengthContext,
 ) => number;
-const terrainMod = engineFn(engine, 'terrainMod') as (armyType: string, terrain: string) => number;
+const terrainMod = theStrength.terrainMod as unknown as (armyType: string, terrain: string) => number;
 const unit = (type: string, extra: object = {}) =>
   Object.assign({ type, quality: 'Average', race: 'Primal', unitName: 'the Test ' + type }, extra);
 const str = (type: string, align: string, terrain: string, ctx: Partial<StrengthContext> = {}) =>
@@ -46,7 +56,7 @@ const str = (type: string, align: string, terrain: string, ctx: Partial<Strength
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
 
 describe('Reign of Fear: only when attacking', () => {
-  const RF = vm.runInContext('REIGN_OF_FEAR_MULT', engine) as number;
+  const RF = theStrength.REIGN_OF_FEAR_MULT;
   test(`attacking on its own terrorised ground, an Evil host's Cave Trolls fight ×${String(RF)}`, () => {
     const base = str('Cave Trolls', 'Evil', 'plain', { isAttacker: true });
     const atk = str('Cave Trolls', 'Evil', 'plain', { isAttacker: true, reignOfFear: true });
@@ -71,8 +81,13 @@ describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
   interface Grid {
     face: { units: { row: Row; m: number; why: unknown }[] };
   }
-  const grid = engineFn(engine, 'battleGrid') as (rows: Row[], width: number, terrain: string, opts: object) => Grid;
-  const facing = engineFn(engine, 'battleFacing') as (me: Grid, them: Grid, terrain: string) => void;
+  const grid = theBattleLines.battleGrid as unknown as (
+    rows: Row[],
+    width: number,
+    terrain: string,
+    opts: object,
+  ) => Grid;
+  const facing = theBattleLines.battleFacing as unknown as (me: Grid, them: Grid, terrain: string) => void;
   const BASE: Record<string, number> = {
     'Shieldwall Levies': 8,
     'Stone Giants': 26,
@@ -131,7 +146,7 @@ describe('Purity breaks a Spear Hedge or a Boulder Wall', () => {
 });
 
 describe('Item 19: flyers fight ×0.75 in forest and jungle', () => {
-  const AER = vm.runInContext('KC_UNIT_CLASS.aerial', engine) as string[];
+  const AER = KC_UNIT_CLASS.aerial;
   test('the flyers are read', () => {
     expect(AER.length).toBeGreaterThanOrEqual(8);
   });

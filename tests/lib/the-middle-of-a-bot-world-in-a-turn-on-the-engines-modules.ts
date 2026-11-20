@@ -209,6 +209,19 @@ export function botWorld(
   return JSON.stringify(engine.generateNewGame(setup, copy(size), 999, copy(opts)));
 }
 
+/** A fresh turn's context on `state` (a world as JSON, or as an object, copied first), as resolveTurn makes it before
+ *  the first phase: lib/engine.ts's turnContext(engine, state), on the modules. The state is parsed from its JSON, so
+ *  the context holds its own copy, as the vm's did. */
+export function aFreshTurnsContextOnTheWorld(
+  engine: TheEngineOnItsModules,
+  state: object | string,
+  { freshPlayers = [], turn = 1 }: { freshPlayers?: unknown[]; turn?: number } = {},
+) {
+  const json = typeof state === 'string' ? state : JSON.stringify(state);
+  const players = JSON.parse(JSON.stringify(freshPlayers)) as Parameters<TheEngineOnItsModules['createTurnContext']>[1];
+  return addTheFieldsResolveTurnAdds(engine.createTurnContext(JSON.parse(json), players, turn), engine);
+}
+
 /** Quiets the engine's console.log (emit echoes each line of the GM's log there) until the returned function is
  *  called: lib/engine.ts's quietEngineLog. */
 export function quietEngineLog(engine: TheEngineOnItsModules): () => void {
@@ -314,7 +327,7 @@ export function board(engine: TheEngineOnItsModules, world: string, ph: number) 
     ps: Province[],
   ) => Province[];
   // lib/engine.ts's turnContext: the context made on the state parsed, no fresh players, turn 1
-  const tc = addTheFieldsResolveTurnAdds(engine.createTurnContext(JSON.parse(world), [], 1), engine);
+  const tc = aFreshTurnsContextOnTheWorld(engine, world);
   tc._currentPhase = ph;
   tc._logCtx.phase = ph;
   const G = tc.G as unknown as World;

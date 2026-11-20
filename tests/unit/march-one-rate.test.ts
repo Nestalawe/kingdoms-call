@@ -5,7 +5,8 @@
 // per-unit move rates (buildTurnReport, which the orders form shows) and the bots' reach (botLandReach, botSeaReach);
 // and no page still quotes the fast-column ladder.
 // Level 1 (unit): computeMovePoolMax (src/engine/units/movement-pools.ts, plan P1-08b) and the others are called
-// directly on a world the engine makes in the bare vm (tests/lib/engine.ts); the words are read from the built pages.
+// directly on a world the engine makes on its modules (since P1-14m; the bare vm before); the words are read from the
+// built pages.
 // It was tests/march-one-rate.test.js, which ran one turn on the GM portal for the anchor hook to hand
 // computeMovePoolMax back; the checks are the same.
 //
@@ -14,30 +15,47 @@
 // whatever its base move (the fast-column ladder is gone), and no flyer, rider or winged beast, gains from March.
 // Checked in the engine's move pools (`computeMovePoolMax`), `navalSpeedBonus`, the turn report's per-unit move rates
 // and the bots' reach; no page quotes the old ladder and the rulebook's Free Lances example says 7.
-// `unit/march-one-rate.test.ts`: `computeMovePoolMax` called directly in the bare `vm` (P1-08b; it was a code-anchor
-// test)
-import vm from 'node:vm';
+// `unit/march-one-rate.test.ts`: `computeMovePoolMax` called directly on the engine's modules (P1-14m; the bare `vm`
+// from P1-08b; before, a code-anchor test)
+import '../lib/the-whole-engine.ts';
 import { afterAll, describe, expect, test } from 'vitest';
 import { readPage } from '../lib/boot.ts';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { pageText } from '../lib/source.ts';
 
 const LADDER = [0, 0, 1, 1, 2, 3];
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
 const world = botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 });
-const tc = turnContext(engine, world);
+const tc = aFreshTurnsContextOnTheWorld(engine, world);
 interface Pools {
   land: number;
   sea: number;
   seaActive: boolean;
   cap: string;
 }
-const computeMovePoolMax = engineFn(engine, 'computeMovePoolMax') as (t: typeof tc, c: object) => Pools;
-const navalSpeedBonus = engineFn(engine, 'navalSpeedBonus') as (baseSpeed: number, level: number) => number;
-const botLandReach = engineFn(engine, 'botLandReach') as (c: object) => number;
-const botSeaReach = engineFn(engine, 'botSeaReach') as (c: object) => number;
+// (the engine's own modules, fresh with it)
+const thePools = await import('../../src/engine/units/movement-pools.ts');
+const computeMovePoolMax = thePools.computeMovePoolMax as unknown as (t: typeof tc, c: object) => Pools;
+const theMovement = await import('../../src/engine/units/movement.ts');
+const navalSpeedBonus = theMovement.navalSpeedBonus as unknown as (baseSpeed: number, level: number) => number;
+const theBotsStrategy = await import('../../src/engine/bots/strategy.ts');
+const botLandReach = theBotsStrategy.botLandReach as unknown as (c: object) => number;
+const botSeaReach = theBotsStrategy.botSeaReach as unknown as (c: object) => number;
+const { ARMY_SPEED_MASTER } = await import('../../src/engine/army-tables.ts');
+const theTurnReport = await import('../../src/views/turn-report.ts');
+const buildTurnReport = theTurnReport.buildTurnReport as unknown as (view: unknown) => {
+  characters: { id: unknown; armies?: { type: string; moveRate?: unknown }[] }[];
+};
+const theRealmsView = await import('../../src/views/what-each-realm-may-see-of-the-world.ts');
+const playerView = theRealmsView.playerView as unknown as (state: unknown, realm: number) => unknown;
 
 // A hero with no items, titles or discoveries: his pools are his column's base move plus the ladder.
 const hero = (types: string[], skills: Record<string, number>) => ({
@@ -51,7 +69,7 @@ const hero = (types: string[], skills: Record<string, number>) => ({
 });
 
 test('the base moves this test relies on: Free Lances 4, Levies 2, Galleons 3, Thunderbirds 5', () => {
-  const SPEED = vm.runInContext('ARMY_SPEED_MASTER', engine) as Record<string, number>;
+  const SPEED = ARMY_SPEED_MASTER;
   expect([SPEED['Free Lances'], SPEED['Shieldwall Levies'], SPEED['Galleon Fleet'], SPEED['Thunderbirds']]).toEqual([
     4, 2, 3, 5,
   ]);
@@ -79,15 +97,24 @@ test('March 5 speeds no flyer: Thunderbirds (a flying beast) and Eagle Riders st
 });
 
 test("the turn report (what the orders form shows): each unit's move rate at March 5", () => {
-  const report = vm.runInContext(
-    `(world)=>{ const S=JSON.parse(world); const king=S.characters.find(c=>c.alive&&c.player===0&&c.isKing);
-      king.skills.march=5; king.items=[];
-      king.armies=[{type:'Free Lances',quality:'Average',unitName:'the Test Lances'},{type:'Thunderbirds',quality:'Average',unitName:'the Test Wing'}];
-      const kr=buildTurnReport(playerView(S,0)).characters.find(c=>c.id===king.id);
-      const rate=t=>((kr&&kr.armies||[]).find(x=>x.type===t)||{}).moveRate;
-      return [rate('Free Lances'), rate('Thunderbirds')]; }`,
-    engine,
-  ) as (world: string) => [unknown, unknown];
+  const report = (w: string): [unknown, unknown] => {
+    const S = JSON.parse(w) as {
+      characters: { id: unknown; alive: boolean; player: number | null; isKing?: boolean; [k: string]: unknown }[];
+    };
+    const king = must(
+      S.characters.find((c) => c.alive && c.player === 0 && c.isKing),
+      'the king of realm 0',
+    );
+    (king['skills'] as Record<string, number>)['march'] = 5;
+    king['items'] = [];
+    king['armies'] = [
+      { type: 'Free Lances', quality: 'Average', unitName: 'the Test Lances' },
+      { type: 'Thunderbirds', quality: 'Average', unitName: 'the Test Wing' },
+    ];
+    const kr = buildTurnReport(playerView(S, 0)).characters.find((c) => c.id === king.id);
+    const rate = (t: string) => (kr?.armies ?? []).find((x) => x.type === t)?.moveRate;
+    return [rate('Free Lances'), rate('Thunderbirds')];
+  };
   expect(report(world)).toEqual([4 + (LADDER[5] ?? NaN), 5]);
 });
 

@@ -6,17 +6,26 @@
 // trap's and the hulls' hold name it, led or leaderless; the hold names its claimant (a realm, a side, or none). No game
 // reaches the units the fleet can't carry nor the bound units left on the shore.
 // Level 1 (unit): navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.ts, plan P1-08b) is called
-// directly on a world the engine makes in the bare vm (tests/lib/engine.ts). It was tests/naval-retreat.test.js,
-// which ran one turn on the GM portal for the anchor hook to hand the function back; the checks are the same.
+// directly on a world the engine makes on its modules (since P1-14m; the bare vm before). It was
+// tests/naval-retreat.test.js, which ran one turn on the GM portal for the anchor hook to hand the function back; the
+// checks are the same.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The naval retreat split, staged cases plus 4,000 fuzzed retreats. `unit/naval-retreat.test.ts`: `navalSplitRetreat`
-// called directly in the bare `vm` (P1-08b; it was a level-2 code-anchor test that ran a turn first). Its lines are
+// called directly on the engine's modules (P1-14m; the bare `vm` from P1-08b; before, a level-2 code-anchor test that
+// ran a turn first). Its lines are
 // facts since P1-12d5: it reads their words through the engine's `theWordsOf` (the fuzz's check for a malformed line
 // read the facts as `[object Object]` until then). Since P1-12d32 each kind of the split, `seaTrapLine` and
 // `navalHoldLine` name the beaten side as a record's label, led or leaderless, and the hold its claimant
+import '../lib/the-whole-engine.ts';
 import { afterAll, describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import type { ASideOfABattle } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 
 interface Unit {
@@ -50,10 +59,15 @@ interface World {
   mercenaries: unknown[];
 }
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
-const tc: TurnContext = turnContext(engine, botWorld(engine, 3, { cols: 12, rows: 7 }, { seaPct: 45 }));
+const tc: TurnContext = aFreshTurnsContextOnTheWorld(
+  engine,
+  botWorld(engine, 3, { cols: 12, rows: 7 }, { seaPct: 45 }),
+);
+// (the engine's own modules, fresh with it)
+const theSeaLift = await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts');
 const G = tc.G as unknown as World;
 type SplitRetreat = (
   tc: TurnContext,
@@ -64,23 +78,24 @@ type SplitRetreat = (
   cName: ASideOfABattle,
   noSea?: boolean,
 ) => string;
-const navalSplitRetreat = engineFn(engine, 'navalSplitRetreat') as SplitRetreat;
+const navalSplitRetreat = theSeaLift.navalSplitRetreat as unknown as SplitRetreat;
 /** The words the prose writes of a line's fact (plan P1-12d5: the naval split's lines are facts). */
-const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
-const seaTrapLine = engineFn(engine, 'seaTrapLine') as (
+const { theWordsOf: theWordsOfAsItsModuleExportsIt } = await import('../../src/views/prose/the-words-of-each-line.ts');
+const theWordsOf = theWordsOfAsItsModuleExportsIt as unknown as (fact: unknown) => string;
+const seaTrapLine = theSeaLift.seaTrapLine as unknown as (
   side: ASideOfABattle,
   ch: Hero,
   prov: Province,
   force: Unit[],
 ) => unknown;
-const navalHoldLine = engineFn(engine, 'navalHoldLine') as (
+const navalHoldLine = theSeaLift.navalHoldLine as unknown as (
   tc: TurnContext,
   prov: Province,
   units: Unit[],
   claimant: string | ASideOfABattle | null,
 ) => unknown;
-const seaLiftShortfall = engineFn(engine, 'seaLiftShortfall') as (armies: Unit[], leadChar: Hero) => number;
-const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+const seaLiftShortfall = theSeaLift.seaLiftShortfall as unknown as (armies: Unit[], leadChar: Hero) => number;
+const getNeighborsP = engine.getNeighborsP as unknown as (
   p: Province,
   cols: number,
   rows: number,
