@@ -131,7 +131,7 @@
   items); found items unique and on the ledger (`_awardedItems`; Mithril Armour, every dwarf's, is off it); every living
   character and mercenary band on the map; no line of a dead character's own after the phase they died in (battle
   lines excepted: a fallen commander's leaderless host fights on under his id, R-019); `orders_submitted` cleared.
-  `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
+  The turn fuzz (`simulation/whole-games-on-random-orders-…`) and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
   `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (a maintainer, 2026-10-17: no
   engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: none.
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
@@ -180,10 +180,10 @@
     whatever audience the engine gave it (the recorder notes each event's kind and the realm its fact names).
     Clairvoyance's lines are allowed. It runs where the harness records the turn's events.
 
-  What they can't see yet: in a harness that doesn't record the events (`turn-fuzz`, the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
+  What they can't see yet: in a harness that doesn't record the events (the turn fuzz, the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
   audience, but for the kinds for one realm alone (the audience check takes it as given: every realm's report against its baseline sees a change); the
   portal's name tables (`LOOKUP_TABLES`, for colouring names; until P2-06 trims a report to its reader); Spy stealth and the spotting roll in your own land (only Invisibility is checked); a name two heroes share.
-  They read only the reports a harness has: `turn-fuzz`'s human realms, the matrix's scripted realm, every realm in
+  They read only the reports a harness has: the turn fuzz's human realms, the matrix's scripted realm, every realm in
   the matrix's every-realm half and in `simulation/every-realms-report-…`.
 - **`lib/strict-schema.ts`** is the one way a test parses with the schemas of `src/schemas/`: `strictIssues(schema, value)` lists where a value fails the schema's strict version, `strictVersionOf(schema)` (in `src/schemas/the-strict-version-of-a-schema.ts` since P1-15d, which moved it there for the check of a saved game at load): the same schema with every object `z.strictObject` (the schemas' `z.object` drops a key it doesn't name; this refuses it, at any depth). A kind of schema it doesn't know stops it.
 - **`lib/personal-combat.ts`** (P1-08e; on the engine's modules since P1-14b) gives a test personal combat:
@@ -237,7 +237,7 @@
   A test that cuts code out of `src/` by its syntax tree and runs it on its own gives it a `kcRng` or `kcClock` of its own
   (`tests/unit/the-home-placement-gives-each-king-a-cell-of-their-own-off-the-edge-rows-and-prints-the-spacing.test.ts`). A page's clock (`Date`) is pinned only when a test
   asks: `bootJsdom(html, {seed, now})` gives the page its own seed and a clock that starts at `now` and moves on 1 ms at each reading, so a turn
-  run that way is byte-identical every time (`deterministic-boot`; `turn-fuzz` pins it too, so the same seed plays the same games). Otherwise runs are repeatable in practice but
+  run that way is byte-identical every time (`deterministic-boot`). Otherwise runs are repeatable in practice but
   not guaranteed byte-identical. The engine reads that clock through `kcClock()` (`src/engine/clock.ts`). Pages opened
   in Chromium are not seeded: their dice seed themselves from the browser's `crypto`, as on the live site
   (`chromium-boot` checks it); a browser spec's own jsdom turn is (`map-fits-panel` gives its page the seed the

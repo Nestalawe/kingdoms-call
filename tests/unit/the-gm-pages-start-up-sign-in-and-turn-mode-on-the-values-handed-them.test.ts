@@ -135,6 +135,19 @@ describe('a game read from its row (startup.ts)', () => {
     expect(startup.gameArchivedAt({ game_state: { archivedAt: '' } })).toBe(null);
     expect(startup.gameArchivedAt(null)).toBe(null);
   });
+  // Until plan P1-14z, the archive round-trip of tests/fuzz-advance-masking.test.js, on the booted GM page.
+  test("the archive's mark round-trips: buildGameMeta keeps it, gameArchived reads it, the world's when no meta", () => {
+    const meta = turnMode.buildGameMeta({
+      archived: true,
+      archivedAt: '2026-09-27T10:00:00Z',
+      turnMode: { mode: 'manual' },
+    });
+    expect(meta).toMatchObject({ archived: true, archivedAt: '2026-09-27T10:00:00Z' });
+    expect(startup.gameArchived({ meta })).toBe(true);
+    expect(startup.gameArchived({ meta: turnMode.buildGameMeta({}) })).toBe(false);
+    expect(startup.gameArchived({ game_state: JSON.stringify({ archived: true }) })).toBe(true);
+    expect(startup.gameArchived({ game_state: '{}' })).toBe(false);
+  });
 });
 
 describe("the database's probes (startup.ts)", () => {

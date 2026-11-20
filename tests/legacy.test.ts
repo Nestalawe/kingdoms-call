@@ -12,7 +12,6 @@ import { reproduceCommand } from './setup/repro.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const level = inject('level');
-const full = process.env['KC_FULL'] === '1';
 // vitest.config.ts sets KC_SEED (the fixed default, or the one given).
 const seed = process.env['KC_SEED'] ?? '';
 // The old runner's limit for one script.
@@ -28,7 +27,7 @@ function quarantined(): Run[] {
     .map((f) => ({ name: f.replace('.test.js', ''), file: `tests/quarantine/${f}`, args: [], env: {} }));
 }
 
-const scripts: Run[] = level === 'quarantine' ? quarantined() : suite(full).filter((s) => s.level === level);
+const scripts: Run[] = level === 'quarantine' ? quarantined() : suite().filter((s) => s.level === level);
 
 interface Result {
   status: number | null;
@@ -91,7 +90,7 @@ if (level === 'static') {
 // file with no test fails: so it says, in a test, that none is left (until plan P1-14z deletes this file).
 if (scripts.length === 0 && level !== 'static') {
   test('no old script is left at this level', ({ expect }) => {
-    expect(suite(full).filter((s) => s.level === level)).toEqual([]);
+    expect(suite().filter((s) => s.level === level)).toEqual([]);
   });
 }
 

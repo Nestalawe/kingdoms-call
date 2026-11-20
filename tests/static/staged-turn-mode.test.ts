@@ -59,12 +59,12 @@ test('every harness that runs turns stages its games in manual turn mode', () =>
   expect(breaches, 'staged in another mode than manual: the watcher may read the clock or run a turn').toEqual([]);
 });
 
-test('the check sees the stagings: the matrix, the fuzz and the deterministic boot are among them', () => {
+test('the check sees the stagings: the matrix, the turn shell test and the deterministic boot are among them', () => {
   const staging = runsTurns.filter((f) => stagedModes(fs.readFileSync(path.join(ROOT, f), 'utf8')).length > 0);
   expect(staging).toEqual(
     expect.arrayContaining([
       'tools/balance/play.ts',
-      'tests/turn-fuzz.test.js',
+      'tests/page/turn-shell.test.ts',
       'tests/page/deterministic-boot.test.ts',
     ]),
   );

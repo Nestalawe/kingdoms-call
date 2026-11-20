@@ -35,7 +35,7 @@ const INDEX = fs.existsSync(README) ? fs.readFileSync(README, 'utf8') : '';
 const STATUSES = ['Confirmed', 'Decided, not built', 'To confirm', 'Superseded'];
 
 /** The test scripts npm test runs (tests/suite.ts), each as its file. */
-const THE_SCRIPTS = new Set(suite(false).map((script) => script.file));
+const THE_SCRIPTS = new Set(suite().map((script) => script.file));
 const aScript = (name: string): string | undefined =>
   THE_SCRIPTS.has(`tests/${name}.test.js`) ? `tests/${name}.test.js` : undefined;
 /** A Vitest test is tests/<level>/<name>.test.ts. */
@@ -118,10 +118,11 @@ const THE_PUBLIC_FILES = [
 ].filter((f) => f !== import.meta.filename && /\.(md|ts|mts|js|mjs|cjs|json|html|css|sql|txt)$/.test(f));
 
 describe('the rulings are numbered, filled in, indexed and enforced by tests that run', () => {
-  test('docs/rulings/README.md is there, and the levels and the scripts are read', () => {
+  test('docs/rulings/README.md is there, the levels are read, and no old script is left', () => {
     expect(fs.existsSync(README), 'docs/rulings/README.md is missing').toBe(true);
     expect(LEVELS.length, 'tests/suite.ts: no LEVELS').toBeGreaterThan(0);
-    expect(THE_SCRIPTS.size).toBeGreaterThan(0);
+    // every script has become a Vitest test (plan P1-14z): a ruling's test is one of tests/<level>/
+    expect([...THE_SCRIPTS]).toEqual([]);
   });
 
   test('each ruling is named, titled and filled in, its tests run, and the index lists it once with its status', () => {

@@ -85,7 +85,7 @@ statistics compared with the committed baseline in `tests/balance/baseline/`, st
 noise of a second seed set. The games play on the typed fake (`tests/lib/fake-db.ts`). One of the hashes is of every
 write the turn sends to the database, recorded at the calls to the page's `Db` (`tools/balance/writes.ts`, P1-02c), so a change to how a turn saves shows even when nothing in play changed. After every turn it checks the **invariants** (`tests/lib/invariants.ts`, P1-04b: no NaN or
 `undefined`, HP in range, unique ids, items matching the ledger of found items, armies on the map, the dead taking no
-actions, `orders_submitted` cleared), as `turn-fuzz` does, and the **report-leak check** on the scripted realm's report
+actions, `orders_submitted` cleared), as the turn fuzz does, and the **report-leak check** on the scripted realm's report
 (`tests/lib/report-leaks.ts`, P1-04c: another realm's private line, an unmet realm, a hero under Invisibility); a breach
 fails the game. So does the **save's check** (P1-15e1, `tools/balance/a-game-fails-on-the-save-check.ts`): a
 `[Save check]` line in a turn's GM log, and, after the last turn, the check of the last save, which no turn loads; a
