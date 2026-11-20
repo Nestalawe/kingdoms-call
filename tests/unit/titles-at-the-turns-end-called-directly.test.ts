@@ -1,10 +1,11 @@
 // The titles at the turn's end (plan P1-08k6: src/engine/titles/, the last two stages lifted out of resolveTurn's own
-// body), called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// body), called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/titles-at-the-turns-end-in-a-whole-turn plays through a whole turn (lib/titles-at-the-turns-end-cases.ts),
 // here played through the two stages alone, as resolveTurn calls them once the new turn is done (the counter moved on,
-// no phase current, every line filed after the phases), but for those only a whole turn can stage (the treasuries
-// after the turn's taxes and wages, espionage worked by an order); then, with the helpers they call stood in (each
-// replaced in the vm by a recorder for the test's length), what they hand them and when, and where resolveTurn calls
+// no phase current, every line filed after the phases), but for those only a whole turn can stage (the treasuries after
+// the turn's taxes and wages, espionage worked by an order); then, with the helpers they call stood in (each by a
+// recorder for the test's length, vi.spyOn on its module), what they hand them and when, and where resolveTurn calls
 // them; then what the whole turn can't stage: the standings failing, a save with no turn, realms with no name or no
 // record of whom they have met, heroes and provinces the map doesn't place, the dice of the Loremaster's copy in turn,
 // the dead a realm saw fall this turn, every act the Spymaster's ledger can hold, titles held by nobody's hero; and the
@@ -12,47 +13,45 @@
 // (fast-check): the Throne tells its holder its own share and exactly each realm it has met, and how many it hasn't;
 // the Loremaster copies exactly one fresh discovery a met realm holds and the holder lacks, or none; the Archmage names
 // the foremost mage of each school it may; a title is won only by its holder's realm and lost only by the realm that
-// held it, never both, and on the first public turn nothing is lost.
-// Level 1: two functions, called with the context resolveTurn hands them.
+// held it, never both, and on the first public turn nothing is lost. Level 1: two functions, called with the context
+// resolveTurn hands them.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy` and
 // `titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn` (P1-08k6), called directly, the turn moved on first and every
 // line filed after the phases, as `resolveTurn` calls them once the new turn is done: the whole-turn cases through the
 // two stages alone (but the five only a whole turn stages: the treasuries after the taxes and wages, espionage worked
-// by an order); then, with the helpers they call stood in by recorders in the `vm`, what each is handed: the standings
-// worked out once by the intel (only once titles are public) and once by the changes, the minor titles once; the
-// Throne's own share rounded down by `dispFloor`; each company measured by its base strength; Grave-sight filing only
-// the crack and elite dead, as partial, for the holder's realm, on the new turn; and `resolveTurn` calling the intel,
-// then the changes, once each with its context, after the new turn's second part. Then what a whole turn can't stage:
-// the standings failing (nothing told, no holder kept; after a public turn every title lost to nobody), the minor
-// titles failing (no holder of either kind); a save with no turn; turn 4 and turn 5 as the stages see them; a realm
-// with no name ("Player <n>"), no record of whom it met, no treasury, a gap in the list of realms; a commander standing
-// nowhere ("unknown") or with no companies list; the Monster-Bane held with no slayer of its own; the Loremaster's copy
-// by each die in turn (0 the first, 0.5 the second) and no die with nothing to copy; a mage with no skills or standing
-// nowhere; the dead a realm saw fall this turn, graves with no place, a gap in the graveyard; a fallen hero of the
-// realm and a hero standing nowhere giving no eyes; skills with no label, equal skills in their order; Grave-sight past
-// a gap and a missing province; every act the Spymaster's ledger holds (a king, no name, no realm, its own agents,
-// ground elsewhere, a province gone, the roll by hero most acts first, two heroes of one name); a province no realm
-// mapped and a missing one; the beast censuses past the fallen, gaps, other realms' ground and a hero with no companies
-// list; title changes for a hero the roll no longer has, a realm missing from the list, a hero of no realm, a title a
-// save records held by a realm and no hero, a hero who changes realms holding his title, a realm with no living king
-// taking or holding a realm's title; and the lines no matrix game reaches (P1-10b35): a met realm of no name and heroes
-// and provinces of none on every title's board, a world with no roll of heroes, graveyard, provinces, ledger or record
-// of the titles, a holder of no tax base, a gap among the provinces, a garrison with no companies list; the standings,
-// the title race, the minor titles, a hero's bonuses and the Reckoning's reads on plain worlds that lack a part (a
-// legendary relic's point, a hero of a realm the list doesn't hold, a bot's claim with no bots, turn or heroes).
-// Properties (fast-check): the Throne goes to the first realm of the largest tax
-// base and tells it its own share rounded down, each realm it met rounded and how many it hasn't; the Loremaster copies
-// exactly the fresh discovery the die picks of those a met realm holds and it lacks, or none; the Archmage names, per
-// school, the living mage of the highest level outside its realm, of a met realm or none, the most skilled of equals,
-// the first of those; a title is won only by the realm now holding it when it changed hands or titles are first public,
-// lost only by the realm that held it to another or to nobody, never both, nothing lost the first public turn. Planted
-// faults: in the PR (P1-08k6)
-import vm from 'node:vm';
+// by an order); then, with the helpers they call stood in by recorders (vi.spyOn on each one's module: the calls from
+// other files), what each is handed: the standings worked out once by the intel (only once titles are public) and once
+// by the changes, the minor titles once; the Throne's own share rounded down by `dispFloor`; each company measured by
+// its base strength; Grave-sight filing only the crack and elite dead, as partial, for the holder's realm, on the new
+// turn; and `resolveTurn` calling the intel, then the changes, once each with its context, after the new turn's second
+// part. Then what a whole turn can't stage: the standings failing (nothing told, no holder kept; after a public turn
+// every title lost to nobody), the minor titles failing (no holder of either kind); a save with no turn; turn 4 and
+// turn 5 as the stages see them; a realm with no name ("Player <n>"), no record of whom it met, no treasury, a gap in
+// the list of realms; a commander standing nowhere ("unknown") or with no companies list; the Monster-Bane held with no
+// slayer of its own; the Loremaster's copy by each die in turn (0 the first, 0.5 the second) and no die with nothing to
+// copy; a mage with no skills or standing nowhere; the dead a realm saw fall this turn, graves with no place, a gap in
+// the graveyard; a fallen hero of the realm and a hero standing nowhere giving no eyes; skills with no label, equal
+// skills in their order; Grave-sight past a gap and a missing province; every act the Spymaster's ledger holds (a king,
+// no name, no realm, its own agents, ground elsewhere, a province gone, the roll by hero most acts first, two heroes of
+// one name); a province no realm mapped and a missing one; the beast censuses past the fallen, gaps, other realms'
+// ground and a hero with no companies list; title changes for a hero the roll no longer has, a realm missing from the
+// list, a hero of no realm, a title a save records held by a realm and no hero, a hero who changes realms holding his
+// title, a realm with no living king taking or holding a realm's title; and the lines no matrix game reaches
+// (P1-10b35): a met realm of no name and heroes and provinces of none on every title's board, a world with no roll of
+// heroes, graveyard, provinces, ledger or record of the titles, a holder of no tax base, a gap among the provinces, a
+// garrison with no companies list; the standings, the title race, the minor titles, a hero's bonuses and the
+// Reckoning's reads on plain worlds that lack a part (a legendary relic's point, a hero of a realm the list doesn't
+// hold, a bot's claim with no bots, turn or heroes). Properties (fast-check): the Throne goes to the first realm of the
+// largest tax base and tells it its own share rounded down, each realm it met rounded and how many it hasn't; the
+// Loremaster copies exactly the fresh discovery the die picks of those a met realm holds and it lacks, or none; the
+// Archmage names, per school, the living mage of the highest level outside its realm, of a met realm or none, the most
+// skilled of equals, the first of those; a title is won only by the realm now holding it when it changed hands or
+// titles are first public, lost only by the realm that held it to another or to nobody, never both, nothing lost the
+// first public turn. Planted faults: in the PR (P1-08k6)
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   LANDS,
   MAJOR_KEYS,
@@ -82,23 +81,41 @@ import { taxes } from '../lib/diplomacy-and-victory-cases.ts';
 import { realm, ring1, ring2, wanderer } from '../lib/cast-spell-order-cases.ts';
 import {
   board,
+  botWorld,
+  loadTheEngineOnItsModules,
   must,
   playTurn,
+  quietEngineLog,
   withDice,
   withCaseDice,
   type Board,
   type Character,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
 type Raw = Record<string, unknown>;
 const INTEL = 'imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy';
 const CHANGES = 'titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn';
-const titleIntel = engineFn(engine, INTEL) as Fn;
-const titleChanges = engineFn(engine, CHANGES) as Fn;
+const SECOND_PART = 'newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile';
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const theTitleStages =
+  await import('../../src/engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.ts');
+const theNewTurnsSecondPart =
+  await import('../../src/engine/turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.ts');
+const theReckoning = await import('../../src/engine/titles/reckoning.ts');
+const theRoundingDown =
+  await import('../../src/engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts');
+const theBaseStrength = await import('../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts');
+const theGraves = await import('../../src/engine/graves.ts');
+const { reckoningThreshold } = await import('../../src/engine/titles/perks.ts');
+const { ITEMS_BY_TIER } = await import('../../src/engine/items/tiers-and-hoards.ts');
+const { SKILL_LABELS } = await import('../../src/engine/army-tables.ts');
+const { SAGE_DISCOVERIES_P } = await import('../../src/content/kingdoms-call-data.ts');
+const titleIntel = theTitleStages.imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy as Fn;
+const titleChanges = theTitleStages.titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn as Fn;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const tc = (b: Board) => b.tc as unknown as Raw & Board['tc'];
@@ -140,8 +157,7 @@ const rolled = (b: Board, dice: number[]) => {
 };
 /** The name of realm `pi` on `b`. */
 const nameOf = (b: Board, pi: number) => must(b.G.players[pi], 'realm ' + String(pi)).name;
-const label = (k: string) =>
-  (JSON.parse(vm.runInContext('JSON.stringify(SKILL_LABELS)', engine) as string) as Record<string, string>)[k];
+const label = (k: string) => (SKILL_LABELS as Record<string, string>)[k];
 
 const DIRECT = TITLE_CASES.map(([part, cases]) => [part, cases.filter((c) => !c.wholeTurnOnly)] as const).filter(
   ([, cases]) => cases.length > 0,
@@ -166,22 +182,78 @@ interface Call {
   /** The lines written before the call. */
   before: number;
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length); `returns` gives what a
- *  recorder does, by name (by default it calls the helper it stands in for). */
-function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = names.map((f) => [f, g[f]] as const);
+/** Stands `spy` in for `original` by a recorder that notes each call into `calls`, then does what `instead` does or,
+ *  with none, makes the call. */
+function recordEachCall<A extends unknown[], R>(
+  original: (...a: A) => R,
+  spy: MockInstance<(...a: A) => R>,
+  name: string,
+  b: Board,
+  calls: Call[],
+  instead: Fn | undefined,
+) {
+  return spy.mockImplementation((...args: A) => {
+    calls.push({ fn: name, args, before: b.lines().length });
+    return instead ? (instead(...args) as R) : original(...args);
+  });
+}
+/** Each helper the stages call, stood in by vi.spyOn on the module that exports it: the stages call each from their own
+ *  file, so the stand-in reaches those calls (docs/traps.md). */
+const THE_HELPERS_THE_STAGES_CALL = {
+  computeStandings: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theReckoning.computeStandings,
+      vi.spyOn(theReckoning, 'computeStandings'),
+      'computeStandings',
+      b,
+      calls,
+      instead,
+    ),
+  computeMinorTitles: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theReckoning.computeMinorTitles,
+      vi.spyOn(theReckoning, 'computeMinorTitles'),
+      'computeMinorTitles',
+      b,
+      calls,
+      instead,
+    ),
+  dispFloor: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(theRoundingDown.dispFloor, vi.spyOn(theRoundingDown, 'dispFloor'), 'dispFloor', b, calls, instead),
+  unitBaseStrength: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theBaseStrength.unitBaseStrength,
+      vi.spyOn(theBaseStrength, 'unitBaseStrength'),
+      'unitBaseStrength',
+      b,
+      calls,
+      instead,
+    ),
+  noteGraveIntel: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theGraves.noteGraveIntel,
+      vi.spyOn(theGraves, 'noteGraveIntel'),
+      'noteGraveIntel',
+      b,
+      calls,
+      instead,
+    ),
+};
+type AHelperTheStagesCall = keyof typeof THE_HELPERS_THE_STAGES_CALL;
+/** Runs `body` with each of `names` stood in by a recorder (for the body's length); `returns` gives what a recorder
+ *  does, by name (by default it calls the helper it stands in for). */
+function standIn(
+  b: Board,
+  names: AHelperTheStagesCall[],
+  body: () => void,
+  returns: Partial<Record<AHelperTheStagesCall, Fn>> = {},
+): Call[] {
   const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
-      calls.push({ fn: f, args, before: b.lines().length });
-      const r = returns[f];
-      return r ? r(...args) : (w as Fn)(...args);
-    };
+  const standIns = names.map((f) => THE_HELPERS_THE_STAGES_CALL[f](b, calls, returns[f]));
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const s of standIns) s.mockRestore();
   }
   return calls;
 }
@@ -248,25 +320,44 @@ describe('The titles at the turn’s end: what they call', () => {
     const b = fresh();
     firstPublic(b);
     const order: string[] = [];
-    const g = engine as unknown as Record<string, unknown>;
-    const names = [
-      'newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile',
-      INTEL,
-      CHANGES,
-    ];
-    const was = names.map((f) => [f, g[f] as Fn] as const);
+    const names = [SECOND_PART, INTEL, CHANGES];
     const handed: unknown[] = [];
-    for (const [f, w] of was)
-      g[f] = (...a: unknown[]) => {
-        order.push(f);
+    // each stage stood in by vi.spyOn on its module (resolveTurn calls each from its own file), noting the call
+    const noteEachCall = <A extends unknown[], R>(
+      name: string,
+      original: (...a: A) => R,
+      spy: MockInstance<(...a: A) => R>,
+    ) =>
+      spy.mockImplementation((...a: A) => {
+        order.push(name);
         handed.push(a);
-        return w(...a);
-      };
+        return original(...a);
+      });
+    const standIns = [
+      noteEachCall(
+        SECOND_PART,
+        theNewTurnsSecondPart.newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile,
+        vi.spyOn(
+          theNewTurnsSecondPart,
+          'newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile',
+        ),
+      ),
+      noteEachCall(
+        INTEL,
+        theTitleStages.imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy,
+        vi.spyOn(theTitleStages, 'imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy'),
+      ),
+      noteEachCall(
+        CHANGES,
+        theTitleStages.titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn,
+        vi.spyOn(theTitleStages, 'titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn'),
+      ),
+    ];
     let played;
     try {
       played = withCaseDice(engine, LANDS, () => playTurn(b, {}));
     } finally {
-      for (const [f, w] of was) g[f] = w;
+      for (const s of standIns) s.mockRestore();
     }
     expect(order).toEqual(names);
     expect(handed.map((a) => (a as unknown[]).length)).toEqual([1, 1, 1]);
@@ -427,7 +518,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
     allMet(b);
     titled(b, 0, seatOf(b, 0), { sage: 1 });
     let n = 0;
-    const kcRng = vm.runInContext('kcRng', engine) as { use(next: () => number): () => number };
+    const kcRng = engine.kcRng;
     const was = kcRng.use(() => {
       n++;
       return 0.5;
@@ -857,7 +948,7 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
     const run = (titles: unknown) => {
       const b = fresh();
       firstPublic(b);
-      const real = engine['computeStandings'] as Fn;
+      const real = theReckoning.computeStandings as Fn;
       let o: Outcome | undefined;
       standIn(
         b,
@@ -948,14 +1039,13 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
 });
 
 // ── The standings, the title race, the minor titles, a hero's bonuses and the Reckoning on worlds no game holds ──────
-// (plan P1-10b35: titles/reckoning.ts freed of its ts-nocheck line, each called on a plain world in the vm)
-const standingsOf = engineFn(engine, 'computeStandings') as Fn;
-const raceFor = engineFn(engine, 'titleRaceFor') as Fn;
-const minorOf = engineFn(engine, 'computeMinorTitles') as Fn;
-const bonusesOf = engineFn(engine, 'extraSkillBonuses') as Fn;
-const blocOf = engineFn(engine, 'alliedBloc') as Fn;
-const thresholdOf = (n: number, decay: number, bloc: number) =>
-  vm.runInContext(`reckoningThreshold(${String(n)}, ${String(decay)}, ${String(bloc)})`, engine) as number;
+// (plan P1-10b35: titles/reckoning.ts freed of its ts-nocheck line, each called on a plain world)
+const standingsOf = theReckoning.computeStandings as Fn;
+const raceFor = theReckoning.titleRaceFor as Fn;
+const minorOf = theReckoning.computeMinorTitles as Fn;
+const bonusesOf = theReckoning.extraSkillBonuses as Fn;
+const blocOf = theReckoning.alliedBloc as Fn;
+const thresholdOf = (n: number, decay: number, bloc: number) => reckoningThreshold(n, decay, bloc);
 /** A living hero of realm `player` (or none) as the titles count him, with `extra` (no skill, deed or item but those). */
 const plainHero = (id: number, player: number | null, extra: Raw = {}) => ({
   id,
@@ -999,7 +1089,7 @@ describe('The standings and the Reckoning on worlds no game holds', () => {
   });
 
   test('a legendary relic a hero of a realm carries scores its realm a point and is counted; a hero with no pack carries none', () => {
-    const relic = vm.runInContext('ITEMS_BY_TIER[4][0].name', engine) as string;
+    const relic = must(ITEMS_BY_TIER[4][0], 'the first legendary item').name;
     const s = standingsOf({
       players: [{ name: 'A' }, { name: 'B' }],
       characters: [
@@ -1018,7 +1108,7 @@ describe('The standings and the Reckoning on worlds no game holds', () => {
   });
 
   test('a Reckoning tied on score and on tax base goes to the realm with the more gold, its gold weighed against the other’s gold', () => {
-    const relic = vm.runInContext('ITEMS_BY_TIER[4][0].name', engine) as string;
+    const relic = must(ITEMS_BY_TIER[4][0], 'the first legendary item').name;
     // Realm A holds the Throne (the first of a tie on tax) and the Vault (100 gold to 50): 30 points; realm B's hero
     // carries 30 legendary relics: 30 points. Each has a tax base of 10, and B's 50 gold is more than A's tax.
     const w = {
@@ -1034,7 +1124,7 @@ describe('The standings and the Reckoning on worlds no game holds', () => {
         ],
       },
     };
-    const rw = (engineFn(engine, 'reckoningWinner') as Fn)(w) as { winner: Raw; standings: Raw };
+    const rw = (theReckoning.reckoningWinner as Fn)(w) as { winner: Raw; standings: Raw };
     const st = rw.standings;
     expect([(st['standings'] as Raw[]).map((r) => r['score']), st['taxByPlayer'], st['goldByPlayer']]).toEqual([
       [30, 30],
@@ -1112,16 +1202,16 @@ describe('The standings and the Reckoning on worlds no game holds', () => {
   test('the Reckoning’s reads of a world with no list of realms or of relations, and of a realm past the list', () => {
     expect([blocOf({ players: [{}, {}, {}] }, 0), blocOf({ relations: { '0-1': 'allied' } }, 0)]).toEqual([[0], [0]]);
     const w = { players: [{}, {}, {}], relations: { '0-1': 'allied' }, world: { provinces: [{ owner: 0, tax: 10 }] } };
-    const share = engineFn(engine, 'reckoningBlocShare') as Fn;
-    const own = engineFn(engine, 'reckoningOwnShare') as Fn;
+    const share = theReckoning.reckoningBlocShare as Fn;
+    const own = theReckoning.reckoningOwnShare as Fn;
     expect([share(w, 9), own(w, 9), share(w, 0), own(w, 1)]).toEqual([0, 0, 1, 0]);
-    const eligibility = engineFn(engine, 'reckoningCallEligibility') as Fn;
+    const eligibility = theReckoning.reckoningCallEligibility as Fn;
     expect(eligibility({}, 0)).toMatchObject({ ok: false, reason: 'tooEarly', threshold: thresholdOf(0, 0, 1) });
   });
 
   test('a bot’s claim: none with no bots, no set of claims, no turn or no roll of heroes; a gap in the roll skipped', () => {
     const run = (G: Raw, bots: Set<number> | null, calls: Set<number> | null) => {
-      (engineFn(engine, 'runBotReckoning') as Fn)(G, bots, calls);
+      (theReckoning.runBotReckoning as Fn)(G, bots, calls);
       return calls ? [...calls] : null;
     };
     const noTurn = { ...ripe(), turn: undefined };
@@ -1377,15 +1467,16 @@ const holdsOnly0 = (b: Board) => {
   b.own(b.X, 0);
 };
 const disc = (id: string, turn: number) => {
-  const d = JSON.parse(
-    vm.runInContext(`JSON.stringify(SAGE_DISCOVERIES_P.find(d=>d.id===${JSON.stringify(id)}))`, engine) as string,
-  ) as Raw;
-  return { id, name: d['name'], category: d['category'], desc: d['desc'], turnDiscovered: turn };
+  const d = must(
+    SAGE_DISCOVERIES_P.find((row) => row.id === id),
+    id,
+  );
+  return { id, name: d.name, category: d.category, desc: d.desc, turnDiscovered: turn };
 };
 /** The stages on `b` with the standings saying realm 0 holds each title of `merit` (key → its merit), every other
  *  title vacant. */
 const withStandings = (b: Board, held: Record<string, number>) => {
-  const real = engine['computeStandings'] as Fn;
+  const real = theReckoning.computeStandings as Fn;
   let o: Outcome | undefined;
   standIn(
     b,
@@ -1412,7 +1503,7 @@ const withStandings = (b: Board, held: Record<string, number>) => {
 };
 /** The stages on `b` with the minor titles as the real ones, and `extra` added. */
 const withMinor = (b: Board, extra: Record<string, { charId: number; playerIndex: number | null }>) => {
-  const real = engine['computeMinorTitles'] as Fn;
+  const real = theReckoning.computeMinorTitles as Fn;
   let o: Outcome | undefined;
   standIn(
     b,

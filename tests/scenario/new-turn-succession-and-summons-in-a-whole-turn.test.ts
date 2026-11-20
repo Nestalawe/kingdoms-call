@@ -5,11 +5,11 @@
 // one-turn spell marks end (Illusory Terrain and hidden lairs may fade, Part Sea and Flood give the land back); then the
 // Iron Throne's risen skeletons join their winners and the Grand Library gives a Neutral realm one Sage discovery. Each
 // case of lib/new-turn-succession-and-summons-cases.ts staged on the middle of a bot world, from plain realms each
-// holding only its seat with a living king there (`stageCase`), and played through resolveTurn, every realm
-// human-held, every hero Resting unless the case says otherwise, with the case's dice fixed for the whole turn. Level 2
-// (scenario): the stage is what the turn does once diplomacy and victory are settled, before the rest of the turn's
-// end, so only a whole turn plays it as the game does. unit/new-turn-succession-and-summons-called-directly.test.ts
-// calls the stage directly.
+// holding only its seat with a living king there (`stageCase`), and played through resolveTurn on the engine's modules
+// (since P1-14m; the bare vm before), every realm human-held, every hero Resting unless the case says otherwise, with
+// the case's dice fixed for the whole turn. Level 2 (scenario): the stage is what the turn does once diplomacy and
+// victory are settled, before the rest of the turn's end, so only a whole turn plays it as the game does.
+// unit/new-turn-succession-and-summons-called-directly.test.ts calls the stage directly.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The new turn's first part (P1-08k5a, a stage taken out of `resolveTurn`'s own body), played through a whole turn
@@ -41,11 +41,15 @@
 // Divine resurrection; a summoned elemental gone before the War Academy drills. Level 2: the stage is what the turn
 // does once diplomacy and victory are settled, before the rest of the turn's end
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { NEW_TURN_CASES, playCase, stageCase } from '../lib/new-turn-succession-and-summons-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 

@@ -1,10 +1,11 @@
 // The new turn's first part (plan P1-08k5a: src/engine/turn/, a stage lifted out of resolveTurn's own body), called
-// directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/new-turn-succession-and-summons-in-a-whole-turn plays through a whole turn
 // (lib/new-turn-succession-and-summons-cases.ts), here played through the stage alone, as resolveTurn calls it once
 // diplomacy and victory are settled (no phase current, every line filed after the phases), but for those only a whole
-// turn can stage; then, with the helpers it calls stood in (each replaced in the vm by a recorder for the test's
-// length), what it hands them and when; then what the whole turn can't stage: a save with no turn, a fallen hero's
+// turn can stage; then, with the helpers it calls stood in (each by a recorder for the test's length, vi.spyOn on its
+// module), what it hands them and when; then what the whole turn can't stage: a save with no turn, a fallen hero's
 // summons and marks, the Charm's marks, a realm with no creed or folk, the heir's own dice, the dice of fading
 // illusions and lairs in turn, provinces and realms missing what a save may lack. Properties (fast-check): every
 // company summoned for the turn or bound past its last turn leaves, every other stays; a realm with land and no king,
@@ -15,26 +16,24 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns` (P1-08k5a), called directly: the whole-turn cases
 // through the stage alone (but the three only a whole turn stages); then, with the helpers it calls stood in by
-// recorders in the `vm`, what each is handed and when: the holy ground of a fallen Divine king carrying the mark (only
-// he), the heir's name asked of the realm's creed (or Neutral), each realm's Grand Library and its blocked and eligible
-// discoveries (not past a lost Wonder); with no name-giver, "Heir of" the fallen king or "The New Monarch". Then what a
-// whole turn can't stage: a save with no turn or turn 0; a fallen hero's summons (told) and his companies' marks; the
-// Charm's marks; every mark at once; a reduction of nothing kept, a Terror of nothing cleared; a hero hired in any
-// phase; the heir's Temper drawn first, then an aptitude for each skill in order; the heir listed in his province once;
-// a realm that never had a king; the first fallen king demoted; provinces the map doesn't have or with no tax; a
-// landless Divine realm whose king awaits his return; the dice of fading illusions and lairs, province by province, the
-// first and last of the map; provinces, realms and the save missing a field; a rise owed to a hero with no companies
-// list; one Library die for each realm it serves; a Divine realm with no provinces or no graveyard; an heir's province
-// with no list of heroes; a gap in a garrison or among the mercenaries. Properties (fast-check): every company summoned
-// for the turn or bound past its last turn leaves, every other stays, one line of each kind a hero; a realm with land
-// and no king, none awaiting his return, crowns exactly one heir in its richest province, one with none ends its
-// dynasty, one with a king crowns nobody; the Library gives one discovery the realm may learn and doesn't know, never
-// one forgotten or awaiting a choice, or says there is none; the turn moves on by exactly one. Planted faults: in the
-// PR (P1-08k5a)
-import vm from 'node:vm';
+// recorders (vi.spyOn on each one's module: the calls from other files), what each is handed and when: the holy ground
+// of a fallen Divine king carrying the mark (only he), the heir's name asked of the realm's creed (or Neutral), each
+// realm's Grand Library and its blocked and eligible discoveries (not past a lost Wonder); with no name-giver, "Heir
+// of" the fallen king or "The New Monarch". Then what a whole turn can't stage: a save with no turn or turn 0; a fallen
+// hero's summons (told) and his companies' marks; the Charm's marks; every mark at once; a reduction of nothing kept, a
+// Terror of nothing cleared; a hero hired in any phase; the heir's Temper drawn first, then an aptitude for each skill
+// in order; the heir listed in his province once; a realm that never had a king; the first fallen king demoted;
+// provinces the map doesn't have or with no tax; a landless Divine realm whose king awaits his return; the dice of
+// fading illusions and lairs, province by province, the first and last of the map; provinces, realms and the save
+// missing a field; a rise owed to a hero with no companies list; one Library die for each realm it serves; a Divine
+// realm with no provinces or no graveyard; an heir's province with no list of heroes; a gap in a garrison or among the
+// mercenaries. Properties (fast-check): every company summoned for the turn or bound past its last turn leaves, every
+// other stays, one line of each kind a hero; a realm with land and no king, none awaiting his return, crowns exactly
+// one heir in its richest province, one with none ends its dynasty, one with a king crowns nobody; the Library gives
+// one discovery the realm may learn and doesn't know, never one forgotten or awaiting a choice, or says there is none;
+// the turn moves on by exactly one. Planted faults: in the PR (P1-08k5a)
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   CHARM_MARKS,
   COMPANY_MARKS,
@@ -70,25 +69,33 @@ import {
 } from '../lib/new-turn-succession-and-summons-cases.ts';
 import {
   board,
+  botWorld,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   withDice,
   withCaseDice,
   type Board,
   type Character,
   type Province,
   type Unit,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { at, leads, realm, ring1, ring2, wanderer } from '../lib/cast-spell-order-cases.ts';
 import { companies } from '../lib/item-and-army-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
 type Raw = Record<string, unknown>;
-const fn = (name: string) => engineFn(engine, name) as Fn;
-const STAGE = 'newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns';
-const newTurn = fn(STAGE);
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const { newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns } =
+  await import('../../src/engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts');
+const newTurn = newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns as Fn;
+const { KC_SKILLS, SAGE_DISCOVERIES_P } = await import('../../src/content/kingdoms-call-data.ts');
+const theNames = await import('../../src/engine/names.ts');
+const theConsecratedGround = await import('../../src/engine/heroes/fame-and-consecration.ts');
+const theDiscoveries = await import('../../src/engine/discoveries.ts');
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const tc = (b: Board) => b.tc as unknown as Raw & Board['tc'];
@@ -144,26 +151,82 @@ interface Call {
   /** The lines written before the call. */
   before: number;
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length); `returns` gives what a
- *  recorder does, by name (by default it calls the helper it stands in for). */
-function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = names.map((f) => [f, g[f]] as const);
+/** Stands `spy` in for `original` by a recorder that notes each call into `calls`, then does what `instead` does or,
+ *  with none, makes the call. */
+function recordEachCall<A extends unknown[], R>(
+  original: (...a: A) => R,
+  spy: MockInstance<(...a: A) => R>,
+  name: string,
+  b: Board,
+  calls: Call[],
+  instead: Fn | undefined,
+) {
+  return spy.mockImplementation((...args: A) => {
+    calls.push({ fn: name, args, before: b.lines().length });
+    return instead ? (instead(...args) as R) : original(...args);
+  });
+}
+/** Each helper the stage calls, stood in by vi.spyOn on the module that exports it: the stage calls each from its own
+ *  file, so the stand-in reaches those calls (docs/traps.md). Its other callers (the world's making, the bots' set-up,
+ *  the nearest holy ground) are not in the stage. */
+const THE_HELPERS_THE_STAGE_CALLS = {
+  ownedConsecratedProvs: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theConsecratedGround.ownedConsecratedProvs,
+      vi.spyOn(theConsecratedGround, 'ownedConsecratedProvs'),
+      'ownedConsecratedProvs',
+      b,
+      calls,
+      instead,
+    ),
+  nextHeroName: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(theNames.nextHeroName, vi.spyOn(theNames, 'nextHeroName'), 'nextHeroName', b, calls, instead),
+  gdActive: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(theDiscoveries.gdActive, vi.spyOn(theDiscoveries, 'gdActive'), 'gdActive', b, calls, instead),
+  discBlockedIds: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveries.discBlockedIds,
+      vi.spyOn(theDiscoveries, 'discBlockedIds'),
+      'discBlockedIds',
+      b,
+      calls,
+      instead,
+    ),
+  discEligible: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveries.discEligible,
+      vi.spyOn(theDiscoveries, 'discEligible'),
+      'discEligible',
+      b,
+      calls,
+      instead,
+    ),
+};
+type AHelperTheStageCalls = keyof typeof THE_HELPERS_THE_STAGE_CALLS;
+/** Runs `body` with each of `names` stood in by a recorder (for the body's length); `returns` gives what a recorder
+ *  does, by name (by default it calls the helper it stands in for). */
+function standIn(
+  b: Board,
+  names: AHelperTheStageCalls[],
+  body: () => void,
+  returns: Partial<Record<AHelperTheStageCalls, Fn>> = {},
+): Call[] {
   const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
-      calls.push({ fn: f, args, before: b.lines().length });
-      const r = returns[f];
-      return r ? r(...args) : (w as Fn)(...args);
-    };
+  const standIns = names.map((f) => THE_HELPERS_THE_STAGE_CALLS[f](b, calls, returns[f]));
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const s of standIns) s.mockRestore();
   }
   return calls;
 }
-const HELPERS = ['ownedConsecratedProvs', 'nextHeroName', 'gdActive', 'discBlockedIds', 'discEligible'];
+const HELPERS: AHelperTheStageCalls[] = [
+  'ownedConsecratedProvs',
+  'nextHeroName',
+  'gdActive',
+  'discBlockedIds',
+  'discEligible',
+];
 
 describe('The new turn: what it calls', () => {
   test('in order: the holy ground of a king awaiting his return, the heir’s name, then each realm’s Grand Library, its blocked and eligible discoveries', () => {
@@ -182,7 +245,7 @@ describe('The new turn: what it calls', () => {
       [b.tc, 2, 'Neutral'],
     ]);
     expect(of('discBlockedIds')).toEqual([[realm(b, 2)]]);
-    const ds = JSON.parse(vm.runInContext('JSON.stringify(SAGE_DISCOVERIES_P)', engine) as string) as { id: string }[];
+    const ds = SAGE_DISCOVERIES_P;
     expect(of('discEligible').map((a) => [(a[0] as { id: string }).id, a[1]])).toEqual(
       ds.filter((d) => d.id !== 'gd').map((d) => [d.id, realm(b, 2)]),
     );
@@ -221,12 +284,14 @@ describe('The new turn: what it calls', () => {
     const k = kingFalls(b, 0);
     const k1 = kingOf(b, 1);
     b.G.characters = b.G.characters.filter((c) => c !== k1);
-    const was = vm.runInContext('nextHeroName', engine) as unknown;
-    vm.runInContext('nextHeroName=undefined', engine);
+    // no name-giver: the stage reads its module's export as nothing (a stand-in on the export's getter, for the call)
+    const noNameGiver = vi
+      .spyOn(theNames as unknown as { nextHeroName: typeof theNames.nextHeroName | undefined }, 'nextHeroName', 'get')
+      .mockReturnValue(undefined);
     try {
       after(b);
     } finally {
-      engine['nextHeroName'] = was;
+      noNameGiver.mockRestore();
     }
     expect(heirsOf(b, 0).map((h) => h.name)).toEqual(['Heir of ' + k.name]);
     expect(heirsOf(b, 1).map((h) => h.name)).toEqual(['The New Monarch']);
@@ -314,7 +379,7 @@ describe('The new turn: what only a direct call can stage', () => {
   test('the heir’s Temper is drawn first, then an aptitude for each skill in the game’s order, each die in turn', () => {
     const b = fresh();
     kingFalls(b, 0);
-    const skills = JSON.parse(vm.runInContext('JSON.stringify(KC_SKILLS)', engine) as string) as string[];
+    const skills = KC_SKILLS;
     const dice = [0.3, ...skills.map((_, i) => [0, 0.1, 0.3, 0.6, 0.9][i % 5] ?? 0)];
     standIn(
       b,

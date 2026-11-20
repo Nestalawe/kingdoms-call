@@ -6,9 +6,9 @@
 // for the realms it hasn't met; then each realm's titles won and lost since last turn are worked out for its report,
 // and this turn's holders kept for the next. Each case of lib/titles-at-the-turns-end-cases.ts staged on the middle of
 // a bot world, from plain realms each holding only its seat with a living king there (`stageCase`), and played through
-// resolveTurn, every realm human-held, every hero Resting unless the case says otherwise, with the case's dice fixed
-// for the whole turn. Level 2 (scenario): the stages are what the turn does last, once the new turn is done, so only a
-// whole turn plays them as the game does.
+// resolveTurn on the engine's modules (since P1-14m; the bare vm before), every realm human-held, every hero Resting
+// unless the case says otherwise, with the case's dice fixed for the whole turn. Level 2 (scenario): the stages are
+// what the turn does last, once the new turn is done, so only a whole turn plays them as the game does.
 // unit/titles-at-the-turns-end-called-directly.test.ts calls the two stages directly.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -41,11 +41,15 @@
 // every title won. The order: the treasuries read after the taxes and wages; a discovery copied before the changes are
 // worked out. Level 2: the stages are what the turn does last, once the new turn is done
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { TITLE_CASES, playCase, stageCase } from '../lib/titles-at-the-turns-end-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 
