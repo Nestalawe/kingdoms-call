@@ -1,6 +1,7 @@
-// The Move order's cases (plan P1-08j1), staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), each with
-// what must be true after it in game terms. scenario/move-orders-in-a-whole-turn.test.ts plays each through a whole turn
-// (resolveTurn); unit/move-order-called-directly.test.ts calls the order's own function on each, one phase at a time.
+// The Move order's cases (plan P1-08j1), staged on the middle of a bot world (the board of
+// lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts), each with what must be true after it in game
+// terms. scenario/move-orders-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
+// unit/move-order-called-directly.test.ts calls the order's own function on each, one phase at a time.
 // A case stages its world and the mover's five orders; after them, it reads what it needs from the world and the log
 // (`got`) beside what must be so (`want`), and the test compares the two. Every outcome is certain: no case leans on
 // the dice (a battle is overwhelming, and a beaten defender has a province of his own to fall back to).
@@ -16,7 +17,7 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
 export interface Staged {
   /** The hero whose orders are played. */

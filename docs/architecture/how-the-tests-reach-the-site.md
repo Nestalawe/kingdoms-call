@@ -48,7 +48,9 @@
   key of its own (`hired_<hero>_via_<hirer>_ph<phase>`, written for a hero it means to hire). The board leaves the
   realms as the bot world dealt them, and they differ from seed to seed (creed, folk, starting discoveries, treasury,
   home): a case that leans on any of them stages it (`plainRealms` in `lib/recruit-hire-and-realm-works-order-cases.ts`
-  makes them all plain).
+  makes them all plain). **`lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts`** is the same board on
+  the engine's modules (P1-14m), with the same names and members: `loadTheEngineOnItsModules({ seed })` gives fresh
+  modules, seeded as `loadEngine` seeds the `vm`, and its `botWorld` is the `vm`'s, byte for byte (`unit/engine-loads`).
 - **The engine's modules**: how a new test, or one moved off the loader,
   reaches the engine.
   - It **imports the functions it calls from their modules**, typed (`import { generateNewGame } from
