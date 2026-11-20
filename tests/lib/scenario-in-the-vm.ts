@@ -1,5 +1,5 @@
 // One real turn on a small staged world, played in the engine's bare vm (tests/lib/engine.ts) instead of on the GM
-// portal (plan P1-09a): the same staging as tests/lib/scenario.js, for the scenario tests (level 2) that used to reach
+// portal (plan P1-09a): the same staging as tests/lib/scenario.ts, for the scenario tests (level 2) that used to reach
 // inside the page with a code-anchor hook. Here they stand a top-level function in through the vm instead (`W.name =
 // …`, as tests/unit/xp-naval-passenger.test.ts does), which a page can't do once its files are modules (P1-09d).
 //

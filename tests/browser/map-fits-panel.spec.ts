@@ -6,7 +6,7 @@
 // turn on a made-up 8×7 world (jsdom GM portal, seeded); no database.
 import { expect, test, type Page } from '@playwright/test';
 import type { ThePlayersWorld } from '../lib/fake-db.ts';
-import { bootScenario } from '../lib/scenario.js';
+import { bootScenario } from '../lib/scenario.ts';
 import { playerPortalSignedIn } from './started.ts';
 import { handThePageTheFakeDb } from './the-fake-db-handed-to-chromium.ts';
 

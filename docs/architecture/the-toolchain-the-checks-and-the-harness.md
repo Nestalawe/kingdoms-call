@@ -107,7 +107,7 @@ job can only read, so it uploads the report as data; `.github/workflows/balance-
 posts it as one comment with the default branch's `tools/github/balance-comment.ts`, never the pull request's code.
 **Named scenarios** (`npm run balance -- <scenario>`, `tools/balance/scenario.ts`, P1-03c) answer a focused question
 ("how often do these archers beat those guards in the hills?"): a scene staged in `tests/balance/scenarios/` through
-`tests/lib/scenario.js`, played 400 times on a copy of `main`'s site and on the branch, paired by seed and judged by
+`tests/lib/scenario.ts`, played 400 times on a copy of `main`'s site and on the branch, paired by seed and judged by
 the same noise rule, labels and words as the report. Run by hand, not in CI, except a scenario that **requires**
 figures (P1-15e2b, `requires`): every `npm run balance` plays it first, on this site only, and fails if it misses one, so
 CI's balance job plays it whenever it plays the matrix. Today one: `a-chase-held-by-an-unresolved-battle`, a chase held

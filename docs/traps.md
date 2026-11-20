@@ -48,7 +48,7 @@ refuses a read of a column left out.
 
 Code that writes a new column copes while the column is missing: probe once (`probeGameMeta`), spread `{}` for the
 field while it's absent (`metaPatch`); readers fall back to the old source. Checks: a test that hides the column (the
-fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/meta-missing-turn.test.js` does. This is why database and
+fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/page/the-gm-page-runs-and-saves-a-turn-while-the-games-meta-column-is-missing.test.ts` does. This is why database and
 site changes go in separate PRs ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)).
 
 ## A site change that needs a database change
@@ -239,7 +239,7 @@ list every table and sentence still missing it, and `npm run typecheck` names th
 A new swimmer goes in `KC_UNIT_CLASS.primalSea` (it swims, carries nothing, is raised only at sea and can't march
 inland) or, if it ferries troops, in `carrier` (one berth, or its `KC_CARRIER_BERTHS` entry), never in `sea` alone:
 the engine's "crosses the sea under its own power" sets (`SEA_TYPES`, the bots' `BOT_SEA_ALL`) are built from those two.
-Checks: `shark-waters`, for the shoal.
+Checks: `scenario/shark-waters-are-half-the-poor-seas-and-a-realm-raises-its-shoals-there`, for the shoal.
 
 ## A beast joining a column checks its leader's Druid
 

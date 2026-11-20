@@ -167,7 +167,7 @@ without the database pull request it needs (not stacked on it) meets a staging d
 change, and old copies of the site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
 (as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers
 prefer the new column and fall back to the old source. Prove it with a test that hides the column
-(the fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/meta-missing-turn.test.js` does. This is why database
+(the fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/page/the-gm-page-runs-and-saves-a-turn-while-the-games-meta-column-is-missing.test.ts` does. This is why database
 and site changes go in separate PRs ([supabase/README.md](../../supabase/README.md#database-and-site-changes-go-separately)).
 
 ## The access layer: `src/db/`

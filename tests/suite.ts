@@ -20,16 +20,10 @@ const GM = 'kingdoms-call-gm-portal.html';
 export function suite(full: boolean): Script[] {
   // [level, name, file, args, env]
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
-    ['scenario', 'meta-missing-turn', 'tests/meta-missing-turn.test.js'],
     ['simulation', 'turn-fuzz', 'tests/turn-fuzz.test.js', full ? ['16', '12'] : ['4', '6']],
-    ['scenario', 'two-crowns', 'tests/two-crowns.test.js'],
-    ['scenario', 'shark-waters', 'tests/shark-waters.test.js'],
-    ['scenario', 'new-creatures', 'tests/new-creatures.test.js'],
     ['simulation', 'lair-province-unique', 'tests/lair-province-unique.test.js'],
     ['simulation', 'lair-effects-spread', 'tests/lair-effects-spread.test.js'],
     ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
-    ['page', 'cast-practice-assumed', 'tests/cast-practice-assumed.test.js'],
-    ['unit', 'guardian-special-odds', 'tests/guardian-special-odds.test.js'], // batch 2026-10-14
     ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
     [
       'simulation',

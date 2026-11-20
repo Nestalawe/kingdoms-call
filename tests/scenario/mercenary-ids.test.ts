@@ -13,7 +13,7 @@
 // the first band had stayed there, and passed only on the dice). Level 2: the ids are made by a function nested in
 // `resolveTurn`, so only a real turn reaches them. TypeScript, in `scenario/`
 import { expect, test } from 'vitest';
-import { bootScenario, order, plan } from '../lib/scenario.js';
+import { bootScenario, order, plan } from '../lib/scenario.ts';
 
 interface Army {
   type: string;

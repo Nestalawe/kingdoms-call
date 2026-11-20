@@ -87,6 +87,14 @@ if (level === 'static') {
   });
 }
 
+// A level whose scripts have all become Vitest tests still runs this file (the config puts it in every project), and a
+// file with no test fails: so it says, in a test, that none is left (until plan P1-14z deletes this file).
+if (scripts.length === 0 && level !== 'static') {
+  test('no old script is left at this level', ({ expect }) => {
+    expect(suite(full).filter((s) => s.level === level)).toEqual([]);
+  });
+}
+
 test.concurrent.for(scripts)('$name', { timeout: LIMIT_MS + 60_000 }, async (script, { expect }) => {
   const r = await run(script);
   expect(r.status, failure(script, r)).toBe(0);

@@ -16,7 +16,7 @@
 // meet: a set with no held chase passes (a scenario gives it), one with no Encounter Character fails; the scenario that
 // gives the case is there and requires figures. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
-import type { Turn } from '../lib/scenario.js';
+import type { Turn } from '../lib/scenario.ts';
 import { labelOf } from '../../tools/balance/labels.ts';
 import { figureRange } from '../../tools/balance/paired.ts';
 import { CASES_A_REQUIRED_SCENARIO_GIVES, theScriptedCasesThatNeverHappened } from '../../tools/balance/run.ts';

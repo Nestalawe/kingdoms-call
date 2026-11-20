@@ -19,7 +19,7 @@
 // the only die that matters, and it only decides whether Spring's line comes too. A rule change under this (the
 // fortune's bound, one leader a side, the flag, no death outside a duel) shows as "could not stage" or as a run that
 // misses, never as luck.
-import { order, plan, type Turn } from '../../lib/scenario.js';
+import { order, plan, type Turn } from '../../lib/scenario.ts';
 import {
   atWar,
   companies,

@@ -220,5 +220,5 @@ writes, or a battle's mark that leaked into the save).
   mode, the bots' settings), and a hero a test stands on the board lacks fields a real one holds, so a turn played on
   them has a `[Save check]` line in the GM's log. A test that reads every line of the turn's end must say which it
   reads (the stage's own lines), as `tests/lib/new-turn-war-academy-to-the-final-reconcile-cases.ts` does. A test that
-  plays a turn through the GM page (`runTurn`) stages a whole save, or the stop refuses it: `tests/lib/scenario.js`
+  plays a turn through the GM page (`runTurn`) stages a whole save, or the stop refuses it: `tests/lib/scenario.ts`
   adds Turn 0's settings, and each company a test stages has its race.

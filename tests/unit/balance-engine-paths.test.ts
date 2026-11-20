@@ -42,7 +42,7 @@ describe('the engine paths', () => {
     'tests/balance/baseline/matrix.json',
     'tests/balance/scenarios/battle.ts',
     'tests/lib/boot.ts',
-    'tests/lib/scenario.js',
+    'tests/lib/scenario.ts',
     'package-lock.json',
     '.nvmrc',
   ])('%s is one', (f) => {
@@ -84,7 +84,7 @@ describe('the engine paths', () => {
         .map((m) => path.relative(ROOT, path.resolve(dir, m[1] ?? '')));
     });
     expect(outside).toContain('tests/lib/boot.ts');
-    expect(outside).toContain('tests/lib/scenario.js');
+    expect(outside).toContain('tests/lib/scenario.ts');
     expect(outside.filter((f) => !isEnginePath(f))).toEqual([]);
   });
 

@@ -52,7 +52,7 @@ export const ENGINE_PATHS: readonly string[] = [
   'tests/balance/**',
   'tests/lib/boot.ts',
   'tests/lib/fake-db.ts',
-  'tests/lib/scenario.js',
+  'tests/lib/scenario.ts',
   'tests/lib/invariants.ts',
   'tests/lib/report-leaks.ts',
   'tests/lib/engine.ts',

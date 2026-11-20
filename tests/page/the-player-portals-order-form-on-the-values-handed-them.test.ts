@@ -5,7 +5,8 @@
 // dragged and removed), a spell field for a hero the report doesn't hold, and the heir's points taken back. With them
 // (until plan P1-14z the script cast-practice-projection), the Cast Spell field as the live form builds it: each
 // earlier Practice Skill on a school counted as a success, rebuilt when an earlier order changes, the Warlock's extra
-// spell (R-123) and a Grand Cathedral's free Bless (R-124); the copies test
+// spell (R-123) and a Grand Cathedral's free Bless (R-124), and (until plan P1-14z the page half of the script
+// cast-practice-assumed) the encounter plan's combat-spell picker counting a practice the same way; the copies test
 // (tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts) compares the form's count with the engine's.
 // Level 4 (page): orders-form.ts loads the page's start-up (its database client), so no lower level reaches it; the
 // portal is booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with
@@ -572,6 +573,93 @@ describe('the Cast Spell field counts earlier practices, the Warlock and a Grand
     expect(seen['formHtml']).not.toMatch(/undefined|NaN|\[object Object\]/);
   });
   test('no page errors', () => {
+    expect(errorsHere).toEqual([]);
+  });
+});
+
+// The encounter plan's combat-spell picker counts a Practice Skill on the school earlier in the turn as a success
+// (item 16, 2026-10-13; until plan P1-14z the page half of the script cast-practice-assumed): a Psychic 1 hero
+// practising Psychic is offered two combat spells of the school, Psychic 2's allowance, and adding the second is
+// accepted rather than refused at the current level's one. The bots' side is
+// tests/unit/the-bots-order-check-counts-each-earlier-practice-as-a-level-before-a-cast.test.ts. The picks run once, in
+// beforeAll, in the order a player makes them; each check is a test.
+describe("the encounter plan's combat spells count a practice earlier in the turn", () => {
+  const offered: Record<string, boolean> = {};
+  let thePlan = '';
+  const alertsHere: string[] = [];
+  const errorsHere: string[] = [];
+  /** Opens the picker for a combat spell and picks `spell` if it is offered; else closes it. Whether it was offered. */
+  const add = (spell: string): boolean => {
+    P.eval("addEncounterTactic('h1','CA')");
+    const pk = doc.getElementById('ep-spell-picker-h1');
+    const b = pk
+      ? [...pk.querySelectorAll('button')].find((x) => x.textContent.trim().startsWith(spell) && !x.disabled)
+      : undefined;
+    if (!b) {
+      if (pk) pk.remove();
+      return false;
+    }
+    b.click();
+    return true;
+  };
+
+  beforeAll(async () => {
+    const errorsBefore = errs.length;
+    const ph = {
+      id: 'h1',
+      name: 'Maelis',
+      player: 0,
+      locationId: 11,
+      locationName: 'Ashford',
+      hp: 20,
+      maxHp: 20,
+      armies: [],
+      items: [],
+      skills: { psychic: 1 },
+      effectiveSpeed: 3,
+      effectiveSeaSpeed: 3,
+      isKing: true,
+    };
+    stage("currentGamePlayer={id:'gpx',orders:null};");
+    stage(
+      `currentReport=${JSON.stringify({ turn: 3, _liveTurn: 3, characters: [ph], kingdom: { gold: 100, alignment: 'Good' }, worldMeta: { provinces: [{ id: 11, name: 'Ashford' }] } })};`,
+    );
+    const drafts = {
+      h1: [
+        { action: 'Practice Skill', target: 'psychic', extra: '' },
+        { action: 'Rest' },
+        { action: 'Rest' },
+        { action: 'Rest' },
+        { action: 'Rest' },
+      ],
+    };
+    P.eval(`buildOrdersForm(currentReport.characters,false,${JSON.stringify(drafts)},3)`);
+    await settle(80);
+    offered['Psychic Blast'] = add('Psychic Blast');
+    offered['Charm'] = add('Charm');
+    thePlan = doc.getElementById('ep-tactics-h1') ? theValueOf('ep-tactics-h1') : '';
+    alertsHere.push(...alerts);
+    offered['Telekinetic Storm'] = add('Telekinetic Storm');
+    errorsHere.push(...errs.slice(errorsBefore));
+  });
+
+  test('the picker offers Psychic Blast', () => {
+    expect(offered['Psychic Blast']).toBe(true);
+  });
+  test('with Psychic practised this turn, a second Psychic combat spell is still offered', () => {
+    expect(offered['Charm']).toBe(true);
+  });
+  test('and adding it is accepted', () => {
+    expect(thePlan).toMatch(/CA:Psychic Blast/);
+    expect(thePlan).toMatch(/CA:Charm/);
+  });
+  test('no refusal pops up', () => {
+    expect(alertsHere).toEqual([]);
+  });
+  test('a third Psychic combat spell is not offered (Psychic 2 allows two)', () => {
+    expect(offered['Telekinetic Storm']).toBe(false);
+  });
+  test('no page errors while the plan is made', () => {
     expect(errorsHere).toEqual([]);
   });
 });

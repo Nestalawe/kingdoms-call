@@ -110,7 +110,7 @@ the master tables and the player portal's speeds are built from it), `PRIMAL_UNI
 `KC_UNIT_CLASS` (`creature` or `monster`, plus `aerial` for a flyer, `cavalry` for a horse, `primalSea` for a
 swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and **both** copies of the wild pools
 (`CREATURE_BY_TERRAIN` / `MONSTER_BY_TERRAIN` in world generation and `CBT` / `MBT` in the alignment-neighbour
-pass: `tests/new-creatures.test.js` holds the Creature pair together); the player portal's `PRIMAL_SUBRACE_CLASS`
+pass: `tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts` holds the Creature pair together); the player portal's `PRIMAL_SUBRACE_CLASS`
 (the `Primal:<sub-race>` string a wild province carries) and its alignment texts; the rulebook's Druid ladder
 and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
 (`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.
@@ -122,7 +122,7 @@ The engine's "crosses the sea under its own power" set (`SEA_TYPES`, and the bot
 consumers read. A unit listed in `sea` alone is a land unit the moment it is at sea: it needs a berth, is
 stranded by `settleStrandedAtSea` and blocks the column's move. Put a new swimmer in `primalSea` (it swims,
 carries nothing, is raised only at sea and cannot march inland) or, if it ferries troops, in `carrier` (one
-berth, or its `KC_CARRIER_BERTHS` entry); the first run of `tests/shark-waters.test.js` showed the shoal left behind as
+berth, or its `KC_CARRIER_BERTHS` entry); the first run of the old shark-waters script showed the shoal left behind as
 a garrison for exactly this reason. World generation's prosperous-seas pool is `primalSea` less the poor seas' beasts
 (`KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS`, dealt turn about). A sea beast raised Primal whoever
 raises it is in `KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM`; a unit raised two a turn besides the

@@ -130,7 +130,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   baseline without a column is compared on the rest, and the report says what wasn't compared.
 - **Named scenarios** (`npm run balance -- <scenario>`, `tools/balance/scenario.ts`, P1-03c). A scenario measures one
   rule's direct effect in one staged scene; the matrix measures the knock-on effects in whole games. Each is a file in
-  `balance/scenarios/`: a scene staged through `lib/scenario.js`, its number of runs (400), and the figures it
+  `balance/scenarios/`: a scene staged through `lib/scenario.ts`, its number of runs (400), and the figures it
   reports, named and labelled as the matrix's statistics. Run *n* plays on a fresh page with seed *n* and the matrix's
   clock, so the base's runs and the branch's pair by seed and the noise rule judges them. The base's side plays a copy
   of `main`'s site (`-- --base REF` for another; `git archive`, through `KC_SITE`), then this side plays this site

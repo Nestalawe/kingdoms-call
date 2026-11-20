@@ -98,7 +98,7 @@
   These read `src/`, not `KC_SITE`.
 - **`lib/scenario-in-the-vm.ts`** plays one real turn on a small staged world in the engine's bare vm, as the
   shell plays it (a seed from the dice, `resolveTurn`, the Spy-stealth step, the views' `buildReports` on what the turn
-  hands over), with `lib/scenario.js`'s staging; `play(state,
+  hands over), with `lib/scenario.ts`'s staging; `play(state,
   rows)` plays a saved world on slot rows of the test's own, and `reportEveryRealm()` has every realm reported, bots'
   too (an all-bot game writes no report otherwise: `simulation/every-realms-report-…`). Its `log` (and `text()`) is the GM's
   log in words, as the views write it for the shell to save (`buildReports`' `gmLog`, P1-12c3), and so is
@@ -119,7 +119,7 @@
   nothing in a browser; stage what it reads, or stand it in in the engine's `vm`, `lib/scenario-in-the-vm.ts`). Name a
   page's function as code (`typeof f`), not in a string handed to `eval`, which it can't read. `lib/page-globals.ts`
   says how it reads them.
-- **`lib/scenario.js`** stages one real turn on a small world for scenario tests: it boots the GM
+- **`lib/scenario.ts`** stages one real turn on a small world for scenario tests: it boots the GM
   portal, lets the test edit a fresh world, gives every human-held
   character its orders (Rest by default), runs `runTurn` and returns the saved world and the GM's log.
   `alignments` (and `races`) name a realm's crown by index, with the skill build a bot of that crown is dealt.
