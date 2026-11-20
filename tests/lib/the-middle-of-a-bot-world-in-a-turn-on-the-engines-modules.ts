@@ -36,6 +36,8 @@ import {
   type AFunctionOfTheEngines,
   type AFunctionOrTableOfTheEngines,
   type Board as TheBoardACaseIsStagedOn,
+  type Dice,
+  type ExperienceRoll,
   type Line,
   type Province,
   type World,
@@ -71,6 +73,7 @@ export async function loadTheEngineOnItsModules({ seed }: { seed: number }) {
   await import('./the-whole-engine.ts');
   const { kcRng } = await import('../../src/engine/rng.ts');
   const theDiceModule = await import('../../src/engine/dice-and-army-names.ts');
+  const theExperienceModule = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
   const { KC_SEASONS } = await import('../../src/content/kingdoms-call-data.ts');
   const { generateBotSetups, isBotRow } = await import('../../src/engine/bots/setup.ts');
   const { generateNewGame } = await import('../../src/engine/world/generate.ts');
@@ -85,6 +88,7 @@ export async function loadTheEngineOnItsModules({ seed }: { seed: number }) {
     console,
     kcRng,
     theDiceModule,
+    theExperienceModule,
     KC_SEASONS,
     generateBotSetups,
     isBotRow,
@@ -343,3 +347,33 @@ export function board(engine: TheEngineOnItsModules, world: string, ph: number) 
   return b satisfies TheBoardACaseIsStagedOn;
 }
 export type Board = ReturnType<typeof board>;
+
+// ── What the tests that call the engine themselves hand it: the vm board's, on the modules ───────────────────────────
+/** Runs `body` with the case's dice, if it fixes them (the-board-a-case-is-staged-on-either-way.ts' withCaseDice, on
+ *  the `engine` itself): the vm board's withCaseDice. */
+export const withCaseDice = <T>(engine: TheEngineOnItsModules, dice: Dice | undefined, body: () => T): T =>
+  dice ? withDice(engine, [dice.die], () => withRolls(engine, dice.roll, body)) : body();
+
+/** Records every experience roll the engine starts (plan P1-08c) into the list `recordExperienceRolls` hands back for
+ *  the length of `body`: the vm board's recordExperienceRolls. trySkillGain is stood in by vi.spyOn on its module for
+ *  the body's length, playing as it is once recorded, so it records the calls from other files only (docs/traps.md):
+ *  not rollNavalVoyage's, the one call in trySkillGain's own file, which the vm's wrap of its global recorded too. A
+ *  test that reads a voyage's roll stays on the vm, or stages around it. */
+export const recordExperienceRolls = (engine: TheEngineOnItsModules) => {
+  const theExperienceModule = engine.theExperienceModule;
+  return <T>(body: () => T): { result: T; xp: ExperienceRoll[] } => {
+    const xp: ExperienceRoll[] = [];
+    const tryOne = theExperienceModule.trySkillGain;
+    const theRecorder = vi
+      .spyOn(theExperienceModule, 'trySkillGain')
+      .mockImplementation((turnContext, char, skill, base, ...rest) => {
+        xp.push({ id: char ? char.id : char, skill, base });
+        tryOne(turnContext, char, skill, base, ...rest);
+      });
+    try {
+      return { result: body(), xp };
+    } finally {
+      theRecorder.mockRestore();
+    }
+  };
+};

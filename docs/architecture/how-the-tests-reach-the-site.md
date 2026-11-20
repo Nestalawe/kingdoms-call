@@ -53,7 +53,10 @@
   modules, seeded as `loadEngine` seeds the `vm`, and its `botWorld` is the `vm`'s, byte for byte (`unit/engine-loads`).
   **`lib/the-board-a-case-is-staged-on-either-way.ts`** is what both boards give a case: the types, `hero`, `playTurn`,
   `withCaseDice`, and the members that reach the engine (the dice, a function or table by name, a stand-in, values made
-  in the engine's realm); the case files (`lib/*-cases.ts`) import it, not a board, so each serves either board.
+  in the engine's realm); the case files (`lib/*-cases.ts`) import it, not a board, so each serves either board. For a
+  test that calls the engine itself, both boards give `withCaseDice(engine, …)` and `recordExperienceRolls(engine)`; on
+  the modules the recorder stands in `trySkillGain` on its module, so it misses the one call inside that file (a
+  voyage's roll).
 - **The engine's modules**: how a new test, or one moved off the loader,
   reaches the engine.
   - It **imports the functions it calls from their modules**, typed (`import { generateNewGame } from

@@ -1,9 +1,10 @@
 // After the phases (plan P1-08k3: src/engine/turn/, the first stage lifted out of resolveTurn's own body), called
-// directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/after-the-phases-in-a-whole-turn plays through a whole turn (lib/after-the-phases-cases.ts), here played
 // through the stage alone, as resolveTurn calls it once the phase loop is over (no phase current, every later line
 // filed after the phases), but for those only a whole turn can stage; then, with the helpers it calls stood in (each
-// replaced in the vm by a recorder for the test's length), what it hands them and when; then what the whole turn can't
+// stood in by a recorder, vi.spyOn on its module, for the test's length), what it hands them and when; then what the whole turn can't
 // stage: a stand-off still standing at the end, a fallen commander's host still in the field, the lines of skill rises
 // left waiting, the Elven escape queue as battles leave it, an old save's note for a hero who is gone, a hero standing
 // nowhere, a world or a hero missing a list (P1-10b37). Properties (fast-check): no skeletal company is left under a
@@ -15,7 +16,7 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames` (P1-08k3), called directly: the
 // whole-turn cases through the stage alone (but those only a whole turn can stage); then, with its helpers stood in by
-// recorders in the `vm`, the order of its calls and what each is handed (the graves' and the neutral heroes' line
+// recorders on their modules, the order of its calls and what each is handed (the graves' and the neutral heroes' line
 // writers, the waiting skill rises resolved then written, a fallen commander's host dispersed knowing his killer, the
 // maximum HP resynced after the notes, a coward's host left before he moves, the provinces rebuilt after); then what a
 // whole turn can't stage: a stand-off still standing, a fallen hero's dead, a fallen commander's host still in the
@@ -28,10 +29,8 @@
 // lost; Mass Healing mends each wounded friend of a master once, by half, to the maximum, and nobody else; a realm
 // keeps the consecration of exactly what it holds; every hero bears his province's name. Planted faults: in the PR
 // (P1-08k3)
-import vm from 'node:vm';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import {
   AFTER_THE_PHASES_CASES,
   LANDS,
@@ -54,27 +53,33 @@ import {
 } from '../lib/after-the-phases-cases.ts';
 import {
   board,
+  botWorld,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   withCaseDice,
   type Board,
   type Character,
   type Province,
   type Unit,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { at, leads, rival, wanderer } from '../lib/cast-spell-order-cases.ts';
 import { companies, item, skeletal } from '../lib/item-and-army-order-cases.ts';
 import type { WhatTheSavesUpgradeFound } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
-import { THE_PHASE_THE_LINE_IS_WRITTEN_IN } from '../../src/engine/turn/events-and-their-audiences.ts';
-import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
+// (the engine's own modules, fresh with it; called as the vm's top-level functions were)
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
-const STAGE = 'afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames';
-const afterThePhases = fn(STAGE);
+const afterThePhases = (
+  await import('../../src/engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.ts')
+).afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames as unknown as Fn;
+/** The realms the maximum-HP helpers fall back on when handed none, read from the module that holds them. */
+const { maxHpPlayers } = await import('../../src/engine/heroes/skills-and-hp.ts');
+const { THE_PHASE_THE_LINE_IS_WRITTEN_IN } = await import('../../src/engine/turn/events-and-their-audiences.ts');
+const { theWordsOf } = await import('../../src/views/prose/the-words-of-each-line.ts');
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const tc = (b: Board) => b.tc as unknown as Record<string, unknown> & Board['tc'];
@@ -143,21 +148,42 @@ interface Call {
   /** The lines written before the call. */
   before: number;
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length); `returns` gives what a
- *  recorder does, by name (by default nothing). */
+/** The module that exports each helper the stage calls and a test stands in. The stage calls each from its own file,
+ *  so a stand-in on the helper's module reaches it (docs/traps.md). Two are also called inside their own module, where
+ *  a stand-in doesn't reach: consecratedIds (by isConsecrated and liftConsecratedGround, which the stage doesn't call)
+ *  and disperseDeadCharArmies (by abandonHostOnFlight, for a spared coward's own companies left with no comrade and on
+ *  ground not his realm's, which no test that stands in the one without the other stages; and by handleHeroDeath,
+ *  which the stage doesn't call). */
+const theModuleOfEachHelper: Record<string, unknown> = {
+  flagEnemyStandoffs: await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts'),
+  senseGravesUnderfoot: await import('../../src/engine/graves.ts'),
+  progressNeutralHeroes: await import('../../src/engine/heroes/charms-and-neutrals.ts'),
+  consecratedIds:
+    await import('../../src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts'),
+  resolveAllPendingSkillGains: await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts'),
+  writeDeferredSkillLines: await import('../../src/engine/turn/events-and-their-audiences.ts'),
+  disperseDeadCharArmies: await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts'),
+  flushIntrusionNotifications: await import('../../src/engine/turn/intrusion-warnings.ts'),
+  healFeatureMonsters: await import('../../src/engine/chances-and-lair-grades.ts'),
+  syncAllMaxHp: await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts'),
+  monarchRestProvId: await import('../../src/engine/grand-design.ts'),
+  abandonHostOnFlight: await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts'),
+  reconcileProvinceCharacters: await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts'),
+};
+/** Runs `body` with each of `names` replaced by a recorder (vi.spyOn on its module, for the body's length); `returns`
+ *  gives what a recorder does, by name (by default nothing). */
 function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = names.map((f) => [f, g[f]] as const);
   const calls: Call[] = [];
-  for (const f of names)
-    g[f] = (...args: unknown[]) => {
+  const recorders = names.map((f) =>
+    vi.spyOn(must(theModuleOfEachHelper[f], f) as Record<string, Fn>, f).mockImplementation((...args: unknown[]) => {
       calls.push({ fn: f, args, before: b.lines().length });
       return returns[f]?.(...args);
-    };
+    }),
+  );
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const r of recorders) r.mockRestore();
   }
   return calls;
 }
@@ -313,9 +339,9 @@ describe('After the phases: what it calls', () => {
     const b = fresh();
     const h = at(b);
     found(b).heroesCarriedOverToTheEarnedHpPool = [{ charId: h.id, player: 0, old: 80, nu: 60 }];
-    const players = vm.runInContext('()=>maxHpPlayers.players', engine) as () => unknown;
+    const players = () => maxHpPlayers.players;
     let seen: unknown = null;
-    vm.runInContext('maxHpPlayers.players=null', engine);
+    maxHpPlayers.players = null;
     const calls = standIn(b, ['syncAllMaxHp'], () => after(b), {
       syncAllMaxHp: () => {
         seen = players();

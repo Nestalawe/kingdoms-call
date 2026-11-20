@@ -1,8 +1,9 @@
-// Early Winter (plan P1-08k2: src/engine/turn/, lifted out of resolveTurn's phase loop), called directly in the bare vm
-// on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases scenario/early-winter-in-a-whole-turn
-// plays through a whole turn (lib/early-winter-cases.ts), here played through the stage alone, as the loop calls it
-// after the last season's four stages; then, with the helpers it calls stood in (each replaced in the vm by a recorder
-// for the test's length), what it hands them and when; then what the whole turn can't stage: a phantom or summoned
+// Early Winter (plan P1-08k2: src/engine/turn/, lifted out of resolveTurn's phase loop), called directly on the
+// engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/early-winter-in-a-whole-turn plays through a whole turn (lib/early-winter-cases.ts), here played through the
+// stage alone, as the loop calls it after the last season's four stages; then, with the helpers it calls stood in (each
+// by a recorder, vi.spyOn on its module, for the test's length), what it hands them and when; then what the whole turn can't stage: a phantom or summoned
 // company in garrison (the season's start strips phantoms, the turn's end dissolves summons), a fallen hero's companies
 // (the season's end garrisons them), two ships kept, a garrison of a realm that isn't, the Charm's lasting marks.
 // Properties (fast-check): Orcish war-spoils halve a host's wages exactly (half the 2g-and-up wages, rounded down, and
@@ -13,7 +14,7 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill` (P1-08k2), called directly: the whole-turn cases
-// through the stage alone; then, with its helpers stood in by recorders in the `vm`, a charmed hero's movement worked
+// through the stage alone; then, with its helpers stood in by recorders on their modules, a charmed hero's movement worked
 // out afresh under his own lord (not for one already home) and the stranded settled once, last, for the last season;
 // then what a whole turn can't stage: a fallen hero's companies, pay, tax items and Thief skill; phantom and summoned
 // companies in garrison; a garrison of a realm the world doesn't have; two ships kept (the plural line); an Orcish
@@ -22,8 +23,7 @@
 // companies in order until the debt is met, and no more; a garrison company rises at most one grade, never past Elite,
 // and only in a realm-held garrison. Planted faults: in the PR (P1-08k2)
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import {
   EARLY_WINTER_CASES,
   LANDS,
@@ -47,25 +47,29 @@ import {
 } from '../lib/early-winter-cases.ts';
 import {
   board,
+  botWorld,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   withDice,
   withCaseDice,
   type Board,
   type Character,
   type Unit,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { holding } from '../lib/cast-spell-order-cases.ts';
 import { item } from '../lib/item-and-army-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
+// (the engine's own modules, fresh with it; called as the vm's top-level functions were)
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
-const STAGE = 'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill';
-const earlyWinter = fn(STAGE);
-const computeMinorTitles = fn('computeMinorTitles');
+const earlyWinter = (
+  await import('../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts')
+).earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill as unknown as Fn;
+const computeMinorTitles = (await import('../../src/engine/titles/reckoning.ts')).computeMinorTitles as unknown as Fn;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const G = (b: Board) => b.G as unknown as Record<string, unknown> & Board['G'];
@@ -122,21 +126,26 @@ interface Call {
   /** The lines written before the call. */
   before: number;
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length); `returns` gives what a
- *  recorder hands back, by name (by default nothing). */
+/** The module that exports each helper the stage calls and a test stands in. The stage calls each from its own file,
+ *  so a stand-in on the helper's module reaches it (docs/traps.md). */
+const theModuleOfEachHelper: Record<string, unknown> = {
+  setMovePool: await import('../../src/engine/units/movement-pools.ts'),
+  settleStrandedAtSea: await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts'),
+};
+/** Runs `body` with each of `names` replaced by a recorder (vi.spyOn on its module, for the body's length); `returns`
+ *  gives what a recorder hands back, by name (by default nothing). */
 function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = names.map((f) => [f, g[f]] as const);
   const calls: Call[] = [];
-  for (const f of names)
-    g[f] = (...args: unknown[]) => {
+  const recorders = names.map((f) =>
+    vi.spyOn(must(theModuleOfEachHelper[f], f) as Record<string, Fn>, f).mockImplementation((...args: unknown[]) => {
       calls.push({ fn: f, args, before: b.lines().length });
       return returns[f]?.(...args);
-    };
+    }),
+  );
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const r of recorders) r.mockRestore();
   }
   return calls;
 }
