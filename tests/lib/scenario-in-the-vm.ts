@@ -294,7 +294,7 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
     const clairvoyance = plain(forTheReports.sight.clairWatch) as Perception['clairvoyance'];
     return { events, presence, clairvoyance };
   }
-  return { engine, W, world, turn, play, reportEveryRealm, recordTheEvents, rest, errs: [] as string[] };
+  return { engine, W, turn, play, reportEveryRealm, recordTheEvents, errs: [] as string[] };
 }
 
 /** One phase's order: `order('move', 12)`. */

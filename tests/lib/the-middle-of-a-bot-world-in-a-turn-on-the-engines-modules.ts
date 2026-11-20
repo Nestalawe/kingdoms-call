@@ -1,6 +1,6 @@
-// The board of tests/lib/middle-of-a-bot-world.ts (plan P1-08i3), on the engine's modules, imported directly, with no
-// vm (P1-14m): the same names, the same members on the board and the same staging, so a test moved off the vm changes
-// its imports and the engine it passes, never its cases or its checks.
+// The turn's board (plan P1-08i3), on the engine's modules, imported directly, with no vm. P1-14m moved its tests here
+// from the vm's board (since deleted): the same names, the same members on the board and the same staging, so each
+// moved test kept its cases and its checks.
 //
 //   const engine = await loadTheEngineOnItsModules({ seed });   // fresh modules, the dice seeded `seed`
 //   quietEngineLog(engine);
@@ -14,7 +14,7 @@
 // neighbours (ring1) and theirs (ring2) are open plain, unowned, with no garrison, guard or lair; nobody stands anywhere
 // and nobody has orders. Realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace. playTurn plays a whole turn
 // from a board as staged. The context's fields come from lib/the-fields-resolve-turn-adds-to-the-turns-context.ts, the
-// one list lib/engine.ts's turnContext uses too.
+// one list of them.
 //
 // Fresh modules (docs/architecture/how-the-tests-reach-the-site.md, "The engine's modules"): loadTheEngineOnItsModules
 // calls vi.resetModules() and imports the whole engine again before it seeds the dice, as lib/engine.ts's loadEngine
@@ -28,7 +28,7 @@
 // which reaches the calls from other files only (docs/traps.md).
 //
 // tests/lib/the-middle-of-a-bot-world-on-the-engines-modules.ts (aBotBoard) is the bots' board: no turn's context, a
-// world made on each call, and its own types; this file is the turn's board the vm board's users move to.
+// world made on each call, and its own types; this file is the turn's board.
 import { vi } from 'vitest';
 import { addTheFieldsResolveTurnAdds } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 import {
@@ -210,8 +210,7 @@ export function botWorld(
 }
 
 /** A fresh turn's context on `state` (a world as JSON, or as an object, copied first), as resolveTurn makes it before
- *  the first phase: lib/engine.ts's turnContext(engine, state), on the modules. The state is parsed from its JSON, so
- *  the context holds its own copy, as the vm's did. */
+ *  the first phase. The state is parsed from its JSON, so the context holds its own copy. */
 export function aFreshTurnsContextOnTheWorld(
   engine: TheEngineOnItsModules,
   state: object | string,
@@ -399,17 +398,17 @@ export function board(engine: TheEngineOnItsModules, world: string, ph: number) 
 }
 export type Board = ReturnType<typeof board>;
 
-// ── What the tests that call the engine themselves hand it: the vm board's, on the modules ───────────────────────────
+// ── What the tests that call the engine themselves hand it ───────────────────────────────────────────────────────────
 /** Runs `body` with the case's dice, if it fixes them (the-board-a-case-is-staged-on-either-way.ts' withCaseDice, on
- *  the `engine` itself): the vm board's withCaseDice. */
+ *  the `engine` itself). */
 export const withCaseDice = <T>(engine: TheEngineOnItsModules, dice: Dice | undefined, body: () => T): T =>
   dice ? withDice(engine, [dice.die], () => withRolls(engine, dice.roll, body)) : body();
 
 /** Records every experience roll the engine starts (plan P1-08c) into the list `recordExperienceRolls` hands back for
- *  the length of `body`: the vm board's recordExperienceRolls. trySkillGain is stood in by vi.spyOn on its module for
+ *  the length of `body`. trySkillGain is stood in by vi.spyOn on its module for
  *  the body's length, playing as it is once recorded, so it records the calls from other files only (docs/traps.md):
- *  not rollNavalVoyage's, the one call in trySkillGain's own file, which the vm's wrap of its global recorded too. A
- *  test that reads a voyage's roll stays on the vm, or stages around it. */
+ *  not rollNavalVoyage's, the one call in trySkillGain's own file. A test that reads a voyage's roll stages around it.
+ */
 export const recordExperienceRolls = (engine: TheEngineOnItsModules) => {
   const theExperienceModule = engine.theExperienceModule;
   return <T>(body: () => T): { result: T; xp: ExperienceRoll[] } => {
@@ -430,7 +429,7 @@ export const recordExperienceRolls = (engine: TheEngineOnItsModules) => {
 };
 
 /** Writes the orders `writes` gives (by hero) into the turn after the bots have planned theirs, for the length of a
- *  body: the vm board's asTheBotsPlan. runBotOrderHygiene (the bots' last pass) is stood in by vi.spyOn on its module,
+ *  body. runBotOrderHygiene (the bots' last pass) is stood in by vi.spyOn on its module,
  *  playing as it is and then writing the orders in; the bots' plan calls it from another file, so the stand-in reaches
  *  it (docs/traps.md). */
 export const asTheBotsPlan = (engine: TheEngineOnItsModules) => {

@@ -30,8 +30,8 @@ import {
 const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 });
-/** The dice for the whole turn: every roll lands, every other die at its highest (lib/war-order-cases.ts's LANDS,
- *  whose file is still on the vm board), fixed as lib/espionage-order-cases.ts's withCaseDice fixes a case's. */
+/** The dice for the whole turn: every roll lands, every other die at its highest (lib/war-order-cases.ts's LANDS
+ *  too), fixed as lib/espionage-order-cases.ts's withCaseDice fixes a case's. */
 const LANDS = { roll: 1, die: 0.99999 };
 const withTheTurnsDice = <T>(body: () => T): T =>
   withDice(engine, [LANDS.die], () => withRolls(engine, LANDS.roll, body));

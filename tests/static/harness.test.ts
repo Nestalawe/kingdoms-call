@@ -1674,7 +1674,9 @@ describe('CI', () => {
           const file = [name, name + '.js', name + '.ts'].find((f) => fs.existsSync(path.join(ROOT, f)));
           if (file) helpers.add(file);
         }
-      expect(helpers).toContain('tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts');
+      // one reached only in turn: the engine's loader, through scenario-in-the-vm.ts
+      expect(direct).not.toContain('tests/lib/engine.ts');
+      expect(helpers).toContain('tests/lib/engine.ts');
       expect(ENGINE_PATHS.filter((g) => !g.startsWith('src/') || g === 'src/*.html').sort()).toEqual(
         [
           ...new Set([

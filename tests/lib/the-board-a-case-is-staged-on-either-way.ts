@@ -1,18 +1,18 @@
-// The board a case is staged on, either way the tests reach the engine (P1-14m): what the case files
-// (tests/lib/*-cases.ts) take from a board, so one case file serves the vm board (tests/lib/middle-of-a-bot-world.ts)
-// and the modules board (tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts) alike. It holds the
-// shared types, `must`, `order` and `plan`, and the functions a case calls that go through the board it is handed:
-// `hero`, `playTurn`, `withCaseDice`, `linesInWords`, `points`, `linesOf`, `allText`. Both boards re-export them.
+// The board a case is staged on (P1-14m): what the case files (tests/lib/*-cases.ts) take from a board. The board is
+// the modules board (tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts); the vm board that this
+// file once served too is gone, and the file keeps its name until the renames of P1-24. It holds the shared types,
+// `must`, `order` and `plan`, and the functions a case calls that go through the board it is handed: `hero`,
+// `playTurn`, `withCaseDice`, `linesInWords`, `points`, `linesOf`, `allText`. The modules board re-exports them.
 //
 // A board gives its staging (the turn's context in one phase, the middle province X and its rings; the boards'
 // headers say how each is made) and the members that reach its engine: the dice (`withDice`, `firstDie`,
 // `withRolls`), one of the engine's functions or tables by name (`theEnginesFunctionOrTable`), a stand-in for one of
-// its functions for a while (`standInForTheEnginesFunction`), and values made in the engine's own realm (the vm's
-// objects are its own: `parsedInTheEnginesRealm`, `aSetMadeInTheEnginesRealm`, `aMapMadeInTheEnginesRealm`). On the
-// vm a name is the bundle's top-level name; on the modules, the export of the one module that defines it.
+// its functions for a while (`standInForTheEnginesFunction`), and values made in the engine's own realm
+// (`parsedInTheEnginesRealm`, `aSetMadeInTheEnginesRealm`, `aMapMadeInTheEnginesRealm`: on the modules, the test's own
+// realm). A name is the export of the one module that defines it.
 //
 // It imports nothing that reaches tests/lib/engine.ts (tools/ratchet.ts's vmLoaderTests follows every import, types
-// too), so a test whose case files import only this file and each other can leave the vm.
+// too), so the tests whose case files import only this file and each other stay off the vm.
 import type { TurnContext } from './the-fields-resolve-turn-adds-to-the-turns-context.ts';
 
 export interface Unit {

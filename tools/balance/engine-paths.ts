@@ -56,7 +56,6 @@ export const ENGINE_PATHS: readonly string[] = [
   'tests/lib/invariants.ts',
   'tests/lib/report-leaks.ts',
   'tests/lib/engine.ts',
-  'tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts',
   'tests/lib/scenario-in-the-vm.ts',
   'tests/lib/matrix-game.ts',
   // The tools it runs on: a jsdom or Node bump can change the games, so a Dependabot PR plays them (Theo, 2026-10-16).

@@ -113,7 +113,7 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   does first: `turnContext._currentPhase` null, `turnContext._afterPhases` true and the log's context clear, so every
   line it writes with no phase of its own is filed after the phases (99). P1-08k4's diplomacy and victory stages read the
   realms' declarations and Reckoning calls from the context (`turnContext.diploDeclarations`, `turnContext.reckoningCalls`,
-  which `turnContext()` in `tests/lib/engine.ts` makes empty): a test that calls them puts the realms' declarations
+  which the turn's board's `aFreshTurnsContextOnTheWorld` makes empty): a test that calls them puts the realms' declarations
   there, as the order merge does. P1-08k5a's first part of the new turn moves the turn counter on itself: a test that
   calls it reads the turn it was played on before the call. The board has no kings (`board()` clears every hero), so a
   whole turn crowns an heir for every realm at its end unless the test stands a king in each, as `stageCase` in
@@ -133,7 +133,7 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   each turn and joins to the context (since P1-08l2; `resolveTurn` declared them before). A test that calls the merge
   gives the context the slot rows (`turnContext.freshPlayers`) and the turn run (`turnContext.expectedTurnToRun`, which
   may differ from `G.turn`) first, and reads what it collected from the context after the call: a collector held from
-  before the call is not the one the merge filled (`turnContext()` in `tests/lib/engine.ts` makes them empty). What the
+  before the call is not the one the merge filled (the turn's board's fresh context has them empty). What the
   set-up leaves in `G.turnOrders` and the per-turn lists is gone by the turn's end: a whole turn reads it as the first
   phase begins. P1-08k8's four stages before the first phase make the movement pools, `SEASONS`, the turn's trackers
   and the war fronts at the start afresh and join them to the context, so a test that calls them reads those from the
@@ -155,20 +155,17 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   `tests/lib/bot-diplomacy-cases.ts`); changing a realm's `_encountered` afterwards changes nothing. The loop is the
   stages' calls, the intents between the first two. A test that calls a stage does what the loop does first: it sets
   `turnContext._currentPhase`, and the log's context is clear (`{charId:null, phase:null}`) between phases, so a line
-  with no phase of its own is filed under the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts`
-  leaves it on its own phase.
-- A test can stand in a top-level **function** by replacing it in the `vm` (`engine.f = …`), as
-  `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly` do. Don't stand in a top-level `const`
-  arrow (`defendSpentThisPhase`, `noteEntered`): until P1-09d a `const` wasn't a property of the `vm`'s global object,
-  so the engine kept calling the original; since then the engine's bundle writes it as a `var`, so the stand-in would
-  reach it in the `vm` but not in a test that imports the module, where a `const` can't be replaced. Stage the
-  state it reads instead. A table declared with `const` (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is
-  read in the `vm` with `vm.runInContext('JSON.stringify(TITLE_DEFS)', engine)`, which works either way.
+  with no phase of its own is filed under the phase being resolved; the turn's board
+  (`tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts`) leaves it on its own phase.
+- A test stands in a **function** by `vi.spyOn` on the module that exports it (the board's
+  `standInForTheEnginesFunction`), as `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly`
+  do. It reaches the calls from other files only: for a call inside the function's own file, stage the state it
+  reads instead. A table (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is imported from its module.
 - **The context is whole at birth** (P1-10b51): `createTurnContext` gives every field of `TurnContext` its start value,
   as `tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts` writes them (`unit/turn-context` holds the two
   the same), so no read finds a field unset. Before it, each field joined on its line in `resolveTurn` or in its stage,
   and a read before that line gave `undefined`: the tripwire P1-08a to P1-08l1 ran (a context that throws on such a
   read, through a whole test run and the matrix) found none, nor did P1-10b51's on its base (both sets the same, 120 of
   120 games; only tests that stage a context read one early, `_pcSimulating`, whose start value is as falsy). The
-  stages that make a field afresh each turn (the move pools, the merge's records) still do. `turnContext()` in
-  `tests/lib/engine.ts` sets each of them again, with the same values.
+  stages that make a field afresh each turn (the move pools, the merge's records) still do. The turn's board's
+  `aFreshTurnsContextOnTheWorld` sets each of them again, with the same values.
