@@ -1,6 +1,7 @@
 // The research and practice orders' own functions (plan P1-08j4: src/engine/orders/, the fourth family taken out of
-// processOrder), called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the
-// cases scenario/research-and-practice-orders-in-a-whole-turn.test.ts plays through a whole turn
+// processOrder), called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot
+// world (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/research-and-practice-orders-in-a-whole-turn.test.ts plays through a whole turn
 // (lib/research-and-practice-order-cases.ts), here one phase at a time, with the skills of the start of each phase
 // noted as the turn notes them; then what the dice decide, with the rolls fixed (`rolls`: the d100s in turn, every
 // other die high), and what the balance matrix never reaches: a named field of Research (the bots study "any"), an
@@ -12,8 +13,9 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The four functions (`resolveResearchOrder`, `resolvePracticeSkillOrder`, `resolveRestOrder`,
-// `resolveResearchBreakthroughOrder`, P1-08j4), called directly on the same cases one phase at a time (the skills of
-// each phase's start noted as the turn notes them), then on what the dice decide, with the rolls fixed (`rolls`: the
+// `resolveResearchBreakthroughOrder`, P1-08j4), called directly on the engine's modules on the same cases one phase at
+// a time (the skills of each phase's start noted as the turn notes them), then on what the dice decide, with the rolls
+// fixed (`rolls`: the
 // d100s in turn), and what the balance matrix never reaches: a named field, the unlooked-for find (first, instead of
 // the ordinary roll; a fifth of the chance, at most ten; 5g at Sage 6, a point of tax at Sage 8), the choice's two
 // (never the same, never hidden), the tax's limits, a roll exactly at the chance, the Loreseeker, a chance capped at a
@@ -25,21 +27,24 @@
 // wanderer's Rest with no realm's blessing; a Divine Rest's odd heal rounded up (P1-21t). Properties: a practice
 // raises a skill by one at most, never past 5, certainly beside a better comrade; a Rest never takes HP away or heals
 // past the maximum; a Breakthrough makes one discovery of the realm's table, never one it knew. Planted faults: in the PR (P1-08j4)
-import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
+  recordExperienceRolls,
   withDice,
+  withThesePercentileRollsInTurn,
   type Board,
   type Character,
   type HeroSpec,
   type Line,
   type Order,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { companies, plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import {
   HIDDEN_FIELDS,
@@ -60,11 +65,25 @@ const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const theResearchAndPracticeOrders =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
+const { provOf: theProvinceOf } = await import('../../src/engine/world/map-helpers.ts');
+const { SKILLGAIN_COMMON, SKILLGAIN_STD } =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const { ALL_MAGIC_ITEMS_P, KC_UNIT_CLASS } = await import('../../src/content/kingdoms-call-data.ts');
+const theFunctions: Record<string, unknown> = {
+  provOf: theProvinceOf,
+  resolvePracticeSkillOrder: theResearchAndPracticeOrders.resolvePracticeSkillOrder,
+  resolveResearchBreakthroughOrder: theResearchAndPracticeOrders.resolveResearchBreakthroughOrder,
+  resolveResearchOrder: theResearchAndPracticeOrders.resolveResearchOrder,
+  resolveRestOrder: theResearchAndPracticeOrders.resolveRestOrder,
+};
+const fn = (name: string) => must(theFunctions[name], name) as Fn;
 const provOf = fn('provOf');
 
 /** The skills every hero has at the start of phase `ph`, as the turn notes them before the phase's orders. */
@@ -91,17 +110,11 @@ const play = (b: Board, c: Character, o: Order, ph = 0) => {
   b.tc._logCtx = { charId: null, phase: null };
 };
 /** Runs `body` with the engine's d100 rolls given in turn by `d100s` (it throws if they run out), and every other die
- *  from `dice` (by default 0.999: no skill rise from the order, the last of any list picked). */
+ *  from `dice` (by default 0.999: no skill rise from the order, the last of any list picked): the board's
+ *  withThesePercentileRollsInTurn (d100 stood in on its module, and pctRoll, which calls it inside that file), with
+ *  `dice` pinned inside it. */
 function rolls<T>(d100s: number[], body: () => T, dice = [0.999]): T {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['d100'];
-  let i = 0;
-  g['d100'] = () => must(d100s[i++], 'a d100 roll');
-  try {
-    return withDice(engine, dice, body);
-  } finally {
-    g['d100'] = was;
-  }
+  return withThesePercentileRollsInTurn(engine, d100s, () => withDice(engine, dice, body), must(dice[0], 'a die'));
 }
 const linesOf = (b: Board, c: Character) => b.lines().filter((l: Line) => l.charId === c.id);
 const textOf = (b: Board, c: Character) =>
@@ -129,33 +142,16 @@ const chances = (b: Board, c: Character) =>
   linesOf(b, c)
     .filter((l) => l.text.startsWith('📊 Research'))
     .map((l) => Number((/(\d+)% chance/.exec(l.text) ?? [])[1]));
-const SKILLGAIN = vm.runInContext('({std:SKILLGAIN_STD, common:SKILLGAIN_COMMON})', engine) as {
-  std: number;
-  common: number;
-};
+const SKILLGAIN = { std: SKILLGAIN_STD, common: SKILLGAIN_COMMON };
 interface Roll {
   id: unknown;
   skill: string;
   base: unknown;
 }
-// every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
-vm.runInContext(
-  `{ const tryOne=trySkillGain;
-     trySkillGain=function(turnContext, char, skill, base){
-       if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base});
-       return tryOne.apply(this, arguments); }; }`,
-  engine,
-);
-const rollsIn = (body: () => void): Roll[] => {
-  const rs: Roll[] = [];
-  engine['__xp'] = rs;
-  try {
-    body();
-  } finally {
-    engine['__xp'] = undefined;
-  }
-  return rs;
-};
+// every experience roll, recorded as it starts by the board's recorder (a stand-in for trySkillGain on its module,
+// plan P1-08c): the orders call it from another file
+const recording = recordExperienceRolls(engine);
+const rollsIn = (body: () => void): Roll[] => recording(body).xp;
 const sageRolls = (rs: Roll[]) => rs.filter((r) => r.skill === 'sage').map((r) => r.base);
 
 describe.each(RESEARCH_AND_PRACTICE_ORDER_CASES)('the %s order, called directly: the whole-turn cases', (_, cases) => {
@@ -697,7 +693,7 @@ describe('Practice Skill, called directly', () => {
   });
 
   test('Naval drills the fleets he leads, and not his land companies', () => {
-    const fleet = (vm.runInContext('KC_UNIT_CLASS.sea', engine) as string[])[0] ?? '';
+    const fleet = KC_UNIT_CLASS.sea[0] ?? '';
     const b = fresh();
     const h = elf(b, { naval: 3 });
     h.armies = [...companies(1, fleet, 'Green'), ...companies(1, 'Men-at-Arms', 'Green')];
@@ -776,7 +772,7 @@ describe('Rest, called directly', () => {
 
   test('the Iron Heart Talisman, worn, adds a tenth of his maximum', () => {
     const talisman = JSON.parse(
-      vm.runInContext(`JSON.stringify(ALL_MAGIC_ITEMS_P.find(i=>i.name==='Iron Heart Talisman'))`, engine) as string,
+      JSON.stringify(ALL_MAGIC_ITEMS_P.find((i) => i.name === 'Iron Heart Talisman')),
     ) as Record<string, unknown>;
     const b = fresh();
     realm(b)['alignment'] = 'Good';

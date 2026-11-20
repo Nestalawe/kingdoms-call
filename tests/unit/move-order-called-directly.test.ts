@@ -52,8 +52,10 @@ const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
 const theMoveOrder = await import('../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts');
 const resolveMoveOrder = theMoveOrder.resolveMoveOrder as unknown as Fn;
-const provOf = (await import('../../src/engine/world/map-helpers.ts')).provOf as unknown as Fn;
-const setMovePool = (await import('../../src/engine/units/movement-pools.ts')).setMovePool as unknown as Fn;
+const { provOf: theProvOfAsItsModuleExportsIt } = await import('../../src/engine/world/map-helpers.ts');
+const provOf = theProvOfAsItsModuleExportsIt as unknown as Fn;
+const { setMovePool: theSetMovePoolAsItsModuleExportsIt } = await import('../../src/engine/units/movement-pools.ts');
+const setMovePool = theSetMovePoolAsItsModuleExportsIt as unknown as Fn;
 const theIntents = await import('../../src/engine/turn/phase-intents-and-dependency-ordering.ts');
 
 const units = (n: number, type: string, quality = 'Regular'): Unit[] =>

@@ -1,10 +1,10 @@
 // The research and practice orders in a whole turn (plan P1-08j4, the fourth family of processOrder's orders taken
 // out of it): Research, Practice Skill, Rest and Research Breakthrough. Each case of
 // lib/research-and-practice-order-cases.ts staged on the middle of a bot world, from plain realms (`stageCase`), and
-// played through resolveTurn, every realm human-held, every other hero Resting. Level 2 (scenario): the order is read,
-// checked (a mastery once a turn) and carried out inside resolveTurn, Practice compares each hero with the skills
-// every comrade had at the start of the phase, and the turn's end tells a hero who did nothing where he stands, so
-// only a whole turn plays it as a realm gives it.
+// played through resolveTurn on the engine's modules (since P1-14m; the bare vm before), every realm human-held, every
+// other hero Resting. Level 2 (scenario): the order is read, checked (a mastery once a turn) and carried out inside
+// resolveTurn, Practice compares each hero with the skills every comrade had at the start of the phase, and the turn's
+// end tells a hero who did nothing where he stands, so only a whole turn plays it as a realm gives it.
 // unit/research-and-practice-orders-called-directly.test.ts calls each order's own function on the same cases, and
 // on the ones the dice decide. Below the cases, a whole turn moved down from cast-practice-assumed.
 //
@@ -25,17 +25,32 @@
 // never past the maximum; Medical Arts, Healing Hands, the Healers' Guild, Herbcraft, Longhouse Feasts, each only where
 // it applies. Research Breakthrough: Sage 7, one discovery outright (the hidden fields too), told when none is left,
 // once a turn. Below the cases, `cast-practice-assumed`'s engine part, moved down: a cast refused because the practice
-// before it failed spends no slot (the two practice rolls fixed by a wrapper around the top-level
-// `resolvePracticeSkillOrder`)
-import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { board, firstDie, hero, must, order, plan, playTurn, type Line } from '../lib/middle-of-a-bot-world.ts';
+// before it failed spends no slot (the two practice rolls fixed by a stand-in for `resolvePracticeSkillOrder`, by
+// vi.spyOn on its module)
+import { describe, expect, test, vi } from 'vitest';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { RESEARCH_AND_PRACTICE_ORDER_CASES, stageCase } from '../lib/research-and-practice-order-cases.ts';
+import {
+  board,
+  botWorld,
+  firstDie,
+  hero,
+  loadTheEngineOnItsModules,
+  must,
+  order,
+  plan,
+  playTurn,
+  quietEngineLog,
+  type Line,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
+// (the engine's own module, fresh with it: the order dispatch calls resolvePracticeSkillOrder from another file, so a
+// stand-in on this module is the one the turn calls)
+const theResearchAndPracticeOrders =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
 
 describe.each(RESEARCH_AND_PRACTICE_ORDER_CASES)('the %s order, in a whole turn', (_, cases) => {
   test.each(cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
@@ -54,18 +69,20 @@ describe.each(RESEARCH_AND_PRACTICE_ORDER_CASES)('the %s order, in a whole turn'
 // Practice order earlier in the turn succeeds, so a cast refused because the practice before it failed is never
 // worked and spends no casting slot, and a later practice that succeeds opens the last cast. A White 0 king
 // practises (fails), casts (refused), practises (rises to White 1) and casts again, which is worked. The two practice
-// rolls are fixed by a wrapper around the top-level resolvePracticeSkillOrder that pins the first die of each call
-// (its d100), so this one runs only on the extract's code.
+// rolls are fixed by a stand-in for resolvePracticeSkillOrder (vi.spyOn on its module) that pins the first die of each
+// call (its d100), so this one runs only on the extract's code.
 test('a cast refused because a practice failed spends no slot, and a later practice opens it (moved down)', () => {
   const b = board(engine, world, 0);
   plainRealms(b);
   const h = hero(b, { player: 0, at: b.X, king: true, skills: { melee: 2, tactical: 2, march: 1, spy: 0, white: 0 } });
   h['hpEarned'] = Math.max(0, h.maxHp - 15);
   const practiceDice = [0.999, 0];
-  const g = engine as unknown as Record<string, unknown>;
-  const practise = g['resolvePracticeSkillOrder'] as (...a: unknown[]) => unknown;
-  g['resolvePracticeSkillOrder'] = (...a: unknown[]) =>
-    firstDie(engine, must(practiceDice.shift(), 'a practice roll'), () => practise(...a));
+  const practise = theResearchAndPracticeOrders.resolvePracticeSkillOrder;
+  const thePractice = vi.spyOn(theResearchAndPracticeOrders, 'resolvePracticeSkillOrder').mockImplementation((...a) => {
+    firstDie(engine, must(practiceDice.shift(), 'a practice roll'), () => {
+      practise(...a);
+    });
+  });
   let lines: Line[];
   try {
     ({ lines } = playTurn(b, {
@@ -77,7 +94,7 @@ test('a cast refused because a practice failed spends no slot, and a later pract
       ),
     }));
   } finally {
-    g['resolvePracticeSkillOrder'] = practise;
+    thePractice.mockRestore();
   }
   const t = lines
     .filter((l) => l.charId === h.id)

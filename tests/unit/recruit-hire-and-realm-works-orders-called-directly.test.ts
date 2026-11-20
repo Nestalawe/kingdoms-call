@@ -1,6 +1,7 @@
 // The recruit, hire and realm's works orders' own functions (plan P1-08j3: src/engine/orders/, the third family taken
-// out of processOrder), called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts).
-// First the cases scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn.test.ts plays through a whole turn
+// out of processOrder), called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a
+// bot world (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn.test.ts plays through a whole turn
 // (lib/recruit-hire-and-realm-works-order-cases.ts), here one phase at a time; then what the dice decide (fixed here),
 // what the turn's end would change (a garrison drilled, a band moving on), and what the balance matrix never reaches:
 // mercenaries hired by a Recruit order, a recruit's grade from a discovery or a Wonder, the Druid's rise from a beast
@@ -12,8 +13,9 @@
 // The eleven functions (`resolveRecruitArmiesOrder`, `resolveHireHeroOrder`, `landHirePreOrders`,
 // `resolveConsecrateOrder`, `resolveCallToArmsOrder`, `resolveBrokerOrder`,
 // `resolveRemovedAwakenTheWildAndCallFromThePitOrders`, `resolveHarvestTheFieldOrder`, `resolveAwakenGroveOrder`,
-// `resolveWildCallingOrder`, `resolveGrandDesignOrder`, P1-08j3), called directly on the same cases one phase at a
-// time, then on what the dice decide (fixed) and what the balance matrix never reaches: a recruit's grade from Superior
+// `resolveWildCallingOrder`, `resolveGrandDesignOrder`, P1-08j3), called directly on the engine's modules on the same
+// cases one phase at a time, then on what the dice decide (fixed) and what the balance matrix never reaches: a
+// recruit's grade from Superior
 // Forging or the Druidic Wonder, the Druid's rise from a beast raised, a Whale Cohort or Shark Shoals raised Primal
 // whatever folk the province holds (P1-19ao), the running cost of an order, a garrison two a
 // season, bands hired by a Recruit (named four ways, a band not named passed over, Black Market's discount, a band
@@ -28,13 +30,15 @@
 // 192 planted faults in the functions and their calls: 191 turn at least one of the two tests red, and every test goes
 // red for at least one; the one left can't change the game (the Wild Calling's own-realm guard, which the next guard
 // covers)
-import vm from 'node:vm';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
+  recordExperienceRolls,
   withDice,
   type Board,
   type Character,
@@ -43,7 +47,7 @@ import {
   type Order,
   type Province,
   type Unit,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import {
   RECRUIT_HIRE_AND_WORKS_ORDER_CASES,
   companies,
@@ -55,11 +59,43 @@ import { compactDeclaration } from '../lib/source.ts';
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
+// (the engine's own modules, fresh with it; each function named, so knip sees which exports are read)
+const theRecruitAndHireOrders =
+  await import('../../src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts');
+const theRealmsWorks =
+  await import('../../src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts');
+const { resolveBrokerOrder } =
+  await import('../../src/engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts');
+const { resolveCallToArmsOrder } =
+  await import('../../src/engine/orders/alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts');
+const { resolveConsecrateOrder } =
+  await import('../../src/engine/orders/alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts');
+const { resolveHarvestTheFieldOrder } =
+  await import('../../src/engine/orders/alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts');
+const { provOf: theProvinceOf } = await import('../../src/engine/world/map-helpers.ts');
+const { SKILLGAIN_COMMON, SKILLGAIN_STD } =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+// the host gained settling a province: stood in for around Wild Calling, which calls it from another file
+const theHostsGained = await import('../../src/engine/battle/hosts-gained-in-a-province.ts');
+const theFunctions: Record<string, unknown> = {
+  landHirePreOrders: theRecruitAndHireOrders.landHirePreOrders,
+  provOf: theProvinceOf,
+  resolveAwakenGroveOrder: theRealmsWorks.resolveAwakenGroveOrder,
+  resolveBrokerOrder,
+  resolveCallToArmsOrder,
+  resolveConsecrateOrder,
+  resolveGrandDesignOrder: theRealmsWorks.resolveGrandDesignOrder,
+  resolveHarvestTheFieldOrder,
+  resolveHireHeroOrder: theRecruitAndHireOrders.resolveHireHeroOrder,
+  resolveRecruitArmiesOrder: theRecruitAndHireOrders.resolveRecruitArmiesOrder,
+  resolveRemovedAwakenTheWildAndCallFromThePitOrders: theRealmsWorks.resolveRemovedAwakenTheWildAndCallFromThePitOrders,
+  resolveWildCallingOrder: theRealmsWorks.resolveWildCallingOrder,
+};
+const fn = (name: string) => must(theFunctions[name], name) as Fn;
 const provOf = fn('provOf');
 
 /** One order, as processOrder hands it over in phase `ph`: each function takes the context, then the values it reads
@@ -135,33 +171,16 @@ const band = (b: Board, where: Province, type = 'Free Lances') => {
   must(b.G.mercenaries, 'the mercenaries').push(m);
   return m;
 };
-const SKILLGAIN = vm.runInContext('({std:SKILLGAIN_STD, common:SKILLGAIN_COMMON})', engine) as {
-  std: number;
-  common: number;
-};
+const SKILLGAIN = { std: SKILLGAIN_STD, common: SKILLGAIN_COMMON };
 interface Roll {
   id: unknown;
   skill: string;
   base: unknown;
 }
-// every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
-vm.runInContext(
-  `{ const tryOne=trySkillGain;
-     trySkillGain=function(turnContext, char, skill, base){
-       if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base});
-       return tryOne.apply(this, arguments); }; }`,
-  engine,
-);
-const rollsIn = (body: () => void): Roll[] => {
-  const rolls: Roll[] = [];
-  engine['__xp'] = rolls;
-  try {
-    body();
-  } finally {
-    engine['__xp'] = undefined;
-  }
-  return rolls;
-};
+// every experience roll, recorded as it starts by the board's recorder (a stand-in for trySkillGain on its module,
+// plan P1-08c): the orders call it from other files
+const recording = recordExperienceRolls(engine);
+const rollsIn = (body: () => void): Roll[] => recording(body).xp;
 
 describe.each(RECRUIT_HIRE_AND_WORKS_ORDER_CASES)('the %s order, called directly: the whole-turn cases', (_, cases) => {
   test.each(cases.filter((c) => !c.wholeTurnOnly).map((c) => [c.name, c] as const))(
@@ -799,18 +818,18 @@ describe('Wild Calling, called directly', () => {
   const beasts = (n: number, extra: Partial<Unit> = {}) =>
     companies(n, 'Great Bears', 'Average', 'Primal').map((u) => ({ ...u, ...extra }));
   // What follows the Calling, the host gained settling the province (resolveUnitGainInProvince: a battle on ground the
-  // realm doesn't hold), is stood in for: only the Calling's own code is under test, and the stand-in records the call.
+  // realm doesn't hold), is stood in for (vi.spyOn on its module: the Calling calls it from another file): only the
+  // Calling's own code is under test, and the stand-in records the call.
   const calling = (stage: (b: Board) => void, dice: number[], leading = 0) => {
     const b = fresh();
     stage(b);
     const h = at(b, { skills: skilled({ druid: 9 }) });
     h.armies = companies(leading, 'Great Bears');
     const settled: unknown[][] = [];
-    const was = vm.runInContext('resolveUnitGainInProvince', engine) as Fn;
-    engine['resolveUnitGainInProvince'] = (_tc: unknown, c: Character, p: Province, ph: number) => {
-      settled.push([c.id, p.id, ph]);
+    const theSettling = vi.spyOn(theHostsGained, 'resolveUnitGainInProvince').mockImplementation((_tc, c, p, ph) => {
+      settled.push([must(c, 'the caller').id, must(p, 'his province').id, ph]);
       return false;
-    };
+    });
     try {
       const rolls = rollsIn(() => {
         withDice(engine, dice, () => {
@@ -819,7 +838,7 @@ describe('Wild Calling, called directly', () => {
       });
       return { b, h, rolls, settled };
     } finally {
-      engine['resolveUnitGainInProvince'] = was;
+      theSettling.mockRestore();
     }
   };
   test('each wild beast of a neutral host answers on an even chance, and is pacified', () => {

@@ -64,28 +64,33 @@ const theEncounterAndDefendOrders =
 const theHiddenHeroes = await import('../../src/engine/heroes/effective-skills-and-hidden-heroes.ts');
 const thePursuits = await import('../../src/engine/heroes/pursuits-and-the-catch-roll.ts');
 const theExperience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
-const theModuleOf: Record<string, Record<string, unknown>> = {
-  provOf: await import('../../src/engine/world/map-helpers.ts'),
-  setMovePool: await import('../../src/engine/units/movement-pools.ts'),
-  resolveEncounterCharacterOrder: theEncounterAndDefendOrders,
-  resolveDefendOrder: theEncounterAndDefendOrders,
-  resolveBlockadeOrder: theWarMasteries,
-  resolveChallengeOrder: theWarMasteries,
-  resolveRampageOrder: theWarMasteries,
-  resolveRainOfArrowsOrder: theWarMasteries,
-  resolveSnipersMarkOrder: theWarMasteries,
-  resolveFeignedRetreatOrder: theWarMasteries,
-  resolveGrandStratagemOrder: theWarMasteries,
-  resolveLightningAdvanceOrder: theWarMasteries,
-  resolveRaidTheCoastOrder: theWarMasteries,
-  resolveMoveOrder: await import('../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts'),
-  resolveRestOrder:
-    await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts'),
-  isVeiled: theHiddenHeroes,
-  isHiddenChar: theHiddenHeroes,
-  isVanished: theHiddenHeroes,
+const theMapHelpersModule = await import('../../src/engine/world/map-helpers.ts');
+const theMovementPoolsModule = await import('../../src/engine/units/movement-pools.ts');
+const theMoveOrderMarchesVoyagesAndBattlesOnArrivalModule =
+  await import('../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts');
+const theResearchAndPracticeOrdersDiscoveriesSkillDrillsAndRestModule =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
+const theFunctionOf: Record<string, () => unknown> = {
+  provOf: () => theMapHelpersModule.provOf,
+  setMovePool: () => theMovementPoolsModule.setMovePool,
+  resolveEncounterCharacterOrder: () => theEncounterAndDefendOrders.resolveEncounterCharacterOrder,
+  resolveDefendOrder: () => theEncounterAndDefendOrders.resolveDefendOrder,
+  resolveBlockadeOrder: () => theWarMasteries.resolveBlockadeOrder,
+  resolveChallengeOrder: () => theWarMasteries.resolveChallengeOrder,
+  resolveRampageOrder: () => theWarMasteries.resolveRampageOrder,
+  resolveRainOfArrowsOrder: () => theWarMasteries.resolveRainOfArrowsOrder,
+  resolveSnipersMarkOrder: () => theWarMasteries.resolveSnipersMarkOrder,
+  resolveFeignedRetreatOrder: () => theWarMasteries.resolveFeignedRetreatOrder,
+  resolveGrandStratagemOrder: () => theWarMasteries.resolveGrandStratagemOrder,
+  resolveLightningAdvanceOrder: () => theWarMasteries.resolveLightningAdvanceOrder,
+  resolveRaidTheCoastOrder: () => theWarMasteries.resolveRaidTheCoastOrder,
+  resolveMoveOrder: () => theMoveOrderMarchesVoyagesAndBattlesOnArrivalModule.resolveMoveOrder,
+  resolveRestOrder: () => theResearchAndPracticeOrdersDiscoveriesSkillDrillsAndRestModule.resolveRestOrder,
+  isVeiled: () => theHiddenHeroes.isVeiled,
+  isHiddenChar: () => theHiddenHeroes.isHiddenChar,
+  isVanished: () => theHiddenHeroes.isVanished,
 };
-const fn = (name: string) => must(must(theModuleOf[name], name)[name], name) as Fn;
+const fn = (name: string) => must(must(theFunctionOf[name], name)(), name) as Fn;
 const provOf = fn('provOf');
 const setMovePool = fn('setMovePool');
 

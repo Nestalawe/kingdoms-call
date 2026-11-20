@@ -66,10 +66,15 @@ quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 // (the engine's own modules, fresh with it; called as the vm's top-level functions were)
 type Fn = (...a: unknown[]) => unknown;
-const earlyWinter = (
-  await import('../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts')
-).earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill as unknown as Fn;
-const computeMinorTitles = (await import('../../src/engine/titles/reckoning.ts')).computeMinorTitles as unknown as Fn;
+const {
+  earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill:
+    theEarlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrillAsItsModuleExportsIt,
+} = await import('../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts');
+const earlyWinter =
+  theEarlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrillAsItsModuleExportsIt as unknown as Fn;
+const { computeMinorTitles: theComputeMinorTitlesAsItsModuleExportsIt } =
+  await import('../../src/engine/titles/reckoning.ts');
+const computeMinorTitles = theComputeMinorTitlesAsItsModuleExportsIt as unknown as Fn;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const G = (b: Board) => b.G as unknown as Record<string, unknown> & Board['G'];
@@ -128,16 +133,22 @@ interface Call {
 }
 /** The module that exports each helper the stage calls and a test stands in. The stage calls each from its own file,
  *  so a stand-in on the helper's module reaches it (docs/traps.md). */
-const theModuleOfEachHelper: Record<string, unknown> = {
-  setMovePool: await import('../../src/engine/units/movement-pools.ts'),
-  settleStrandedAtSea: await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts'),
+const theMovementPoolsModule = await import('../../src/engine/units/movement-pools.ts');
+const theSeaLiftStrandingAndRetreatsModule = await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts');
+const aStandInForEachHelper: Record<string, (impl: Fn) => { mockRestore(): void }> = {
+  setMovePool: (impl) => vi.spyOn(theMovementPoolsModule, 'setMovePool').mockImplementation(impl),
+  settleStrandedAtSea: (impl) =>
+    vi.spyOn(theSeaLiftStrandingAndRetreatsModule, 'settleStrandedAtSea').mockImplementation(impl),
 };
 /** Runs `body` with each of `names` replaced by a recorder (vi.spyOn on its module, for the body's length); `returns`
  *  gives what a recorder hands back, by name (by default nothing). */
 function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
   const calls: Call[] = [];
   const recorders = names.map((f) =>
-    vi.spyOn(must(theModuleOfEachHelper[f], f) as Record<string, Fn>, f).mockImplementation((...args: unknown[]) => {
+    must(
+      aStandInForEachHelper[f],
+      f,
+    )((...args: unknown[]) => {
       calls.push({ fn: f, args, before: b.lines().length });
       return returns[f]?.(...args);
     }),

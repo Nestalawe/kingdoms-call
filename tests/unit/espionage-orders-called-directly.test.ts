@@ -79,23 +79,28 @@ const theEspionageOrders =
 const theDuels = await import('../../src/engine/personal-combat/duels-and-character-encounters.ts');
 const thePersonalCombat = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
 const theExperience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
-const theModuleOf: Record<string, Record<string, unknown>> = {
-  provOf: await import('../../src/engine/world/map-helpers.ts'),
-  resolveSpyOrder: theEspionageOrders,
-  resolveStealOrder: theEspionageOrders,
-  resolveSabotageOrder: theEspionageOrders,
-  resolveGrandHeistOrder: theEspionageOrders,
-  resolveAssassinateOrder: theEspionageOrders,
-  resolveVanishOrder: theEspionageOrders,
-  thiefCaughtScuffle: theEspionageOrders,
-  liftRandomItem: theEspionageOrders,
-  resolveSendItemOrder: await import('../../src/engine/orders/item-orders-equip-use-and-send-magic-items.ts'),
-  resolveRestOrder:
-    await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts'),
-  resolveCharVsChar: theDuels,
-  applyItemMaxHp: await import('../../src/engine/personal-combat/helpers.ts'),
+const theMapHelpersModule = await import('../../src/engine/world/map-helpers.ts');
+const theItemOrdersEquipUseAndSendMagicItemsModule =
+  await import('../../src/engine/orders/item-orders-equip-use-and-send-magic-items.ts');
+const theResearchAndPracticeOrdersDiscoveriesSkillDrillsAndRestModule =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
+const theHelpersModule = await import('../../src/engine/personal-combat/helpers.ts');
+const theFunctionOf: Record<string, () => unknown> = {
+  provOf: () => theMapHelpersModule.provOf,
+  resolveSpyOrder: () => theEspionageOrders.resolveSpyOrder,
+  resolveStealOrder: () => theEspionageOrders.resolveStealOrder,
+  resolveSabotageOrder: () => theEspionageOrders.resolveSabotageOrder,
+  resolveGrandHeistOrder: () => theEspionageOrders.resolveGrandHeistOrder,
+  resolveAssassinateOrder: () => theEspionageOrders.resolveAssassinateOrder,
+  resolveVanishOrder: () => theEspionageOrders.resolveVanishOrder,
+  thiefCaughtScuffle: () => theEspionageOrders.thiefCaughtScuffle,
+  liftRandomItem: () => theEspionageOrders.liftRandomItem,
+  resolveSendItemOrder: () => theItemOrdersEquipUseAndSendMagicItemsModule.resolveSendItemOrder,
+  resolveRestOrder: () => theResearchAndPracticeOrdersDiscoveriesSkillDrillsAndRestModule.resolveRestOrder,
+  resolveCharVsChar: () => theDuels.resolveCharVsChar,
+  applyItemMaxHp: () => theHelpersModule.applyItemMaxHp,
 };
-const fn = (name: string) => must(must(theModuleOf[name], name)[name], name) as Fn;
+const fn = (name: string) => must(must(theFunctionOf[name], name)(), name) as Fn;
 /** The names of the magic items whose effect raises maximum HP, in the table's order (every row has an effect). */
 const theItemsOfMaximumHp = () => ALL_MAGIC_ITEMS_P.filter((i) => i.effect.stat === 'maxHp').map((i) => i.name);
 const provOf = fn('provOf');

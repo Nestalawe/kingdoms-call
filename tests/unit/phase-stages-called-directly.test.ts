@@ -185,38 +185,75 @@ interface Call {
  *  a stand-in on the helper's module reaches it (docs/traps.md). One is also called inside its own module, where a
  *  stand-in doesn't reach: disperseDeadCharArmies (by abandonHostOnFlight and handleHeroDeath, which the end of the
  *  phase, the one stage that stands it in, doesn't call). */
-const theModuleOfEachHelper: Record<string, unknown> = {
-  flagEnemyStandoffs: theWarFronts,
-  resolveStalledBattles: await import('../../src/engine/battle/stalled-battles-and-beaten-guards.ts'),
-  settleRalliedGarrisons: await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts'),
-  settleStrandedAtSea: await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts'),
-  spreadPlagues: await import('../../src/engine/magic/plague-and-bless-ward.ts'),
-  applyMoveInterlocks: theIntents,
-  runReinforcementArrivals: await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts'),
-  orderPhaseActors: theIntents,
-  runDefendReactions: await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts'),
-  resolveUnitGainInProvince: await import('../../src/engine/battle/hosts-gained-in-a-province.ts'),
-  advancePursuit: await import('../../src/engine/heroes/pursuits-and-the-catch-roll.ts'),
-  processOrder: await import('../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts'),
-  resolveWarFronts: theWarFronts,
-  runDefendMaterializedReactions:
-    await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts'),
-  runDefendAmbush: await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts'),
-  reconcileDefendRideOuts: await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts'),
-  resolveAllPendingSkillGains: await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts'),
-  writeDeferredSkillLines: await import('../../src/engine/turn/events-and-their-audiences.ts'),
-  generateIntrusionNotifications: await import('../../src/engine/turn/intrusion-warnings.ts'),
-  disperseDeadCharArmies: await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts'),
-  reconcileProvinceCharacters: await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts'),
-  noteSilentHeroes: theLogLineHelpers,
-  updateProvinceMemory: await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts'),
+const theStalledBattlesAndBeatenGuardsModule =
+  await import('../../src/engine/battle/stalled-battles-and-beaten-guards.ts');
+const theProvinceBookkeepingAndRalliedGarrisonsModule =
+  await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts');
+const theSeaLiftStrandingAndRetreatsModule = await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts');
+const thePlagueAndBlessWardModule = await import('../../src/engine/magic/plague-and-bless-ward.ts');
+const theDefendRideOutsAmbushesAndReinforcementsModule =
+  await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts');
+const theHostsGainedInAProvinceModule = await import('../../src/engine/battle/hosts-gained-in-a-province.ts');
+const thePursuitsAndTheCatchRollModule = await import('../../src/engine/heroes/pursuits-and-the-catch-roll.ts');
+const theOrderDispatchTheChecksBeforeAHeroOrderAndTheSwitchModule =
+  await import('../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts');
+const theExperienceSkillRisesAndEarnedHpModule =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const theEventsAndTheirAudiencesModule = await import('../../src/engine/turn/events-and-their-audiences.ts');
+const theIntrusionWarningsModule = await import('../../src/engine/turn/intrusion-warnings.ts');
+const theHeroDeathAndLeaderlessHostsModule = await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts');
+const aStandInForEachHelper: Record<string, (impl: Fn) => { mockRestore(): void }> = {
+  flagEnemyStandoffs: (impl) => vi.spyOn(theWarFronts, 'flagEnemyStandoffs').mockImplementation(impl),
+  resolveStalledBattles: (impl) =>
+    vi.spyOn(theStalledBattlesAndBeatenGuardsModule, 'resolveStalledBattles').mockImplementation(impl),
+  settleRalliedGarrisons: (impl) =>
+    vi.spyOn(theProvinceBookkeepingAndRalliedGarrisonsModule, 'settleRalliedGarrisons').mockImplementation(impl),
+  settleStrandedAtSea: (impl) =>
+    vi.spyOn(theSeaLiftStrandingAndRetreatsModule, 'settleStrandedAtSea').mockImplementation(impl),
+  spreadPlagues: (impl) => vi.spyOn(thePlagueAndBlessWardModule, 'spreadPlagues').mockImplementation(impl),
+  applyMoveInterlocks: (impl) => vi.spyOn(theIntents, 'applyMoveInterlocks').mockImplementation(impl),
+  runReinforcementArrivals: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runReinforcementArrivals').mockImplementation(impl),
+  orderPhaseActors: (impl) => vi.spyOn(theIntents, 'orderPhaseActors').mockImplementation(impl as never),
+  runDefendReactions: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runDefendReactions').mockImplementation(impl),
+  resolveUnitGainInProvince: (impl) =>
+    vi.spyOn(theHostsGainedInAProvinceModule, 'resolveUnitGainInProvince').mockImplementation(impl as never),
+  advancePursuit: (impl) => vi.spyOn(thePursuitsAndTheCatchRollModule, 'advancePursuit').mockImplementation(impl),
+  processOrder: (impl) =>
+    vi.spyOn(theOrderDispatchTheChecksBeforeAHeroOrderAndTheSwitchModule, 'processOrder').mockImplementation(impl),
+  resolveWarFronts: (impl) => vi.spyOn(theWarFronts, 'resolveWarFronts').mockImplementation(impl),
+  runDefendMaterializedReactions: (impl) =>
+    vi
+      .spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runDefendMaterializedReactions')
+      .mockImplementation(impl),
+  runDefendAmbush: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runDefendAmbush').mockImplementation(impl),
+  reconcileDefendRideOuts: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'reconcileDefendRideOuts').mockImplementation(impl),
+  resolveAllPendingSkillGains: (impl) =>
+    vi.spyOn(theExperienceSkillRisesAndEarnedHpModule, 'resolveAllPendingSkillGains').mockImplementation(impl),
+  writeDeferredSkillLines: (impl) =>
+    vi.spyOn(theEventsAndTheirAudiencesModule, 'writeDeferredSkillLines').mockImplementation(impl),
+  generateIntrusionNotifications: (impl) =>
+    vi.spyOn(theIntrusionWarningsModule, 'generateIntrusionNotifications').mockImplementation(impl),
+  disperseDeadCharArmies: (impl) =>
+    vi.spyOn(theHeroDeathAndLeaderlessHostsModule, 'disperseDeadCharArmies').mockImplementation(impl),
+  reconcileProvinceCharacters: (impl) =>
+    vi.spyOn(theProvinceBookkeepingAndRalliedGarrisonsModule, 'reconcileProvinceCharacters').mockImplementation(impl),
+  noteSilentHeroes: (impl) => vi.spyOn(theLogLineHelpers, 'noteSilentHeroes').mockImplementation(impl),
+  updateProvinceMemory: (impl) =>
+    vi.spyOn(theProvinceBookkeepingAndRalliedGarrisonsModule, 'updateProvinceMemory').mockImplementation(impl),
 };
 /** Runs `body` with each of `names` replaced by a recorder (vi.spyOn on its module, for the body's length); `returns`
  *  gives what a recorder hands back, by name. */
 function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
   const calls: Call[] = [];
   const recorders = names.map((f) =>
-    vi.spyOn(must(theModuleOfEachHelper[f], f) as Record<string, Fn>, f).mockImplementation((...args: unknown[]) => {
+    must(
+      aStandInForEachHelper[f],
+      f,
+    )((...args: unknown[]) => {
       calls.push({ fn: f, args, logCtx: { ...(b.tc._logCtx as object) }, series: tc(b)['_combatSkillProv'] });
       return returns[f]?.(...args);
     }),

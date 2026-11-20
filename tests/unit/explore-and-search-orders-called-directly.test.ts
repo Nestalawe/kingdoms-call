@@ -69,23 +69,29 @@ const theExploreAndSearchOrders =
 // (the two it calls only: a whole module read by name hides its unused exports from knip, the ratchet's unusedCode)
 const { encounterClearGold, ensureLairHoard } = await import('../../src/engine/world/tables.ts');
 const theWorldsTables = { encounterClearGold, ensureLairHoard };
-const theModuleOf: Record<string, Record<string, unknown>> = {
-  provOf: await import('../../src/engine/world/map-helpers.ts'),
-  resolveExploreOrder: theExploreAndSearchOrders,
-  resolvePerformRiteOrder:
-    await import('../../src/engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts'),
-  resolveHuntingRumoursOrder: theExploreAndSearchOrders,
-  resolveSearchLairOrder: theExploreAndSearchOrders,
-  resolveChartTheUnknownOrder: theExploreAndSearchOrders,
-  resolveDiscoverLostRuinOrder: theExploreAndSearchOrders,
-  encounterClearGold: theWorldsTables,
-  ensureLairHoard: theWorldsTables,
-  anOlderSavesShapesMendedOnce: await import('../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts'),
+const theMapHelpersModule = await import('../../src/engine/world/map-helpers.ts');
+const thePerformRiteAPaganHerosRiteOfTheWildHuntOrBloodOfferingModule =
+  await import('../../src/engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts');
+const theVersion2AnOlderSavesShapesMendedOnceModule =
+  await import('../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts');
+const theFunctionOf: Record<string, () => unknown> = {
+  provOf: () => theMapHelpersModule.provOf,
+  resolveExploreOrder: () => theExploreAndSearchOrders.resolveExploreOrder,
+  resolvePerformRiteOrder: () =>
+    thePerformRiteAPaganHerosRiteOfTheWildHuntOrBloodOfferingModule.resolvePerformRiteOrder,
+  resolveHuntingRumoursOrder: () => theExploreAndSearchOrders.resolveHuntingRumoursOrder,
+  resolveSearchLairOrder: () => theExploreAndSearchOrders.resolveSearchLairOrder,
+  resolveChartTheUnknownOrder: () => theExploreAndSearchOrders.resolveChartTheUnknownOrder,
+  resolveDiscoverLostRuinOrder: () => theExploreAndSearchOrders.resolveDiscoverLostRuinOrder,
+  encounterClearGold: () => theWorldsTables.encounterClearGold,
+  ensureLairHoard: () => theWorldsTables.ensureLairHoard,
+  anOlderSavesShapesMendedOnce: () => theVersion2AnOlderSavesShapesMendedOnceModule.anOlderSavesShapesMendedOnce,
 };
-const fn = (name: string) => must(must(theModuleOf[name], name)[name], name) as Fn;
+const fn = (name: string) => must(must(theFunctionOf[name], name)(), name) as Fn;
 /** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
-const theStatisticsOfTheTurn = (await import('../../src/views/the-statistics-of-the-turn.ts'))
-  .theStatisticsOfTheTurn as unknown as (telemetry: unknown) => {
+const { theStatisticsOfTheTurn: theStatisticsOfTheTurnAsItsModuleExportsIt } =
+  await import('../../src/views/the-statistics-of-the-turn.ts');
+const theStatisticsOfTheTurn = theStatisticsOfTheTurnAsItsModuleExportsIt as unknown as (telemetry: unknown) => {
   encounters: Record<string, unknown>[];
 };
 const provOf = fn('provOf');

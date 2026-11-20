@@ -73,9 +73,13 @@ quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 // (the engine's own modules, fresh with it; called as the vm's top-level functions were)
 type Fn = (...a: unknown[]) => unknown;
-const afterThePhases = (
-  await import('../../src/engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.ts')
-).afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames as unknown as Fn;
+const {
+  afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames:
+    theAfterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNamesAsItsModuleExportsIt,
+} =
+  await import('../../src/engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.ts');
+const afterThePhases =
+  theAfterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNamesAsItsModuleExportsIt as unknown as Fn;
 /** The realms the maximum-HP helpers fall back on when handed none, read from the module that holds them. */
 const { maxHpPlayers } = await import('../../src/engine/heroes/skills-and-hp.ts');
 const { THE_PHASE_THE_LINE_IS_WRITTEN_IN } = await import('../../src/engine/turn/events-and-their-audiences.ts');
@@ -154,28 +158,56 @@ interface Call {
  *  and disperseDeadCharArmies (by abandonHostOnFlight, for a spared coward's own companies left with no comrade and on
  *  ground not his realm's, which no test that stands in the one without the other stages; and by handleHeroDeath,
  *  which the stage doesn't call). */
-const theModuleOfEachHelper: Record<string, unknown> = {
-  flagEnemyStandoffs: await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts'),
-  senseGravesUnderfoot: await import('../../src/engine/graves.ts'),
-  progressNeutralHeroes: await import('../../src/engine/heroes/charms-and-neutrals.ts'),
-  consecratedIds:
-    await import('../../src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts'),
-  resolveAllPendingSkillGains: await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts'),
-  writeDeferredSkillLines: await import('../../src/engine/turn/events-and-their-audiences.ts'),
-  disperseDeadCharArmies: await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts'),
-  flushIntrusionNotifications: await import('../../src/engine/turn/intrusion-warnings.ts'),
-  healFeatureMonsters: await import('../../src/engine/chances-and-lair-grades.ts'),
-  syncAllMaxHp: await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts'),
-  monarchRestProvId: await import('../../src/engine/grand-design.ts'),
-  abandonHostOnFlight: await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts'),
-  reconcileProvinceCharacters: await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts'),
+const theWarFrontsAndEnemyStandOffsModule = await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts');
+const theGravesModule = await import('../../src/engine/graves.ts');
+const theCharmsAndNeutralsModule = await import('../../src/engine/heroes/charms-and-neutrals.ts');
+const theMarksOnAProvinceConsecratedGroundTerrorAndEnslaveModule =
+  await import('../../src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts');
+const theExperienceSkillRisesAndEarnedHpModule =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const theEventsAndTheirAudiencesModule = await import('../../src/engine/turn/events-and-their-audiences.ts');
+const theHeroDeathAndLeaderlessHostsModule = await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts');
+const theIntrusionWarningsModule = await import('../../src/engine/turn/intrusion-warnings.ts');
+const theChancesAndLairGradesModule = await import('../../src/engine/chances-and-lair-grades.ts');
+const theGrandDesignModule = await import('../../src/engine/grand-design.ts');
+const theProvinceBookkeepingAndRalliedGarrisonsModule =
+  await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts');
+const aStandInForEachHelper: Record<string, (impl: Fn) => { mockRestore(): void }> = {
+  flagEnemyStandoffs: (impl) =>
+    vi.spyOn(theWarFrontsAndEnemyStandOffsModule, 'flagEnemyStandoffs').mockImplementation(impl),
+  senseGravesUnderfoot: (impl) => vi.spyOn(theGravesModule, 'senseGravesUnderfoot').mockImplementation(impl as never),
+  progressNeutralHeroes: (impl) =>
+    vi.spyOn(theCharmsAndNeutralsModule, 'progressNeutralHeroes').mockImplementation(impl as never),
+  consecratedIds: (impl) =>
+    vi
+      .spyOn(theMarksOnAProvinceConsecratedGroundTerrorAndEnslaveModule, 'consecratedIds')
+      .mockImplementation(impl as never),
+  resolveAllPendingSkillGains: (impl) =>
+    vi.spyOn(theExperienceSkillRisesAndEarnedHpModule, 'resolveAllPendingSkillGains').mockImplementation(impl),
+  writeDeferredSkillLines: (impl) =>
+    vi.spyOn(theEventsAndTheirAudiencesModule, 'writeDeferredSkillLines').mockImplementation(impl),
+  disperseDeadCharArmies: (impl) =>
+    vi.spyOn(theHeroDeathAndLeaderlessHostsModule, 'disperseDeadCharArmies').mockImplementation(impl),
+  flushIntrusionNotifications: (impl) =>
+    vi.spyOn(theIntrusionWarningsModule, 'flushIntrusionNotifications').mockImplementation(impl),
+  healFeatureMonsters: (impl) =>
+    vi.spyOn(theChancesAndLairGradesModule, 'healFeatureMonsters').mockImplementation(impl),
+  syncAllMaxHp: (impl) => vi.spyOn(theExperienceSkillRisesAndEarnedHpModule, 'syncAllMaxHp').mockImplementation(impl),
+  monarchRestProvId: (impl) => vi.spyOn(theGrandDesignModule, 'monarchRestProvId').mockImplementation(impl as never),
+  abandonHostOnFlight: (impl) =>
+    vi.spyOn(theHeroDeathAndLeaderlessHostsModule, 'abandonHostOnFlight').mockImplementation(impl as never),
+  reconcileProvinceCharacters: (impl) =>
+    vi.spyOn(theProvinceBookkeepingAndRalliedGarrisonsModule, 'reconcileProvinceCharacters').mockImplementation(impl),
 };
 /** Runs `body` with each of `names` replaced by a recorder (vi.spyOn on its module, for the body's length); `returns`
  *  gives what a recorder does, by name (by default nothing). */
 function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
   const calls: Call[] = [];
   const recorders = names.map((f) =>
-    vi.spyOn(must(theModuleOfEachHelper[f], f) as Record<string, Fn>, f).mockImplementation((...args: unknown[]) => {
+    must(
+      aStandInForEachHelper[f],
+      f,
+    )((...args: unknown[]) => {
       calls.push({ fn: f, args, before: b.lines().length });
       return returns[f]?.(...args);
     }),
