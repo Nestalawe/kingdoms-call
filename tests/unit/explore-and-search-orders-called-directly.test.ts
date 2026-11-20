@@ -1,6 +1,7 @@
 // The explore and search orders' own functions (plan P1-08j2: src/engine/orders/, the second family taken out of
-// processOrder), called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the
-// cases scenario/explore-and-search-orders-in-a-whole-turn.test.ts plays through a whole turn
+// processOrder), called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/explore-and-search-orders-in-a-whole-turn.test.ts plays through a whole turn
 // (lib/explore-and-search-order-cases.ts), here one phase at a time; then what the dice decide (fixed here) and what the
 // balance matrix never reaches: the Explorer 8 survey of richer land, Ancient Lore, the Philosopher's Lens, Battlefield
 // Surgery at a lair, a thief's haul from a hoard, a beast pacified, a challenger's kit recovered, a hero beaten back, the
@@ -25,9 +26,7 @@
 // guardian's band, its items before hoards, one item rolled). 96 planted faults in the six functions, their calls and
 // `processOrder`'s checks each turn at least one of the two tests red, and every test goes red for at least one of them
 // (plan P1-08j2); P1-10b21's cases are each red on a fault planted in the line they guard.
-import vm from 'node:vm';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import {
   EXPLORE_AND_SEARCH_ORDER_CASES,
   companies,
@@ -38,8 +37,11 @@ import {
 } from '../lib/explore-and-search-order-cases.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   withDice,
   recordExperienceRolls,
   type Board,
@@ -48,19 +50,42 @@ import {
   type Line,
   type Order,
   type Province,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { compactDeclaration } from '../lib/source.ts';
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
+// (the engine's own modules, fresh with it; each function read from its module when called, as the vm's top-level
+// functions were, so a stand-in on the module is the one called)
+const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const theLairGuardians = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
+const theExploreAndSearchOrders =
+  await import('../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts');
+// (the two it calls only: a whole module read by name hides its unused exports from knip, the ratchet's unusedCode)
+const { encounterClearGold, ensureLairHoard } = await import('../../src/engine/world/tables.ts');
+const theWorldsTables = { encounterClearGold, ensureLairHoard };
+const theModuleOf: Record<string, Record<string, unknown>> = {
+  provOf: await import('../../src/engine/world/map-helpers.ts'),
+  resolveExploreOrder: theExploreAndSearchOrders,
+  resolvePerformRiteOrder:
+    await import('../../src/engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts'),
+  resolveHuntingRumoursOrder: theExploreAndSearchOrders,
+  resolveSearchLairOrder: theExploreAndSearchOrders,
+  resolveChartTheUnknownOrder: theExploreAndSearchOrders,
+  resolveDiscoverLostRuinOrder: theExploreAndSearchOrders,
+  encounterClearGold: theWorldsTables,
+  ensureLairHoard: theWorldsTables,
+  anOlderSavesShapesMendedOnce: await import('../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts'),
+};
+const fn = (name: string) => must(must(theModuleOf[name], name)[name], name) as Fn;
 /** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
-const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+const theStatisticsOfTheTurn = (await import('../../src/views/the-statistics-of-the-turn.ts'))
+  .theStatisticsOfTheTurn as unknown as (telemetry: unknown) => {
   encounters: Record<string, unknown>[];
 };
 const provOf = fn('provOf');
@@ -344,16 +369,15 @@ describe('Hunting Rumours, called directly', () => {
   });
 });
 
-/** Stands in for the fight at a lair (resolveEncounter) while `body` runs: the fight ends as `end` says, the hero left
- *  on `hpAfter`; `stole` marks the guardian robbed, as a Steal that worked does. */
+/** Stands in for the fight at a lair (resolveEncounter, by vi.spyOn on its module while `body` runs: Search Lair calls
+ *  it from another file): the fight ends as `end` says, the hero left on `hpAfter`; `stole` marks the guardian robbed,
+ *  as a Steal that worked does. */
 function fightEndsIn<T>(
   end: { won?: boolean; fled?: boolean; pacified?: boolean; stole?: boolean; hpAfter?: number; damage?: number },
   body: () => T,
 ): T {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['resolveEncounter'];
-  g['resolveEncounter'] = (_tc: unknown, c: Character, f: Feature): Record<string, unknown> => {
-    if (end.stole) must(f.monster, 'a guardian')['_treasureStolen'] = true;
+  const theFight = vi.spyOn(theLairGuardians, 'resolveEncounter').mockImplementation((_tc, c, f) => {
+    if (end.stole) must(f.monster, 'a guardian')._treasureStolen = true;
     const hp = end.hpAfter ?? c.hp;
     c.hp = Math.max(0, hp);
     return {
@@ -365,11 +389,11 @@ function fightEndsIn<T>(
       heroKilled: hp <= 0,
       narrative: [],
     };
-  };
+  });
   try {
     return body();
   } finally {
-    g['resolveEncounter'] = was;
+    theFight.mockRestore();
   }
 }
 
@@ -597,9 +621,7 @@ describe("an older save's lair, stocked when it is first read (encounterClearGol
   });
 
   test("its hoard takes the items it held before hoards (version 2's step moves them), then rolls one item no other lair holds, with the next id", () => {
-    const names = JSON.parse(
-      vm.runInContext('JSON.stringify(ALL_MAGIC_ITEMS_P.map((i) => i.name))', engine) as string,
-    ) as string[];
+    const names = ALL_MAGIC_ITEMS_P.map((i) => i.name);
     const b = board(engine, world, 0);
     const older = { name: 'Old Lamp', id: 7000 }; // an item a lair held before hoards (made up)
     const f: Record<string, unknown> = {
@@ -624,10 +646,10 @@ describe("an older save's lair, stocked when it is first read (encounterClearGol
     expect(gs.nextItemId).toBe(8);
     const theRow = magicItem(b, 'Boots of the Wind');
     expect(must(hoard[1], 'the item rolled')['effect']).toEqual(theRow['effect']);
-    const rowsEffect: unknown = vm.runInContext(
-      "ALL_MAGIC_ITEMS_P.find((i) => i.name === 'Boots of the Wind').effect",
-      engine,
-    );
+    const rowsEffect: unknown = must(
+      ALL_MAGIC_ITEMS_P.find((i) => i.name === 'Boots of the Wind'),
+      'the row of Boots of the Wind',
+    ).effect;
     expect(must(hoard[1], 'the item rolled')['effect']).not.toBe(rowsEffect);
   });
 });

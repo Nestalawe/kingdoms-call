@@ -267,6 +267,39 @@ export function withRolls<T>(engine: TheEngineOnItsModules, roll: number, body: 
   }
 }
 
+/** Runs `body` with the percentile rolls the engine makes (d100) given in turn by `d100s`, 1 to 100, and every other
+ *  die at `die`: the vm's stand-in for its one global d100, by a list. d100 is stood in on its module, for its calls
+ *  from other files; pctRoll, which calls it inside that file, is stood in too, playing as it is on a die of its own
+ *  that makes its d100 roll the next of `d100s`, as the vm's global d100 gave it. */
+export function withThesePercentileRollsInTurn<T>(
+  engine: TheEngineOnItsModules,
+  d100s: number[],
+  body: () => T,
+  die: number,
+): T {
+  const dice = engine.theDiceModule;
+  const pctRoll = dice.pctRoll;
+  let i = 0;
+  const theNextRoll = () => must(d100s[i++], 'a d100 roll');
+  const theD100 = vi.spyOn(dice, 'd100').mockImplementation(theNextRoll);
+  const thePctRoll = vi.spyOn(dice, 'pctRoll').mockImplementation((chance) => {
+    // d100 is ⌊die × 100⌋ + 1: this die makes it the next roll
+    const roll = theNextRoll();
+    const was = engine.kcRng.use(() => (roll - 0.5) / 100);
+    try {
+      return pctRoll(chance);
+    } finally {
+      engine.kcRng.use(was);
+    }
+  });
+  try {
+    return withDice(engine, [die], body);
+  } finally {
+    thePctRoll.mockRestore();
+    theD100.mockRestore();
+  }
+}
+
 /** A fresh board on `world` (JSON from botWorld) in phase `ph`. */
 export function board(engine: TheEngineOnItsModules, world: string, ph: number) {
   const getNeighborsP = engine.getNeighborsP as unknown as (

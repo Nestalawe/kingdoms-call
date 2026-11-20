@@ -1,5 +1,6 @@
 // The war orders' own functions (plan P1-08j8: src/engine/orders/, the eighth family taken out of processOrder),
-// called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/war-orders-in-a-whole-turn.test.ts plays through a whole turn (lib/war-order-cases.ts), here one phase at a
 // time, the orders read from the turn's list as processOrder reads them, with the same dice; then what the cases leave
 // to a direct call: the chase as the order sets it (with the chase itself stood in), the watch in each of its states
@@ -26,14 +27,17 @@
 // Since P1-23e (R-119): Encounter, Challenge and Sniper's Mark find no hero of another realm whose Invisibility holds
 // (the cases); a realm that watches him by Clairvoyance still hunts him (here).
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import { companies } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   withDice,
+  withThesePercentileRollsInTurn,
   recordExperienceRolls,
   withCaseDice,
   type Board,
@@ -42,16 +46,46 @@ import {
   type Line,
   type Order,
   type Province,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { LANDS, WAR_ORDER_CASES, stageCase, type WarOrderCase } from '../lib/war-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
+// (the engine's own modules, fresh with it; each function read from its module when called, as the vm's top-level
+// functions were, so a stand-in on the module is the one called)
+const theWarMasteries =
+  await import('../../src/engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts');
+const theEncounterAndDefendOrders =
+  await import('../../src/engine/orders/encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.ts');
+const theHiddenHeroes = await import('../../src/engine/heroes/effective-skills-and-hidden-heroes.ts');
+const thePursuits = await import('../../src/engine/heroes/pursuits-and-the-catch-roll.ts');
+const theExperience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const theModuleOf: Record<string, Record<string, unknown>> = {
+  provOf: await import('../../src/engine/world/map-helpers.ts'),
+  setMovePool: await import('../../src/engine/units/movement-pools.ts'),
+  resolveEncounterCharacterOrder: theEncounterAndDefendOrders,
+  resolveDefendOrder: theEncounterAndDefendOrders,
+  resolveBlockadeOrder: theWarMasteries,
+  resolveChallengeOrder: theWarMasteries,
+  resolveRampageOrder: theWarMasteries,
+  resolveRainOfArrowsOrder: theWarMasteries,
+  resolveSnipersMarkOrder: theWarMasteries,
+  resolveFeignedRetreatOrder: theWarMasteries,
+  resolveGrandStratagemOrder: theWarMasteries,
+  resolveLightningAdvanceOrder: theWarMasteries,
+  resolveRaidTheCoastOrder: theWarMasteries,
+  resolveMoveOrder: await import('../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts'),
+  resolveRestOrder:
+    await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts'),
+  isVeiled: theHiddenHeroes,
+  isHiddenChar: theHiddenHeroes,
+  isVanished: theHiddenHeroes,
+};
+const fn = (name: string) => must(must(theModuleOf[name], name)[name], name) as Fn;
 const provOf = fn('provOf');
 const setMovePool = fn('setMovePool');
 
@@ -82,32 +116,37 @@ const play = (b: Board, c: Character, ord: Order, ph = 0) => {
   b.tc._logCtx = { charId: null, phase: null };
 };
 /** Runs `body` with the percentile rolls (d100) given in turn, and every other die at `die`. */
-function rolls<T>(d100s: number[], body: () => T, die = 0.99999): T {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['d100'];
-  let i = 0;
-  g['d100'] = () => must(d100s[i++], 'a d100 roll');
-  try {
-    return withDice(engine, [die], body);
-  } finally {
-    g['d100'] = was;
-  }
-}
-/** Runs `body` with the chase itself stood in (the top-level advancePursuit replaced in the vm for the test's length),
- *  recording each call as [hero, phase, his chase as it stood]. */
+const rolls = <T>(d100s: number[], body: () => T, die = 0.99999): T =>
+  withThesePercentileRollsInTurn(engine, d100s, body, die);
+/** Runs `body` with the chase itself stood in (advancePursuit, by vi.spyOn on its module for the body's length: the
+ *  Encounter order calls it from another file), recording each call as [hero, phase, his chase as it stood]. */
 function chaseStoodIn(body: () => void): [unknown, unknown, unknown][] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['advancePursuit'];
   const calls: [unknown, unknown, unknown][] = [];
-  g['advancePursuit'] = (_tc: unknown, c: Character, ph: number) => {
+  const theChase = vi.spyOn(thePursuits, 'advancePursuit').mockImplementation((_tc, c, ph) => {
     calls.push([c.id, ph, JSON.parse(JSON.stringify(c._pursuit ?? null))]);
-  };
+  });
   try {
     body();
   } finally {
-    g['advancePursuit'] = was;
+    theChase.mockRestore();
   }
   return calls;
+}
+/** Runs `body`, recording each kill credited (awardKillXP, by vi.spyOn on its module for the body's length, played as
+ *  it is once recorded: the war masteries call it from another file) as [killer, slain]. */
+function killsIn(body: () => void): unknown[] {
+  const awardKillXP = theExperience.awardKillXP;
+  const kills: unknown[] = [];
+  const theKills = vi.spyOn(theExperience, 'awardKillXP').mockImplementation((tc, killer, slain, ...rest) => {
+    kills.push([must(killer, 'the killer').id, must(slain, 'the slain').id]);
+    awardKillXP(tc, killer, slain, ...rest);
+  });
+  try {
+    body();
+  } finally {
+    theKills.mockRestore();
+  }
+  return kills;
 }
 const linesOf = (b: Board, c: Character) => b.lines().filter((l: Line) => l.charId === c.id);
 const textOf = (b: Board, c: Character) =>
@@ -516,7 +555,7 @@ describe('Blockade, called directly: the die, the reach, the fleet', () => {
     const foot = admiral(b, ['Men-at-Arms']);
     const alone = admiral(b, []);
     const dice: number[] = [];
-    const kcRng = engine['kcRng'] as { use(next: () => number): () => number };
+    const kcRng = engine.kcRng;
     const was = kcRng.use(() => {
       dice.push(0);
       return 0;
@@ -570,20 +609,11 @@ describe('Challenge, called directly: the two rolls and the wounds', () => {
     const f = rival(b, {}, { melee: 5 });
     const h = at(b, { melee: 7 });
     h.hp = 5;
-    const g = engine as unknown as Record<string, unknown>;
-    const was = g['awardKillXP'] as Fn;
-    const kills: unknown[] = [];
-    g['awardKillXP'] = (tc: unknown, killer: Character, slain: Character, ...rest: unknown[]) => {
-      kills.push([killer.id, slain.id]);
-      return was(tc, killer, slain, ...rest);
-    };
-    try {
+    const kills = killsIn(() => {
       rolls([1, 1], () => {
         play(b, h, o('challenge', f.id));
       });
-    } finally {
-      g['awardKillXP'] = was;
-    }
+    });
     expect({ kills, alive: h.alive }).toEqual({ kills: [[f.id, h.id]], alive: false });
   });
 
@@ -734,20 +764,11 @@ describe("Sniper's Mark, called directly: the wounds and the kill", () => {
     const b = fresh();
     const f = rival(b);
     const h = at(b, { archery: 9 });
-    const g = engine as unknown as Record<string, unknown>;
-    const was = g['awardKillXP'] as Fn;
-    const kills: unknown[] = [];
-    g['awardKillXP'] = (tc: unknown, killer: Character, slain: Character, ...rest: unknown[]) => {
-      kills.push([killer.id, slain.id]);
-      return was(tc, killer, slain, ...rest);
-    };
-    try {
+    const kills = killsIn(() => {
       rolls([1], () => {
         play(b, h, o('snipers_mark', f.id));
       });
-    } finally {
-      g['awardKillXP'] = was;
-    }
+    });
     expect(kills).toEqual([[h.id, f.id]]);
   });
 });
