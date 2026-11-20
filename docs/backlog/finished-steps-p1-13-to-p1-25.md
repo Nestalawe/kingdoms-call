@@ -38,7 +38,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-13m: #414 A guard's reader and a level above nothing move onto plain values
 - P1-13n: #490 The tests' code-scanning alerts fixed; any alert fails the merge
 - P1-13n2: #491 The last test-code scanning alert fixed
-- P1-13z: #PRNUM The prose writes the items' lore lines from the facts; the known-findings list empties
+- P1-13z: #694 The prose writes the items' lore lines from the facts; the known-findings list empties
 
 ## P1-14
 
