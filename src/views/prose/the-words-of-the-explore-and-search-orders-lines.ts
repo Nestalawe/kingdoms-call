@@ -25,7 +25,7 @@ function _art(n: string | null): string {
   return (/^[aeiou]/i.test(n) ? 'an ' : 'a ') + n;
 }
 
-/** One chronicle line an item a lair gave up: "📜 The Blade of Fury — <its lore>", a relic marked LEGENDARY. */
+/** One chronicle line for each item a lair gave up: "📜 The Blade of Fury — <its lore>", a relic marked LEGENDARY. */
 function theWordsOfTheItemsLore(items: readonly AnItemAsItsLoreIsTold[]): string {
   return items.map((d) => `📜 The ${d.name}${isLegendaryItem(d) ? ' (LEGENDARY)' : ''} — ${d.lore}`).join('\n');
 }

@@ -21,10 +21,10 @@
 // re-exported as a type, the rule registry reading the rules on plain values and the content, the prose reading a facts
 // file's code and a type from `turn/`, the views a type from `turn/`, and the GM page reading the engine. A violation
 // planted and recorded in the list as known (the list holds none since P1-13z), then fixed but left in it, is found,
-// and `npx depcruise src --baseline --baseline-mode shrink-only` takes it out. knip (`npm run knip`, `knip.ts`) finds a planted unused file, export and dependency, and nothing else, and the
-// ratchet's `unusedCode` rises by three. Red with the cycle rule counting type-only imports, with the engine's rule
-// taken out, with either of P1-13l's rules taken out or counting type-only imports, with the prose's counting the facts
-// files, or with knip told to skip unused files.
+// and `npx depcruise src --baseline --baseline-mode shrink-only` takes it out. knip (`npm run knip`, `knip.ts`) finds
+// a planted unused file, export and dependency, and nothing else, and the ratchet's `unusedCode` rises by three. Red
+// with the cycle rule counting type-only imports, with the engine's rule taken out, with either of P1-13l's rules taken
+// out or counting type-only imports, with the prose's counting the facts files, or with knip told to skip unused files.
 // Level 0: the two tools read the sources of temporary copies and nothing runs (a few seconds a test). TypeScript, in
 // `static/`
 import { execFileSync, spawnSync } from 'node:child_process';
