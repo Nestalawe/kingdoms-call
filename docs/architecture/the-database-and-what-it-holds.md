@@ -286,8 +286,7 @@ The player portal reads its **own** `game_players` row directly, and every other
 `fetchGameSlots` (`rpc('get_game_slots')`, P0-20): number, bot or not, orders in or not, alignment while in
 setup. From P0-21 the database answers a direct read of another realm's row with nothing, so a new feature that
 reads other slots directly would quietly see only its own. If it needs more than `get_game_slots` gives, that's
-a database change first. `tests/other-realms-slots.test.js` fails on any read of another account's realm (the fake
-notes each one); `tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
+a database change first. Its checks: [traps.md](../traps.md#other-realms-slots-come-only-from-get_game_slots).
 
 ## Another game reads as nothing
 

@@ -283,8 +283,10 @@ and name; lint refuses a fate it leaves out). Checks:
 
 The player portal reads its own `game_players` row directly, and every other realm's slot only through
 `fetchGameSlots` (`rpc('get_game_slots')`); if a feature needs more than `get_game_slots` gives, that's a database
-change first. Checks: `tests/other-realms-slots.test.js` fails on any read of another account's realm (the fake
-notes each one); `tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
+change first. Checks:
+`tests/page/the-player-portal-sees-other-realms-only-through-get-game-slots-and-never-reads-another-accounts-realm.test.ts`
+fails on any read of another account's realm (the fake notes each one);
+`tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
 
 ## Another game reads as nothing
 
