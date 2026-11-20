@@ -33,11 +33,9 @@ in `npm run check`, with its rules in `.dependency-cruiser.mts`, every one an er
 ## The known findings
 
 What broke a rule when the rules came in is listed in `.dependency-cruiser-known-violations.json` and let through
-(`--ignore-known`). It holds one finding: the prose's import of `itemLoreLines` from `engine/items/tiers-and-hoards.ts`,
-for the explore and search lines (agreed by a maintainer; it leaves with the fix of the items' other names the engine
-adds to the content as it loads). No code has an import cycle, and the no-cycle rule keeps it so. The ratchet counts
-the list (`knownArchitectureViolations`), so it only shrinks, and a static test fails while it holds a finding that no
-longer occurs.
+(`--ignore-known`). The list is empty since P1-13z, so every import is checked. No code has an import cycle, and the
+no-cycle rule keeps it so. The ratchet counts the list (`knownArchitectureViolations`), so it only shrinks, and a static
+test fails while it holds a finding that no longer occurs.
 
 - **When you fix one,** remove it in the same pull request with `npx depcruise src --baseline --baseline-mode
   shrink-only`. Never add a finding to the list.

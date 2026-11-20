@@ -19,12 +19,12 @@
 // page reading the GM page's code and the engine, supabase-js outside `src/db/`, a missing file), and nothing else, and
 // `npm run lint:arch` fails there; it lets through a cycle of `import type` only, a schema's type imported or
 // re-exported as a type, the rule registry reading the rules on plain values and the content, the prose reading a facts
-// file's code and a type from `turn/`, the views a type from `turn/`, and the GM page reading the engine. A known
-// violation fixed but left in the list is found, and `npx depcruise src --baseline --baseline-mode shrink-only` takes it
-// out. knip (`npm run knip`, `knip.ts`) finds a planted unused file, export and dependency, and nothing else, and the
-// ratchet's `unusedCode` rises by three. Red with the cycle rule counting type-only imports, with the engine's rule
-// taken out, with either of P1-13l's rules taken out or counting type-only imports, with the prose's counting the facts
-// files, or with knip told to skip unused files.
+// file's code and a type from `turn/`, the views a type from `turn/`, and the GM page reading the engine. A violation
+// planted and recorded in the list as known (the list holds none since P1-13z), then fixed but left in it, is found,
+// and `npx depcruise src --baseline --baseline-mode shrink-only` takes it out. knip (`npm run knip`, `knip.ts`) finds
+// a planted unused file, export and dependency, and nothing else, and the ratchet's `unusedCode` rises by three. Red
+// with the cycle rule counting type-only imports, with the engine's rule taken out, with either of P1-13l's rules taken
+// out or counting type-only imports, with the prose's counting the facts files, or with knip told to skip unused files.
 // Level 0: the two tools read the sources of temporary copies and nothing runs (a few seconds a test). TypeScript, in
 // `static/`
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -306,19 +306,25 @@ describe('dependency-cruiser: the layers and no cycle (npm run lint:arch)', () =
 
   test(
     'finds a known violation that was fixed but left in the list, and the shrink-only command takes it out',
-    timeLimitForTheWork({ toolRuns: 3, everyFileReads: 1 }),
+    timeLimitForTheWork({ toolRuns: 5, everyFileReads: 1 }),
     () => {
+      // The list holds no finding since P1-13z, so the test plants one: the prose's import of the engine's item tiers
+      // (the last finding the list held), recorded in the list as a known one, then fixed.
       const dir = copyOfTheRepository();
       const file = 'src/views/prose/the-words-of-the-explore-and-search-orders-lines.ts';
-      const line = "import { itemLoreLines } from '../../engine/items/tiers-and-hoards.ts';\n";
       const text = fs.readFileSync(path.join(dir, file), 'utf8');
-      expect(text).toContain(line);
-      plant(dir, file, text.replace(line, ''));
+      const line =
+        "import { itemLore } from '../../engine/items/tiers-and-hoards.ts';\nexport const plantedLore = itemLore;\n";
       const before = knownList(dir).length;
-      expect(cruise(dir)).toEqual({ found: [], known: before - 1, stale: 1 });
+      plant(dir, file, text + line);
+      execFileSync(DEPCRUISE, ['src', '--baseline'], { cwd: dir, stdio: 'ignore' });
+      expect(knownList(dir).length).toBe(before + 1);
+      expect(cruise(dir)).toEqual({ found: [], known: before + 1, stale: 0 });
+      plant(dir, file, text);
+      expect(cruise(dir)).toEqual({ found: [], known: before, stale: 1 });
       execFileSync(DEPCRUISE, ['src', '--baseline', '--baseline-mode', 'shrink-only'], { cwd: dir, stdio: 'ignore' });
-      expect(knownList(dir).length).toBe(before - 1);
-      expect(cruise(dir)).toEqual({ found: [], known: before - 1, stale: 0 });
+      expect(knownList(dir).length).toBe(before);
+      expect(cruise(dir)).toEqual({ found: [], known: before, stale: 0 });
     },
   );
 });

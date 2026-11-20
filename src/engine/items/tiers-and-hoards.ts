@@ -4,7 +4,7 @@ import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS } from '../names.ts';
 import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
-import { isLegendaryItem, itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
+import { itemSlot } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { anItemIsACombatItem, anItemIsTheMithrilSuit } from '../rules/the-registry-of-magic-item-effects.ts';
 import { theTurnsARealmsDiscoveriesLengthenTheWildHuntBy } from '../rules/the-registry-of-discovery-effects.ts';
 import type { ItemOfTheseRules } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
@@ -171,8 +171,8 @@ ALL_MAGIC_ITEMS_P.forEach((it) => {
 });
 // ── Item lore ── every base item carries `lore`: a short narrative that also states the effect in
 // plain words. Clones inherit it by the spread above. Items already sitting in saves or lair hoards
-// predate the field, so lookups go BY NAME (falling back to the terse desc) — see itemLore /
-// itemLoreLines.
+// predate the field, so lookups go BY NAME (falling back to the terse desc) — see itemLore (the lore line of an item
+// won from a lair is written by the prose, from the lore itemLore finds as the line is told: plan P1-13z).
 export const ITEM_LORE_BY_NAME: Partial<Record<string, string>> = {};
 ALL_MAGIC_ITEMS_P.forEach((it) => {
   if (it.lore) ITEM_LORE_BY_NAME[it.name] = it.lore;
@@ -185,14 +185,6 @@ export function itemLore(it: AnItemAsItsLoreIsRead | null | undefined) {
     (anItemIsTheMithrilSuit(it) ? MITHRIL_ARMOUR.lore : '') ||
     (it.desc ?? '')
   );
-}
-// One chronicle line per item — "📜 The Blade of Fury — <lore>" — used when items are won from a
-// lair.
-export function itemLoreLines(items: readonly (AnItemAsItsLoreIsRead | null | undefined)[] | null | undefined) {
-  return (items ?? [])
-    .filter((d): d is AnItemAsItsLoreIsRead => Boolean(d))
-    .map((d) => `📜 The ${d.name}${isLegendaryItem(d) ? ' (LEGENDARY)' : ''} — ${itemLore(d)}`)
-    .join('\n');
 }
 // Loot quality climbs with the monster's tier: tougher foes yield rarer (higher-tier) items.
 // UNIQUENESS. `taken` is a Set of item names already found this game; the roll never returns one

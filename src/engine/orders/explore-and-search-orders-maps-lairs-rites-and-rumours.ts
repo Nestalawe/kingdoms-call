@@ -7,7 +7,7 @@ import {
   featureTreasure,
   setFeatureTreasure,
 } from '../world/tables.ts';
-import { guardianCanUseItem } from '../items/tiers-and-hoards.ts';
+import { guardianCanUseItem, itemLore } from '../items/tiers-and-hoards.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { theShareOfAProvinceAnExploreOrderMaps } from '../rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';
 import { recordDeadHeroSighting } from '../graves.ts';
@@ -842,7 +842,7 @@ export function resolveSearchLairOrder(
           });
           emit(turnContext, {
             type: 'explore',
-            fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([bonus]) },
+            fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([bonus], itemLore) },
             audience: { actor: c.player, realms: [c.player] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
@@ -879,7 +879,7 @@ export function resolveSearchLairOrder(
       baseDrops.forEach((it) => {
         emit(turnContext, {
           type: 'explore',
-          fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it]) },
+          fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it], itemLore) },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
@@ -923,7 +923,7 @@ export function resolveSearchLairOrder(
       _recovered.forEach((it) => {
         emit(turnContext, {
           type: 'explore',
-          fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it]) },
+          fact: { kind: 'the lore of the items a lair gave up', items: theItemsAsTheirLoreIsTold([it], itemLore) },
           audience: { actor: c.player, realms: [c.player] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,

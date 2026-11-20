@@ -47,7 +47,6 @@ import {
   ITEM_LORE_BY_NAME,
   guardianCanUseItem,
   itemLore,
-  itemLoreLines,
   lairItemTier,
   preferFreshEffects,
   wildHuntPrice,
@@ -282,10 +281,6 @@ describe("the five leaves' lines no matrix game reaches keep their values", () =
     expect(itemLore({ name: 'No Such Item', lore: '', effect: null, desc: 'Plain words' })).toBe('Plain words');
     expect(itemLore({ name: 'No Such Item', effect: { stat: 'melee' } })).toBe('');
     expect(itemLore({ name: 'No Such Item', desc: '' })).toBe('');
-    expect(itemLoreLines(null)).toBe('');
-    expect(itemLoreLines([null, { name: 'No Such Item', desc: 'Plain words' }, undefined])).toBe(
-      '📜 The No Such Item — Plain words',
-    );
   });
 
   test('the fresh effects: no set, an empty set, no pool, an empty pool', () => {
