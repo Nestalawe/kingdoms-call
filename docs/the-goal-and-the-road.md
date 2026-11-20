@@ -139,8 +139,11 @@ direction sets this road. Most of its points are decisions: [type the whole code
 the regression matrix stays, a separate design matrix, and the rulebooks rendered from
 content](decisions/README.md#the-decisions-on-how-the-work-runs). The rest of it, and what goes with it:
 - **The rules pulled out:** each family of rules counted and moved into the content, each with its bot valuation hook.
-- **The bots get a feedback loop:** their strategy as weights in data, tuned by playing themselves, and their choices
-  compared with players' orders.
+- **The bots get a feedback loop:** what they do measured, each change judged old bot against new, their judgement as
+  weights in data, tuned against the bots' aims (competent with every alignment first), and their choices compared
+  with players' orders, as totals
+  ([the requirements](explorations/the-bots-improvement-machinery-its-intent-its-outcome-and-its-requirements.md)).
+  A redesign's balance verdict from bot games holds only as far as the bots play every alignment well.
 - **The instruments, in `tools/` only:** the design matrix and its scorecard (the cost of a game measured first), the
   tool that reads players' games as totals only, and the page that shows the game as it is. The tool that reads
   players' games changes who can see data, so a maintainer reviews it, and its database pull request comes first.
