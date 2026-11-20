@@ -1,4 +1,5 @@
-// Helpers lifted out of resolveTurn in plan P1-08b, called directly in the bare vm (tests/lib/engine.ts):
+// Helpers lifted out of resolveTurn in plan P1-08b, called directly on the engine's modules (since P1-14m; the bare vm
+// before):
 // - provName (the balance matrix never runs it) and provOf: a province's name by id ('unknown' when there is none),
 //   and the province a hero stands in.
 // - neighborInDir (property, fast-check): on any map, the six compass directions name exactly a province's neighbours,
@@ -14,16 +15,16 @@
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// Helpers lifted in P1-08b, called directly through `lib/engine.ts`: `provName` (the balance matrix never runs it)
-// gives a province's name by id, `unknown` when it has none; `provOf` the province a hero stands in. As properties
-// (fast-check): on any map the six directions of `neighborInDir` name exactly a province's neighbours, in
-// `getNeighborsP`'s order; the hex step both call (P1-11d5) names each direction's neighbour on a staged map, on even
-// and odd rows, at the edges and across the wrap; pre-battle damage never raises a strength of at least 1 and never
-// takes it below 1, nor, from a battle's damage alone, below a quarter (`applyPrebattleDamage`); a province raises a
-// unit type up to its limit for the turn (1, or 2), then no more, touching no other type or province
-// (`getRecruitLimit`, `canRecruit`, `recordRecruit`). Each check fails on a planted fault. Level 1: each function is
-// called on a context made in the test
-import vm from 'node:vm';
+// Helpers lifted in P1-08b, called directly on the engine's modules (P1-14m; through `lib/engine.ts`'s vm before):
+// `provName` (the balance matrix never runs it) gives a province's name by id, `unknown` when it has none; `provOf` the
+// province a hero stands in. As properties (fast-check): on any map the six directions of `neighborInDir` name exactly
+// a province's neighbours, in `getNeighborsP`'s order; the hex step both call (P1-11d5) names each direction's
+// neighbour on a staged map, on even and odd rows, at the edges and across the wrap; pre-battle damage never raises a
+// strength of at least 1 and never takes it below 1, nor, from a battle's damage alone, below a quarter
+// (`applyPrebattleDamage`); a province raises a unit type up to its limit for the turn (1, or 2), then no more,
+// touching no other type or province (`getRecruitLimit`, `canRecruit`, `recordRecruit`). Each check fails on a planted
+// fault. Level 1: each function is called on a context made in the test
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
 import {
@@ -31,21 +32,35 @@ import {
   theProvincesNextToAProvince,
 } from '../../src/engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 import { theHexNextToAProvinceInADirection } from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
 // ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
 const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
+// (the engine's own modules, fresh with it)
+const theMapHelpers = await import('../../src/engine/world/map-helpers.ts');
+const { KC_HEX_DIRS } = await import('../../src/content/kingdoms-call-data.ts');
+const { applyPrebattleDamage: applyPrebattleDamageAsItsModuleExportsIt, PREBATTLE_STR_FLOOR } =
+  await import('../../src/engine/battle/terrain-and-unit-strength.ts');
+const theRecruitLimits = await import('../../src/engine/units/recruit-limits.ts');
+const { ARMY_SPEED_MASTER } = await import('../../src/engine/army-tables.ts');
+const { homeProvinceIdFor: homeProvinceIdForAsItsModuleExportsIt } = await import('../../src/engine/grand-design.ts');
 
 describe('provName and provOf', () => {
-  const provName = engineFn(engine, 'provName') as (tc: TurnContext, id: unknown) => string;
-  const provOf = engineFn(engine, 'provOf') as (tc: TurnContext, c: { location: number }) => unknown;
-  const tc = turnContext(engine, {
+  const provName = theMapHelpers.provName as unknown as (tc: TurnContext, id: unknown) => string;
+  const provOf = theMapHelpers.provOf as unknown as (tc: TurnContext, c: { location: number }) => unknown;
+  const tc = aFreshTurnsContextOnTheWorld(engine, {
     world: { cols: 2, rows: 1, provinces: [{ id: 0, name: 'Highmere' }, { id: 1 }] },
   });
 
@@ -68,14 +83,13 @@ describe('neighborInDir', () => {
     row: number;
     col: number;
   }
-  const neighborInDir = engineFn(engine, 'neighborInDir') as (tc: TurnContext, p: Prov, dir: string) => Prov | null;
-  const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+  const neighborInDir = theMapHelpers.neighborInDir as unknown as (
+    tc: TurnContext,
     p: Prov,
-    cols: number,
-    rows: number,
-    ps: Prov[],
-  ) => Prov[];
-  const DIRS = vm.runInContext('KC_HEX_DIRS.slice()', engine) as string[];
+    dir: string,
+  ) => Prov | null;
+  const getNeighborsP = engine.getNeighborsP as unknown as (p: Prov, cols: number, rows: number, ps: Prov[]) => Prov[];
+  const DIRS: string[] = [...KC_HEX_DIRS];
   const map = fc
     .record({ cols: fc.integer({ min: 2, max: 14 }), rows: fc.integer({ min: 1, max: 10 }) })
     .chain(({ cols, rows }) => fc.tuple(fc.constant({ cols, rows }), fc.integer({ min: 0, max: cols * rows - 1 })));
@@ -95,7 +109,7 @@ describe('neighborInDir', () => {
             row: Math.floor(id / cols),
             col: id % cols,
           }));
-          const tc = turnContext(engine, { world: { cols, rows, provinces } });
+          const tc = aFreshTurnsContextOnTheWorld(engine, { world: { cols, rows, provinces } });
           const ps = (tc.G['world'] as { provinces: Prov[] }).provinces;
           const p = ps[at];
           if (!p) throw new Error('no province ' + String(at));
@@ -156,8 +170,11 @@ describe('the hex step (src/engine/rules-on-plain-values/, P1-11d5)', () => {
 });
 
 describe('pre-battle damage', () => {
-  const applyPrebattleDamage = engineFn(engine, 'applyPrebattleDamage') as (army: object, str: number) => number;
-  const FLOOR = vm.runInContext('PREBATTLE_STR_FLOOR', engine) as number;
+  const applyPrebattleDamage = applyPrebattleDamageAsItsModuleExportsIt as unknown as (
+    army: object,
+    str: number,
+  ) => number;
+  const FLOOR: number = PREBATTLE_STR_FLOOR;
   const strength = fc.double({ min: 1, max: 500, noNaN: true });
   const loss = fc.option(fc.double({ min: 0, max: 1000, noNaN: true }), { nil: undefined });
 
@@ -193,23 +210,23 @@ describe('pre-battle damage', () => {
 
 describe('recruit limits', () => {
   type Recruit = (tc: TurnContext, armyType: string, provId: number, prov: object, pi: number) => boolean;
-  const getRecruitLimit = engineFn(engine, 'getRecruitLimit') as (
+  const getRecruitLimit = theRecruitLimits.getRecruitLimit as unknown as (
     tc: TurnContext,
     armyType: string,
     prov: object,
     pi: number,
   ) => number;
-  const canRecruit = engineFn(engine, 'canRecruit') as Recruit;
-  const recordRecruit = engineFn(engine, 'recordRecruit') as (
+  const canRecruit = theRecruitLimits.canRecruit as unknown as Recruit;
+  const recordRecruit = theRecruitLimits.recordRecruit as unknown as (
     tc: TurnContext,
     armyType: string,
     provId: number,
     qty?: number,
   ) => void;
-  const tc = turnContext(engine, botWorld(engine, 2, { cols: 8, rows: 6 }));
+  const tc = aFreshTurnsContextOnTheWorld(engine, botWorld(engine, 2, { cols: 8, rows: 6 }));
   const provinces = (tc.G['world'] as { provinces: { id: number; owner: number | null }[] }).provinces;
-  const TYPES = Object.keys(vm.runInContext('ARMY_SPEED_MASTER', engine) as object).concat(['Human Garrison']);
-  const homeProvinceIdFor = engineFn(engine, 'homeProvinceIdFor') as (gs: object, pi: number) => number;
+  const TYPES = Object.keys(ARMY_SPEED_MASTER).concat(['Human Garrison']);
+  const homeProvinceIdFor = homeProvinceIdForAsItsModuleExportsIt as unknown as (gs: object, pi: number) => number;
   const homes = [homeProvinceIdFor(tc.G, 0), homeProvinceIdFor(tc.G, 1)];
 
   test(

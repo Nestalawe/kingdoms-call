@@ -1,4 +1,5 @@
-// Helpers lifted out of resolveTurn in plan P1-08c, called directly in the bare vm (tests/lib/engine.ts):
+// Helpers lifted out of resolveTurn in plan P1-08c, called directly on the engine's modules (since P1-14m; the bare vm
+// before):
 // - qualityAdj (the balance matrix never runs it: nothing calls it): a unit's quality in words.
 // - spreadTerror (property, fast-check): however many decisive Evil victories, the battle province and each neighbour
 //   hold at most TERROR_MAX_STACKS stacks of Terror, one a victory up to that.
@@ -10,20 +11,36 @@
 //   a necromancer handed no state, and a realm's lore of a province no map holds.
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The properties
 // describe the game as it is: they pass on the code as it was before the move too.
-import vm from 'node:vm';
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
 // ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
 const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
-const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
+const tc = aFreshTurnsContextOnTheWorld(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
+// (the engine's own modules, fresh with it)
+const { qualityAdj: qualityAdjAsItsModuleExportsIt } =
+  await import('../../src/engine/battle/battle-report-lines-and-force-markers.ts');
+const theTerror = await import('../../src/engine/battle/evil-terror.ts');
+const { TERROR_MAX_STACKS } =
+  await import('../../src/engine/rules-on-plain-values/the-terror-an-evil-victory-leaves-its-share-a-stack-and-its-most-stacks.ts');
+const { resolvePendingSkillGain: resolvePendingSkillGainAsItsModuleExportsIt } =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const { SKILL_LABELS } = await import('../../src/engine/army-tables.ts');
+const theGraves = await import('../../src/engine/graves.ts');
 interface Province {
   id: number;
   name: string;
@@ -45,7 +62,7 @@ const G = tc.G as {
 };
 
 test('qualityAdj: a unit quality in words, and "seasoned" for anything else', () => {
-  const qualityAdj = engineFn(engine, 'qualityAdj') as (quality: unknown) => string;
+  const qualityAdj = qualityAdjAsItsModuleExportsIt as unknown as (quality: unknown) => string;
   expect(['Green', 'Average', 'Veteran', 'Elite', 'Crack'].map(qualityAdj)).toEqual([
     'inexperienced',
     'seasoned',
@@ -58,16 +75,16 @@ test('qualityAdj: a unit quality in words, and "seasoned" for anything else', ()
 });
 
 describe('spreadTerror', () => {
-  const spreadTerror = engineFn(engine, 'spreadTerror') as (
+  const spreadTerror = theTerror.spreadTerror as unknown as (
     t: TurnContext,
     battleProv: Province,
     byPlayer: number,
     narrative: string[] | null,
   ) => void;
-  const max = vm.runInContext('TERROR_MAX_STACKS', engine) as number;
+  const max: number = TERROR_MAX_STACKS;
   const neighbours = (p: Province) =>
     (
-      vm.runInContext('getNeighborsP', engine) as (
+      engine.getNeighborsP as unknown as (
         p: Province,
         cols: number,
         rows: number,
@@ -107,8 +124,11 @@ describe('spreadTerror', () => {
 });
 
 describe('resolvePendingSkillGain', () => {
-  const resolvePendingSkillGain = engineFn(engine, 'resolvePendingSkillGain') as (t: TurnContext, real: Hero) => void;
-  const SKILLS = Object.keys(vm.runInContext('SKILL_LABELS', engine) as Record<string, string>);
+  const resolvePendingSkillGain = resolvePendingSkillGainAsItsModuleExportsIt as unknown as (
+    t: TurnContext,
+    real: Hero,
+  ) => void;
+  const SKILLS = Object.keys(SKILL_LABELS);
   const hero = G.characters.find((c) => c.alive && c.player != null);
   if (!hero) throw new Error('the world has no living hero of a realm');
   const levels = fc.dictionary(fc.constantFrom(...SKILLS), fc.integer({ min: 0, max: 9 }));
@@ -146,7 +166,7 @@ describe('resolvePendingSkillGain', () => {
 });
 
 describe('recordBattleGraves', () => {
-  const recordBattleGraves = engineFn(engine, 'recordBattleGraves') as (
+  const recordBattleGraves = theGraves.recordBattleGraves as unknown as (
     t: TurnContext,
     prov: Province,
     killedArmies: object[],
@@ -214,7 +234,7 @@ describe('recordBattleGraves', () => {
 // necromancer handed no state, and a realm's lore of a province no map holds.
 describe('the graves where no game goes (takeBestGrave, senseGravesUnderfoot, graveIntelFor)', () => {
   test('a gap among the graves counts as an Average grave with no strength, so a real Average company rises first', () => {
-    const takeBestGrave = engineFn(engine, 'takeBestGrave') as (prov: { battleGraves: unknown[] }) => unknown;
+    const takeBestGrave = theGraves.takeBestGrave as unknown as (prov: { battleGraves: unknown[] }) => unknown;
     const company = { type: 'Shieldwall Levies', quality: 'Average', race: 'Human', unitName: 'the Ashford Levy' };
     const prov = { battleGraves: [null, company] };
     expect(takeBestGrave(prov)).toBe(company);
@@ -222,7 +242,7 @@ describe('the graves where no game goes (takeBestGrave, senseGravesUnderfoot, gr
   });
 
   test('a necromancer handed no state throws, as reading its realms did; a hero with no Necromancy senses nothing', () => {
-    const senseGravesUnderfoot = engineFn(engine, 'senseGravesUnderfoot') as (
+    const senseGravesUnderfoot = theGraves.senseGravesUnderfoot as unknown as (
       state: null,
       c: object,
       pv: object,
@@ -230,7 +250,7 @@ describe('the graves where no game goes (takeBestGrave, senseGravesUnderfoot, gr
     ) => boolean;
     const pv = { id: 0, battleGraves: [{ type: 'Shieldwall Levies', quality: 'Average' }] };
     const necromancer = { alive: true, player: 0, skills: { necromancy: 1 }, items: [] };
-    // (the engine's TypeError is the vm's own class: its name and words are compared)
+    // (its name and words are compared, as on the vm, where the engine's TypeError was the vm's own class)
     let thrown: unknown;
     try {
       senseGravesUnderfoot(null, necromancer, pv, null);
@@ -242,7 +262,7 @@ describe('the graves where no game goes (takeBestGrave, senseGravesUnderfoot, gr
   });
 
   test("a realm's lore of a province no map holds reads it as an unmapped province, latest first", () => {
-    const graveIntelFor = engineFn(engine, 'graveIntelFor') as (gs: object, pl: object) => unknown;
+    const graveIntelFor = theGraves.graveIntelFor as unknown as (gs: object, pl: object) => unknown;
     const rec = (turn: number) => ({ turn, detail: null, detailTurn: null, detailPartial: false });
     const lore = { _graveIntel: { '0': rec(2), '5': rec(6) } };
     expect(graveIntelFor({ world: { provinces: [{ name: 'Ashford' }] } }, lore)).toEqual([

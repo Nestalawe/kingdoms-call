@@ -7,7 +7,7 @@
     "javascriptFiles": 4,
     "quarantinedTests": 0,
     "sourceJavascriptFiles": 2,
-    "vmLoaderTests": 21,
+    "vmLoaderTests": 12,
     "unitNameChecksInEngine": 0,
     "itemEffectChecksInEngine": 0,
     "spellChecksInEngine": 0,
@@ -17,6 +17,6 @@
     "alignmentChecksInEngine": 70,
     "eslintSuppressions": 216,
     "knownArchitectureViolations": 1,
-    "unusedCode": 12
+    "unusedCode": 11
   }
 }

@@ -6,11 +6,11 @@
 //     slain, his host is shaken, and his real record is dead;
 //   • nobody rides out when neither commander challenges, or against a commander already dead: both hosts keep their
 //     morale and the battle report gets no line;
-//   • a bot realm's commander never fights a duel with a local chieftain (Toby, 2026-09-28): he refuses the
-//     chieftain's challenge, and his host takes the usual −20% for it.
-// Level 1 (unit): preBattleDuel called directly in the bare vm (tests/lib/engine.ts), on a fresh turn's context for
-// each input (a duel can kill, and a death changes the world). The matrix runs it about 7,600 times a set; these say
-// what holds for any input, not only the matrix's games.
+//   • a bot realm's commander never fights a duel with a local chieftain (the maintainer, 2026-09-28): he refuses
+//     the chieftain's challenge, and his host takes the usual −20% for it.
+// Level 1 (unit): preBattleDuel called directly on the engine's modules (since P1-14m; the bare vm before), on a fresh
+// turn's context for each input (a duel can kill, and a death changes the world). The matrix runs it about 7,600
+// times a set; these say what holds for any input, not only the matrix's games.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Properties (fast-check, P1-08g) of the duel before a battle (`preBattleDuel`), over made-up commanders (stance,
@@ -18,11 +18,19 @@
 // copy): each host's morale is 1 or 0.8 and never both 0.8, each shaken host is told once, at most one commander is
 // slain and he is the one whose record died; nobody rides out when neither challenges or against a commander already
 // dead (no line, the world unchanged); a bot realm's commander never duels a local chieftain, and his host is shaken
-// when he refuses one (Toby, 2026-09-28). Called directly in the bare `vm` on a fresh context for each input; it reads
-// the narrative's words (`theWordsOf` on a fact: the duel's lines record facts since P1-12c5)
+// when he refuses one (the maintainer, 2026-09-28). Called directly on the engine's modules (P1-14m; the bare `vm`
+// before) on a fresh context for each input; it reads the narrative's words (`theWordsOf` on a fact: the duel's lines
+// record facts since P1-12c5)
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50 ms
@@ -50,10 +58,14 @@ interface Duel {
   defSlain?: boolean;
 }
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const WORLD = botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 });
-const preBattleDuel = engineFn(engine, 'preBattleDuel') as (
+// (the engine's own modules, fresh with it)
+const { preBattleDuel: preBattleDuelAsItsModuleExportsIt } =
+  await import('../../src/engine/battle/pre-battle-duels.ts');
+const { theWordsOf: theWordsOfAsItsModuleExportsIt } = await import('../../src/views/prose/the-words-of-each-line.ts');
+const preBattleDuel = preBattleDuelAsItsModuleExportsIt as unknown as (
   t: TurnContext,
   atk: Character,
   def: Character,
@@ -74,7 +86,7 @@ type Side = typeof side extends fc.Arbitrary<infer T> ? T : never;
 /** A fresh turn's context in the second phase, and the two commanders of realms 0 and 1 (the defender a local chieftain
  *  if `chieftain`), staged from `a` and `d`. A pooled copy is what a battle fights with: `{...record}`. */
 function stage(a: Side, d: Side, { chieftain = false, botRealm }: { chieftain?: boolean; botRealm?: number } = {}) {
-  const tc = turnContext(engine, WORLD);
+  const tc = aFreshTurnsContextOnTheWorld(engine, WORLD);
   tc._currentPhase = 1;
   tc._logCtx.phase = 1;
   if (botRealm != null) tc['_botPlayerIdx'] = new Set([botRealm]);
@@ -100,7 +112,7 @@ function stage(a: Side, d: Side, { chieftain = false, botRealm }: { chieftain?: 
   return { tc, atk, def, atkRecord, defRecord };
 }
 /** A narrative's words: a line is its words, or a fact whose words the views write (theWordsOf, src/views/prose/). */
-const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const theWordsOf = theWordsOfAsItsModuleExportsIt as unknown as (fact: unknown) => string;
 const wordsOf = (narrative: unknown[]) => narrative.map((l) => (typeof l === 'string' ? l : theWordsOf(l)));
 const shaken = (narrative: unknown[]) =>
   wordsOf(narrative).filter((l) => l.includes("'s force is demoralised — ")).length;
