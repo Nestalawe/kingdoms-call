@@ -41,6 +41,7 @@ import { unitAbilityMult } from '../../src/engine/battle/strength.ts';
 import { TERRAIN_MODS } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { druIdPenaltyMult } from '../../src/engine/world/tables.ts';
 import { compactPage, initializersOf, pageScripts } from '../lib/source.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import { COMING, isLand, LAND_TERRAINS, LIVE, RENAMED, ROSTER, type WildUnitAsDecided } from '../lib/primal-decided.ts';
 
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
@@ -231,11 +232,17 @@ describe('the sea beasts and the new Creatures', () => {
     expect(KC_UNIT_CLASS.sea).toContain('Shark Shoals');
     expect(KC_UNIT_CLASS.carrier).not.toContain('Shark Shoals');
   });
-  test('shark waters are named from their own pool (NAME_SEA_BY_TYPE.shark, chosen for the race Primal:Shark)', () => {
-    const gm = compactPage('kingdoms-call-gm-portal.html');
-    expect(gm).toMatch(/NAME_SEA_BY_TYPE=\{[\s\S]{0,900}?\bshark:\s*\{pre:\[/);
-    expect(gm).toMatch(/race==='Primal:Shark'\)\s*kind='shark'/);
-  });
+  // compactPage reads every file of the GM page's code by its syntax tree: about 2 s alone on a laptop, 5.7 s once on
+  // a runner, so it gets that work's allowance
+  test(
+    'shark waters are named from their own pool (NAME_SEA_BY_TYPE.shark, chosen for the race Primal:Shark)',
+    timeLimitForTheWork({ everyFileReads: 1 }),
+    () => {
+      const gm = compactPage('kingdoms-call-gm-portal.html');
+      expect(gm).toMatch(/NAME_SEA_BY_TYPE=\{[\s\S]{0,900}?\bshark:\s*\{pre:\[/);
+      expect(gm).toMatch(/race==='Primal:Shark'\)\s*kind='shark'/);
+    },
+  );
 
   // each pool is the value it is declared with in the GM page's code, read by its syntax tree
   const pool = (name: string): Record<string, string[]> | null => {
