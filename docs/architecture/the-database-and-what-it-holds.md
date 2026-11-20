@@ -248,7 +248,7 @@ or written.
   check runs again before that page's first turn.
 - Tests: the fake database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.ts`).
   `bootJsdom(..., {dbVersion})` sets another answer (an older version, `null` for a missing function, or
-  `'offline'`), as `tests/db-guard.test.js` does.
+  `'offline'`); `makeAFakeDb` does for a fake `Db`.
 
 ## `game_state` is a string
 

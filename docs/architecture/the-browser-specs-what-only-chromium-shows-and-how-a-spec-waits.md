@@ -21,5 +21,5 @@ image's `onerror` really firing). They are not part of `npm test`.
   assertions, which retry until they pass or time out. Where a check is "it happens promptly", the poll's timeout is
   that time (`dispatches-badge`). Code a spec runs inside the page is passed as text when it uses the page's own
   globals.
-- **The hostile-name tests are in two halves:** the jsdom half is a test script (`hostile-*.test.js`), the Chromium
-  half is `hostile-names.spec.ts`, one test per page and mode.
+- **The hostile-name tests are in two halves:** the jsdom half is one page test for each page
+  (`page/the-*-hostile-names-show-as-text-…`), the Chromium half is `hostile-names.spec.ts`, one test per page and mode.

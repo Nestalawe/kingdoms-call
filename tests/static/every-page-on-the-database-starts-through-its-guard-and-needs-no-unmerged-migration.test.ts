@@ -1,7 +1,8 @@
 // Every page on the database starts through its guard and needs no unmerged migration (P0-34). Moved from the old
 // script tests/db-min.test.js (P1-14z), check for check.
 // Level 0 (static): it reads each page's modules in src/ (tools/pages.ts) and supabase/migrations/; nothing runs. The
-// guard's own answers are page tests (db-guard); this one reads what each page declares.
+// guard's own answers are its unit and page tests (the-version-guard-asks-the-db-…, each-page-that-reads-the-database-…);
+// this one reads what each page declares.
 // - Every page whose own code makes its database client (makeThePagesDatabase, src/db/the-pages-database-client.ts)
 //   declares KC_DB_MIN (the oldest database version it works with), imports kc-db-guard.ts, and starts through
 //   kcDbGuard(thePagesDb, KC_DB_MIN).then(…). A page's own code is its modules but src/db/'s: the guard's comment

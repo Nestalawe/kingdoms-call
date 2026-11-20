@@ -208,8 +208,9 @@
   its functions, such as a refused sign-in). `hostile.ts` gives the
   names (`'hostile'`: every payload at once, with the field's name in front; `'ordinary'`: apostrophes, accents and
   hyphens) and `inspect(document)`, which finds a value that became an element or code, or a handler that no longer
-  parses. `hostileTest(tour)` is a page's hostile-name test in jsdom; `browser/hostile-names.spec.ts` is the same in
-  Chromium. Converting a page to `kcHtml` adds its tour. A tour
+  parses. `lib/each-screen-of-a-pages-tour-shows-hostile-names-as-text-in-jsdom.ts` makes a page's hostile-name tests
+  in jsdom (`page/the-*-hostile-names-show-as-text-…`); `browser/hostile-names.spec.ts` is the same in Chromium.
+  Converting a page to `kcHtml` adds its tour. A tour
   may give its page longer to start (`bootWait`), and a mode with `bootError` is a page that can't start: its error is
   expected, and its screen is the boot-failure message. In jsdom, a promise the page leaves rejected is a page error (jsdom
   doesn't fire `unhandledrejection`, so Node would otherwise end the test). A step may hold the page's own short timers:

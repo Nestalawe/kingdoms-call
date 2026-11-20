@@ -262,8 +262,8 @@ are erased, so no code runs in its order.
   bundle refuses to load (`tests/lib/engine.ts`). New shared names in the data file start `KC_`.
 - Never move a table that references portal code into the data file.
 
-`npm test`'s `boot-pages` (jsdom) and the browser spec `chromium-boot` (`npx playwright test`) catch a page that no
-longer boots.
+`npm test`'s page test `every-page-of-the-site-boots-in-jsdom-…` (jsdom) and the browser spec `chromium-boot`
+(`npx playwright test`) catch a page that no longer boots.
 
 ## A package imported from `src/`
 

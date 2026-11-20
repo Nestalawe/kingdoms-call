@@ -13,8 +13,8 @@
 // may put its own answer in place of one of its functions); the same in jsdom and in Chromium.
 // A new page's slice of P0-19 adds its tour here.
 //
-// Plain Node runs this file as it is (its types are stripped), so the old JavaScript scripts in tests/*.test.js can
-// require it: it uses only TypeScript that can be erased.
+// Plain Node runs this file as it is (its types are stripped), so tests/tools/same-dom.js, run by hand, can require it:
+// it uses only TypeScript that can be erased.
 import path from 'node:path';
 import type { Browser, Page } from '@playwright/test';
 import { readPage, bootJsdom, serve, routeExternal, SITE, DB_VERSION, type PageWindow } from './boot.ts';
@@ -2402,7 +2402,7 @@ export const TOURS: Record<TourName, Tour> = { leaderboard, overlord, gmPortal, 
 
 /** An error as one line of the page's errors: its stack when it has one (and it isn't empty), else `otherwise`, as
  *  `String(error && error.stack || otherwise)` gave it. */
-function itsStackOr(error: unknown, otherwise: unknown): string {
+export function itsStackOr(error: unknown, otherwise: unknown): string {
   const stack: unknown =
     (typeof error === 'object' && error !== null) || typeof error === 'function'
       ? Reflect.get(error, 'stack')

@@ -21,8 +21,6 @@ export function suite(full: boolean): Script[] {
   // [level, name, file, args, env]
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
     ['page', 'staging-footer', 'tests/staging-footer.test.js'],
-    ['page', 'boot-pages', 'tests/boot-pages.test.js'],
-    ['page', 'db-guard', 'tests/db-guard.test.js'],
     ['page', 'gm-offer-and-gate', 'tests/gm-offer-and-gate.test.js'],
     ['page', 'other-realms-slots', 'tests/other-realms-slots.test.js'],
     ['page', 'dispatch-limits', 'tests/dispatch-limits.test.js'],
@@ -30,10 +28,6 @@ export function suite(full: boolean): Script[] {
     ['page', 'eliminated-dispatches', 'tests/eliminated-dispatches.test.js'],
     ['page', 'overlord-page', 'tests/overlord-page.test.js'],
     ['page', 'overlord-suspend-delete', 'tests/overlord-suspend-delete.test.js'],
-    ['page', 'hostile-overlord', 'tests/hostile-overlord.test.js'],
-    ['page', 'hostile-leaderboard', 'tests/hostile-leaderboard.test.js'],
-    ['page', 'hostile-gm-portal', 'tests/hostile-gm-portal.test.js'],
-    ['page', 'hostile-player-portal', 'tests/hostile-player-portal.test.js'],
     ['page', 'master-gm-mode', 'tests/master-gm-mode.test.js'],
     ['page', 'profiles-no-email', 'tests/profiles-no-email.test.js'],
     ['scenario', 'meta-missing-turn', 'tests/meta-missing-turn.test.js'],

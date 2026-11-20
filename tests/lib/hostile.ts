@@ -11,10 +11,11 @@
 // jsdom never loads images, so onerror never fires there; window.__kcPwned is only a real check in Chromium: the same
 // tours with hostile names in Chromium are tests/browser/hostile-names.spec.ts.
 //
-// Plain Node runs this file as it is (its types are stripped), so the old JavaScript scripts in tests/*.test.js can
-// require it: it uses only TypeScript that can be erased.
+// Each page's hostile-name tests in jsdom are lib/each-screen-of-a-pages-tour-shows-hostile-names-as-text-in-jsdom.ts's.
+//
+// Plain Node runs this file as it is (its types are stripped), so tests/tools/same-dom.js, run by hand, can require it:
+// it uses only TypeScript that can be erased.
 import * as acorn from 'acorn';
-import { TOURS, runJsdom, type TourName } from './screens.ts';
 
 /** A name for each player-chosen field: names('hostile') gives every payload, names('ordinary') a plain name. */
 export type Names = ((field: string, i?: number | string) => string) & { hostile?: boolean };
@@ -100,58 +101,4 @@ export function inspect(doc: Document): string[] {
     }
   }
   return out;
-}
-
-// One page's hostile-name test: every mode and screen of its tour (lib/screens.ts) with hostile names, in jsdom: nothing
-// becomes markup or code, no handler breaks, every staged name appears as text exactly as typed. Exits the process
-// with the result. Its Chromium half (window.__kcPwned stays unset, with images really loading and failing) is
-// tests/browser/hostile-names.spec.ts (P1-01c).
-export async function hostileTest(tourName: TourName): Promise<void> {
-  const tour = TOURS[tourName],
-    W = tour.world(names('hostile'));
-  let fails = 0;
-  const check = (c: boolean, m: string) => {
-    if (!c) {
-      fails++;
-      console.log('FAIL ' + m);
-    } else console.log('ok   ' + m);
-  };
-  const seen = new Set<string>(),
-    want = tour.shown(W).filter(Boolean) as string[]; // `as`: what's left once the empty ones are gone
-  // A page that can't start (a mode with bootError) must say so; every other mode runs with no page error at all.
-  const checkErrors = (mode: string, errs: string[]) => {
-    if (tour.modes[mode]?.bootError)
-      check(errs.length > 0, `${tour.page} (${mode}): the page fails to start, as staged`);
-    else
-      check(
-        !errs.length,
-        `${tour.page} (${mode}): no page errors` +
-          (errs.length ? ': ' + ((errs[0] as string).split('\n')[0] as string) : ''),
-      );
-  };
-  for (const mode of Object.keys(tour.modes)) {
-    const errs = await runJsdom(tour, mode, W, (label, doc, w) => {
-      const problems = inspect(doc);
-      const pwned = !!w['__kcPwned'];
-      w['__kcPwned'] = undefined;
-      check(
-        !problems.length && !pwned,
-        `${tour.page} (${mode}) ${label}: names show as text` +
-          (problems.length ? `: ${String(problems.length)} problem(s), e.g. ${String(problems[0])}` : ''),
-      );
-      const text = doc.body.textContent;
-      want.forEach((s) => {
-        if (text.includes(s)) seen.add(s);
-      });
-    });
-    checkErrors(mode, errs);
-  }
-  const missing = want.filter((s) => !seen.has(s));
-  check(
-    !missing.length,
-    `${tour.page}: each of the ${String(want.length)} staged names appears somewhere, exactly as typed` +
-      (missing.length ? `; not found: ${missing.map((s) => s.split(' ')[0]).join(', ')}` : ''),
-  );
-  console.log(fails ? `\nFAILURES: ${String(fails)}` : '\n0 failures');
-  process.exit(fails ? 1 : 0);
 }
