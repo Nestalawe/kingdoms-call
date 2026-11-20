@@ -40,39 +40,25 @@ export function theSitesFoundAsTheLineNamesThem(
   return sites.map((f) => ({ name: f.name, isARitualSite: !!f.ritualSite, guardianName: f.monster?.name ?? null }));
 }
 
-/** An item as its lore is read: its name, its tier (a legendary item is named so), its lore and description, and its
- *  effect's stat (Mithril Armour's lore is its own). */
+/** An item as its lore is told: its name, its tier (a legendary item is named so), and its lore as the engine found it
+ *  (plan P1-13z: its own, else the lore of its name, the Mithril Armour's or its description: itemLore,
+ *  src/engine/items/tiers-and-hoards.ts). */
 export interface AnItemAsItsLoreIsTold {
   readonly name: string;
   readonly tier?: number;
-  readonly lore?: string;
-  readonly desc?: string;
-  readonly effect?: { readonly stat?: string | undefined } | null;
+  readonly lore: string;
 }
 
-/** The items whose lore a line tells, copied as the line is told (itemLoreLines' words, src/engine/items/tiers-and-
- *  hoards.ts): a field the item lacks is left out. */
-export function theItemsAsTheirLoreIsTold(
-  items: readonly {
-    readonly name: string;
-    readonly tier?: number | undefined;
-    readonly lore?: string | undefined;
-    readonly desc?: string | undefined;
-    readonly effect?: { readonly stat?: string | undefined } | null | undefined;
-  }[],
+/** The items whose lore a line tells, copied as the line is told, each with the lore `theLoreOf` finds for it (the
+ *  order hands in itemLore: this file imports no engine code, as the prose may load it). A tier the item lacks is left
+ *  out. */
+export function theItemsAsTheirLoreIsTold<AnItem extends { readonly name: string; readonly tier?: number | undefined }>(
+  items: readonly AnItem[],
+  theLoreOf: (item: AnItem) => string,
 ): AnItemAsItsLoreIsTold[] {
   return items.map((it) => {
-    const copy: {
-      name: string;
-      tier?: number;
-      lore?: string;
-      desc?: string;
-      effect?: { readonly stat?: string | undefined } | null;
-    } = { name: it.name };
+    const copy: { name: string; tier?: number; lore: string } = { name: it.name, lore: theLoreOf(it) };
     if (it.tier !== undefined) copy.tier = it.tier;
-    if (it.lore !== undefined) copy.lore = it.lore;
-    if (it.desc !== undefined) copy.desc = it.desc;
-    if (it.effect !== undefined) copy.effect = it.effect ? { stat: it.effect.stat } : it.effect;
     return copy;
   });
 }

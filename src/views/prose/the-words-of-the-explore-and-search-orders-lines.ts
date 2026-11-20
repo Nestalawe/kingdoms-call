@@ -2,16 +2,18 @@
 // 7) ──
 // The views write the words of each fact the explore and search orders' lines record (src/engine/orders/the-facts-the-
 // explore-and-search-orders-lines-record.ts), in the same words the engine wrote before (orders/explore-and-search-
-// orders-maps-lairs-rites-and-rumours.ts). the items' lore (itemLoreLines) is the engine's, a guardian's kind (monsterCatLabel) and the
-// odds' bands (rumourOddsBand) are on plain values, and fmtRoll and a list of items (itemNameList) the prose's, on the values a
-// fact holds. A kind with no words here is a compile error (the `never` below).
+// orders-maps-lairs-rites-and-rumours.ts). An item's lore is found by the engine as the line is told (itemLore, held in the
+// fact since plan P1-13z), a guardian's kind (monsterCatLabel), the odds' bands (rumourOddsBand) and whether an item is
+// legendary (isLegendaryItem) are on plain values, and fmtRoll and a list of items (itemNameList) the prose's, on the
+// values a fact holds. A kind with no words here is a compile error (the `never` below).
 import type {
   ASiteFoundAsTheLineNamesIt,
+  AnItemAsItsLoreIsTold,
   TheFactOfTheExploreAndSearchOrdersLine,
 } from '../../engine/orders/the-facts-the-explore-and-search-orders-lines-record.ts';
 import { fmtRoll } from './the-words-of-a-roll-a-host-and-a-skill-shown.ts';
 import { itemNameList } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
-import { itemLoreLines } from '../../engine/items/tiers-and-hoards.ts';
+import { isLegendaryItem } from '../../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { monsterCatLabel } from '../../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { rumourOddsBand } from '../../engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
 import { theWordsOfTheItemsAHeroGained } from './the-words-of-the-items-a-hero-gained.ts';
@@ -21,6 +23,11 @@ function _art(n: string | null): string {
   if (!n) return 'a creature';
   if (n.endsWith('s')) return n;
   return (/^[aeiou]/i.test(n) ? 'an ' : 'a ') + n;
+}
+
+/** One chronicle line an item a lair gave up: "📜 The Blade of Fury — <its lore>", a relic marked LEGENDARY. */
+function theWordsOfTheItemsLore(items: readonly AnItemAsItsLoreIsTold[]): string {
+  return items.map((d) => `📜 The ${d.name}${isLegendaryItem(d) ? ' (LEGENDARY)' : ''} — ${d.lore}`).join('\n');
 }
 
 /** What a site found is: an ancient ritual site, or guarded by its guardian. */
@@ -139,7 +146,7 @@ export function theWordsOfTheExploreAndSearchOrdersLine(fact: TheFactOfTheExplor
     case "the realm's lore yields an extra find":
       return `Your realm's lore yields an extra find: the ${fact.itemName}!`;
     case 'the lore of the items a lair gave up':
-      return itemLoreLines(fact.items);
+      return theWordsOfTheItemsLore(fact.items);
     case 'a hero clears a lair and hauls out its magic':
       return `Victory! ${fact.heroName} claims ${String(fact.gold)}g from the ${fact.siteName} and hauls out ${itemNameList(fact.items, false)}.`;
     case 'among the bones a hero recovers what the fallen left':

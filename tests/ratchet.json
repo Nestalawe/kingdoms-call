@@ -16,7 +16,7 @@
     "alignmentOrderChecksInEngine": 0,
     "alignmentChecksInEngine": 70,
     "eslintSuppressions": 216,
-    "knownArchitectureViolations": 1,
+    "knownArchitectureViolations": 0,
     "unusedCode": 9
   }
 }

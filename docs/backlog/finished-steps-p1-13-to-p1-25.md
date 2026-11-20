@@ -9,7 +9,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-13
 
-- P1-13: delivered in its rows, below: the architecture rules as checks (dependency-cruiser, knip, ESLint); the rest is P1-13z
+- P1-13: delivered in its rows, below: the architecture rules as checks (dependency-cruiser, knip, ESLint), the last of them P1-13z
 - P1-13a: #180 The layers of src/ and no new import cycle, checked by dependency-cruiser; unused code counted by knip
 - P1-13b: #181 Every lint rule an error, the type-aware rules on src/'s checked files, today's findings in ESLint's suppressions
 - P1-13c: #182 The engine reads no page, clock or database, the dice come only from kcRng(), and the big tables are read by named columns: as lint rules
@@ -38,6 +38,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-13m: #414 A guard's reader and a level above nothing move onto plain values
 - P1-13n: #490 The tests' code-scanning alerts fixed; any alert fails the merge
 - P1-13n2: #491 The last test-code scanning alert fixed
+- P1-13z: #PRNUM The prose writes the items' lore lines from the facts; the known-findings list empties
 
 ## P1-14
 
