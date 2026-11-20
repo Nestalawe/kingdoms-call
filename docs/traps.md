@@ -31,8 +31,8 @@ refuses `deploy` without them, or with `always()`.
 ## A constant read at load time must live in a leaf module
 
 A constant another file reads as it loads lives in a file of its own that imports nothing, and `page.ts`'s import
-order is not changed. Checks: `npm run lint:arch` fails on a new import cycle (none is known now); `boot-pages` and
-`chromium-boot` catch a page that no longer boots.
+order is not changed. Checks: `npm run lint:arch` fails on a new import cycle (none is known now); the page test
+`every-page-of-the-site-boots-in-jsdom-…` and `chromium-boot` catch a page that no longer boots.
 [Detail](architecture/the-build-from-src-to-site.md#a-constant-read-at-load-time-must-live-in-a-leaf-module).
 
 ## `select('*')` on big tables
@@ -48,7 +48,7 @@ refuses a read of a column left out.
 
 Code that writes a new column copes while the column is missing: probe once (`probeGameMeta`), spread `{}` for the
 field while it's absent (`metaPatch`); readers fall back to the old source. Checks: a test that hides the column (the
-fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/meta-missing-turn.test.js` does. This is why database and
+fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/page/the-gm-page-runs-and-saves-a-turn-while-the-games-meta-column-is-missing.test.ts` does. This is why database and
 site changes go in separate PRs ([supabase/README.md](../supabase/README.md#database-and-site-changes-go-separately)).
 
 ## A site change that needs a database change
@@ -56,8 +56,8 @@ site changes go in separate PRs ([supabase/README.md](../supabase/README.md#data
 A site PR that can't work without a migration raises `KC_DB_MIN` to the migration's 14-digit version in every page
 that needs it, and never lowers it to get past the stop. Otherwise cope
 ([above](#a-new-column-must-be-optional-at-the-write-site)).
-Checks: `db-min` fails if a `KC_DB_MIN` is newer than the newest file in `supabase/migrations/`; `db-guard` boots each
-page on an older database. [Detail](architecture/the-database-and-what-it-holds.md#a-site-change-that-needs-a-database-change).
+Checks: [the guard check](../tests/static/every-page-on-the-database-starts-through-its-guard-and-needs-no-unmerged-migration.test.ts) fails if a `KC_DB_MIN` is newer than the newest file in `supabase/migrations/`; [a page
+test](../tests/page/each-page-that-reads-the-database-takes-the-db-a-test-hands-it.test.ts) boots each page on an older database. [Detail](architecture/the-database-and-what-it-holds.md#a-site-change-that-needs-a-database-change).
 
 ## String-anchor harness hooks
 
@@ -161,7 +161,7 @@ the fight (`pcCharCombatant`) and the hero's card (`extraSkillBonuses`).
 Every name and message on screen was typed by someone, so a page builds HTML only through `kcHtml` / `kcEsc`
 (`src/ui/shared/kc-safe.ts`), and markup inside a value is `kcHtml` too. Never join `kcHtml` with `+` or `.join('')`.
 Checks: lint (`kc/html-is-built-only-through-kc-html`, exceptions in `HTML_EXCEPTIONS`, `eslint.config.js`) catches
-most; `node tests/tools/same-dom.js <main's site>` finds the rest on the screens a tour visits. Every mistake it can't
+most; `node tests/tools/same-dom.ts <main's site>` finds the rest on the screens a tour visits. Every mistake it can't
 see: [here](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#html-is-built-only-through-kchtml).
 
 ## Order is data
@@ -229,8 +229,8 @@ an `if`'s condition, and read it in that branch (a check held in a variable isn'
 ## A new army unit is a dozen tables
 
 A unit type is keyed by its name in tables over several files, and nothing throws when one is missed. Add it to
-`tests/lib/roster-decided.js` first (a Creature or Monster: mark it `live` in `tests/lib/primal-decided.js`), then to
-`KC_UNIT_TYPE`. Checks: `tests/roster.test.js` and `tests/roster-words.test.js` (or `primal-roster`, `primal-words`)
+`tests/lib/roster-decided.ts` first (a Creature or Monster: mark it `live` in `tests/lib/primal-decided.ts`), then to
+`KC_UNIT_TYPE`. Checks: `tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts` and `tests/static/the-rulebooks-and-the-player-portal-give-each-army-unit-as-the-roster-table-decides.test.ts` (or the wild roster's two tests)
 list every table and sentence still missing it, and `npm run typecheck` names the data file's tables that end in
 `satisfies`. Every table: [here](architecture/adding-or-changing-content-units-orders-and-discoveries.md#a-new-army-unit-is-a-dozen-tables).
 
@@ -239,7 +239,7 @@ list every table and sentence still missing it, and `npm run typecheck` names th
 A new swimmer goes in `KC_UNIT_CLASS.primalSea` (it swims, carries nothing, is raised only at sea and can't march
 inland) or, if it ferries troops, in `carrier` (one berth, or its `KC_CARRIER_BERTHS` entry), never in `sea` alone:
 the engine's "crosses the sea under its own power" sets (`SEA_TYPES`, the bots' `BOT_SEA_ALL`) are built from those two.
-Checks: `shark-waters`, for the shoal.
+Checks: `scenario/shark-waters-are-half-the-poor-seas-and-a-realm-raises-its-shoals-there`, for the shoal.
 
 ## A beast joining a column checks its leader's Druid
 
@@ -283,8 +283,10 @@ and name; lint refuses a fate it leaves out). Checks:
 
 The player portal reads its own `game_players` row directly, and every other realm's slot only through
 `fetchGameSlots` (`rpc('get_game_slots')`); if a feature needs more than `get_game_slots` gives, that's a database
-change first. Checks: `tests/other-realms-slots.test.js` fails on any read of another account's realm (the fake
-notes each one); `tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
+change first. Checks:
+`tests/page/the-player-portal-sees-other-realms-only-through-get-game-slots-and-never-reads-another-accounts-realm.test.ts`
+fails on any read of another account's realm (the fake notes each one);
+`tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
 
 ## Another game reads as nothing
 

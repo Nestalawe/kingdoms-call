@@ -61,7 +61,7 @@ const AN_ADDRESS = new RegExp(
   'gi',
 );
 
-/** GitHub's anchor of a heading: lower case, punctuation dropped, spaces to hyphens (as tests/docs.test.js reads it). */
+/** GitHub's anchor of a heading: lower case, punctuation dropped, spaces to hyphens (as static/every-link-anchor-and-path-the-guides-name-is-there reads it). */
 const anchorOf = (heading: string): string =>
   heading
     .toLowerCase()

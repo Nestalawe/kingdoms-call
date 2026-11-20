@@ -2,7 +2,7 @@
 // sent, one at a time, each on its own fresh page (seed: the run's number; clock: the matrix's), and sends back each
 // run's statistics or error. KC_SITE, set by the pool, picks the copy of the site.
 import { pathToFileURL } from 'node:url';
-import { bootScenario } from '../../tests/lib/scenario.js';
+import { bootScenario } from '../../tests/lib/scenario.ts';
 import { START } from './matrix.ts';
 import { scenarioFile, type Scenario, type ScenarioJob, type ScenarioReply } from './scenario.ts';
 

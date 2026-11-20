@@ -8,7 +8,7 @@
 //
 // Until plan P1-14d these were the last four checks of tests/guard-cast-chance.test.js, kept as they were.
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 
 const stripTags = (s: string) => {
   let t = s;

@@ -21,7 +21,7 @@
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { BATTLE_FACING, BATTLE_FRONT_RANGE } from '../../src/engine/battle/lines.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 
 const RANGE = BATTLE_FRONT_RANGE as Record<string, number[] | undefined>;
 const TERRAINS = ['plain', 'desert', 'forest', 'jungle', 'mountain', 'sea'];

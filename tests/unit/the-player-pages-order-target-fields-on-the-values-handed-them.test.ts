@@ -5,7 +5,7 @@
 // order form's fields written into a jsdom document set as the page's own. A page test would boot the whole page to
 // reach each one.
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import { theShareOfAProvinceAnExploreOrderMaps } from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
 
 type TheFile = typeof import('../../src/ui/player/order-targets.ts');

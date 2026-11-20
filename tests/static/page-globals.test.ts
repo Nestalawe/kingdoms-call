@@ -50,7 +50,7 @@ import { timeLimitForTheWork } from '../lib/time-limits.ts';
  *  safe to leave unread. */
 const UNREAD_ON_PURPOSE: Record<string, string[]> = {
   // the screen tours' code, which page-globals.ts reads as every string of the file
-  'tests/lib/screens.js': ['w.eval(code)', 'p.evaluate(code)'],
+  'tests/lib/screens.ts': ['w.eval(code)', 'p.evaluate(code)'],
 };
 
 const sorted = (names: Iterable<string>) => [...names].sort((a, b) => a.localeCompare(b, 'en'));

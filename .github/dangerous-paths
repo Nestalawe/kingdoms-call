@@ -47,7 +47,6 @@ tools/eslint-rules/**
 .nvmrc
 .npmrc
 tests/setup/**
-tests/legacy.test.ts
 tests/ratchet.json
 # The docs' size budgets (tests/static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts): raising one
 # should be seen.

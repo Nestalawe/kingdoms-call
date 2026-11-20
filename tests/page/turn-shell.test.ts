@@ -72,7 +72,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import {
   aGameMastersWorld,
   makeAFakeDbHoldingTheGameMastersTurn,
@@ -508,7 +508,7 @@ test("a turn's writes: the clear, the save, then each realm's report, the GM's l
 
 // Fails on main, where runTurn returns no seed and the turn draws from the page's own dice (P1-18e).
 test('each turn plays from its own seed, and the page gets its dice back', async () => {
-  // The page's dice pinned to a stream the test can follow (as the screenshot tour pins them, tests/lib/screens.js); the
+  // The page's dice pinned to a stream the test can follow (as the screenshot tour pins them, tests/lib/screens.ts); the
   // test also draws the page's next number while each save is out, as other page code could.
   const followed = async () => {
     const t = await stage();

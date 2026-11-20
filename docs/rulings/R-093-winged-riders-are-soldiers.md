@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-11, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #44 (decisions 7 and 10 of the army-balance session)
-- **Enforced by:** [`flyers-soldiers`](../../tests/flyers-soldiers.test.js), [`flyers-soldiers-words`](../../tests/flyers-soldiers-words.test.js)
+- **Enforced by:** [`the-winged-riders-are-soldiers-of-their-race-in-the-class-lists-and-the-druid-ladder`](../../tests/unit/the-winged-riders-are-soldiers-of-their-race-in-the-class-lists-and-the-druid-ladder.test.ts), [`the-gm-and-player-pages-type-druid-strike-and-home-roster-rules-answer-as-the-rosters-decide`](../../tests/page/the-gm-and-player-pages-type-druid-strike-and-home-roster-rules-answer-as-the-rosters-decide.test.ts), [`the-books-make-the-winged-riders-soldiers-of-their-race-who-need-no-druid`](../../tests/static/the-books-make-the-winged-riders-soldiers-of-their-race-who-need-no-druid.test.ts)
 
 Eagle Riders, Noble Griffons and Wyvern Riders are soldiers of their race, not Creatures or Monsters: they need no Druid, and their strikes are a flat 50%.
 

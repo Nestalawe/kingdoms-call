@@ -13,7 +13,7 @@
 // pages boot signed out, on a stand-in client that answers "no session" (no fake database, lib/fake-db.ts: the bar
 // needs none).
 import { describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 
 const START = Date.parse('2026-10-22T10:00:00Z');
 const MINUTE = 60_000;

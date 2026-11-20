@@ -3,7 +3,7 @@
 // matrix measures the knock-on effects in whole games; a scenario answers "how often does X happen?" for one scene.
 //
 // A scenario is a file in tests/balance/scenarios/ (its name is the file's): a default export `Scenario`, which stages
-// its scene through tests/lib/scenario.js (bootScenario: one real turn on a small staged world) and returns that run's
+// its scene through tests/lib/scenario.ts (bootScenario: one real turn on a small staged world) and returns that run's
 // statistics, named and labelled as the matrix's (stats.ts, labels.ts). Run n plays on a fresh page with seed n and
 // the matrix's clock, on both sides, so the runs pair by seed and the noise rule (paired.ts) judges the change as it
 // does the matrix's games. A fresh page each run: names drawn in one world survive in the page into the next (play.ts).
@@ -13,7 +13,7 @@
 // The pure parts are here (tests/unit/balance-scenario.test.ts); scenario-run.ts plays the runs and prints the result.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Scenario as Page, Turn } from '../../tests/lib/scenario.js';
+import type { Scenario as Page, Turn } from '../../tests/lib/scenario.ts';
 import { label } from './labels.ts';
 import { compareRuns, figureRange, type Verdict } from './paired.ts';
 import { show, showDiff, showRange } from './report.ts';

@@ -1,6 +1,6 @@
 # How the tests reach the site
 
-- **`lib/boot.js`** is the one way to load a page from `site/`, which the run builds from `src/` before any test
+- **`lib/boot.ts`** is the one way to load a page from `site/`, which the run builds from `src/` before any test
   (`setup/global.ts`, `npm run build`, Vite since P1-09d; not when `KC_SITE` names another copy). A test script run on
   its own reads `site/` as last built:
   - `readPage` returns the page ready for jsdom, which runs no module script and loads no stylesheet: its bundle
@@ -23,7 +23,7 @@
   the seed and `console`, and returns the context, where the bundle's top-level names are the globals. It reads
   `src/`, not the built site (`src` names another copy, built again whenever the copy changes). The run builds this
   checkout's bundle once (`setup/global.ts`, into `node_modules/.cache/kc/`, its path in `KC_ENGINE_BUNDLE`); another
-  copy's is built the first time a process asks (about a second). P1-14z moves the tests to importing the engine's
+  copy's is built the first time a process asks (about a second). P1-14m moves the tests to importing the engine's
   modules ("The engine's modules", next); until then the ratchet counts the test files on the loader
   (`vmLoaderTests`), which only falls.
   There the turn is `resolveTurn` (`src/engine/run-turn.ts`, P1-18d): give it the saved state (JSON), the slot rows
@@ -98,7 +98,7 @@
   These read `src/`, not `KC_SITE`.
 - **`lib/scenario-in-the-vm.ts`** plays one real turn on a small staged world in the engine's bare vm, as the
   shell plays it (a seed from the dice, `resolveTurn`, the Spy-stealth step, the views' `buildReports` on what the turn
-  hands over), with `lib/scenario.js`'s staging; `play(state,
+  hands over), with `lib/scenario.ts`'s staging; `play(state,
   rows)` plays a saved world on slot rows of the test's own, and `reportEveryRealm()` has every realm reported, bots'
   too (an all-bot game writes no report otherwise: `simulation/every-realms-report-…`). Its `log` (and `text()`) is the GM's
   log in words, as the views write it for the shell to save (`buildReports`' `gmLog`, P1-12c3), and so is
@@ -119,7 +119,7 @@
   nothing in a browser; stage what it reads, or stand it in in the engine's `vm`, `lib/scenario-in-the-vm.ts`). Name a
   page's function as code (`typeof f`), not in a string handed to `eval`, which it can't read. `lib/page-globals.ts`
   says how it reads them.
-- **`lib/scenario.js`** stages one real turn on a small world for scenario tests: it boots the GM
+- **`lib/scenario.ts`** stages one real turn on a small world for scenario tests: it boots the GM
   portal, lets the test edit a fresh world, gives every human-held
   character its orders (Rest by default), runs `runTurn` and returns the saved world and the GM's log.
   `alignments` (and `races`) name a realm's crown by index, with the skill build a bot of that crown is dealt.
@@ -131,7 +131,7 @@
   items); found items unique and on the ledger (`_awardedItems`; Mithril Armour, every dwarf's, is off it); every living
   character and mercenary band on the map; no line of a dead character's own after the phase they died in (battle
   lines excepted: a fallen commander's leaderless host fights on under his id, R-019); `orders_submitted` cleared.
-  `turn-fuzz` and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
+  The turn fuzz (`simulation/whole-games-on-random-orders-…`) and the balance matrix run `checkTurn` after every turn: the invariants, then the leak checks.
   `KNOWN_BREACHES` lets through, in exactly its form, a breach known on `main` whose fix waits (a maintainer, 2026-10-17: no
   engine fixes during the refactor); the fix's pull request removes its entry (plan step P1-23). Today: none.
 - **Property tests** (fast-check, P1-04d; `unit/combat-properties.test.ts`, `scenario/turn-properties.test.ts`) state a
@@ -180,10 +180,10 @@
     whatever audience the engine gave it (the recorder notes each event's kind and the realm its fact names).
     Clairvoyance's lines are allowed. It runs where the harness records the turn's events.
 
-  What they can't see yet: in a harness that doesn't record the events (`turn-fuzz`, the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
+  What they can't see yet: in a harness that doesn't record the events (the turn fuzz, the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
   audience, but for the kinds for one realm alone (the audience check takes it as given: every realm's report against its baseline sees a change); the
   portal's name tables (`LOOKUP_TABLES`, for colouring names; until P2-06 trims a report to its reader); Spy stealth and the spotting roll in your own land (only Invisibility is checked); a name two heroes share.
-  They read only the reports a harness has: `turn-fuzz`'s human realms, the matrix's scripted realm, every realm in
+  They read only the reports a harness has: the turn fuzz's human realms, the matrix's scripted realm, every realm in
   the matrix's every-realm half and in `simulation/every-realms-report-…`.
 - **`lib/strict-schema.ts`** is the one way a test parses with the schemas of `src/schemas/`: `strictIssues(schema, value)` lists where a value fails the schema's strict version, `strictVersionOf(schema)` (in `src/schemas/the-strict-version-of-a-schema.ts` since P1-15d, which moved it there for the check of a saved game at load): the same schema with every object `z.strictObject` (the schemas' `z.object` drops a key it doesn't name; this refuses it, at any depth). A kind of schema it doesn't know stops it.
 - **`lib/personal-combat.ts`** (P1-08e; on the engine's modules since P1-14b) gives a test personal combat:
@@ -198,18 +198,19 @@
   `lib/the-fields-resolve-turn-adds-to-the-turns-context.ts`, the one list `lib/engine.ts`'s `turnContext` uses too.
   It replaced `lib/pc-hooks.js`, which booted the GM portal and ran a turn to take the functions from the
   `  // 4. Run all 5 phases` hook.
-- **`lib/hostile.js`** and **`lib/screens.js`** are the hostile-name harness. `screens.js` has one tour per
+- **`lib/hostile.ts`** and **`lib/screens.ts`** are the hostile-name harness. `screens.ts` has one tour per
   page: a staged world whose player-chosen strings come from `names(kind)`, the page's modes (who is looking) and its
   screens, run in jsdom (`runJsdom`) or Chromium (`runChromium`, given a browser and a server's address, or a folder
   to serve) against any copy of the site. Each page is handed the fake database (`lib/fake-db.ts`) holding its tour's
   world, as data (`fakesWorld`): the Hall of Fame's, the Overlord's, or the GM's tables, which the player's tour reads
   too. A step reaches that world as `kcTheFakesWorld` (its tables, and the calls that fail: `failing["table.op"]` or
   `failing["rpc.name"]`) and the fake as `kcTheDbATestHandsThePage` (a step may put its own answer in place of one of
-  its functions, such as a refused sign-in). `hostile.js` gives the
+  its functions, such as a refused sign-in). `hostile.ts` gives the
   names (`'hostile'`: every payload at once, with the field's name in front; `'ordinary'`: apostrophes, accents and
   hyphens) and `inspect(document)`, which finds a value that became an element or code, or a handler that no longer
-  parses. `hostileTest(tour)` is a page's hostile-name test in jsdom; `browser/hostile-names.spec.ts` is the same in
-  Chromium. Converting a page to `kcHtml` adds its tour. A tour
+  parses. `lib/each-screen-of-a-pages-tour-shows-hostile-names-as-text-in-jsdom.ts` makes a page's hostile-name tests
+  in jsdom (`page/the-*-hostile-names-show-as-text-…`); `browser/hostile-names.spec.ts` is the same in Chromium.
+  Converting a page to `kcHtml` adds its tour. A tour
   may give its page longer to start (`bootWait`), and a mode with `bootError` is a page that can't start: its error is
   expected, and its screen is the boot-failure message. In jsdom, a promise the page leaves rejected is a page error (jsdom
   doesn't fire `unhandledrejection`, so Node would otherwise end the test). A step may hold the page's own short timers:
@@ -217,13 +218,13 @@
   halfway; every player-portal mode holds the Dispatches poll. The report and Dispatches modes run the orders' running
   account's timers at once, and the GM watcher's failed run reads a fixed time, so two runs of one site show the same
   screens (P1-16a: 10 runs, none differ).
-- **`tests/tools/same-dom.js`** (run by hand, not in `npm test`): every screen of a tour, with ordinary names, on two copies of
+- **`tests/tools/same-dom.ts`** (run by hand, not in `npm test`): every screen of a tour, with ordinary names, on two copies of
   the site (e.g. `main`'s and the branch's), compared as parsed DOM; a string in a handler is compared by its value, however
   it's quoted, and a footer's build line reads as the stamp it replaced. A pull request that converts a page shows its output.
 - **`lib/fake-db.ts`** is the tests' one fake of the database, a small in-memory `Db`: a page test hands it to the
   page; it answers each query as asked and never imitates the access rules, which the access layer's tests check
   against the local Supabase ([the access layer](the-database-and-what-it-holds.md#the-access-layer-srcdb)).
-- **Fixed seed.** `npm test` sets `KC_SEED`. `boot.js` then replaces the test process's `Math.random` with a seeded
+- **Fixed seed.** `npm test` sets `KC_SEED`. `boot.ts` then replaces the test process's `Math.random` with a seeded
   generator (sfc32), and gives every jsdom page a seed (`KC_RNG_SEED`) before its scripts run. The page's dice,
   `kcRng()` (`src/engine/rng.ts`, P1-07), are the same generator seeded the same way; the page's `Math.random` gets
   the same seed, for anything outside `src/`. So a run's random choices repeat with the same seed. To fix dice in a
@@ -234,9 +235,9 @@
   Around `runTurn` that pins only the turn's seed: each turn plays on dice of its own, made from one number of the
   page's.
   A test that cuts code out of `src/` by its syntax tree and runs it on its own gives it a `kcRng` or `kcClock` of its own
-  (`home-placement`, `leaderboard-records`, `leaderboard-golden`). A page's clock (`Date`) is pinned only when a test
+  (`tests/unit/the-home-placement-gives-each-king-a-cell-of-their-own-off-the-edge-rows-and-prints-the-spacing.test.ts`). A page's clock (`Date`) is pinned only when a test
   asks: `bootJsdom(html, {seed, now})` gives the page its own seed and a clock that starts at `now` and moves on 1 ms at each reading, so a turn
-  run that way is byte-identical every time (`deterministic-boot`; `turn-fuzz` pins it too, so the same seed plays the same games). Otherwise runs are repeatable in practice but
+  run that way is byte-identical every time (`deterministic-boot`). Otherwise runs are repeatable in practice but
   not guaranteed byte-identical. The engine reads that clock through `kcClock()` (`src/engine/clock.ts`). Pages opened
   in Chromium are not seeded: their dice seed themselves from the browser's `crypto`, as on the live site
   (`chromium-boot` checks it); a browser spec's own jsdom turn is (`map-fits-panel` gives its page the seed the

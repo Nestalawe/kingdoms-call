@@ -9,8 +9,10 @@
 //   end, `gameOver`, is written by the last turn). It is checked here, by this checkout's `upgradeGameState`, on a copy.
 // With KC_SITE the line is the other copy's (its page plays the turn) and the last save's check is this checkout's
 // (this file imports src/, as every realm's report does).
-// Not an invariant (tests/lib/invariants.ts): checkTurn also runs in turn-fuzz, turn-properties and the fixtures test,
-// whose staged worlds lack what Turn 0 adds (the turn mode, the bots' settings), so every turn there would be red.
+// Not an invariant (tests/lib/invariants.ts): checkTurn also runs in the whole-game fuzz
+// (tests/simulation/whole-games-on-random-orders-keep-every-invariant-and-no-turn-throws.test.ts),
+// turn-properties and the fixtures test, whose staged worlds lack what Turn 0 adds (the turn mode, the bots'
+// settings), so every turn there would be red.
 // A place found on main whose fix waits is parked (STATUS) and let through by a narrow entry in
 // KNOWN_PLACES_THE_SAVE_CHECK_FINDS, as KNOWN_BREACHES does for the invariants; its fix removes the entry.
 // tests/unit/the-balance-matrix-fails-a-game-on-the-save-check.test.ts checks both checks and the list.

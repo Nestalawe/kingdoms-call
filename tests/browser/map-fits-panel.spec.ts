@@ -6,12 +6,12 @@
 // turn on a made-up 8×7 world (jsdom GM portal, seeded); no database.
 import { expect, test, type Page } from '@playwright/test';
 import type { ThePlayersWorld } from '../lib/fake-db.ts';
-import { bootScenario } from '../lib/scenario.js';
+import { bootScenario } from '../lib/scenario.ts';
 import { playerPortalSignedIn } from './started.ts';
 import { handThePageTheFakeDb } from './the-fake-db-handed-to-chromium.ts';
 
 // The turn is played once per worker. Its page gets the seed the script's (its process's first page) got from
-// KC_SEED, whatever else this worker has booted (tests/lib/boot.js).
+// KC_SEED, whatever else this worker has booted (tests/lib/boot.ts).
 let played: Promise<Record<string, unknown> | null> | undefined;
 function report() {
   played ??= (async () => {

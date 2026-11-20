@@ -11,7 +11,7 @@
 // Level 1 (unit): the page's two files import in Node (P1-13e8); their functions called on plain values, the page's
 // parts on a jsdom document set as the page's own. A page test would boot the whole page to reach each one.
 import { beforeAll, describe, expect, test, vi } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import {
   MAP_SYM,
   _garrisonNote,

@@ -8,7 +8,7 @@
 // Level 1 (unit): the three files import in Node once the page's config, the `supabase` global and a Db handed in are
 // stood in (as the statistics tab's unit test does); a page test would boot the whole page and sign in to reach each.
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import { THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE as THE_FORCE } from '../../src/views/the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
 
 interface AnAnswer {

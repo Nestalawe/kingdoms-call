@@ -4,7 +4,7 @@
 // matrix (npm run balance) sees the rest. Later rows of the family add theirs.
 // - A guardian's card (monsterTraits, through "a guardian's perks: what his card turns"): a perk that turns spells keeps
 //   the hidden spell multiplier of his nature at 1 or below (no guardian fought in any game carries one beside an
-//   undead, fiend or armoured nature: the table test, tests/guardian-traits.test.js, sees it only through the table's
+//   undead, fiend or armoured nature: the table test, tests/unit/no-guardian-resists-and-is-weak-to-the-same-thing-on-its-card-or-behind-it.test.ts, sees it only through the table's
 //   mix); a perk of the older form, a field of the ward's own name, counts too; and the runner passes over a perk that
 //   isn't there.
 // - A guardian's grade's cap beside his own (pcMonsterCombatant, through "a guardian's perks: his grade's cap beside his

@@ -18,7 +18,7 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Properties of a whole turn (fast-check, P1-04d), over made-up small worlds (2 to 4 realms, some left to the bots) and
-// any orders for the human-held heroes, as `turn-fuzz` gives them: no hero ends a phase in two provinces (at the end of
+// any orders for the human-held heroes, as the turn fuzz gives them: no hero ends a phase in two provinces (at the end of
 // each phase, every living character is named in exactly one province's list of heroes, his own: the lists are rebuilt
 // from where each stands once a phase, and nothing else may disagree); no realm's report names a realm it hasn't met
 // (the leak check's rule, `lib/report-leaks.ts`, with its parked breaches). 50 turns each (500 in full). Level 2: one
@@ -27,7 +27,7 @@
 // portal), where the reports are put together too. TypeScript, in `scenario/`
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
-import type { KcRng } from '../lib/boot.js';
+import type { KcRng } from '../lib/boot.ts';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
 import { scenarioInTheVm, type Order } from '../lib/scenario-in-the-vm.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
@@ -72,7 +72,7 @@ function inTwoPlaces(G: World): string[] {
 const DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
 const SKILLS = ['melee', 'archery', 'tactical', 'march', 'sage'];
 const order = (action: string, target = ''): Order => ({ action, target, extra: '', desc: '' });
-/** One order, as turn-fuzz gives them. Rest first: it is what a failing order shrinks to. */
+/** One order, as the turn fuzz gives them. Rest first: it is what a failing order shrinks to. */
 const orderArb = fc.oneof(
   fc.constantFrom('rest', 'defend', 'recruit', 'research', 'search', 'explore').map((a) => order(a)),
   fc.constantFrom(...DIRS).map((d) => order('move', 'dir:' + d)),

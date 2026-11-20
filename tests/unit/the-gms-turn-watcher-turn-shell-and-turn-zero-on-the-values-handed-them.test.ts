@@ -8,7 +8,7 @@
 // Level 1 (unit): the three files import in Node once the page's config, the `supabase` global and a Db handed in are
 // stood in (as the game list's unit test does); a page test would boot the whole page and sign in to reach each.
 import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 
 interface AnAnswer {
   data: unknown;

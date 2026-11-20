@@ -5,9 +5,8 @@
 // What plays a whole game: a `for` loop over the turns up to MAX_TURNS (tools/balance/matrix.ts), or a call of, or a
 // reference to, a function that does, followed through the file's own functions and its named imports from tests/ and
 // tools/balance/ (tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts's scripted05, passed by name to `quietly`, is found so).
-// What it can't see: a game played in another process (the balance matrix's workers, a test script run by
-// tests/legacy.test.ts, which gives each script its own limit); a loop over the turns bounded by anything but
-// MAX_TURNS; a function reached through a value (an object's method, a callback handed in from another file) or a
+// What it can't see: a game played in another process (the balance matrix's workers); a loop over the turns bounded
+// by anything but MAX_TURNS; a function reached through a value (an object's method, a callback handed in from another file) or a
 // re-export; and a game played at a file's top level as it loads, outside any hook or test (Vitest sets no limit
 // there). It over-counts rather than under: a function that only defines a callback that would play counts as playing.
 // Level 0 (static): the test files read by their syntax tree, not run; a run shows only the games that came near the

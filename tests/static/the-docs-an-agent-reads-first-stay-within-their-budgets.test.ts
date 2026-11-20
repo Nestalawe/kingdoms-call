@@ -52,7 +52,8 @@ function entriesOf(text: string): { heading: string; bytes: number }[] {
   return entries;
 }
 
-/** Every test file: the test scripts, the Vitest tests of each level, the browser specs and the quarantined ones. */
+/** Every test file: any JavaScript one left at the top of tests/ (none since P1-14z), the Vitest tests of each level,
+ *  the browser specs and the quarantined ones. */
 function everyTestFile(): string[] {
   const under = (folder: string, pattern: RegExp): string[] =>
     exists(folder)
@@ -61,15 +62,15 @@ function everyTestFile(): string[] {
           .filter((f) => pattern.test(f))
           .map((f) => `${folder}/${f.split(path.sep).join('/')}`)
       : [];
-  const scripts = fs
+  const javascriptTests = fs
     .readdirSync(path.join(ROOT, 'tests'))
     .filter((f) => f.endsWith('.test.js'))
     .map((f) => `tests/${f}`);
   return [
-    ...scripts,
+    ...javascriptTests,
     ...['static', 'unit', 'scenario', 'simulation', 'page'].flatMap((level) => under(`tests/${level}`, /\.test\.ts$/)),
     ...under('tests/browser', /\.spec\.ts$/),
-    ...under('tests/quarantine', /\.test\.js$/),
+    ...under('tests/quarantine', /\.test\.[jt]s$/),
   ].sort();
 }
 

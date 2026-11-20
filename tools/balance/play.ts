@@ -1,4 +1,4 @@
-// Plays one game of the balance matrix in the GM portal (jsdom, through tests/lib/boot.js, so KC_SITE picks the copy
+// Plays one game of the balance matrix in the GM portal (jsdom, through tests/lib/boot.ts, so KC_SITE picks the copy
 // of the site) and returns its hashes and statistics. Until P1-18 gives the engine a turn function, this is how a turn
 // is run.
 //
@@ -15,7 +15,7 @@
 // log, and, after the last turn, the check of the last save; and since P1-15f8 a turn the page's stop refuses (a place
 // not on src's known list), as any turn that fails, with the refusal's words. With KC_SITE the line is the other copy's and the last
 // save's check this checkout's.
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../../tests/lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../../tests/lib/boot.ts';
 import {
   aGameMastersWorld,
   makeAFakeDbHoldingTheGameMastersWorld,

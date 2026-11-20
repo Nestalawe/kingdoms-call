@@ -41,8 +41,8 @@ describe('the engine paths', () => {
     'tools/balance/engine-paths.ts',
     'tests/balance/baseline/matrix.json',
     'tests/balance/scenarios/battle.ts',
-    'tests/lib/boot.js',
-    'tests/lib/scenario.js',
+    'tests/lib/boot.ts',
+    'tests/lib/scenario.ts',
     'package-lock.json',
     '.nvmrc',
   ])('%s is one', (f) => {
@@ -83,15 +83,15 @@ describe('the engine paths', () => {
         .flatMap((f) => [...fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/ from '(\.\.\/[^']+)'/g)])
         .map((m) => path.relative(ROOT, path.resolve(dir, m[1] ?? '')));
     });
-    expect(outside).toContain('tests/lib/boot.js');
-    expect(outside).toContain('tests/lib/scenario.js');
+    expect(outside).toContain('tests/lib/boot.ts');
+    expect(outside).toContain('tests/lib/scenario.ts');
     expect(outside.filter((f) => !isEnginePath(f))).toEqual([]);
   });
 
   test('enginePathsIn keeps the engine paths, in order', () => {
     expect(
-      enginePathsIn(['docs/a.md', 'tests/lib/boot.js', 'src/ui/landing/style.css', 'tools/balance/play.ts']),
-    ).toEqual(['tests/lib/boot.js', 'tools/balance/play.ts']);
+      enginePathsIn(['docs/a.md', 'tests/lib/boot.ts', 'src/ui/landing/style.css', 'tools/balance/play.ts']),
+    ).toEqual(['tests/lib/boot.ts', 'tools/balance/play.ts']);
   });
 });
 

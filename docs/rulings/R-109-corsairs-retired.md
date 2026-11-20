@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-15, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #89 item 3 (decision D3 on a player's rulebook review)
-- **Enforced by:** [`corsairs-retired`](../../tests/corsairs-retired.test.js), [`roster-words`](../../tests/roster-words.test.js)
+- **Enforced by:** [`no-book-or-player-portal-text-names-the-corsairs-and-letters-of-marque-lifts-the-galleons`](../../tests/static/no-book-or-player-portal-text-names-the-corsairs-and-letters-of-marque-lifts-the-galleons.test.ts), [`a-running-games-corsair-offer-becomes-the-galleon-and-a-raised-corsair-company-stays`](../../tests/unit/a-running-games-corsair-offer-becomes-the-galleon-and-a-raised-corsair-company-stays.test.ts), [`the-rulebooks-and-the-player-portal-give-each-army-unit-as-the-roster-table-decides`](../../tests/static/the-rulebooks-and-the-player-portal-give-each-army-unit-as-the-roster-table-decides.test.ts)
 
 The Human Corsair Fleet can no longer be raised. New worlds stopped offering it on 2026-10-11. In a game
 already running, a province that still offered it offers the Galleon Fleet instead. A Corsair company

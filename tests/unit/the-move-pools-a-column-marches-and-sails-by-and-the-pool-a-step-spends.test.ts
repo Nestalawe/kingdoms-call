@@ -11,7 +11,7 @@
 // on the values the turn hands them. A lower level can't run a function. The matrix reaches the pools, but a fault
 // planted in a shared function moves every caller at once, and no game stages a negative pool, a flyer the table
 // doesn't price or a Seawolf with no ships, so these cases pin its values. The speed table is the case's own (the
-// roster's is tests/roster's): the units' kinds are the content's.
+// roster's is tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides'): the units' kinds are the content's.
 import { expect, test } from 'vitest';
 import {
   theMovePointsAPoolHasLeftOnceItsMaximumChanges,

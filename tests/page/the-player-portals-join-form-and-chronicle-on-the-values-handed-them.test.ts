@@ -6,10 +6,10 @@
 // dispatches). A battle's side is read by the kind the report gives its line alone (a line whose words open with the
 // force marker, with no kind, is a line), and its colour only as six hex digits (any other form: the default grey).
 // Level 4 (page): the file loads the page's start-up (its database client), so no lower level reaches it; the portal is
-// booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every module
+// booted in jsdom (tests/lib/boot.ts) on a fake Db at an older database, so it stops at its notice with every module
 // loaded, and each case stages the screen's state as the tours do.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 

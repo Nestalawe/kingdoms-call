@@ -11,7 +11,7 @@
     "dev": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/dev.ts",
     "test": "vitest run",
     "test:full": "KC_FULL=1 vitest run",
-    "test:quarantine": "KC_QUARANTINE=1 vitest run --project quarantine",
+    "test:quarantine": "KC_QUARANTINE=1 vitest run --project quarantine --passWithNoTests",
     "test:db": "KC_DB=1 vitest run --project db",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

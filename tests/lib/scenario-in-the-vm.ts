@@ -1,5 +1,5 @@
 // One real turn on a small staged world, played in the engine's bare vm (tests/lib/engine.ts) instead of on the GM
-// portal (plan P1-09a): the same staging as tests/lib/scenario.js, for the scenario tests (level 2) that used to reach
+// portal (plan P1-09a): the same staging as tests/lib/scenario.ts, for the scenario tests (level 2) that used to reach
 // inside the page with a code-anchor hook. Here they stand a top-level function in through the vm instead (`W.name =
 // …`, as tests/unit/xp-naval-passenger.test.ts does), which a page can't do once its files are modules (P1-09d).
 //
@@ -231,7 +231,7 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
   /** From now on every realm gets a report each turn, bots' too: the engine builds reports only for the realms people
    *  play (slot rows with a user_id), so an all-bot game writes none. buildReports (src/engine/turn/realm-reports-and-
    *  spy-stealth.js) is stood in, in the vm, to see every row as played, on copies of the rows; the shell writes each
-   *  report by the row's id and player_index, which the copies keep. (It was tests/lib/boot.js's reportEveryRealm, on
+   *  report by the row's id and player_index, which the copies keep. (It was tests/lib/boot.ts's reportEveryRealm, on
    *  the booted GM portal, until plan P1-09a.) */
   function reportEveryRealm() {
     run(

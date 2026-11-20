@@ -3,12 +3,14 @@
 // (npm run proof:tours), each run here on the value that reaches it, so a fault planted in one is red: the roster's and
 // the thread's fallbacks, the poll's newest id (P1-21r), the database's refusals in their words, the unread marks, a
 // channel clicked, a dispatch reported and sent, the group picker, the desk's panels and its watcher, a province located,
-// the turn buttons and a section jumped to.
+// the turn buttons and a section jumped to. With them, the box's limits (P0-23, ruling R-074; until plan P1-14z the
+// script dispatch-limits): at most 500 characters, counted down from 500, and a dispatch refused for its rate or its
+// length shown in the note in plain words, the text kept in the box.
 // Level 4 (page): the three files load the page's start-up (its database client), so no lower level reaches them; the
-// portal is booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every
+// portal is booted in jsdom (tests/lib/boot.ts) on a fake Db at an older database, so it stops at its notice with every
 // module loaded, and each case stages the panel's state as the tours do.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import type { ADatabaseAnswer, ADispatch, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 
@@ -429,6 +431,81 @@ describe('a dispatch sent', () => {
     call('updateMsgComposer');
     parent?.appendChild(box);
     expect(theSent('send')).toEqual([]);
+  });
+});
+
+describe("the box keeps to the database's limits", () => {
+  const seen: Record<string, unknown> = {};
+  const pageErrors: string[] = [];
+  const theBox = (): HTMLTextAreaElement => {
+    const box = doc.querySelector<HTMLTextAreaElement>('#msg-input');
+    if (!box) throw new Error('no dispatch box');
+    return box;
+  };
+  /** A dispatch the database refuses for its rate, then one it refuses for its length, as it words them. */
+  const tooQuickly = {
+    code: 'P0001',
+    hint: 'kc_dispatch_rate',
+    details: null,
+    message: "You're sending dispatches too quickly. Try again in a minute.",
+  };
+  const tooLong = {
+    code: '23514',
+    hint: null,
+    details: null,
+    message: 'new row for relation "game_messages" violates check constraint "game_messages_body_len"',
+  };
+
+  beforeAll(async () => {
+    Object.assign(answers, fresh);
+    const errorsBefore = errs.length;
+    const quiet = P.console.error;
+    P.console.error = (...a) => pageErrors.push(a.map(String).join(' '));
+    await openTheDispatches();
+    theBox().value = '';
+    stage('updateMsgComposer()');
+    seen['maxlength'] = theBox().getAttribute('maxlength');
+    seen['hint'] = textOf('msg-hint');
+    theBox().value = 'x'.repeat(480);
+    stage('updateMsgComposer()');
+    seen['hintAfter480'] = textOf('msg-hint');
+    answers.send = () => ({ data: null, error: tooQuickly, status: 400 });
+    theBox().value = 'Peace on the river';
+    await stage('sendMessage()');
+    await settle(30);
+    seen['tooQuickly'] = textOf('msg-note');
+    seen['box'] = theBox().value;
+    answers.send = () => ({ data: null, error: tooLong, status: 400 });
+    theBox().value = 'Peace on the river';
+    await stage('sendMessage()');
+    await settle(30);
+    seen['tooLong'] = textOf('msg-note');
+    theBox().value = '';
+    P.console.error = quiet;
+    pageErrors.push(...errs.slice(errorsBefore));
+  });
+
+  test('the box takes at most 500 characters', () => {
+    expect(seen['maxlength']).toBe('500');
+  });
+  test('and counts down from 500', () => {
+    expect(seen['hint']).toMatch(/(^|\D)500 left/);
+  });
+  test('20 left after 480', () => {
+    expect(seen['hintAfter480']).toMatch(/(^|\D)20 left/);
+  });
+  test('no page errors', () => {
+    expect(pageErrors).toEqual([]);
+  });
+  test("too many: the database's own words, as they are", () => {
+    expect(seen['tooQuickly']).toBe("You're sending dispatches too quickly. Try again in a minute.");
+  });
+  test('and the dispatch stays in the box', () => {
+    expect(seen['box']).toBe('Peace on the river');
+  });
+  test('too long: says so in plain words', () => {
+    expect(seen['tooLong']).toMatch(/at most 500 characters/);
+    expect(seen['tooLong']).not.toMatch(/violates|constraint/);
   });
 });
 

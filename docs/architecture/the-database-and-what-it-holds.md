@@ -167,7 +167,7 @@ without the database pull request it needs (not stacked on it) meets a staging d
 change, and old copies of the site can't be ruled out. So code can still meet a database without the new column. Writing an unknown column fails the whole save, which in `runTurn` is a failed turn. Probe once
 (as `probeGameMeta` does), and spread `{}` instead of the field while it's absent (`metaPatch`). Readers
 prefer the new column and fall back to the old source. Prove it with a test that hides the column
-(the fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/meta-missing-turn.test.js` does. This is why database
+(the fake's `missingColumns`, `tests/lib/fake-db.ts`), as `tests/page/the-gm-page-runs-and-saves-a-turn-while-the-games-meta-column-is-missing.test.ts` does. This is why database
 and site changes go in separate PRs ([supabase/README.md](../../supabase/README.md#database-and-site-changes-go-separately)).
 
 ## The access layer: `src/db/`
@@ -240,15 +240,15 @@ or written.
 - **Raising `KC_DB_MIN` is how a site PR says "needs migration X".** Use it when the page can't sensibly
   work without the change; otherwise cope ([traps.md](../traps.md#a-new-column-must-be-optional-at-the-write-site)).
   Raise it in every page that needs the change, not only the one you edited.
-- `npm test`'s `db-min` check fails if a `KC_DB_MIN` is newer than the newest file in
-  `supabase/migrations/`: the migration must be merged, or the site branch stacked on its pull request.
+- [A static test](../../tests/static/every-page-on-the-database-starts-through-its-guard-and-needs-no-unmerged-migration.test.ts) fails if a `KC_DB_MIN` is newer than the newest
+  migration: merge it first, or stack the site branch on its pull request.
 - Never lower `KC_DB_MIN` to get a page past the stop. It means the database is missing something the page
   relies on.
 - The GM tab's reload before a due turn (`refreshIfNewerBuild`) boots a newer GM page when one is ready, so the
   check runs again before that page's first turn.
-- Tests: the fake database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.js`).
+- Tests: the fake database answers with the newest migration (`DB_VERSION` in `tests/lib/boot.ts`).
   `bootJsdom(..., {dbVersion})` sets another answer (an older version, `null` for a missing function, or
-  `'offline'`), as `tests/db-guard.test.js` does.
+  `'offline'`); `makeAFakeDb` does for a fake `Db`.
 
 ## `game_state` is a string
 
@@ -286,8 +286,7 @@ The player portal reads its **own** `game_players` row directly, and every other
 `fetchGameSlots` (`rpc('get_game_slots')`, P0-20): number, bot or not, orders in or not, alignment while in
 setup. From P0-21 the database answers a direct read of another realm's row with nothing, so a new feature that
 reads other slots directly would quietly see only its own. If it needs more than `get_game_slots` gives, that's
-a database change first. `tests/other-realms-slots.test.js` fails on any read of another account's realm (the fake
-notes each one); `tests/db/the-players-games-realms-and-logs-answer-each-role.test.ts` checks the rule as each role.
+a database change first. Its checks: [traps.md](../traps.md#other-realms-slots-come-only-from-get_game_slots).
 
 ## Another game reads as nothing
 

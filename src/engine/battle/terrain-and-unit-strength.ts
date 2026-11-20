@@ -90,7 +90,8 @@ export const TERRAIN_MODS = {
   // 2026-10-11 (Toby, the army roster): human line foot and longbows ×1.1 on the plain; Forest Wardens
   // no longer suffer in the open (×1.0 plain, ×0.9 desert) and are ×1.1 rather than ×1.2 in the woods;
   // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
-  // ×1.1 (Guard, Crossbows, Guns). tests/roster holds every cell to the decided roster.
+  // ×1.1 (Guard, Crossbows, Guns).
+  // tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds every cell to the decided roster.
   plain: {
     'Men-at-Arms': 1.1,
     'Stag Riders': 1.1,

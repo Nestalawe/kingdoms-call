@@ -86,7 +86,7 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
   portal shows it). Player portal: the race blurbs. Rulebook: the roster, home-roster, move-rate and
   kinds-of-unit tables and the light-foot list. The intro's list of kinds.
 
-Add the unit to `tests/lib/roster-decided.js` first: `tests/roster.test.js` and `tests/roster-words.test.js`
+Add the unit to `tests/lib/roster-decided.ts` first: `tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts` and `tests/static/the-rulebooks-and-the-player-portal-give-each-army-unit-as-the-roster-table-decides.test.ts`
 then list every table and sentence that is still missing it. Running games' capitals pick a new unit up on their next
 turn (`backfillHomeRosters`); other provinces keep the pool they were generated with.
 
@@ -103,14 +103,14 @@ lists above are still the whole job. `tests/static/every-unit-order-and-effect-t
 what the compiler can't: a name in a class list, a Druid level, a province's cell, a discovery or the wild pools that is no
 unit type, a unit of the four races with no race in `ARMY_RACE_OF_TYPE`, and a unit the rulebook never names.
 
-**A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.js`
-first (`tests/primal-roster.test.js` and `tests/primal-words.test.js` then list what is missing), then:
+**A Creature or Monster** is the same list with its own tables. Mark it `live` in `tests/lib/primal-decided.ts`
+first (`tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts` and `tests/static/the-rulebooks-and-the-player-portal-give-each-beast-as-the-wild-roster-table-decides.test.ts` then list what is missing), then:
 `PRIMAL_ARMY_DEFS_P` (the one place a beast's cost, strength, move, sub-race and pre-battle strike are written:
 the master tables and the player portal's speeds are built from it), `PRIMAL_UNIT_NAMES` (28 names),
 `KC_UNIT_CLASS` (`creature` or `monster`, plus `aerial` for a flyer, `cavalry` for a horse, `primalSea` for a
 swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and **both** copies of the wild pools
 (`CREATURE_BY_TERRAIN` / `MONSTER_BY_TERRAIN` in world generation and `CBT` / `MBT` in the alignment-neighbour
-pass: `tests/new-creatures.test.js` holds the Creature pair together); the player portal's `PRIMAL_SUBRACE_CLASS`
+pass: `tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts` holds the Creature pair together); the player portal's `PRIMAL_SUBRACE_CLASS`
 (the `Primal:<sub-race>` string a wild province carries) and its alignment texts; the rulebook's Druid ladder
 and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
 (`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.
@@ -122,7 +122,7 @@ The engine's "crosses the sea under its own power" set (`SEA_TYPES`, and the bot
 consumers read. A unit listed in `sea` alone is a land unit the moment it is at sea: it needs a berth, is
 stranded by `settleStrandedAtSea` and blocks the column's move. Put a new swimmer in `primalSea` (it swims,
 carries nothing, is raised only at sea and cannot march inland) or, if it ferries troops, in `carrier` (one
-berth, or its `KC_CARRIER_BERTHS` entry); the first run of `tests/shark-waters.test.js` showed the shoal left behind as
+berth, or its `KC_CARRIER_BERTHS` entry); the first run of the old shark-waters script showed the shoal left behind as
 a garrison for exactly this reason. World generation's prosperous-seas pool is `primalSea` less the poor seas' beasts
 (`KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS`, dealt turn about). A sea beast raised Primal whoever
 raises it is in `KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM`; a unit raised two a turn besides the

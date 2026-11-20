@@ -3,13 +3,15 @@
 // reaches it, so a fault planted in one is red: the fullscreen map of a staged report (a province two realms share, a
 // battle still raging and a duel, a capital as last seen, graves read on an earlier turn, a province with no place),
 // the popup held open and closed, a province lit from the report, an icon kind hidden, the zoom, and the hero order
-// moved, grouped and written into the orders the seat holds.
+// moved, grouped and written into the orders the seat holds. With them, the orders column's header on the form
+// buildOrdersForm builds (until plan P1-14z the script orders-group-by-location): "Group by location" with each hero's
+// parked cards, and "Collapse all" and "Expand all" on every hero.
 // Level 4 (page): map.ts loads the page's start-up (its database client), so no lower level reaches it; the portal is
-// booted in jsdom (tests/lib/boot.js) on the fake Db at an older database, so it stops at its notice with every
+// booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with every
 // module loaded, and the fake records the hero order's save (db.theOrders, plan P1-17k): through the database's
 // function, for the game and the turn the form shows (P2-05).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const writes: { game: unknown; turn: unknown; orders: unknown }[] = [];
@@ -436,5 +438,138 @@ describe('map.ts: the hero order', () => {
     call('groupHeroesByLocation');
     expect(writes.length).toBe(before);
     expect(errs).toEqual([]);
+  });
+});
+
+// The orders column's header on the form buildOrdersForm builds (until plan P1-14z the script orders-group-by-location):
+// "Group by location" puts heroes standing in the same province next to each other, keeps each hero's injected cards
+// with them, and leaves "Collapse all" and "Expand all" working on every hero. Five made-up heroes over three
+// provinces, interleaved: Ashford, Brackenmoor, Ashford, Cold Fen, Brackenmoor. The steps run once, in beforeAll, in
+// the order a player takes them; each check is a test of its own.
+describe("the orders column's header: group by location, collapse all and expand all", () => {
+  const seen: Record<string, unknown> = {};
+  const errorsHere: string[] = [];
+  const heroesInOrder = (): string =>
+    [...doc.querySelectorAll('#orders-form > .orders-char-block[data-hero]')]
+      .map((b) => b.getAttribute('data-hero'))
+      .join();
+  const theHeaderButton = (onclick: string): HTMLButtonElement | null =>
+    doc.querySelector<HTMLButtonElement>(`#orders-sticky-top button[onclick${onclick}]`);
+
+  beforeAll(() => {
+    const errorsBefore = errs.length;
+    // the page's console.error lines count as its errors here, as they did in the script
+    const quiet = P.console.error;
+    P.console.error = (...a) => errorsHere.push(`console.error: ${a.map(String).join(' ')}`);
+    try {
+      if (typeof P['buildOrdersForm'] !== 'function') throw new Error('player portal: buildOrdersForm not found');
+      const hero = (id: string, name: string, locationId: number, locationName: string, more = {}) => ({
+        id,
+        name,
+        player: 0,
+        locationId,
+        locationName,
+        hp: 20,
+        maxHp: 20,
+        armies: [],
+        items: [],
+        skills: {},
+        effectiveSpeed: 3,
+        effectiveSeaSpeed: 3,
+        ...more,
+      });
+      const heroes = [
+        hero('h1', 'Aldric', 11, 'Ashford', { isKing: true }),
+        hero('h2', 'Brannoc', 12, 'Brackenmoor'),
+        hero('h3', 'Corvin', 11, 'Ashford'),
+        hero('h4', 'Dunmore', 13, 'Cold Fen'),
+        hero('h5', 'Elspeth', 12, 'Brackenmoor'),
+      ];
+      const report = {
+        turn: 3,
+        _liveTurn: 3,
+        characters: heroes,
+        kingdom: { gold: 100, alignment: 'Good' },
+        worldMeta: {
+          provinces: [
+            { id: 11, name: 'Ashford' },
+            { id: 12, name: 'Brackenmoor' },
+            { id: 13, name: 'Cold Fen' },
+          ],
+        },
+      };
+      stage(`currentGamePlayer = { id: 'gpx', orders: null }; currentReport = ${JSON.stringify(report)};`);
+      stage('buildOrdersForm(currentReport.characters, false, null, 3)');
+      seen['atFirst'] = heroesInOrder();
+      // a card parked under Brannoc (as the hire, resurrect and charm cards are) must travel with him
+      const parked = doc.createElement('div');
+      parked.id = 'parked-under-h2';
+      parked.className = 'orders-char-block';
+      doc.querySelector('#orders-form > .orders-char-block[data-hero="h2"]')?.after(parked);
+      const group = theHeaderButton('*="groupHeroesByLocation"');
+      seen['groupButton'] = !!group;
+      seen['groupFunction'] = typeof P['groupHeroesByLocation'];
+      if (group) group.click();
+      else stage('groupHeroesByLocation()');
+      seen['grouped'] = heroesInOrder();
+      seen['parkedAfter'] = doc.getElementById('parked-under-h2')?.previousElementSibling?.getAttribute('data-hero');
+      seen['remembered'] = stage('_heroOrder.join()');
+      const blocks = [...doc.querySelectorAll('#orders-form > .orders-char-block[data-hero]')];
+      seen['firstUpOff'] = blocks[0]?.querySelector<HTMLButtonElement>('.hero-move-up')?.disabled;
+      seen['lastDownOff'] = blocks.at(-1)?.querySelector<HTMLButtonElement>('.hero-move-down')?.disabled;
+      if (group) group.click();
+      seen['groupedTwice'] = heroesInOrder();
+      const collapse = theHeaderButton(`="collapseAllSections('#orders-column',true)"`);
+      const expand = theHeaderButton(`="collapseAllSections('#orders-column',false)"`);
+      seen['collapseLabel'] = collapse?.textContent;
+      seen['expandLabel'] = expand?.textContent;
+      collapse?.click();
+      seen['allFolded'] = blocks.every((b) => b.classList.contains('sec-collapsed'));
+      expand?.click();
+      seen['allOpen'] = blocks.every((b) => !b.classList.contains('sec-collapsed'));
+    } finally {
+      P.console.error = quiet;
+      errorsHere.push(...errs.slice(errorsBefore));
+    }
+  });
+
+  test('the form starts in the given order', () => {
+    expect(seen['atFirst']).toBe('h1,h2,h3,h4,h5');
+  });
+  test('a "group by location" button sits in the orders header', () => {
+    expect(seen['groupButton']).toBe(true);
+  });
+  test('groupHeroesByLocation exists', () => {
+    expect(seen['groupFunction']).toBe('function');
+  });
+  test('heroes are grouped by province, first-seen province first, each group in its old order', () => {
+    expect(seen['grouped']).toBe('h1,h3,h2,h5,h4');
+  });
+  test('a card parked under a hero moves with that hero', () => {
+    expect(seen['parkedAfter']).toBe('h2');
+  });
+  test('the new arrangement is remembered like a manual reorder', () => {
+    expect(seen['remembered']).toBe('h1,h3,h2,h5,h4');
+  });
+  test('the first ▲ and last ▼ are disabled after grouping', () => {
+    expect([seen['firstUpOff'], seen['lastDownOff']]).toEqual([true, true]);
+  });
+  test('grouping twice changes nothing', () => {
+    expect(seen['groupedTwice']).toBe('h1,h3,h2,h5,h4');
+  });
+  test('the collapse button says "Collapse all"', () => {
+    expect(seen['collapseLabel']).toMatch(/collapse all/i);
+  });
+  test('the expand button says "Expand all"', () => {
+    expect(seen['expandLabel']).toMatch(/expand all/i);
+  });
+  test('collapse all folds every hero', () => {
+    expect(seen['allFolded']).toBe(true);
+  });
+  test('expand all opens every hero', () => {
+    expect(seen['allOpen']).toBe(true);
+  });
+  test('no page errors', () => {
+    expect(errorsHere).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@
 // commanders are plain (Melee 1, Tactical 1, no items), so the units, the ground and the dice decide. Measured on the
 // first clash: the same battle is recorded again each season both sides stay in the field. About even on main (Elite
 // Dwarven Guard win almost every time), so a change to the battle's sums moves the share either way.
-import { order, plan } from '../../lib/scenario.js';
+import { order, plan } from '../../lib/scenario.ts';
 import {
   atWar,
   companies,

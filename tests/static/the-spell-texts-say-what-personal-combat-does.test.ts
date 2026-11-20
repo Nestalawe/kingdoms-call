@@ -14,7 +14,7 @@
 import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
 import { SPELL_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 import { SPELL_HINTS } from '../../src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 

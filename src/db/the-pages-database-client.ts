@@ -5,7 +5,7 @@
 // imports only its types.
 //
 // The way in for the tests (plan P1-17, Decision 8): a test that sets a Db on the page's window under
-// THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER before the page's scripts run (jsdom's beforeParse: tests/lib/boot.js's
+// THE_NAME_A_TEST_HANDS_THE_PAGE_ITS_DB_UNDER before the page's scripts run (jsdom's beforeParse: tests/lib/boot.ts's
 // opts.db) gets that Db as the page's own, its fake (tests/lib/fake-db.ts) in place of the database. It is the trust the
 // page already gives the `supabase` global, which the tests replace. Only src/db/ reads it
 // (tests/static/only-src-db-reads-the-db-a-test-hands-the-page.test.ts). The client is still made from the global:

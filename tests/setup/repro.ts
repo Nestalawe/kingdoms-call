@@ -1,5 +1,5 @@
 // The command that repeats one test exactly: same seed, same sizes, only that test. The reporter footer
-// (tests/setup/reporter.ts) prints it for every failure, and a failing test script's error ends with it.
+// (tests/setup/reporter.ts) prints it for every failure.
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function reproduceCommand(fullName: string): string {

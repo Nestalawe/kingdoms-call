@@ -4,7 +4,7 @@
 // A counterexample found is pinned in that property's `examples`, so every later run tries it first.
 import fc from 'fast-check';
 
-// As tests/lib/boot.js reads it: a whole number, never 0.
+// As tests/lib/boot.ts reads it: a whole number, never 0.
 const seed = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 fc.configureGlobal({ seed, numRuns: process.env['KC_FULL'] === '1' ? 1000 : 100 });

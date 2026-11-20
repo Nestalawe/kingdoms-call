@@ -1,7 +1,7 @@
 // The lair grade (plan P1-03, the second named scenario): a young hero (Melee 2, 20 HP, no items, no army, fighting
 // hand to hand every round and refusing duels) searches the Weak lair in their realm's home province, which every home
 // is dealt. Its guardian is the one the world dealt, so the runs sample the Weak grade's guardians. One try each.
-import { order, plan } from '../../lib/scenario.js';
+import { order, plan } from '../../lib/scenario.ts';
 import { heroOf, measure, place, type Scenario, type World } from '../../../tools/balance/scenario.ts';
 
 const scenario: Scenario = {

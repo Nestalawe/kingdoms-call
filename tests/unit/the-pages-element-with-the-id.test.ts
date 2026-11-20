@@ -6,7 +6,7 @@
 // Level 1 (unit): the function called on a document jsdom builds from a few elements; no page's code runs (a page test
 // would boot a page to reach a lookup each of its handlers makes).
 import { expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 import { theElementWithTheId } from '../../src/ui/shared/the-pages-element-with-the-id.ts';
 
 const { window } = bootJsdom(

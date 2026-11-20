@@ -1,6 +1,6 @@
 // The fake database (plan P1-17, Decision 8): a small in-memory Db (src/db/the-db-interface-and-its-areas.ts), so the
 // compiler keeps it in step with the real one. A page test hands it to the page before the page's scripts run
-// (bootJsdom's opts.db, tests/lib/boot.js); a unit test calls code that takes a Db with it. It doesn't imitate the
+// (bootJsdom's opts.db, tests/lib/boot.ts); a unit test calls code that takes a Db with it. It doesn't imitate the
 // access rules: the access layer's tests prove those against the local database. Each of P1-17's area rows adds its
 // area's functions here. Beyond the version, it holds no account: no session, a sign-in or sign-up refused, no names, no
 // role and no offer; and no game, so no realm, no slot, no turn's log, no Hall of Fame entry, no statistics, no dispatch
@@ -10,7 +10,7 @@
 // turn (P1-17q) and the GM's world (P1-17q2); the player's holds the Game Master offers and the dispatches' reports too
 // when a test stages them (P1-17r). The player's saves its orders as the database's function submit_orders
 // does (P2-05): that function's checks are the one rule the fake keeps, in the words the access layer's test holds the
-// database to. For the screen tours (tests/lib/screens.js, P1-17t), the Hall of Fame's refuses its changes or its read
+// database to. For the screen tours (tests/lib/screens.ts, P1-17t), the Hall of Fame's refuses its changes or its read
 // when a tour asks, the GM's world answers the player page's functions too, on the same tables, and
 // makeAFakeDbHoldingAWorldHandedAsData (at the end) makes any of four worlds from data, as Chromium's init script and
 // the tours hand them.
@@ -43,7 +43,7 @@ export interface AFakeDb {
   readonly calls: string[];
 }
 
-/** The answer a database gives, as supabase-js hands it on (the shapes tests/lib/boot.js's withDbVersion answers). */
+/** The answer a database gives, as supabase-js hands it on (the shapes tests/lib/boot.ts's withDbVersion answers). */
 function versionAnswer(answer: TheFakeVersionAnswer): ADatabaseAnswer<string> {
   if (answer === NO_ANSWER) return { data: null, error: { message: 'TypeError: Failed to fetch' }, status: 0 };
   if (answer === null)

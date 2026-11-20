@@ -5,9 +5,10 @@
 //   throws twice: never settles (the page's init() never runs), raising "The game is being updated…" as an error event
 //   that says why;
 // - no answer once (or a throw once), then up to date: asks once more, and settles.
-// Level 1 (unit): the guard is a function of its Db and the page's window; tests/db-guard.test.js boots each page on a
-// stand-in client for the same cases (level 4), and this file adds the answers no page test gives (a version that isn't
-// 14 digits, a call that throws), with the error event's exact words.
+// Level 1 (unit): the guard is a function of its Db and the page's window. Every answer it can be given is here, with
+// the error event's exact words (until plan P1-14z the script db-guard booted each page for most of them too); the page
+// test tests/page/each-page-that-reads-the-database-takes-the-db-a-test-hands-it.test.ts boots each page on an
+// up-to-date database (it starts) and an older one (it stops).
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { kcDbGuard } from '../../src/db/kc-db-guard.ts';
 import type { Db } from '../../src/db/the-db-interface-and-its-areas.ts';

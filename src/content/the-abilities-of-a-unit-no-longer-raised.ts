@@ -3,8 +3,9 @@
 // Toby). Each is a row as the others are, read into UNIT_ABILITIES_THE_REGISTRY_HOLDS
 // (unit-abilities-their-names-numbers-and-words.ts) and checked with them; the words test checks that neither book
 // names the unit yet. Their rows are in this file, not beside the others, because that file is one of the player
-// page's own files, and those name no retired unit (tests/corsairs-retired.test.js). Nothing on the player page reads
-// them.
+// page's own files, and those name no retired unit
+// (tests/static/no-book-or-player-portal-text-names-the-corsairs-and-letters-of-marque-lifts-the-galleons.test.ts).
+// Nothing on the player page reads them.
 
 /** Cut the Line (fate: a force holds the sea lanes): between heroes, when at least half the winning force are Corsair
  *  Fleets, it closes the sea to the beaten (a corsair-heavy victor leaves no line of retreat by sea). */

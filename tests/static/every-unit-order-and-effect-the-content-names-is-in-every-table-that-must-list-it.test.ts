@@ -24,7 +24,7 @@
 //   9. ARMY_RACE_OF_TYPE has the race of every unit of the four races' own (a unit type that is no Creature, no Monster
 //      and no elemental): a discovery that lowers a race's recruiting price or raises its recruits' quality asks this
 //      table, by the unit's type, before the company exists. The retired Corsair Fleet is left out: no province now
-//      raises the fleet (ruling of 2026-10-15, tests/corsairs-retired.test.js).
+//      raises the fleet (ruling of 2026-10-15, tests/static/no-book-or-player-portal-text-names-the-corsairs-and-letters-of-marque-lifts-the-galleons.test.ts).
 //  10. The rulebook names every unit type: it is where a player reads what a company is. The retired Corsair Fleet is
 //      left out: the books must not name it (the same ruling).
 // Orders:

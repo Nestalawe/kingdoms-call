@@ -6,7 +6,7 @@
 // Level 1 (unit): the page's files import in Node (P1-13e8) once its config and the `supabase` global are stood in; the
 // functions are called on a jsdom document set as the page's own. A page test would boot the whole page to reach each.
 import { beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 
 interface TheSpellRows {
   _spellRows: { spell: string }[];

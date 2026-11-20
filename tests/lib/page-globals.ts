@@ -19,7 +19,7 @@
 // - the code handed to `.eval(…)`, `.evaluate(…)`, `.evaluateHandle(…)`, `.waitForFunction(…)` or `.addInitScript(…)`
 //   on anything but `vm`: a string, a template (each `${…}` read as a name of its own), a function, a constant of the file holding one
 //   of those, or the argument of a one-argument wrapper of the file that hands its parameter on (`ev=x=>w.eval(x)`);
-// - in tests/lib/screens.js, which builds its screen tours as code, every string or template that parses as code;
+// - in tests/lib/screens.ts, which builds its screen tours as code, every string or template that parses as code;
 // - `W.name`, `W['name']`, and their assignments, where W is a page's window: an identifier named like one (W, w, win,
 //   window, P, PP…, GM…) that isn't the engine's vm (tests/lib/scenario-in-the-vm.ts, loadEngine), or `<x>.window`.
 // Inside the code, a name read or assigned by its bare name counts, and so does `window.name`. A name the code declares
@@ -338,7 +338,7 @@ const OPENS_THE_GM_PAGE = /\b(bootScenario|playGame)\s*\(/;
 const EVALUATES = new Set(['eval', 'evaluate', 'evaluateHandle', 'waitForFunction', 'addInitScript']);
 const LIKE_A_WINDOW = /^(W|w|win|window|P|PP\w*|GM\w*|pw|pageWindow)$/;
 const THE_VM = /\b(scenarioInTheVm|loadEngine|createContext)\b/;
-const CODE_IN_EVERY_STRING = new Set(['tests/lib/screens.js']);
+const CODE_IN_EVERY_STRING = new Set(['tests/lib/screens.ts']);
 
 /** The pages a test file opens itself (see the top of this file); none if it opens no page. */
 export function pagesOpenedBy(text: string): ScriptPage[] {
@@ -381,7 +381,7 @@ export function pagesReachedByFile(texts: ReadonlyMap<string, string>): Map<stri
 /** How a name reached in a screen tour's code is noted: TOUR and the tour's page. */
 export const TOUR = 'tour of ';
 
-/** The page of the screen tour (`{page: '<page>.html', …}` in tests/lib/screens.js) that `node` is inside, or null. */
+/** The page of the screen tour (`{page: '<page>.html', …}` in tests/lib/screens.ts) that `node` is inside, or null. */
 function tourPageOf(node: ts.Node): ScriptPage | null {
   for (let n: ts.Node = node.parent; !ts.isSourceFile(n); n = n.parent)
     if (ts.isObjectLiteralExpression(n))

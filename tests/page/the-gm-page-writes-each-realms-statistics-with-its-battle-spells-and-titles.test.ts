@@ -6,7 +6,7 @@
 // statistics.test.ts.
 //
 // Level 4 (page): the rows are written by the GM page's own code (db/telemetry.ts's writeTurnTelemetry, called by the
-// turn's shell once the page has found the statistics tables), so only the booted page writes them: lib/scenario.js
+// turn's shell once the page has found the statistics tables), so only the booted page writes them: lib/scenario.ts
 // boots it in jsdom on the stand-in database, with bootScenario({ telemetry: true }), and plays one real turn there
 // (its page's dice from KC_SEED). The turn: realm 0's king, an Elemental master (Elemental 5) whose battle plan opens
 // with a cast of his school, at the head of two Elite companies, marches on a guard made by the test (no skill, two
@@ -19,7 +19,7 @@
 import '../lib/the-whole-engine.ts';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { computeStandings } from '../../src/engine/titles/reckoning.ts';
-import { bootScenario, order, plan, type Scenario, type Turn } from '../lib/scenario.js';
+import { bootScenario, order, plan, type Scenario, type Turn } from '../lib/scenario.ts';
 
 interface Province {
   id: number;

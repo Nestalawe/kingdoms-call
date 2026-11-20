@@ -3,7 +3,7 @@
 - **Decided:** 2026-10-15, a maintainer
 - **Status:** Confirmed
 - **Source:** PR #89 item 9 (decision D7 on a player's rulebook review, and a follow-up answer on cast chance)
-- **Enforced by:** [`a-guard-casts-battle-magic-at-the-odds-a-players-hero-has`](../../tests/unit/a-guard-casts-battle-magic-at-the-odds-a-players-hero-has.test.ts), [`the-rulebook-says-training-stops-cast-chance-at-80-and-items-carry-it-to-95`](../../tests/static/the-rulebook-says-training-stops-cast-chance-at-80-and-items-carry-it-to-95.test.ts), [`rulebook-review-words`](../../tests/rulebook-review-words.test.js)
+- **Enforced by:** [`a-guard-casts-battle-magic-at-the-odds-a-players-hero-has`](../../tests/unit/a-guard-casts-battle-magic-at-the-odds-a-players-hero-has.test.ts), [`the-rulebook-says-training-stops-cast-chance-at-80-and-items-carry-it-to-95`](../../tests/static/the-rulebook-says-training-stops-cast-chance-at-80-and-items-carry-it-to-95.test.ts), [`text-players-read-says-what-the-game-does-after-the-rulebook-review`](../../tests/static/text-players-read-says-what-the-game-does-after-the-rulebook-review.test.ts)
 
 Every cast succeeds at 30% plus 10% per level in the school, at most 95%: 40% at level 1, 80% at level 5. A
 hero guarding a neutral province casts at the same odds as a player's hero (it was 30% + 15% a level, at most

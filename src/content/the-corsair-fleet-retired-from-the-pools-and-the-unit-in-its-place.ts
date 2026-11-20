@@ -3,7 +3,8 @@
 // offers it offers the Galleon Fleet in its place (src/engine/saves/retire-the-corsair-pools.ts reads this row, as
 // migrateLegacyUnitNames reads LEGACY_UNIT_RENAMES). Beside the-abilities-of-a-unit-no-longer-raised.ts, which holds the
 // two abilities of a Corsair company already raised. Nothing on the player page reads it: its own files name no
-// retired unit (tests/corsairs-retired.test.js).
+// retired unit
+// (tests/static/no-book-or-player-portal-text-names-the-corsairs-and-letters-of-marque-lifts-the-galleons.test.ts).
 
 /** The retired Corsair Fleet, and the Galleon Fleet a province offers in its place. */
 export const THE_CORSAIR_FLEET_RETIRED_FROM_THE_POOLS = {

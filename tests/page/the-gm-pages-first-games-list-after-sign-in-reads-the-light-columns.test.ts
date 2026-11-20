@@ -6,7 +6,7 @@
 // page's own elements; the GM portal is booted in jsdom on a stand-in client that records each read's table and columns,
 // with a Game Master's session kept in the browser, so it signs in as it loads.
 import { describe, expect, test } from 'vitest';
-import { bootJsdom, readPage } from '../lib/boot.js';
+import { bootJsdom, readPage } from '../lib/boot.ts';
 
 /** A Supabase client with a Game Master signed in, whose reads answer nothing but the `games.meta` probe, which answers
  *  `theProbesError`; each read's table and columns are kept in `reads`, in order. */

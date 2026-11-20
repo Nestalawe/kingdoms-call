@@ -9,12 +9,16 @@ import path from 'node:path';
 import { defineConfig } from '@playwright/test';
 import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';
 
-// Set before the workers start, so they start with them (tests/lib/boot.js reads KC_SEED when it loads).
+// Set before the workers start, so they start with them (tests/lib/boot.ts reads KC_SEED when it loads).
 Object.assign(process.env, FIXED, { KC_SEED: (process.env['KC_SEED'] ?? '') || DEFAULT_SEED });
 const PORT = 4173;
 
 export default defineConfig({
   testDir: 'tests/browser',
+  // Playwright compiles the TypeScript it loads to CommonJS, where import.meta can't be written. tests/lib/boot.ts is an
+  // ES module that finds its folder through import.meta, as plain Node runs it for the old scripts, so Playwright leaves
+  // it to Node, which strips its types itself.
+  build: { external: ['**/tests/lib/boot.ts'] },
   globalSetup: './tests/setup/global.ts',
   retries: 0,
   forbidOnly: true,

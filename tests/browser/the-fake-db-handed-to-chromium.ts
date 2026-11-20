@@ -1,12 +1,12 @@
 // The Playwright way in (plan P1-17, Decision 8; built in P1-17l2): the fake database (tests/lib/fake-db.ts), bundled
 // for Chromium with its install script (tests/lib/the-fake-db-a-page-takes-in-chromium.ts), run by init scripts before
-// the page's scripts: the page takes the fake as its own Db, as jsdom's opts.db does (tests/lib/boot.js). The spec hands
+// the page's scripts: the page takes the fake as its own Db, as jsdom's opts.db does (tests/lib/boot.ts). The spec hands
 // the page its data (the database's version and the player's world) as an init script's argument, never as code text;
 // the world stays on the page's window as `window.kcTheFakesWorld`, for a spec to stage and read back.
 import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { build, type Rolldown } from 'vite';
-import { DB_VERSION, routeExternal } from '../lib/boot.js';
+import { DB_VERSION, routeExternal } from '../lib/boot.ts';
 import type { AWorldAsData } from '../lib/fake-db.ts';
 
 let bundled: Promise<string> | undefined;

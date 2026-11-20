@@ -6,7 +6,7 @@
 // is called on a jsdom document set as the page's own, its client a stand-in. A page test would boot the whole page and
 // sign in to reach the game list.
 import { beforeAll, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 
 let page: Document;
 let probeTelemetry: () => Promise<unknown>;

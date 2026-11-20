@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
 import { afterAll, describe, expect, test } from 'vitest';
-import { seededRandom } from '../lib/boot.js';
+import { seededRandom } from '../lib/boot.ts';
 import { DATA_FILE, loadEngine } from '../lib/engine.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import { ROOT } from '../../tools/build.ts';

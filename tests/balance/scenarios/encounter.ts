@@ -3,7 +3,7 @@
 // roll succeeds. The rule (#82, item 11): 70%, +5% per level of the hunter's Spy, −5% per level of the quarry's
 // (tests/encounter-seventy.test.js). The runs take four Spy pairings in turn, so each is a slice of 100 runs; every roll
 // counts as a case.
-import { order, plan } from '../../lib/scenario.js';
+import { order, plan } from '../../lib/scenario.ts';
 import { atWar, heroOf, measure, own, place, type Scenario, type World } from '../../../tools/balance/scenario.ts';
 import type { Stats } from '../../../tools/balance/stats.ts';
 

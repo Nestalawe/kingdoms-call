@@ -139,7 +139,7 @@ import {
   theCodeFiles,
   unitNameChecksInEngine,
 } from '../../tools/ratchet.ts';
-import { LEVELS } from '../suite.ts';
+import { LEVELS } from '../setup/the-test-levels.mts';
 import { ALLOWANCE_MS, timeLimitForPropertyRuns, timeLimitForTheWork } from '../lib/time-limits.ts';
 import { THE_COVERAGE_RUNS_CEILING_MS } from '../lib/the-coverage-runs-ceiling.mts';
 
@@ -187,7 +187,7 @@ describe('the compiler', () => {
     const files = parsed.fileNames.map((f) => path.relative(ROOT, f));
     for (const f of [
       'tests/static/harness.test.ts',
-      'tests/legacy.test.ts',
+      'tests/setup/the-test-levels.mts',
       'tools/check.ts',
       'tools/hooks/after-edit.ts',
       // the architecture rules' configs (P1-13a)
@@ -833,7 +833,7 @@ describe('the test run', () => {
     for (const p of t.projects ?? []) {
       expect(typeof p).toBe('object');
       const test = typeof p === 'object' && 'test' in p ? (p.test ?? {}) : {};
-      const keys = Object.keys(test).filter((k) => !['name', 'include', 'provide'].includes(k));
+      const keys = Object.keys(test).filter((k) => !['name', 'include'].includes(k));
       const theDbProjects = [['globalSetup', 'fileParallelism'], ['tests/setup/the-local-supabase.ts'], false];
       expect(test.name === 'db' ? [keys, test.globalSetup, test.fileParallelism] : keys).toEqual(
         test.name === 'db' ? theDbProjects : [],
@@ -2047,7 +2047,7 @@ describe('CI', () => {
   // Each TypeScript script a workflow runs with Node says it is a module: its name ends .mts, or the package.json nearest
   // its folder says "type": "module". Otherwise Node parses it as CommonJS first, fails, parses it again as a module and
   // prints MODULE_TYPELESS_PACKAGE_JSON (the deploy's keep step did on every deploy, #187, #188). The repository's own
-  // package.json has no type: its .js test scripts are CommonJS.
+  // package.json has no type: its .js files (eslint.config.js, .github/scripts/) are CommonJS.
   function moduleTypeOf(dir: string, files: (f: string) => string | undefined): string | undefined {
     for (let d = dir; ; d = path.posix.dirname(d)) {
       const text = files(d === '.' ? 'package.json' : `${d}/package.json`);
@@ -2367,7 +2367,7 @@ describe('dangerous paths', () => {
       'tests/setup/each.ts',
       'tests/setup/global.ts',
       'tests/setup/fixed.mts',
-      'tests/legacy.test.ts',
+      'tests/setup/the-test-levels.mts',
       'tests/ratchet.json',
       'tests/static/harness.test.ts',
       'tests/balance/matrix.test.ts',

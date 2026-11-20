@@ -49,7 +49,7 @@ import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
 import { L79_ORDERS } from '../../src/ui/player/l79-orders.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { PAGE_DRAWS_AS_IT_LOADS, setupsOf, slotRowsJsonOf, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
 import { MAP_SIZES, matrix, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { scriptedChoices, type State } from '../../tools/balance/scripted.ts';
@@ -324,7 +324,7 @@ beforeAll(async () => {
   }).window;
   await new Promise((r) => setTimeout(r, 900));
   // The page's short timers (a field rebuilt "once the DOM exists", the research box) are queued and run in order at
-  // the end of each step, as tests/lib/screens.js does; long ones (polls) are dropped.
+  // the end of each step, as tests/lib/screens.ts does; long ones (polls) are dropped.
   W.eval(`window.__kcQ=[];window.__kcN=0;
     window.setTimeout=(f,ms,...a)=>{ if(ms>=1000) return 0; const id=++window.__kcN; window.__kcQ.push({f,a,ms:+ms||0,id}); return id; };
     window.clearTimeout=id=>{ window.__kcQ=window.__kcQ.filter(t=>t.id!==id); };

@@ -1,6 +1,6 @@
 // npm run proof:tours -- --base <ref>: the lines of src/ this branch changed that no screen tour reaches (plan P1-16,
 // Decision 6: a page row's tier 1, tools/proof/README.md). The pages' code runs in jsdom: the four screen tours
-// (tests/lib/screens.js, every mode, as tests/tools/same-dom.js runs them) and, when the branch changed a file the GM
+// (tests/lib/screens.ts, every mode, as tests/tools/same-dom.ts runs them) and, when the branch changed a file the GM
 // page's bundle holds, the balance matrix's page half (set A, played on that page through KC_SITE). Each listed line
 // needs a case red on a planted fault in it, or a reason by name why the code makes it so. A list, not a gate: it exits
 // 0 whatever it finds (1 only when it can't measure).
@@ -8,7 +8,7 @@
 // The branch is the working tree as it is now (uncommitted changes and new files too), compared with where it left the
 // base (git merge-base <ref> HEAD), as npm run proof:unreached does. The site is built from it with each bundle's source
 // map, into <out>/site; the tours (and the matrix) run on that site under Node's own V8 coverage (NODE_V8_COVERAGE).
-// Each bundle's coverage is matched to it by its length (as tests/lib/boot.js's readPage inlines it), each character
+// Each bundle's coverage is matched to it by its length (as tests/lib/boot.ts's readPage inlines it), each character
 // read as the innermost range around it counts it, in any run, and mapped through the bundle's source map to the line
 // of src/ it was built from.
 //
@@ -31,9 +31,9 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { buildSite, ROOT } from '../build.ts';
 import { GM_PAGE } from '../pages.ts';
-import { pageFiles } from '../../tests/lib/boot.js';
-import { names } from '../../tests/lib/hostile.js';
-import { runJsdom, TOURS } from '../../tests/lib/screens.js';
+import { pageFiles } from '../../tests/lib/boot.ts';
+import { names } from '../../tests/lib/hostile.ts';
+import { runJsdom, TOURS } from '../../tests/lib/screens.ts';
 import {
   changedLinesOf,
   theChangedLinesNoGameReaches,
@@ -47,7 +47,7 @@ import { NO_CODE, type LinesOfAFile } from './the-matrixs-coverage.ts';
 export const THE_PAGES_SOURCES = ['src/'] as const;
 /** Where the site, the coverage and lines.json go unless --out says otherwise. */
 export const DEFAULT_TOURS_OUT = path.join(ROOT, 'coverage', 'tours');
-/** What readPage puts before a page's bundle when it inlines it (tests/lib/boot.js). */
+/** What readPage puts before a page's bundle when it inlines it (tests/lib/boot.ts). */
 export const BEFORE_AN_INLINED_BUNDLE = '"use strict";\n';
 
 /** A source map, the parts read here. */
@@ -227,7 +227,7 @@ function whatTheBranchChangedInSrc(base: string): ChangedLines {
   return changed;
 }
 
-/** Runs every mode of every tour in jsdom on `site`, as same-dom.js does (the screens not compared). This runs in its
+/** Runs every mode of every tour in jsdom on `site`, as same-dom.ts does (the screens not compared). This runs in its
  *  own process (`--run-the-tours`), which V8's coverage watches. */
 async function runEveryTour(site: string): Promise<void> {
   for (const tour of Object.values(TOURS)) {

@@ -26,7 +26,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   P1-15e3's), so since P1-15e2b it is required of a named scenario instead (below): every `npm run balance` plays
   `a-chase-held-by-an-unresolved-battle` first, on this site or `KC_SITE`'s, and fails if it misses (not with
   `--only`, nor when a scenario is named).
-- **The invariants after every turn** (`lib/invariants.ts`, P1-04b), as in `turn-fuzz`, and the **report-leak check**
+- **The invariants after every turn** (`lib/invariants.ts`, P1-04b), as in the turn fuzz (`simulation/whole-games-on-random-orders-…`), and the **report-leak check**
   on the scripted realm's report (`lib/report-leaks.ts`, P1-04c): a breach fails the game with its turn, the check and
   what broke ([how the tests reach the site](how-the-tests-reach-the-site.md#how-the-tests-reach-the-site)). They only read: the games are identical with them and without.
   The invariants add about 11 ms a turn (about 13 s of work over set A, 1 s on 14 cores).
@@ -35,7 +35,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   the saved state's schema refuses) fails the game with `turn N:` and the places it names; after the last turn, so is
   the check of the last save, which no turn loads (`upgradeGameState` from `src/`, on a copy: a game's end is written
   by its last turn). With `KC_SITE` the line is that copy's and the last save's check this checkout's. Not an
-  invariant: `checkTurn` also runs on the staged worlds of `turn-fuzz` and the fixtures test, which lack what Turn 0
+  invariant: `checkTurn` also runs on the staged worlds of the turn fuzz and the fixtures test, which lack what Turn 0
   adds. A place found on `main` whose fix waits gets its backlog row and is let through by a narrow entry (one path and kind) in
   its `KNOWN_PLACES_THE_SAVE_CHECK_FINDS`, empty today; its fix removes the entry. Since the scripted realm sends what
   the portal sends, the matrix also sees what a human realm's plans and orders save (a plan's duel stance
@@ -43,7 +43,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   Hero's `_releasedBy` and a spied hero's entry. Not the orders it never gives (Cast Spell, the item orders, the
   masteries that need a target, the Grand Design, the raise and charm cards) nor a mastery no scripted hero reaches
   the level of.
-- **One fresh page per game** (`tools/balance/play.ts`), booted through `lib/boot.js` with an explicit `seed` and
+- **One fresh page per game** (`tools/balance/play.ts`), booted through `lib/boot.ts` with an explicit `seed` and
   `now`, in manual turn mode, stopping at the Reckoning. Games run side by side, one worker process per core
   (`--jobs N` to change it). The results are identical one game at a time and many side by side, and on a second
   run.
@@ -130,7 +130,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   baseline without a column is compared on the rest, and the report says what wasn't compared.
 - **Named scenarios** (`npm run balance -- <scenario>`, `tools/balance/scenario.ts`, P1-03c). A scenario measures one
   rule's direct effect in one staged scene; the matrix measures the knock-on effects in whole games. Each is a file in
-  `balance/scenarios/`: a scene staged through `lib/scenario.js`, its number of runs (400), and the figures it
+  `balance/scenarios/`: a scene staged through `lib/scenario.ts`, its number of runs (400), and the figures it
   reports, named and labelled as the matrix's statistics. Run *n* plays on a fresh page with seed *n* and the matrix's
   clock, so the base's runs and the branch's pair by seed and the noise rule judges them. The base's side plays a copy
   of `main`'s site (`-- --base REF` for another; `git archive`, through `KC_SITE`), then this side plays this site

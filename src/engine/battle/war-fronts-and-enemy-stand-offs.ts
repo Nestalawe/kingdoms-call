@@ -29,8 +29,8 @@ interface AHostOnAWarFront {
 // ── ENEMY STAND-OFF SWEEP ────
 // Any province where the armed, UNVEILED forces of two warring realms stand together is a battle
 // waiting to happen: flag it so resolveStalledBattles joins the fight and the province shows as
-// contested. This is the intermittent "holds armed forces of 2 players but is NOT flagged
-// _battleUnresolved" failure in scenario.js.
+// contested. It mends what was once an intermittent "holds armed forces of 2 players but is NOT flagged
+// _battleUnresolved" failure; tests/unit/stalled-battles-unit-gain-and-war-fronts.test.ts checks it.
 export function flagEnemyStandoffs(turnContext: TurnContext, exceptProvIds?: ReadonlySet<number> | null): void {
   const { G } = turnContext;
   (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((pv: Province | null | undefined) => {

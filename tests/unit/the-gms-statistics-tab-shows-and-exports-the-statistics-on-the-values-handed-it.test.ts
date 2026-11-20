@@ -7,7 +7,7 @@
 // `supabase` global and a Db handed in are stood in (as the Hall of Fame's unit test does); a page test would boot the
 // whole page and sign in to reach each of them, and the downloads need the browser's Blob and URL stood in anyway.
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 
 interface AnAnswer {
   data: unknown;

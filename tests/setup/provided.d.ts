@@ -1,12 +1,9 @@
-// What vitest.config.ts gives each project's tests through inject().
-import type { Level } from '../suite.ts';
+// What vitest.config.ts gives each project's tests through inject(). The export makes this file a module, so the
+// declaration below adds to Vitest's own types rather than replacing them.
+export {};
 
 declare module 'vitest' {
   interface ProvidedContext {
-    // Which test scripts tests/legacy.test.ts runs: one level's, or the quarantined ones.
-    level: Level | 'quarantine';
-    // Every level that has a project.
-    levels: string[];
     // The db project's only (tests/setup/the-local-supabase.ts): the local Supabase's address and its own keys.
     theLocalSupabase: { url: string; anonKey: string; serviceRoleKey: string };
   }

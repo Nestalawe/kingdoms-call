@@ -17,7 +17,7 @@
 //   keeps the signed-in one; with the dispatches' table missing, a dispatch sent is refused as missing and not kept.
 // TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
-import { DB_VERSION } from '../lib/boot.js';
+import { DB_VERSION } from '../lib/boot.ts';
 import {
   aGameMastersWorld,
   makeAFakeDbHoldingAWorldHandedAsData,

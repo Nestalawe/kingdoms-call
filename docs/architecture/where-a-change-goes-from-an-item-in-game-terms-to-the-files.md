@@ -154,8 +154,9 @@ that realm may see (`src/views/what-each-realm-may-see-of-the-world.ts`); its se
   (`src/ui/player/join-and-chronicle.ts`), the spell hints below the order form
   (`src/ui/player/the-hints-the-order-form-shows-below-each-spell.ts`) and the report's prose.
 - **The tests:** the static tests named for what the books say (`tests/static/the-books-say-*`,
-  `tests/static/the-rulebook-says-*`, `tests/static/text-players-read-says-what-the-game-does-after-the-rulebook-review.test.ts`)
-  and `tests/rulebook-review-words.test.js`. Search for the old words in them: a test may pin the words you change.
+  `tests/static/the-rulebook-says-*`, and
+  `tests/static/text-players-read-says-what-the-game-does-after-the-rulebook-review.test.ts` for the review's
+  sentences). Search for the old words in them: a test may pin the words you change.
   Each test names the book it reads: where it reads only the full one, search the short one yourself.
 
 ### A page's screen

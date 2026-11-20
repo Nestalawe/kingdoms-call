@@ -21,7 +21,7 @@
 // read the footer's stamp) and with the comparison or the 10-minute wait planted out (in the PR). No fake database
 // (`lib/fake-db.ts`): a client that answers "no session"
 import { expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 
 const GM = 'kingdoms-call-gm-portal.html';
 const START = Date.parse('2026-10-22T10:00:00Z');

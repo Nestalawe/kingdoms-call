@@ -4,8 +4,9 @@
 // - kcRaw: the value as String() writes it, unescaped, null and undefined as ''; the marked value keeps it whole;
 // - kcHtml: the template's own text kept whole (its spaces too), each value as kcEsc shows it;
 // - kcArg: the value as JSON, escaped, undefined as null.
-// Level 1 (unit): the helpers imported as a module and called on plain values; no page runs (tests/kc-safe.test.js
-// checks the file as a classic script, and in a page through jsdom; tests/hostile-*.test.js, each page's names).
+// Level 1 (unit): the helpers imported as a module and called on plain values; no page runs
+// (unit/kc-safe-run-as-a-page-runs-it-escapes-each-value-once-and-adds-only-its-four-helpers.test.ts checks the file as
+// a classic script, and in a page through jsdom; tests/hostile-*.test.js, each page's names).
 import { expect, test } from 'vitest';
 import { KcSafeHtml, kcArg, kcEsc, kcHtml, kcRaw } from '../../src/ui/shared/kc-safe.ts';
 

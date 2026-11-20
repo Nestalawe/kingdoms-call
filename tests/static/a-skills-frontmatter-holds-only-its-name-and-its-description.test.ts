@@ -6,7 +6,8 @@
 // - Each skill's folder holds its SKILL.md.
 // - Its SKILL.md opens with frontmatter between two "---" lines.
 // - The frontmatter's keys are `name` and `description`, each once, and nothing else.
-// The skills' links, anchors and backticked paths are checked by tests/docs.test.js, and each skill's bytes by
+// The skills' links, anchors and backticked paths are checked by
+// tests/static/every-link-anchor-and-path-the-guides-name-is-there.test.ts, and each skill's bytes by
 // tests/static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts.
 import fs from 'node:fs';
 import path from 'node:path';

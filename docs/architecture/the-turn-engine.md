@@ -251,7 +251,7 @@ or let the watcher retry the turn: that combination once made live games resolve
 ## Dice come from `kcRng()`
 
 Every random number the GM portal's own code draws comes from `kcRng()` (`src/engine/rng.ts`, P1-07): one sfc32
-generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.js`) or, on the
+generator per page, seeded once as the page loads, by the tests (`KC_RNG_SEED`, set by `tests/lib/boot.ts`) or, on the
 live site, from `crypto.getRandomValues`. Each turn rolls its own dice: the turn's shell draws a seed from
 the page's dice and hands it to `resolveTurn`, which lends itself `kcRngStream(seed)` with `kcRng.use`, once for the
 turn and once for the Spy-stealth step, giving the dice in use back after each. The reports (the views'
@@ -279,8 +279,7 @@ the turn ran. `engine-purity` plays a whole game in Node with a `Date` and a `Ma
 - Never lend the dice across an `await`. Another turn (the watcher's, or the GM's button on another game) can run in
   the gap and would draw from them, and the page could be handed the wrong dice back. `resolveTurn` lends them twice,
   for itself and for the Spy-stealth step, two synchronous calls, and gives them back in a `finally`.
-- Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (`home-placement`,
-  `leaderboard-records`).
+- Code a test cuts out of the page and runs on its own needs a `kcRng` or `kcClock` of its own (the home-placement unit test).
 - Keep the generator in an object's property (`_kcRng.next`), not in a top-level `let`. With a `let`, V8 (Node 24.22)
   sometimes runs an optimised `kcRng` built against the old value: after `kcRng.seed` or `kcRng.use`, the dice quietly
   go back to the old stream. It showed in about 1 run in 20 of `rng`'s reseed test, and in 13 of 60,000 reseeds under

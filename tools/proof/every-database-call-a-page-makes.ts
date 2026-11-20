@@ -1,10 +1,10 @@
 // The database-call recorder, for the proof of P1-17's area rows (plan P1-17, Decision 12; tools/proof/README.md,
-// section 6): with KC_RECORD_DATABASE_CALLS=<folder>, every client a page makes in jsdom (bootJsdom, tests/lib/boot.js:
+// section 6): with KC_RECORD_DATABASE_CALLS=<folder>, every client a page makes in jsdom (bootJsdom, tests/lib/boot.ts:
 // the page tests, the old page scripts and the screen tours) records every call the page sends it, reads too, with its
 // steps and their arguments, one line a call, appended to <folder>/<process id>.jsonl. A query (from, rpc) is recorded
 // when the page awaits it, with every step called on it by then; any other call (auth.…, channel and its steps) when it
 // is made. A row that moves calls onto Db gives the lines, sorted, the same with KC_SITE the base's site and the row's.
-// Without the variable boot.js never loads this file, so the balance matrix, which boots through boot.js too, plays
+// Without the variable boot.ts never loads this file, so the balance matrix, which boots through boot.ts too, plays
 // without it. Times in the arguments (ISO stamps, milliseconds since 1970) read as <time>: the tests' clocks aren't all
 // pinned. The browser specs (Chromium) aren't recorded.
 import fs from 'node:fs';

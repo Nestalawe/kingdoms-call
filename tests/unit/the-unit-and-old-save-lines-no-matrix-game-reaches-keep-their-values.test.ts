@@ -7,7 +7,8 @@
 // - migrateLegacyUnitNames on an older save (no matrix game holds a legacy unit or race name): every place it renames,
 //   the holes and missing fields its guards skip, the count it logs, and a second run that changes nothing.
 // Level 1 (unit): pure functions called directly on the engine's modules (plan P1-14a), with no turn played. The
-// renames are also proved on the booted GM page by tests/primal-renames.test.js (level 1, a whole fixture game).
+// renames are also proved on the booted GM page by
+// tests/page/the-gm-page-renames-a-running-games-wild-units-and-holds-their-abilities-and-prices.test.ts (a whole fixture game).
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The lines P1-10b2 changed to free `army-tables.ts`, `units/movement.ts` and `battle/strength.ts` of the ts-nocheck

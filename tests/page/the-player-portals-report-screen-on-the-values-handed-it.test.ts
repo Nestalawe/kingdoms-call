@@ -6,10 +6,10 @@
 // reports, the spied provinces, the spies' watch, the lairs, the discoveries), a past turn (its snapshot, and the
 // chronicle rebuilt from the GM's log where there is none), the diplomacy choice, the folds and the refresh.
 // Level 4 (page): the file loads the page's start-up (its database client), so no lower level reaches it; the portal is
-// booted in jsdom (tests/lib/boot.js) on a fake Db at an older database, so it stops at its notice with every module
+// booted in jsdom (tests/lib/boot.ts) on a fake Db at an older database, so it stops at its notice with every module
 // loaded, and each case stages the screen's state as the tours do.
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
 

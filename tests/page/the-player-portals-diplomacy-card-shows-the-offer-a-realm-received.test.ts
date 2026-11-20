@@ -4,14 +4,14 @@
 //
 // Level 4 (page): the card is the player portal's own code (_renderDiplomacyInto), in modules that load the portal's
 // start-up (which calls supabase.createClient as it loads), so only the booted page reaches it: the portal booted in
-// jsdom (tests/lib/boot.js) on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and
+// jsdom (tests/lib/boot.ts) on the fake database (tests/lib/fake-db.ts's makeAFakeDb, holding no account and
 // no game), the card drawn from a hand-made report.
 //
 // Until plan P1-14h this was the card's part of tests/overtures.test.js, the same boot and the same call. Its three
 // checks are kept as they were, and "player page errors 0" as no page error and no console.error on the page
 // (stricter: the old script let a console.error naming "Could not load", "stub" or "fetch" pass; none is logged).
 import { afterAll, beforeAll, expect, test } from 'vitest';
-import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.js';
+import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 
 const errs: string[] = [];

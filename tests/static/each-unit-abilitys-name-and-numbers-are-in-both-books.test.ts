@@ -9,8 +9,12 @@
 // books' en dash; PRIMAL_ARMY_DEFS_P's spells and BATTLE_ARMY_SPELLS, in content), Island Back's berths
 // (KC_CARRIER_BERTHS: "two land units") and Forest Runners' two cells of TERRAIN_MODS (read by its syntax tree: "×1.1
 // in forest", "no penalty in jungle"). A table's number is matched with what it counts or where it acts, since a bare
-// "one" or "×1" is in the books' words already ("where a fleet carries one", "×1.1"). The older words tests
-// (abilities-words, primal-abilities-words) name no ability now; they keep their other checks.
+// "one" or "×1" is in the books' words already ("where a fleet carries one", "×1.1"). The beasts' blurbs-and-rows test
+// names no ability but Purity now. At the end of this file (until P1-14z the old script abilities-words): every
+// humanoid land unit has its blurb and its roster row, UNIT_ABILITIES declares each unit once, the Levies row says
+// Shieldwall needs an archer behind them, Shield Fort reads "half the front line" in both books, the Goblin Horde row
+// counts other orc foot, and the four retired abilities (Massed Volley, Shock of the Charge, Skyward Retreat, the
+// Wyverns' Dread) are named in neither book.
 // Three gaps are known and let through, each with its fix parked (the three fleets): the rulebook's Orcish Longships row
 // doesn't name Reaver Crews, nor its Elven Galleys row Sea Archers, nor its Dwarf Ironclads row Armoured Hulls (the test
 // fails once it does, so the exception leaves with the fix). And three numbers: the rulebook's Whale Cohort row names
@@ -19,7 +23,7 @@
 // Hunt's words (plan P1-19j; parked likewise), each checked to be still left out there, so the exception leaves with
 // the fix too. Of the tables: the battle report names the Wyvern Riders' strike "Acid Spit Volley", both books "Acid
 // Spit" (parked: one name), checked to be still so; and the rulebook gives Forest Runners' two numbers in its terrain
-// column, not in Forest Runners' words (a known difference: roster-words holds that column to the decided roster, and
+// column, not in Forest Runners' words (a known difference: the army roster's words test holds that column to the decided roster, and
 // roster holds TERRAIN_MODS to it), checked to be still so. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes:
 // plan P1-19j, Choice 4) are a retired unit's,
 // in no book: checked to be still in none, and nothing else. An ability the books give no number (Rooted, Hold the Gate,
@@ -66,8 +70,13 @@
 // +40% (P1-19g), and with Colossal Bulk at ×0.5 (not "full strength", P1-19h), and with Flak Screen at −25% (both
 // books) or Breach and Swamp at 20% (the blurb, P1-19i), and with Ride Them Down at +5% a company (both books, P1-19j),
 // and with Acid Spit at 2–4, Boulder Barrage at 4–6, Island Back at one berth (both books) or Forest Runners at ×1 in
-// forest (the blurb), and with the table's strike named "Acid Spit" (P1-19l). Level 0: the content's rows and tables
-// are plain data, `TERRAIN_MODS` and the books are read; nothing runs. TypeScript, in `static/`
+// forest (the blurb), and with the table's strike named "Acid Spit" (P1-19l). Since P1-14z, the old abilities-words
+// checks too: every humanoid land unit's blurb and roster row; each unit declared once in `UNIT_ABILITIES`; the Levies
+// row's Shieldwall needs an archer behind; Shield Fort's "half the front line" in both books; the Goblin Horde row's
+// other orc foot; the four retired abilities (Massed Volley, Shock of the Charge, Skyward Retreat, the Wyverns' Dread)
+// on neither book's page. Level 0: the content's rows and tables are plain data, `TERRAIN_MODS` and the books are
+// read; nothing runs. TypeScript, in `static/`
+import fs from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
 import { BATTLE_ARMY_SPELLS, KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
@@ -75,8 +84,9 @@ import {
   UNIT_ABILITIES_THE_REGISTRY_HOLDS,
   type ANumberOfAnAbility,
 } from '../../src/content/unit-abilities-their-names-numbers-and-words.ts';
-import { readPage } from '../lib/boot.js';
-import { entriesOf, fileDeclaring } from '../lib/source.ts';
+import { readPage, sitePath } from '../lib/boot.ts';
+import { entriesOf, fileDeclaring, pageText } from '../lib/source.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const PLAYER = 'kingdoms-call-player-portal.html';
 /** The rulebook rows that don't name an ability yet, each with why: the test checks the gap is still there. */
@@ -344,7 +354,7 @@ const NAMES_THE_BOOKS_WRITE_ANOTHER_WAY: Readonly<Record<string, { readonly book
  *  words in the rulebook still leave the numbers out. */
 const NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE: Readonly<Record<string, string>> = {
   'Forest Runners':
-    "the rulebook gives Forest Runners' numbers in the Stag Riders' terrain column (Forest ×1.1; jungle unlisted, ×1), which roster-words holds to the decided roster and roster holds TERRAIN_MODS to",
+    "the rulebook gives Forest Runners' numbers in the Stag Riders' terrain column (Forest ×1.1; jungle unlisted, ×1), which the army roster's words test holds to the decided roster and roster holds TERRAIN_MODS to",
 };
 
 /** A strike's damage range as the books write it: `2–4`, with the books' en dash (U+2013). */
@@ -499,4 +509,106 @@ describe("each ability a table holds: its name and numbers in its unit's blurb a
     for (const name of Object.keys(NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE))
       expect(TABLES.map((r) => r.name)).toContain(name);
   });
+});
+
+// ── Every humanoid land unit's blurb and roster row, the conditions' words, and the four retired abilities (moved from
+// tests/abilities-words.test.js) ──
+
+/** The humanoid land units: each has its blurb and its roster row, whether or not a row of the content names one of
+ *  its abilities. */
+const THE_HUMANOID_LAND_UNITS = [
+  'Shieldwall Levies',
+  'Men-at-Arms',
+  'Yeoman Longbows',
+  'Free Lances',
+  'Gilded Lances',
+  'Noble Griffons',
+  'Human Garrison',
+  'Forest Wardens',
+  'Elven Bowmen',
+  'Shadow Archers',
+  'Stag Riders',
+  'Eagle Riders',
+  'Elven Garrison',
+  'Dwarven Guard',
+  'Ironwood Crossbows',
+  'Mountain Guns',
+  'Ironhoof Rams',
+  'Gnomish Gyrocopters',
+  'Dwarf Garrison',
+  'Goblin Horde',
+  'Orc Berserkers',
+  'Black Arrows',
+  'Warg Riders',
+  'Wyvern Riders',
+  'Orc Garrison',
+];
+/** A text with its tags taken out (not made spaces, as `strip` above does), until none is left. */
+const tagsTakenOut = (s: string) => {
+  for (let t = s; ;) {
+    const u = t.replace(/<[^>]*>/g, '');
+    if (u === t) return u;
+    t = u;
+  }
+};
+/** The rulebook as built, without the scripts readPage puts in (the old script's read). */
+const rulesAsBuilt = fs.readFileSync(sitePath('kingdoms-call-rules.html'), 'utf8');
+/** Every `'Unit': 'blurb'` entry of UNIT_ABILITIES, in order, duplicates kept. */
+const blurbEntries = entriesOf(fileDeclaring(PLAYER, 'UNIT_ABILITIES'), 'UNIT_ABILITIES');
+/** The humanoid roster rows of the rulebook: each unit's last cell, its words, its tags taken out. */
+const humanoidRows = new Map(
+  [
+    ...rulesAsBuilt.matchAll(
+      /<tr><td><strong>([^<]+)<\/strong><\/td><td>(Human|Elven|Dwarven|Orcish)<\/td><td>([^<]*)<\/td>(?:<td[^>]*>[^<]*<\/td>){4}<td class="terr"[^>]*>[\s\S]*?<\/td><td>([\s\S]*?)<\/td><\/tr>/g,
+    ),
+  ].map((m) => [(m[1] ?? '').trim(), norm(tagsTakenOut(m[4] ?? ''))]),
+);
+
+describe('every humanoid land unit has its blurb and its roster row, and the conditions read as the game plays them', () => {
+  test('UNIT_ABILITIES is declared, each unit once (in an object literal a second entry replaces the first)', () => {
+    expect(
+      blurbEntries.map((e) => e.value).join('\n').length,
+      'the player portal declares UNIT_ABILITIES',
+    ).toBeGreaterThan(0);
+    const keys = blurbEntries.map((e) => e.key);
+    expect(
+      keys.filter((k, i) => keys.indexOf(k) !== i),
+      'units declared twice',
+    ).toEqual([]);
+  });
+
+  test.each(THE_HUMANOID_LAND_UNITS)('%s has its player-portal blurb and its rulebook roster row', (unit) => {
+    expect(blurbs.has(unit), `the player portal has a blurb for ${unit}`).toBe(true);
+    expect(humanoidRows.has(unit), `the rulebook's roster has a row for ${unit}`).toBe(true);
+  });
+
+  test('the Levies row says Shieldwall needs an archer behind them', () => {
+    expect(humanoidRows.get('Shieldwall Levies') ?? '').toMatch(/Shieldwall:[\s\S]{0,40}archer[\s\S]{0,40}behind/i);
+  });
+
+  test('Shield Fort reads "half the front line" in both books', () => {
+    expect(humanoidRows.get('Dwarven Guard') ?? '', "the Dwarven Guard's roster row").toMatch(/half the front line/i);
+    expect(norm(blurbEntries.map((e) => e.value).join('\n')), 'the blurbs').toMatch(/half the front line/i);
+  });
+
+  test('Sheer Numbers counts other orc foot', () => {
+    expect(humanoidRows.get('Goblin Horde') ?? '').toMatch(/other orc foot/i);
+  });
+
+  test.each([
+    ['rulebook', () => rulesAsBuilt],
+    ['player portal', () => pageText(PLAYER)],
+  ])(
+    '%s: the four retired abilities are named nowhere',
+    (_page, source) => {
+      const t = norm(tagsTakenOut(source()));
+      expect(t, 'no Massed Volley').not.toMatch(/Massed Volley/);
+      expect(t, 'no Shock of the Charge').not.toMatch(/Shock of the Charge/);
+      expect(t, 'no Skyward Retreat').not.toMatch(/Skyward Retreat/);
+      expect(t, "no Dread (the Wyverns' fanaticism cut)").not.toMatch(
+        /fanaticism chance reduced|one eye on the sky|−15% fanaticism/,
+      );
+    },
+    timeLimitForTheWork({ everyFileReads: 1 }).timeout,
+  );
 });

@@ -9,7 +9,7 @@
 // Until plan P1-14e these were three checks of tests/island-back.test.js, kept as they were but the last, made stricter:
 // it passed on any Sea-beasts row that named the turtles and said they "carry nothing".
 import { expect, test } from 'vitest';
-import { readPage } from '../lib/boot.js';
+import { readPage } from '../lib/boot.ts';
 
 const rules = readPage('kingdoms-call-rules.html');
 const stripTags = (s: string) => {

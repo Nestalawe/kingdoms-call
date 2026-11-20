@@ -16,8 +16,9 @@
 // The site never deploys before the migrations it needs: "plan" compares with the commit that's live, not with
 // the previous push, so a migration whose production run was rejected is still pending on the next push.
 //
-// Everything except main() is pure and unit-tested in tests/migrations.test.js. main() runs git, the GitHub API
-// (read-only) and the Supabase CLI (SUPABASE_CLI, default "supabase"), whose JSON output it reads.
+// Everything except main() is pure and unit-tested in
+// tests/unit/the-migration-pipeline-applies-only-what-was-shown-and-rebuilds-only-staging.test.ts. main() runs git,
+// the GitHub API (read-only) and the Supabase CLI (SUPABASE_CLI, default "supabase"), whose JSON output it reads.
 const fs=require('fs'), path=require('path'), {execFileSync,spawnSync}=require('child_process');
 const {LIVE_REF,stagingRef,signUpTestAccounts}=require('./staging.js');
 

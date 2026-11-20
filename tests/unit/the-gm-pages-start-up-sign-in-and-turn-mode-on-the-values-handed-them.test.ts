@@ -5,7 +5,7 @@
 // stood in; each function is called on a jsdom document set as the page's own. A page test would boot the whole page
 // and sign in to reach each of them.
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { bootJsdom } from '../lib/boot.js';
+import { bootJsdom } from '../lib/boot.ts';
 
 interface AnAnswer {
   data: unknown;
@@ -134,6 +134,19 @@ describe('a game read from its row (startup.ts)', () => {
     expect(startup.gameArchivedAt({ meta: { v: 1, archivedAt: '' }, game_state: { archivedAt: 'w' } })).toBe('w');
     expect(startup.gameArchivedAt({ game_state: { archivedAt: '' } })).toBe(null);
     expect(startup.gameArchivedAt(null)).toBe(null);
+  });
+  // Until plan P1-14z, the archive round-trip of tests/fuzz-advance-masking.test.js, on the booted GM page.
+  test("the archive's mark round-trips: buildGameMeta keeps it, gameArchived reads it, the world's when no meta", () => {
+    const meta = turnMode.buildGameMeta({
+      archived: true,
+      archivedAt: '2026-09-27T10:00:00Z',
+      turnMode: { mode: 'manual' },
+    });
+    expect(meta).toMatchObject({ archived: true, archivedAt: '2026-09-27T10:00:00Z' });
+    expect(startup.gameArchived({ meta })).toBe(true);
+    expect(startup.gameArchived({ meta: turnMode.buildGameMeta({}) })).toBe(false);
+    expect(startup.gameArchived({ game_state: JSON.stringify({ archived: true }) })).toBe(true);
+    expect(startup.gameArchived({ game_state: '{}' })).toBe(false);
   });
 });
 
