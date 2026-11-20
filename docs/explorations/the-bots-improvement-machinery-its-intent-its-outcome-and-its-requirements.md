@@ -240,6 +240,10 @@ Claude can each take any seat.
   Where today's bots turn out to read hidden state, that row is a fix with its own test, not a refactor.
 - **BOT-V7 (should).** Each pass of the bots' plan records its choices with a short reason, for BOT-S and BOT-C to
   read.
+- **BOT-V8 (should).** The realm's view is one function, and each realm's report is built from it too: the heroes it
+  lists and the names a line gives come from what that realm may know. So a hero under Invisibility, or a realm not
+  yet met, can't reach a report by another path. The leak check's other two parts then rest on the view, as its
+  audience part rests on the audience gate (B-18).
 
 *Acceptance:* BOT-V3's test fails on a bot planted to read one hidden army, and passes on every bot after the move; no
 alignment ability row lacks its bot valuation.
