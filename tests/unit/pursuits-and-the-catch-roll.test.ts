@@ -1,6 +1,7 @@
 // A chase (lifted out of resolveTurn in plan P1-08i3: src/engine/heroes/pursuits-and-the-catch-roll.ts), called directly
-// in the bare vm (tests/lib/engine.ts) on the middle of a bot world cleared for each case (tests/lib/middle-of-a-bot-world.ts):
-// realms 0 and 1 at war, 0 and 2 allied, 1 and 2 at peace.
+// on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world cleared for each case
+// (tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts): realms 0 and 1 at war, 0 and 2 allied, 1
+// and 2 at peace.
 // - pursuitCatchChance (a property): 70% + 5% a level of the hunter's Spy − 5% a level of the quarry's, 5–100%, and a
 //   quarry of the hunter's own realm is always met.
 // - advancePursuit, staged: a chase called off (the quarry dead, hidden or vanished); held over while an armed hunter
@@ -14,8 +15,8 @@
 // road or no points, or the sentries (V8 block coverage, P1-08i3). Whole turns: scenario/pursuit-one-battle.test.ts.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// A chase (P1-08i3), called directly in the bare `vm` on the middle of a bot world cleared for each case
-// (`lib/middle-of-a-bot-world.ts`). The catch roll (`pursuitCatchChance`, a property): 70% + 5% a level of the hunter's
+// A chase (P1-08i3), called directly on the engine's modules (P1-14m; the bare `vm` before) on the middle of a bot
+// world cleared for each case. The catch roll (`pursuitCatchChance`, a property): 70% + 5% a level of the hunter's
 // Spy − 5% a level of the quarry's (each counted to 5), 5–100%, his own realm's quarry always met. `advancePursuit`,
 // staged: a chase called off (the quarry dead, gone, veiled or Vanished; a veiled friend is still followed); held over
 // while an armed hunter has a battle on his hands this phase (a property over a stalled battle, a field battle and
@@ -36,38 +37,43 @@
 // held by neutral defenders, a leaderless host or hulls left ashore (the line naming them), an Evil hunter's plunder;
 // the pickets counted without a spectral double, a hunter with no plan fighting with his sword, a neutral who escapes
 // the end living on at 1 HP, and a realm listed once among a province's visitors.
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
   allText,
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
   points,
+  quietEngineLog,
   withDice,
   type Board,
   type Character,
   type TurnContext,
   firstDie,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
 // ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
 const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const WORLD = botWorld(engine, 3, { cols: 12, rows: 8 }, { seaPct: 20 });
 const PH = 2;
-const pursuitCatchChance = engineFn(engine, 'pursuitCatchChance') as (
+// (the engine's own modules, fresh with it)
+const thePursuits = await import('../../src/engine/heroes/pursuits-and-the-catch-roll.ts');
+const pursuitCatchChance = thePursuits.pursuitCatchChance as unknown as (
   tc: TurnContext,
   c: Character,
   quarry: Character,
 ) => number;
-const endPursuit = engineFn(engine, 'endPursuit') as (c: Character) => void;
-const advancePursuit = engineFn(engine, 'advancePursuit') as (tc: TurnContext, c: Character, ph: number) => void;
+const endPursuit = thePursuits.endPursuit as unknown as (c: Character) => void;
+const advancePursuit = thePursuits.advancePursuit as unknown as (tc: TurnContext, c: Character, ph: number) => void;
 
 const fresh = () => board(engine, WORLD, PH);
 /** Sets `c` on the trail of `quarry`, as an Encounter order given in an earlier phase does. */

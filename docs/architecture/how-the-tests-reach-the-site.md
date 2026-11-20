@@ -36,8 +36,7 @@
   `turnContext(engine, state)` makes the turn's context it takes first, on a world parsed inside the `vm`, as
   `resolveTurn` holds it before the first phase, with everything `resolveTurn` adds to it made empty (the
   movement pools, the collectors, the battle count, the held-back skill rises, …). To see every call a helper makes to
-  another top-level function, wrap it in the `vm` (`unit/xp-naval-passenger.test.ts` records each experience roll so,
-  P1-08c). `botWorld(engine, realms, size, opts)` makes a new world of bot realms there, as
+  another top-level function, wrap it in the `vm`. `botWorld(engine, realms, size, opts)` makes a new world of bot realms there, as
   JSON, and `quietEngineLog(engine)` quiets the line `emit` echoes to the console.
   **`lib/matrix-game.ts`** sets up one game of the balance matrix (`scripted-05`) for it: `newWorld(engine)` and the
   slot rows for a turn (`slotRows`, or `slotRowsJson` for a page's database), shared by `engine-purity` and
@@ -56,7 +55,7 @@
   in the engine's realm); the case files (`lib/*-cases.ts`) import it, not a board, so each serves either board. For a
   test that calls the engine itself, both boards give `withCaseDice(engine, …)` and `recordExperienceRolls(engine)`; on
   the modules the recorder stands in `trySkillGain` on its module, so it misses the one call inside that file (a
-  voyage's roll). The modules board's `withThesePercentileRollsInTurn` gives the `vm`'s list of `d100` rolls, and its
+  voyage's roll: `unit/xp-naval-passenger` pins the dice so the roll rises, and reads the rise it holds back). The modules board's `withThesePercentileRollsInTurn` gives the `vm`'s list of `d100` rolls, and its
   `aFreshTurnsContextOnTheWorld(engine, state)` the `vm`'s `turnContext(engine, state)`.
 - **The engine's modules**: how a new test, or one moved off the loader,
   reaches the engine.

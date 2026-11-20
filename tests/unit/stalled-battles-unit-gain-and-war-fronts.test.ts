@@ -1,8 +1,9 @@
 // Stalled battles, a host gained in a province, war fronts, enemy stand-offs and the max-HP resync (lifted out of
 // resolveTurn in plan P1-08i3: src/engine/battle/stalled-battles-and-beaten-guards.ts, hosts-gained-in-a-province.ts,
 // war-fronts-and-enemy-stand-offs.ts and syncAllMaxHp in heroes/experience-skill-rises-and-earned-hp.ts), called
-// directly in the bare vm (tests/lib/engine.ts) on the middle of a bot world cleared for each case
-// (tests/lib/middle-of-a-bot-world.ts): realms 0 and 1 at war, 0 and 2 allied, 1 and 2 at peace.
+// directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world cleared for each
+// case (tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts): realms 0 and 1 at war, 0 and 2
+// allied, 1 and 2 at peace.
 // - erodeGuardSurvivors: each survivor of a beaten guard flees as mercenaries, loses heart and drops a grade (a Green
 //   one disbands), or holds, on the dice; each is told once, naming the host that beat them (the checks that were
 //   battle-faced-turn's hook part, with fixed dice), and a property: every survivor has exactly one fate.
@@ -39,37 +40,49 @@
 //   P1-10b25's base, as after).
 // - Since P1-21h, a war front's second column assaults in its turn once the first is thrown back and the fight is
 //   settled, not left hanging.
-import vm from 'node:vm';
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
-import { afterEach, describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import {
   allText,
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
   points,
+  quietEngineLog,
   withDice,
   type Board,
   type Character,
   type Province,
   type TurnContext,
   type Unit,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
 // ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
 const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
+// (the engine's own modules, fresh with it)
+const { theWordsOf: theWordsOfAsItsModuleExportsIt } = await import('../../src/views/prose/the-words-of-each-line.ts');
+const theHostsGained = await import('../../src/engine/battle/hosts-gained-in-a-province.ts');
+const { resolveStalledBattles: resolveStalledBattlesAsItsModuleExportsIt } =
+  await import('../../src/engine/battle/stalled-battles-and-beaten-guards.ts');
+const theWarFronts = await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts');
+const { syncAllMaxHp: syncAllMaxHpAsItsModuleExportsIt } =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const { computeMaxHp: computeMaxHpAsItsModuleExportsIt } = await import('../../src/engine/heroes/skills-and-hp.ts');
+const { QUALITY_TIERS: theQualityTiers } = await import('../../src/engine/army-tables.ts');
 /** A line's words: its words, or a fact's, which the views write (theWordsOf, src/views/prose/, P1-12c6). */
-const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const theWordsOf = theWordsOfAsItsModuleExportsIt as unknown as (fact: unknown) => string;
 const wordsOf = (line: unknown): string => (typeof line === 'string' ? line : theWordsOf(line));
 const WORLD = botWorld(engine, 3, { cols: 12, rows: 8 }, { seaPct: 20 });
 const PH = 2;
-const erodeGuardSurvivors = engineFn(engine, 'erodeGuardSurvivors') as (
+const erodeGuardSurvivors = theHostsGained.erodeGuardSurvivors as unknown as (
   tc: TurnContext,
   guard: { name: string } | null,
   prov: Province,
@@ -77,29 +90,29 @@ const erodeGuardSurvivors = engineFn(engine, 'erodeGuardSurvivors') as (
   emit: (l: unknown) => void,
   victor?: string,
 ) => Unit[];
-const resolveStalledBattles = engineFn(engine, 'resolveStalledBattles') as (
+const resolveStalledBattles = resolveStalledBattlesAsItsModuleExportsIt as unknown as (
   tc: TurnContext,
   ph: number,
   onlyProvId?: number,
   freshWar?: boolean,
 ) => void;
-const resolveUnitGainInProvince = engineFn(engine, 'resolveUnitGainInProvince') as (
+const resolveUnitGainInProvince = theHostsGained.resolveUnitGainInProvince as unknown as (
   tc: TurnContext,
   c: Character,
   prov: Province,
   ph: number,
 ) => boolean;
-const warFrontThreats = engineFn(engine, 'warFrontThreats') as (
+const warFrontThreats = theWarFronts.warFrontThreats as unknown as (
   tc: TurnContext,
 ) => { c: Character; prov: Province; onEnemyLand: boolean; facesEnemyHost: boolean }[];
-const flagEnemyStandoffs = engineFn(engine, 'flagEnemyStandoffs') as (
+const flagEnemyStandoffs = theWarFronts.flagEnemyStandoffs as unknown as (
   tc: TurnContext,
   except?: Set<number> | null,
 ) => void;
-const resolveWarFronts = engineFn(engine, 'resolveWarFronts') as (tc: TurnContext, ph: number) => void;
-const syncAllMaxHp = engineFn(engine, 'syncAllMaxHp') as (tc: TurnContext) => void;
-const computeMaxHp = engineFn(engine, 'computeMaxHp') as (c: Character, players: unknown[]) => number;
-const QUALITY_TIERS = vm.runInContext('QUALITY_TIERS', engine) as string[];
+const resolveWarFronts = theWarFronts.resolveWarFronts as unknown as (tc: TurnContext, ph: number) => void;
+const syncAllMaxHp = syncAllMaxHpAsItsModuleExportsIt as unknown as (tc: TurnContext) => void;
+const computeMaxHp = computeMaxHpAsItsModuleExportsIt as unknown as (c: Character, players: unknown[]) => number;
+const QUALITY_TIERS: readonly string[] = theQualityTiers;
 
 const fresh = () => board(engine, WORLD, PH);
 /** A die, near the survivors' two chances (35% to flee, 50% to lose heart) as often as anywhere else. */
@@ -710,26 +723,53 @@ describe('every hero’s maximum HP kept in step (syncAllMaxHp)', () => {
 
 // ── The hosts and the defenders named in the lines no matrix game reaches (plan P1-12d24) ────
 // By the matrix's coverage of both sets (npm run proof:unreached on P1-12d24), no game reaches these lines; each is
-// played with the host's commander alive and fallen, and its words read whole. The battle itself is stood in (the
-// vm's globals combatVsNPC, combatVsChar, creditBattle, emitBattle and markOrcAttackWin, put back after each case): a
-// battle won or lost as the case needs, so that what follows it is staged directly.
+// played with the host's commander alive and fallen, and its words read whole. The battle itself is stood in
+// (combatVsNPC, combatVsChar, creditBattle, emitBattle and markOrcAttackWin, each on its module, put back after each
+// case): a battle won or lost as the case needs, so that what follows it is staged directly.
 const lines = (b: ReturnType<typeof fresh>) => allText(b).split('\n');
 /** A host's label: its commander's name, or "<name>'s leaderless host" once he has fallen. */
 const label = (c: Character, fallen: boolean) => (fallen ? `${c.name}'s leaderless host` : c.name);
 
-// ── The battle, stood in: the vm's globals, put back after each case ────
-const g = vm.runInContext('globalThis', engine) as Record<string, unknown>;
-const was: Record<string, unknown> = {};
-function standIn(fns: Record<string, unknown>) {
-  for (const [k, f] of Object.entries(fns)) {
-    if (!(k in was)) was[k] = g[k];
-    g[k] = f;
+// ── The battle, stood in: each function by vi.spyOn on the module that exports it, put back after each case ────
+// (Vitest's restoreMocks; the vm's globals before). Each is called only from files other than its own (the stalled
+// battles, the hosts gained, the war fronts' and the moves' files), where a stand-in on its module reaches
+// (docs/traps.md). A second stand-in for one function in a case replaces the first, as on the vm.
+const theBattlesAgainstDefenders = await import('../../src/engine/battle/battles-against-province-defenders.ts');
+const theBattlesBetweenHeroes = await import('../../src/engine/battle/battles-between-heroes.ts');
+const theBattleMerit = await import('../../src/engine/titles/title-holders-and-battle-merit.ts');
+const theBattleLines = await import('../../src/engine/battle/battle-report-lines-and-force-markers.ts');
+const theSpoils = await import('../../src/engine/units/drill-and-spoils.ts');
+const theRetreatsBySea = await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts');
+/** A stand-in: it is handed what the function is, and gives what the code after it reads. */
+type AStandIn = (...a: never[]) => unknown;
+const standInFor = {
+  combatVsNPC: (f: AStandIn) =>
+    vi
+      .spyOn(theBattlesAgainstDefenders, 'combatVsNPC')
+      .mockImplementation(f as unknown as typeof theBattlesAgainstDefenders.combatVsNPC),
+  combatVsChar: (f: AStandIn) =>
+    vi
+      .spyOn(theBattlesBetweenHeroes, 'combatVsChar')
+      .mockImplementation(f as unknown as typeof theBattlesBetweenHeroes.combatVsChar),
+  creditBattle: (f: AStandIn) =>
+    vi.spyOn(theBattleMerit, 'creditBattle').mockImplementation(f as unknown as typeof theBattleMerit.creditBattle),
+  emitBattle: (f: AStandIn) =>
+    vi.spyOn(theBattleLines, 'emitBattle').mockImplementation(f as unknown as typeof theBattleLines.emitBattle),
+  markOrcAttackWin: (f: AStandIn) =>
+    vi.spyOn(theSpoils, 'markOrcAttackWin').mockImplementation(f as unknown as typeof theSpoils.markOrcAttackWin),
+  navalSplitRetreat: (f: AStandIn) =>
+    vi
+      .spyOn(theRetreatsBySea, 'navalSplitRetreat')
+      .mockImplementation(f as unknown as typeof theRetreatsBySea.navalSplitRetreat),
+  seaTrapLine: (f: AStandIn) =>
+    vi.spyOn(theRetreatsBySea, 'seaTrapLine').mockImplementation(f as unknown as typeof theRetreatsBySea.seaTrapLine),
+};
+function standIn(fns: Partial<Record<keyof typeof standInFor, AStandIn>>) {
+  for (const k of Object.keys(fns) as (keyof typeof standInFor)[]) {
+    const f = fns[k];
+    if (f) standInFor[k](f);
   }
 }
-afterEach(() => {
-  for (const [k, f] of Object.entries(was)) g[k] = f;
-  for (const k of Object.keys(was)) Reflect.deleteProperty(was, k);
-});
 const noop = () => undefined;
 /** The battle won or lost, and nothing else of it told or credited. */
 const aBattle = (won: boolean, before: (...a: unknown[]) => void = noop) => {
