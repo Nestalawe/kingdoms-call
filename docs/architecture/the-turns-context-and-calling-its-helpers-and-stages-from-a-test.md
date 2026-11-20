@@ -144,18 +144,19 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   pick or plan is a whole turn's, or calls the plan between them. P1-08l2's bots' plan
   (`botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning`, in `engine/bots/`)
   takes the context alone and calls the eight passes in order, each handed the context's own world and bot realms; the
-  movement pass is handed the duel forecast (`botHuntersDuelForecastFoughtOnCopiesOfBothHeroes`, a top-level function
-  now, so a test can stand it in) wrapped with the context. A test that calls the plan readies the context as
-  `resolveTurn` has it there (`ready` in `tests/lib/the-bots-plan-cases.ts`: the merge run with a bot's seat holding no
-  player, so the merge writes nothing for it, then the stages before the plan). P1-08l1's bots' diplomacy
-  (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, in `engine/bots/`) takes the context alone and
-  reads each bot realm's rivals from `turnContext._botEncounteredAtStart`: a copy of each bot's record of whom it had met,
-  made when the turn began, before the merge, and read by both of its calls (before the first phase and after the
-  phases). A test that calls it makes that copy as `resolveTurn` does (`ready` in `tests/lib/bot-diplomacy-cases.ts`);
-  changing a realm's `_encountered` afterwards changes nothing. The loop is the stages' calls, the intents between
-  the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
-  log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
-  the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
+  movement pass is handed the duel forecast (`botHuntersDuelForecastFoughtOnCopiesOfBothHeroes`, a top-level function)
+  wrapped with the context; the wrap calls it inside its own file, where a stand-in doesn't reach. A test that calls the
+  plan readies the context as `resolveTurn` has it there (`ready` in `tests/lib/the-bots-plan-cases.ts`: the merge run
+  with a bot's seat holding no player, so the merge writes nothing for it, then the stages before the plan). P1-08l1's
+  bots' diplomacy (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, in `engine/bots/`) takes the
+  context alone and reads each bot realm's rivals from `turnContext._botEncounteredAtStart`: a copy of each bot's record
+  of whom it had met, made when the turn began, before the merge, and read by both of its calls (before the first phase
+  and after the phases). A test that calls it makes that copy as `resolveTurn` does (`ready` in
+  `tests/lib/bot-diplomacy-cases.ts`); changing a realm's `_encountered` afterwards changes nothing. The loop is the
+  stages' calls, the intents between the first two. A test that calls a stage does what the loop does first: it sets
+  `turnContext._currentPhase`, and the log's context is clear (`{charId:null, phase:null}`) between phases, so a line
+  with no phase of its own is filed under the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts`
+  leaves it on its own phase.
 - A test can stand in a top-level **function** by replacing it in the `vm` (`engine.f = …`), as
   `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly` do. Don't stand in a top-level `const`
   arrow (`defendSpentThisPhase`, `noteEntered`): until P1-09d a `const` wasn't a property of the `vm`'s global object,
