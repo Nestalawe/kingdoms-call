@@ -1,9 +1,11 @@
-// The games of the balance matrix, set up for the engine in its bare vm (tests/lib/engine.ts) as tools/balance/play.ts
-// sets a game up on the page: in a scripted game realm 0 is a player's, on the matrix's scripted orders; every other
-// realm is a bot. GAME is scripted-05 (four realms): tests/unit/engine-purity.test.ts plays it whole in the vm;
-// tests/page/turn-shell.test.ts plays one turn of it on the page and in the vm, from the same seed, and compares the two
-// (P1-18e); tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts plays it with the engine's modules imported directly, from SETUPS
-// (P1-11a2). Every game of a set, with a report for every realm: tools/balance/every-realm.ts (P1-12a1).
+// The games of the balance matrix, set up for the engine as tools/balance/play.ts sets a game up on the page: in a
+// scripted game realm 0 is a player's, on the matrix's scripted orders; every other realm is a bot. GAME is scripted-05
+// (four realms): tests/unit/engine-purity.test.ts plays it whole in the engine's bare vm (tests/lib/engine.ts: newWorld);
+// tests/page/turn-shell.test.ts plays one turn of it on the page and on the engine's modules, from the same seed, and
+// compares the two (P1-18e); its world on the modules is newWorldOnFreshEngineModules, the vm's newWorld byte for byte.
+// tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts plays it with the engine's
+// modules imported directly, from SETUPS (P1-11a2). Every game of a set, with a report for every realm:
+// tools/balance/every-realm.ts (P1-12a1).
 import vm from 'node:vm';
 import { MAP_SIZES, matrix, SCRIPTED_REALM, START, type GameSpec } from '../../tools/balance/matrix.ts';
 import { scriptedOrders, type State } from '../../tools/balance/scripted.ts';
@@ -57,6 +59,38 @@ export function newWorldOf(engine: vm.Context, spec: GameSpec): string {
 
 /** A new world for GAME (newWorldOf). */
 export const newWorld = (engine: vm.Context): string => newWorldOf(engine, GAME);
+
+/** A new world for GAME made on the engine's modules, fresh (vi.resetModules, then the whole engine imported again)
+ *  with their dice seeded `seed`: the world `newWorld(loadEngine({ seed }))` makes in the vm, byte for byte. A world
+ *  made in a module set that has made one already differs (the name pools move on), so each call starts afresh; a
+ *  module the caller imports after it is of the same fresh set. Vitest is imported here, not at the top: the balance's
+ *  tools (tools/balance/every-realm.ts, tools/proof/the-gm-logs-worker.ts) import this file outside the test runner,
+ *  where Vitest can't be loaded. */
+export async function newWorldOnFreshEngineModules(seed: number): Promise<string> {
+  const { vi } = await import('vitest');
+  vi.resetModules();
+  await import('./the-whole-engine.ts');
+  const { kcRng } = await import('../../src/engine/rng.ts');
+  const { generateNewGame } = await import('../../src/engine/world/generate.ts');
+  kcRng.seed(seed);
+  // (each realm's race and alignment, read from the spec's lists by index, are there: the vm was handed them as JSON)
+  const setups = setupsOf(GAME).map((realm) => {
+    const { race, alignment } = realm;
+    if (race === undefined || alignment === undefined)
+      throw new Error(`realm ${String(realm.id)} has no race or alignment`);
+    return { ...realm, race, alignment };
+  });
+  const size = MAP_SIZES[GAME.realms];
+  if (!size) throw new Error(`the balance matrix has no map size for ${String(GAME.realms)} realms`);
+  const world = generateNewGame(setups, size, 0, { seaPct: GAME.seaPct });
+  return JSON.stringify(
+    Object.assign(world, {
+      turnMode: { mode: 'manual', time: '20:00', everyDays: 1, nextDeadlineAt: null, turnRanAt: null },
+      botDifficulty: 'hard',
+      botDiplomacy: GAME.diplomacy,
+    }),
+  );
+}
 
 /** The slot rows of `spec` for a turn, as the shell loads them, as JSON: in a scripted game realm 0 with the scripted
  *  orders it sent, the others bots. JSON, so that a page and a vm each make their own objects from it. */

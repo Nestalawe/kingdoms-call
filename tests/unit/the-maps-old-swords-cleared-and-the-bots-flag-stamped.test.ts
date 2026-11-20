@@ -9,26 +9,40 @@
 // three bots), on a turn seed of its own: a save holding last turn's swords, or the wrong bot flags, plays exactly the
 // turn the clean save plays, and the world after it has the slot rows' flags. These pass on the code before P1-08n too.
 // Then each function called directly: what it changes and what it leaves, a save or a realm list with gaps, and where
-// resolveTurn calls it (each stood in, in the vm, for the test's length). Beside them, the lines of resolveTurn's read
+// resolveTurn calls it (each stood in by vi.spyOn on the module that exports it, for the test's length: each is
+// called from src/engine/run-turn.ts, another file, where a stand-in on its module reaches). Beside them, the lines of resolveTurn's read
 // of the save no game reaches (P1-10b51): what a failing read threw, in its words and as the cause; a save that parses
 // into no game in play, refused first; a save handed as an object, changed in place; each bot realm's rivals at the
 // start, a copy, none for a realm with none or no realm. Properties (fast-check): the swords cleared take off exactly
 // the two marks and nothing else; the stamp sets exactly the slot rows' seats and nothing else.
-// Level 1 (unit): resolveTurn and the two functions in the bare vm (lib/engine.ts); the whole turn reads only the save
-// and the slot rows, so no lower level holds it, and no page is needed.
+// Level 1 (unit): resolveTurn and the two functions on the engine's modules (until P1-14m, in the bare vm); the whole
+// turn reads only the save and the slot rows, so no lower level holds it, and no page is needed.
+import '../lib/the-whole-engine.ts';
 import { isDeepStrictEqual } from 'node:util';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { GAME, newWorld, slotRows } from '../lib/matrix-game.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
+import { GAME, newWorldOnFreshEngineModules, slotRowsJson } from '../lib/matrix-game.ts';
+import {
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 const TURN_SEED = 0x5eed0002;
 const SWORDS = 'lastTurnsBattleAndDuelSwordsClearedFromTheMap';
 const STAMP = 'everyRealmStampedBotOrHumanFromTheBotSlotRows';
 
-const engine = loadEngine({ seed: SEED });
-quietEngineLog(engine);
+/** scripted-05's world before its first turn, made by the engine on fresh modules seeded as the matrix seeds it (JSON). */
+const WORLD = await newWorldOnFreshEngineModules(GAME.seed);
+// The modules the turns are played on: fresh again, seeded SEED.
+quietEngineLog(await loadTheEngineOnItsModules({ seed: SEED }));
+const theTurn = await import('../../src/engine/run-turn.ts');
+const theReports = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
+const theSetUp =
+  await import('../../src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts');
+const theContext = await import('../../src/engine/turn/context.ts');
+const thePerks = await import('../../src/engine/titles/perks.ts');
+const theLogLineHelpers = await import('../../src/engine/turn/log-line-helpers.ts');
 
 type Raw = Record<string, unknown>;
 interface Province extends Raw {
@@ -44,8 +58,6 @@ interface World {
   players: (Realm | null)[];
 }
 
-/** scripted-05's world before its first turn, made by the engine (JSON). */
-const WORLD = newWorld(loadEngine({ seed: GAME.seed }));
 /** The seats the slot rows make bots': every realm but the scripted player's. */
 const BOT_FLAGS = Array.from({ length: GAME.realms }, (_, i) => i !== 0);
 
@@ -60,17 +72,21 @@ interface Played {
   state: string;
   reports: string;
 }
+/** resolveTurn, handed what a test hands it (a save as words or an object, slot rows of the test's own). */
+const resolveTurn = theTurn.resolveTurn as unknown as (...a: unknown[]) => {
+  state: string;
+  spyStealthAndInvisibilityStampedForTheReports(): void;
+  whatTheReportsRead(): unknown;
+};
+/** The slot rows of the first turn of `state`, as the shell loads them. */
+const slotRows = (state: string): unknown[] => JSON.parse(slotRowsJson(state, 1)) as unknown[];
+
 /** One turn of `state` through resolveTurn, on the turn's own dice, and its reports, as JSON. */
 function play(state: string): Played {
-  const resolveTurn = engineFn(engine, 'resolveTurn') as (...a: unknown[]) => {
-    state: string;
-    spyStealthAndInvisibilityStampedForTheReports(): void;
-    whatTheReportsRead(): unknown;
-  };
-  const buildReports = engineFn(engine, 'buildReports') as (whatTheReportsRead: unknown) => {
+  const buildReports = theReports.buildReports as unknown as (whatTheReportsRead: unknown) => {
     reports: { gp: { player_index: unknown }; report: unknown }[];
   };
-  const r = resolveTurn(state, slotRows(engine, WORLD, 1), 1, TURN_SEED);
+  const r = resolveTurn(state, slotRows(WORLD), 1, TURN_SEED);
   r.spyStealthAndInvisibilityStampedForTheReports();
   const { reports } = buildReports(r.whatTheReportsRead());
   return { state: r.state, reports: JSON.stringify(reports.map(({ gp, report }) => [gp.player_index, report])) };
@@ -80,22 +96,37 @@ const CLEAN = play(WORLD);
 const sameWorld = (a: string, b: string) => isDeepStrictEqual(JSON.parse(a), JSON.parse(b));
 const flagsOf = (state: string) => (JSON.parse(state) as World).players.map((p) => p?._isBot);
 
-/** Replaces the engine's top-level function `name` by `fn` for `body`'s length; returns what `body` returns. */
-function standIn<T>(
-  name: string,
-  fn: (was: (...a: unknown[]) => unknown) => (...a: unknown[]) => unknown,
-  body: () => T,
-): T {
-  const g = engine as Record<string, unknown>;
-  const was = g[name] as (...a: unknown[]) => unknown;
-  if (typeof was !== 'function') throw new Error(`the engine has no function ${name}`);
-  g[name] = fn(was);
+type AnyFunction = (...a: unknown[]) => unknown;
+/** Stands in the engine's function `was` by what `fn` makes of it, for `body`'s length, through `spyOn` (vi.spyOn on
+ *  the module that exports it, the function named); returns what `body` returns. */
+function standIn<T>(was: unknown, spyOn: () => MockInstance, fn: (was: AnyFunction) => AnyFunction, body: () => T): T {
+  if (typeof was !== 'function') throw new Error('the engine has no such function');
+  const spy = spyOn().mockImplementation(fn(was as AnyFunction));
   try {
     return body();
   } finally {
-    g[name] = was;
+    spy.mockRestore();
   }
 }
+/** Each function a test stands in: as it is, and its stand-in on its module. */
+const theContextMade = [theContext.createTurnContext, () => vi.spyOn(theContext, 'createTurnContext')] as const;
+const theSwordsCleared = [
+  theSetUp.lastTurnsBattleAndDuelSwordsClearedFromTheMap,
+  () => vi.spyOn(theSetUp, 'lastTurnsBattleAndDuelSwordsClearedFromTheMap'),
+] as const;
+const theHeldItemsSnapshot = [thePerks.snapshotHeldItems, () => vi.spyOn(thePerks, 'snapshotHeldItems')] as const;
+const theBotsFlagStamped = [
+  theSetUp.everyRealmStampedBotOrHumanFromTheBotSlotRows,
+  () => vi.spyOn(theSetUp, 'everyRealmStampedBotOrHumanFromTheBotSlotRows'),
+] as const;
+const theTelemetrysSnapshot = [
+  theLogLineHelpers.telRealmSnapshot,
+  () => vi.spyOn(theLogLineHelpers, 'telRealmSnapshot'),
+] as const;
+const theRepairs = [
+  theSetUp.turnStartRepairsAndAFreshSlateOfOrdersForEveryHero,
+  () => vi.spyOn(theSetUp, 'turnStartRepairsAndAFreshSlateOfOrdersForEveryHero'),
+] as const;
 
 describe('a whole turn: last turn’s swords', () => {
   test('the clean save holds no swords, so the turns below compare with a turn that starts with none', () => {
@@ -130,7 +161,7 @@ describe('a whole turn: last turn’s swords', () => {
     });
     const seen: unknown[] = [];
     standIn(
-      'createTurnContext',
+      ...theContextMade,
       (was) =>
         (...a) => {
           const G = a[0] as World;
@@ -171,7 +202,7 @@ describe('a whole turn: the bots’ flags', () => {
 });
 
 describe('the swords cleared, called directly', () => {
-  const clear = (G: unknown) => (engineFn(engine, SWORDS) as (G: unknown) => unknown)(G);
+  const clear = (G: unknown) => (theSetUp.lastTurnsBattleAndDuelSwordsClearedFromTheMap as (G: unknown) => unknown)(G);
 
   test('every province loses both marks; every other mark, and a gap in the list, stays', () => {
     const G = {
@@ -220,10 +251,10 @@ describe('the swords cleared, called directly', () => {
         if (name === SWORDS) handed = a;
         return was(...a);
       };
-    standIn(SWORDS, note(SWORDS), () =>
-      standIn('snapshotHeldItems', note('snapshotHeldItems'), () =>
+    standIn(...theSwordsCleared, note(SWORDS), () =>
+      standIn(...theHeldItemsSnapshot, note('snapshotHeldItems'), () =>
         standIn(
-          'createTurnContext',
+          ...theContextMade,
           (was) =>
             (...a) => {
               order.push('createTurnContext');
@@ -240,7 +271,7 @@ describe('the swords cleared, called directly', () => {
   test('a failure in it is a save that can’t be read', () => {
     expect(() =>
       standIn(
-        SWORDS,
+        ...theSwordsCleared,
         () => () => {
           throw new Error('the map is torn');
         },
@@ -253,7 +284,7 @@ describe('the swords cleared, called directly', () => {
   const thrownBy = (thrown: unknown): unknown => {
     try {
       standIn(
-        SWORDS,
+        ...theSwordsCleared,
         () => () => {
           throw thrown;
         },
@@ -291,9 +322,8 @@ describe('the swords cleared, called directly', () => {
     );
   });
   test('a save handed as an object, not words, is the turn’s working copy: the turn changes it in place', () => {
-    const resolveTurn = engineFn(engine, 'resolveTurn') as (...a: unknown[]) => { state: string };
     const save = JSON.parse(WORLD) as World;
-    const played = resolveTurn(save, slotRows(engine, WORLD, 1), 1, TURN_SEED);
+    const played = resolveTurn(save, slotRows(WORLD), 1, TURN_SEED);
     expect(JSON.stringify(save)).toBe(played.state);
     expect(played.state).not.toBe(WORLD);
   });
@@ -330,7 +360,8 @@ describe('the swords cleared, called directly', () => {
 });
 
 describe('the bots’ flag stamped, called directly', () => {
-  const stamp = (tc: unknown) => (engineFn(engine, STAMP) as (tc: unknown) => unknown)(tc);
+  const stamp = (tc: unknown) =>
+    (theSetUp.everyRealmStampedBotOrHumanFromTheBotSlotRows as (tc: unknown) => unknown)(tc);
 
   test('each realm is a bot’s exactly when the slot rows say so; a gap in the realms stays a gap', () => {
     const G = {
@@ -372,10 +403,10 @@ describe('the bots’ flag stamped, called directly', () => {
         return was(...a);
       };
     let context: unknown;
-    standIn(STAMP, note(STAMP), () =>
-      standIn('telRealmSnapshot', note('telRealmSnapshot'), () =>
+    standIn(...theBotsFlagStamped, note(STAMP), () =>
+      standIn(...theTelemetrysSnapshot, note('telRealmSnapshot'), () =>
         standIn(
-          'turnStartRepairsAndAFreshSlateOfOrdersForEveryHero',
+          ...theRepairs,
           (was) =>
             (...a) => {
               order.push('repairs');
@@ -398,14 +429,14 @@ describe('the bots’ flag stamped, called directly', () => {
       one['_encountered'] = [0, 2];
       delete two['_encountered'];
     });
-    const rows = slotRows(engine, state, 1) as unknown[];
+    const rows = slotRows(state);
     rows.push({ player_index: 9 }); // a bot's seat no realm holds
     let atStart: Record<number, unknown> = {};
     let held: unknown;
     const STOP = 'the repairs reached';
     expect(() =>
       standIn(
-        'turnStartRepairsAndAFreshSlateOfOrdersForEveryHero',
+        ...theRepairs,
         () =>
           (...a) => {
             const tc = a[0] as Raw;
@@ -413,7 +444,7 @@ describe('the bots’ flag stamped, called directly', () => {
             held = (tc['G'] as World).players[1]?.['_encountered'];
             throw new Error(STOP);
           },
-        () => (engineFn(engine, 'resolveTurn') as (...a: unknown[]) => unknown)(state, rows, 1, TURN_SEED),
+        () => resolveTurn(state, rows, 1, TURN_SEED),
       ),
     ).toThrow(STOP);
     expect(Object.keys(atStart).sort()).toEqual(['1', '2', '3', '9']);

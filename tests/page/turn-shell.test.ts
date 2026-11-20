@@ -51,10 +51,11 @@
 // each turn it red). The seed handed (P1-08m; fails on its base, where the shell lent the dice itself): `resolveTurn`
 // is handed, after the state, the slot rows and the turn, exactly the seed `runTurn` returns, each turn its own. The
 // same result (P1-18e; fails on `main`): one turn of `scripted-05` (`lib/matrix-game.ts`) on the page, then
-// `resolveTurn`, the Spy-stealth step and `buildReports()` in the bare `vm` from the seed the page returned, on the
-// same world and rows: the world after the turn, the GM's log and each report are the same byte for byte, once the
-// shell's stamps (the turn mode's `turnRanAt` and `nextDeadlineAt`, each report's `engineStamp`) are taken out of both
-// by one function. The check of a saved game at load (P1-15d; fails on its base, whose turn says nothing of it): the
+// `resolveTurn`, the Spy-stealth step and `buildReports()` on the engine's modules (fresh; the bare `vm` until P1-14m)
+// from the seed the page returned, on the same world and rows: the world after the turn, the GM's log and each report
+// are the same byte for byte, once the shell's stamps (the turn mode's `turnRanAt` and `nextDeadlineAt`, each report's
+// `engineStamp`) are taken out of both by one function. The check of a saved game at load (P1-15d; fails on its
+// base, whose turn says nothing of it): the
 // page plays a turn from the version-0 fixture (`fixtures/saves/version-0.json`, an all-bot game), saved at version 2
 // with nothing of the check in the message; the stop (P1-15f8; red on its base, which plays the turn): with a battle's
 // mark left on a company, the turn is refused, nothing is written, the orders stay in, and the message names the place
@@ -68,10 +69,10 @@
 // older turn's line, with no kind, by its words as before. Level 4: these are the database calls of the turn's shell
 // (`runTurn`, `src/ui/gm/turn-shell.ts`), around the engine's `resolveTurn`; the shell runs only in the booted page.
 // TypeScript, in `page/`
+import '../lib/the-whole-engine.ts';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import vm from 'node:vm';
 import { bootJsdom, DB_VERSION, readPage, type PageWindow } from '../lib/boot.ts';
 import {
   aGameMastersWorld,
@@ -82,8 +83,7 @@ import {
   type TheGameMastersWorld,
 } from '../lib/fake-db.ts';
 import type { AGameWithItsRealms, ARealm, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
-import { loadEngine } from '../lib/engine.ts';
-import { GAME, newWorld, slotRows, slotRowsJson } from '../lib/matrix-game.ts';
+import { GAME, newWorldOnFreshEngineModules, slotRowsJson } from '../lib/matrix-game.ts';
 import { plantAtStart, plantedSite } from '../lib/source.ts';
 
 const NOW = '2026-10-01T12:00:00Z';
@@ -530,7 +530,8 @@ test('each turn plays from its own seed, and the page gets its dice back', async
   };
   const run = await followed();
   // The page's stream: each turn takes one number for its seed, and the page draws the rest.
-  const page = (vm.runInContext('kcRngStream', loadEngine({ seed: 1 })) as (s: number) => () => number)(77);
+  const { kcRngStream } = await import('../../src/engine/rng.ts');
+  const page = kcRngStream(77);
   const [seed1, draw1, seed2, draw2, after] = Array.from({ length: 5 }, () => page());
   const seedOf = (x = 0) => Math.floor(x * 2 ** 32) || 1;
   for (const seed of run.seeds) {
@@ -613,9 +614,10 @@ function firstDifference(a: string, b: string): string {
 }
 
 // Fails on main, where runTurn returns no seed. Level 4 (page): the page's turn, through its shell and database, is
-// half of what is compared; the other half is the engine alone, in the bare vm (tests/lib/engine.ts).
+// half of what is compared; the other half is the engine alone, on its modules (fresh: vi.resetModules), as the bare vm
+// (tests/lib/engine.ts) was until P1-14m.
 test('the page plays the turn the engine plays from the seed the shell returns', async () => {
-  const world = newWorld(loadEngine({ seed: GAME.seed }));
+  const world = await newWorldOnFreshEngineModules(GAME.seed);
   const t = seat(await boot(GAME.seed), () => ({ world, rows: JSON.parse(slotRowsJson(world, 1)) as Row[] }));
   let page;
   let seed;
@@ -640,19 +642,29 @@ test('the page plays the turn the engine plays from the seed the shell returns',
     t.W.close();
   }
 
-  // The engine alone, its dice started from the page's turn seed, on the same world and slot rows.
+  // The engine alone, on fresh modules, its dice started from the page's turn seed, on the same world and slot rows.
   // Its console quiet but for warnings and errors, which are noted, as the page's are.
-  const engine = loadEngine({ seed: GAME.seed });
+  vi.resetModules();
+  await import('../lib/the-whole-engine.ts');
+  const { kcRng, kcRngStream: theStreamOfASeed } = await import('../../src/engine/rng.ts');
+  const theTurn = await import('../../src/engine/run-turn.ts');
+  const theReports = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
+  kcRng.seed(GAME.seed);
   const said: string[] = [];
-  (
-    vm.runInContext(
-      `(said, seed)=>{ const tell=(how)=>(...a)=>{ said.push(how+': '+a.map(String).join(' ')); };
-        globalThis.console={log(){},info(){},debug(){},warn:tell('warn'),error:tell('error')};
-        kcRng.use(kcRngStream(seed)); }`,
-      engine,
-    ) as (said: string[], seed: number) => void
-  )(said, seed);
-  const resolveTurn = vm.runInContext('resolveTurn', engine) as (
+  const tell =
+    (how: string) =>
+    (...a: unknown[]) => {
+      said.push(how + ': ' + a.map(String).join(' '));
+    };
+  const theConsoleQuiet = [
+    vi.spyOn(console, 'log').mockImplementation(() => undefined),
+    vi.spyOn(console, 'info').mockImplementation(() => undefined),
+    vi.spyOn(console, 'debug').mockImplementation(() => undefined),
+    vi.spyOn(console, 'warn').mockImplementation(tell('warn')),
+    vi.spyOn(console, 'error').mockImplementation(tell('error')),
+  ];
+  kcRng.use(theStreamOfASeed(seed));
+  const resolveTurn = theTurn.resolveTurn as unknown as (
     state: string,
     rows: unknown,
     turn: number,
@@ -662,14 +674,15 @@ test('the page plays the turn the engine plays from the seed the shell returns',
     spyStealthAndInvisibilityStampedForTheReports(): void;
     whatTheReportsRead(): unknown;
   };
-  const buildReports = vm.runInContext('buildReports', engine) as (whatTheReportsRead: unknown) => {
+  const buildReports = theReports.buildReports as unknown as (whatTheReportsRead: unknown) => {
     reports: { gp: Row; report: unknown }[];
     gmLog: unknown;
   };
-  const resolved = resolveTurn(world, slotRows(engine, world, 1), 1);
+  const resolved = resolveTurn(world, JSON.parse(slotRowsJson(world, 1)), 1);
   resolved.spyStealthAndInvisibilityStampedForTheReports();
   // The GM's log in words, as the views write it for the shell to save (P1-12c3).
   const { reports, gmLog } = buildReports(resolved.whatTheReportsRead());
+  for (const spy of theConsoleQuiet) spy.mockRestore();
   const alone = engineOutput(
     resolved.state,
     gmLog,

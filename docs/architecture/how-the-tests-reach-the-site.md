@@ -39,8 +39,9 @@
   another top-level function, wrap it in the `vm`. `botWorld(engine, realms, size, opts)` makes a new world of bot realms there, as
   JSON, and `quietEngineLog(engine)` quiets the line `emit` echoes to the console.
   **`lib/matrix-game.ts`** sets up one game of the balance matrix (`scripted-05`) for it: `newWorld(engine)` and the
-  slot rows for a turn (`slotRows`, or `slotRowsJson` for a page's database), shared by `engine-purity` and
-  `turn-shell`'s same-result test. **`lib/middle-of-a-bot-world.ts`** stages a case for a lifted helper on the
+  slot rows for a turn (`slotRows`, or `slotRowsJson` as JSON), for `engine-purity`; `newWorldOnFreshEngineModules(seed)`
+  makes the same world on fresh modules, byte for byte (`turn-shell`'s same-result test, the old swords, the turn's
+  own dice). **`lib/middle-of-a-bot-world.ts`** stages a case for a lifted helper on the
   middle of a bot world, cleared (open plain, nobody there; realms 0 and 1 at war, 0 and 2 allied): `board()` makes the
   context, `hero()` stands a hero there with troops and points of movement, `withDice` and `firstDie` pin the dice.
   `playTurn` plays a whole turn from the board; its third argument adds orders a realm sends under a
@@ -115,8 +116,8 @@
   `play` return `perception` too: each event as it was emitted (its audience, the phase and hero its line was filed
   under, whether it named that hero, and the realm he served then: P1-12c1; `emit` stood in), with its line's words as
   the views wrote them (a battle's tally place left empty is no event: P1-12c3), and the turn's sight, for the leak check's audience check (`every-realm`, `simulation/every-realms-report-…`). Its `W` is the engine's global scope,
-  where a top-level function can be stood in for the turn (`W.trySkillGain = …`): the scenario tests that used a
-  code-anchor hook on the page play their turns here.
+  where a top-level function can be stood in for the turn (`W.pursuitCatchChance = …`): `scenario/pursuit-one-battle`
+  plays here, as its certain catch reaches a call no spy reaches and no staging can make (Spy counts to 5, so 95%).
 - **A page's own names**: its scripts are modules, so in a browser a test reaches only what the page
   puts on `window`: the two lists of `src/ui/<page>/globals.ts` (the names its inline handlers call, and the names its
   tests reach: functions and constants) and its declared globals (`globalThis.<name> = <value>;`: a variable its files

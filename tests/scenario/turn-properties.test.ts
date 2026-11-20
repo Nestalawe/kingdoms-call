@@ -10,11 +10,13 @@
 // syncAllMaxHp(turnContext), which the turn calls once more after the phases (with no phase set), so standing it in
 // with a reader that runs after it, while a phase is set, reads them five times a turn. "Met" is the leak check's rule
 // (lib/report-leaks.ts), with its parked breaches (lib/invariants.ts).
-// Level 2 (scenario): one real turn on a small staged world, played in the engine's bare vm
-// (lib/scenario-in-the-vm.ts); the lists are checked between phases, inside the turn, and the reports are put together
-// there too. The engine reads no clock (unit/engine-purity.test.ts), so nothing pins one. Until plan P1-09a the turn
-// was played on the GM portal, with its clock pinned, and a code-anchor hook on syncAllMaxHp's line in the phase loop
-// read the lists.
+// Level 2 (scenario): one real turn on a small staged world, played on the engine's modules
+// (lib/a-staged-turn-on-the-engines-modules.ts); the lists are checked between phases, inside the turn, and the reports
+// are put together there too. syncAllMaxHp is stood in by vi.spyOn on its module, which reaches its two calls: both are
+// in other files (src/engine/run-turn.ts, and the after-the-phases stage). The engine reads no clock
+// (unit/engine-purity.test.ts), so nothing pins one. Until plan P1-09a the turn was played on the GM portal, with its
+// clock pinned, and a code-anchor hook on syncAllMaxHp's line in the phase loop read the lists; until P1-14m it was
+// played in the engine's bare vm.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Properties of a whole turn (fast-check, P1-04d), over made-up small worlds (2 to 4 realms, some left to the bots) and
@@ -22,14 +24,14 @@
 // each phase, every living character is named in exactly one province's list of heroes, his own: the lists are rebuilt
 // from where each stands once a phase, and nothing else may disagree); no realm's report names a realm it hasn't met
 // (the leak check's rule, `lib/report-leaks.ts`, with its parked breaches). 50 turns each (500 in full). Level 2: one
-// real turn on a small staged world, in the bare `vm`; the lists are read between phases inside `resolveTurn`
-// (`syncAllMaxHp`, the phase's last call, stood in with a reader after it; P1-09a: it was a code-anchor hook on the GM
-// portal), where the reports are put together too. TypeScript, in `scenario/`
+// real turn on a small staged world, on the engine's modules; the lists are read between phases inside `resolveTurn`
+// (`syncAllMaxHp`, the phase's last call, stood in on its module with a reader after it; P1-09a: it was a code-anchor
+// hook on the GM portal), where the reports are put together too. TypeScript, in `scenario/`
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
-import { expect, test } from 'vitest';
-import type { KcRng } from '../lib/boot.ts';
+import { expect, test, vi } from 'vitest';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
-import { scenarioInTheVm, type Order } from '../lib/scenario-in-the-vm.ts';
+import { aStagedTurnOnTheEnginesModules, type Order } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 const full = process.env['KC_FULL'] === '1';
@@ -38,16 +40,11 @@ const RUNS = full ? 500 : 50;
 /** 1.2 s an input: 60 s for npm test's 50, 600 s for KC_FULL's 500. */
 const TIMEOUT = timeLimitForPropertyRuns(RUNS, 1_200).timeout;
 
-const sc = scenarioInTheVm({ seed: 1 });
-const W = sc.W;
+const sc = await aStagedTurnOnTheEnginesModules({ seed: 1 });
+const { kcRng } = await import('../../src/engine/rng.ts');
+const theMaxHpsModule = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
 type PhaseEnd = (ph: number, G: World) => void;
-let phaseEnd: PhaseEnd | null = null;
-const syncAllMaxHp = W['syncAllMaxHp'] as (tc: { _currentPhase: number | null; G: World }) => unknown;
-W['syncAllMaxHp'] = (tc: { _currentPhase: number | null; G: World }) => {
-  const r = syncAllMaxHp(tc);
-  if (phaseEnd && tc._currentPhase != null) phaseEnd(tc._currentPhase, tc.G);
-  return r;
-};
+const syncAllMaxHp = theMaxHpsModule.syncAllMaxHp;
 
 interface World {
   characters: { id: number; name: string; alive?: boolean; location?: number; player?: number | null }[];
@@ -92,10 +89,14 @@ const turnArb = fc.integer({ min: 2, max: 4 }).chain((realms) =>
 );
 type Input = typeof turnArb extends fc.Arbitrary<infer T> ? T : never;
 
-/** Plays one turn of `input`, with `onPhaseEnd` called at the end of each phase. */
+/** Plays one turn of `input`, with `onPhaseEnd` called at the end of each phase (syncAllMaxHp stood in, for the turn,
+ *  with a reader after it while a phase is set). */
 function play(input: Input, onPhaseEnd: PhaseEnd) {
-  (W['kcRng'] as KcRng).seed(input.seed);
-  phaseEnd = onPhaseEnd;
+  kcRng.seed(input.seed);
+  const standIn = vi.spyOn(theMaxHpsModule, 'syncAllMaxHp').mockImplementation((tc) => {
+    syncAllMaxHp(tc);
+    if (tc._currentPhase != null) onPhaseEnd(tc._currentPhase, tc.G);
+  });
   try {
     return sc.turn({
       realms: input.realms,
@@ -112,7 +113,7 @@ function play(input: Input, onPhaseEnd: PhaseEnd) {
       },
     });
   } finally {
-    phaseEnd = null;
+    standIn.mockRestore();
   }
 }
 
@@ -127,7 +128,6 @@ test(
         });
         expect(inTwoPlaces(r.S as unknown as World), 'the staged world').toEqual([]);
         expect(found.join('\n')).toBe('');
-        expect(sc.errs).toEqual([]);
       }),
       { numRuns: RUNS },
     );
@@ -150,7 +150,6 @@ test(
           reports: Object.entries(r.reports).map(([realm, report]) => ({ realm: Number(realm), report })),
         }).filter((b) => b.check === 'an unmet realm');
         expect(describeBreaches('the turn', broke)).toBe('');
-        expect(sc.errs).toEqual([]);
       }),
       { numRuns: RUNS },
     );
