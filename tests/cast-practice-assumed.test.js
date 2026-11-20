@@ -1,6 +1,6 @@
 // 2026-10-13 (item 16) — cast orders assume that every Practice order earlier in the turn succeeds,
 // in how many spells the hero may cast. The order form's Cast Spell list already does (item 2,
-// tests/cast-practice-projection); this test covers the rest:
+// tests/page/the-player-portals-order-form-on-the-values-handed-them.test.ts); this test covers the rest:
 //   Unit (level 1): the bots' order check (runBotOrderHygiene, botCastLimit) counts a bot's earlier
 //     practice orders the same way, so it no longer strikes out a cast that relies on one.
 //   Page (level 4): the encounter plan's combat-spell picker. A Psychic 1 hero practising Psychic is

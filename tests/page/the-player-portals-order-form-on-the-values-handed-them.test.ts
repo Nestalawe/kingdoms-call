@@ -2,7 +2,11 @@
 // the screen tours don't reach, or reach only in part (npm run proof:tours), each run here on the value that reaches it,
 // so a fault planted in one is red: the treasury ledger's refresh, the read-only view of orders sent (a pre-order card's
 // hero named), a draft that can't be read, the encounter plan's pickers and tactics (cleared, a spell confirmed, moved,
-// dragged and removed), a spell field for a hero the report doesn't hold, and the heir's points taken back.
+// dragged and removed), a spell field for a hero the report doesn't hold, and the heir's points taken back. With them
+// (until plan P1-14z the script cast-practice-projection), the Cast Spell field as the live form builds it: each
+// earlier Practice Skill on a school counted as a success, rebuilt when an earlier order changes, the Warlock's extra
+// spell (R-123) and a Grand Cathedral's free Bless (R-124); the copies test
+// (tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts) compares the form's count with the engine's.
 // Level 4 (page): orders-form.ts loads the page's start-up (its database client), so no lower level reaches it; the
 // portal is booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with
 // every module loaded and the orders column in the page.
@@ -321,5 +325,253 @@ describe("the heir's points", () => {
     expect(stage('currentReport.characters[0]._pendingSkillAllocation')).toBe(4);
     void (call('allocateHeirSkill', 'k', 'melee', -1) as Promise<void>).catch(() => undefined);
     expect(stage('JSON.stringify(currentReport.characters[1].skills)')).toBe('{"melee":3}');
+  });
+});
+
+// The Cast Spell field counts every Practice Skill order on a school in an earlier phase as a success (until plan
+// P1-14z the script cast-practice-projection): the level it quotes, and the number of spells it lets the hero cast
+// from that school, are the ones the hero may have reached by that phase, and an earlier Practice or Cast changed
+// rebuilds the later fields at once. With them the Warlock's extra spell (R-123) and a Grand Cathedral's free Bless
+// (R-124). Made-up heroes; the steps run once, in beforeAll, in the order a player takes them; each check is a test.
+describe('the Cast Spell field counts earlier practices, the Warlock and a Grand Cathedral', () => {
+  const seen: Record<string, unknown> = {};
+  /** An option's state as the field shows it: closed or not, and its words. */
+  const options: Record<string, { readonly off: boolean | undefined; readonly text: string }> = {};
+  /** Whether Summer's field offers a priest a spell, and its words (or the field's placeholder). */
+  const offers: Record<string, { readonly open: boolean; readonly text: string | null | undefined }> = {};
+  let noTitle: { offered: boolean; off: boolean | undefined; placeholder: string | null | undefined } | undefined;
+  const errorsHere: string[] = [];
+  const field = (id: string): HTMLSelectElement | null => doc.querySelector<HTMLSelectElement>(`#${id}`);
+  /** The option for `spell` in a hero's spell field in phase `ph`, if the field is a list that holds it. */
+  const optionOf = (hero: string, ph: number, spell: string): HTMLOptionElement | undefined => {
+    const s = field(`po-target-${hero}-${String(ph)}`);
+    return s?.options ? [...s.options].find((o) => o.value === spell) : undefined;
+  };
+  const textOfOption = (hero: string, ph: number, spell: string): string =>
+    optionOf(hero, ph, spell)?.textContent ?? '';
+  /** An order picked in a phase, as the player picks it; one the phase doesn't offer stops the steps. */
+  const act = (hero: string, ph: number, action: string): void => {
+    const s = field(`po-action-${hero}-${String(ph)}`);
+    if (!s || ![...s.options].some((o) => o.value === action))
+      throw new Error(`phase ${String(ph)} offers no ${action}`);
+    s.value = action;
+    call('onActionChange', hero, ph, 0);
+  };
+  /** A spell, or a school to practise, picked in a phase's target field. */
+  const aim = (hero: string, ph: number, value: string, how: 'spell' | 'school'): void => {
+    const s = field(`po-target-${hero}-${String(ph)}`);
+    if (!s) throw new Error(`no target field in phase ${String(ph)}`);
+    s.value = value;
+    if (how === 'spell') call('onSpellChange', hero, ph, value);
+    else call('rebuildTargetWrap', hero, ph);
+  };
+  /** The form built for `heroes` on a report of turn `turn`, its kingdom as given. */
+  const theFormFor = async (heroes: unknown[], turn: number, kingdom: unknown): Promise<void> => {
+    const report = {
+      turn,
+      _liveTurn: turn,
+      characters: heroes,
+      kingdom,
+      worldMeta: { provinces: [{ id: 11, name: 'Ashford' }] },
+    };
+    stage(`currentReport = ${JSON.stringify(report)};`);
+    call('buildOrdersForm', stage('currentReport.characters'), false, null, turn);
+    await settle(50);
+  };
+  const aHeroOf = (id: string, name: string, skills: Record<string, number>, more = {}) => ({
+    id,
+    name,
+    player: 0,
+    locationId: 11,
+    locationName: 'Ashford',
+    hp: 20,
+    maxHp: 20,
+    armies: [],
+    items: [],
+    skills,
+    effectiveSpeed: 3,
+    effectiveSeaSpeed: 3,
+    isKing: false,
+    ...more,
+  });
+  const psy = 'Charm';
+  const ele = 'Earthquake';
+
+  beforeAll(async () => {
+    const errorsBefore = errs.length;
+    // the page's console.error lines count as its errors here, as they did in the script
+    const quiet = P.console.error;
+    P.console.error = (...a) => errorsHere.push(`console.error: ${a.map(String).join(' ')}`);
+    try {
+      stage("currentGamePlayer = { id: 'gpx', orders: null };");
+      // Psychic 2 casts one spell a turn; Psychic 3 casts two. Elemental 5 is as far as practice goes.
+      await theFormFor([aHeroOf('h1', 'Maelis', { psychic: 2, elemental: 5 }, { isKing: true })], 3, {
+        gold: 100,
+        alignment: 'Good',
+      });
+      act('h1', 1, 'Cast Spell');
+      seen['noPractice'] = textOfOption('h1', 1, psy);
+      act('h1', 0, 'Practice Skill');
+      aim('h1', 0, 'psychic', 'school');
+      seen['afterAPractice'] = textOfOption('h1', 1, psy);
+      aim('h1', 1, psy, 'spell');
+      act('h1', 2, 'Cast Spell');
+      options['secondInAutumn'] = { off: optionOf('h1', 2, psy)?.disabled, text: textOfOption('h1', 2, psy) };
+      seen['atFive'] = textOfOption('h1', 2, ele);
+      act('h1', 3, 'Practice Skill');
+      aim('h1', 3, 'psychic', 'school');
+      act('h1', 4, 'Cast Spell');
+      seen['twoPractices'] = textOfOption('h1', 4, psy);
+      aim('h1', 4, ele, 'spell');
+      const winterProvince = (): HTMLSelectElement | null => field('po-extra-h1-4');
+      seen['ashfordOffered'] = [...(winterProvince()?.options ?? [])].some((o) => o.value === '11');
+      const province = winterProvince();
+      if (seen['ashfordOffered'] && province) province.value = '11';
+      act('h1', 3, 'Rest');
+      act('h1', 3, 'Practice Skill');
+      aim('h1', 3, 'psychic', 'school');
+      seen['winterAfterARebuild'] = [field('po-target-h1-4')?.value, winterProvince()?.value];
+      act('h1', 0, 'Rest');
+      options['withoutThePractice'] = { off: optionOf('h1', 2, psy)?.disabled, text: textOfOption('h1', 2, psy) };
+      act('h1', 0, 'Practice Skill');
+      aim('h1', 0, 'psychic', 'school');
+      seen['practiceBack'] = optionOf('h1', 2, psy)?.disabled;
+      aim('h1', 0, 'elemental', 'school');
+      seen['reAimed'] = optionOf('h1', 2, psy)?.disabled;
+
+      // R-123: two heroes at Elemental 4 cast Earthquake in Spring, Summer and Autumn; in Winter the Warlock (the minor
+      // title, in the report's minorHeld) is offered a fourth.
+      const warlockTitle = {
+        key: 'warlock',
+        name: 'The Warlock',
+        perk: '+1 spell of your best school/turn',
+        req: 'Highest single magic-school level.',
+      };
+      const mage = (id: string, minorHeld: unknown[], skills: Record<string, number> = { elemental: 4 }) =>
+        aHeroOf(id, `Mage ${id}`, skills, { minorHeld });
+      await theFormFor([mage('w1', [warlockTitle]), mage('w2', [])], 6, { gold: 100, alignment: 'Good' });
+      for (const id of ['w1', 'w2']) {
+        for (let ph = 0; ph < 4; ph++) act(id, ph, 'Cast Spell');
+        for (let ph = 0; ph < 3; ph++) aim(id, ph, ele, 'spell');
+      }
+      options['warlocksFourth'] = { off: optionOf('w1', 3, ele)?.disabled, text: textOfOption('w1', 3, ele) };
+      const w2s = field('po-target-w2-3');
+      noTitle = {
+        offered: !!optionOf('w2', 3, ele),
+        off: w2s?.disabled,
+        placeholder: w2s?.getAttribute('placeholder'),
+      };
+      // His best school is read from the levels he may have trained by then: at Elemental 4 and Psychic 4, a Psychic
+      // practice in Spring makes Psychic 5 his best, so Winter's fourth Elemental spell is closed.
+      await theFormFor([mage('w3', [warlockTitle], { elemental: 4, psychic: 4 })], 6, { gold: 100, alignment: 'Good' });
+      act('w3', 0, 'Practice Skill');
+      aim('w3', 0, 'psychic', 'school');
+      for (let ph = 1; ph < 5; ph++) act('w3', ph, 'Cast Spell');
+      for (let ph = 1; ph < 4; ph++) aim('w3', ph, ele, 'spell');
+      options['notHisBest'] = { off: optionOf('w3', 4, ele)?.disabled, text: textOfOption('w3', 4, ele) };
+      options['hisBest'] = { off: optionOf('w3', 4, psy)?.disabled, text: textOfOption('w3', 4, psy) };
+
+      // R-124: two priests at White 1 (one White spell a turn) in a Divine realm: one blesses in Spring, the other casts
+      // Holy Symbol; then Summer's field is read, with the Grand Cathedral standing (its report's kingdom says so) and not.
+      for (const stands of [true, false]) {
+        const kingdom = { gold: 100, alignment: 'Divine', ...(stands ? { itsGrandCathedralStands: true } : {}) };
+        await theFormFor(
+          [aHeroOf('p1', 'Priest p1', { white: 1 }), aHeroOf('p2', 'Priest p2', { white: 1 })],
+          6,
+          kingdom,
+        );
+        act('p1', 0, 'Cast Spell');
+        aim('p1', 0, 'Bless Province', 'spell');
+        act('p1', 1, 'Cast Spell');
+        act('p2', 0, 'Cast Spell');
+        aim('p2', 0, 'Holy Symbol', 'spell');
+        act('p2', 1, 'Cast Spell');
+        const offered = (id: string, spell: string) => {
+          const o = optionOf(id, 1, spell);
+          return {
+            open: !!o && !o.disabled,
+            text: o ? o.textContent : field(`po-target-${id}-1`)?.getAttribute('placeholder'),
+          };
+        };
+        const when = stands ? 'withTheCathedral' : 'without';
+        offers[`${when}AfterBless`] = offered('p1', 'Holy Symbol');
+        offers[`${when}BlessAtTheLimit`] = offered('p2', 'Bless Province');
+      }
+      seen['formHtml'] = doc.getElementById('orders-form')?.innerHTML ?? '';
+    } finally {
+      P.console.error = quiet;
+      errorsHere.push(...errs.slice(errorsBefore));
+    }
+  });
+
+  test('no practice: Psychic shows Lv2, 0/1', () => {
+    expect(seen['noPractice']).toMatch(/Lv2 — 0\/1 used/);
+  });
+  test("after a Psychic practice in Spring, Summer's dropdown refreshes to Lv2→3, 0/2", () => {
+    expect(seen['afterAPractice']).toMatch(/Lv2→3 if practice succeeds — 0\/2 used/);
+  });
+  test('with the practice, a second Psychic spell is open in Autumn', () => {
+    expect(options['secondInAutumn']?.off).toBe(false);
+    expect(options['secondInAutumn']?.text).toMatch(/1\/2 used/);
+  });
+  test('a school at 5 projects no rise', () => {
+    expect(seen['atFive']).toMatch(/Elemental Magic Lv5 — 0\/3 used/);
+  });
+  test('two practices project Lv4 and three spells', () => {
+    expect(seen['twoPractices']).toMatch(/Lv2→4 if practice succeeds — 2\/3 used/);
+  });
+  test('Earthquake in Winter offers Ashford as its target', () => {
+    expect(seen['ashfordOffered']).toBe(true);
+  });
+  test('after an earlier order changes, Winter still casts Earthquake at Ashford', () => {
+    expect(seen['winterAfterARebuild']).toEqual([ele, '11']);
+  });
+  test("without the practice Autumn's Psychic spell is closed again", () => {
+    expect(options['withoutThePractice']?.off).toBe(true);
+    expect(options['withoutThePractice']?.text).toMatch(/limit reached: 1\/1/);
+  });
+  test('Spring back to a Psychic practice reopens it', () => {
+    expect(seen['practiceBack']).toBe(false);
+  });
+  test("re-aiming Spring's practice at Elemental closes it again", () => {
+    expect(seen['reAimed']).toBe(true);
+  });
+  test('the Warlock at Elemental 4 is offered a fourth Elemental spell', () => {
+    expect(options['warlocksFourth']?.off).toBe(false);
+    expect(options['warlocksFourth']?.text).toMatch(/Lv4 — 3\/4 used/);
+  });
+  test('a hero without the title is not: his field says the limits are reached', () => {
+    expect(noTitle?.offered).toBe(false);
+    expect(noTitle?.off).toBe(true);
+    expect(noTitle?.placeholder).toMatch(/casting limits reached/);
+  });
+  test("after a Psychic practice, Elemental is not his best: Winter's fourth Elemental spell is closed", () => {
+    expect(options['notHisBest']?.off).toBe(true);
+    expect(options['notHisBest']?.text).toMatch(/limit reached: 3\/3/);
+  });
+  test('and Psychic, his best, may cast four', () => {
+    expect(options['hisBest']?.off).toBe(false);
+    expect(options['hisBest']?.text).toMatch(/0\/4 used/);
+  });
+  test("with the Cathedral, a Bless in Spring spends no slot: Summer's Holy Symbol is open", () => {
+    expect(offers['withTheCathedralAfterBless']?.open).toBe(true);
+    expect(offers['withTheCathedralAfterBless']?.text).toMatch(/0\/1 used/);
+  });
+  test("with the Cathedral, Bless is open in Summer after Spring's Holy Symbol", () => {
+    expect(offers['withTheCathedralBlessAtTheLimit']?.open, offers['withTheCathedralBlessAtTheLimit']?.text ?? '').toBe(
+      true,
+    );
+  });
+  test("without it, Spring's Bless spends the slot: Summer's Holy Symbol is closed", () => {
+    expect(offers['withoutAfterBless']?.open, offers['withoutAfterBless']?.text ?? '').toBe(false);
+  });
+  test("without it, Bless is closed in Summer after Spring's Holy Symbol", () => {
+    expect(offers['withoutBlessAtTheLimit']?.open, offers['withoutBlessAtTheLimit']?.text ?? '').toBe(false);
+  });
+  test('no undefined / NaN in the orders form', () => {
+    expect(seen['formHtml']).not.toMatch(/undefined|NaN|\[object Object\]/);
+  });
+  test('no page errors', () => {
+    expect(errorsHere).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@
 - **Decided:** 2026-09-29, a maintainer; details 2026-10-15
 - **Status:** Confirmed
 - **Source:** Decision D-02 (2026-09-29): may a realm that is out still send dispatches? Answer: no private ones until the game is over, and the GM may block its public ones too; the details, in a maintainer's answers of 2026-10-15 in PR #95.
-- **Enforced by:** [`22_block_eliminated_msgs.test.sql`](../../supabase/tests/database/22_block_eliminated_msgs.test.sql) (the switch), [`eliminated-dispatches`](../../tests/eliminated-dispatches.test.js) (the screens), [`a-realms-report-says-whether-it-is-out-or-has-conceded`](../../tests/unit/a-realms-report-says-whether-it-is-out-or-has-conceded.test.ts) (the report tells a realm it is extinguished)
+- **Enforced by:** [`22_block_eliminated_msgs.test.sql`](../../supabase/tests/database/22_block_eliminated_msgs.test.sql) (the switch), [`a-realm-out-of-the-game-sends-dispatches-only-as-the-gms-switch-allows-until-the-game-is-over`](../../tests/page/a-realm-out-of-the-game-sends-dispatches-only-as-the-gms-switch-allows-until-the-game-is-over.test.ts) (the screens), [`a-realms-report-says-whether-it-is-out-or-has-conceded`](../../tests/unit/a-realms-report-says-whether-it-is-out-or-has-conceded.test.ts) (the report tells a realm it is extinguished)
 
 A realm that is eliminated or has conceded sends no private dispatches until the game is over. It may still write in the public channel, unless the GM turns on "Block eliminated realms from sending dispatches" for that game.
 
