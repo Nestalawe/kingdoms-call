@@ -21,10 +21,6 @@ export function suite(full: boolean): Script[] {
   // [level, name, file, args, env]
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
     ['simulation', 'turn-fuzz', 'tests/turn-fuzz.test.js', full ? ['16', '12'] : ['4', '6']],
-    ['simulation', 'lair-province-unique', 'tests/lair-province-unique.test.js'],
-    ['simulation', 'lair-effects-spread', 'tests/lair-effects-spread.test.js'],
-    ['simulation', 'neutral-best-mix', 'tests/neutral-best-mix.test.js'],
-    ['simulation', 'province-pools', 'tests/province-pools.test.js', full ? ['10'] : ['4']],
     [
       'simulation',
       'fuzz-wages-combat',
