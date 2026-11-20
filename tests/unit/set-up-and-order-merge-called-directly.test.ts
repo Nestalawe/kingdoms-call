@@ -1,17 +1,18 @@
 // The set-up (plan P1-08k7: src/engine/turn/, the first two stages lifted out of resolveTurn's own body), called
-// directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
-// scenario/set-up-and-order-merge-in-a-whole-turn plays through a whole turn (lib/set-up-and-order-merge-cases.ts), here
-// played through the two stages alone, as resolveTurn calls them (the context given the slot rows and the turn run),
-// reading what they leave in the world and in the context's collectors; then, with the helpers they call stood in (each
-// replaced in the vm by a recorder for the test's length), what they hand them and when, and where resolveTurn calls
-// them; then what the whole turn can't stage: the turn run differing from the save's turn, a slot row for a realm the
-// save doesn't have, the per-turn lists missing when the merge runs, a save with no map or gaps in it. Properties
-// (fast-check): the set-up leaves every living hero of a realm, and only them, five empty phases, the five per-turn
-// lists empty, and each living hero's own realm in his record once; the merge writes exactly the hero orders a realm sends as lists for its own
-// heroes, holds exactly
-// the written orders in their lists with their numbers read, and nothing of a payload for another turn; a conceded
-// realm's living heroes always hold; declarations are taken, or refused under Safe Start, exactly as the rule says.
-// Level 1: two functions, called with the context resolveTurn hands them.
+// directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/set-up-and-order-merge-in-a-whole-turn plays through a whole turn (lib/set-up-and-order-merge-cases.ts),
+// here played through the two stages alone, as resolveTurn calls them (the context given the slot rows and the turn
+// run), reading what they leave in the world and in the context's collectors; then, with the helpers they call stood in
+// (each by a recorder for the test's length, vi.spyOn on its module), what they hand them and when, and where
+// resolveTurn calls them; then what the whole turn can't stage: the turn run differing from the save's turn, a slot row
+// for a realm the save doesn't have, the per-turn lists missing when the merge runs, a save with no map or gaps in it.
+// Properties (fast-check): the set-up leaves every living hero of a realm, and only them, five empty phases, the five
+// per-turn lists empty, and each living hero's own realm in his record once; the merge writes exactly the hero orders a
+// realm sends as lists for its own heroes, holds exactly the written orders in their lists with their numbers read, and
+// nothing of a payload for another turn; a conceded realm's living heroes always hold; declarations are taken, or
+// refused under Safe Start, exactly as the rule says. Level 1: two functions, called with the context resolveTurn hands
+// them.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `turnStartRepairsAndAFreshSlateOfOrdersForEveryHero` and
@@ -19,31 +20,28 @@
 // the slot rows and the turn run, as `resolveTurn` calls them: the whole-turn cases through the two stages alone,
 // reading the world and the context's collectors (`staleOrderWarnings`, `diploDeclarations`, `safeStartRefused`,
 // `discoveryChoicePicks`, `reckoningCalls`, `playerMessages`), but for the turn's record of orders (the reports');
-// then, with the helpers they call stood in by recorders in the `vm`, what each is handed: none of the turn-start
-// repairs (the save's upgrade's since P1-15f2), the count of tags the upgrade took off kept on the save as it gives it,
-// then each living realm hero's realm noted; Safe Start asked once per realm sending declarations, of
-// the save and the turn run; `resolveTurn` calling the repairs, then the merge, once each with its context, before any
-// line is logged and before the first phase, the six collectors in the context as the merge returns (the merge makes
-// them since P1-08l2), and its later stages reading what the merge collected. Then what a whole turn can't stage: the
-// turn run differing from the save's turn (stale orders, the concession's date, a research choice, Safe Start all
-// judged by the turn run); a slot row for a realm the save doesn't have ("a player"'s stale orders, its order of heroes
-// and concession going nowhere, its Reckoning call taken); the per-turn lists missing when the merge runs (made) or
-// holding this turn's orders already (added to); the set-up leaving the lists empty and every hero's phases a list of
-// his own; a save with no map, a gap among the provinces or a garrison's companies; a gap in the realms' list not
-// stopping the conceded hold; an heir named by his id as text; every tactic the order form offers, and every one a
-// wanderer's own plan names, kept. Properties (fast-check): the set-up leaves every living
+// then, with the helpers they call stood in by recorders (vi.spyOn on each one's module: the calls from other files),
+// what each is handed: none of the turn-start repairs (the save's upgrade's since P1-15f2), the count of tags the
+// upgrade took off kept on the save as it gives it, then each living realm hero's realm noted; Safe Start asked once
+// per realm sending declarations, of the save and the turn run; `resolveTurn` calling the repairs, then the merge, once
+// each with its context, before any line is logged and before the first phase, the six collectors in the context as the
+// merge returns (the merge makes them since P1-08l2), and its later stages reading what the merge collected. Then what
+// a whole turn can't stage: the turn run differing from the save's turn (stale orders, the concession's date, a
+// research choice, Safe Start all judged by the turn run); a slot row for a realm the save doesn't have ("a player"'s
+// stale orders, its order of heroes and concession going nowhere, its Reckoning call taken); the per-turn lists missing
+// when the merge runs (made) or holding this turn's orders already (added to); the set-up leaving the lists empty and
+// every hero's phases a list of his own; a save with no map, a gap among the provinces or a garrison's companies; a gap
+// in the realms' list not stopping the conceded hold; an heir named by his id as text; every tactic the order form
+// offers, and every one a wanderer's own plan names, kept. Properties (fast-check): the set-up leaves every living
 // realm hero, and only them, five empty phases, the per-turn lists empty, each living realm hero's realm in his record
-// once; the merge writes exactly the hero orders sent
-// as lists for the realm's own heroes and holds exactly the written orders with their numbers read, in order, passing
-// over the column's order; a payload for another turn writes no orders, holds none and sets no plan, one for the turn
-// run or with none does, a conceded realm's living heroes hold once a row of orders read comes at or after its
-// concession, concessions told before refusals; declarations taken unless Safe Start holds, under it a realm refused
-// exactly when it offers a Treat or declares war, declarations that aren't a table never read. Planted faults: in the
-// PR (P1-08k7)
-import vm from 'node:vm';
+// once; the merge writes exactly the hero orders sent as lists for the realm's own heroes and holds exactly the written
+// orders with their numbers read, in order, passing over the column's order; a payload for another turn writes no
+// orders, holds none and sets no plan, one for the turn run or with none does, a conceded realm's living heroes hold
+// once a row of orders read comes at or after its concession, concessions told before refusals; declarations taken
+// unless Safe Start holds, under it a realm refused exactly when it offers a Treat or declares war, declarations that
+// aren't a table never read. Planted faults: in the PR (P1-08k7)
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   LANDS,
   SET_UP_CASES,
@@ -66,12 +64,20 @@ import {
   type Staged,
 } from '../lib/set-up-and-order-merge-cases.ts';
 import { realm } from '../lib/cast-spell-order-cases.ts';
-import { ENCOUNTER_TACTICS, ENCOUNTER_VALID } from '../../src/ui/player/move-analysis.ts';
-import { NPC_SCHOOL_SPELL } from '../../src/engine/army-tables.ts';
-import { KC_MAGIC_SCHOOLS } from '../../src/content/kingdoms-call-data.ts';
-import { board, must, order, plan, withCaseDice, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  order,
+  plan,
+  quietEngineLog,
+  withCaseDice,
+  type Board,
+  type Character,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
@@ -79,10 +85,20 @@ type Raw = Record<string, unknown>;
 const SET_UP = 'turnStartRepairsAndAFreshSlateOfOrdersForEveryHero';
 const MERGE = 'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans';
 const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
-const setUp = engineFn(engine, SET_UP) as Fn;
-const merge = engineFn(engine, MERGE) as Fn;
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const theSetUp =
+  await import('../../src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts');
+const thePhaseStages =
+  await import('../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts');
+const theFame = await import('../../src/engine/heroes/fame-and-consecration.ts');
+const theCharms = await import('../../src/engine/heroes/charms-and-neutrals.ts');
+const theArmyTables = await import('../../src/engine/army-tables.ts');
+const { ENCOUNTER_TACTICS, ENCOUNTER_VALID } = await import('../../src/ui/player/move-analysis.ts');
+const { NPC_SCHOOL_SPELL } = theArmyTables;
+const { KC_MAGIC_SCHOOLS } = await import('../../src/content/kingdoms-call-data.ts');
+const setUp = theSetUp.turnStartRepairsAndAFreshSlateOfOrdersForEveryHero as Fn;
+const merge = theSetUp.mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans as Fn;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
-const inVm = vm.runInContext('(j)=>JSON.parse(j)', engine) as (j: string) => unknown;
 
 const NOTHING: SetUpCase = { name: 'nothing staged', stage: () => ({}), check: () => ({ got: {}, want: {} }) };
 /** A board staged as every case is (`stageCase`): plain realms, each holding only its seat with a living king there. */
@@ -93,9 +109,9 @@ const fresh = () => {
 };
 const tc = (b: Board) => b.tc as unknown as Raw;
 const G = (b: Board) => b.G as unknown as Raw & Board['G'];
-/** Hands the context the slot rows (`rows`, JSON text, made in the vm) and the turn run, as resolveTurn's does. */
+/** Hands the context the slot rows (`rows`, JSON text) and the turn run, as resolveTurn's does. */
 const given = (b: Board, rows: string, turn = b.G.turn) => {
-  tc(b)['freshPlayers'] = inVm(rows);
+  tc(b)['freshPlayers'] = JSON.parse(rows);
   tc(b)['expectedTurnToRun'] = turn;
 };
 const merged = (b: Board): Merged => ({ G: b.G as Merged['G'], tc: tc(b), turn: b.G.turn });
@@ -118,21 +134,44 @@ interface Call {
   fn: string;
   args: unknown[];
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length) that still calls the
- *  helper it stands in for. */
-function standIn(names: string[], body: () => void): Call[] {
-  const g = engine;
-  const was = names.map((f) => [f, g[f] as Fn] as const);
+/** Stands `spy` in for `original` by a recorder that notes each call into `calls`, then makes the call. */
+function recordEachCall<A extends unknown[], R>(
+  name: string,
+  original: (...a: A) => R,
+  spy: MockInstance<(...a: A) => R>,
+  calls: Call[],
+) {
+  return spy.mockImplementation((...args: A) => {
+    calls.push({ fn: name, args });
+    return original(...args);
+  });
+}
+/** Each helper a test here stands in, by vi.spyOn on the module that exports it: the two stages call each from their
+ *  own file, so the stand-in reaches those calls (docs/traps.md). */
+const THE_HELPERS_THE_STAGES_CALL = {
+  normaliseStrandedGuards: (calls: Call[]) =>
+    recordEachCall(
+      'normaliseStrandedGuards',
+      theFame.normaliseStrandedGuards,
+      vi.spyOn(theFame, 'normaliseStrandedGuards'),
+      calls,
+    ),
+  normaliseOwnedNames: (calls: Call[]) =>
+    recordEachCall('normaliseOwnedNames', theFame.normaliseOwnedNames, vi.spyOn(theFame, 'normaliseOwnedNames'), calls),
+  noteServedRealm: (calls: Call[]) =>
+    recordEachCall('noteServedRealm', theCharms.noteServedRealm, vi.spyOn(theCharms, 'noteServedRealm'), calls),
+  safeStartLocked: (calls: Call[]) =>
+    recordEachCall('safeStartLocked', theArmyTables.safeStartLocked, vi.spyOn(theArmyTables, 'safeStartLocked'), calls),
+};
+/** Runs `body` with each of `names` stood in by a recorder (for the body's length) that still calls the helper it
+ *  stands in for. */
+function standIn(names: (keyof typeof THE_HELPERS_THE_STAGES_CALL)[], body: () => void): Call[] {
   const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
-      calls.push({ fn: f, args });
-      return w(...args);
-    };
+  const standIns = names.map((f) => THE_HELPERS_THE_STAGES_CALL[f](calls));
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const s of standIns) s.mockRestore();
   }
   return calls;
 }
@@ -188,14 +227,17 @@ describe('The set-up: what it calls', () => {
   test('resolveTurn calls the repairs, then the merge, once each, with its context, before any line is logged and before the first phase; the merge leaves the six collectors on that context', () => {
     const b = fresh();
     const names = [SET_UP, MERGE, FIRST_PHASE];
-    const g = engine;
-    const was = names.map((f) => [f, g[f] as Fn] as const);
     const order_: string[] = [];
     const handed: unknown[][] = [];
     const logged: number[] = [];
     const collectors: unknown[] = [];
-    for (const [f, w] of was)
-      g[f] = (...a: unknown[]) => {
+    // each stage stood in by vi.spyOn on its module (resolveTurn calls each from its own file), noting the call
+    const noteEachCall = <A extends [unknown, ...unknown[]], R>(
+      f: string,
+      original: (...a: A) => R,
+      spy: MockInstance<(...a: A) => R>,
+    ) =>
+      spy.mockImplementation((...a: A) => {
         const recorded = order_.length < 3;
         const t = a[0] as Raw;
         if (recorded) {
@@ -203,7 +245,7 @@ describe('The set-up: what it calls', () => {
           handed.push(a);
           logged.push((t['turnLog'] as unknown[]).length);
         }
-        const r = w(...a);
+        const r = original(...a);
         // the six collectors, as the merge leaves them on the context (it makes them since P1-08l2)
         if (recorded && f === MERGE)
           collectors.push(
@@ -217,12 +259,29 @@ describe('The set-up: what it calls', () => {
             ].map((k) => Object.prototype.toString.call(t[k])),
           );
         return r;
-      };
-    const resolveTurn = engineFn(engine, 'resolveTurn') as (s: string, r: unknown, t: number) => unknown;
+      });
+    const standIns = [
+      noteEachCall(
+        SET_UP,
+        theSetUp.turnStartRepairsAndAFreshSlateOfOrdersForEveryHero,
+        vi.spyOn(theSetUp, 'turnStartRepairsAndAFreshSlateOfOrdersForEveryHero'),
+      ),
+      noteEachCall(
+        MERGE,
+        theSetUp.mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans,
+        vi.spyOn(theSetUp, 'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans'),
+      ),
+      noteEachCall(
+        FIRST_PHASE,
+        thePhaseStages.startPhaseHealingSnapshotsAndStalledBattles,
+        vi.spyOn(thePhaseStages, 'startPhaseHealingSnapshotsAndStalledBattles'),
+      ),
+    ];
+    const resolveTurn = engine.resolveTurn as (s: string, r: unknown, t: number) => unknown;
     try {
-      withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rowsOf(b, {})), b.G.turn));
+      withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), JSON.parse(rowsOf(b, {})), b.G.turn));
     } finally {
-      for (const [f, w] of was) g[f] = w;
+      for (const s of standIns) s.mockRestore();
     }
     expect(order_).toEqual(names);
     expect(handed.slice(0, 2).map((a) => a.length)).toEqual([1, 1]);
@@ -241,17 +300,19 @@ describe('The set-up: what it calls', () => {
   test('resolveTurn’s later stages read what the merge collected from the context it handed it (a war declared is made, a concession told)', () => {
     const b = fresh();
     const s: Staged = { sends: { 1: { diplomacy: { 2: 'enemy' }, concede: true } } };
-    const resolveTurn = engineFn(engine, 'resolveTurn') as (
+    const resolveTurn = engine.resolveTurn as (
       s: string,
       r: unknown,
       t: number,
     ) => { state: string; log: { text: string }[] };
     // the turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
     // since P1-12d15 a line the merge held is a fact, its words there alone
-    const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => {
+    const theTurnsLinesInWords = engine.theTurnsLinesInWords as (log: unknown) => {
       gmLog: { text: string }[];
     };
-    const played = withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rowsOf(b, s)), b.G.turn));
+    const played = withCaseDice(engine, LANDS, () =>
+      resolveTurn(JSON.stringify(b.G), JSON.parse(rowsOf(b, s)), b.G.turn),
+    );
     const r = { ...played, log: theTurnsLinesInWords(played.log).gmLog };
     const after = JSON.parse(r.state) as Board['G'];
     expect(after.relations['1-2']).toBe('enemy');

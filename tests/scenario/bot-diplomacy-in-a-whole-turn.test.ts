@@ -2,10 +2,11 @@
 // rival it had met when the turn began, by the grudge, Safe Start, the Aggressive setting, a claim to the throne, the
 // grudge's truce, alignment and the war assessment, made before the first phase and again just before diplomacy is
 // resolved. Each case of lib/bot-diplomacy-cases.ts staged on the middle of a bot world, from plain realms each holding
-// only its seat with a living king there, and played through resolveTurn with the slot rows the case sends (the realms
-// it makes bots' with no player), every die fixed for the whole turn; the realms' declarations are read once the bots
-// have declared before the first phase and again just before diplomacy is resolved. Level 2 (scenario): the bots
-// declare twice in a turn, around the phases, and only a whole turn plays both as the game does.
+// only its seat with a living king there, and played through resolveTurn on the engine's modules (since P1-14m; the
+// bare vm before) with the slot rows the case sends (the realms it makes bots' with no player), every die fixed for the
+// whole turn; the realms' declarations are read once the bots have declared before the first phase and again just
+// before diplomacy is resolved. Level 2 (scenario): the bots declare twice in a turn, around the phases, and only a
+// whole turn plays both as the game does.
 // unit/bot-diplomacy-called-directly.test.ts calls the function directly.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -39,11 +40,15 @@
 // standing from the first phase weighed again. Level 2: the bots declare twice in a turn, around the phases, and only a
 // whole turn plays both as the game does
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { BOT_DIPLOMACY_CASES, playCase, stageCase } from '../lib/bot-diplomacy-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 

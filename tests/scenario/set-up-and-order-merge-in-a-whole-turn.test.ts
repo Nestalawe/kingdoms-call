@@ -5,10 +5,10 @@
 // column; orders for another turn; declarations and Safe Start; research choices; the Reckoning; messages;
 // concession; orders and plans held for a hero to come; encounter plans; a new heir's choices). Each case of
 // lib/set-up-and-order-merge-cases.ts staged on the middle of a bot world, from plain realms each holding only its seat
-// with a living king there, and played through resolveTurn with the slot rows the case sends, the case's dice fixed
-// for the whole turn; what the set-up leaves is read as the first phase begins, and what follows from it after the
-// turn. Level 2 (scenario): the stages are what the turn does first, and what they set is read by every stage after
-// them, so only a whole turn plays them as the game does.
+// with a living king there, and played through resolveTurn on the engine's modules (since P1-14m; the bare vm before)
+// with the slot rows the case sends, the case's dice fixed for the whole turn; what the set-up leaves is read as the
+// first phase begins, and what follows from it after the turn. Level 2 (scenario): the stages are what the turn does
+// first, and what they set is read by every stage after them, so only a whole turn plays them as the game does.
 // unit/set-up-and-order-merge-called-directly.test.ts calls the two stages directly.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -66,11 +66,15 @@
 // merged; nothing for a realm that sent nothing. Level 2:
 // the stages are what the turn does first, and every stage after them reads what they set
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { SET_UP_CASES, playCase, stageCase } from '../lib/set-up-and-order-merge-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 

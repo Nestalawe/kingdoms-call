@@ -1,17 +1,19 @@
 // Before the first phase (plan P1-08k8: src/engine/turn/, four stages lifted out of resolveTurn's own body), called
-// directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
-// scenario/before-the-first-phase-in-a-whole-turn plays through a whole turn (lib/before-the-first-phase-cases.ts), here
-// played through the four stages alone, after the merge, as resolveTurn calls them (the bots' passes between the third
-// and the fourth aside); then, with the helpers they call stood in (each replaced in the vm by a recorder for the
-// test's length), what they hand them and when, and where resolveTurn calls them; then what the whole turn can't stage:
-// a bot's pick already made, a retired lead the game still lists, the die's every value, a gap in the realms' list,
-// realms with no name, a message from a seat the save doesn't have, the log's hero kept through the messages, standings
-// that fail, a Cathedral's home off the map, a record that fails. Properties (fast-check): a research choice settles on
-// the lead picked, or the die's among those the realm may still find, forgetting the rest, or is dropped; a message
-// reaches exactly the realms it may, once each, with one copy; an Evil or Undead realm's war on a realm it has met
-// stands at once, every other waits; every empty phase sent is Defend, and only those. (The guardians' cut, its gaps and
-// its property are the save's upgrade's since P1-15f1: a-saved-games-old-shapes-are-mended-before-the-turn.test.ts.)
-// Level 1: four functions, called with the context resolveTurn hands them.
+// directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/before-the-first-phase-in-a-whole-turn plays through a whole turn (lib/before-the-first-phase-cases.ts),
+// here played through the four stages alone, after the merge, as resolveTurn calls them (the bots' passes between the
+// third and the fourth aside); then, with the helpers they call stood in (each by a recorder for the test's length,
+// vi.spyOn on its module), what they hand them and when, and where resolveTurn calls them; then what the whole turn
+// can't stage: a bot's pick already made, a retired lead the game still lists, the die's every value, a gap in the
+// realms' list, realms with no name, a message from a seat the save doesn't have, the log's hero kept through the
+// messages, standings that fail, a Cathedral's home off the map, a record that fails. Properties (fast-check): a
+// research choice settles on the lead picked, or the die's among those the realm may still find, forgetting the rest,
+// or is dropped; a message reaches exactly the realms it may, once each, with one copy; an Evil or Undead realm's war
+// on a realm it has met stands at once, every other waits; every empty phase sent is Defend, and only those. (The
+// guardians' cut, its gaps and its property are the save's upgrade's since P1-15f1:
+// a-saved-games-old-shapes-are-mended-before-the-turn.test.ts.) Level 1: four functions, called with the context
+// resolveTurn hands them.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks`,
@@ -19,28 +21,26 @@
 // `movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan` and
 // `missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart` (P1-08k8), called directly after P1-08k7's two
 // stages, the context's values the four make afresh left stale first: the whole-turn cases through the four stages
-// alone (but those about the bots' own passes); then, with their helpers stood in by recorders in the `vm`, what each
-// is handed: each bot realm's earlier choice with leads and no pick handed to the bots' pick, which the realm pursues;
-// one die per choice the scholars settle, each value of it; a retired lead the game still lists never pursued; the
-// war's key asked of the declarer first; names by number; the standings and minor titles once each from turn 5, failing
-// or empty leaving none; Safe Start's and the stale lines in their order, public only for a concession; removals by
-// name past gaps; the log's hero kept through the messages, the copy carrying it; "all" read from the rows; a message
-// from a seat the save lacks; each living realm hero handed to the move pool with the turn's new pools; the mithril
-// once, the lairs' renaming never the stage's (the upgrade's), the lairs renamed and the guardians cut told as the
-// upgrade counted; each realm asked for its Cathedral, the home looked up only when it has no province; a home off the
-// map; a gap in the realms'
-// list stopping the espionage reset (Parked); a hero with no orders at all; the record's reckoning handed what each
-// realm sent, a concession dated by the turn run, a failing record warned and set aside, gaps; the war fronts as the
-// threats name them, not on ground fought over, not under a veil; and `resolveTurn` calling the merge, the first two
-// around the bots' declarations, the third, each handed the turn's start values (the context whole at birth,
-// P1-10b51), the bots' passes, the fourth, then the first phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
+// alone (but those about the bots' own passes); then, with their helpers stood in by recorders (vi.spyOn on each one's
+// module: the calls from other files), what each is handed: each bot realm's earlier choice with leads and no pick
+// handed to the bots' pick, which the realm pursues; one die per choice the scholars settle, each value of it; a
+// retired lead the game still lists never pursued; the war's key asked of the declarer first; names by number; the
+// standings and minor titles once each from turn 5, failing or empty leaving none; Safe Start's and the stale lines in
+// their order, public only for a concession; removals by name past gaps; the log's hero kept through the messages, the
+// copy carrying it; "all" read from the rows; a message from a seat the save lacks; each living realm hero handed to
+// the move pool with the turn's new pools; the mithril once, the lairs' renaming never the stage's (the upgrade's), the
+// lairs renamed and the guardians cut told as the upgrade counted; each realm asked for its Cathedral, the home looked
+// up only when it has no province; a home off the map; a gap in the realms' list stopping the espionage reset (Parked);
+// a hero with no orders at all; the record's reckoning handed what each realm sent, a concession dated by the turn run,
+// a failing record warned and set aside, gaps; the war fronts as the threats name them, not on ground fought over, not
+// under a veil; and `resolveTurn` calling the merge, the first two around the bots' declarations, the third, each
+// handed the turn's start values (the context whole at birth, P1-10b51), the bots' passes, the fourth, then the first
+// phase, each once with its context. Properties (fast-check): a research choice settles on the pick or the die's open
 // lead, forgetting the rest, or is dropped; a message reaches exactly the realms it may, once each, with one copy; an
 // Evil or Undead realm's war on a realm met stands at once, every other waits; every empty phase sent is Defend, only
 // those. Planted faults: in the PR (P1-08k8)
-import vm from 'node:vm';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   BEFORE_CASES,
   LANDS,
@@ -65,11 +65,21 @@ import {
   type Staged,
 } from '../lib/before-the-first-phase-cases.ts';
 import { dispatch, ordersOf, sentTo } from '../lib/set-up-and-order-merge-cases.ts';
-import { board, must, order, withCaseDice, type Character, type Line } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  order,
+  quietEngineLog,
+  withCaseDice,
+  type Character,
+  type Line,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import type { Board } from '../lib/the-board-a-case-is-staged-on-either-way.ts';
 import { relate, unmet } from '../lib/diplomacy-and-victory-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
@@ -78,8 +88,36 @@ const [RESEARCH, WAR_AND_MESSAGES, POOLS_AND_SWEEPS, DEFAULT_DEFEND] = STAGES;
 const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
 const MERGE = 'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans';
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
-const inVm = vm.runInContext('(j)=>JSON.parse(j)', engine) as (j: string) => unknown;
-const stage = (name: string) => engineFn(engine, name) as (tc: unknown) => void;
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const theSetUp =
+  await import('../../src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts');
+const beforeTheFirstPhase =
+  await import('../../src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts');
+const thePhaseStages =
+  await import('../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts');
+const theBotsMissions = await import('../../src/engine/bots/missions.ts');
+const theBotsMovement = await import('../../src/engine/bots/movement.ts');
+const theBotsPhaseOne = await import('../../src/engine/bots/phase-one.ts');
+const theBotsEconomy = await import('../../src/engine/bots/economy.ts');
+const theBotsSpellcraft = await import('../../src/engine/bots/spellcraft.ts');
+const theReckoning = await import('../../src/engine/titles/reckoning.ts');
+const theRelations = await import('../../src/engine/realms/relations-and-captures.ts');
+const theMovePools = await import('../../src/engine/units/movement-pools.ts');
+const theCombatHelpers = await import('../../src/engine/personal-combat/helpers.ts');
+const theNames = await import('../../src/engine/names.ts');
+const theDiscoveries = await import('../../src/engine/discoveries.ts');
+const theGrandDesign = await import('../../src/engine/grand-design.ts');
+const theLogLineHelpers = await import('../../src/engine/turn/log-line-helpers.ts');
+const theWarFronts = await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts');
+const theHiddenHeroes = await import('../../src/engine/heroes/effective-skills-and-hidden-heroes.ts');
+const theDiscoveryRegistry = await import('../../src/engine/rules/the-registry-of-discovery-effects.ts');
+const THE_FOUR_STAGES = {
+  [RESEARCH]: beforeTheFirstPhase.relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks,
+  [WAR_AND_MESSAGES]: beforeTheFirstPhase.warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages,
+  [POOLS_AND_SWEEPS]: beforeTheFirstPhase.movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan,
+  [DEFAULT_DEFEND]: beforeTheFirstPhase.missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart,
+};
+const stage = (name: (typeof STAGES)[number]) => THE_FOUR_STAGES[name] as (tc: unknown) => void;
 
 const NOTHING: BeforeCase = { name: 'nothing staged', stage: () => ({}), check: () => ({ got: {}, want: {} }) };
 /** A board staged as every case is (`stageCase`), staged further by `more`, and readied for the four stages. */
@@ -92,14 +130,14 @@ const fresh = (more: (b: Board) => Staged = () => ({})) => {
 };
 const G = (b: Board) => b.G as unknown as Raw & Board['G'];
 /** Runs the stages named, in turn, on `tc`, with every die at its highest unless `dice` says otherwise. */
-const run = (tc: Raw, names: readonly string[], dice = LANDS) => {
+const run = (tc: Raw, names: readonly (typeof STAGES)[number][], dice = LANDS) => {
   withCaseDice(engine, dice, () => {
     for (const f of names) stage(f)(tc);
   });
 };
 /** The turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
  *  since P1-12d15 the lines before the first phase are facts, their words there alone. */
-const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
+const theTurnsLinesInWords = engine.theTurnsLinesInWords as unknown as (log: unknown) => { gmLog: Line[] };
 const lines = (b: Board) => theTurnsLinesInWords((b.tc as unknown as Raw)['turnLog']).gmLog;
 
 /** The cases a direct call can stage, by part (those about the bots' own passes need a whole turn). */
@@ -120,21 +158,111 @@ interface Call {
   fn: string;
   args: unknown[];
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length) that calls `instead` for
- *  it if given, or the helper it stands in for. */
-function standIn(names: string[], body: () => void, instead: Record<string, Fn> = {}): Call[] {
-  const g = engine;
-  const was = names.map((f) => [f, g[f] as Fn] as const);
+/** What a stand-in does, made from the function it stands in for. */
+type AStandIn = (original: Fn) => Fn;
+/** Stands `spy` in for `original` by what `make` makes of it. */
+function standInFor<A extends unknown[], R>(
+  original: (...a: A) => R,
+  spy: MockInstance<(...a: A) => R>,
+  make: AStandIn,
+) {
+  const instead = make((...a: unknown[]) => original(...(a as A)));
+  return spy.mockImplementation((...a: A) => instead(...a) as R);
+}
+/** Each function a test here stands in, by vi.spyOn on the module that exports it: resolveTurn calls the stages and
+ *  the bots' plan its passes, and the stages (or the war fronts they read) each helper, from another file, so the
+ *  stand-in reaches those calls (docs/traps.md). */
+const THE_FUNCTIONS_STOOD_IN = {
+  [MERGE]: (make: AStandIn) =>
+    standInFor(
+      theSetUp.mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans,
+      vi.spyOn(theSetUp, 'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans'),
+      make,
+    ),
+  [RESEARCH]: (make: AStandIn) =>
+    standInFor(
+      beforeTheFirstPhase.relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks,
+      vi.spyOn(beforeTheFirstPhase, 'relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks'),
+      make,
+    ),
+  [WAR_AND_MESSAGES]: (make: AStandIn) =>
+    standInFor(
+      beforeTheFirstPhase.warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages,
+      vi.spyOn(beforeTheFirstPhase, 'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages'),
+      make,
+    ),
+  [POOLS_AND_SWEEPS]: (make: AStandIn) =>
+    standInFor(
+      beforeTheFirstPhase.movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan,
+      vi.spyOn(beforeTheFirstPhase, 'movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan'),
+      make,
+    ),
+  [DEFAULT_DEFEND]: (make: AStandIn) =>
+    standInFor(
+      beforeTheFirstPhase.missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart,
+      vi.spyOn(beforeTheFirstPhase, 'missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart'),
+      make,
+    ),
+  [FIRST_PHASE]: (make: AStandIn) =>
+    standInFor(
+      thePhaseStages.startPhaseHealingSnapshotsAndStalledBattles,
+      vi.spyOn(thePhaseStages, 'startPhaseHealingSnapshotsAndStalledBattles'),
+      make,
+    ),
+  runBotConcessions: (make: AStandIn) =>
+    standInFor(theBotsMissions.runBotConcessions, vi.spyOn(theBotsMissions, 'runBotConcessions'), make),
+  runBotMovement: (make: AStandIn) =>
+    standInFor(theBotsMovement.runBotMovement, vi.spyOn(theBotsMovement, 'runBotMovement'), make),
+  runBotPhaseOne: (make: AStandIn) =>
+    standInFor(theBotsPhaseOne.runBotPhaseOne, vi.spyOn(theBotsPhaseOne, 'runBotPhaseOne'), make),
+  runBotEconomy: (make: AStandIn) =>
+    standInFor(theBotsEconomy.runBotEconomy, vi.spyOn(theBotsEconomy, 'runBotEconomy'), make),
+  runBotActions: (make: AStandIn) =>
+    standInFor(theBotsSpellcraft.runBotActions, vi.spyOn(theBotsSpellcraft, 'runBotActions'), make),
+  runBotOrderHygiene: (make: AStandIn) =>
+    standInFor(theBotsEconomy.runBotOrderHygiene, vi.spyOn(theBotsEconomy, 'runBotOrderHygiene'), make),
+  runBotReckoning: (make: AStandIn) =>
+    standInFor(theReckoning.runBotReckoning, vi.spyOn(theReckoning, 'runBotReckoning'), make),
+  botResearchPick: (make: AStandIn) =>
+    standInFor(theBotsMissions.botResearchPick, vi.spyOn(theBotsMissions, 'botResearchPick'), make),
+  relKeyOf: (make: AStandIn) => standInFor(theRelations.relKeyOf, vi.spyOn(theRelations, 'relKeyOf'), make),
+  computeStandings: (make: AStandIn) =>
+    standInFor(theReckoning.computeStandings, vi.spyOn(theReckoning, 'computeStandings'), make),
+  computeMinorTitles: (make: AStandIn) =>
+    standInFor(theReckoning.computeMinorTitles, vi.spyOn(theReckoning, 'computeMinorTitles'), make),
+  setMovePool: (make: AStandIn) => standInFor(theMovePools.setMovePool, vi.spyOn(theMovePools, 'setMovePool'), make),
+  grantMithrilToDwarves: (make: AStandIn) =>
+    standInFor(theCombatHelpers.grantMithrilToDwarves, vi.spyOn(theCombatHelpers, 'grantMithrilToDwarves'), make),
+  renameLairsThematicP: (make: AStandIn) =>
+    standInFor(theNames.renameLairsThematicP, vi.spyOn(theNames, 'renameLairsThematicP'), make),
+  gdActive: (make: AStandIn) => standInFor(theDiscoveries.gdActive, vi.spyOn(theDiscoveries, 'gdActive'), make),
+  homeProvinceIdFor: (make: AStandIn) =>
+    standInFor(theGrandDesign.homeProvinceIdFor, vi.spyOn(theGrandDesign, 'homeProvinceIdFor'), make),
+  telOrdersFor: (make: AStandIn) =>
+    standInFor(theLogLineHelpers.telOrdersFor, vi.spyOn(theLogLineHelpers, 'telOrdersFor'), make),
+  warFrontThreats: (make: AStandIn) =>
+    standInFor(theWarFronts.warFrontThreats, vi.spyOn(theWarFronts, 'warFrontThreats'), make),
+  isVeiled: (make: AStandIn) => standInFor(theHiddenHeroes.isVeiled, vi.spyOn(theHiddenHeroes, 'isVeiled'), make),
+};
+type AFunctionStoodIn = keyof typeof THE_FUNCTIONS_STOOD_IN;
+/** Runs `body` with each of `names` stood in by a recorder (for the body's length) that calls `instead` for it if
+ *  given, or the helper it stands in for. */
+function standIn(
+  names: AFunctionStoodIn[],
+  body: () => void,
+  instead: Partial<Record<AFunctionStoodIn, Fn>> = {},
+): Call[] {
   const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
+  const standIns = names.map((f) =>
+    THE_FUNCTIONS_STOOD_IN[f]((original) => (...args: unknown[]) => {
       calls.push({ fn: f, args });
-      return (instead[f] ?? w)(...args);
-    };
+      return (instead[f] ?? original)(...args);
+    }),
+  );
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const s of standIns) s.mockRestore();
   }
   return calls;
 }
@@ -194,7 +322,7 @@ describe('The research choices: what the first stage calls', () => {
       choices(bb, 1, ['b', CHOICE]);
       return { sends: { 1: { discoveryChoices: { b: 'sd03' } } } };
     });
-    const kcRng = vm.runInContext('kcRng', engine) as { use(next: () => number): () => number };
+    const kcRng = engine.kcRng;
     let draws = 0;
     const was = kcRng.use(() => {
       draws++;
@@ -229,14 +357,19 @@ describe('The research choices: what the first stage calls', () => {
       choices(bb, 0, ['a', ['sd34', 'sd03']]);
       return { sends: { 0: { discoveryChoices: { a: 'sd34' } } } };
     });
-    vm.runInContext(`DISC_BY_ID.sd34={id:'sd34',name:'Old Lore',category:'Scholarship',desc:'Retired.'}`, engine);
+    (theDiscoveryRegistry.DISC_BY_ID as Record<string, unknown>)['sd34'] = {
+      id: 'sd34',
+      name: 'Old Lore',
+      category: 'Scholarship',
+      desc: 'Retired.',
+    };
     try {
       run(tc, [RESEARCH]);
       expect((realm(b, 0)['discoveries'] as Raw[]).map((d) => d['id'])).toEqual(['sd03']);
       expect(realm(b, 0)['forgottenDiscoveries']).toEqual(['sd34']);
       expect(told(outcomeOf(b), pursuit(b, 0, 'sd03', false, ['sd34'])).length).toBe(1);
     } finally {
-      vm.runInContext('delete DISC_BY_ID.sd34', engine);
+      Reflect.deleteProperty(theDiscoveryRegistry.DISC_BY_ID, 'sd34');
     }
   });
 
@@ -437,12 +570,10 @@ describe('War without warning, the titles, the lines and the messages: what the 
 
   test('a message to all goes to the realms whose slot rows a player holds, read from the rows', () => {
     const { b, tc } = fresh();
-    tc['freshPlayers'] = inVm(
-      JSON.stringify([
-        { player_index: 0, user_id: 'u0' },
-        { player_index: 2, user_id: 'u2' },
-      ]),
-    );
+    tc['freshPlayers'] = [
+      { player_index: 0, user_id: 'u0' },
+      { player_index: 2, user_id: 'u2' },
+    ];
     tc['playerMessages'] = { 0: [{ to: 'all', text: 'Rise.' }] };
     run(tc, [WAR_AND_MESSAGES]);
     expect(
@@ -508,9 +639,8 @@ describe('The move pools, the trackers and the sweeps: what the third stage call
         run(tc, [POOLS_AND_SWEEPS]);
       },
       {
-        setMovePool: (t: unknown, c: unknown) => {
+        setMovePool: (t: unknown) => {
           fresh_.push(!('1' in ((t as Raw)['movePoints'] as Raw)));
-          (engine['__setMovePool'] as Fn | undefined)?.(t, c);
         },
       },
     );
@@ -620,7 +750,7 @@ describe('The move pools, the trackers and the sweeps: what the third stage call
     const { tc } = fresh();
     run(tc, [POOLS_AND_SWEEPS]);
     (tc['SEASONS'] as string[]).push('Extra');
-    expect(vm.runInContext('KC_SEASONS.length', engine)).toBe(5);
+    expect(engine.KC_SEASONS.length).toBe(5);
   });
 });
 
@@ -677,7 +807,7 @@ describe('The default to Defend, the record and the war fronts: what the fourth 
   test('a record that fails is set aside with a warning: the war fronts are still worked out', () => {
     const { tc } = fresh((bb) => ({ others: [host(bb, 0, bb.X), host(bb, 1, bb.X)] }));
     const warned: unknown[] = [];
-    const cons = vm.runInContext('console', engine) as Console;
+    const cons = engine.console;
     const was = cons.warn;
     cons.warn = (...a: unknown[]) => warned.push(a[0]);
     try {
@@ -741,13 +871,14 @@ describe('The default to Defend, the record and the war fronts: what the fourth 
       a['_veil'] = true;
       return { others: [a, host(bb, 1, bb.X)] };
     });
-    const isVeiled = engine['isVeiled'] as Fn;
-    const was = isVeiled;
-    engine['isVeiled'] = (t: unknown, c: Character) => c.player === 0 || (was(t, c) as boolean);
+    // the war fronts call isVeiled from their own file (war-fronts-and-enemy-stand-offs.ts), so the stand-in reaches it
+    const veiled = THE_FUNCTIONS_STOOD_IN.isVeiled(
+      (was) => (t: unknown, c: unknown) => (c as Character).player === 0 || was(t, c),
+    );
     try {
       run(tc, [DEFAULT_DEFEND]);
     } finally {
-      engine['isVeiled'] = was;
+      veiled.mockRestore();
     }
     expect([...(tc['_warFrontAtStart'] as Map<number, number>)]).toEqual([]);
   });
@@ -771,20 +902,18 @@ describe('Where resolveTurn calls them', () => {
       'runBotActions',
       'runBotOrderHygiene',
       'runBotReckoning',
-    ];
-    const names = [MERGE, ...STAGES, FIRST_PHASE, ...BOTS];
-    const g = engine;
-    const was = names.map((f) => [f, g[f] as Fn] as const);
+    ] as const;
+    const names: AFunctionStoodIn[] = [MERGE, ...STAGES, FIRST_PHASE, ...BOTS];
     const seen: { fn: string; tc: unknown; declared?: unknown; deferred?: string | undefined; botOrders?: boolean }[] =
       [];
     const botHero = must(
       b.G.characters.find((c) => c.player === 1),
       'a bot hero',
     );
-    for (const [f, w] of was)
-      g[f] = (...a: unknown[]) => {
+    const standIns = names.map((f) =>
+      THE_FUNCTIONS_STOOD_IN[f]((w) => (...a: unknown[]) => {
         if (!seen.some((x) => x.fn === FIRST_PHASE)) {
-          const t = (BOTS.includes(f) ? null : (a[0] ?? null)) as Raw | null;
+          const t = ((BOTS as readonly string[]).includes(f) ? null : (a[0] ?? null)) as Raw | null;
           const G_ = (t?.['G'] ?? a[0]) as Board['G'];
           seen.push({
             fn: f,
@@ -797,12 +926,13 @@ describe('Where resolveTurn calls them', () => {
           });
         }
         return w(...a);
-      };
-    const resolveTurn = engineFn(engine, 'resolveTurn') as (s: string, r: unknown, t: number) => unknown;
+      }),
+    );
+    const resolveTurn = engine.resolveTurn as (s: string, r: unknown, t: number) => unknown;
     try {
-      withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rows(b, s)), b.G.turn));
+      withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), JSON.parse(rows(b, s)), b.G.turn));
     } finally {
-      for (const [f, w] of was) g[f] = w;
+      for (const x of standIns) x.mockRestore();
     }
     const order_ = seen.map((x) => x.fn).filter((f, i, a) => f !== a[i - 1]);
     expect(order_).toEqual([
@@ -834,25 +964,23 @@ describe('Where resolveTurn calls them', () => {
   test('the bots plan with the pools, the seasons and the sweeps done: the third stage has run when the first bot pass is called', () => {
     const b = board(engine, world, 0);
     const s = stageCase(b, { ...NOTHING, stage: () => ({ bots: [2] }) });
-    const g = engine;
-    const was = g['runBotConcessions'] as Fn;
     let pools: unknown = null;
     const tcs: Raw[] = [];
-    const wasA = g[STAGES[2]] as Fn;
-    g[STAGES[2]] = (t: Raw) => {
-      tcs.push(t);
-      return wasA(t);
-    };
-    g['runBotConcessions'] = (...a: unknown[]) => {
-      pools = Object.keys((tcs[0]?.['moveMax'] as Raw | undefined) ?? {}).length;
-      return was(...a);
-    };
-    const resolveTurn = engineFn(engine, 'resolveTurn') as (s: string, r: unknown, t: number) => unknown;
+    const standIns = [
+      THE_FUNCTIONS_STOOD_IN[POOLS_AND_SWEEPS]((wasA) => (t: unknown) => {
+        tcs.push(t as Raw);
+        return wasA(t);
+      }),
+      THE_FUNCTIONS_STOOD_IN.runBotConcessions((was) => (...a: unknown[]) => {
+        pools = Object.keys((tcs[0]?.['moveMax'] as Raw | undefined) ?? {}).length;
+        return was(...a);
+      }),
+    ];
+    const resolveTurn = engine.resolveTurn as (s: string, r: unknown, t: number) => unknown;
     try {
-      withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rows(b, s)), b.G.turn));
+      withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), JSON.parse(rows(b, s)), b.G.turn));
     } finally {
-      g['runBotConcessions'] = was;
-      g[STAGES[2]] = wasA;
+      for (const x of standIns) x.mockRestore();
     }
     expect(pools).toBe(b.G.characters.filter((c) => c.alive && c.player != null).length);
   });
