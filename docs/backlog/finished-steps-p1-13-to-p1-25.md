@@ -55,7 +55,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-14k: #405 Three fate and clause scripts as TypeScript tests
 - P1-14l: #406 Four unit-ability scripts as TypeScript tests
 - P1-14z: #656 to #674 Every test in TypeScript, in 18 stacked rows; the old runner and its list of scripts gone
-- P1-14m: #677, #679, #681 to #691 and #THIS The tests on the engine's modules but four, in 14 stacked rows; the vm board gone
+- P1-14m: #677, #679, #681 to #692: The tests on the engine's modules but four, in 14 stacked rows; the vm board gone
 
 ## P1-15
 
