@@ -511,7 +511,8 @@ export type UnitAbilitySlug = keyof typeof UNIT_ABILITIES_THE_REGISTRY_HOLDS;
 // Every humanoid land unit has a MATCHUP ability (what it does to the unit it meets in the battle line,
 // or shoots over its fighter at) and ONE more; the fleets keep theirs. 2026-10-11 (Toby, the unit
 // abilities). Kept in step with battleFaceSide / abilityFront / abilityBack, the volley helpers and
-// rollUnitFates in the GM portal; tests/abilities-words holds the names to the rulebook's roster.
+// rollUnitFates in the GM portal;
+// tests/static/each-unit-abilitys-name-and-numbers-are-in-both-books.test.ts holds the names to the rulebook's roster.
 export const UNIT_ABILITIES = {
   'Shieldwall Levies':
     "Spear Hedge — cavalry facing them in the line fights at no better than ×0.75 (the Unicorn Herd's Purity breaks it). Shieldwall — ×1.25 when an archer stands in the second line behind them.",

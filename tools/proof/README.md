@@ -178,7 +178,7 @@ npm run proof:tours -- --base p1-16b-the-two-forecast-files   # the row's base b
 [the-changed-lines-no-tour-reaches.ts](the-changed-lines-no-tour-reaches.ts):
 
 1. builds this working tree's site with each bundle's source map (`buildSite`'s `sourceMaps`) into `coverage/tours/site/`;
-2. runs every mode of the four screen tours (`tests/lib/screens.ts`, as `tests/tools/same-dom.js` does) in jsdom on it, in a
+2. runs every mode of the four screen tours (`tests/lib/screens.ts`, as `tests/tools/same-dom.ts` does) in jsdom on it, in a
    process Node's V8 coverage watches;
 3. when the branch changed a file of the GM page's bundle, plays the matrix's set A on that site's GM page
    (`KC_SITE`) under the coverage too (`--matrix always` or `never` to say otherwise);
@@ -193,7 +193,7 @@ test), or a reason by name why the code makes it so. It writes `coverage/tours/l
 
 Its trial (P1-16a; the fault planted, then this tool, the screens against the base's site and the matrix):
 
-| Planted fault | The screens (`same-dom.js`) | The matrix (set A) | This list |
+| Planted fault | The screens (`same-dom.ts`) | The matrix (set A) | This list |
 |---|---|---|---|
 | A, `titles.ts`: a vacant title sorted as 0, not 1000 | 71 of 102 differ (the player's tour) | – | reached, counted |
 | B, `hall-of-fame.ts`: a record's provinces + 1 | none differ (the GM's tour) | 56 of 60 games differ (`writes`, `results`) | reached, counted (the matrix played) |

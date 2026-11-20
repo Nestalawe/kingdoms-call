@@ -94,7 +94,8 @@ export type ProvinceInABattle = Province & {
 //
 // Cost is BOTH the recruitment price and the per-turn wage: a unit costs its price again every turn
 // it exists. 2026-10-11 (Toby, the army roster): Forest Wardens 3→2, Shadow Archers 3→4, Ironwood
-// Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR). tests/roster holds both.
+// Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR).
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds both.
 export const ARMY_COST_MASTER: Record<string, number> = {
   // ── Human ──
   'Shieldwall Levies': 2,
@@ -139,7 +140,8 @@ Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t, d]) => {
 });
 // 2026-10-11 (Toby, the army roster): land move rates by kind — garrisons 1; line foot, archers and
 // guns 2; heavy horse and the special foot (Wardens, Berserkers, Shadow Archers) 3; light horse 4;
-// the winged riders 5 (Gyrocopters 4). tests/roster holds this table to the decided roster.
+// the winged riders 5 (Gyrocopters 4).
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds this table to the decided roster.
 export const ARMY_SPEED_MASTER: Record<string, number> = {
   // ── Human ──
   'Shieldwall Levies': 2,

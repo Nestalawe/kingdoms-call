@@ -139,7 +139,7 @@ Every name, message and record on screen was typed by someone, so it goes into a
   player portal's `SKILL_INFO`: write those entries as ``kcHtml`…` ``), and for an entity written in data (`'Hosts &amp;
   armies'` now shows `&amp;`: write `&`). An attribute put in as a value breaks the same way: in
   ``kcHtml`<div${dim?' style="opacity:.8"':''}>` `` the quotes are escaped, so write ``${dim?kcHtml` style="opacity:.8"`:''}``.
-  The lint rule can't see either mistake; `same-dom.js` (below) finds it on the screens a tour visits.
+  The lint rule can't see either mistake; `same-dom.ts` (below) finds it on the screens a tour visits.
 - **Never join `kcHtml` with `+`, `+=` or `.join('')`.** Each makes a plain string, which the next `kcHtml` escapes,
   so the markup shows as text. Collect pieces in an array and put the array in: ``kcHtml`<ul>${rows}</ul>` ``.
   The lint rule sees this only when `kcHtml` is written in the expression: `row(a)+row(b)`, where `row` returns `kcHtml`, and
@@ -173,12 +173,12 @@ Every name, message and record on screen was typed by someone, so it goes into a
 - **A test that runs a slice of a page in `vm`** (the Hall of Fame record tests do) must load `kc-safe.ts` into its
   context first if the slice calls the helpers (`scriptOf('ui/shared/kc-safe.ts')`, `tests/lib/source.ts`).
 - **Show it looks the same.** Converting a page must not change it for ordinary names: run
-  `node tests/tools/same-dom.js <main's site>` and put its output in the pull request.
+  `node tests/tools/same-dom.ts <main's site>` and put its output in the pull request.
 - **An exception goes in `HTML_EXCEPTIONS` (`eslint.config.js`)** with a one-line reason, for a maintainer to review: the
   file, the check and a piece of the code it refuses. The rule is strict: no page may build HTML outside `kcHtml` /
   `kcEsc`, and an exception that matches nothing fails, so the list can't go stale. The ratchet counts the list
   (`allowlistEntries`), so it only shrinks.
 - **A `?:` followed by `+` adds the tail to one branch only.** In `h.innerHTML=!ok?'Why not.':'Who reads it.'+' 12 left.'`
   the tail belongs to the second branch. Converting it to ``kcHtml`${!ok?…:…} 12 left.` `` adds it to both. Keep each branch
-  whole: ``!ok?kcHtml`…`:kcHtml`… 12 left.` ``. `same-dom.js` finds it when a tour reaches both branches (it did, in the player
+  whole: ``!ok?kcHtml`…`:kcHtml`… 12 left.` ``. `same-dom.ts` finds it when a tour reaches both branches (it did, in the player
   portal's Dispatches).

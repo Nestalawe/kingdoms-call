@@ -1,7 +1,9 @@
 // The invariants (plan P1-04b): what must be true after every turn, whatever the rules say. Each is a pure check on one
 // turn as a harness sees it: the saved state before and after, the GM log's lines, the telemetry rows and the realms'
-// game_players rows. They only read. turn-fuzz and the balance matrix (tools/balance/play.ts) run them after every
-// turn; a breach fails that game. Each has a unit test with a made-up turn that breaks it (unit/invariants.test.ts).
+// game_players rows. They only read. The whole-game fuzz
+// (tests/simulation/whole-games-on-random-orders-keep-every-invariant-and-no-turn-throws.test.ts) and the balance matrix
+// (tools/balance/play.ts) run them after every turn; a breach fails that game. Each has a unit test with a made-up
+// turn that breaks it (unit/invariants.test.ts).
 //
 // checkTurn also runs the report-leak check (report-leaks.ts, P1-04c) on the turn's reports, where the harness has them.
 //

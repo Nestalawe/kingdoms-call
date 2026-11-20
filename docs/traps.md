@@ -161,7 +161,7 @@ the fight (`pcCharCombatant`) and the hero's card (`extraSkillBonuses`).
 Every name and message on screen was typed by someone, so a page builds HTML only through `kcHtml` / `kcEsc`
 (`src/ui/shared/kc-safe.ts`), and markup inside a value is `kcHtml` too. Never join `kcHtml` with `+` or `.join('')`.
 Checks: lint (`kc/html-is-built-only-through-kc-html`, exceptions in `HTML_EXCEPTIONS`, `eslint.config.js`) catches
-most; `node tests/tools/same-dom.js <main's site>` finds the rest on the screens a tour visits. Every mistake it can't
+most; `node tests/tools/same-dom.ts <main's site>` finds the rest on the screens a tour visits. Every mistake it can't
 see: [here](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html.md#html-is-built-only-through-kchtml).
 
 ## Order is data

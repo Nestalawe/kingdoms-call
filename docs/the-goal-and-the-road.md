@@ -86,13 +86,13 @@ the module it changes.
 | Every report line goes through `emit` and the perception pass; `playerView` exists | Met |
 | No content effect is checked by name outside the registry | Met for every content family; the alignments' checks by name (the ratchet counts them) move with "every rule into the registry" |
 | No copy of a rule is left in the player portal; a maintainer ruled each disagreement | Met as far as the checks find: the copies file is retired; its rest (P1-11z) is still open |
-| All code is TypeScript; the engine side is strict; database access is typed | Not yet met: old test files are still JavaScript (lint refuses `@ts-nocheck` in every TypeScript file) |
+| All code is TypeScript; the engine side is strict; database access is typed | Not yet met: every test is TypeScript (P1-14z), but the CI scripts in `.github/scripts/` are still JavaScript (lint refuses `@ts-nocheck` in every TypeScript file) |
 | No known import-rule violation and no unused code; no ESLint suppression on the engine side | Not yet met: the ratchet still counts known violations and unused code, and `src/engine/` and `src/views/` still hold suppressions |
 | No hand-typed stamps; hashed assets; the version banner works | Met |
 | The harness is enforced: hooks, the Node pin, ratchets, coverage thresholds and the harness test, in CI | Met |
 | Pages reach the database only through the access layer, tested per role against the local Supabase; `stub-db` deleted; property tests with fixed seeds; two mutation sessions or more | Met |
 | The architecture checks run in CI: the layers and cycles, knip, the purity test, the registry and content completeness tests; the module map is generated | Met (the content completeness test lists the gaps it found when it came in, each a known defect) |
-| No test injects code into a page's source; every test is TypeScript; saves are versioned and checked; items have ids | Not yet met: the saves part is met; old JavaScript tests are left; items have no ids yet (P1-20) |
+| No test injects code into a page's source; every test is TypeScript; saves are versioned and checked; items have ids | Not yet met: the saves part is met, and every test is TypeScript (P1-14z); items have no ids yet (P1-20) |
 | Names say what the code does: the glossary's renames (P1-24) | Not yet met |
 | A typical batch item needs only `CLAUDE.md`, the architecture overview and one to three modules (checked on three batches) | Not yet met: not yet checked on a batch |
 

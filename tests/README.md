@@ -19,7 +19,7 @@ npx playwright test         # the browser specs, in Chromium (about 20 s): see "
 npm run check               # the quick check of what this branch changes (about 20 s; the Stop hook runs it)
 npm run ratchet             # the counts in ratchet.json: none may rise
 npm run test:full           # bigger fuzz runs, and ten times the property tests' inputs (the nightly run, with a random seed)
-npm run test:quarantine     # the quarantined harnesses below (expected to fail)
+npm run test:quarantine     # the quarantined tests below (none today)
 npm test -- -t fuzz         # only tests whose name matches "fuzz" (a regular expression)
 npm test -- --project unit  # one level: static, unit, scenario, simulation or page
 KC_JOBS=1 npm test          # one test file at a time (default: one per core, up to 8 at once)
@@ -77,15 +77,11 @@ level and why a lower one wouldn't do.
 ## Writing a new test
 
 - **New tests are TypeScript Vitest tests in `tests/<level>/`**, e.g. `tests/page/deterministic-boot.test.ts`, or,
-  for what only a real browser shows, browser specs in `tests/browser/` ([below](#browser-specs)). Types for the parts
-  of `lib/`'s JavaScript files they use are in `lib/*.d.ts`. Give the file a long name that says what it checks.
+  for what only a real browser shows, browser specs in `tests/browser/` ([below](#browser-specs)). Give the file a long
+  name that says what it checks.
 - **Its header says what it checks, its level and why that level.** Then add its line to
   [the list](every-test-its-level-and-what-it-checks.md): the file, the level, what it checks, at most 300 characters
   (`static/the-docs-an-agent-reads-first-stay-within-their-budgets.test.ts` fails on a test file the list doesn't name).
-- **The test scripts** (`*.test.js`, written before Vitest) are listed in `suite.ts`, each with its level; a script
-  that checks at more than one level sits at its highest. `legacy.test.ts` runs each one as a Vitest test in its own
-  Node process, with the same arguments and environment; it passes when the script exits 0, and a failure shows the
-  end of its output. To add or quarantine a script, edit `suite.ts`. Write no new ones.
 - **Load the site the one way:** a page through `lib/boot.ts`, the engine through `lib/engine.ts` or its modules, the
   site's code through `lib/source.ts`, the database through its fake, `lib/fake-db.ts`
   ([how-the-tests-reach-the-site.md](../docs/architecture/how-the-tests-reach-the-site.md)). Tests use synthetic,
@@ -193,14 +189,12 @@ path, and posts the balance report. `npm run balance:update` rewrites the baseli
 ## Quarantined tests
 
 **Quarantined** tests are not part of `npm test`. Each file's first line says why. They are kept unchanged, never
-edited to pass. To quarantine one, in its own commit: move it to `quarantine/` (a test script's line leaves
-`suite.ts`), and give its one-line reason as its first line and in the table below.
-A quarantined test comes back, in its own PR, only once its reason no longer applies: updating it to the confirmed
-behaviour is fine, loosening it until it passes is not.
+edited to pass. To quarantine one, in its own commit: move it to `quarantine/`, and give its one-line reason as its
+first line and in the table below. A quarantined test comes back, in its own PR, only once its reason no longer
+applies: updating it to the confirmed behaviour is fine, loosening it until it passes is not.
 
 | Test | Level | Why |
 |---|---|---|
-| `quarantine/set-scan.test.js` | 0 | Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives. Needs triage before it can gate |
 
 **A running test that can't fail on its own findings:** `tests/unit/the-home-placement-gives-each-king-a-cell-of-their-own-off-the-edge-rows-and-prints-the-spacing.test.ts` prints `FAIL` for a too-close capital but
 fails only on a duplicate home cell or a home on an edge row. It is kept as written (KD-276).

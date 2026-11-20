@@ -15,7 +15,7 @@
 // ════
 // Army type lookups for movement and sea rules Primal army type definitions (added to main lookup
 // tables) Format mirrors existing entries
-// 2026-10-13 (Toby, Creatures and Monsters I): the wild roster as decided (tests/lib/primal-decided.js) — a
+// 2026-10-13 (Toby, Creatures and Monsters I): the wild roster as decided (tests/lib/primal-decided.ts) — a
 // Druid-4 beast about 2.6–2.75 strength a gold, a Druid-5 beast 2.4–2.6, because a realm's own-race troops
 // carry a ×1.44 kinship no beast gets; every flyer moves 5, no walker slower than 2. Terrain is written ONCE,
 // in the GM portal's TERRAIN_MODS; the always-on terrain multipliers these units used to carry on top are gone.
@@ -14833,7 +14833,8 @@ export const KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS: read
 
 // Unit TYPE (2026-10-11, Toby): the ONE word every player-facing table, blurb and report uses for a
 // unit — infantry, ranged, cavalry, flyer or naval. The engine's rules keep running on the class lists
-// above (their order is data); this is the vocabulary, and tests/unit-types holds the two in agreement:
+// above (their order is data); this is the vocabulary, and
+// tests/unit/every-unit-has-one-of-five-types-that-agree-with-the-engines-class-lists.test.ts holds the two in agreement:
 // cavalry ↔ cavalry, sea ↔ naval, aerial ↔ flyer, missile → ranged. A unit missing here counts as
 // infantry (old saves and test fixtures name types that no longer exist). Garrisons are infantry that
 // muster into the province; "light foot" (half a hull) stays a shipping tag, not a type. Goblin Horde is
@@ -14980,7 +14981,8 @@ export const KC_DRUID_LEVELS = {
 // primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place primal stats are written),
 // then the five summoned elementals. 2026-10-11 (Toby, the army roster): Free Lances 5→6, Gilded
 // Lances 6→7, Forest Wardens 5→4, Shadow Archers 6→7, Ironwood Crossbows 5→4, Warg Riders 5→6; the
-// costs moved with them in ARMY_COST_MASTER (GM portal). tests/roster holds both to the decided table.
+// costs moved with them in ARMY_COST_MASTER (GM portal).
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds both to the decided table.
 export const KC_UNIT_BASE_STR = Object.assign(
   {
     'Shieldwall Levies': 4,

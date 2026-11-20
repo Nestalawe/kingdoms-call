@@ -16,7 +16,7 @@
 // repeats from its seed.
 //
 // Until plan P1-14z this was tests/home-placement.test.js, which drew its dice from an unseeded Math.random and took
-// its run count from tests/suite.ts (RUNS). Its checks and its printed table are here, as they were.
+// its run count from the old runner's list (RUNS). Its checks and its printed table are here, as they were.
 import vm from 'node:vm';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { kcRngStream } from '../../src/engine/rng.ts';

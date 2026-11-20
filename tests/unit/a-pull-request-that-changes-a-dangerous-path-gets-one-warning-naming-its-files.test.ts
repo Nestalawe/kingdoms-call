@@ -45,7 +45,7 @@ function theStringsIn(list: unknown): string[] {
 
 describe('which changed files count as dangerous', () => {
   test('a site-only change matches nothing', () => {
-    expect(match([file('site/index.html'), file('tests/suite.ts')], GLOBS)).toEqual([]);
+    expect(match([file('site/index.html'), file('tests/lib/boot.ts')], GLOBS)).toEqual([]);
   });
 
   test('supabase/, .github/ and site/vendor/ all match', () => {
@@ -104,7 +104,7 @@ describe('the real paths file', () => {
     expect(isDangerous('public/vendor/supabase-js-2.117.3.min.js', globs)).toBe(true);
     expect(isDangerous('package.json', globs)).toBe(true);
     expect(isDangerous('package-lock.json', globs)).toBe(true);
-    for (const f of ['src/index.html', 'src/engine/run-turn.ts', 'public/kc-staging-footer.js', 'tests/suite.ts'])
+    for (const f of ['src/index.html', 'src/engine/run-turn.ts', 'public/kc-staging-footer.js', 'tests/lib/boot.ts'])
       expect(isDangerous(f, globs), f).toBe(false);
   });
 
@@ -120,7 +120,7 @@ describe('the real paths file', () => {
       '.nvmrc',
       '.npmrc',
       'tests/setup/each.ts',
-      'tests/legacy.test.ts',
+      'tests/setup/the-test-levels.mts',
       'tests/ratchet.json',
       'tests/static/harness.test.ts',
       'tests/balance/matrix.test.ts',
@@ -135,7 +135,7 @@ describe('the real paths file', () => {
       expect(isDangerous(f, globs), f).toBe(true);
     for (const f of [
       'tests/static/other.test.ts',
-      'tests/suite.ts',
+      'tests/lib/boot.ts',
       'tests/boot-pages.test.js',
       'tools/legacy/README.md',
     ])

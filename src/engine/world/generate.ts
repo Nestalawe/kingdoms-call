@@ -1176,14 +1176,15 @@ export function generateNewGame(
   const _realmColourDeal = shuffleP(REALM_COLOURS);
   // The wild pools the home passes deal from: the alignment neighbour pass below and the
   // wild-country pass after the homes (item 12). Copies of CREATURE_BY_TERRAIN / MONSTER_BY_TERRAIN,
-  // which are local to the province loop; tests/new-creatures and tests/primal-renames hold them together.
+  // which are local to the province loop; tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts
+  // and tests/unit/the-three-renamed-wild-units-carry-their-new-names-in-every-table-and-none-of-the-old.test.ts hold them together.
   const CBT = {
     plain: ['Thunderbirds', 'Stone Giants', 'Unicorn Herd', 'Mammoth Host'],
     desert: ['Stone Giants', 'Thunderbirds', 'Mammoth Host'],
     forest: ['Forest Ents', 'Thunderbirds', 'Great Bears', 'Unicorn Herd'],
     jungle: ['Forest Ents'],
     mountain: ['Stone Giants', 'Crimson Rocs', 'Thunderbirds', 'Great Bears'],
-  }; // = CREATURE_BY_TERRAIN (tests/new-creatures holds the two together)
+  }; // = CREATURE_BY_TERRAIN (tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts holds the two together)
   const MBT = {
     plain: ['Titan Warbeasts', 'Manticore Pride'],
     desert: ['Manticore Pride', 'Basilisk Brood'],

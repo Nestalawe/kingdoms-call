@@ -13,7 +13,7 @@
 //
 // Each page's hostile-name tests in jsdom are lib/each-screen-of-a-pages-tour-shows-hostile-names-as-text-in-jsdom.ts's.
 //
-// Plain Node runs this file as it is (its types are stripped), so tests/tools/same-dom.js, run by hand, can require it:
+// Plain Node runs this file as it is (its types are stripped), so tests/tools/same-dom.ts, run by hand, can import it:
 // it uses only TypeScript that can be erased.
 import * as acorn from 'acorn';
 

@@ -2,7 +2,7 @@
 
 One line a test: its file, its level, and what it checks. A line that ends in "…" is cut short: the test file's
 header says the rest. A test that checks at more than one level is listed under its highest. How to write, place,
-prove and run a test, and the levels: [README.md](README.md). Each test script's level is in `tests/suite.ts`.
+prove and run a test, and the levels: [README.md](README.md).
 
 ## Static (level 0)
 
@@ -489,4 +489,4 @@ CI's `db` job, not by `npm test`.
 Not part of `npm test` (`npm run test:quarantine` runs them). Each file's first line says why, and so does
 [README.md](README.md#quarantined-tests).
 
-- `tests/quarantine/set-scan.test.js` (static, quarantined): Report-only: always exits 0. On today's build it lists 40 suspect `Set`/array mix-ups, mostly the same name used in different places. The two `Set`-with-`.includes()` hits were checked by hand and are false positives …
+None today.

@@ -1,5 +1,6 @@
 # The nightly random-seed run (plan P1-04d). Every night it runs npm run test:full with a random KC_SEED: every test
-# at its full size, so the fuzz games with the invariants and the leak check (turn-fuzz,
+# at its full size, so the fuzz games with the invariants and the leak check
+# (simulation/whole-games-on-random-orders-keep-every-invariant-and-no-turn-throws,
 # simulation/every-realms-report-in-whole-bot-games-passes-the-leak-check) and the property tests with ten times their
 # inputs, in worlds and on inputs the pull requests' fixed seed never makes. It
 # also finds a test that passes only on lucky seeds before it breaks an unrelated pull request.

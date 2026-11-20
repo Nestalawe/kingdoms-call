@@ -41,7 +41,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-14
 
-- P1-14: delivered in its rows, below: tests moved down a level and into TypeScript Vitest tests; the rest is P1-14z and P1-14m
+- P1-14: delivered in its rows, below: tests moved down a level and into TypeScript Vitest tests; the rest is P1-14m
 - P1-14a: #193 The engine's modules for tests, and two old scripts as four TypeScript tests
 - P1-14b: #194 Personal combat's tests on the engine's modules, and six words scripts as TypeScript tests
 - P1-14c: #388 Five battle, duel and page scripts as TypeScript tests
@@ -54,6 +54,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-14j: #404 Four battle-line scripts as TypeScript tests
 - P1-14k: #405 Three fate and clause scripts as TypeScript tests
 - P1-14l: #406 Four unit-ability scripts as TypeScript tests
+- P1-14z: #656 to #674 Every test in TypeScript, in 18 stacked rows; the old runner and its list of scripts gone
 
 ## P1-15
 

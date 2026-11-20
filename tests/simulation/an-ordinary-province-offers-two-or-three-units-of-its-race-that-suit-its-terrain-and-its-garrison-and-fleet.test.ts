@@ -15,7 +15,7 @@
 // standard deviations wide).
 //
 // Until plan P1-14z this was the world half of tests/province-pools.test.js, on the booted GM page, its size (4, or 10)
-// given it by tests/suite.ts; each check is kept as it was.
+// given it by the old runner's list; each check is kept as it was.
 import { beforeAll, expect, test } from 'vitest';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 import type { ANewWorld } from '../lib/the-lair-items-and-the-neutral-armies-a-new-world-deals.ts';

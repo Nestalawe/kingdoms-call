@@ -2,7 +2,7 @@
 // (lib/hostile.ts: hostile or ordinary names), then visits each of its screens in turn and hands every one to visit().
 // The same tour runs in jsdom and in Chromium, and against any copy of the site, so it serves both
 //   - the hostile-name tests (hostile names: nothing may become markup or code), and
-//   - tests/tools/same-dom.js (ordinary names, main's site against a branch's: nothing may look different).
+//   - tests/tools/same-dom.ts (ordinary names, main's site against a branch's: nothing may look different).
 //
 // A tour: {page, modes: {name: {url, ...}}, world(N) → plain data, fakesWorld(world, mode) → the world the fake database
 // holds, as data (lib/fake-db.ts: the Hall of Fame's, the Overlord's, or the GM's tables, which the player's tour reads
@@ -13,7 +13,7 @@
 // may put its own answer in place of one of its functions); the same in jsdom and in Chromium.
 // A new page's slice of P0-19 adds its tour here.
 //
-// Plain Node runs this file as it is (its types are stripped), so tests/tools/same-dom.js, run by hand, can require it:
+// Plain Node runs this file as it is (its types are stripped), so tests/tools/same-dom.ts, run by hand, can import it:
 // it uses only TypeScript that can be erased.
 import path from 'node:path';
 import type { Browser, Page } from '@playwright/test';
