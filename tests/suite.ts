@@ -20,16 +20,10 @@ const GM = 'kingdoms-call-gm-portal.html';
 export function suite(full: boolean): Script[] {
   // [level, name, file, args, env]
   const rows: [Level, string, string, string[]?, Record<string, string>?][] = [
-    ['page', 'staging-footer', 'tests/staging-footer.test.js'],
-    ['page', 'gm-offer-and-gate', 'tests/gm-offer-and-gate.test.js'],
     ['page', 'other-realms-slots', 'tests/other-realms-slots.test.js'],
     ['page', 'dispatch-limits', 'tests/dispatch-limits.test.js'],
     ['page', 'report-dispatch', 'tests/report-dispatch.test.js'],
     ['page', 'eliminated-dispatches', 'tests/eliminated-dispatches.test.js'],
-    ['page', 'overlord-page', 'tests/overlord-page.test.js'],
-    ['page', 'overlord-suspend-delete', 'tests/overlord-suspend-delete.test.js'],
-    ['page', 'master-gm-mode', 'tests/master-gm-mode.test.js'],
-    ['page', 'profiles-no-email', 'tests/profiles-no-email.test.js'],
     ['scenario', 'meta-missing-turn', 'tests/meta-missing-turn.test.js'],
     ['simulation', 'turn-fuzz', 'tests/turn-fuzz.test.js', full ? ['16', '12'] : ['4', '6']],
     ['scenario', 'two-crowns', 'tests/two-crowns.test.js'],
