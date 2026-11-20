@@ -2,8 +2,10 @@
 // casting itself (the spell named, the casting limits, a mastery spell once a turn, the cast chance and its roll, a
 // spell item's cast, the Wailing Phylactery, a mark gone, vanished, veiled or cloaked) and every spell a hero can work
 // as a phase order, school by school. Each case of lib/cast-spell-order-cases.ts staged on the middle of a bot world,
-// from plain realms (`stageCase`), and played through resolveTurn, every realm human-held, every other hero Resting,
-// with the case's dice fixed for the whole turn. Level 2 (scenario): the order is read inside resolveTurn (a spell
+// from plain realms (`stageCase`), and played through resolveTurn on the engine's modules (since P1-14m; the bare vm
+// before), every realm human-held, every other hero Resting, with the case's dice fixed for the whole turn. The
+// experience rolls come from the board's recorder (trySkillGain stood in on its module): it misses a voyage's roll,
+// which no case reads (they read White, Psychic, Illusory, Necromancy and Sage). Level 2 (scenario): the order is read inside resolveTurn (a spell
 // item's Use Item becomes a cast there), the casting limit counts the hero's earlier orders of the turn, a hero raised
 // or charmed takes up the orders his realm wrote for him, and the turn's end takes back what lasts only a turn (a
 // charmed hero goes home, a summoned elemental dissolves, a flood recedes), so only a whole turn plays it as a realm
@@ -39,10 +41,17 @@
 // takes up the orders his realm wrote for him, and the turn's end takes back what lasts a turn
 import { describe, expect, test } from 'vitest';
 import { CAST_SPELL_ORDER_CASES, LANDS, stageCase } from '../lib/cast-spell-order-cases.ts';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { board, playTurn, recordExperienceRolls, withCaseDice } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  playTurn,
+  quietEngineLog,
+  recordExperienceRolls,
+  withCaseDice,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);

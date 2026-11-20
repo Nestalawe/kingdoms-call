@@ -39,6 +39,7 @@ import {
   type Dice,
   type ExperienceRoll,
   type Line,
+  type Order,
   type Province,
   type World,
 } from './the-board-a-case-is-staged-on-either-way.ts';
@@ -74,6 +75,7 @@ export async function loadTheEngineOnItsModules({ seed }: { seed: number }) {
   const { kcRng } = await import('../../src/engine/rng.ts');
   const theDiceModule = await import('../../src/engine/dice-and-army-names.ts');
   const theExperienceModule = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+  const theBotsEconomy = await import('../../src/engine/bots/economy.ts');
   const { KC_SEASONS } = await import('../../src/content/kingdoms-call-data.ts');
   const { generateBotSetups, isBotRow } = await import('../../src/engine/bots/setup.ts');
   const { generateNewGame } = await import('../../src/engine/world/generate.ts');
@@ -89,6 +91,9 @@ export async function loadTheEngineOnItsModules({ seed }: { seed: number }) {
     kcRng,
     theDiceModule,
     theExperienceModule,
+    /** The bots' last pass, and a stand-in for it on its module (asTheBotsPlan), each named. */
+    runBotOrderHygiene: theBotsEconomy.runBotOrderHygiene,
+    standInForTheBotsLastPass: () => vi.spyOn(theBotsEconomy, 'runBotOrderHygiene'),
     KC_SEASONS,
     generateBotSetups,
     isBotRow,
@@ -407,6 +412,28 @@ export const recordExperienceRolls = (engine: TheEngineOnItsModules) => {
       return { result: body(), xp };
     } finally {
       theRecorder.mockRestore();
+    }
+  };
+};
+
+/** Writes the orders `writes` gives (by hero) into the turn after the bots have planned theirs, for the length of a
+ *  body: the vm board's asTheBotsPlan. runBotOrderHygiene (the bots' last pass) is stood in by vi.spyOn on its module,
+ *  playing as it is and then writing the orders in; the bots' plan calls it from another file, so the stand-in reaches
+ *  it (docs/traps.md). */
+export const asTheBotsPlan = (engine: TheEngineOnItsModules) => {
+  const lastPass = engine.runBotOrderHygiene;
+  return <T>(writes: Record<number, Order[]> | undefined, body: () => T): T => {
+    const theLastPass = engine.standInForTheBotsLastPass().mockImplementation((G, botIdxSet) => {
+      lastPass(G, botIdxSet);
+      if (writes)
+        Object.keys(writes).forEach((id) => {
+          G.turnOrders[id] = JSON.parse(JSON.stringify(writes[Number(id)])) as (typeof G.turnOrders)[string];
+        });
+    });
+    try {
+      return body();
+    } finally {
+      theLastPass.mockRestore();
     }
   };
 };

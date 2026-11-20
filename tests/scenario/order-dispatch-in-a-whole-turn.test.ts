@@ -3,9 +3,10 @@
 // writes it; a bot's Practice on a skill at 5 and a bot's Search (too hurt, talk not heard, written for another
 // province); the battle lock on a Move or an Encounter; a charmed enemy hero's refusals; a mastery once a turn; the
 // Forced March; a spell item's Use Item. Each case of lib/order-dispatch-cases.ts staged on the middle of a bot world,
-// from plain realms (`stageCase`), and played through resolveTurn, every realm human-held but the bots a case names
-// (their heroes' orders written in as the bots' own), every hero without orders Resting, with the case's dice fixed for
-// the whole turn. Level 2 (scenario): the phase loop makes what most checks read (an assault a friend joins, a battle
+// from plain realms (`stageCase`), and played through resolveTurn on the engine's modules (since P1-14m; the bare vm
+// before), every realm human-held but the bots a case names (their heroes' orders written in as the bots' own, by a
+// stand-in for runBotOrderHygiene on its module), every hero without orders Resting, with the case's dice fixed for the
+// whole turn. Level 2 (scenario): the phase loop makes what most checks read (an assault a friend joins, a battle
 // joined earlier in the season, a skill risen in an earlier one, a mastery already spent), and the bots plan inside the
 // turn, so only a whole turn plays them as the game does.
 // unit/order-dispatch-called-directly.test.ts calls processOrder itself on the same cases, one phase at a time.
@@ -37,11 +38,17 @@
 // joined earlier in the season, a skill risen in an earlier one, a mastery already spent) and the bots plan inside the
 // turn
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { board, recordExperienceRolls, asTheBotsPlan } from '../lib/middle-of-a-bot-world.ts';
+import {
+  asTheBotsPlan,
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  recordExperienceRolls,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { ORDER_DISPATCH_CASES, playCase, stageCase } from '../lib/order-dispatch-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);

@@ -1,20 +1,21 @@
 // Diplomacy resolution and victory (plan P1-08k4: src/engine/turn/, two stages lifted out of resolveTurn's own body),
-// called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/diplomacy-and-victory-in-a-whole-turn plays through a whole turn (lib/diplomacy-and-victory-cases.ts), here
-// played through the two stages alone, as resolveTurn calls them once the phases are over (no phase current, every later
-// line filed after the phases), with the realms' declarations, Reckoning calls and concessions put in the context as
-// the merge of their orders does, but for the one only a whole turn can stage; then, with the helpers they call stood
-// in (each wrapped in the vm by a recorder for the test's length), what they hand them and when; then what a whole turn
-// can't stage: an Evil or Undead realm breaking an alliance with nothing before it (the war without warning comes
-// first in a turn), realms and foes with no name (or none on record), a realm offered peace with no record of whom it
-// has met, hosts in a contested province or of a realm not party to the new war, phantom companies, a one-realm game,
-// two allies seeking an alliance so few kings may not forge, a world with no realms or no heroes, a realm with no
-// provinces, a foe's hero with no companies, a game decided with no standings. Properties
-// (fast-check): each pair's relation after the declarations is the rule's (peace, alliance, war, a broken pact, or
-// unchanged), and each realm is left exactly the overtures it was sent and didn't answer; the game ends by elimination
-// exactly when one realm is left with land or a living hero, and otherwise by concession exactly when one realm is left
-// that hasn't conceded, or those left are all allies, announced once with a line for every realm; the bar falls one
-// step a turn exactly when it may, never below its floor.
+// played through the two stages alone, as resolveTurn calls them once the phases are over (no phase current, every
+// later line filed after the phases), with the realms' declarations, Reckoning calls and concessions put in the context
+// as the merge of their orders does, but for the one only a whole turn can stage; then, with the helpers they call
+// stood in (each by a recorder for the test's length, vi.spyOn on its module), what they hand them and when; then what
+// a whole turn can't stage: an Evil or Undead realm breaking an alliance with nothing before it (the war without
+// warning comes first in a turn), realms and foes with no name (or none on record), a realm offered peace with no
+// record of whom it has met, hosts in a contested province or of a realm not party to the new war, phantom companies, a
+// one-realm game, two allies seeking an alliance so few kings may not forge, a world with no realms or no heroes, a
+// realm with no provinces, a foe's hero with no companies, a game decided with no standings. Properties (fast-check):
+// each pair's relation after the declarations is the rule's (peace, alliance, war, a broken pact, or unchanged), and
+// each realm is left exactly the overtures it was sent and didn't answer; the game ends by elimination exactly when one
+// realm is left with land or a living hero, and otherwise by concession exactly when one realm is left that hasn't
+// conceded, or those left are all allies, announced once with a line for every realm; the bar falls one step a turn
+// exactly when it may, never below its floor.
 // Level 1: two functions, called with the context resolveTurn hands them.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -22,25 +23,25 @@
 // `victoryTheReckoningEliminationConcessionAndTheAnnouncement` (P1-08k4), called directly: the whole-turn cases through
 // the two stages alone (but the two only a whole turn stages), with the realms' declarations, Reckoning calls and
 // concessions put in the context as the merge of their orders does; then, with the helpers they call wrapped by
-// recorders in the `vm`, what each is handed: the war fronts looked for once for each new war, after it is told; each
-// pair settled under its own key; each Reckoning caller weighed in turn until one claims, the bar from the realm count,
-// the steps and the bloc; the winner judged, eliminated or conceded from the whole state; the realms left after a
-// concession checked pair by pair. Then what a whole turn can't stage: an Evil or Undead realm breaking an alliance
-// goes to war (whichever of the pair), an Evil realm whose ally breaks with it is only at peace; realms and foes with
-// no name; a realm offered peace with no record of whom it has met; a host in a contested province, of a realm not
-// party to the war, or on a third realm's ground (warned only beside a living host of the new foe); phantom companies
-// counted; a nameless caller, claimant or winner; a claimant with a hero but no land; a one-realm game; a concession's
-// standings by realm index; every line's realm with an empty name or none on record holding none (P1-10b38); two allies
-// seeking an alliance in a game of three, each told, still allied; no list of realms, no roll of heroes (a call, a
-// claim, an elimination, a concession); a realm with no provinces but a king, still in the game; a foe's hero beside a
-// host with no companies list; a game decided before with no standings. Properties (fast-check): each pair's relation
-// after the declarations is the rule's, each realm keeps exactly the overtures it didn't answer and has met who courted
-// it; the game ends by elimination exactly when one realm is left with land or a living hero, else by concession when
-// one realm still in it is left or all left are allies, announced once with a line for every realm; the bar falls a
-// step a turn exactly when it may, never below its floor. Planted faults: in the PR (P1-08k4)
+// recorders (vi.spyOn on each one's module: the calls from other files), what each is handed: the war fronts looked for
+// once for each new war, after it is told; each pair settled under its own key; each Reckoning caller weighed in turn
+// until one claims, the bar from the realm count, the steps and the bloc; the winner judged, eliminated or conceded
+// from the whole state; the realms left after a concession checked pair by pair. Then what a whole turn can't stage: an
+// Evil or Undead realm breaking an alliance goes to war (whichever of the pair), an Evil realm whose ally breaks with
+// it is only at peace; realms and foes with no name; a realm offered peace with no record of whom it has met; a host in
+// a contested province, of a realm not party to the war, or on a third realm's ground (warned only beside a living host
+// of the new foe); phantom companies counted; a nameless caller, claimant or winner; a claimant with a hero but no
+// land; a one-realm game; a concession's standings by realm index; every line's realm with an empty name or none on
+// record holding none (P1-10b38); two allies seeking an alliance in a game of three, each told, still allied; no list
+// of realms, no roll of heroes (a call, a claim, an elimination, a concession); a realm with no provinces but a king,
+// still in the game; a foe's hero beside a host with no companies list; a game decided before with no standings.
+// Properties (fast-check): each pair's relation after the declarations is the rule's, each realm keeps exactly the
+// overtures it didn't answer and has met who courted it; the game ends by elimination exactly when one realm is left
+// with land or a living hero, else by concession when one realm still in it is left or all left are allies, announced
+// once with a line for every realm; the bar falls a step a turn exactly when it may, never below its floor. Planted
+// faults: in the PR (P1-08k4)
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   DIPLOMACY_AND_VICTORY_CASES,
   LANDS,
@@ -73,16 +74,35 @@ import {
   type DiplomacyAndVictoryCase,
   type Outcome,
 } from '../lib/diplomacy-and-victory-cases.ts';
-import { board, must, withCaseDice, type Board, type RealmSends } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  quietEngineLog,
+  withCaseDice,
+  type Board,
+  type RealmSends,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { realm } from '../lib/cast-spell-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
+// the two worlds made one after the other on the same modules, as the vm made them
 const worlds = { 3: botWorld(engine, 3, { cols: 10, rows: 8 }), 4: botWorld(engine, 4, { cols: 10, rows: 8 }) };
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
-const diplomacy = fn('diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings');
-const victory = fn('victoryTheReckoningEliminationConcessionAndTheAnnouncement');
+// (the engine's own modules, fresh with it; each function named, so knip sees which exports are read)
+const {
+  diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings,
+  victoryTheReckoningEliminationConcessionAndTheAnnouncement,
+} =
+  await import('../../src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts');
+const theWarFronts = await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts');
+const theRelations = await import('../../src/engine/realms/relations-and-captures.ts');
+const theReckoning = await import('../../src/engine/titles/reckoning.ts');
+const thePerks = await import('../../src/engine/titles/perks.ts');
+const diplomacy = diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings as Fn;
+const victory = victoryTheReckoningEliminationConcessionAndTheAnnouncement as Fn;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const tc = (b: Board) => b.tc as unknown as Record<string, unknown> & Board['tc'];
@@ -142,20 +162,69 @@ interface Call {
   /** The lines written before the call. */
   before: number;
 }
-/** Runs `body` with each of `names` wrapped in the vm by a recorder that still calls it (for the body's length). */
-function recorded(b: Board, names: string[], body: () => void): Call[] {
-  const g = engine as unknown as Record<string, Fn>;
-  const was = names.map((f) => [f, must(g[f], f)] as const);
+/** Stands `spy` in for `original` by a recorder that notes each call into `calls` and still makes it. */
+function recordEachCall<A extends unknown[], R>(
+  original: (...a: A) => R,
+  spy: MockInstance<(...a: A) => R>,
+  name: string,
+  b: Board,
+  calls: Call[],
+) {
+  return spy.mockImplementation((...args: A) => {
+    calls.push({ fn: name, args, before: b.lines().length });
+    return original(...args);
+  });
+}
+/** Each helper the stages call, stood in by vi.spyOn on the module that exports it: the stages call each from another
+ *  file, so the stand-in reaches those calls (docs/traps.md), and not a call inside the helper's own file. */
+const THE_HELPERS_THE_STAGES_CALL = {
+  warFrontThreats: (b: Board, calls: Call[]) =>
+    recordEachCall(
+      theWarFronts.warFrontThreats,
+      vi.spyOn(theWarFronts, 'warFrontThreats'),
+      'warFrontThreats',
+      b,
+      calls,
+    ),
+  relKeyOf: (b: Board, calls: Call[]) =>
+    recordEachCall(theRelations.relKeyOf, vi.spyOn(theRelations, 'relKeyOf'), 'relKeyOf', b, calls),
+  areAllied: (b: Board, calls: Call[]) =>
+    recordEachCall(theRelations.areAllied, vi.spyOn(theRelations, 'areAllied'), 'areAllied', b, calls),
+  reckoningCallEligibility: (b: Board, calls: Call[]) =>
+    recordEachCall(
+      theReckoning.reckoningCallEligibility,
+      vi.spyOn(theReckoning, 'reckoningCallEligibility'),
+      'reckoningCallEligibility',
+      b,
+      calls,
+    ),
+  alliedBloc: (b: Board, calls: Call[]) =>
+    recordEachCall(theReckoning.alliedBloc, vi.spyOn(theReckoning, 'alliedBloc'), 'alliedBloc', b, calls),
+  reckoningWinner: (b: Board, calls: Call[]) =>
+    recordEachCall(
+      theReckoning.reckoningWinner,
+      vi.spyOn(theReckoning, 'reckoningWinner'),
+      'reckoningWinner',
+      b,
+      calls,
+    ),
+  reckoningThresholdPct: (b: Board, calls: Call[]) =>
+    recordEachCall(
+      thePerks.reckoningThresholdPct,
+      vi.spyOn(thePerks, 'reckoningThresholdPct'),
+      'reckoningThresholdPct',
+      b,
+      calls,
+    ),
+};
+/** Runs `body` with each of `names` stood in by a recorder that still calls it (for the body's length). */
+function recorded(b: Board, names: (keyof typeof THE_HELPERS_THE_STAGES_CALL)[], body: () => void): Call[] {
   const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
-      calls.push({ fn: f, args, before: b.lines().length });
-      return w(...args);
-    };
+  const standIns = names.map((f) => THE_HELPERS_THE_STAGES_CALL[f](b, calls));
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const standIn of standIns) standIn.mockRestore();
   }
   return calls;
 }

@@ -101,8 +101,8 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   `thiefCaughtScuffle(turnContext, prov, thief, victim, what)`; since P1-08j7: `charmBacklash(turnContext, prov, caster,
   t, why)`), and a `processOrder` constant only it reads becomes a top-level constant (`CHARM_BACKLASH_PCT`). Since
   P1-08j9 `processOrder` is top-level itself (`processOrder(turnContext,c,o,ph)`), so a test can call it, or stand in an
-  order's function in the `vm` to see what it is handed: `unit/order-dispatch-called-directly` checks every call's
-  arguments that way.
+  order's function (`vi.spyOn` on its module) to see what it is handed: `unit/order-dispatch-called-directly` checks
+  every call's arguments that way.
 - A stage of the phase loop taken out of `resolveTurn` (since P1-08k1: the start of the phase, intents and reactions,
   the orders in two tiers, the end of the phase, in
   `engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts`) is a function of its statements,
