@@ -1,7 +1,7 @@
 // The recruit, hire and realm's works orders' cases (plan P1-08j3): Recruit Armies, Hire Hero, the orders of a realm's
 // creed (Consecrate, Call to Arms, Broker, Harvest the Field, and the removed Awaken the Wild and Call from the Pit) and
 // three masteries (Awaken Grove, Wild Calling, Grand Design), staged on the middle of a bot world
-// (lib/middle-of-a-bot-world.ts), each with what must be true after it in game terms.
+// (either board: lib/the-board-a-case-is-staged-on-either-way.ts), each with what must be true after it in game terms.
 // scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
 // unit/recruit-hire-and-realm-works-orders-called-directly.test.ts calls each order's own function on them, one phase at
 // a time. A case stages its world and the hero's five orders; after them, it reads what it needs from the world and the
@@ -21,7 +21,7 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 
 export interface Staged {
   /** The hero whose orders are played. */

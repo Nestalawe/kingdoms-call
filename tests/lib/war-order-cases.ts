@@ -1,10 +1,10 @@
 // The war orders' cases (plan P1-08j8): Encounter Character and Defend, then the war masteries (Blockade, Challenge,
 // Rampage, Rain of Arrows, Sniper's Mark, Feigned Retreat, Grand Stratagem, Lightning Advance, Raid the Coast), staged
-// on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each with what must be true after it
-// in game terms. scenario/war-orders-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
-// unit/war-orders-called-directly.test.ts calls each order's own function on them, one phase at a time. A case stages
-// its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`) beside what
-// must be so (`want`), and the test compares the two.
+// on the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each
+// with what must be true after it in game terms. scenario/war-orders-in-a-whole-turn.test.ts plays each through a whole
+// turn (resolveTurn); unit/war-orders-called-directly.test.ts calls each order's own function on them, one phase at a
+// time. A case stages its world and the heroes' orders; after them, it reads what it needs from the world and the log
+// (`got`) beside what must be so (`want`), and the test compares the two.
 // Encounter and Defend only set up a chase or a watch; the phases after the order carry it out (the chase in each later
 // phase, the watch's ride-out), so their cases play those phases too, and a case the order's own call can't show is
 // `wholeTurnOnly`. The masteries' battle-strength flags are read by a later battle of the turn, so their cases fight
@@ -21,7 +21,7 @@ import {
   type Line,
   type Order,
   type Province,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies } from './item-and-army-order-cases.ts';
 import { oldCloakOfManyFaces, type Dice } from './espionage-order-cases.ts';
 import {

@@ -1,8 +1,9 @@
 // The four stages of a phase (plan P1-08k1: src/engine/turn/, lifted out of resolveTurn's phase loop), called directly
-// in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/phase-stages-in-a-whole-turn.test.ts plays through a whole turn (lib/phase-stage-cases.ts), here played
 // through the four stages one phase at a time, as the loop calls them; then, with the helpers each stage calls stood in
-// (each replaced in the vm by a recorder for the test's length), what each stage hands them and in what order; then
+// (each by a recorder, vi.spyOn on its module, for the test's length), what each stage hands them and in what order; then
 // what the cases leave to a direct call: Herbal Lore's sums, who stands where and every hero's skills as the phase
 // begins, the marks cleared, phantom companies stripped; the lock's conditions one by one, the order written for a
 // cancelled march, a Defend's watch from the season's start; the Defend step's place among the actors, a chase, a
@@ -17,7 +18,7 @@
 // The four functions (`startPhaseHealingSnapshotsAndStalledBattles`, `pinAndReactToPhaseIntents`,
 // `resolvePhaseOrdersInTwoTiersAroundTheDefendStep`, `endPhaseSkillRisesFallenCommandersAndProvinceMemory`, P1-08k1),
 // called directly: the whole-turn cases played through the four stages one phase at a time, as the loop calls them;
-// then, with the helpers each stage calls stood in by recorders in the `vm`, what each stage hands them and in what
+// then, with the helpers each stage calls stood in by recorders on their modules, what each stage hands them and in what
 // order (the Defend step's place among the actors, which an ended chase doesn't open, the war fronts in Spring only,
 // each actor's chase, mercy or fall, the log's context and the battle series cleared, after a coward or a fallen hero
 // and around each host raised); then the stages' own statements: Herbal Lore's sums (its line his and the phase's
@@ -30,21 +31,24 @@
 // second stage leaves a pinned Defend; the Defend step runs once, before the first march, chase or Defend and after
 // every order before it, and every other order is handed over once, in turn
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls, withCaseDice } from '../lib/espionage-order-cases.ts';
+import { describe, expect, test, vi } from 'vitest';
 import { companies } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
   order,
+  quietEngineLog,
+  recordExperienceRolls,
+  withCaseDice,
   type Board,
   type Character,
   type HeroSpec,
   type Line,
   type Order,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import {
   LANDS,
   PHASE_STAGE_CASES,
@@ -55,23 +59,25 @@ import {
 } from '../lib/phase-stage-cases.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
+// (the engine's own modules, fresh with it; called as the vm's top-level functions were)
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
-const START = 'startPhaseHealingSnapshotsAndStalledBattles';
-const REACT = 'pinAndReactToPhaseIntents';
-const ORDERS = 'resolvePhaseOrdersInTwoTiersAroundTheDefendStep';
-const END = 'endPhaseSkillRisesFallenCommandersAndProvinceMemory';
-const start = fn(START);
-const react = fn(REACT);
-const orders = fn(ORDERS);
-const end = fn(END);
-const buildPhaseIntents = fn('buildPhaseIntents');
-const setMovePool = fn('setMovePool');
-const warFrontThreats = fn('warFrontThreats');
+const theStages =
+  await import('../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts');
+const start = theStages.startPhaseHealingSnapshotsAndStalledBattles as unknown as Fn;
+const react = theStages.pinAndReactToPhaseIntents as unknown as Fn;
+const orders = theStages.resolvePhaseOrdersInTwoTiersAroundTheDefendStep as unknown as Fn;
+const end = theStages.endPhaseSkillRisesFallenCommandersAndProvinceMemory as unknown as Fn;
+const theIntents = await import('../../src/engine/turn/phase-intents-and-dependency-ordering.ts');
+const buildPhaseIntents = theIntents.buildPhaseIntents as unknown as Fn;
+const theMovementPools = await import('../../src/engine/units/movement-pools.ts');
+const setMovePool = theMovementPools.setMovePool as unknown as Fn;
+const theWarFronts = await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts');
+const warFrontThreats = theWarFronts.warFrontThreats as unknown as Fn;
+const theLogLineHelpers = await import('../../src/engine/turn/log-line-helpers.ts');
 
 interface Intent {
   c: Character;
@@ -175,21 +181,87 @@ interface Call {
   logCtx: unknown;
   series: unknown;
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length); `returns` gives what a
- *  recorder hands back, by name. */
+/** The module that exports each helper a stage calls and a test stands in. Each stage calls each from its own file, so
+ *  a stand-in on the helper's module reaches it (docs/traps.md). One is also called inside its own module, where a
+ *  stand-in doesn't reach: disperseDeadCharArmies (by abandonHostOnFlight and handleHeroDeath, which the end of the
+ *  phase, the one stage that stands it in, doesn't call). */
+const theStalledBattlesAndBeatenGuardsModule =
+  await import('../../src/engine/battle/stalled-battles-and-beaten-guards.ts');
+const theProvinceBookkeepingAndRalliedGarrisonsModule =
+  await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts');
+const theSeaLiftStrandingAndRetreatsModule = await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts');
+const thePlagueAndBlessWardModule = await import('../../src/engine/magic/plague-and-bless-ward.ts');
+const theDefendRideOutsAmbushesAndReinforcementsModule =
+  await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts');
+const theHostsGainedInAProvinceModule = await import('../../src/engine/battle/hosts-gained-in-a-province.ts');
+const thePursuitsAndTheCatchRollModule = await import('../../src/engine/heroes/pursuits-and-the-catch-roll.ts');
+const theOrderDispatchTheChecksBeforeAHeroOrderAndTheSwitchModule =
+  await import('../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts');
+const theExperienceSkillRisesAndEarnedHpModule =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const theEventsAndTheirAudiencesModule = await import('../../src/engine/turn/events-and-their-audiences.ts');
+const theIntrusionWarningsModule = await import('../../src/engine/turn/intrusion-warnings.ts');
+const theHeroDeathAndLeaderlessHostsModule = await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts');
+const aStandInForEachHelper: Record<string, (impl: Fn) => { mockRestore(): void }> = {
+  flagEnemyStandoffs: (impl) => vi.spyOn(theWarFronts, 'flagEnemyStandoffs').mockImplementation(impl),
+  resolveStalledBattles: (impl) =>
+    vi.spyOn(theStalledBattlesAndBeatenGuardsModule, 'resolveStalledBattles').mockImplementation(impl),
+  settleRalliedGarrisons: (impl) =>
+    vi.spyOn(theProvinceBookkeepingAndRalliedGarrisonsModule, 'settleRalliedGarrisons').mockImplementation(impl),
+  settleStrandedAtSea: (impl) =>
+    vi.spyOn(theSeaLiftStrandingAndRetreatsModule, 'settleStrandedAtSea').mockImplementation(impl),
+  spreadPlagues: (impl) => vi.spyOn(thePlagueAndBlessWardModule, 'spreadPlagues').mockImplementation(impl),
+  applyMoveInterlocks: (impl) => vi.spyOn(theIntents, 'applyMoveInterlocks').mockImplementation(impl),
+  runReinforcementArrivals: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runReinforcementArrivals').mockImplementation(impl),
+  orderPhaseActors: (impl) => vi.spyOn(theIntents, 'orderPhaseActors').mockImplementation(impl as never),
+  runDefendReactions: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runDefendReactions').mockImplementation(impl),
+  resolveUnitGainInProvince: (impl) =>
+    vi.spyOn(theHostsGainedInAProvinceModule, 'resolveUnitGainInProvince').mockImplementation(impl as never),
+  advancePursuit: (impl) => vi.spyOn(thePursuitsAndTheCatchRollModule, 'advancePursuit').mockImplementation(impl),
+  processOrder: (impl) =>
+    vi.spyOn(theOrderDispatchTheChecksBeforeAHeroOrderAndTheSwitchModule, 'processOrder').mockImplementation(impl),
+  resolveWarFronts: (impl) => vi.spyOn(theWarFronts, 'resolveWarFronts').mockImplementation(impl),
+  runDefendMaterializedReactions: (impl) =>
+    vi
+      .spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runDefendMaterializedReactions')
+      .mockImplementation(impl),
+  runDefendAmbush: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'runDefendAmbush').mockImplementation(impl),
+  reconcileDefendRideOuts: (impl) =>
+    vi.spyOn(theDefendRideOutsAmbushesAndReinforcementsModule, 'reconcileDefendRideOuts').mockImplementation(impl),
+  resolveAllPendingSkillGains: (impl) =>
+    vi.spyOn(theExperienceSkillRisesAndEarnedHpModule, 'resolveAllPendingSkillGains').mockImplementation(impl),
+  writeDeferredSkillLines: (impl) =>
+    vi.spyOn(theEventsAndTheirAudiencesModule, 'writeDeferredSkillLines').mockImplementation(impl),
+  generateIntrusionNotifications: (impl) =>
+    vi.spyOn(theIntrusionWarningsModule, 'generateIntrusionNotifications').mockImplementation(impl),
+  disperseDeadCharArmies: (impl) =>
+    vi.spyOn(theHeroDeathAndLeaderlessHostsModule, 'disperseDeadCharArmies').mockImplementation(impl),
+  reconcileProvinceCharacters: (impl) =>
+    vi.spyOn(theProvinceBookkeepingAndRalliedGarrisonsModule, 'reconcileProvinceCharacters').mockImplementation(impl),
+  noteSilentHeroes: (impl) => vi.spyOn(theLogLineHelpers, 'noteSilentHeroes').mockImplementation(impl),
+  updateProvinceMemory: (impl) =>
+    vi.spyOn(theProvinceBookkeepingAndRalliedGarrisonsModule, 'updateProvinceMemory').mockImplementation(impl),
+};
+/** Runs `body` with each of `names` replaced by a recorder (vi.spyOn on its module, for the body's length); `returns`
+ *  gives what a recorder hands back, by name. */
 function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = names.map((f) => [f, g[f]] as const);
   const calls: Call[] = [];
-  for (const f of names)
-    g[f] = (...args: unknown[]) => {
+  const recorders = names.map((f) =>
+    must(
+      aStandInForEachHelper[f],
+      f,
+    )((...args: unknown[]) => {
       calls.push({ fn: f, args, logCtx: { ...(b.tc._logCtx as object) }, series: tc(b)['_combatSkillProv'] });
       return returns[f]?.(...args);
-    };
+    }),
+  );
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const r of recorders) r.mockRestore();
   }
   return calls;
 }
@@ -495,7 +567,7 @@ describe('who stands where, and every skill, as the phase opens', () => {
     herbalist(b);
     delete (b.G as Partial<Board['G']>).characters;
     startOnly(b, 2);
-    expect((tc(b)['presenceByPhase'] as Map<number, unknown>[])[2]?.size).toBe(0); // (a Map of the vm's realm)
+    expect((tc(b)['presenceByPhase'] as Map<number, unknown>[])[2]?.size).toBe(0); // (a Map the engine made)
     expect(G(b)['_phaseSkillSnapshot']).toEqual({});
     expect(textOf(b)).toHaveLength(1);
   });
@@ -1433,7 +1505,7 @@ describe("the end of the phase: a silent hero's line", () => {
     const b = fresh();
     const h = at(b);
     Object.assign(h, { location: null });
-    const noteSilentHeroes = fn('noteSilentHeroes');
+    const noteSilentHeroes = theLogLineHelpers.noteSilentHeroes as unknown as Fn;
     noteSilentHeroes(b.tc, 2, { [h.id]: b.X.id });
     noteSilentHeroes(b.tc, 3, {});
     expect(b.tc.turnLog.filter((l) => l['charId'] === h.id).map((l) => [l['phase'], l['fact']])).toEqual([

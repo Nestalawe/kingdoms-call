@@ -1,13 +1,15 @@
 // The Cast Spell order's own function (plan P1-08j7: src/engine/orders/, the seventh family taken out of processOrder),
-// called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts), its stand-ins vi.spyOn on each one's module; the
+// experience rolls from the board's recorder, which misses a voyage's roll (no case reads Naval). First the cases
 // scenario/cast-spell-order-in-a-whole-turn.test.ts plays through a whole turn (lib/cast-spell-order-cases.ts), here
 // one phase at a time, the orders read from the turn's list as processOrder reads them (a spell item's Use Item handed
 // over as a cast, as processOrder turns it into one), with the same dice; then what the cases leave to a direct call:
 // what the turn's end takes back (a Clairvoyance replaced, an illusion at a low die), the minor title Warlock (titles
-// start at turn 5), a charmed hero's refusal and a mark named by a pre-order reference, the telemetry, each die where it
-// falls; the helper a failed Charm calls, nested in processOrder until this row (the backlash, with the duel's outcome
-// stood in); and properties of the spells. The balance matrix never gives a mastery spell, Part Sea, Holy Symbol,
-// Clairvoyance, Hide Lairs or Control Undead's scan.
+// start at turn 5), a charmed hero's refusal and a mark named by a pre-order reference, the telemetry, each die where
+// it falls; the helper a failed Charm calls, nested in processOrder until this row (the backlash, with the duel's
+// outcome stood in); and properties of the spells. The balance matrix never gives a mastery spell, Part Sea, Holy
+// Symbol, Clairvoyance, Hide Lairs or Control Undead's scan.
 // Level 1: one function, called with what processOrder hands it.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -34,41 +36,77 @@
 // realm's hero. Planted faults: in the PR (P1-08j7)
 // Since P1-23e (R-119): a Curse and a Charm at another realm's hero whose Invisibility holds are refused before the
 // roll, with a line naming no one (the cases); a realm that watches him by Clairvoyance still works its spell on him.
-import vm from 'node:vm';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CAST_SPELL_ORDER_CASES, LANDS, stageCase, type CastSpellOrderCase } from '../lib/cast-spell-order-cases.ts';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls, withCaseDice } from '../lib/espionage-order-cases.ts';
 import { companies, item } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   withDice,
+  recordExperienceRolls,
+  withCaseDice,
+  withRolls,
+  withThesePercentileRollsInTurn,
   type Board,
   type Character,
   type HeroSpec,
   type Line,
   type Order,
   type Unit,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import type { LineFact } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const { resolveCastSpellOrder } =
+  await import('../../src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts');
+const { resolveUseItemOrder } = await import('../../src/engine/orders/item-orders-equip-use-and-send-magic-items.ts');
+const { resolveVanishOrder } =
+  await import('../../src/engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts');
+const { resolveRestOrder } =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
+const { charmBacklash } =
+  await import('../../src/engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts');
+const { normaliseAction } =
+  await import('../../src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts');
+const { provOf: theProvinceOf } = await import('../../src/engine/world/map-helpers.ts');
+const { effStat } = await import('../../src/engine/heroes/effective-skills-and-hidden-heroes.ts');
+const { theStatisticsOfTheTurn: theStatisticsTheViewsBuild } =
+  await import('../../src/views/the-statistics-of-the-turn.ts');
+const { SPELL_DEFS_P } = await import('../../src/content/kingdoms-call-data.ts');
+// (the modules a stand-in is put on: charmBacklash calls the duel and the kill's credit from another file, and
+// Dominate the hosts gained, so a vi.spyOn on each reaches those calls: docs/traps.md)
+const theDuels = await import('../../src/engine/personal-combat/duels-and-character-encounters.ts');
+const theExperience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const theHostsGained = await import('../../src/engine/battle/hosts-gained-in-a-province.ts');
+const theFunctions: Record<string, unknown> = {
+  charmBacklash,
+  effStat,
+  normaliseAction,
+  provOf: theProvinceOf,
+  resolveCastSpellOrder,
+  resolveRestOrder,
+  resolveUseItemOrder,
+  resolveVanishOrder,
+};
+const fn = (name: string) => must(theFunctions[name], name) as Fn;
 /** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
-const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+const theStatisticsOfTheTurn = theStatisticsTheViewsBuild as unknown as (telemetry: unknown) => {
   spells: Record<string, unknown>[];
 };
 const provOf = fn('provOf');
-const SPELL_DEFS = vm.runInContext('SPELL_DEFS_P', engine) as Record<string, unknown>;
+const SPELL_DEFS: Record<string, unknown> = SPELL_DEFS_P;
 
 /** The spell item a Use Item names, as processOrder finds it: `{item, spell}`, or null. */
 const itemCast = (c: Character, target: string) => {
@@ -102,17 +140,10 @@ const play = (b: Board, c: Character, o: Order, ph = 0) => {
   must(call[action], 'the order ' + action)();
   b.tc._logCtx = { charId: null, phase: null };
 };
-/** Runs `body` with the percentile rolls (d100) given in turn, and every other die at `die`. */
+/** Runs `body` with the percentile rolls (d100) given in turn, and every other die at `die`: the board's
+ *  withThesePercentileRollsInTurn (d100 stood in on its module, and pctRoll, which calls it inside that file). */
 function rolls<T>(d100s: number[], body: () => T, die = 0.99999): T {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['d100'];
-  let i = 0;
-  g['d100'] = () => must(d100s[i++], 'a d100 roll');
-  try {
-    return withDice(engine, [die], body);
-  } finally {
-    g['d100'] = was;
-  }
+  return withThesePercentileRollsInTurn(engine, d100s, body, die);
 }
 const linesOf = (b: Board, c: Character) => b.lines().filter((l: Line) => l.charId === c.id);
 const textOf = (b: Board, c: Character) =>
@@ -181,39 +212,36 @@ describe.each(CAST_SPELL_ORDER_CASES)('Cast Spell (%s), called directly: the who
 /** A line of the duel the stand-in fights, as the fact it is (P1-12d18: every line is a fact). */
 const THE_FIRST_BLOW = { kind: 'one fighter has the initiative', firstName: 'Brann' } as const;
 
-/** Runs `body` with personal combat stood in by `end` (the top-level resolveCharVsChar replaced in the vm for the
- *  test's length), recording the plans each side fought on. */
+/** Runs `body` with personal combat stood in by `end` (resolveCharVsChar, by vi.spyOn on its module for the test's
+ *  length), recording the plans each side fought on. */
 function duelEndsIn<T>(
   end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: LineFact[] },
   body: (plans: string[][][]) => T,
 ): T {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['resolveCharVsChar'];
   const plans: string[][][] = [];
-  g['resolveCharVsChar'] = (_tc: unknown, _a: unknown, _d: unknown, atkPlan: string[], defPlan: string[]) => {
-    plans.push([[...atkPlan], [...defPlan]]);
+  const theDuel = vi.spyOn(theDuels, 'resolveCharVsChar').mockImplementation((_tc, _a, _d, atkPlan, defPlan) => {
+    plans.push([[...must(atkPlan, "the attacker's plan")], [...must(defPlan, "the defender's plan")]]);
     return { narrative: end.narrative ?? [], atkKilled: false, defKilled: false, ...end };
-  };
+  });
   try {
     return body(plans);
   } finally {
-    g['resolveCharVsChar'] = was;
+    theDuel.mockRestore();
   }
 }
-/** Runs `body`, recording each kill credited (the top-level awardKillXP wrapped in the vm for the test's length) as
- *  [killer, slain]. */
+/** Runs `body`, recording each kill credited (awardKillXP, by vi.spyOn on its module for the test's length, still
+ *  credited) as [killer, slain]. */
 function killsIn(body: () => void): [unknown, unknown][] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['awardKillXP'] as Fn;
+  const was = theExperience.awardKillXP;
   const kills: [unknown, unknown][] = [];
-  g['awardKillXP'] = (tc: unknown, killer: Character, slain: Character, ...rest: unknown[]) => {
-    kills.push([killer.id, slain.id]);
-    return was(tc, killer, slain, ...rest);
-  };
+  const theCredit = vi.spyOn(theExperience, 'awardKillXP').mockImplementation((tc, killer, slain, ...rest) => {
+    kills.push([must(killer, 'the killer').id, must(slain, 'the slain').id]);
+    was(tc, killer, slain, ...rest);
+  });
   try {
     body();
   } finally {
-    g['awardKillXP'] = was;
+    theCredit.mockRestore();
   }
   return kills;
 }
@@ -453,14 +481,8 @@ describe("Cast Spell, called directly: the spells' marks before the turn's end",
     const b = fresh();
     b.X.terrain = terrain;
     const h = at(b, { illusory: 1 });
-    const g = engine as unknown as Record<string, unknown>;
-    const was = g['d100'];
-    g['d100'] = () => 1;
-    try {
-      withDice(engine, dice, () => casts(b, h, 'Illusory Terrain', b.X.id));
-    } finally {
-      g['d100'] = was;
-    }
+    // every percentile roll a 1 (the board's withRolls: d100 and pctRoll stood in on their module)
+    withRolls(engine, 1, () => withDice(engine, dice, () => casts(b, h, 'Illusory Terrain', b.X.id)));
     expect(b.X['_illusoryTerrain']).toEqual({ caster: 0, fake, appliedTurn: b.G.turn });
   });
 
@@ -918,13 +940,11 @@ describe('Cast Spell, called directly: properties', () => {
           const m = rival(b);
           m.armies = companies(n, 'Men-at-Arms', 'Veteran', 'Foe');
           const h = at(b, { psychic: 9 }, { troops: own });
-          const g = engine as unknown as Record<string, unknown>;
-          const was = g['resolveUnitGainInProvince'];
-          g['resolveUnitGainInProvince'] = () => undefined;
+          const theHostGained = vi.spyOn(theHostsGained, 'resolveUnitGainInProvince').mockImplementation(() => false); // (Dominate reads nothing it returns)
           try {
             rolls([1], () => casts(b, h, 'Dominate', m.id), die);
           } finally {
-            g['resolveUnitGainInProvince'] = was;
+            theHostGained.mockRestore();
           }
           const take = Math.max(1, Math.floor(n * 0.25));
           expect([m.armies.length, h.armies.length]).toEqual([n - take, own + take]);

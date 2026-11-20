@@ -1,23 +1,23 @@
 // The new turn, second part (plan P1-08k5b, a stage of resolveTurn's own body lifted out): once the turn counter has
 // moved on, heirs are crowned and the turn's summons and spells have ended (P1-08k5a's stage), the rest of the new
-// turn. Staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms each holding only its
-// seat with a living king there (P1-08k5a's `stageCase`), each case with what must be true after it in game terms.
-// The War Academy may drill each company a realm's heroes keep in its home province up a grade; Physick Gardens and
-// Royal Physicians mend the wounded; the Informant Network names one enemy captain the realm can't see and the Arcane
-// Observatory charts one province it hasn't mapped; a Divine realm's hero fallen a full turn ago rises on the nearest
-// consecrated ground it holds (spending it), or, with none, never returns; graves on the battlefields rot (less on an
-// Undead realm's ground, never under the Embalmers); the mercenary bands retire or move on; the turn's flags are
-// cleared, the save's repairs are told, stale graves of the living are purged, each realm remembers the graves it can
-// see; wandering heroes recover and may drift; the turn's orders are cleared; every province's list of heroes is
-// rebuilt, and a neutral guard left with no companies, or standing in a realm's land, becomes a wanderer.
-// scenario/new-turn-war-academy-to-the-final-reconcile-in-a-whole-turn.test.ts plays each through a whole turn
-// (resolveTurn); unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts calls the stage directly on
-// the staged world. A case stages its world and the heroes' orders; after them, it reads what it needs from the world
-// and the log (`got`) beside what must be so (`want`), and the test compares the two. Every outcome is certain: every
-// case fixes the dice for the whole turn (default LANDS: every percentile roll lands, every other die at its highest),
-// so the outcome holds however many dice the turn draws before it. By default each realm holds only its seat (tax 10)
-// with a living king there, realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace (the board's relations), every
-// realm is Divine and Human, and the turn is turn 1.
+// turn. Staged on the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), from plain
+// realms each holding only its seat with a living king there (P1-08k5a's `stageCase`), each case with what must be true
+// after it in game terms. The War Academy may drill each company a realm's heroes keep in its home province up a grade;
+// Physick Gardens and Royal Physicians mend the wounded; the Informant Network names one enemy captain the realm can't
+// see and the Arcane Observatory charts one province it hasn't mapped; a Divine realm's hero fallen a full turn ago
+// rises on the nearest consecrated ground it holds (spending it), or, with none, never returns; graves on the
+// battlefields rot (less on an Undead realm's ground, never under the Embalmers); the mercenary bands retire or move
+// on; the turn's flags are cleared, the save's repairs are told, stale graves of the living are purged, each realm
+// remembers the graves it can see; wandering heroes recover and may drift; the turn's orders are cleared; every
+// province's list of heroes is rebuilt, and a neutral guard left with no companies, or standing in a realm's land,
+// becomes a wanderer. scenario/new-turn-war-academy-to-the-final-reconcile-in-a-whole-turn.test.ts plays each through a
+// whole turn (resolveTurn); unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts calls the stage
+// directly on the staged world. A case stages its world and the heroes' orders; after them, it reads what it needs from
+// the world and the log (`got`) beside what must be so (`want`), and the test compares the two. Every outcome is
+// certain: every case fixes the dice for the whole turn (default LANDS: every percentile roll lands, every other die at
+// its highest), so the outcome holds however many dice the turn draws before it. By default each realm holds only its
+// seat (tax 10) with a living king there, realms 0 and 1 are at war, 0 and 2 allied, 1 and 2 at peace (the board's
+// relations), every realm is Divine and Human, and the turn is turn 1.
 import {
   LANDS,
   NO_TITLE_SKILLS,
@@ -48,7 +48,14 @@ import {
   type Outcome,
   type Staged,
 } from './new-turn-succession-and-summons-cases.ts';
-import { must, order, type Board, type Character, type Province, type Unit } from './middle-of-a-bot-world.ts';
+import {
+  must,
+  order,
+  type Board,
+  type Character,
+  type Province,
+  type Unit,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { realm } from './cast-spell-order-cases.ts';
 import type { Dice } from './espionage-order-cases.ts';
 
@@ -1844,7 +1851,9 @@ export const ORDER_CASES: NewTurnCase[] = [
     },
     check(o, s) {
       const line = o.all.find((l) => l.text.startsWith('[The Grand Marshal] Your realm:'))?.text ?? '';
-      const strength = must(s.board, 'the board').engine['unitBaseStrength'] as (u: unknown) => number;
+      const strength = must(s.board, 'the board').theEnginesFunctionOrTable('unitBaseStrength') as (
+        u: unknown,
+      ) => number;
       const now = char(o, hero(s)).armies.reduce((n, u) => n + strength(u), 0);
       return {
         got: { grades: grades(o, hero(s)), line },

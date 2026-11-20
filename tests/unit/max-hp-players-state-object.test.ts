@@ -10,18 +10,24 @@
 //   and so does that Orc while it holds no realms.
 // (The stage after the phases sets it too: tests/unit/after-the-phases-called-directly.test.ts.) Each check fails on a
 // planted fault: world generation not setting the field, the save upgrade not setting it, a helper not reading it.
-// Level 1 (unit): the engine alone, in the bare vm (tests/lib/engine.ts).
-import vm from 'node:vm';
+// Level 1 (unit): the engine alone, on its modules (since P1-14m; the bare vm before), fresh for this file.
+import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine } from '../lib/engine.ts';
+import {
+  botWorld,
+  loadTheEngineOnItsModules,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
 interface Realm {
   race?: string;
 }
 
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
+// (the engine's own module, fresh with it)
+const theHpModule = await import('../../src/engine/heroes/skills-and-hp.ts');
+
 describe('maxHpPlayers, the realms the max-HP helpers fall back on', () => {
-  const engine = loadEngine({ seed: 1 });
-  const holder = () => vm.runInContext('maxHpPlayers', engine) as { players: Realm[] | null };
+  const holder = () => theHpModule.maxHpPlayers as unknown as { players: Realm[] | null };
   const first = holder();
 
   test('it is one object as the engine loads, holding no realms yet', () => {
@@ -35,16 +41,14 @@ describe('maxHpPlayers, the realms the max-HP helpers fall back on', () => {
   });
 
   test("a turn's save upgrade sets it to the turn's realms", () => {
-    const save = (vm.runInContext('(j)=>JSON.parse(j)', engine) as (j: string) => { players: Realm[] })(
-      botWorld(engine, 2, { cols: 10, rows: 6 }),
-    );
-    (engineFn(engine, 'migrateMaxHpV2') as (gs: unknown) => void)(save);
+    const save = JSON.parse(botWorld(engine, 2, { cols: 10, rows: 6 })) as { players: Realm[] };
+    (theHpModule.migrateMaxHpV2 as unknown as (gs: unknown) => void)(save);
     expect(holder()).toBe(first);
     expect(first.players).toBe(save.players);
   });
 
   test('the helpers read it when they are given no realms', () => {
-    const computeMaxHp = engineFn(engine, 'computeMaxHp') as (ch: unknown, players?: unknown) => number;
+    const computeMaxHp = theHpModule.computeMaxHp as unknown as (ch: unknown, players?: unknown) => number;
     const orc = { race: 'Orcish', player: 0, hpEarned: 0, items: [] };
     const elf = { race: 'Elven', player: 0, hpEarned: 0, items: [] };
     first.players = [{ race: 'Orcish' }];

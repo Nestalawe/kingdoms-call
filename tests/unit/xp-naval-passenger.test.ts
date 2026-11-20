@@ -1,22 +1,33 @@
 // 2026-10-14 (batch item 9): a hero learns Naval at sea only when leading ships or sea beasts. A passenger (a hero
 // carried in another's hulls, or riding out by sea with no fleet of his own) learns nothing from the voyage.
 // Level 1: every voyage roll (a sea move, a Defend ride-out by sea, a reinforcement or a pursuit step at sea) goes
-// through rollNavalVoyage (src/engine/heroes/experience-skill-rises-and-earned-hp.ts, plan P1-08c), called directly in
-// the bare vm (tests/lib/engine.ts); every experience roll is recorded by a wrapper around the top-level trySkillGain.
+// through rollNavalVoyage (src/engine/heroes/experience-skill-rises-and-earned-hp.ts, plan P1-08c), called directly on
+// the engine's modules (since P1-14m; the bare vm before, where a wrapper around the top-level trySkillGain recorded
+// each experience roll). rollNavalVoyage calls trySkillGain inside its own file, where no stand-in reaches
+// (docs/traps.md), so each roll is made certain (every die 0) and read by what it leaves: a rise held back on the hero
+// for the phase's end, naming its skill.
 // Level 0: no voyage path calls trySkillGain for Naval directly any more (only battles, won or lost, and the Naval 7/9
 // orders, which need a fleet, do): every such call, as the function it is in and its arguments, is one of a known list.
 // This was tests/xp-naval-passenger.test.js, which ran one turn on the GM portal for the "  // 4. Run all 5 phases" hook
 // to hand rollNavalVoyage back, and hooked the first line of trySkillGain; the checks are the same.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// Item 9: `rollNavalVoyage` rolls Naval for a hero leading ships or a sea beast and not for one with none (rolls
-// recorded by a wrapper around the top-level `trySkillGain`); statically, no voyage path calls `trySkillGain` for Naval
-// directly any more (only battle wins and the Naval 7/9 orders). `unit/xp-naval-passenger.test.ts`: `rollNavalVoyage`
-// called directly in the bare `vm` (P1-08c; it was a code-anchor test that ran a turn first) (batch 2026-10-14)
-import vm from 'node:vm';
+// Item 9: `rollNavalVoyage` rolls Naval for a hero leading ships or a sea beast and not for one with none (each roll
+// made certain by the dice and read by the rise it holds back on the hero); statically, no voyage path calls
+// `trySkillGain` for Naval directly any more (only battle wins and the Naval 7/9 orders).
+// `unit/xp-naval-passenger.test.ts`: `rollNavalVoyage` called directly on the engine's modules (P1-14m; the bare `vm`
+// from P1-08c; before, a code-anchor test that ran a turn first) (batch 2026-10-14)
+import '../lib/the-whole-engine.ts';
 import { afterAll, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
 import { callsTo, pageScripts } from '../lib/source.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  quietEngineLog,
+  withDice,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 
 // Every experience roll for Naval in the GM portal's code, read by its syntax tree (tests/lib/source.ts, plan P1-09a:
@@ -50,56 +61,58 @@ test(
   EVERY_FILE_MS,
 );
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
-const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }));
+const WORLD = botWorld(engine, 2, { cols: 10, rows: 6 });
+const tc = aFreshTurnsContextOnTheWorld(engine, WORLD);
+// (the engine's own modules, fresh with it)
+const { rollNavalVoyage: rollNavalVoyageAsItsModuleExportsIt } =
+  await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const { SEA_TYPES, PRIMAL_SEA_TYPES } =
+  await import('../../src/engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts');
+/** A rise an experience roll holds back for the phase's end (trySkillGain's candidate), by the skill it names. */
 interface Roll {
-  id: unknown;
   skill: string;
-  base: unknown;
-  mult: unknown;
 }
 interface Hero {
   id: unknown;
   alive: boolean;
   player: number | null;
   armies: object[];
+  _sgPending?: { list: Roll[] } | null;
 }
-// Records every experience roll as it starts, as the hook on trySkillGain's first line did.
-vm.runInContext(
-  `{ const tryOne=trySkillGain;
-     trySkillGain=function(turnContext, char, skill, base, narr, mult){
-       if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base,mult});
-       return tryOne.apply(this, arguments); }; }`,
-  engine,
-);
-const rollNavalVoyage = engineFn(engine, 'rollNavalVoyage') as (t: typeof tc, c: Hero, base: number) => void;
-const hero = (tc.G as { characters: Hero[] }).characters.find((c) => c.alive && c.player != null);
+const rollNavalVoyage = rollNavalVoyageAsItsModuleExportsIt as unknown as (t: typeof tc, c: Hero, base: number) => void;
+const heroesOf = (t: typeof tc) => (t.G as { characters: Hero[] }).characters;
+const hero = heroesOf(tc).find((c) => c.alive && c.player != null);
 if (!hero) throw new Error('the world has no living hero of a realm');
+/** The experience rolls a voyage starts for the hero leading `armies`, each read by the rise it holds back: every die
+ *  is 0, so each roll it starts rises. Each voyage sets out on a fresh context of the same world, so a rise one holds back
+ *  can't stop the next one's roll (a skill already among the rises held back isn't rolled again). */
 const rollsOf = (armies: object[]): Roll[] => {
-  const rolls: Roll[] = [];
-  engine['__xp'] = rolls;
-  try {
-    rollNavalVoyage(tc, { ...hero, armies }, 0.1);
-  } finally {
-    engine['__xp'] = undefined;
-  }
-  return rolls;
+  const t = aFreshTurnsContextOnTheWorld(engine, WORLD);
+  const real = must(
+    heroesOf(t).find((c) => c.id === hero.id),
+    'the hero',
+  );
+  withDice(engine, [0], () => {
+    rollNavalVoyage(t, { ...real, armies }, 0.1);
+  });
+  return real._sgPending?.list ?? [];
 };
 
 test('a hero with no ships learns no Naval from a voyage', () => {
   expect(rollsOf([]).some((x) => x.skill === 'naval')).toBe(false);
 });
 test('a hero leading ships rolls Naval', () => {
-  const fleet = vm.runInContext('[...SEA_TYPES][0]', engine) as string;
+  const fleet = must([...SEA_TYPES][0], 'a fleet');
   expect(
     rollsOf([{ type: fleet, quality: 'Average' }]).some((x) => x.skill === 'naval'),
     fleet,
   ).toBe(true);
 });
 test('a hero leading a sea beast rolls Naval', () => {
-  const beast = vm.runInContext('[...PRIMAL_SEA_TYPES][0]', engine) as string;
+  const beast = must([...PRIMAL_SEA_TYPES][0], 'a sea beast');
   expect(
     rollsOf([{ type: beast, quality: 'Average' }]).some((x) => x.skill === 'naval'),
     beast,

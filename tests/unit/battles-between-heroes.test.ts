@@ -9,13 +9,19 @@
 //     a fresh clash starts the count at 0, a resumed battle adds 1, and a war's opening clash starts it again;
 //   • a hero who serves no realm, attacking or defending, is named in his host's header and the "moves into" line
 //     without a realm's brackets, and his foe with his realm's name (one staged battle each).
-// Level 1 (unit): combatVsChar called directly in the bare vm (tests/lib/engine.ts), on a fresh turn's context for
-// each battle (a battle changes the world). The matrix runs it about 840 times a set; these say what holds for any
-// battle staged here, not only the matrix's games.
-import vm from 'node:vm';
+// Level 1 (unit): combatVsChar called directly on the engine's modules (since P1-14m; the bare vm before), on a fresh
+// turn's context for each battle (a battle changes the world). The matrix runs it about 840 times a set; these say what
+// holds for any battle staged here, not only the matrix's games.
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
@@ -63,16 +69,19 @@ interface BattleRecord {
   carry: number;
 }
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const WORLD = botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 });
-const combatVsChar = engineFn(engine, 'combatVsChar') as (
+// (the engine's own modules, fresh with it)
+const { combatVsChar: theBattleAsItsModuleExportsIt } =
+  await import('../../src/engine/battle/battles-between-heroes.ts');
+const combatVsChar = theBattleAsItsModuleExportsIt as unknown as (
   t: TurnContext,
   atk: Character,
   def: Character,
   prov: Province,
 ) => Battle;
-const getNeighbors = engineFn(engine, 'getNeighborsP') as (
+const getNeighbors = engine.getNeighborsP as unknown as (
   prov: Province,
   cols: number,
   rows: number,
@@ -80,19 +89,23 @@ const getNeighbors = engineFn(engine, 'getNeighborsP') as (
 ) => Province[];
 /** A report line's words: a line is its words, or a fact whose words the views write (theWordsOf, src/views/prose/,
  *  P1-12c3). */
-const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const { theWordsOf: theWordsOfAsItsModuleExportsIt } = await import('../../src/views/prose/the-words-of-each-line.ts');
+const theWordsOf = theWordsOfAsItsModuleExportsIt as unknown as (fact: unknown) => string;
 /** The turn's statistics as the writer reads them, built by the views from the facts the turn filed (P1-12d33). */
-const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+const { theStatisticsOfTheTurn: theStatisticsAsItsModuleExportsIt } =
+  await import('../../src/views/the-statistics-of-the-turn.ts');
+const theStatisticsOfTheTurn = theStatisticsAsItsModuleExportsIt as unknown as (telemetry: unknown) => {
   battles: BattleRecord[];
 };
 const wordsOf = (line: unknown): unknown =>
   typeof line === 'object' && line !== null && 'kind' in line ? theWordsOf(line) : line;
 
 // every land company a realm can raise on open plains, with its race (the garrisons stay home)
-const COMPANIES = Object.entries(vm.runInContext('PROVINCE_ARMIES_P.plain', engine) as Record<string, string[]>)
+const { KC_QUALITY_TIERS, PROVINCE_ARMIES_P } = await import('../../src/content/kingdoms-call-data.ts');
+const COMPANIES = Object.entries(PROVINCE_ARMIES_P.plain as Record<string, string[]>)
   .flatMap(([race, types]) => types.map((type) => ({ type, race })))
   .filter((c) => !c.type.includes('Garrison'));
-const QUALITIES = vm.runInContext('KC_QUALITY_TIERS', engine) as string[];
+const QUALITIES: readonly string[] = KC_QUALITY_TIERS;
 const TERRAINS = ['plain', 'forest', 'jungle', 'mountain', 'desert'] as const;
 const STANCES = ['challenge', 'accept', 'refuse'] as const;
 
@@ -122,7 +135,7 @@ let companyCount = 0;
  *  from `input`. The attacker came from his home; the hosts are the pooled copies a battle fights with, as the stalled
  *  battles make them: `{...record, armies: [...record.armies]}`. */
 function stage(input: BattleInput) {
-  const tc = turnContext(engine, WORLD);
+  const tc = aFreshTurnsContextOnTheWorld(engine, WORLD);
   tc._currentPhase = 1;
   tc._logCtx.phase = 1;
   const G = tc.G as {

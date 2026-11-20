@@ -1,11 +1,12 @@
-// 2026-10-12 (Toby, the battle reports: who beat whom) — a fallen commander's host is told who slew them:
+// 2026-10-12 (the maintainer, the battle reports: who beat whom) — a fallen commander's host is told who slew them:
 // handleHeroDeath stamps the killer, and disperseDeadCharArmies says it when the host garrisons or scatters, then
 // clears it; with no killer known the old wording stands. Since P1-12d11 the killer is a record (TheOneWhoSlewAHero): a
 // killer's name, or a lair's guardian and its province.
-// Level 1 (unit): disperseDeadCharArmies and handleHeroDeath called directly in the bare vm, on a world the engine
-// makes there, with the provinces staged. Plan P1-08f: this was the last part of tests/battle-faced-turn.test.js,
-// which took both from the "  // 4. Run all 5 phases" hook after a turn on the GM portal; the rest of that test (the
-// battle's lines, and erodeGuardSurvivors, still nested in resolveTurn) stays there.
+// Level 1 (unit): disperseDeadCharArmies and handleHeroDeath called directly on the engine's modules (since P1-14m;
+// the bare vm before), on a world the engine makes there, with the provinces staged. Plan P1-08f: this was the last
+// part of tests/battle-faced-turn.test.js, which took both from the "  // 4. Run all 5 phases" hook after a turn on the
+// GM portal; the rest of that test (the battle's lines, and erodeGuardSurvivors, still nested in resolveTurn) stays
+// there.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // A fallen commander's host is told who slew them: `disperseDeadCharArmies` says so when the host scatters or garrisons
@@ -13,10 +14,17 @@
 // (the lines are facts since P1-12d5: it reads their words through the engine's `theWordsOf`), and since P1-12d11 who
 // slew him is a record: a lair's guardian is named with its province ("the Barrow Wight of Highmoor"), or "the guardian
 // of Highmoor" when it has no name (no game reaches it); and `handleHeroDeath` files the death for the turn's
-// statistics, the fallen hero's realm and his slayer's realm and id (P1-21f). Called directly in the bare `vm` on a
-// staged world (P1-08f: it was `battle-faced-turn`'s last part, through the code-anchor hook after a turn)
+// statistics, the fallen hero's realm and his slayer's realm and id (P1-21f). Called directly on the engine's modules
+// (P1-14m; the bare `vm` from P1-08f) on a staged world (it was `battle-faced-turn`'s last part, through the
+// code-anchor hook after a turn)
+import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
 interface Province {
   id: number;
@@ -34,18 +42,23 @@ interface World {
   mercenaries: unknown[];
 }
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 quietEngineLog(engine);
-const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 10 }));
+const tc = aFreshTurnsContextOnTheWorld(engine, botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 10 }));
 const G = tc.G as unknown as World;
-const disperseDeadCharArmies = engineFn(engine, 'disperseDeadCharArmies') as (t: unknown, dead: unknown) => unknown;
-const handleHeroDeath = engineFn(engine, 'handleHeroDeath') as (
+// (the engine's own modules, fresh with it)
+const theHeroesDeath = await import('../../src/engine/heroes/hero-death-and-leaderless-hosts.ts');
+const disperseDeadCharArmies = theHeroesDeath.disperseDeadCharArmies as unknown as (
+  t: unknown,
+  dead: unknown,
+) => unknown;
+const handleHeroDeath = theHeroesDeath.handleHeroDeath as unknown as (
   t: unknown,
   d: unknown,
   k: unknown,
   o: unknown,
 ) => unknown;
-const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+const getNeighborsP = engine.getNeighborsP as unknown as (
   p: Province,
   c: number,
   r: number,
@@ -78,7 +91,8 @@ const dead = (loc: Province, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 /** The words the prose writes of a line's fact (plan P1-12d5: a hero's death's lines are facts). */
-const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const { theWordsOf: theWordsOfAsItsModuleExportsIt } = await import('../../src/views/prose/the-words-of-each-line.ts');
+const theWordsOf = theWordsOfAsItsModuleExportsIt as unknown as (fact: unknown) => string;
 /** The GM's log lines written while fn runs, in words. */
 const linesOf = (fn: () => unknown): string[] => {
   const n0 = tc.turnLog.length;
@@ -145,7 +159,9 @@ test("handleHeroDeath stamps the killer, and the slain commander's host names th
 // The turn's statistics keep each hero's death (P1-12d33: a fact of its own, filed inside a try, so a slip there is
 // silent): whose hero fell, and the realm and hero who slew him. Only the balance matrix's hash of the statistics
 // read the killer's realm before this test.
-const theStatisticsOfTheTurn = engineFn(engine, 'theStatisticsOfTheTurn') as (telemetry: unknown) => {
+const { theStatisticsOfTheTurn: theStatisticsAsItsModuleExportsIt } =
+  await import('../../src/views/the-statistics-of-the-turn.ts');
+const theStatisticsOfTheTurn = theStatisticsAsItsModuleExportsIt as unknown as (telemetry: unknown) => {
   deaths: Record<string, unknown>[];
 };
 test("handleHeroDeath keeps the death in the turn's statistics: the fallen hero's realm, and his slayer's realm and id", () => {

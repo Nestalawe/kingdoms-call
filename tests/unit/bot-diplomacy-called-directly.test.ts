@@ -1,15 +1,17 @@
-// The bots' diplomacy (plan P1-08l1: src/engine/bots/, lifted out of resolveTurn), called directly in the bare vm on the
-// middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases scenario/bot-diplomacy-in-a-whole-turn plays
-// through a whole turn (lib/bot-diplomacy-cases.ts), here played through the function alone, twice, the way resolveTurn
-// calls the function (the phases between aside); then where resolveTurn calls the function, and the rivals handed (each bot's, as met when
-// the turn began); then, with the helpers it calls stood in (each replaced in the vm by a recorder for the test's
-// length), what it hands them; then what a whole turn can't stage: a declaration from a seat that is not a realm's, a
-// grudge against a seat the game lacks, a gap in the realms' list, a bot's rivals missing from the context, realms of
-// no creed and a claim, a game with no turn counter. Properties (fast-check): only bots' declarations are written, each
-// a Treat or a war, never toward itself, a realm not met when the turn began, a realm that has conceded or has neither
-// king nor land; never war on a foe or a Treat to an ally; a Treat to a realm held in a grudge only under a truce; every
-// human realm's war on a bot it has met remembered once, after the grudges held; under Safe Start nothing at all.
-// Level 1: one function, called with the context resolveTurn hands it.
+// The bots' diplomacy (plan P1-08l1: src/engine/bots/, lifted out of resolveTurn), called directly on the engine's
+// modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/bot-diplomacy-in-a-whole-turn plays through a whole turn (lib/bot-diplomacy-cases.ts), here played through
+// the function alone, twice, the way resolveTurn calls the function (the phases between aside); then where resolveTurn
+// calls the function, and the rivals handed (each bot's, as met when the turn began); then, with the helpers it calls
+// stood in (each by a recorder for the test's length, vi.spyOn on its module), what it hands them; then what a whole
+// turn can't stage: a declaration from a seat that is not a realm's, a grudge against a seat the game lacks, a gap in
+// the realms' list, a bot's rivals missing from the context, realms of no creed and a claim, a game with no turn
+// counter. Properties (fast-check): only bots' declarations are written, each a Treat or a war, never toward itself, a
+// realm not met when the turn began, a realm that has conceded or has neither king nor land; never war on a foe or a
+// Treat to an ally; a Treat to a realm held in a grudge only under a truce; every human realm's war on a bot it has met
+// remembered once, after the grudges held; under Safe Start nothing at all. Level 1: one function, called with the
+// context resolveTurn hands it.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim` (P1-08l1), called directly, twice, with the context
@@ -17,22 +19,19 @@
 // the second declarations after the phases); `resolveTurn` calling it twice with its context, between the research
 // choices and war without warning and between the stages after the phases and diplomacy; the rivals it is handed each
 // bot realm's as met when the turn began (a copy, made before the merge, kept for the turn; no human realm's); with its
-// helpers stood in by recorders in the `vm`, what it hands them (Safe Start asked of the game and the turn played,
-// first; the relations through the context, creeds, strengths and the assessment from the state; a peace offered only
-// by that rival's Treat to that bot); then what a whole turn can't stage: a declaration from a seat that is not a
-// realm's whole number, war on a bot seat the save lacks, a gap in the realms' list, a bot's rivals missing from the
-// context, the rivals read from the context not the realm's record, realms of no creed and a claim, a claim naming no
-// one, a game with no turn counter (a truce dated 0), a truce's date kept and renewed, no line written; a game of no
-// realms' or characters' list, a seat's declarations of none, a truce dated 0 holding (P1-10b44). Properties
-// (fast-check): only bots' declarations are written, each a Treat or a war, toward a realm met when the turn began that
-// stands in the game, never itself; never war on a foe or a Treat to an ally; a Treat to a realm held in a grudge only
-// under a truce; every human realm's war on a bot it has met remembered once, after the grudges held; under Safe Start
-// nothing at all. Planted faults: in the PR (P1-08l1)
-import vm from 'node:vm';
+// helpers stood in by recorders (vi.spyOn on each one's module: the calls from other files), what it hands them (Safe
+// Start asked of the game and the turn played, first; the relations through the context, creeds, strengths and the
+// assessment from the state; a peace offered only by that rival's Treat to that bot); then what a whole turn can't
+// stage: a declaration from a seat that is not a realm's whole number, war on a bot seat the save lacks, a gap in the
+// realms' list, a bot's rivals missing from the context, the rivals read from the context not the realm's record,
+// realms of no creed and a claim, a claim naming no one, a game with no turn counter (a truce dated 0), a truce's date
+// kept and renewed, no line written; a game of no realms' or characters' list, a seat's declarations of none, a truce
+// dated 0 holding (P1-10b44). Properties (fast-check): only bots' declarations are written, each a Treat or a war,
+// toward a realm met when the turn began that stands in the game, never itself; never war on a foe or a Treat to an
+// ally; a Treat to a realm held in a grudge only under a truce; every human realm's war on a bot it has met remembered
+// once, after the grudges held; under Safe Start nothing at all. Planted faults: in the PR (P1-08l1)
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   BOT_DIPLOMACY,
   BOT_DIPLOMACY_CASES,
@@ -56,17 +55,41 @@ import {
   type Staged,
 } from '../lib/bot-diplomacy-cases.ts';
 import { rows } from '../lib/before-the-first-phase-cases.ts';
-import { board, must, type Board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  quietEngineLog,
+  withCaseDice,
+  type Board,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
 type Raw = Record<string, unknown>;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
-const inVm = vm.runInContext('(j)=>JSON.parse(j)', engine) as (j: string) => unknown;
+// (the engine's own modules, fresh with it; each function named, so knip sees which exports are read)
+const theSetUp =
+  await import('../../src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts');
+const beforeTheFirstPhase =
+  await import('../../src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts');
+const thePhaseStages =
+  await import('../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts');
+const afterThePhases =
+  await import('../../src/engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.ts');
+const diplomacyAndVictory =
+  await import('../../src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts');
+const theBotsDiplomacy =
+  await import('../../src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts');
+const theArmyTables = await import('../../src/engine/army-tables.ts');
+const theBotsIntel = await import('../../src/engine/bots/intel.ts');
+const theRelations = await import('../../src/engine/realms/relations-and-captures.ts');
+const theBotsWar = await import('../../src/engine/bots/war.ts');
 const botDiplomacy = (tc: unknown) => {
-  (engineFn(engine, BOT_DIPLOMACY) as (t: unknown) => void)(tc);
+  (theBotsDiplomacy.botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim as (t: unknown) => void)(tc);
 };
 const json = (v: unknown): unknown => JSON.parse(JSON.stringify(v ?? null));
 
@@ -102,40 +125,153 @@ interface Call {
   fn: string;
   args: unknown[];
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length) that calls `instead` for
- *  it if given, or the function it stands in for. */
-function standIn(names: string[], body: () => void, instead: Record<string, Fn> = {}): Call[] {
-  const g = engine;
-  const was = names.map((f) => [f, g[f] as Fn] as const);
-  const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
-      calls.push({ fn: f, args });
-      return (instead[f] ?? w)(...args);
-    };
-  try {
-    body();
-  } finally {
-    for (const [f, w] of was) g[f] = w;
-  }
-  return calls;
-}
 const FIRST = 'relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks';
 const WAR_WITHOUT_WARNING = 'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages';
 const AFTER_THE_PHASES = 'afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames';
 const DIPLOMACY = 'diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings';
 const MERGE = 'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans';
 const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
+/** Stands `spy` in for `original` by a recorder that notes each call into `calls`, then does what `instead` does or,
+ *  with none, makes the call. */
+function recordEachCall<A extends unknown[], R>(
+  name: string,
+  original: (...a: A) => R,
+  spy: MockInstance<(...a: A) => R>,
+  calls: Call[],
+  instead: Fn | undefined,
+) {
+  return spy.mockImplementation((...args: A) => {
+    calls.push({ fn: name, args });
+    return instead ? (instead(...args) as R) : original(...args);
+  });
+}
+/** Each function a test here stands in, by vi.spyOn on the module that exports it: resolveTurn calls the stages, and
+ *  the bots' diplomacy its helpers, each from another file, so the stand-in reaches those calls (docs/traps.md). */
+const THE_FUNCTIONS_STOOD_IN = {
+  [MERGE]: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      MERGE,
+      theSetUp.mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans,
+      vi.spyOn(theSetUp, 'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans'),
+      calls,
+      instead,
+    ),
+  [FIRST]: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      FIRST,
+      beforeTheFirstPhase.relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks,
+      vi.spyOn(beforeTheFirstPhase, 'relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPicks'),
+      calls,
+      instead,
+    ),
+  [BOT_DIPLOMACY]: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      BOT_DIPLOMACY,
+      theBotsDiplomacy.botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim,
+      vi.spyOn(theBotsDiplomacy, 'botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim'),
+      calls,
+      instead,
+    ),
+  [WAR_WITHOUT_WARNING]: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      WAR_WITHOUT_WARNING,
+      beforeTheFirstPhase.warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages,
+      vi.spyOn(beforeTheFirstPhase, 'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages'),
+      calls,
+      instead,
+    ),
+  [FIRST_PHASE]: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      FIRST_PHASE,
+      thePhaseStages.startPhaseHealingSnapshotsAndStalledBattles,
+      vi.spyOn(thePhaseStages, 'startPhaseHealingSnapshotsAndStalledBattles'),
+      calls,
+      instead,
+    ),
+  [AFTER_THE_PHASES]: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      AFTER_THE_PHASES,
+      afterThePhases.afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames,
+      vi.spyOn(afterThePhases, 'afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames'),
+      calls,
+      instead,
+    ),
+  [DIPLOMACY]: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      DIPLOMACY,
+      diplomacyAndVictory.diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings,
+      vi.spyOn(diplomacyAndVictory, 'diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings'),
+      calls,
+      instead,
+    ),
+  safeStartLocked: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      'safeStartLocked',
+      theArmyTables.safeStartLocked,
+      vi.spyOn(theArmyTables, 'safeStartLocked'),
+      calls,
+      instead,
+    ),
+  botAlignFriendly: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      'botAlignFriendly',
+      theBotsIntel.botAlignFriendly,
+      vi.spyOn(theBotsIntel, 'botAlignFriendly'),
+      calls,
+      instead,
+    ),
+  relationBetween: (calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      'relationBetween',
+      theRelations.relationBetween,
+      vi.spyOn(theRelations, 'relationBetween'),
+      calls,
+      instead,
+    ),
+  areAllied: (calls: Call[], instead?: Fn) =>
+    recordEachCall('areAllied', theRelations.areAllied, vi.spyOn(theRelations, 'areAllied'), calls, instead),
+  botOwnPower: (calls: Call[], instead?: Fn) =>
+    recordEachCall('botOwnPower', theBotsWar.botOwnPower, vi.spyOn(theBotsWar, 'botOwnPower'), calls, instead),
+  botRivalPower: (calls: Call[], instead?: Fn) =>
+    recordEachCall('botRivalPower', theBotsWar.botRivalPower, vi.spyOn(theBotsWar, 'botRivalPower'), calls, instead),
+  botWarAssess: (calls: Call[], instead?: Fn) =>
+    recordEachCall('botWarAssess', theBotsWar.botWarAssess, vi.spyOn(theBotsWar, 'botWarAssess'), calls, instead),
+};
+type AFunctionStoodIn = keyof typeof THE_FUNCTIONS_STOOD_IN;
+/** Runs `body` with each of `names` stood in by a recorder (for the body's length) that calls `instead` for it if
+ *  given, or the function it stands in for. */
+function standIn(
+  names: AFunctionStoodIn[],
+  body: () => void,
+  instead: Partial<Record<AFunctionStoodIn, Fn>> = {},
+): Call[] {
+  const calls: Call[] = [];
+  const standIns = names.map((f) => THE_FUNCTIONS_STOOD_IN[f](calls, instead[f]));
+  try {
+    body();
+  } finally {
+    for (const s of standIns) s.mockRestore();
+  }
+  return calls;
+}
 const playWith = (b: Board, s: Staged) => {
-  const resolveTurn = engineFn(engine, 'resolveTurn') as (st: string, r: unknown, t: number) => unknown;
-  withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rows(b, s)), b.G.turn));
+  const resolveTurn = engine.resolveTurn as (st: string, r: unknown, t: number) => unknown;
+  withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), JSON.parse(rows(b, s)), b.G.turn));
 };
 
 describe('Where resolveTurn calls it', () => {
   test('twice, with the turn’s context: between the research choices and war without warning, and between the stages after the phases and diplomacy', () => {
     const b = board(engine, world, 0);
     const s = stageCase(b, { ...NOTHING, stage: () => ({ bots: [1] }) });
-    const names = [MERGE, FIRST, BOT_DIPLOMACY, WAR_WITHOUT_WARNING, FIRST_PHASE, AFTER_THE_PHASES, DIPLOMACY];
+    const names: AFunctionStoodIn[] = [
+      MERGE,
+      FIRST,
+      BOT_DIPLOMACY,
+      WAR_WITHOUT_WARNING,
+      FIRST_PHASE,
+      AFTER_THE_PHASES,
+      DIPLOMACY,
+    ];
     const calls = standIn(names, () => {
       playWith(b, s);
     });
@@ -166,7 +302,7 @@ describe('Where resolveTurn calls it', () => {
       },
     });
     const seen: unknown[] = [];
-    const realMerge = engine[MERGE] as Fn;
+    const realMerge = theSetUp.mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans as Fn;
     standIn(
       [MERGE, BOT_DIPLOMACY],
       () => {

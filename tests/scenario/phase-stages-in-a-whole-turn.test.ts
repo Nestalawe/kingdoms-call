@@ -5,9 +5,10 @@
 // two tiers (a host raised in a watch given battle at the Defend step, companies handed over before it, a chase, a
 // coward, a fallen hero, a war front at the end of Spring); the end of the phase (a watch ended by next season's march,
 // a fallen commander's host dispersed). Each case of lib/phase-stage-cases.ts staged on the middle of a bot world, from
-// plain realms (`stageCase`), and played through resolveTurn, every realm human-held, every hero without orders
-// Resting, with the case's dice fixed for the whole turn. Level 2 (scenario): the stages are what the turn does between
-// the orders, so only a whole turn plays them as the game does.
+// plain realms (`stageCase`), and played through resolveTurn on the engine's modules (since P1-14m; the bare vm
+// before), every realm human-held, every hero without orders Resting, with the case's dice fixed for the whole turn.
+// Level 2 (scenario): the stages are what the turn does between the orders, so only a whole turn plays them as the
+// game does.
 // unit/phase-stages-called-directly.test.ts plays the same cases through the four stages called one phase at a time.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -28,12 +29,16 @@
 // the phase: a fallen commander's host garrisoned once its battle is over; a Move or an Encounter next season ending a
 // watch
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  recordExperienceRolls,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { PHASE_STAGE_CASES, playCase, stageCase } from '../lib/phase-stage-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);

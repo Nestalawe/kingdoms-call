@@ -5,8 +5,9 @@
 // the Move's own function on the same cases, and on the ones the dice decide.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// The Move order (P1-08j1), played through a whole turn (`resolveTurn` in the bare `vm`, `playTurn` in
-// `lib/middle-of-a-bot-world.ts`) on the middle of a bot world, every realm human-held: each case of
+// The Move order (P1-08j1), played through a whole turn (`resolveTurn` on the engine's modules since P1-14m, `playTurn`
+// in `lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts`) on the middle of a bot world, every realm
+// human-held: each case of
 // `lib/move-order-cases.ts`, in game terms. A column claims an empty neighbour named by id, `prov:<id>` or `dir:`; an
 // unarmed hero only explores; a slow column under March 5 marches four times and is refused the fifth; a target two
 // away is reached a step a season; the map's edge bars the way; a neutral realm's border turns a column back but lets
@@ -19,11 +20,16 @@
 // March 7. Each case is certain (overwhelming battles, a beaten defender's own province next door). Level 2: the order
 // is read and turned into a Move inside `resolveTurn`
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { board, playTurn } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  playTurn,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { MOVE_ORDER_CASES } from '../lib/move-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 

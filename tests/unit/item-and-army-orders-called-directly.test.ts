@@ -1,6 +1,7 @@
 // The item and army orders' own functions (plan P1-08j5: src/engine/orders/, the fifth family taken out of
-// processOrder), called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the
-// cases scenario/item-and-army-orders-in-a-whole-turn.test.ts plays through a whole turn
+// processOrder), called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot
+// world (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/item-and-army-orders-in-a-whole-turn.test.ts plays through a whole turn
 // (lib/item-and-army-order-cases.ts), here one phase at a time, the orders read from the turn's list as processOrder
 // reads them; then what the cases leave to a direct call (the grades in a garrison, a band's place and name, the points
 // of movement told, the courier's list) and what the balance matrix never reaches: Use Item (no bot works the
@@ -11,8 +12,9 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // The seven functions (`resolveEquipItemsOrder`, `resolveUseItemOrder`, `resolveSendItemOrder`,
 // `resolveLeaveOrTransferArmyOrder`, `resolveReleaseHeroOrder`, `resolveDisbandArmyOrder`, `resolvePickUpArmyOrder`,
-// P1-08j5), called directly on the same cases one phase at a time (each phase's order read from the turn's list, so
-// Release Hero's dropping shows), then what the cases leave to a direct call and the balance matrix never reaches (it
+// P1-08j5), called directly on the engine's modules on the same cases one phase at a time (each phase's order read from
+// the turn's list, so Release Hero's dropping shows), then what the cases leave to a direct call and the balance matrix
+// never reaches (it
 // never runs Use Item, Release Hero or Disband Army): the Stone's Sage lesson (one roll, at the common chance),
 // garrison grades, the dead and a fallen hero's companies, the world's lines, the hoards and ledgers, and the bots'
 // plan working it (`botItemPre`: at eight companies, not seven, nor today's copy; P1-19o); the courier's
@@ -30,10 +32,8 @@
 // no item and never moves Mithril; Leave/Transfer Army and Pick Up Army lose no company but the dead refused, and give
 // no hero beasts beyond his Druid; each company disbanded is one band; no slot holds more than its limit, the first
 // named of a slot worn. Planted faults: in the PR (P1-08j5)
-import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
   ITEM_AND_ARMY_ORDER_CASES,
   STONE,
@@ -47,16 +47,20 @@ import {
 } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
   points,
+  quietEngineLog,
+  recordExperienceRolls,
   type Board,
   type Character,
   type HeroSpec,
   type Line,
   type Order,
   type Unit,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
@@ -64,11 +68,40 @@ import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 // ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
 const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
+// (the engine's own modules, fresh with it; each function named, so knip sees which exports are read)
+const theItemOrders = await import('../../src/engine/orders/item-orders-equip-use-and-send-magic-items.ts');
+const theArmyOrders =
+  await import('../../src/engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.ts');
+const { botItemPre } = await import('../../src/engine/bots/missions.ts');
+const { computeMaxHp, syncMaxHp } = await import('../../src/engine/heroes/skills-and-hp.ts');
+const { computeMovePoolMax } = await import('../../src/engine/units/movement-pools.ts');
+const { itemSlot } = await import('../../src/engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts');
+const { provOf: theProvinceOf } = await import('../../src/engine/world/map-helpers.ts');
+const { resolveRestOrder } =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
+const { SKILLGAIN_COMMON } = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const { ITEM_SLOT_CAP } = await import('../../src/engine/items/equipment.ts');
+const theFunctions: Record<string, unknown> = {
+  botItemPre,
+  computeMaxHp,
+  computeMovePoolMax,
+  itemSlot,
+  provOf: theProvinceOf,
+  resolveDisbandArmyOrder: theArmyOrders.resolveDisbandArmyOrder,
+  resolveEquipItemsOrder: theItemOrders.resolveEquipItemsOrder,
+  resolveLeaveOrTransferArmyOrder: theArmyOrders.resolveLeaveOrTransferArmyOrder,
+  resolvePickUpArmyOrder: theArmyOrders.resolvePickUpArmyOrder,
+  resolveReleaseHeroOrder: theArmyOrders.resolveReleaseHeroOrder,
+  resolveRestOrder,
+  resolveSendItemOrder: theItemOrders.resolveSendItemOrder,
+  resolveUseItemOrder: theItemOrders.resolveUseItemOrder,
+  syncMaxHp,
+};
+const fn = (name: string) => must(theFunctions[name], name) as Fn;
 const provOf = fn('provOf');
 
 /** One order, as processOrder hands it over in phase `ph`: each function takes the context, then the values it reads
@@ -152,25 +185,11 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
     skill: string;
     base: unknown;
   }
-  // every experience roll, recorded as it starts by a wrapper around the top-level trySkillGain (plan P1-08c)
-  vm.runInContext(
-    `{ const tryOne=trySkillGain;
-       trySkillGain=function(turnContext, char, skill, base){
-         if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base});
-         return tryOne.apply(this, arguments); }; }`,
-    engine,
-  );
-  const rollsIn = (body: () => void): Roll[] => {
-    const rs: Roll[] = [];
-    engine['__xp'] = rs;
-    try {
-      body();
-    } finally {
-      engine['__xp'] = undefined;
-    }
-    return rs;
-  };
-  const common = vm.runInContext('SKILLGAIN_COMMON', engine) as number;
+  // every experience roll, recorded as it starts by the board's recorder (a stand-in for trySkillGain on its module,
+  // plan P1-08c): Use Item calls it from another file
+  const recording = recordExperienceRolls(engine);
+  const rollsIn = (body: () => void): Roll[] => recording(body).xp;
+  const common = SKILLGAIN_COMMON;
   const bearer = (b: Board, troops: Unit[]) => {
     const h = at(b, { king: true });
     h.items = [oldStone(b)];
@@ -963,7 +982,7 @@ describe('Equip Items, called directly', () => {
         'Tome of Tactics',
       ];
       const slotOf = fn('itemSlot');
-      const CAP = vm.runInContext('({...ITEM_SLOT_CAP})', engine) as Record<string, number>;
+      const CAP: Record<string, number> = { ...ITEM_SLOT_CAP };
       fc.assert(
         fc.property(
           fc.uniqueArray(fc.constantFrom(...NAMES), { minLength: 1 }),

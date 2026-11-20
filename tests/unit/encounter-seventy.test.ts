@@ -2,7 +2,7 @@
 // Spy, −5% per level of the quarry's, clamped 5–100%; a quarry of one's own realm is always met. The rulebook (twice)
 // and the order form's hint say the same.
 // Level 1 (unit): pursuitCatchChance (src/engine/heroes/pursuits-and-the-catch-roll.ts, plan P1-08i3) is called
-// directly in the bare vm (tests/lib/engine.ts); the words are read from the built pages. It was
+// directly on the engine's modules (since P1-14m; the bare vm before); the words are read from the built pages. It was
 // tests/encounter-seventy.test.js, which ran one turn on the GM portal for the "  // 4. Run all 5 phases" hook to hand
 // pursuitCatchChance back; the checks are the same.
 //
@@ -10,17 +10,32 @@
 // Item 11 (2026-10-13): Encounter Character corners its quarry at 70% base, +5% per level of the hunter's Spy, −5% per
 // level of the quarry's (5–100%), and always meets a quarry of its own realm (`pursuitCatchChance`); the rulebook says
 // 70% both times and the order form's hint states the chance. `unit/encounter-seventy.test.ts`: `pursuitCatchChance`
-// called directly in the bare `vm` (P1-08i3; it was a code-anchor test that ran a turn on the GM portal first)
+// called directly on the engine's modules (P1-14m; the bare `vm` from P1-08i3; before, a code-anchor test that ran a
+// turn on the GM portal first)
+import '../lib/the-whole-engine.ts';
 import { afterAll, expect, test } from 'vitest';
 import { readPage } from '../lib/boot.ts';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { pageText } from '../lib/source.ts';
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
-const tc = turnContext(engine, botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 }));
-const pursuitCatchChance = engineFn(engine, 'pursuitCatchChance') as (t: TurnContext, c: object, q: object) => number;
+const tc = aFreshTurnsContextOnTheWorld(engine, botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 }));
+// (the engine's own module, fresh with it)
+const { pursuitCatchChance: theCatchChanceAsItsModuleExportsIt } =
+  await import('../../src/engine/heroes/pursuits-and-the-catch-roll.ts');
+const pursuitCatchChance = theCatchChanceAsItsModuleExportsIt as unknown as (
+  t: TurnContext,
+  c: object,
+  q: object,
+) => number;
 const ch = (player: number, spy: number) => ({
   id: 'x' + String(player) + String(spy),
   name: 'X',

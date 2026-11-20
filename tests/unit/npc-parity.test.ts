@@ -6,19 +6,25 @@
 //   (B) DWARF Shield Fort — a Guard-heavy force beaten by a neutral garrison takes no Ride Them Down losses and falls
 //                           back in good order instead of demoting; and a Guard-heavy neutral GARRISON that loses
 //                           gives no broken backs to ride down and takes no pinned-against-their-own-ground losses.
-// Level 1 (unit): combatVsNPC called directly in the bare vm (tests/lib/engine.ts), on a world staged for each battle,
-// in the second phase. Plan P1-08g: this was tests/npc-parity.test.js, a scenario-level script that booted the GM
+// Level 1 (unit): combatVsNPC called directly on the engine's modules (since P1-14m; the bare vm before), on a world
+// staged for each battle, in the second phase. Plan P1-08g: this was tests/npc-parity.test.js, a scenario-level script that booted the GM
 // portal, ran a turn and took combatVsNPC from the "  // 4. Run all 5 phases" hook. Same cases, same numbers of
 // battles, same checks. The dice are the engine's, seeded from KC_SEED; every count a check needs above zero comes up
 // in about a third of the battles or more, so 120 battles never miss it.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Elf Ambush and Shield Fort fire against neutral garrisons, and only where they should (R-063).
-// `unit/npc-parity.test.ts`: `combatVsNPC` called directly in the bare `vm` on a world staged for each battle, the same
-// 460 battles and 20 checks (P1-08g; it was a level-2 code-anchor test that ran a turn first); it reads the narrative's
-// words (`theWordsOf` on a fact: a battle against a province's defenders records facts since P1-12c6)
+// `unit/npc-parity.test.ts`: `combatVsNPC` called directly on the engine's modules (P1-14m; the bare `vm` from P1-08g;
+// before, a level-2 code-anchor test that ran a turn first) on a world staged for each battle, the same 460 battles and
+// 20 checks; it reads the narrative's words (`theWordsOf` on a fact: a battle against a province's defenders records facts since P1-12c6)
+import '../lib/the-whole-engine.ts';
 import { expect, test } from 'vitest';
-import { engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
 interface Unit {
   type: string;
@@ -40,12 +46,16 @@ interface Battle {
   narrative?: unknown[];
 }
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
+// (the engine's own modules, fresh with it)
+const { theWordsOf: theWordsOfAsItsModuleExportsIt } = await import('../../src/views/prose/the-words-of-each-line.ts');
+const { combatVsNPC: combatVsNPCAsItsModuleExportsIt } =
+  await import('../../src/engine/battle/battles-against-province-defenders.ts');
 /** A line's words: its words, or a fact's, which the views write (theWordsOf, src/views/prose/, P1-12c6). */
-const theWordsOf = engineFn(engine, 'theWordsOf') as (fact: unknown) => string;
+const theWordsOf = theWordsOfAsItsModuleExportsIt as unknown as (fact: unknown) => string;
 const wordsOf = (line: unknown): string => (typeof line === 'string' ? line : theWordsOf(line));
-const combatVsNPC = engineFn(engine, 'combatVsNPC') as (
+const combatVsNPC = combatVsNPCAsItsModuleExportsIt as unknown as (
   t: TurnContext,
   c: unknown,
   prov: Province,
@@ -152,7 +162,7 @@ function battle(terrain: string, race: string, armies: Unit[], defenders: Unit[]
       },
     ],
   };
-  const tc = turnContext(engine, state);
+  const tc = aFreshTurnsContextOnTheWorld(engine, state);
   tc._currentPhase = 1;
   tc._logCtx.phase = 1;
   const G = tc.G as unknown as Staged;

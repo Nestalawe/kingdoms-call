@@ -35,8 +35,8 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A branch the check above makes dead** (`h.player === null ? wage : h.pay || 1` after a check that every hired
   hero is a wanderer) is dropped: lint refuses the always-true test, and the value is the same. One whose text a
   static test reads (the march's `'move'` strings) stays, its test read through `asItsGuardReadsIt`, and so does one a
-  vm test stages (`typeof asItsGuardReadsIt(nextHeroName) === 'function'`: an engine with no name-giver names the heir
-  "Heir of …"); an `if (false) {}` before an `else if` goes, its comment kept. A `??` after a field a typed callee always
+  test stages (`typeof asItsGuardReadsIt(nextHeroName) === 'function'`: with the export stood in as nothing, the heir
+  is "Heir of …"); an `if (false) {}` before an `else if` goes, its comment kept. A `??` after a field a typed callee always
   sets (a standing's `index ?? pi ?? -1`) goes: the value is the field's.
 - **A part the view hands only where it sees it** (a province's garrison) goes through a check that throws for none;
   a field added to a built object, through `Object.assign`.

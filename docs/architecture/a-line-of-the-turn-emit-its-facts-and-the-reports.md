@@ -212,11 +212,10 @@ check finds were made.
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
   line.ts`), never from `resolveTurn`'s `log` or `turnContext.turnLog`. `buildReports` writes them before it picks any
   realm's lines and returns them as `gmLog`, which the shell saves; every harness that plays a turn reads them
-  (`tests/lib/scenario-in-the-vm.ts`, `a-staged-turn-on-the-engines-modules.ts`, the board's `lines()` in
-  `middle-of-a-bot-world.ts`, and since P1-12d6 the whole-turn case libraries `before-the-first-phase-cases.ts`,
+  (`tests/lib/scenario-in-the-vm.ts`, `a-staged-turn-on-the-engines-modules.ts`, the turn's board's `lines()`, and since P1-12d6 the whole-turn case libraries `before-the-first-phase-cases.ts`,
   `set-up-and-order-merge-cases.ts` and `the-bots-plan-cases.ts`), and a test that reads a narrative, or a line a helper returns, writes a fact's words
   with `theWordsOf` (a personal combat's: `wordsOf` or `wordsForEveryoneInTheFight`, `tests/lib/personal-combat.ts`; on
-  the engine's `vm`, its `theWordsOf`: `tests/unit/naval-retreat.test.ts`). A test that keeps a
+  the engine's modules, its `theWordsOf`: `tests/unit/naval-retreat.test.ts`). A test that keeps a
   narrative's strings and drops the rest reads nothing of a typed line: read its words. **Never read `text` loosely**: a read of the engine's log that takes a missing `text` as empty (`e.text ?? ''`, `String(e.text)`,
   `e.text || ''`, `l.text === words`) passes for nothing once its line becomes a fact, and an assertion that a line is
   absent stays green whatever the engine writes; read the words pass. In this run a

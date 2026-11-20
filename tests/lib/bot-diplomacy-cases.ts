@@ -10,19 +10,17 @@
 // bot's foes); an ally is kept; anyone else is weighed (`botWarAssess`: war, or peace with a foe).
 // resolveTurn makes the declarations twice: before the first phase (between the research choices and war without
 // warning) and after the phases, just before diplomacy is resolved.
-// Staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), as P1-08k8's cases are: plain realms of the
-// Divine creed, each holding only its seat with a living king there, every realm having met every other, realms 0 and 1
-// at war, 0 and 2 allied, 1 and 2 at peace, Safe Start over, each realm a player's but those the case makes bots'.
-// scenario/bot-diplomacy-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn) and reads the realms'
-// declarations at two moments: once the bots have declared before the first phase (`early`) and just before diplomacy
-// is resolved (`late`); unit/bot-diplomacy-called-directly.test.ts calls the function once, as resolveTurn calls it
-// first. Where the bots' strength reckoning or war assessment decides (src/engine/bots/war.ts, not part of this
-// function), a case stands it in for the turn's length by a fixed answer (`instead`), recording what it is handed.
-// Every outcome is certain: every case fixes the dice for the whole turn (LANDS).
-import vm from 'node:vm';
-import { engineFn } from './engine.ts';
-import { must, type Board, type Line, type World } from './middle-of-a-bot-world.ts';
-import { withCaseDice } from './espionage-order-cases.ts';
+// Staged on the middle of a bot world (either board: lib/the-board-a-case-is-staged-on-either-way.ts), as P1-08k8's
+// cases are: plain realms of the Divine creed, each holding only its seat with a living king there, every realm having
+// met every other, realms 0 and 1 at war, 0 and 2 allied, 1 and 2 at peace, Safe Start over, each realm a player's but
+// those the case makes bots'. scenario/bot-diplomacy-in-a-whole-turn.test.ts plays each through a whole turn
+// (resolveTurn) and reads the realms' declarations at two moments: once the bots have declared before the first phase
+// (`early`) and just before diplomacy is resolved (`late`); unit/bot-diplomacy-called-directly.test.ts calls the
+// function once, as resolveTurn calls it first. Where the bots' strength reckoning or war assessment decides
+// (src/engine/bots/war.ts, not part of this function), a case stands it in for the turn's length by a fixed answer
+// (`instead`), recording what it is handed. Every outcome is certain: every case fixes the dice for the whole turn
+// (LANDS).
+import { must, withCaseDice, type Board, type Line, type World } from './the-board-a-case-is-staged-on-either-way.ts';
 import { claim, landless, relate, turnIs, unmet } from './diplomacy-and-victory-cases.ts';
 import { safeStart } from './set-up-and-order-merge-cases.ts';
 import {
@@ -39,7 +37,6 @@ import {
 
 export { LANDS, claim, creed, kingOf, landless, realm, relate, safeStart, turnIs, unmet };
 type Raw = Record<string, unknown>;
-type Fn = (...a: unknown[]) => unknown;
 /** The realms' declarations: realm index → (realm index → 'treat' or 'enemy'). */
 export type Declarations = Record<string, Record<string, string>>;
 /** The helpers of src/engine/bots/war.ts a case may stand in for the turn's length. */
@@ -95,25 +92,19 @@ const grudgesOf = (G: { players: unknown[] }) =>
     return Array.isArray(g) ? (json(g) as number[]) : null;
   });
 /** Records each call of the helpers stood in by `instead`, tagged with `when()`, for the length of `body`. */
-function standingIn<T>(
-  engine: vm.Context,
-  instead: Instead | undefined,
-  when: () => Call['when'],
-  body: (calls: Call[]) => T,
-) {
-  const g = engine;
+function standingIn<T>(b: Board, instead: Instead | undefined, when: () => Call['when'], body: (calls: Call[]) => T) {
   const calls: Call[] = [];
-  const was = Object.keys(instead ?? {}).map((f) => [f as Helper, g[f] as Fn] as const);
-  for (const [f] of was)
-    g[f] = (...args: unknown[]) => {
+  const putBack = (Object.keys(instead ?? {}) as Helper[]).map((f) =>
+    b.standInForTheEnginesFunction(f, () => (...args: unknown[]) => {
       const w = when();
       calls.push({ fn: f, when: w, args: json(args.slice(1)) as unknown[] });
       return must(instead?.[f], f)(w, ...args.slice(1));
-    };
+    }),
+  );
   try {
     return body(calls);
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const back of putBack) back();
   }
 }
 
@@ -124,21 +115,21 @@ const AFTER_FIRST = 'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRem
 const BEFORE_LATE = 'afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames';
 const AFTER_LATE = 'diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings';
 /** Plays `c`, staged as `s` on `b`, through a whole turn, with every die fixed (LANDS); the realms' declarations are read
- *  as the stage after each of the bots' two declarations begins (each wrapped in the vm for the turn's length). */
+ *  as the stage after each of the bots' two declarations begins (each stood in for the turn's length). */
 export const playCase = (b: Board, _c: BotDiplomacyCase, s: Staged): Outcome => {
-  const g = b.engine;
-  const was = [FIRST, AFTER_FIRST, BEFORE_LATE, AFTER_LATE].map((f) => [f, g[f] as Fn] as const);
+  const putBack: (() => void)[] = [];
   const seen: { early?: Declarations; grudgesEarly?: (number[] | null)[]; late?: Declarations } = {};
   let when: Call['when'] = 'early';
-  const wrap = (f: string, before: (tc: Raw) => void) => {
-    const w = must(
-      was.find(([n]) => n === f),
-      f,
-    )[1];
-    g[f] = (tc: Raw, ...rest: unknown[]) => {
-      before(tc);
-      return w(tc, ...rest);
-    };
+  const wrap = (
+    f: typeof FIRST | typeof AFTER_FIRST | typeof BEFORE_LATE | typeof AFTER_LATE,
+    before: (tc: Raw) => void,
+  ) => {
+    putBack.push(
+      b.standInForTheEnginesFunction(f, (w) => (tc: Raw, ...rest: unknown[]) => {
+        before(tc);
+        return w(tc, ...rest);
+      }),
+    );
   };
   wrap(FIRST, () => {
     when = 'early';
@@ -153,21 +144,21 @@ export const playCase = (b: Board, _c: BotDiplomacyCase, s: Staged): Outcome => 
   wrap(AFTER_LATE, (tc) => {
     seen.late = json(tc['diploDeclarations']) as Declarations;
   });
-  const resolveTurn = engineFn(b.engine, 'resolveTurn') as (
+  const resolveTurn = b.theEnginesFunctionOrTable('resolveTurn') as (
     state: string,
     rows: unknown,
     turn: number,
   ) => { state: string; log: Line[] };
-  const inVm = vm.runInContext('(j)=>JSON.parse(j)', b.engine) as (j: string) => unknown;
+  const inVm = (j: string) => b.parsedInTheEnginesRealm(j);
   try {
     const slotRows = rows(b, s);
     const state = JSON.stringify(b.G);
     return standingIn(
-      b.engine,
+      b,
       s.instead,
       () => when,
       (calls) => {
-        const r = withCaseDice(b.engine, LANDS, () => resolveTurn(state, inVm(slotRows), b.G.turn));
+        const r = withCaseDice(b, LANDS, () => resolveTurn(state, inVm(slotRows), b.G.turn));
         return {
           early: must(seen.early, 'the first declarations'),
           grudgesEarly: must(seen.grudgesEarly, 'the grudges'),
@@ -180,7 +171,7 @@ export const playCase = (b: Board, _c: BotDiplomacyCase, s: Staged): Outcome => 
       },
     );
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const back of putBack) back();
   }
 };
 /** The function, as P1-08l1 named it. */
@@ -189,14 +180,18 @@ export const BOT_DIPLOMACY = 'botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAR
  *  P1-08k8's `prepare` (the merge run, the bot realms set), then each bot realm's rivals met as the turn began. */
 export const ready = (b: Board, s: Staged) => {
   const tc = prepare(b, s);
-  (
-    vm.runInContext(
-      `(tc)=>{ const m={}; tc._botPlayerIdx.forEach(idx=>{ m[idx]=[...(((tc.G.players||[])[idx]||{})._encountered||[])]; });
-      tc._botEncounteredAtStart=m; }`,
-      b.engine,
-    ) as (t: Raw) => void
-  )(tc);
+  eachBotRealmsRivalsMetAsTheTurnBegan(b, tc);
   return tc;
+};
+/** Each bot realm's rivals met as the turn began, as resolveTurn keeps them (`_botEncounteredAtStart`), made in the
+ *  engine's realm. */
+export const eachBotRealmsRivalsMetAsTheTurnBegan = (b: Board, tc: Raw) => {
+  const m: Record<number, unknown[]> = {};
+  const players = ((tc['G'] as Raw)['players'] ?? []) as (Raw | null | undefined)[];
+  (tc['_botPlayerIdx'] as Set<number>).forEach((idx) => {
+    m[idx] = [...((players[idx]?.['_encountered'] ?? []) as Iterable<unknown>)];
+  });
+  tc['_botEncounteredAtStart'] = b.parsedInTheEnginesRealm(JSON.stringify(m));
 };
 /** Calls the function on `b`, staged as `s` and readied as `ready` readies it, twice, as resolveTurn calls it (with
  *  nothing between: the phases and the stages around them aside), with every die fixed; the declarations are read after
@@ -205,13 +200,13 @@ export const directCase = (b: Board, _c: BotDiplomacyCase, s: Staged): Outcome =
   const tc = ready(b, s);
   let when: Call['when'] = 'early';
   return standingIn(
-    b.engine,
+    b,
     s.instead,
     () => when,
     (calls) => {
       const call = () => {
-        withCaseDice(b.engine, LANDS, () => {
-          (engineFn(b.engine, BOT_DIPLOMACY) as (t: Raw) => void)(tc);
+        withCaseDice(b, LANDS, () => {
+          (b.theEnginesFunctionOrTable(BOT_DIPLOMACY) as (t: Raw) => void)(tc);
         });
       };
       call();

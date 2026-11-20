@@ -1,5 +1,6 @@
 // The espionage orders' own functions (plan P1-08j6: src/engine/orders/, the sixth family taken out of processOrder),
-// called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/espionage-orders-in-a-whole-turn.test.ts plays through a whole turn (lib/espionage-order-cases.ts), here one
 // phase at a time, the orders read from the turn's list as processOrder reads them, with the same dice; then what the
 // cases leave to a direct call: each die where it falls (a spy who misses and is caught, a thief at the edge of slipping
@@ -33,42 +34,75 @@
 // Since P1-10b23 (the duels' file freed of its ts-nocheck line): a pocket picked in a personal encounter
 // (`resolveCharVsChar`, with the fight stood in), both ways: the die's gold from one realm into the other, no more than
 // the purse holds, and an empty purse gives nothing.
-import vm from 'node:vm';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import {
   ESPIONAGE_ORDER_CASES,
   oldCloakOfManyFaces,
   oldCrystalOrb,
-  recordExperienceRolls,
   stageCase,
-  withCaseDice,
   type EspionageOrderCase,
 } from '../lib/espionage-order-cases.ts';
 import { companies, item, type Item } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   withDice,
+  withThesePercentileRollsInTurn,
+  recordExperienceRolls,
+  withCaseDice,
   type Board,
   type Character,
   type HeroSpec,
   type Line,
   type Order,
   type Province,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 import type { LineFact } from '../../src/engine/turn/events-and-their-audiences.ts';
-import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
+// (the engine's own modules, fresh with it; each function read from its module when called, as the vm's top-level
+// functions were, so a stand-in on the module is the one called)
+const { theWordsOf } = await import('../../src/views/prose/the-words-of-each-line.ts');
+const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const theEspionageOrders =
+  await import('../../src/engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts');
+const theDuels = await import('../../src/engine/personal-combat/duels-and-character-encounters.ts');
+const thePersonalCombat = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
+const theExperience = await import('../../src/engine/heroes/experience-skill-rises-and-earned-hp.ts');
+const theMapHelpersModule = await import('../../src/engine/world/map-helpers.ts');
+const theItemOrdersEquipUseAndSendMagicItemsModule =
+  await import('../../src/engine/orders/item-orders-equip-use-and-send-magic-items.ts');
+const theResearchAndPracticeOrdersDiscoveriesSkillDrillsAndRestModule =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
+const theHelpersModule = await import('../../src/engine/personal-combat/helpers.ts');
+const theFunctionOf: Record<string, () => unknown> = {
+  provOf: () => theMapHelpersModule.provOf,
+  resolveSpyOrder: () => theEspionageOrders.resolveSpyOrder,
+  resolveStealOrder: () => theEspionageOrders.resolveStealOrder,
+  resolveSabotageOrder: () => theEspionageOrders.resolveSabotageOrder,
+  resolveGrandHeistOrder: () => theEspionageOrders.resolveGrandHeistOrder,
+  resolveAssassinateOrder: () => theEspionageOrders.resolveAssassinateOrder,
+  resolveVanishOrder: () => theEspionageOrders.resolveVanishOrder,
+  thiefCaughtScuffle: () => theEspionageOrders.thiefCaughtScuffle,
+  liftRandomItem: () => theEspionageOrders.liftRandomItem,
+  resolveSendItemOrder: () => theItemOrdersEquipUseAndSendMagicItemsModule.resolveSendItemOrder,
+  resolveRestOrder: () => theResearchAndPracticeOrdersDiscoveriesSkillDrillsAndRestModule.resolveRestOrder,
+  resolveCharVsChar: () => theDuels.resolveCharVsChar,
+  applyItemMaxHp: () => theHelpersModule.applyItemMaxHp,
+};
+const fn = (name: string) => must(must(theFunctionOf[name], name)(), name) as Fn;
+/** The names of the magic items whose effect raises maximum HP, in the table's order (every row has an effect). */
+const theItemsOfMaximumHp = () => ALL_MAGIC_ITEMS_P.filter((i) => i.effect.stat === 'maxHp').map((i) => i.name);
 const provOf = fn('provOf');
 
 /** One order, as processOrder hands it over in phase `ph`: each function takes the context, then the values it reads
@@ -93,53 +127,41 @@ const play = (b: Board, c: Character, o: Order, ph = 0) => {
   b.tc._logCtx = { charId: null, phase: null };
 };
 /** Runs `body` with the percentile rolls (d100) given in turn, and every other die at `die`. */
-function rolls<T>(d100s: number[], body: () => T, die = 0.5): T {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['d100'];
-  let i = 0;
-  g['d100'] = () => must(d100s[i++], 'a d100 roll');
-  try {
-    return withDice(engine, [die], body);
-  } finally {
-    g['d100'] = was;
-  }
-}
+const rolls = <T>(d100s: number[], body: () => T, die = 0.5): T =>
+  withThesePercentileRollsInTurn(engine, d100s, body, die);
 /** A line of the duel the stand-in fights, as the fact it is (P1-12d18: every line is a fact). */
 const THE_FIRST_BLOW = { kind: 'one fighter has the initiative', firstName: 'Brann' } as const;
 
-/** Runs `body` with personal combat stood in by `end` (the top-level resolveCharVsChar replaced in the vm for the
- *  test's length), recording the plans each side fought on. */
+/** Runs `body` with personal combat stood in by `end` (resolveCharVsChar, by vi.spyOn on its module for the body's
+ *  length: the espionage orders call it from another file), recording the plans each side fought on. */
 function duelEndsIn<T>(
   end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: LineFact[] },
   body: (plans: string[][][]) => T,
 ): T {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['resolveCharVsChar'];
   const plans: string[][][] = [];
-  g['resolveCharVsChar'] = (_tc: unknown, _a: unknown, _d: unknown, atkPlan: string[], defPlan: string[]) => {
-    plans.push([[...atkPlan], [...defPlan]]);
+  const theDuel = vi.spyOn(theDuels, 'resolveCharVsChar').mockImplementation((_tc, _a, _d, atkPlan, defPlan) => {
+    plans.push([[...must(atkPlan, "the attacker's plan")], [...must(defPlan, "the defender's plan")]]);
     return { narrative: end.narrative ?? [], atkKilled: false, defKilled: false, ...end };
-  };
+  });
   try {
     return body(plans);
   } finally {
-    g['resolveCharVsChar'] = was;
+    theDuel.mockRestore();
   }
 }
-/** Runs `body`, recording each kill credited (the top-level awardKillXP wrapped in the vm for the test's length) as
- *  [killer, slain]. */
+/** Runs `body`, recording each kill credited (awardKillXP, by vi.spyOn on its module for the body's length, played as
+ *  it is once recorded: the espionage orders call it from another file) as [killer, slain]. */
 function killsIn(body: () => void): [unknown, unknown][] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = g['awardKillXP'] as Fn;
+  const awardKillXP = theExperience.awardKillXP;
   const kills: [unknown, unknown][] = [];
-  g['awardKillXP'] = (tc: unknown, killer: Character, slain: Character, ...rest: unknown[]) => {
-    kills.push([killer.id, slain.id]);
-    return was(tc, killer, slain, ...rest);
-  };
+  const theKills = vi.spyOn(theExperience, 'awardKillXP').mockImplementation((tc, killer, slain, ...rest) => {
+    kills.push([must(killer, 'the killer').id, must(slain, 'the slain').id]);
+    awardKillXP(tc, killer, slain, ...rest);
+  });
   try {
     body();
   } finally {
-    g['awardKillXP'] = was;
+    theKills.mockRestore();
   }
   return kills;
 }
@@ -483,12 +505,7 @@ describe('Steal, called directly: the dice, the gold and the merits', () => {
     const b = fresh();
     const m = rival(b);
     const h = at(b, { thief: 1 });
-    const hpItems = JSON.parse(
-      vm.runInContext(
-        'JSON.stringify(ALL_MAGIC_ITEMS_P.filter(i=>i.effect&&i.effect.stat==="maxHp").map(i=>i.name))',
-        engine,
-      ) as string,
-    ) as string[];
+    const hpItems = theItemsOfMaximumHp();
     const hpItem = must(hpItems[0], 'an item of maximum HP');
     m.items = [item(b, hpItem)];
     fn('applyItemMaxHp')(m, m.items[0]);
@@ -989,12 +1006,7 @@ describe('Grand Heist, called directly', () => {
 
   test('the dice pick an item within the parcel, and its maximum HP comes with it', () => {
     const { b, h } = stage(7, 0);
-    const hpItems = JSON.parse(
-      vm.runInContext(
-        'JSON.stringify(ALL_MAGIC_ITEMS_P.filter(i=>i.effect&&i.effect.stat==="maxHp").map(i=>i.name))',
-        engine,
-      ) as string,
-    ) as string[];
+    const hpItems = theItemsOfMaximumHp();
     const hpItem = must(hpItems[0], 'an item of maximum HP');
     G_(b)['_itemDeliveries'] = [
       {
@@ -1183,14 +1195,12 @@ describe('a hero whose Invisibility holds (R-119): another realm’s Spy, Steal 
 // ── A pocket picked in a personal encounter ──────────────────────────────────────────────────────────────────
 describe('a pocket picked in a personal encounter (resolveCharVsChar, with the fight stood in)', () => {
   const encounter = fn('resolveCharVsChar');
-  /** resolveCharVsChar between `atk` and `def`, with personal combat stood in (the top-level resolvePersonalCombat
-   *  replaced in the vm for the call's length) by a fight that ends in a steal by `who`, and the take's die at `take`;
-   *  with the dice thrown for it, as [lowest, highest]. */
+  /** resolveCharVsChar between `atk` and `def`, with personal combat stood in (resolvePersonalCombat, by vi.spyOn on
+   *  its module for the call's length: resolveCharVsChar calls it from another file) by a fight that ends in a steal
+   *  by `who`, and the take's die at `take`; with the dice thrown for it, as [lowest, highest]. */
   const picked = (b: Board, atk: Character, def: Character, who: 'atk' | 'def', take: number) => {
-    const g = engine as unknown as Record<string, unknown>;
     const dice: number[][] = [];
-    const was = g['resolvePersonalCombat'];
-    g['resolvePersonalCombat'] = (_tc: unknown, A: unknown, B: unknown) => ({
+    const theFight = vi.spyOn(thePersonalCombat, 'resolvePersonalCombat').mockImplementation((_tc, A, B) => ({
       winner: null,
       loser: null,
       fledBy: null,
@@ -1199,7 +1209,7 @@ describe('a pocket picked in a personal encounter (resolveCharVsChar, with the f
       aHp: 10,
       bHp: 10,
       narrative: [],
-    });
+    }));
     try {
       const die = (lowest: number, highest: number) => {
         dice.push([lowest, highest]);
@@ -1208,7 +1218,7 @@ describe('a pocket picked in a personal encounter (resolveCharVsChar, with the f
       const { narrative } = encounter(b.tc, atk, def, ['ME'], ['ME'], b.X, null, die, b.G) as { narrative: LineFact[] };
       return { narrative, dice };
     } finally {
-      g['resolvePersonalCombat'] = was;
+      theFight.mockRestore();
     }
   };
   const lifts = (thief: Character, victim: Character, stolen: number) => ({

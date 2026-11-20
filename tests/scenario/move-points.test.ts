@@ -5,25 +5,36 @@
 //   (B) A battle against neutral defenders that carries on into the next phase costs 1 point a phase if the attacker
 //       has one left, the same as a carry-on battle against another realm (was free). It is fought anyway when none
 //       are left.
-// Each case plays one real turn (resolveTurn, in the bare vm) on a world of two realms the engine makes, both
+// Each case plays one real turn (resolveTurn, on the engine's modules since P1-14m) on a world of two realms the engine makes, both
 // players', every other order Rest, the dice fixed for the whole turn (every roll lands, every other die at its
 // highest). Level 2 (scenario): the cost is charged by the Move order and the stalled-battle sweep over a whole turn.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Taking an undefended enemy province costs 1 movement point; pressing on with a battle against neutral defenders costs
-// 1 a phase while points remain. TypeScript, in `scenario/`, one whole turn in the bare `vm`, the dice fixed for the
-// turn (P1-08k8: it was a test script whose code-anchor hook handed back the point pools from their declaration in
+// 1 a phase while points remain. TypeScript, in `scenario/`, one whole turn on the engine's modules, the dice fixed for
+// the turn (P1-08k8: it was a test script whose code-anchor hook handed back the point pools from their declaration in
 // `resolveTurn`; the pools are made by the stage before the first phase now and read from the turn's context)
-import vm from 'node:vm';
-import { expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
-import { LANDS } from '../lib/war-order-cases.ts';
-import { must, type Character, type Province, type World } from '../lib/middle-of-a-bot-world.ts';
+import { expect, test, vi } from 'vitest';
+import {
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  quietEngineLog,
+  withDice,
+  withRolls,
+  type Character,
+  type Province,
+  type World,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 2, { cols: 10, rows: 6 }, { seaPct: 20 });
+/** The dice for the whole turn: every roll lands, every other die at its highest (lib/war-order-cases.ts's LANDS
+ *  too), fixed as lib/espionage-order-cases.ts's withCaseDice fixes a case's. */
+const LANDS = { roll: 1, die: 0.99999 };
+const withTheTurnsDice = <T>(body: () => T): T =>
+  withDice(engine, [LANDS.die], () => withRolls(engine, LANDS.roll, body));
 type Raw = Record<string, unknown>;
 interface Order {
   action: string;
@@ -32,13 +43,15 @@ interface Order {
   desc: string;
 }
 const rest = (): Order => ({ action: 'rest', target: '', extra: '', desc: '' });
-const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+const getNeighborsP = engine.getNeighborsP as unknown as (
   p: Province,
   cols: number,
   rows: number,
   ps: Province[],
 ) => (Province | undefined)[];
-const FIRST_PHASE = 'startPhaseHealingSnapshotsAndStalledBattles';
+// The stage before the first phase, which run-turn.ts calls (from another file, so a stand-in on its module reaches it).
+const thePhaseStages =
+  await import('../../src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts');
 
 /** Plays one turn: realm 0's king, with his army, at home beside a free land province N (its lair and guard gone),
  *  staged further by `prepare`, which may give the king his orders. What the turn's point pools hold for him after it,
@@ -90,23 +103,23 @@ function stage(
     orders_submitted: true,
     turn_report: '{}',
   }));
-  const g: Raw = engine;
-  const was = g[FIRST_PHASE] as (tc: Raw, ph: number) => unknown;
+  const was = thePhaseStages.startPhaseHealingSnapshotsAndStalledBattles;
   let tc: Raw | null = null;
-  g[FIRST_PHASE] = (t: Raw, ph: number) => {
-    tc ??= t;
-    return was(t, ph);
-  };
+  const firstPhase = vi
+    .spyOn(thePhaseStages, 'startPhaseHealingSnapshotsAndStalledBattles')
+    .mockImplementation((t, ph) => {
+      tc ??= t as unknown as Raw;
+      was(t, ph);
+    });
   try {
-    const resolveTurn = engineFn(engine, 'resolveTurn') as (s: string, r: unknown, t: number) => { state: string };
-    const inVm = vm.runInContext('(j)=>JSON.parse(j)', engine) as (j: string) => unknown;
-    const r = withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(S), inVm(JSON.stringify(rows)), S.turn));
+    const resolveTurn = engine.resolveTurn as unknown as (s: string, r: unknown, t: number) => { state: string };
+    const r = withTheTurnsDice(() => resolveTurn(JSON.stringify(S), JSON.parse(JSON.stringify(rows)), S.turn));
     const ctx = must(tc as Raw | null, 'the turn’s context');
     const max = must((ctx['moveMax'] as Record<number, number>)[king.id], 'the king’s pool');
     const left = must((ctx['movePoints'] as Record<number, number>)[king.id], 'the king’s points left');
     return { after: JSON.parse(r.state) as World, king, N, used: max - left, max };
   } finally {
-    g[FIRST_PHASE] = was;
+    firstPhase.mockRestore();
   }
 }
 

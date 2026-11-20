@@ -1,4 +1,5 @@
-// The middle of a bot world (tests/lib/middle-of-a-bot-world.ts's stage), made on the engine's modules, imported
+// The middle of a bot world (the turn's board's stage, tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-
+// modules.ts), made on the engine's modules, imported
 // directly, with no vm: for unit tests of the bots' passes and judgements, which take the world (G) and nothing else.
 // Three bot realms on a 10×8 map the engine makes from a seed; the province at row 4, column 5 (X), its six
 // neighbours (ring1) and theirs (ring2) are open plain, unowned, with no garrison, guard or lair; nobody stands

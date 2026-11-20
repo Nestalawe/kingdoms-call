@@ -17,38 +17,47 @@
     `DB_VERSION`, the newest migration in `supabase/migrations/`, so pages pass their database version guard. `bootJsdom`'s
     `opts.dbVersion` sets another answer (an older version, `null` for a missing function, `'offline'`, or a
     list used in order) and `opts.dbCalls` records the page's database calls.
-- **`lib/engine.ts`** is the one way to load the engine in Node: `loadEngine({seed})` runs the engine's
+- **`lib/engine.ts`** loads the engine's bundle in Node, for the four tests left on it: `loadEngine({seed})` runs its
   bundle (P1-09d: Vite's build of an entry that re-exports the data file and every file under `src/engine/` and
   `src/views/`, in the GM page's order, `tools/pages.ts`'s `engineEntryFiles`) in a bare `vm` context with nothing but
   the seed and `console`, and returns the context, where the bundle's top-level names are the globals. It reads
   `src/`, not the built site (`src` names another copy, built again whenever the copy changes). The run builds this
   checkout's bundle once (`setup/global.ts`, into `node_modules/.cache/kc/`, its path in `KC_ENGINE_BUNDLE`); another
-  copy's is built the first time a process asks (about a second). P1-14m moves the tests to importing the engine's
-  modules ("The engine's modules", next); until then the ratchet counts the test files on the loader
-  (`vmLoaderTests`), which only falls.
+  copy's is built the first time a process asks (about a second). Every other test reaches the engine on its modules
+  ("The engine's modules", next: P1-14m moved them). The ratchet counts the test files on the loader
+  (`vmLoaderTests`), which only falls: `unit/engine-loads` (the bundle loads alone, and the modules hold what it
+  holds), `unit/engine-purity` (a whole game with no screen and no database), `simulation/every-realms-report-…` (the
+  balance's every-realm half, which plays here) and `scenario/pursuit-one-battle` (below: a question for the
+  maintainers, in #691).
   There the turn is `resolveTurn` (`src/engine/run-turn.ts`, P1-18d): give it the saved state (JSON), the slot rows
   and the turn, and it returns the new state, the GM's log, the Spy-stealth step and `whatTheReportsRead`, which the
   shell calls in that order after the save, then hands what the second returns to the views' `buildReports`
   (P1-12b3; in the same bundle; `unit/engine-purity.test.ts` plays a whole game this way). `runTurn`, the shell that loads, saves and writes the reports, is the page's. To play a turn on
   chosen dice, set them with `kcRng.use` around the call and give no seed; given a seed (as the shell gives one,
-  P1-08m), the turn and its Spy stealth play on the seed's dice and draw nothing from yours, and the reports draw none. A helper lifted out of
-  `resolveTurn` is a top-level function there: `engineFn(engine, name)` hands it back, and
-  `turnContext(engine, state)` makes the turn's context it takes first, on a world parsed inside the `vm`, as
-  `resolveTurn` holds it before the first phase, with everything `resolveTurn` adds to it made empty (the
-  movement pools, the collectors, the battle count, the held-back skill rises, …). To see every call a helper makes to
-  another top-level function, wrap it in the `vm` (`unit/xp-naval-passenger.test.ts` records each experience roll so,
-  P1-08c). `botWorld(engine, realms, size, opts)` makes a new world of bot realms there, as
+  P1-08m), the turn and its Spy stealth play on the seed's dice and draw nothing from yours, and the reports draw none. `botWorld(engine, realms, size, opts)` makes a new world of bot realms there, as
   JSON, and `quietEngineLog(engine)` quiets the line `emit` echoes to the console.
   **`lib/matrix-game.ts`** sets up one game of the balance matrix (`scripted-05`) for it: `newWorld(engine)` and the
-  slot rows for a turn (`slotRows`, or `slotRowsJson` for a page's database), shared by `engine-purity` and
-  `turn-shell`'s same-result test. **`lib/middle-of-a-bot-world.ts`** stages a case for a lifted helper on the
-  middle of a bot world, cleared (open plain, nobody there; realms 0 and 1 at war, 0 and 2 allied): `board()` makes the
+  slot rows for a turn (`slotRows`, or `slotRowsJson` as JSON), for `engine-purity`; `newWorldOnFreshEngineModules(seed)`
+  makes the same world on fresh modules, byte for byte (`turn-shell`'s same-result test, the old swords, the turn's
+  own dice).
+- **`lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts`** (the turn's board) is how a test stages a
+  case for a helper lifted out of `resolveTurn`, on the engine's modules: the middle of a bot world, cleared (open
+  plain, nobody there; realms 0 and 1 at war, 0 and 2 allied). `loadTheEngineOnItsModules({ seed })` gives fresh
+  modules, seeded, and its `botWorld` is the `vm`'s, byte for byte (`unit/engine-loads`); `board()` makes the
   context, `hero()` stands a hero there with troops and points of movement, `withDice` and `firstDie` pin the dice.
   `playTurn` plays a whole turn from the board; its third argument adds orders a realm sends under a
   key of its own (`hired_<hero>_via_<hirer>_ph<phase>`, written for a hero it means to hire). The board leaves the
   realms as the bot world dealt them, and they differ from seed to seed (creed, folk, starting discoveries, treasury,
   home): a case that leans on any of them stages it (`plainRealms` in `lib/recruit-hire-and-realm-works-order-cases.ts`
-  makes them all plain).
+  makes them all plain). **`lib/the-board-a-case-is-staged-on-either-way.ts`** is what the board gives a case: the
+  types, `hero`, `playTurn`, `withCaseDice`, and the members that reach the engine (the dice, a function or table by
+  name, a stand-in, values made in the engine's realm); the case files (`lib/*-cases.ts`) import it, not the board (its
+  name is from when a vm board shared it). For a test that calls the engine itself, the board gives
+  `withCaseDice(engine, …)` and `recordExperienceRolls(engine)`; the recorder stands in `trySkillGain` on its module, so it misses the one call inside that file (a
+  voyage's roll: `unit/xp-naval-passenger` pins the dice so the roll rises, and reads the rise it holds back). `withThesePercentileRollsInTurn` fixes a list of `d100` rolls, and
+  `aFreshTurnsContextOnTheWorld(engine, state)` makes the turn's context as `resolveTurn` holds it before the first
+  phase, with everything `resolveTurn` adds to it made empty (the movement pools, the collectors, the battle count, the
+  held-back skill rises, …).
 - **The engine's modules**: how a new test, or one moved off the loader,
   reaches the engine.
   - It **imports the functions it calls from their modules**, typed (`import { generateNewGame } from
@@ -96,19 +105,20 @@
   `plantBefore`, `plantAtStart` and `replaceInitializer` to plant by the syntax tree.
   `unit/the-source-read-by-its-syntax-tree.test.ts` checks every file reads the same as written and after Prettier.
   These read `src/`, not `KC_SITE`.
-- **`lib/scenario-in-the-vm.ts`** plays one real turn on a small staged world in the engine's bare vm, as the
+- **`lib/scenario-in-the-vm.ts`** plays one real turn on a small staged world in the engine's bare vm (for the
+  every-realm half, its leak check and `pursuit-one-battle`), as the
   shell plays it (a seed from the dice, `resolveTurn`, the Spy-stealth step, the views' `buildReports` on what the turn
   hands over), with `lib/scenario.ts`'s staging; `play(state,
   rows)` plays a saved world on slot rows of the test's own, and `reportEveryRealm()` has every realm reported, bots'
   too (an all-bot game writes no report otherwise: `simulation/every-realms-report-…`). Its `log` (and `text()`) is the GM's
   log in words, as the views write it for the shell to save (`buildReports`' `gmLog`, P1-12c3), and so is
-  `lib/a-staged-turn-on-the-engines-modules.ts`' and the board's `lines()` (`lib/middle-of-a-bot-world.ts`): a typed
+  `lib/a-staged-turn-on-the-engines-modules.ts`' and the turn's board's `lines()`: a typed
   line has no words in the engine's own log. `recordTheEvents()` has
   `play` return `perception` too: each event as it was emitted (its audience, the phase and hero its line was filed
   under, whether it named that hero, and the realm he served then: P1-12c1; `emit` stood in), with its line's words as
   the views wrote them (a battle's tally place left empty is no event: P1-12c3), and the turn's sight, for the leak check's audience check (`every-realm`, `simulation/every-realms-report-…`). Its `W` is the engine's global scope,
-  where a top-level function can be stood in for the turn (`W.trySkillGain = …`): the scenario tests that used a
-  code-anchor hook on the page play their turns here.
+  where a top-level function can be stood in for the turn (`W.pursuitCatchChance = …`): `scenario/pursuit-one-battle`
+  plays here, as its certain catch reaches a call no spy reaches and no staging can make (Spy counts to 5, so 95%).
 - **A page's own names**: its scripts are modules, so in a browser a test reaches only what the page
   puts on `window`: the two lists of `src/ui/<page>/globals.ts` (the names its inline handlers call, and the names its
   tests reach: functions and constants) and its declared globals (`globalThis.<name> = <value>;`: a variable its files
@@ -116,7 +126,7 @@
   `static/page-globals.test.ts` checks the lists: a name a test reaches on a page (`W.eval('…')`, `W.name`,
   `page.evaluate(() => …)`, a screen tour's code, read as a whole `+` chain too) that isn't there fails it, and so does
   a variable reached that isn't a declared global, or a page function a test stands in (`W.f = …`: it would reach
-  nothing in a browser; stage what it reads, or stand it in in the engine's `vm`, `lib/scenario-in-the-vm.ts`). Name a
+  nothing in a browser; stage what it reads, or call it on the engine's modules and stand it in by `vi.spyOn`). Name a
   page's function as code (`typeof f`), not in a string handed to `eval`, which it can't read. `lib/page-globals.ts`
   says how it reads them.
 - **`lib/scenario.ts`** stages one real turn on a small world for scenario tests: it boots the GM
@@ -195,7 +205,7 @@
   `wordsForEveryoneInTheFight(narrative)` those of the lines for everyone in it (not those for one realm alone). A table, `kcRng` or a function
   to stand in by `vi.spyOn` is imported after it (`await import(…)`), so it is the same fresh module the functions use
   (`bolt-damage` stands in `d100`; `xp-fight-win` and `xp-fled-fight`, `trySkillGain`). The context's fields come from
-  `lib/the-fields-resolve-turn-adds-to-the-turns-context.ts`, the one list `lib/engine.ts`'s `turnContext` uses too.
+  `lib/the-fields-resolve-turn-adds-to-the-turns-context.ts`, the one list of them.
   It replaced `lib/pc-hooks.js`, which booted the GM portal and ran a turn to take the functions from the
   `  // 4. Run all 5 phases` hook.
 - **`lib/hostile.ts`** and **`lib/screens.ts`** are the hostile-name harness. `screens.ts` has one tour per

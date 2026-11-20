@@ -1,6 +1,7 @@
-// The phase pipeline and the province bookkeeping (lifted out of resolveTurn in plan P1-08i1), called directly in the
-// bare vm (tests/lib/engine.ts). Properties (fast-check, seeded from KC_SEED) over made-up phases: a few realms (0 and 1
-// at war, 0 and 2 allied, 1 and 2 at peace), their heroes on a small map with orders of every kind the ordering reads.
+// The phase pipeline and the province bookkeeping (lifted out of resolveTurn in plan P1-08i1), called directly on the
+// engine's modules (since P1-14m; the bare vm before). Properties (fast-check, seeded from KC_SEED) over made-up
+// phases: a few realms (0 and 1 at war, 0 and 2 allied, 1 and 2 at peace), their heroes on a small map with orders of
+// every kind the ordering reads.
 // - normaliseAction: every order name in PHASE_ACTION_MAP gives its action, whatever its case and spacing; anything
 //   else, or no order, is Defend. Each alignment order's name as the form writes it gives its key (staged).
 // - buildPhaseIntents: one intent for each hero who may act this phase (alive, a realm's, not hired or charmed this
@@ -23,10 +24,15 @@
 // in this phase's slot) intends a Defend and acts in its tier, after a mover however quick he is.
 // Since P1-11e16 (the order's rules on plain values), staged: who must act first as phaseDependencies reads it from the
 // world (a Leave Army to a comrade or a foe, a comrade marching in to his giver, a pursuit under way or called off).
-import vm from 'node:vm';
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
-import { engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
@@ -85,46 +91,55 @@ interface Line {
   public: boolean;
 }
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
-const normaliseAction = engineFn(engine, 'normaliseAction') as (order: Order | null) => string;
-const buildPhaseIntents = engineFn(engine, 'buildPhaseIntents') as (tc: TurnContext, ph: number) => Intents;
-const phaseInitCompare = engineFn(engine, 'phaseInitCompare') as (
+// (the engine's own modules, fresh with it)
+const theKindOfEachOrder =
+  await import('../../src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts');
+const thePhaseOrder = await import('../../src/engine/turn/phase-intents-and-dependency-ordering.ts');
+const theBookkeeping = await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts');
+const { flushIntrusionNotifications: flushIntrusionNotificationsAsItsModuleExportsIt } =
+  await import('../../src/engine/turn/intrusion-warnings.ts');
+const normaliseAction = theKindOfEachOrder.normaliseAction as unknown as (order: Order | null) => string;
+const buildPhaseIntents = thePhaseOrder.buildPhaseIntents as unknown as (tc: TurnContext, ph: number) => Intents;
+const phaseInitCompare = thePhaseOrder.phaseInitCompare as unknown as (
   tc: TurnContext,
   ph: number,
 ) => (a: Character, b: Character) => number;
-const phaseDependencies = engineFn(engine, 'phaseDependencies') as (
+const phaseDependencies = thePhaseOrder.phaseDependencies as unknown as (
   tc: TurnContext,
   ph: number,
   intents: Intents,
 ) => [number, number][];
-const orderPhaseActors = engineFn(engine, 'orderPhaseActors') as (
+const orderPhaseActors = thePhaseOrder.orderPhaseActors as unknown as (
   tc: TurnContext,
   ph: number,
   intents: Intents,
 ) => Character[];
-const isHostileInvasion = engineFn(engine, 'isHostileInvasion') as (tc: TurnContext, it: Intent) => boolean;
-const applyMoveInterlocks = engineFn(engine, 'applyMoveInterlocks') as (
+const isHostileInvasion = thePhaseOrder.isHostileInvasion as unknown as (tc: TurnContext, it: Intent) => boolean;
+const applyMoveInterlocks = thePhaseOrder.applyMoveInterlocks as unknown as (
   tc: TurnContext,
   ph: number,
   intents: Intents,
 ) => void;
-const reconcileProvinceCharacters = engineFn(engine, 'reconcileProvinceCharacters') as (tc: TurnContext) => void;
-const settleRalliedGarrisons = engineFn(engine, 'settleRalliedGarrisons') as (tc: TurnContext) => void;
-const noteEntered = engineFn(engine, 'noteEntered') as (
+const reconcileProvinceCharacters = theBookkeeping.reconcileProvinceCharacters as unknown as (tc: TurnContext) => void;
+const settleRalliedGarrisons = theBookkeeping.settleRalliedGarrisons as unknown as (tc: TurnContext) => void;
+const noteEntered = theBookkeeping.noteEntered as unknown as (
   tc: TurnContext,
   pi: number | null,
   provId: number | null,
 ) => void;
-const flushIntrusionNotifications = engineFn(engine, 'flushIntrusionNotifications') as (tc: TurnContext) => void;
-const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+const flushIntrusionNotifications = flushIntrusionNotificationsAsItsModuleExportsIt as unknown as (
+  tc: TurnContext,
+) => void;
+const getNeighborsP = engine.getNeighborsP as unknown as (
   p: Province,
   cols: number,
   rows: number,
   ps: Province[],
 ) => Province[];
-const PHASE_ACTION_MAP = vm.runInContext('PHASE_ACTION_MAP', engine) as Record<string, string>;
+const PHASE_ACTION_MAP: Record<string, string> = theKindOfEachOrder.PHASE_ACTION_MAP;
 const TIER: Record<string, number> = { move: 1, encounter: 1, defend: 2 };
 const tierOf = (action: string) => TIER[action] ?? 0;
 
@@ -223,7 +238,7 @@ function stage(p: Phase) {
     orders[p.ph] = order;
     turnOrders[i + 1] = orders;
   });
-  const tc = turnContext(engine, {
+  const tc = aFreshTurnsContextOnTheWorld(engine, {
     world: { cols: COLS, rows: ROWS, provinces },
     characters,
     relations: RELATIONS,
@@ -234,7 +249,7 @@ function stage(p: Phase) {
 }
 /** The turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
  *  since P1-12d15 a phase's lines are facts, their words there alone. */
-const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
+const theTurnsLinesInWords = engine.theTurnsLinesInWords as unknown as (log: unknown) => { gmLog: Line[] };
 const lines = (tc: TurnContext) => theTurnsLinesInWords(tc.turnLog).gmLog;
 
 describe('normaliseAction', () => {
@@ -583,7 +598,8 @@ describe('province bookkeeping', () => {
   test('flushIntrusionNotifications: one line per sighting, to the realm that saw it, its seasons as a range or a list', () => {
     const { tc } = stage({ heroes: [], owner: [], ph: 0 });
     const acc = tc['_intrusionAcc'] as Map<string, unknown>;
-    const make = vm.runInContext('(phases)=>new Set(phases)', engine) as (phases: number[]) => Set<number>;
+    // (a Set of the phases, made in the vm's realm before; the same Set here)
+    const make = (phases: number[]) => new Set(phases);
     const sighting = { acName: 'Hero 1', actingName: 'Realm A', provName: 'Highmere', provId: 4 };
     acc.set('a', {
       ...sighting,

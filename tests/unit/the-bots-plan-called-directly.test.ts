@@ -1,9 +1,11 @@
 // The bots' plan and their duel forecast (plan P1-08l2: src/engine/bots/, lifted out of resolveTurn), called directly
-// in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/the-bots-plan-in-a-whole-turn plays through a whole turn (lib/the-bots-plan-cases.ts), here played through
 // the plan alone, once, on a context readied as resolveTurn readies it; then where resolveTurn calls the plan; then,
-// with the passes stood in (each replaced in the vm by a recorder for the test's length), what the plan hands them and
-// what its two hooks do; then the forecast called directly, with the three helpers it fights with stood in, for what
+// with the passes stood in (each by a recorder for the test's length, vi.spyOn on its module), what the plan hands them
+// and what its two hooks do (the forecast's hook, which calls it inside the plan's own file, by the fights it makes);
+// then the forecast called directly, with the three helpers it fights with stood in, for what
 // it hands them and how it counts. Properties (fast-check): the forecast leaves any two heroes as they were, writes no
 // line, gives experience back as it found it, and gives two shares of its fights, never more than all of them
 // together; for any bot realms, every pass is handed exactly those, in the plan's order.
@@ -13,9 +15,10 @@
 // The bots' plan and their duel forecast (P1-08l2), called directly with the context `resolveTurn` hands them: the
 // whole-turn cases through the plan alone (but those about the merge's collectors); `resolveTurn` calling the plan once
 // with its context, after the move pools and before the default to Defend, the forecast fought only by the movement
-// pass; with the passes stood in by recorders in the `vm`, the order whatever a pass does, the turn's context and the
-// realms' calls themselves (a line and a call written to them are the turn's), the forecast handed being the top-level
-// one with the context first, the strength figure asking the terrain and sea figures each time and multiplying them, no
+// pass; with the passes stood in by recorders (vi.spyOn on each one's module: the calls from other files), the order
+// whatever a pass does, the turn's context and the realms' calls themselves (a line and a call written to them are the
+// turn's), the forecast handed fighting as the top-level one asked with the context first (its helpers stood in), the
+// strength figure asking the terrain and sea figures each time and multiplying them, no
 // line or return of its own; the forecast with its three helpers stood in: the shares won and fallen (a fall only at no
 // HP and without a win), twenty fights by default and for none, the two shares only, the order of the calls in each
 // fight, the copies' ids, plans (automatic, no lessons kept), a quarry's own plan kept, the tactics filtered (any case,
@@ -44,15 +47,8 @@
 // no matrix game hands them (P1-10b48): no bots, no map, no orders listed, a teaching phase kept, a holder with no
 // fallback, a muster for the host, the study's two page hooks; a cast of no school, a hire of no hero, a hand-over
 // trimmed, a capped practice refilled; the drill on a unit of no known quality and the cast limit with no characters.
-import vm from 'node:vm';
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import {
-  THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-  THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-} from '../../src/engine/turn/events-and-their-audiences.ts';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   BOTS_PLAN_CASES,
   FORECAST,
@@ -70,18 +66,232 @@ import {
   type Staged,
 } from '../lib/the-bots-plan-cases.ts';
 import { STAGES, rows } from '../lib/before-the-first-phase-cases.ts';
-import { board, hero as standAHero, must, type Board, type Character } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  hero as standAHero,
+  must,
+  quietEngineLog,
+  withCaseDice,
+  type Board,
+  type Character,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
 type Raw = Record<string, unknown>;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
-const inVm = vm.runInContext('(j)=>JSON.parse(j)', engine) as (j: string) => unknown;
+// (the engine's own modules, fresh with it; each function named, so knip sees which exports are read)
+const theBotsPlan =
+  await import('../../src/engine/bots/bot-realms-plan-the-turn-concessions-movement-muster-economy-actions-hygiene-the-reckoning-and-the-duel-forecast.ts');
+const beforeTheFirstPhase =
+  await import('../../src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts');
+const theBotsEconomy = await import('../../src/engine/bots/economy.ts');
+const theBotsIntel = await import('../../src/engine/bots/intel.ts');
+const theBotsMissions = await import('../../src/engine/bots/missions.ts');
+const theBotsMovement = await import('../../src/engine/bots/movement.ts');
+const theBotsPhaseOne = await import('../../src/engine/bots/phase-one.ts');
+const theBotsSetUp = await import('../../src/engine/bots/setup.ts');
+const theBotsSpecialists = await import('../../src/engine/bots/specialists.ts');
+const theBotsSpellcraft = await import('../../src/engine/bots/spellcraft.ts');
+const theBotsStrategy = await import('../../src/engine/bots/strategy.ts');
+const theBotsWar = await import('../../src/engine/bots/war.ts');
+const theAlignments =
+  await import('../../src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts');
+const theTurn = await import('../../src/engine/run-turn.ts');
+const theEvents = await import('../../src/engine/turn/events-and-their-audiences.ts');
+const { THE_HERO_WHOSE_ORDER_IS_RESOLVING, THE_PHASE_THE_LINE_IS_WRITTEN_IN } = theEvents;
+const theReckoning = await import('../../src/engine/titles/reckoning.ts');
+const thePersonalCombat = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
+const thePlansAndCombatants = await import('../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts');
+const theTerrain = await import('../../src/engine/battle/terrain-and-unit-strength.ts');
+const { COMBAT_ONLY_TACTICS } = await import('../../src/engine/army-tables.ts');
+const { ARMY_UNIT_NAMES } = await import('../../src/content/kingdoms-call-data.ts');
+const { BOT_SKILL_BUILD, _usedBotKingdomNames } = theBotsSetUp;
+/** Each function of the engine's a test here calls by its name, the export of the module that defines it. */
+const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
+  alignDistP: theAlignments.alignDistP,
+  botCastLimit: theBotsEconomy.botCastLimit,
+  botDrillUseful: theBotsEconomy.botDrillUseful,
+  runBotEconomy: theBotsEconomy.runBotEconomy,
+  runBotOrderHygiene: theBotsEconomy.runBotOrderHygiene,
+  botAlignOf: theBotsIntel.botAlignOf,
+  botBattleForce: theBotsIntel.botBattleForce,
+  botBelief: theBotsIntel.botBelief,
+  botConceded: theBotsIntel.botConceded,
+  botDruidShortfall: theBotsIntel.botDruidShortfall,
+  botEffForce: theBotsIntel.botEffForce,
+  botFervourMult: theBotsIntel.botFervourMult,
+  botForceStrength: theBotsIntel.botForceStrength,
+  botGuessDefence: theBotsIntel.botGuessDefence,
+  botIntel: theBotsIntel.botIntel,
+  botKnownFeatures: theBotsIntel.botKnownFeatures,
+  botKnownSkills: theBotsIntel.botKnownSkills,
+  botKnowsGraves: theBotsIntel.botKnowsGraves,
+  botMarginFor: theBotsIntel.botMarginFor,
+  botMutualFoe: theBotsIntel.botMutualFoe,
+  botNeighbourProv: theBotsIntel.botNeighbourProv,
+  botNoteLand: theBotsIntel.botNoteLand,
+  botRaceTerrainMult: theBotsIntel.botRaceTerrainMult,
+  botRelationRaw: theBotsIntel.botRelationRaw,
+  botSeesChar: theBotsIntel.botSeesChar,
+  botStallTurns: theBotsIntel.botStallTurns,
+  botTargetDefence: theBotsIntel.botTargetDefence,
+  botTuning: theBotsIntel.botTuning,
+  botTurnCache: theBotsIntel.botTurnCache,
+  botVisibleCharsIn: theBotsIntel.botVisibleCharsIn,
+  markProvinceCombat: theBotsIntel.markProvinceCombat,
+  botAirReach: theBotsMissions.botAirReach,
+  botAirStrike: theBotsMissions.botAirStrike,
+  botAllyNear: theBotsMissions.botAllyNear,
+  botConsecrateOK: theBotsMissions.botConsecrateOK,
+  botDuelStance: theBotsMissions.botDuelStance,
+  botInfiltrateSchool: theBotsMissions.botInfiltrateSchool,
+  botInfiltrateTarget: theBotsMissions.botInfiltrateTarget,
+  botItemPre: theBotsMissions.botItemPre,
+  botLairCandidates: theBotsMissions.botLairCandidates,
+  botLairPlan: theBotsMissions.botLairPlan,
+  botLairStrongFor: theBotsMissions.botLairStrongFor,
+  botLairTiers: theBotsMissions.botLairTiers,
+  botMasteryPre: theBotsMissions.botMasteryPre,
+  botNearestOf: theBotsMissions.botNearestOf,
+  botOnlySkeletal: theBotsMissions.botOnlySkeletal,
+  botOrderLocs: theBotsMissions.botOrderLocs,
+  botOrphanHostOrders: theBotsMissions.botOrphanHostOrders,
+  botPickupOrder: theBotsMissions.botPickupOrder,
+  botProvUndefended: theBotsMissions.botProvUndefended,
+  botRitePre: theBotsMissions.botRitePre,
+  botRunSlayerSchool: theBotsMissions.botRunSlayerSchool,
+  botSeaStrike: theBotsMissions.botSeaStrike,
+  botSignaturePre: theBotsMissions.botSignaturePre,
+  botSlayerSchool: theBotsMissions.botSlayerSchool,
+  botSlayerTrainSkill: theBotsMissions.botSlayerTrainSkill,
+  botSpareBerths: theBotsMissions.botSpareBerths,
+  botTeachFree: theBotsMissions.botTeachFree,
+  runBotConcessions: theBotsMissions.runBotConcessions,
+  botResurrectErrands: theBotsMovement.botResurrectErrands,
+  runBotMovement: theBotsMovement.runBotMovement,
+  botPins: theBotsPhaseOne.botPins,
+  runBotPhaseOne: theBotsPhaseOne.runBotPhaseOne,
+  botConfigFor: theBotsSetUp.botConfigFor,
+  botKingdomName: theBotsSetUp.botKingdomName,
+  gameVisibility: theBotsSetUp.gameVisibility,
+  generateBotSetups: theBotsSetUp.generateBotSetups,
+  isBotRow: theBotsSetUp.isBotRow,
+  pickBotAlignment: theBotsSetUp.pickBotAlignment,
+  pickBotAlignmentBalanced: theBotsSetUp.pickBotAlignmentBalanced,
+  botChainHops: theBotsSpecialists.botChainHops,
+  botCloakPre: theBotsSpecialists.botCloakPre,
+  botDefenderOrders: theBotsSpecialists.botDefenderOrders,
+  botDefenderPost: theBotsSpecialists.botDefenderPost,
+  botDistantStrike: theBotsSpecialists.botDistantStrike,
+  botHomeThreat: theBotsSpecialists.botHomeThreat,
+  botLairOrders: theBotsSpecialists.botLairOrders,
+  botLairTarget: theBotsSpecialists.botLairTarget,
+  botMageOrders: theBotsSpecialists.botMageOrders,
+  botRoamOrders: theBotsSpecialists.botRoamOrders,
+  botRoleReady: theBotsSpecialists.botRoleReady,
+  botRoleTrain: theBotsSpecialists.botRoleTrain,
+  botRoleWork: theBotsSpecialists.botRoleWork,
+  botScholarOrders: theBotsSpecialists.botScholarOrders,
+  botScoutTarget: theBotsSpecialists.botScoutTarget,
+  botSpecialistOf: theBotsSpecialists.botSpecialistOf,
+  botSpecialistRoles: theBotsSpecialists.botSpecialistRoles,
+  botSpyOrders: theBotsSpecialists.botSpyOrders,
+  botStealTarget: theBotsSpecialists.botStealTarget,
+  botThiefOrders: theBotsSpecialists.botThiefOrders,
+  botTrainOrders: theBotsSpecialists.botTrainOrders,
+  botActionCast: theBotsSpellcraft.botActionCast,
+  botBeatableLair: theBotsSpellcraft.botBeatableLair,
+  botBeatableLairIn: theBotsSpellcraft.botBeatableLairIn,
+  botCanBeatGuardian: theBotsSpellcraft.botCanBeatGuardian,
+  botCastPlan: theBotsSpellcraft.botCastPlan,
+  botCrossTrainSkill: theBotsSpellcraft.botCrossTrainSkill,
+  botDuelRating: theBotsSpellcraft.botDuelRating,
+  botFillOrders: theBotsSpellcraft.botFillOrders,
+  botHuntTarget: theBotsSpellcraft.botHuntTarget,
+  botOffensiveMagic: theBotsSpellcraft.botOffensiveMagic,
+  botPathAny: theBotsSpellcraft.botPathAny,
+  botPathLenAny: theBotsSpellcraft.botPathLenAny,
+  botPlannedAttackTarget: theBotsSpellcraft.botPlannedAttackTarget,
+  botPracticeFallback: theBotsSpellcraft.botPracticeFallback,
+  botRaidTarget: theBotsSpellcraft.botRaidTarget,
+  botSpyTarget: theBotsSpellcraft.botSpyTarget,
+  botTargetTitles: theBotsSpellcraft.botTargetTitles,
+  botTitleFocusSkill: theBotsSpellcraft.botTitleFocusSkill,
+  runBotActions: theBotsSpellcraft.runBotActions,
+  botAssumedChar: theBotsStrategy.botAssumedChar,
+  botAtWar: theBotsStrategy.botAtWar,
+  botCoastalFleetType: theBotsStrategy.botCoastalFleetType,
+  botCoastalPorts: theBotsStrategy.botCoastalPorts,
+  botDefenceNeed: theBotsStrategy.botDefenceNeed,
+  botDrillOrder: theBotsStrategy.botDrillOrder,
+  botDuelSkill: theBotsStrategy.botDuelSkill,
+  botEmpireDiameter: theBotsStrategy.botEmpireDiameter,
+  botEnemyChars: theBotsStrategy.botEnemyChars,
+  botEnemyDefence: theBotsStrategy.botEnemyDefence,
+  botEnemyHostsIn: theBotsStrategy.botEnemyHostsIn,
+  botEnemyIntel: theBotsStrategy.botEnemyIntel,
+  botFieldRecruitTokensCore: theBotsStrategy.botFieldRecruitTokensCore,
+  botFleetHullCount: theBotsStrategy.botFleetHullCount,
+  botFleetOnly: theBotsStrategy.botFleetOnly,
+  botFlyerPorts: theBotsStrategy.botFlyerPorts,
+  botFlyerType: theBotsStrategy.botFlyerType,
+  botFrontierTarget: theBotsStrategy.botFrontierTarget,
+  botGarrisonOrder: theBotsStrategy.botGarrisonOrder,
+  botGarrisonType: theBotsStrategy.botGarrisonType,
+  botGeneralship: theBotsStrategy.botGeneralship,
+  botHasMetPlayers: theBotsStrategy.botHasMetPlayers,
+  botHeroCap: theBotsStrategy.botHeroCap,
+  botHireOrder: theBotsStrategy.botHireOrder,
+  botHomeId: theBotsStrategy.botHomeId,
+  botInContact: theBotsStrategy.botInContact,
+  botIsBotPlayer: theBotsStrategy.botIsBotPlayer,
+  botIsFighter: theBotsStrategy.botIsFighter,
+  botIsTeach: theBotsStrategy.botIsTeach,
+  botLairRating: theBotsStrategy.botLairRating,
+  botLandCount: theBotsStrategy.botLandCount,
+  botLandReach: theBotsStrategy.botLandReach,
+  botLedger: theBotsStrategy.botLedger,
+  botMagicScore: theBotsStrategy.botMagicScore,
+  botMaxEnemyStack: theBotsStrategy.botMaxEnemyStack,
+  botMoveOrder: theBotsStrategy.botMoveOrder,
+  botNearbyThreat: theBotsStrategy.botNearbyThreat,
+  botNeedsSlayer: theBotsStrategy.botNeedsSlayer,
+  botPracticeSkill: theBotsStrategy.botPracticeSkill,
+  botRaiseTargets: theBotsStrategy.botRaiseTargets,
+  botRecruitCmdr: theBotsStrategy.botRecruitCmdr,
+  botRecruitOrder: theBotsStrategy.botRecruitOrder,
+  botRecruitableTypes: theBotsStrategy.botRecruitableTypes,
+  botRoleTrainSkill: theBotsStrategy.botRoleTrainSkill,
+  botRoles: theBotsStrategy.botRoles,
+  botSeaReach: theBotsStrategy.botSeaReach,
+  botTaxIncome: theBotsStrategy.botTaxIncome,
+  botUnderAttack: theBotsStrategy.botUnderAttack,
+  botUpdateIntel: theBotsStrategy.botUpdateIntel,
+  botUpkeep: theBotsStrategy.botUpkeep,
+  botCanFly: theBotsWar.botCanFly,
+  botIsLoadedFleet: theBotsWar.botIsLoadedFleet,
+  botOwnPower: theBotsWar.botOwnPower,
+  botPlanAssaults: theBotsWar.botPlanAssaults,
+  botRivalPower: theBotsWar.botRivalPower,
+  botSeaCap: theBotsWar.botSeaCap,
+  botWarAssess: theBotsWar.botWarAssess,
+  botWarBook: theBotsWar.botWarBook,
+  botWarPrize: theBotsWar.botWarPrize,
+  emit: theEvents.emit,
+  resolveTurn: theTurn.resolveTurn,
+};
+const fn = (name: keyof typeof THE_ENGINES_FUNCTIONS_CALLED_BY_NAME) =>
+  THE_ENGINES_FUNCTIONS_CALLED_BY_NAME[name] as unknown as Fn;
 const json = (v: unknown): unknown => JSON.parse(JSON.stringify(v ?? null));
-const plan = (tc: unknown): unknown => (engineFn(engine, PLAN) as Fn)(tc);
-const forecast = (tc: unknown, ...a: unknown[]) => (engineFn(engine, FORECAST) as Fn)(tc, ...a);
+const plan = (tc: unknown): unknown =>
+  (theBotsPlan.botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning as Fn)(tc);
+const forecast = (tc: unknown, ...a: unknown[]) =>
+  (theBotsPlan.botHuntersDuelForecastFoughtOnCopiesOfBothHeroes as unknown as Fn)(tc, ...a);
 
 const NOTHING: BotsPlanCase = {
   name: 'nothing staged',
@@ -114,28 +324,84 @@ interface Call {
   fn: string;
   args: unknown[];
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length) that calls `instead` for
- *  it if given, or the function it stands in for. */
-function standIn<T>(names: readonly string[], body: () => T, instead: Record<string, Fn> = {}): [Call[], T] {
-  const g = engine;
-  const was = names.map((f) => [f, g[f] as Fn] as const);
+/** Each function a test here stands in, on the module that exports it: its export as it is now, and a vi.spyOn on it.
+ *  resolveTurn calls the plan and the stages, the plan the passes and the terrain figures, and the forecast its three
+ *  helpers, each from another file, so a stand-in reaches those calls (docs/traps.md). The forecast is the one
+ *  exception: the plan calls it inside its own file (the movement pass's hook), where no stand-in reaches. */
+const THE_FUNCTIONS_A_TEST_STANDS_IN = {
+  [STAGES[2]]: [
+    () => beforeTheFirstPhase.movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan,
+    () => vi.spyOn(beforeTheFirstPhase, 'movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan'),
+  ],
+  [STAGES[3]]: [
+    () => beforeTheFirstPhase.missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart,
+    () => vi.spyOn(beforeTheFirstPhase, 'missingOrdersDefaultToDefendTheOrdersRecordAndTheWarFrontsAtTheStart'),
+  ],
+  [PLAN]: [
+    () => theBotsPlan.botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning,
+    () =>
+      vi.spyOn(
+        theBotsPlan,
+        'botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning',
+      ),
+  ],
+  [FORECAST]: [
+    () => theBotsPlan.botHuntersDuelForecastFoughtOnCopiesOfBothHeroes,
+    () => vi.spyOn(theBotsPlan, 'botHuntersDuelForecastFoughtOnCopiesOfBothHeroes'),
+  ],
+  runBotConcessions: [() => theBotsMissions.runBotConcessions, () => vi.spyOn(theBotsMissions, 'runBotConcessions')],
+  runBotMovement: [() => theBotsMovement.runBotMovement, () => vi.spyOn(theBotsMovement, 'runBotMovement')],
+  runBotPhaseOne: [() => theBotsPhaseOne.runBotPhaseOne, () => vi.spyOn(theBotsPhaseOne, 'runBotPhaseOne')],
+  runBotEconomy: [() => theBotsEconomy.runBotEconomy, () => vi.spyOn(theBotsEconomy, 'runBotEconomy')],
+  runBotActions: [() => theBotsSpellcraft.runBotActions, () => vi.spyOn(theBotsSpellcraft, 'runBotActions')],
+  runBotOrderHygiene: [() => theBotsEconomy.runBotOrderHygiene, () => vi.spyOn(theBotsEconomy, 'runBotOrderHygiene')],
+  runBotReckoning: [() => theReckoning.runBotReckoning, () => vi.spyOn(theReckoning, 'runBotReckoning')],
+  terrainMod: [() => theTerrain.terrainMod, () => vi.spyOn(theTerrain, 'terrainMod')],
+  seaPenalty: [() => theTerrain.seaPenalty, () => vi.spyOn(theTerrain, 'seaPenalty')],
+  autoEncounterPlan: [
+    () => thePlansAndCombatants.autoEncounterPlan,
+    () => vi.spyOn(thePlansAndCombatants, 'autoEncounterPlan'),
+  ],
+  pcCharCombatant: [
+    () => thePlansAndCombatants.pcCharCombatant,
+    () => vi.spyOn(thePlansAndCombatants, 'pcCharCombatant'),
+  ],
+  resolvePersonalCombat: [
+    () => thePersonalCombat.resolvePersonalCombat,
+    () => vi.spyOn(thePersonalCombat, 'resolvePersonalCombat'),
+  ],
+} as const;
+type AFunctionATestStandsIn = keyof typeof THE_FUNCTIONS_A_TEST_STANDS_IN;
+/** Runs `body` with each of `names` stood in by a recorder (vi.spyOn on its module, for the body's length) that calls
+ *  `instead` for it if given, or the function it stands in for. */
+function standIn<T>(
+  names: readonly AFunctionATestStandsIn[],
+  body: () => T,
+  instead: Record<string, Fn> = {},
+): [Call[], T] {
   const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
+  const spies = names.map((f) => {
+    const [itsExport, aSpyOnIt] = THE_FUNCTIONS_A_TEST_STANDS_IN[f];
+    const w = itsExport() as unknown as Fn;
+    const spy = aSpyOnIt() as unknown as MockInstance<Fn>;
+    return spy.mockImplementation((...args: unknown[]) => {
       calls.push({ fn: f, args });
       return (instead[f] ?? w)(...args);
-    };
+    });
+  });
   try {
     return [calls, body()];
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const spy of spies) spy.mockRestore();
   }
 }
 const nothing = () => undefined;
 const QUIET = Object.fromEntries(PASSES.map((f) => [f, nothing]));
 const playWith = (b: Board, s: Staged) => {
-  const resolveTurn = engineFn(engine, 'resolveTurn') as (st: string, r: unknown, t: number) => unknown;
-  return withCaseDice(engine, LANDS, () => resolveTurn(JSON.stringify(b.G), inVm(rows(b, s)), b.G.turn));
+  const resolveTurn = fn('resolveTurn') as (st: string, r: unknown, t: number) => unknown;
+  return withCaseDice(engine, LANDS, () =>
+    resolveTurn(JSON.stringify(b.G), b.parsedInTheEnginesRealm(rows(b, s)), b.G.turn),
+  );
 };
 
 // ── Where resolveTurn calls the plan ─────────────────────────────────────────────────────────────────────────────
@@ -156,8 +422,17 @@ describe('Where resolveTurn calls it', () => {
       ...NOTHING,
       stage: (bb) => ({ bots: [1], asks: [{ hunter: champion(bb, 1), quarry: weakling(bb, 0) }] }),
     });
-    const [calls] = standIn([FORECAST, 'resolvePersonalCombat'], () => standIn(PASSES, () => playWith(b, s), QUIET));
-    expect(calls.filter((c) => c.fn === FORECAST)).toEqual([]);
+    // the movement pass's hook asks the forecast inside the plan's own file, where no stand-in reaches (docs/traps.md):
+    // a forecast's fights are told by the mark it sets for them (experience muted), read as each fight begins
+    const theFight = thePersonalCombat.resolvePersonalCombat as unknown as Fn;
+    const aForecastsFights: unknown[][] = [];
+    const [calls] = standIn([FORECAST, 'resolvePersonalCombat'], () => standIn(PASSES, () => playWith(b, s), QUIET), {
+      resolvePersonalCombat: (...args: unknown[]) => {
+        if ((args[0] as Raw | undefined)?.['_pcSimulating'] === true) aForecastsFights.push(args);
+        return theFight(...args);
+      },
+    });
+    expect([calls.filter((c) => c.fn === FORECAST), aForecastsFights]).toEqual([[], []]);
   });
 });
 
@@ -184,7 +459,7 @@ describe('What the plan hands the passes', () => {
     standIn(PASSES, () => plan(tc), {
       ...QUIET,
       runBotConcessions: (_G: unknown, _set: unknown, turnContext: unknown) => {
-        (engineFn(engine, 'emit') as Fn)(turnContext, {
+        fn('emit')(turnContext, {
           type: 'system',
           fact: A_LINE,
           audience: { actor: null, realms: [] },
@@ -205,17 +480,30 @@ describe('What the plan hands the passes', () => {
       calls.find((c) => c.fn === 'runBotMovement'),
       'the movement pass',
     ).args[2] as Raw;
-    const marker = { win: 0.5, felled: 0.25 };
-    const [asked, results] = standIn(
-      [FORECAST],
-      () => [(hooks['duelSim'] as Fn)('h', 'q', 24), (hooks['duelSim'] as Fn)('h2', 'q2')],
-      { [FORECAST]: () => marker },
-    );
-    expect(results).toEqual([marker, marker]);
-    expect(asked.map((c) => c.args)).toEqual([
-      [tc, 'h', 'q', 24],
-      [tc, 'h2', 'q2'],
-    ]);
+    // The hook asks the forecast inside the plan's own file, where no stand-in reaches (docs/traps.md): its three helpers
+    // are stood in instead (each in another file), and the hook's fights are the forecast's own, asked directly with
+    // the turn's context first and the hunter's question after it, call for call: the context each helper is handed,
+    // whose copy it is, and how many fights.
+    const theFightsOf = (body: () => unknown[]) => {
+      let i = 0;
+      const [calls, results] = standIn(HELPERS, body, {
+        autoEncounterPlan: () => ['ME'],
+        pcCharCombatant: (_t: unknown, ch: unknown) => ({ ref: ch, tactics: ['ME'] }),
+        resolvePersonalCombat: (_t: unknown, A: unknown, B: unknown) =>
+          i++ % 3 === 0 ? { winner: A, aHp: 5 } : { winner: B, aHp: 0 },
+      });
+      const whose = (c: Call) => (c.fn === 'resolvePersonalCombat' ? (c.args[1] as Raw)['ref'] : c.args[1]) as Raw;
+      return { results, calls: calls.map((c) => [c.fn, c.args[0] === tc, whose(c)['name']]) };
+    };
+    const h = hero(1),
+      q = hero(2),
+      h2 = hero(3),
+      q2 = hero(4);
+    const viaTheHook = theFightsOf(() => [(hooks['duelSim'] as Fn)(h, q, 24), (hooks['duelSim'] as Fn)(h2, q2)]);
+    const askedDirectly = theFightsOf(() => [forecast(tc, h, q, 24), forecast(tc, h2, q2)]);
+    expect(viaTheHook).toEqual(askedDirectly);
+    expect([viaTheHook.calls.length, viaTheHook.calls.every(([, context]) => context)]).toEqual([(24 + 20) * 5, true]);
+    expect(viaTheHook.calls.slice(0, 2).map(([, , name]) => name)).toEqual(['Hero 1', 'Hero 2']);
   });
   test('the strength figure asks the engine’s terrain and sea figures each time, and multiplies them', () => {
     const { tc } = fresh(() => ({ bots: [1] }));
@@ -238,7 +526,7 @@ describe('What the plan hands the passes', () => {
   test('the plan writes no line of its own and returns nothing', () => {
     const { tc } = fresh(() => ({ bots: [1] }));
     const lines = (tc['turnLog'] as unknown[]).length;
-    const [, r] = standIn(PASSES, () => (engineFn(engine, PLAN) as (t: unknown) => unknown)(tc), QUIET);
+    const [, r] = standIn(PASSES, () => plan(tc), QUIET);
     expect([r, (tc['turnLog'] as unknown[]).length - lines]).toEqual([undefined, 0]);
   });
 });
@@ -392,7 +680,7 @@ describe('The forecast: what it hands the helpers', () => {
   });
   test('every tactic the combat knows is kept, and nothing else', () => {
     const { tc } = fresh(() => ({ bots: [1] }));
-    const known = vm.runInContext('[...COMBAT_ONLY_TACTICS]', engine) as string[];
+    const known = [...COMBAT_ONLY_TACTICS];
     const all = [...known, 'PARLEY', 'STEAL', 'YIELD', 'HIDE', 'XX'];
     const [calls] = scripted(tc, hero(1), hero(2), 1, [['A', 5]], { auto: all });
     const f = must(
@@ -484,7 +772,7 @@ describe('The forecast: experience, and a forecast that fails', () => {
 // enemy puts Harvest the Field and Perform Rite ahead of slower orders. It compares the order's key (what the realm
 // sends: 'harvest_field', 'rite'), never the row's name; no game of the matrix makes a test red when it does not.
 describe('The Spring orders pass: what a host in contact does first', () => {
-  const runBotPhaseOne = engineFn(engine, 'runBotPhaseOne') as Fn;
+  const runBotPhaseOne = fn('runBotPhaseOne');
   const hold = (): Raw => ({ action: 'defend', target: '', extra: '', desc: 'Hold' });
   test.for([
     ['Harvest the Field', 'harvest_field'],
@@ -577,7 +865,6 @@ describe('Properties of the plan and the forecast', () => {
 // page, a realm's name drawn from a pool all used, the alignments' spread for humans, and the intel, the guesses and the
 // estimates on a world that lacks a list or a field.
 describe('The intel and the setup on what no matrix game hands them', () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   const json = (v: unknown) => JSON.stringify(v);
   const thrown = (f: () => unknown) => {
     try {
@@ -703,15 +990,16 @@ describe('The intel and the setup on what no matrix game hands them', () => {
   });
   test("a bot realm's name: its race's pool, Free Lances' for a race of none, each name once, then a numeral", () => {
     const botKingdomName = fn('botKingdomName');
-    const pool = vm.runInContext("ARMY_UNIT_NAMES['Free Lances'].slice()", engine) as string[];
-    const elven = vm.runInContext("ARMY_UNIT_NAMES['Elven Bowmen'].slice()", engine) as string[];
-    const used = vm.runInContext('[..._usedBotKingdomNames]', engine) as string[];
-    vm.runInContext('_usedBotKingdomNames.clear()', engine);
+    const pool = ARMY_UNIT_NAMES['Free Lances'].slice();
+    const elven = ARMY_UNIT_NAMES['Elven Bowmen'].slice();
+    const used = [..._usedBotKingdomNames];
+    _usedBotKingdomNames.clear();
     const capped = (n: string) => n.replace(/^the\b/, 'The');
     const names = pool.map(() => botKingdomName('Nonesuch') as string);
     const more = [botKingdomName('Nonesuch'), botKingdomName('Nonesuch')] as string[];
     const anElf = botKingdomName('Elven') as string;
-    vm.runInContext(`_usedBotKingdomNames.clear(); ${json(used)}.forEach((n) => _usedBotKingdomNames.add(n))`, engine);
+    _usedBotKingdomNames.clear();
+    used.forEach((n) => _usedBotKingdomNames.add(n));
     expect([...names].sort()).toEqual(pool.map(capped).sort());
     expect(more.map((n) => / (II|III)$/.test(n) && pool.map(capped).includes(n.replace(/ (II|III)$/, '')))).toEqual([
       true,
@@ -763,7 +1051,7 @@ describe('The intel and the setup on what no matrix game hands them', () => {
       temper: string;
       skills: object;
     }[];
-    const builds = vm.runInContext('BOT_SKILL_BUILD', engine) as Record<string, object>;
+    const builds = BOT_SKILL_BUILD as Record<string, object>;
     expect(bots.map((b) => [b.id, b.isBot])).toEqual([
       [4, true],
       [5, true],
@@ -993,7 +1281,6 @@ describe('The intel and the setup on what no matrix game hands them', () => {
 });
 
 describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   const json = (v: unknown) => JSON.stringify(v);
   /** A world of one realm and the lists named, each other list missing; its map 2 by 1. */
   const aWorld = (lists: Record<string, unknown> = {}) => ({
@@ -1645,8 +1932,8 @@ describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", 
 });
 
 describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', () => {
-  const runBotPhaseOne = engineFn(engine, 'runBotPhaseOne') as Fn;
-  const step = engineFn(engine, 'botNeighbourProv') as Fn;
+  const runBotPhaseOne = fn('runBotPhaseOne');
+  const step = fn('botNeighbourProv');
   const DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
   const hold = (desc = 'Hold'): Raw => ({ action: 'defend', target: '', extra: '', desc });
   /** The way from `a` to its neighbour `b`, as a march names it. */
@@ -1786,9 +2073,9 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
         () => runBotPhaseOne(bare(), new Set([1]), 'order'),
         () => runBotPhaseOne(bare({ world: { cols: 2, rows: 1, provinces: [] } }), new Set([1]), 'muster'),
         () => runBotPhaseOne(bare({ world: { cols: 2, rows: 1, provinces: [] } }), new Set([1]), 'order'),
-        () => (engineFn(engine, 'botPins') as Fn)(bare({ world: { cols: 2, rows: 1, provinces: [] } }), 1),
+        () => fn('botPins')(bare({ world: { cols: 2, rows: 1, provinces: [] } }), 1),
         () =>
-          (engineFn(engine, 'botPins') as Fn)(
+          fn('botPins')(
             bare({
               world: { cols: 2, rows: 1 },
               characters: [
@@ -1799,7 +2086,7 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
             1,
           ),
         () =>
-          (engineFn(engine, 'botPins') as Fn)(
+          fn('botPins')(
             bare({
               world: { cols: 2, rows: 1, provinces: [{ id: 0, row: 0, col: 0, owner: 1, terrain: 'plains' }, null] },
               characters: [
@@ -1810,7 +2097,7 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
             1,
           ),
       ]),
-    ).toBe('[null,null,null,null,null,{},{},{}]');
+    ).toBe('[null,null,null,null,null,[],[],[]]');
   });
   test('a feint looks past a visiting host beside the target to the owner’s own (P1-21j)', () => {
     expect(
@@ -1898,12 +2185,11 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
       standAHero(b, { player: 0, at: N, troops: 6 });
       standAHero(b, { player: 1, at: N }); // the realm's eyes there
     }
-    const pins = (engineFn(engine, 'botPins') as Fn)(b.G, 1) as Map<number, number>;
+    const pins = fn('botPins')(b.G, 1) as Map<number, number>;
     expect([pins.size, [...pins.values()].every((id) => id === mage.id)]).toEqual([1, true]);
   });
 });
 describe('The spellcraft on what no matrix game hands it (P1-10b43)', () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   const json = (v: unknown) => JSON.stringify(v);
   /** A world of one realm and the lists named, each other list missing; its map 2 by 1. */
   const aWorld = (lists: Record<string, unknown> = {}) => ({
@@ -2279,7 +2565,6 @@ describe('The spellcraft on what no matrix game hands it (P1-10b43)', () => {
 });
 
 describe("The war's reckoning and the assaults on what no matrix game hands them (P1-10b44)", () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   /** A world of two realms, at war, and the lists named, each other list missing; its map 2 by 1. */
   const aWorld = (lists: Record<string, unknown> = {}) => ({
     turn: 3,
@@ -2393,7 +2678,6 @@ describe("The war's reckoning and the assaults on what no matrix game hands them
 });
 
 describe('The missions on what no matrix game hands them (P1-10b45)', () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   /** A world of two realms, at war, and the lists named, each other list missing; its map 2 by 1. */
   const aWorld = (lists: Record<string, unknown> = {}) => ({
     turn: 3,
@@ -2773,7 +3057,6 @@ describe('The missions on what no matrix game hands them (P1-10b45)', () => {
 });
 
 describe('The specialists on what no matrix game hands them (P1-10b46)', () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   /** A world of two realms, at war, and the lists named, each other list missing; its map as wide as named. */
   const aWorld = (lists: Record<string, unknown> = {}) => ({
     turn: 3,
@@ -3092,7 +3375,6 @@ describe('The specialists on what no matrix game hands them (P1-10b46)', () => {
 });
 
 describe('The march on what no matrix game hands it (P1-10b47)', () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   /** A world of two realms, at war, and the lists named, each other list missing; its map as wide as named. */
   const aWorld = (lists: Record<string, unknown> = {}) => ({
     turn: 3,
@@ -3187,7 +3469,6 @@ describe('The march on what no matrix game hands it (P1-10b47)', () => {
 });
 
 describe('The economy and the order hygiene on what no matrix game hands them (P1-10b48)', () => {
-  const fn = (name: string) => engineFn(engine, name) as unknown as Fn;
   /** A world of two realms and the lists named, each other list missing; its map as wide as named. */
   const aWorld = (lists: Record<string, unknown> = {}) => ({
     turn: 3,
@@ -3241,13 +3522,13 @@ describe('The economy and the order hygiene on what no matrix game hands them (P
   /** The hygiene on a world of these heroes and their plans, its tally read through the page's hook. */
   const hygiene = (characters: readonly Record<string, unknown>[], plans: Record<string, unknown>, lists = {}) => {
     const G = aWorld({ characters, turnOrders: plans, world: { cols: 3, provinces: aRow([{}, {}, {}]) }, ...lists });
-    const g = engine;
-    g['window'] = { __botHyg: {} };
+    const thePagesHook: Raw = { __botHyg: {} };
+    vi.stubGlobal('window', thePagesHook);
     try {
       fn('runBotOrderHygiene')(G, new Set([0]));
-      return [G.turnOrders, (g['window'] as Record<string, unknown>)['__botHyg']];
+      return [G.turnOrders, thePagesHook['__botHyg']];
     } finally {
-      delete g['window'];
+      vi.unstubAllGlobals();
     }
   };
   test('the hygiene: a cast of no school, a hire of no hero, a hand-over trimmed, a practice capped and refilled', () => {
@@ -3323,13 +3604,12 @@ describe('The economy and the order hygiene on what no matrix game hands them (P
   });
   test("the economy: no bots, no map, no orders listed, the study's hook", () => {
     const run = (G: Record<string, unknown>, bots: unknown, diag?: unknown[]) => {
-      const g = engine;
-      if (diag) g['window'] = { __botDiag: diag };
+      if (diag) vi.stubGlobal('window', { __botDiag: diag });
       try {
         fn('runBotEconomy')(G, bots);
         return [G['turnOrders'] ?? 'none', diag ? diag.length : 'no hook'];
       } finally {
-        delete g['window'];
+        vi.unstubAllGlobals();
       }
     };
     const lands = aRow([{ armyTypes: ['Militia'] }, {}, {}]);

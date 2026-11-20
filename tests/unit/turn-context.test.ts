@@ -1,5 +1,5 @@
-// The turn's context and the helpers lifted out of resolveTurn with it (plan P1-08a), called directly in the bare vm
-// (tests/lib/engine.ts).
+// The turn's context and the helpers lifted out of resolveTurn with it (plan P1-08a), called directly on the engine's
+// modules (since P1-14m; the bare vm before).
 // - createTurnContext holds the turn's state, slot rows and turn, and an empty log; emit files a line under the hero
 //   and the phase the context names as it is when the line is written, not as it was when the context was made. It
 //   is a plain object, whole at birth (plan P1-10b51): every field holds its start value, the one the tests' list of
@@ -11,9 +11,9 @@
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// The turn's context and the helpers lifted with it (P1-08a), called directly through `lib/engine.ts` (`engineFn`,
-// `turnContext`): `createTurnContext` holds the state, the slot rows, the turn and an empty log, and is a plain object,
-// whole at birth: every field its start value, as the tests' list of them writes it (the bot realms read from the
+// The turn's context and the helpers lifted with it (P1-08a), called directly on the engine's modules (P1-14m; through
+// `lib/engine.ts` before): `createTurnContext` holds the state, the slot rows, the turn and an empty log, and is a
+// plain object, whole at birth: every field its start value, as the tests' list of them writes it (the bot realms read from the
 // rows; red while it made only the first four, P1-10b51); `emit` files a line under the hero and phase the context names when the line is written (a hero's own, then
 // the phase being resolved, then End of Turn once the phases are over); the title lookups the balance matrix never runs
 // (`charHoldsTitle`, `playerHoldsTitle`: nothing calls them today) and `charMinor` are true for the holder only; and,
@@ -22,36 +22,42 @@
 // fault: `log` ignoring the phase, `charHoldsTitle` comparing the realm, `playerHoldsTitle` without its guard,
 // `relationBetween` keying a pair one way only. Level 1: each function is called on a context made in the test; nothing
 // else of the turn runs
+import '../lib/the-whole-engine.ts';
 import { types } from 'node:util';
-import vm from 'node:vm';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
 import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
-import { engineFn, loadEngine, turnContext, type TurnContext } from '../lib/engine.ts';
-import { THE_FIELDS_RESOLVE_TURN_ADDS } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
+import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
 // ms an input, so npm test's 100 keep Vitest's 5 s and KC_FULL's 1,000 get 50 s (tests/lib/time-limits.ts).
 const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
+// (the engine's own modules, fresh with it)
+const { spyStealthAndInvisibilityStampedForTheReports: stealthAsItsModuleExportsIt } =
+  await import('../../src/engine/run-turn.ts');
+const { emit: emitAsItsModuleExportsIt } = await import('../../src/engine/turn/events-and-their-audiences.ts');
+const theTitleHolders = await import('../../src/engine/titles/title-holders-and-battle-merit.ts');
+const theRelations = await import('../../src/engine/realms/relations-and-captures.ts');
+const turnContext = (state: object, opts?: { freshPlayers?: unknown[]; turn?: number }) =>
+  aFreshTurnsContextOnTheWorld(engine, state, opts);
 // emit echoes each line to the console: quiet it while a test writes lines.
-const quiet = () => {
-  const engineConsole = vm.runInContext('console', engine) as Console;
-  const was = engineConsole.log;
-  engineConsole.log = () => undefined;
-  return () => {
-    engineConsole.log = was;
-  };
-};
+const quiet = () => quietEngineLog(engine);
 
 describe('createTurnContext', () => {
   test("holds the turn's state, slot rows and turn, and an empty log", () => {
-    const tc = turnContext(engine, { turn: 4, players: [] }, { freshPlayers: [{ player_index: 0 }], turn: 4 });
+    const tc = turnContext({ turn: 4, players: [] }, { freshPlayers: [{ player_index: 0 }], turn: 4 });
     expect(tc.G['turn']).toBe(4);
     expect(tc.freshPlayers).toEqual([{ player_index: 0 }]);
     expect(tc.expectedTurnToRun).toBe(4);
@@ -61,36 +67,32 @@ describe('createTurnContext', () => {
   test("is a plain object, whole at birth: every field its start value, as the tests' list of them writes it", () => {
     // a human's row (it names its player) and a bot's (it names none)
     const rows = JSON.stringify([{ player_index: 0, user_id: 'a player' }, { player_index: 1 }]);
-    // handed to the vm as text and parsed there, so its lists are the vm's (as the engine's are), not written into code
-    const parsedInTheVm = vm.runInContext('(text) => JSON.parse(text)', engine) as (text: string) => unknown;
-    const born = vm.runInContext('(rows) => createTurnContext({turn:1}, rows, 1)', engine) as (
-      rows: unknown,
-    ) => Record<string, unknown>;
-    const tc = born(parsedInTheVm(rows));
+    // handed over as text and parsed, so its lists are made as the engine's are, not written into code
+    const parsed = (text: string) => JSON.parse(text) as Parameters<typeof engine.createTurnContext>[1];
+    const tc: Record<string, unknown> = engine.createTurnContext({ turn: 1 }, parsed(rows), 1);
     expect(types.isProxy(tc)).toBe(false);
-    expect(Object.getPrototypeOf(Object.getPrototypeOf(tc))).toBeNull(); // the vm's Object.prototype
-    // the same four fields, then the list's statements, in the vm (its Maps and Sets the engine's)
-    const listedFrom = vm.runInContext(
-      `(rows) => { const tc = { G: {turn:1}, freshPlayers: rows, expectedTurnToRun: 1, turnLog: [] };
-        ${THE_FIELDS_RESOLVE_TURN_ADDS}
-        return tc; }`,
+    expect(Object.getPrototypeOf(Object.getPrototypeOf(tc))).toBeNull(); // Object.prototype
+    // the same four fields, then the list's statements, as the modules' twin of the vm's turnContext adds them
+    // (aFreshTurnsContextOnTheWorld: its Maps and Sets the engine's)
+    const listed: Record<string, unknown> = addTheFieldsResolveTurnAdds(
+      { G: { turn: 1 }, freshPlayers: parsed(rows), expectedTurnToRun: 1, turnLog: [] },
       engine,
-    ) as (rows: unknown) => Record<string, unknown>;
-    const listed = listedFrom(parsedInTheVm(rows));
+    );
     expect(Object.keys(tc).sort()).toEqual(Object.keys(listed).sort());
     expect(tc).toStrictEqual(listed);
     expect([...(tc['_botPlayerIdx'] as Set<number>)]).toEqual([1]);
   });
 
   test('handed no slot rows, it holds no bot realm', () => {
-    const tc = vm.runInContext('createTurnContext({turn:1},null,1)', engine) as Record<string, unknown>;
+    const noRows = null as unknown as Parameters<typeof engine.createTurnContext>[1];
+    const tc: Record<string, unknown> = engine.createTurnContext({ turn: 1 }, noRows, 1);
     expect(tc['freshPlayers']).toBeNull();
     expect((tc['_botPlayerIdx'] as Set<number>).size).toBe(0);
   });
 
   test("the Spy stealth on a world of no list of heroes rolls for none, once (resolveTurn's own step)", () => {
-    const stealth = engineFn(engine, 'spyStealthAndInvisibilityStampedForTheReports') as (tc: TurnContext) => void;
-    const tc = turnContext(engine, { turn: 2 });
+    const stealth = stealthAsItsModuleExportsIt as unknown as (tc: TurnContext) => void;
+    const tc = turnContext({ turn: 2 });
     stealth(tc);
     expect(tc['_reports']).toEqual({ stealthRolled: true, built: false });
     expect(tc.turnLog).toEqual([]);
@@ -102,9 +104,9 @@ describe('createTurnContext', () => {
   test('emit files a line under the hero and the phase the context names when it is written', () => {
     // A world holds its heroes (every saved state has `characters`): emit looks up the realm of the hero whose order is
     // resolving (P1-12c1). Hero 7 isn't among them, so he serves no realm and keeps his lines.
-    const tc = turnContext(engine, { turn: 1, players: [], characters: [] });
+    const tc = turnContext({ turn: 1, players: [], characters: [] });
     const restore = quiet();
-    const emit = engineFn(engine, 'emit') as (tc: TurnContext, event: Record<string, unknown>) => void;
+    const emit = emitAsItsModuleExportsIt as unknown as (tc: TurnContext, event: Record<string, unknown>) => void;
     // A line is a fact (P1-12d18): one of a kind that holds no values.
     const A_LINE = { kind: "a battle's losses, tallied from its lines" };
     const line = (place?: Record<string, unknown>) => {
@@ -138,15 +140,15 @@ describe('createTurnContext', () => {
 
 describe('the title lookups', () => {
   type Lookup = (tc: TurnContext, who: unknown, key: string) => boolean;
-  const charHoldsTitle = engineFn(engine, 'charHoldsTitle') as Lookup;
-  const playerHoldsTitle = engineFn(engine, 'playerHoldsTitle') as Lookup;
-  const charMinor = engineFn(engine, 'charMinor') as Lookup;
+  const charHoldsTitle = theTitleHolders.charHoldsTitle as unknown as Lookup;
+  const playerHoldsTitle = theTitleHolders.playerHoldsTitle as unknown as Lookup;
+  const charMinor = theTitleHolders.charMinor as unknown as Lookup;
   const holders = {
     _titleHolders: { marshal: { charId: 11, playerIndex: 1 }, sea: { charId: null, playerIndex: 2 } },
     _minorHolders: { naturalist: { charId: 12 } },
   };
-  const tc = turnContext(engine, { turn: 9, ...holders });
-  const bare = turnContext(engine, { turn: 9 });
+  const tc = turnContext({ turn: 9, ...holders });
+  const bare = turnContext({ turn: 9 });
 
   test('charHoldsTitle: the holder only', () => {
     expect(charHoldsTitle(tc, { id: 11 }, 'marshal')).toBe(true);
@@ -175,9 +177,9 @@ describe('the title lookups', () => {
 
 describe('relations', () => {
   type Pair = (tc: TurnContext, a: number | null, b: number | null) => unknown;
-  const relationBetween = engineFn(engine, 'relationBetween') as Pair;
-  const areEnemies = engineFn(engine, 'areEnemies') as Pair;
-  const areAllied = engineFn(engine, 'areAllied') as Pair;
+  const relationBetween = theRelations.relationBetween as unknown as Pair;
+  const areEnemies = theRelations.areEnemies as unknown as Pair;
+  const areAllied = theRelations.areAllied as unknown as Pair;
   const REALMS = 6;
   const realm = fc.integer({ min: 0, max: REALMS - 1 });
   // G.relations as the engine keeps it: "min-max" → 'enemy' | 'allied'; a pair with no entry is neutral.
@@ -192,7 +194,7 @@ describe('relations', () => {
     () => {
       fc.assert(
         fc.property(relations, realm, realm, (rel, a, b) => {
-          const tc = turnContext(engine, { relations: rel });
+          const tc = turnContext({ relations: rel });
           const r = relationBetween(tc, a, b);
           expect(relationBetween(tc, b, a)).toBe(r);
           expect(r).toBe(a === b ? 'self' : (rel[`${String(Math.min(a, b))}-${String(Math.max(a, b))}`] ?? 'neutral'));
@@ -206,7 +208,7 @@ describe('relations', () => {
   );
 
   test('a missing realm is neutral to everyone', () => {
-    const tc = turnContext(engine, { relations: { '0-1': 'enemy' } });
+    const tc = turnContext({ relations: { '0-1': 'enemy' } });
     expect(relationBetween(tc, null, 1)).toBe('neutral');
     expect(relationBetween(tc, 0, null)).toBe('neutral');
   });

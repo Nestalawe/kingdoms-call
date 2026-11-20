@@ -1,7 +1,7 @@
 // playerEvents (src/views/every-realms-report-and-the-lines-each-realm-reads.ts, plan P1-12b3: the lines a realm reads,
-// taken out of buildReports, which P1-08d lifted out of resolveTurn), called directly in the bare vm
-// (tests/lib/engine.ts). The balance matrix runs it every turn, for every realm; this test pins the rule at its heart
-// on its own.
+// taken out of buildReports, which P1-08d lifted out of resolveTurn), called directly on the engine's modules (since
+// P1-14m; the bare vm before). The balance matrix runs it every turn, for every realm; this test pins the rule at its
+// heart on its own.
 // - Property (fast-check): from any turn's log, each realm reads exactly the lines the rule allows, in the log's
 //   order. A line written for everyone but some realms (notFor) never reaches them. Otherwise a realm reads a
 //   line sent to it, one its own realm did, one about its own hero (filed under that hero), and a public line with no
@@ -28,27 +28,40 @@
 // runs.
 // The property describes the game as it is; a fault planted in a copy of the function turns it red (the PR shows it).
 // Over whole turns, the balance matrix's every-realm half and the tests (simulation/every-realms-report-…, concede) cover it.
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
+// (the engine's own modules, fresh with it)
+const { playerEvents: playerEventsAsItsModuleExportsIt } =
+  await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
+const { playerView: playerViewAsItsModuleExportsIt } =
+  await import('../../src/views/what-each-realm-may-see-of-the-world.ts');
+const { buildTurnReport: buildTurnReportAsItsModuleExportsIt } = await import('../../src/views/turn-report.ts');
 const REALMS = 3;
 const freshPlayers = Array.from({ length: REALMS }, (_, i) => ({
   id: `gp${String(i)}`,
   user_id: `u${String(i)}`,
   player_index: i,
 }));
-const tc = turnContext(engine, botWorld(engine, REALMS, { cols: 12, rows: 7 }), { freshPlayers });
+const tc = aFreshTurnsContextOnTheWorld(engine, botWorld(engine, REALMS, { cols: 12, rows: 7 }), { freshPlayers });
 const G = tc.G as {
   world: { provinces: { name: string }[] };
   players: { provinces?: number[] }[];
   characters: { id: number; player: number | null; name: string; location: number; alive: boolean }[];
 };
-const playerEvents = engineFn(engine, 'playerEvents') as (
+const playerEvents = playerEventsAsItsModuleExportsIt as unknown as (
   events: Entry[],
   state: TurnContext['G'],
   realm: number,
@@ -470,8 +483,8 @@ describe("one realm's report on a world staged for it", () => {
     ownedProvinces: { id: number; grandDesign: { ownerName: string | null } | null }[];
     worldMeta: { provinces: OnTheMap[] };
   }
-  const playerView = engineFn(engine, 'playerView') as (state: World, realm: number) => View;
-  const buildTurnReport = engineFn(engine, 'buildTurnReport') as (view: View) => Report;
+  const playerView = playerViewAsItsModuleExportsIt as unknown as (state: World, realm: number) => View;
+  const buildTurnReport = buildTurnReportAsItsModuleExportsIt as unknown as (view: View) => Report;
   const world = () => JSON.parse(botWorld(engine, REALMS, { cols: 12, rows: 7 })) as World;
   const realmOf = (S: World, i: number) => {
     const r = S.players[i];

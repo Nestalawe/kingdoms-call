@@ -1,4 +1,5 @@
-// The Defend watch (lifted out of resolveTurn in plan P1-08i2), called directly in the bare vm (tests/lib/engine.ts).
+// The Defend watch (lifted out of resolveTurn in plan P1-08i2), called directly on the engine's modules (since P1-14m;
+// the bare vm before).
 // Each case is staged on the middle of a bot world made by the engine: a province, its six neighbours and theirs, all
 // open plain and empty but for the heroes staged there; realms 0 and 1 at war, 0 and 2 allied, 1 and 2 at peace.
 // Properties (fast-check, seeded from KC_SEED) over made-up watches:
@@ -29,10 +30,16 @@
 // (a realm listed once, a commander fallen since never marched), a host in the watch commanded by its better captain
 // and routing together, ground a host has just taken won back unless a leaderless host of it stands there, and an
 // ambusher with no plan fighting with his sword.
-import vm from 'node:vm';
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
@@ -104,57 +111,79 @@ interface Line {
   provinceId: number | null;
 }
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const WORLD = botWorld(engine, 3, { cols: 12, rows: 8 }, { seaPct: 20 });
 const PH = 2;
-const inDefendZone = engineFn(engine, 'inDefendZone') as (tc: TurnContext, c: Character, P: Province | null) => boolean;
-const defendBattleLocked = engineFn(engine, 'defendBattleLocked') as (
+// (the engine's own modules, fresh with it)
+const theDefendWatch = await import('../../src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts');
+const theIntents = await import('../../src/engine/turn/phase-intents-and-dependency-ordering.ts');
+const { armyTotalStr: theTotalStrengthAsItsModuleExportsIt } =
+  await import('../../src/engine/battle/best-commander.ts');
+const { effStat: theEffectiveSkillAsItsModuleExportsIt } =
+  await import('../../src/engine/heroes/effective-skills-and-hidden-heroes.ts');
+const inDefendZone = theDefendWatch.inDefendZone as unknown as (
+  tc: TurnContext,
+  c: Character,
+  P: Province | null,
+) => boolean;
+const defendBattleLocked = theDefendWatch.defendBattleLocked as unknown as (
   tc: TurnContext,
   c: Character,
   here: Province,
 ) => boolean;
-const defendAnswerUnitGain = engineFn(engine, 'defendAnswerUnitGain') as (
+const defendAnswerUnitGain = theDefendWatch.defendAnswerUnitGain as unknown as (
   tc: TurnContext,
   raiser: Character,
   prov: Province,
   ph: number,
   dryRun?: boolean,
 ) => Character[];
-const runDefendReactions = engineFn(engine, 'runDefendReactions') as (
+const runDefendReactions = theDefendWatch.runDefendReactions as unknown as (
   tc: TurnContext,
   ph: number,
   intents: Intents,
 ) => void;
-const reconcileDefendRideOuts = engineFn(engine, 'reconcileDefendRideOuts') as (tc: TurnContext, ph: number) => void;
-const runDefendMaterializedReactions = engineFn(engine, 'runDefendMaterializedReactions') as (
+const reconcileDefendRideOuts = theDefendWatch.reconcileDefendRideOuts as unknown as (
   tc: TurnContext,
   ph: number,
 ) => void;
-const runDefendAmbush = engineFn(engine, 'runDefendAmbush') as (tc: TurnContext, ph: number) => void;
-const runReinforcementArrivals = engineFn(engine, 'runReinforcementArrivals') as (
+const runDefendMaterializedReactions = theDefendWatch.runDefendMaterializedReactions as unknown as (
+  tc: TurnContext,
+  ph: number,
+) => void;
+const runDefendAmbush = theDefendWatch.runDefendAmbush as unknown as (tc: TurnContext, ph: number) => void;
+const runReinforcementArrivals = theDefendWatch.runReinforcementArrivals as unknown as (
   tc: TurnContext,
   ph: number,
   intents: Intents,
 ) => void;
-const buildPhaseIntents = engineFn(engine, 'buildPhaseIntents') as (tc: TurnContext, ph: number) => Intents;
-const isHostileInvasion = engineFn(engine, 'isHostileInvasion') as (tc: TurnContext, it: Intent) => boolean;
-const phaseInitCompare = engineFn(engine, 'phaseInitCompare') as (
+const buildPhaseIntents = theIntents.buildPhaseIntents as unknown as (tc: TurnContext, ph: number) => Intents;
+const isHostileInvasion = theIntents.isHostileInvasion as unknown as (tc: TurnContext, it: Intent) => boolean;
+const phaseInitCompare = theIntents.phaseInitCompare as unknown as (
   tc: TurnContext,
   ph: number,
 ) => (a: Character, b: Character) => number;
-const armyTotalStr = engineFn(engine, 'armyTotalStr') as (tc: TurnContext, c: Character, prov: Province) => number;
-const effStat = engineFn(engine, 'effStat') as (tc: TurnContext, c: Character, stat: string) => number;
-const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+const armyTotalStr = theTotalStrengthAsItsModuleExportsIt as unknown as (
+  tc: TurnContext,
+  c: Character,
+  prov: Province,
+) => number;
+const effStat = theEffectiveSkillAsItsModuleExportsIt as unknown as (
+  tc: TurnContext,
+  c: Character,
+  stat: string,
+) => number;
+const getNeighborsP = engine.getNeighborsP as unknown as (
   p: Province,
   cols: number,
   rows: number,
   ps: Province[],
 ) => Province[];
-const kcRng = vm.runInContext('kcRng', engine) as { use(next: () => number): () => number };
+const kcRng: { use(next: () => number): () => number } = engine.kcRng;
 /** The turn's lines in words, as the views write them and the GM's log stores them (theTurnsLinesInWords, P1-12c3):
  *  since P1-12d14 the Defend watch's lines are facts, their words there alone. */
-const theTurnsLinesInWords = engineFn(engine, 'theTurnsLinesInWords') as (log: unknown) => { gmLog: Line[] };
+const theTurnsLinesInWords = engine.theTurnsLinesInWords as unknown as (log: unknown) => { gmLog: Line[] };
 
 const must = <T>(x: T | undefined | null, what: string): T => {
   if (x == null) throw new Error('missing ' + what);
@@ -181,7 +210,7 @@ let nextId = 9000;
  *  its neighbours (ring1) and theirs (ring2) are open plain, unowned, with no garrison, guard or lair; nobody stands
  *  anywhere (every character is gone) and nobody has orders. */
 function board() {
-  const tc = turnContext(engine, WORLD);
+  const tc = aFreshTurnsContextOnTheWorld(engine, WORLD);
   tc._currentPhase = PH;
   tc._logCtx.phase = PH;
   const G = tc.G as unknown as World;

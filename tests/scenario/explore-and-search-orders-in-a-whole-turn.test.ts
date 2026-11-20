@@ -1,8 +1,9 @@
 // The explore and search orders in a whole turn (plan P1-08j2, the second family of processOrder's orders taken out of
 // it): Explore, Perform Rite, Hunting Rumours, Search Lair, Chart the Unknown and Discover Lost Ruin. Each case of
-// lib/explore-and-search-order-cases.ts staged on the middle of a bot world and played through resolveTurn, every realm
-// human-held, every other hero Resting. Level 2 (scenario): the order is read, checked (a mastery once a turn, a search
-// written for another province) and carried out inside resolveTurn, so only a whole turn plays it as a realm gives it.
+// lib/explore-and-search-order-cases.ts staged on the middle of a bot world and played through resolveTurn on the
+// engine's modules (since P1-14m; the bare vm before), every realm human-held, every other hero Resting. Level 2
+// (scenario): the order is read, checked (a mastery once a turn, a search written for another province) and carried out
+// inside resolveTurn, so only a whole turn plays it as a realm gives it.
 // unit/explore-and-search-orders-called-directly.test.ts calls each order's own function on the same cases, and on the
 // ones the dice decide.
 //
@@ -24,12 +25,17 @@
 // what is left is checked). Level 2: the order is read, checked (a mastery once a turn, a search written for another
 // province) and carried out inside `resolveTurn`
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { EXPLORE_AND_SEARCH_ORDER_CASES } from '../lib/explore-and-search-order-cases.ts';
-import { recordExperienceRolls } from '../lib/espionage-order-cases.ts';
-import { board, playTurn } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  playTurn,
+  quietEngineLog,
+  recordExperienceRolls,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);

@@ -1,5 +1,6 @@
 // The Move order's own function (plan P1-08j1: resolveMoveOrder, src/engine/orders/, the first order taken out of
-// processOrder), called directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the
+// processOrder), called directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the
 // cases scenario/move-orders-in-a-whole-turn.test.ts plays through a whole turn (lib/move-order-cases.ts), here one
 // phase at a time with the move points a turn starts with; then the cases the dice decide (fixed here) and the ones the
 // balance matrix never reaches: Forced March slipping past a battle, a friend joining the assault, a blockade, a flood,
@@ -25,13 +26,14 @@
 // Since P1-21h, a friend who joined the assault on a guarded province is told whether he himself fell there, when
 // only he falls and when only the column's hero does; and a hero on Defend beside the beaten defender of a rival's
 // province loses his watch, and his realm is told.
-import vm from 'node:vm';
-import { afterEach, describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
+import { describe, expect, test, vi } from 'vitest';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
   type Board,
   type Character,
   type Line,
@@ -39,16 +41,22 @@ import {
   type Province,
   type Unit,
   withDice,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { MOVE_ORDER_CASES } from '../lib/move-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
+// (the engine's own modules, fresh with it; called as the vm's top-level functions were, with what processOrder hands
+// over: the board's own types)
 type Fn = (...a: unknown[]) => unknown;
-const resolveMoveOrder = engineFn(engine, 'resolveMoveOrder') as Fn;
-const provOf = engineFn(engine, 'provOf') as Fn;
-const setMovePool = engineFn(engine, 'setMovePool') as Fn;
+const theMoveOrder = await import('../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts');
+const resolveMoveOrder = theMoveOrder.resolveMoveOrder as unknown as Fn;
+const { provOf: theProvOfAsItsModuleExportsIt } = await import('../../src/engine/world/map-helpers.ts');
+const provOf = theProvOfAsItsModuleExportsIt as unknown as Fn;
+const { setMovePool: theSetMovePoolAsItsModuleExportsIt } = await import('../../src/engine/units/movement-pools.ts');
+const setMovePool = theSetMovePoolAsItsModuleExportsIt as unknown as Fn;
+const theIntents = await import('../../src/engine/turn/phase-intents-and-dependency-ordering.ts');
 
 const units = (n: number, type: string, quality = 'Regular'): Unit[] =>
   Array.from({ length: n }, (_, k) => ({ type, quality, race: 'Human', unitName: `${type} d${String(k)}` }));
@@ -289,7 +297,7 @@ describe("a march's target is reached step by step, whatever form names it", () 
     ['a Move', false],
     ['a Forced March', true],
   ] as const;
-  const intendedDestination = engineFn(engine, 'intendedDestination') as (
+  const intendedDestination = theIntents.intendedDestination as unknown as (
     tc: Board['tc'],
     c: Character,
     o: Order,
@@ -451,31 +459,29 @@ describe('what a hero sees on the way in', () => {
 
 // ── The lines no matrix game reaches in the typed Move order (plan P1-10b27) ────
 // By the matrix's coverage of both sets (npm run proof:unreached on P1-10b27), no game reaches these lines; each case
-// stages what they read and reads what they write. Where the battle's outcome must be sure, the battle is stood in (the
-// vm's globals combatVsNPC, combatVsChar, creditBattle, emitBattle and markOrcAttackWin, put back after each case): a
-// battle won or lost as the case needs, handed its arguments first, so that what follows it is staged directly.
-const g = vm.runInContext('globalThis', engine) as Record<string, unknown>;
-const was: Record<string, unknown> = {};
-function standIn(fns: Record<string, unknown>) {
-  for (const [k, f] of Object.entries(fns)) {
-    if (!(k in was)) was[k] = g[k];
-    g[k] = f;
-  }
-}
-afterEach(() => {
-  for (const [k, f] of Object.entries(was)) g[k] = f;
-  for (const k of Object.keys(was)) Reflect.deleteProperty(was, k);
-});
+// stages what they read and reads what they write. Where the battle's outcome must be sure, the battle is stood in
+// (combatVsNPC, combatVsChar, creditBattle, emitBattle and markOrcAttackWin, by vi.spyOn on the module that exports
+// each: the Move order calls each from another file, so the stand-in reaches it; restoreMocks puts them back after each
+// case): a battle won or lost as the case needs, handed its arguments first, so that what follows it is staged directly.
+const theBattlesAgainstTheProvince = await import('../../src/engine/battle/battles-against-province-defenders.ts');
+const theBattlesBetweenHeroes = await import('../../src/engine/battle/battles-between-heroes.ts');
+const theBattleMerit = await import('../../src/engine/titles/title-holders-and-battle-merit.ts');
+const theBattleLines = await import('../../src/engine/battle/battle-report-lines-and-force-markers.ts');
+const theSpoils = await import('../../src/engine/units/drill-and-spoils.ts');
 const noop = () => undefined;
 /** The battle won or lost, `before` handed its arguments first, and nothing else of it told or credited. */
 const aBattle = (won: boolean, before: (...a: unknown[]) => void = noop) => {
-  standIn({
-    combatVsNPC: (...a: unknown[]) => (before(...a), { won, narrative: [] }),
-    combatVsChar: (...a: unknown[]) => (before(...a), { won, narrative: [] }),
-    creditBattle: noop,
-    emitBattle: noop,
-    markOrcAttackWin: noop,
-  });
+  const theBattle = (...a: unknown[]) => (before(...a), { won, narrative: [] });
+  vi.spyOn(theBattlesAgainstTheProvince, 'combatVsNPC').mockImplementation(
+    theBattle as unknown as typeof theBattlesAgainstTheProvince.combatVsNPC,
+  );
+  vi.spyOn(theBattlesBetweenHeroes, 'combatVsChar').mockImplementation(
+    theBattle as unknown as typeof theBattlesBetweenHeroes.combatVsChar,
+  );
+  vi.spyOn(theBattleMerit, 'creditBattle').mockImplementation(noop);
+  vi.spyOn(theBattleLines, 'emitBattle').mockImplementation(noop);
+  // no company marked for war-spoils (its count, which no caller reads, 0, as for a realm that isn't Orcish)
+  vi.spyOn(theSpoils, 'markOrcAttackWin').mockImplementation(() => 0);
 };
 const namesOf = (us: readonly Unit[]) => us.map((u) => u.unitName);
 /** Whether a unit still holds a mark the battle on arrival writes while it stands in a defender's line. */

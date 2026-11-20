@@ -8,9 +8,9 @@
 // drift; the turn's orders are cleared; every province's list of heroes is rebuilt, and a neutral guard left with no
 // companies becomes a wanderer. Each case of lib/new-turn-war-academy-to-the-final-reconcile-cases.ts staged on the
 // middle of a bot world, from plain realms each holding only its seat with a living king there (`stageCase`), and
-// played through resolveTurn, every realm human-held, every hero Resting unless the case says otherwise, with the
-// case's dice fixed for the whole turn. Level 2 (scenario): the stage is what the turn does after its first part,
-// before the titles, so only a whole turn plays it as the game does.
+// played through resolveTurn on the engine's modules (since P1-14m; the bare vm before), every realm human-held, every
+// hero Resting unless the case says otherwise, with the case's dice fixed for the whole turn. Level 2 (scenario): the
+// stage is what the turn does after its first part, before the titles, so only a whole turn plays it as the game does.
 // unit/new-turn-war-academy-to-the-final-reconcile-called-directly.test.ts calls the stage directly.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
@@ -44,15 +44,19 @@
 // before them; stale graves before the realms take note; the titles after the drills (the Grand Marshal's strength).
 // Level 2: the stage is what the turn does after its first part, before the titles
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import {
   NEW_TURN_SECOND_PART_CASES,
   playCase,
   stageCase,
 } from '../lib/new-turn-war-academy-to-the-final-reconcile-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 

@@ -8,6 +8,9 @@
 //   hold what the bundle holds: every export of the data file, src/engine/ and src/views/ is the same name's value in
 //   the vm (deeply; a Set or a Map by its kind, though the two are made in different realms; a function by being one).
 //   While tests reach the engine both ways, this keeps the two the same: it goes when no test is left on the vm loader.
+// - A bot world made on fresh modules (tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts's
+//   botWorld, P1-14m) is the vm's botWorld at the same seed, byte for byte: at the seed the tests use (KC_SEED) and
+//   at 12345, for the two worlds its board's users make (3 realms on 10×8; 2 realms on 10×6 with 20% sea).
 // Level 1 (unit): the engine's files run on their own, with no page around them; nothing calls into the engine here
 // (unit/engine-purity.test.ts runs a turn).
 import fs from 'node:fs';
@@ -16,7 +19,11 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { afterAll, describe, expect, test } from 'vitest';
 import { seededRandom } from '../lib/boot.ts';
-import { DATA_FILE, loadEngine } from '../lib/engine.ts';
+import { botWorld, DATA_FILE, loadEngine } from '../lib/engine.ts';
+import {
+  botWorld as theBotWorldOnTheModules,
+  loadTheEngineOnItsModules,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import { ROOT } from '../../tools/build.ts';
 
@@ -119,6 +126,22 @@ describe("the engine's modules hold what its bundle holds", () => {
       }
       expect(compared, 'the exports compared').toBeGreaterThan(1000);
       expect(differ).toEqual([]);
+    },
+  );
+});
+
+describe("a bot world made on the engine's modules is the vm's, byte for byte", () => {
+  const SEEDS = [Number(process.env['KC_SEED']) >>> 0 || 1, 12345];
+  const WORLDS: [string, number, { cols: number; rows: number }, Record<string, unknown>][] = [
+    ['3 realms on 10×8', 3, { cols: 10, rows: 8 }, {}],
+    ['2 realms on 10×6 with 20% sea', 2, { cols: 10, rows: 6 }, { seaPct: 20 }],
+  ];
+  test.each(SEEDS.flatMap((seed) => WORLDS.map((w) => [seed, ...w] as const)))(
+    'at seed %i, %s',
+    async (seed, _, realms, size, opts) => {
+      const inTheVm = botWorld(loadEngine({ seed }), realms, size, opts);
+      const onTheModules = theBotWorldOnTheModules(await loadTheEngineOnItsModules({ seed }), realms, size, opts);
+      expect(onTheModules === inTheVm, 'the same JSON').toBe(true);
     },
   );
 });

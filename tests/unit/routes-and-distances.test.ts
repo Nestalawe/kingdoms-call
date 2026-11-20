@@ -1,4 +1,5 @@
-// Routes and distances (lifted out of resolveTurn in plan P1-08i1), called directly in the bare vm (tests/lib/engine.ts):
+// Routes and distances (lifted out of resolveTurn in plan P1-08i1), called directly on the engine's modules (since
+// P1-14m; the bare vm before):
 // - provSafePassageFor (the balance matrix never runs it): a province a realm's column may pass through without a
 //   fight: its own, an ally's, or unowned ground with no living, armed neutral guard. Not a rival's, at war or not.
 // - stepTowardPreferSafe (the matrix never runs it either: its one caller, a Move order to a far province, isn't in the
@@ -11,16 +12,23 @@
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// Routes and distances (P1-08i1), called directly in the bare `vm`: safe passage (`provSafePassageFor`, which the
-// balance matrix never runs: a realm's own land or an ally's, or unowned ground with no living, armed neutral guard;
-// never a rival's, at war or at peace), and the route a far Move takes (`stepTowardPreferSafe`, which the matrix never
-// runs either: an equally short route over safe ground is taken instead of one through a rival's, a longer detour
-// never), staged and as a property (fast-check) over made-up maps of land, sea and owners; `provDistance` (0 to itself,
-// 1 to a neighbour, the same both ways, a neighbour at most one step nearer or farther) and `stepTowardPath` (a land
-// column's first step is a land neighbour on a shortest land route, and none when there is no route) as properties
+// Routes and distances (P1-08i1), called directly on the engine's modules (P1-14m; the bare `vm` before): safe passage
+// (`provSafePassageFor`, which the balance matrix never runs: a realm's own land or an ally's, or unowned ground with
+// no living, armed neutral guard; never a rival's, at war or at peace), and the route a far Move takes
+// (`stepTowardPreferSafe`, which the matrix never runs either: an equally short route over safe ground is taken instead
+// of one through a rival's, a longer detour never), staged and as a property (fast-check) over made-up maps of land,
+// sea and owners; `provDistance` (0 to itself, 1 to a neighbour, the same both ways, a neighbour at most one step
+// nearer or farther) and `stepTowardPath` (a land column's first step is a land neighbour on a shortest land route, and
+// none when there is no route) as properties
+import '../lib/the-whole-engine.ts';
 import fc from 'fast-check';
 import { afterAll, describe, expect, test } from 'vitest';
-import { engineFn, loadEngine, quietEngineLog, turnContext, type TurnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+  type TurnContext,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 // fast-check's run count (tests/setup/fast-check.ts): 100, or 1,000 under KC_FULL. Each property's time limit is 50
@@ -48,32 +56,34 @@ interface Step {
   depth: number;
 }
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
+// (the engine's own modules, fresh with it)
+const theRoutes = await import('../../src/engine/world/routes-and-distances.ts');
 
-const provSafePassageFor = engineFn(engine, 'provSafePassageFor') as (
+const provSafePassageFor = theRoutes.provSafePassageFor as unknown as (
   tc: TurnContext,
   p: Province | null,
   pi: number,
 ) => boolean;
-const stepTowardPreferSafe = engineFn(engine, 'stepTowardPreferSafe') as (
+const stepTowardPreferSafe = theRoutes.stepTowardPreferSafe as unknown as (
   tc: TurnContext,
   c: Character,
   toId: number,
 ) => Province | null;
-const stepToward = engineFn(engine, 'stepToward') as (tc: TurnContext, c: Character, toId: number) => Province | null;
-const stepTowardPath = engineFn(engine, 'stepTowardPath') as (
+const stepToward = theRoutes.stepToward as unknown as (tc: TurnContext, c: Character, toId: number) => Province | null;
+const stepTowardPath = theRoutes.stepTowardPath as unknown as (
   tc: TurnContext,
   c: Character,
   toId: number,
 ) => Step | null;
-const provDistance = engineFn(engine, 'provDistance') as (
+const provDistance = theRoutes.provDistance as unknown as (
   tc: TurnContext,
   a: number | null,
   b: number | null,
 ) => number;
-const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+const getNeighborsP = engine.getNeighborsP as unknown as (
   p: Province,
   cols: number,
   rows: number,
@@ -92,7 +102,7 @@ function world(cols: number, rows: number, terrain: string[], owner: (number | n
     terrain: terrain[id] ?? 'plain',
     owner: owner[id] ?? null,
   }));
-  const tc = turnContext(engine, {
+  const tc = aFreshTurnsContextOnTheWorld(engine, {
     world: { cols, rows, provinces },
     characters,
     relations: RELATIONS,

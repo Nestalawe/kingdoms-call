@@ -1,70 +1,115 @@
-// processOrder itself (plan P1-08j9: src/engine/orders/, lifted out of resolveTurn), called directly in the bare vm on
-// the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases scenario/order-dispatch-in-a-whole-turn.test.ts
-// plays through a whole turn (lib/order-dispatch-cases.ts), here one phase at a time, the heroes in the turn's own
-// order of a phase (phaseInitCompare), with the same dice; then, with every order's own function stood in (each
-// replaced in the vm by a recorder for the test's length), what processOrder hands each one: every order name the game
-// knows reaches its own function, once, with the values it reads; and what the cases leave to a direct call: a hero
-// fallen or with no order, the log's context after each refusal, the battle lock's foes one by one (a stale flag, a
-// leaderless host, a wanderer, a neutral garrison), each charm refusal and each mastery's once-a-turn charge, the
-// Forced March's slip, a spell item's cast, a bot's Practice read from the season's start, a bot's Search on a save
-// missing his HP. Properties (fast-check): at most one order function runs for any order, and none after a refusal; a
-// mastery runs at most once a turn; a bot's switched Practice never names a skill at 5.
+// processOrder itself (plan P1-08j9: src/engine/orders/, lifted out of resolveTurn), called directly on the engine's
+// modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
+// scenario/order-dispatch-in-a-whole-turn.test.ts plays through a whole turn (lib/order-dispatch-cases.ts), here one
+// phase at a time, the heroes in the turn's own order of a phase (phaseInitCompare), with the same dice; then, with
+// every order's own function stood in (each by a recorder for the test's length, vi.spyOn on its module), what
+// processOrder hands each one: every order name the game knows reaches its own function, once, with the values it
+// reads; and what the cases leave to a direct call: a hero fallen or with no order, the log's context after each
+// refusal, the battle lock's foes one by one (a stale flag, a leaderless host, a wanderer, a neutral garrison), each
+// charm refusal and each mastery's once-a-turn charge, the Forced March's slip, a spell item's cast, a bot's Practice
+// read from the season's start, a bot's Search on a save missing his HP. Properties (fast-check): at most one order
+// function runs for any order, and none after a refusal; a mastery runs at most once a turn; a bot's switched Practice
+// never names a skill at 5.
 // Level 1: one function, called with what the phase loop hands it.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `processOrder` itself (P1-08j9), called directly: the whole-turn cases one phase at a time (the heroes in the phase's
-// own order, `phaseInitCompare`); then, with every order's own function stood in by a recorder in the `vm`, what it
-// hands each: every order name the game knows reaches its own function once with the values it reads (so the `switch`'s
-// `default:` is never reached), a name in capitals or with spaces, an unknown, empty or missing name as a Defend, a
-// name every object holds as a key (`constructor`) as nothing (the `default:`, P1-10z), a
-// missing target or extra as empty, a wanderer with no realm, the log's context his while the order runs; no hero, a
-// fallen one or no order does nothing; the superseded order (the leader named, or "another hero"); the battle lock's
-// foes one by one (an enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no companies or elsewhere,
-// an ally, his own realm's: not), a neutral garrison (not on his own ground), the line's fields, a stale flag, no
-// companies, other orders; each charm refusal (and not spent, and told before a spent mastery); a hero under a charm
-// this turn not released and his spell item not cast; a mastery order or spell refused to a hero who joined this turn
-// (and to a seized one: its spell too), not to one who joined earlier; each mastery's charge
-// to this turn and second refusal; the Forced March (handed on to slip, refused below March 7 or with no skills in the
-// save, still spent); a spell item by id, number or name (and an unknown spell, another power, none, one not carried);
-// a bot's Practice read from the season's start, a comrade's level too, a fallen or idle comrade, the order copied not
-// changed, a fleet to drill, a player's hero, a wanderer or no skill named; a bot's Search on a save missing his HP.
-// each mastery's level as a number (P1-11d11: a hero one level short of the 20 refused, told; one at it not refused);
-// Properties: at most one order function runs for any order and none after a refusal, which clears the log's context; a
-// mastery runs at most once a turn however five seasons are given; a bot's switched Practice names a skill below 5, or
-// is a Defend. Planted faults: in the PR (P1-08j9)
+// own order, `phaseInitCompare`); then, with every order's own function stood in by a recorder (vi.spyOn on its
+// module), what it hands each: every order name the game knows reaches its own function once with the values it reads
+// (so the `switch`'s `default:` is never reached), a name in capitals or with spaces, an unknown, empty or missing name
+// as a Defend, a name every object holds as a key (`constructor`) as nothing (the `default:`, P1-10z), a missing target
+// or extra as empty, a wanderer with no realm, the log's context his while the order runs; no hero, a fallen one or no
+// order does nothing; the superseded order (the leader named, or "another hero"); the battle lock's foes one by one (an
+// enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no companies or elsewhere, an ally, his own
+// realm's: not), a neutral garrison (not on his own ground), the line's fields, a stale flag, no companies, other
+// orders; each charm refusal (and not spent, and told before a spent mastery); a hero under a charm this turn not
+// released and his spell item not cast; a mastery order or spell refused to a hero who joined this turn (and to a
+// seized one: its spell too), not to one who joined earlier; each mastery's charge to this turn and second refusal; the
+// Forced March (handed on to slip, refused below March 7 or with no skills in the save, still spent); a spell item by
+// id, number or name (and an unknown spell, another power, none, one not carried); a bot's Practice read from the
+// season's start, a comrade's level too, a fallen or idle comrade, the order copied not changed, a fleet to drill, a
+// player's hero, a wanderer or no skill named; a bot's Search on a save missing his HP. each mastery's level as a
+// number (P1-11d11: a hero one level short of the 20 refused, told; one at it not refused); Properties: at most one
+// order function runs for any order and none after a refusal, which clears the log's context; a mastery runs at most
+// once a turn however five seasons are given; a bot's switched Practice names a skill below 5, or is a Defend. Planted
+// faults: in the PR (P1-08j9)
 import fc from 'fast-check';
-import vm from 'node:vm';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { recordExperienceRolls, withCaseDice } from '../lib/espionage-order-cases.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import { companies, item } from '../lib/item-and-army-order-cases.ts';
 import {
   board,
+  botWorld,
   hero,
+  loadTheEngineOnItsModules,
   must,
+  quietEngineLog,
+  recordExperienceRolls,
+  withCaseDice,
   type Board,
   type Character,
   type HeroSpec,
   type Line,
   type Order,
   type Province,
-} from '../lib/middle-of-a-bot-world.ts';
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { LANDS, ORDER_DISPATCH_CASES, stageCase, type OrderDispatchCase } from '../lib/order-dispatch-cases.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 const recording = recordExperienceRolls(engine);
 type Fn = (...a: unknown[]) => unknown;
-const fn = (name: string) => engineFn(engine, name) as Fn;
-const processOrder = fn('processOrder');
-const setMovePool = fn('setMovePool');
-const PHASE_ACTION_MAP = vm.runInContext('PHASE_ACTION_MAP', engine) as Record<string, string>;
-const MASTERIES = [...(vm.runInContext('MASTERY_ORDER_KEYS', engine) as Set<string>)];
-const MASTERY_LABEL = vm.runInContext('MASTERY_ORDER_LABEL', engine) as Record<string, string>;
-const RITES = [...(vm.runInContext('ALIGNMENT_ORDER_KEYS', engine) as Set<string>)];
-const SEA_TYPES = vm.runInContext('KC_UNIT_CLASS.sea', engine) as string[];
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const { processOrder: theProcessOrder } =
+  await import('../../src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts');
+const { setMovePool: theSetMovePool } = await import('../../src/engine/units/movement-pools.ts');
+const { phaseInitCompare: thePhaseInitCompare } =
+  await import('../../src/engine/turn/phase-intents-and-dependency-ordering.ts');
+const { PHASE_ACTION_MAP: THE_PHASE_ACTION_MAP } =
+  await import('../../src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts');
+const { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS } = await import('../../src/engine/army-tables.ts');
+const { MASTERY_ORDER_LABEL } =
+  await import('../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts');
+const { ALL_MAGIC_ITEMS_P, KC_UNIT_CLASS, SPELL_DEFS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const theMoveOrder = await import('../../src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts');
+const theExploreAndSearchOrders =
+  await import('../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts');
+const thePerformRiteOrder =
+  await import('../../src/engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts');
+const theRecruitAndHireOrders =
+  await import('../../src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts');
+const theEspionageOrders =
+  await import('../../src/engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts');
+const theConsecrateOrder =
+  await import('../../src/engine/orders/alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts');
+const theCallToArmsOrder =
+  await import('../../src/engine/orders/alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts');
+const theBrokerOrder =
+  await import('../../src/engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts');
+const theRealmWorksOrders =
+  await import('../../src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts');
+const theHarvestTheFieldOrder =
+  await import('../../src/engine/orders/alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts');
+const theResearchAndPracticeOrders =
+  await import('../../src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts');
+const theItemOrders = await import('../../src/engine/orders/item-orders-equip-use-and-send-magic-items.ts');
+const theArmyOrders =
+  await import('../../src/engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.ts');
+const theEncounterAndDefendOrders =
+  await import('../../src/engine/orders/encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.ts');
+const theCastSpellOrder =
+  await import('../../src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts');
+const theWarMasteryOrders =
+  await import('../../src/engine/orders/war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts');
+const processOrder = theProcessOrder as Fn;
+const setMovePool = theSetMovePool as Fn;
+const PHASE_ACTION_MAP: Record<string, string> = THE_PHASE_ACTION_MAP;
+const MASTERIES = [...MASTERY_ORDER_KEYS];
+const MASTERY_LABEL: Record<string, string> = MASTERY_ORDER_LABEL;
+const RITES = [...ALIGNMENT_ORDER_KEYS];
+const SEA_TYPES = KC_UNIT_CLASS.sea;
 
 const linesOf = (b: Board, c: Character) => b.lines().filter((l: Line) => l.charId === c.id);
 const textOf = (b: Board, c: Character) => linesOf(b, c).map((l) => l.text);
@@ -170,19 +215,124 @@ interface Call {
   fn: string;
   args: unknown[];
 }
-/** Runs `body` with every order's own function replaced by a recorder (in the vm, for the body's length). */
+/** Stands `spy` in by a recorder that hands each call's values to `record` and does nothing more, as the vm's did. */
+function recordInstead<A extends unknown[], R>(spy: MockInstance<(...a: A) => R>, record: (args: unknown[]) => void) {
+  return spy.mockImplementation(((...args: A) => {
+    record(args);
+  }) as unknown as (...a: A) => R);
+}
+/** Each order's own function, stood in by vi.spyOn on the module that exports it: processOrder calls each from another
+ *  file, so the stand-in reaches its call (docs/traps.md). */
+const THE_ORDERS_OWN_FUNCTIONS: Record<string, (record: (args: unknown[]) => void) => MockInstance> = {
+  resolveAssassinateOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEspionageOrders, 'resolveAssassinateOrder'), record),
+  resolveAwakenGroveOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theRealmWorksOrders, 'resolveAwakenGroveOrder'), record),
+  resolveBlockadeOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveBlockadeOrder'), record),
+  resolveBrokerOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theBrokerOrder, 'resolveBrokerOrder'), record),
+  resolveCallToArmsOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theCallToArmsOrder, 'resolveCallToArmsOrder'), record),
+  resolveCastSpellOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theCastSpellOrder, 'resolveCastSpellOrder'), record),
+  resolveChallengeOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveChallengeOrder'), record),
+  resolveChartTheUnknownOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theExploreAndSearchOrders, 'resolveChartTheUnknownOrder'), record),
+  resolveConsecrateOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theConsecrateOrder, 'resolveConsecrateOrder'), record),
+  resolveDefendOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEncounterAndDefendOrders, 'resolveDefendOrder'), record),
+  resolveDisbandArmyOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theArmyOrders, 'resolveDisbandArmyOrder'), record),
+  resolveDiscoverLostRuinOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theExploreAndSearchOrders, 'resolveDiscoverLostRuinOrder'), record),
+  resolveEncounterCharacterOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEncounterAndDefendOrders, 'resolveEncounterCharacterOrder'), record),
+  resolveEquipItemsOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theItemOrders, 'resolveEquipItemsOrder'), record),
+  resolveExploreOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theExploreAndSearchOrders, 'resolveExploreOrder'), record),
+  resolveFeignedRetreatOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveFeignedRetreatOrder'), record),
+  resolveGrandDesignOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theRealmWorksOrders, 'resolveGrandDesignOrder'), record),
+  resolveGrandHeistOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEspionageOrders, 'resolveGrandHeistOrder'), record),
+  resolveGrandStratagemOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveGrandStratagemOrder'), record),
+  resolveHarvestTheFieldOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theHarvestTheFieldOrder, 'resolveHarvestTheFieldOrder'), record),
+  resolveHireHeroOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theRecruitAndHireOrders, 'resolveHireHeroOrder'), record),
+  resolveHuntingRumoursOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theExploreAndSearchOrders, 'resolveHuntingRumoursOrder'), record),
+  resolveLeaveOrTransferArmyOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theArmyOrders, 'resolveLeaveOrTransferArmyOrder'), record),
+  resolveLightningAdvanceOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveLightningAdvanceOrder'), record),
+  resolveMoveOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theMoveOrder, 'resolveMoveOrder'), record),
+  resolvePerformRiteOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(thePerformRiteOrder, 'resolvePerformRiteOrder'), record),
+  resolvePickUpArmyOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theArmyOrders, 'resolvePickUpArmyOrder'), record),
+  resolvePracticeSkillOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theResearchAndPracticeOrders, 'resolvePracticeSkillOrder'), record),
+  resolveRaidTheCoastOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveRaidTheCoastOrder'), record),
+  resolveRainOfArrowsOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveRainOfArrowsOrder'), record),
+  resolveRampageOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveRampageOrder'), record),
+  resolveRecruitArmiesOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theRecruitAndHireOrders, 'resolveRecruitArmiesOrder'), record),
+  resolveReleaseHeroOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theArmyOrders, 'resolveReleaseHeroOrder'), record),
+  resolveRemovedAwakenTheWildAndCallFromThePitOrders: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theRealmWorksOrders, 'resolveRemovedAwakenTheWildAndCallFromThePitOrders'), record),
+  resolveResearchBreakthroughOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theResearchAndPracticeOrders, 'resolveResearchBreakthroughOrder'), record),
+  resolveResearchOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theResearchAndPracticeOrders, 'resolveResearchOrder'), record),
+  resolveRestOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theResearchAndPracticeOrders, 'resolveRestOrder'), record),
+  resolveSabotageOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEspionageOrders, 'resolveSabotageOrder'), record),
+  resolveSearchLairOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theExploreAndSearchOrders, 'resolveSearchLairOrder'), record),
+  resolveSendItemOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theItemOrders, 'resolveSendItemOrder'), record),
+  resolveSnipersMarkOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theWarMasteryOrders, 'resolveSnipersMarkOrder'), record),
+  resolveSpyOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEspionageOrders, 'resolveSpyOrder'), record),
+  resolveStealOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEspionageOrders, 'resolveStealOrder'), record),
+  resolveUseItemOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theItemOrders, 'resolveUseItemOrder'), record),
+  resolveVanishOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theEspionageOrders, 'resolveVanishOrder'), record),
+  resolveWildCallingOrder: (record: (args: unknown[]) => void) =>
+    recordInstead(vi.spyOn(theRealmWorksOrders, 'resolveWildCallingOrder'), record),
+};
+/** Runs `body` with every order's own function replaced by a recorder (vi.spyOn on its module, for the body's
+ *  length). */
 function standIn(body: () => void): Call[] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = ORDER_FUNCTIONS.map((f) => [f, g[f]] as const);
   const calls: Call[] = [];
-  for (const f of ORDER_FUNCTIONS)
-    g[f] = (...args: unknown[]) => {
+  const standIns = ORDER_FUNCTIONS.map((f) =>
+    must(
+      THE_ORDERS_OWN_FUNCTIONS[f],
+      f,
+    )((args) => {
       calls.push({ fn: f, args });
-    };
+    }),
+  );
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const s of standIns) s.mockRestore();
   }
   return calls;
 }
@@ -223,7 +373,7 @@ describe.each(ORDER_DISPATCH_CASES.filter(([, cases]) => cases.some((c) => !c.wh
         for (const i of c.bots ?? []) bot(b, i);
         b.G.turnOrders = Object.fromEntries(s.orders.map(([h, os]) => [h.id, os]));
         b.G.characters.filter((h) => h.player != null && h.alive).forEach((h) => setMovePool(b.tc, h));
-        const phaseInitCompare = fn('phaseInitCompare');
+        const phaseInitCompare = thePhaseInitCompare as Fn;
         const { xp } = recording(() => {
           withCaseDice(engine, c.dice ?? LANDS, () => {
             for (let ph = 0; ph < 5; ph++) {
@@ -329,15 +479,13 @@ describe('what processOrder hands each order', () => {
     const b = fresh();
     const c = at(b);
     let during: unknown = null;
-    const g = engine as unknown as Record<string, unknown>;
-    const was = g['resolveRestOrder'];
-    g['resolveRestOrder'] = () => {
+    const theRest = vi.spyOn(theResearchAndPracticeOrders, 'resolveRestOrder').mockImplementation(() => {
       during = JSON.parse(JSON.stringify(b.tc._logCtx));
-    };
+    });
     try {
       dispatch(b, c, o('rest'), 3);
     } finally {
-      g['resolveRestOrder'] = was;
+      theRest.mockRestore();
     }
     // the phase loop clears it after each hero; processOrder leaves it as the order left it
     expect({ during, after: b.tc._logCtx }).toEqual({
@@ -582,7 +730,7 @@ describe('a hero held by a charm, or new to the realm this turn, is refused the 
     ['seized from an enemy', seized],
     ['swayed from the wilds', swayed],
   ] as const;
-  const SPELLS = vm.runInContext('SPELL_DEFS_P', engine) as Record<string, { reqLevel?: number; phase?: boolean }>;
+  const SPELLS: Record<string, { reqLevel?: number; phase?: boolean }> = SPELL_DEFS_P;
   const MASTERY_SPELLS = Object.entries(SPELLS)
     .filter(([, s]) => s.reqLevel && s.phase)
     .map(([name]) => name);
@@ -856,11 +1004,8 @@ describe('the level each mastery order needs', () => {
 
 describe("a spell item's Use Item", () => {
   const ITEM = 'Censer of Plenty';
-  const spellItem = (b: Board) => {
-    const json = vm.runInContext(
-      `JSON.stringify(ALL_MAGIC_ITEMS_P.find(i=>i.name===${JSON.stringify(ITEM)}))`,
-      b.engine,
-    ) as string;
+  const spellItem = () => {
+    const json = JSON.stringify(ALL_MAGIC_ITEMS_P.find((i) => i.name === ITEM));
     return { ...(JSON.parse(json) as Record<string, unknown>), id: 7000 } as unknown as Record<string, unknown> & {
       effect: { spell: string };
     };
@@ -872,7 +1017,7 @@ describe("a spell item's Use Item", () => {
   ] as const)('named by %s: handed over as a cast of its spell', (_, target) => {
     const b = fresh();
     const c = at(b);
-    const it = spellItem(b);
+    const it = spellItem();
     c.items = [null as unknown as Record<string, unknown>, it];
     const ord = { ...o('use_item'), target } as unknown as Order;
     const calls = standIn(() => {
@@ -901,7 +1046,7 @@ describe("a spell item's Use Item", () => {
   ] as const)('%s: used as an item', (_, change) => {
     const b = fresh();
     const c = at(b);
-    c.items = [change(spellItem(b))];
+    c.items = [change(spellItem())];
     const ord = o('use_item', '7000');
     expect(
       standIn(() => {
@@ -913,7 +1058,7 @@ describe("a spell item's Use Item", () => {
   test('an item he does not carry, or a hero with no items in the save: used as an item', () => {
     const b = fresh();
     const c = at(b);
-    c.items = [spellItem(b)];
+    c.items = [spellItem()];
     const d = at(b);
     (d as { items?: unknown }).items = undefined;
     const calls = standIn(() => {

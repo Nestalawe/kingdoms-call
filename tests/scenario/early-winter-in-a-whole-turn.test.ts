@@ -4,8 +4,9 @@
 // minor titles); it owes and pays its wages after the discounts, or, short, loses its rawest companies first (the dead
 // last, a ship carrying troops at sea kept), then heroes may desert; Raiders' Muster draws a Goblin Horde to an orcish
 // province an orc realm won; and the unled garrison companies drill. Each case of lib/early-winter-cases.ts staged on
-// the middle of a bot world, from plain realms (`stageCase`), and played through resolveTurn, every realm human-held,
-// every hero Resting, with the case's dice fixed for the whole turn. Level 2 (scenario): Early Winter is what the turn
+// the middle of a bot world, from plain realms (`stageCase`), and played through resolveTurn on the engine's modules
+// (since P1-14m; the bare vm before), every realm human-held, every hero Resting, with the case's dice fixed for the
+// whole turn. Level 2 (scenario): Early Winter is what the turn
 // does after its last season, so only a whole turn plays it as the game does.
 // unit/early-winter-called-directly.test.ts calls the stage directly on the same cases.
 //
@@ -31,11 +32,15 @@
 // company of a Human realm twice as readily, one line a province; never the dead, the Wild Hunt or no known grade, nor
 // nobody's garrison), after the wages. Level 2: Early Winter is what the turn does after its last season
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { EARLY_WINTER_CASES, playCase, stageCase } from '../lib/early-winter-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 

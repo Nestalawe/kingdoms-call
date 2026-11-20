@@ -1,14 +1,14 @@
 // The Cast Spell order's cases (plan P1-08j7): the casting itself (the spell named, the casting limits, a mastery spell
 // once a turn, the cast chance and its roll, a spell item's cast) and every spell a hero can work as a phase order,
-// school by school, staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each with
-// what must be true after it in game terms. scenario/cast-spell-order-in-a-whole-turn.test.ts plays each through a
-// whole turn (resolveTurn); unit/cast-spell-order-called-directly.test.ts calls the order's own function on them, one
-// phase at a time. A case stages its world and the heroes' orders; after them, it reads what it needs from the world and
-// the log (`got`) beside what must be so (`want`), and the test compares the two.
-// Every outcome is certain. A cast rolls its chance, and some spells roll dice of their own, so every case fixes the
-// dice for the whole turn (`dice`; LANDS unless it says otherwise): every percentile roll at one number and every other
-// die at one value, so the outcome holds however many dice the turn draws before the order. Realms 0 and 1 are at war,
-// 0 and 2 allied (the board's relations).
+// school by school, staged on the middle of a bot world (either board:
+// lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each with what must be true after it in game
+// terms. scenario/cast-spell-order-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
+// unit/cast-spell-order-called-directly.test.ts calls the order's own function on them, one phase at a time. A case
+// stages its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`) beside
+// what must be so (`want`), and the test compares the two. Every outcome is certain. A cast rolls its chance, and some
+// spells roll dice of their own, so every case fixes the dice for the whole turn (`dice`; LANDS unless it says
+// otherwise): every percentile roll at one number and every other die at one value, so the outcome holds however many
+// dice the turn draws before the order. Realms 0 and 1 are at war, 0 and 2 allied (the board's relations).
 import {
   hero,
   must,
@@ -22,7 +22,7 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, skeletal, type Item } from './item-and-army-order-cases.ts';
 import { oldCloakOfManyFaces, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
 import { lair } from './explore-and-search-order-cases.ts';

@@ -115,7 +115,7 @@ that in one file, `src/ui/<page>/globals.ts`, the last its entry imports.
   string (`['buildGameRecords'].map(n=>eval(n))`) isn't, and the spec then fails only in Chromium.
 - **Don't stand a page function in from a test** (`W.f = …`): the page's own calls never see the stand-in, and the test
   passes without testing anything. Stage what the function reads instead (the dice, `kcRng.use(…)`; the browser's
-  `fetch` or timers; a declared global's fields), stand it in in the engine's `vm` (`tests/lib/scenario-in-the-vm.ts`),
+  `fetch` or timers; a declared global's fields), call it on the engine's modules and stand it in there (`vi.spyOn`),
   or build a page from a planted copy (`plantedSite`, `tests/lib/source.ts`). `npm test`'s `page-globals` fails on a
   name missing from a list, a variable that isn't a declared global, or a page stand-in.
 - **jsdom is looser than a browser.** `tests/lib/boot.ts` runs the bundle as a classic script, so in jsdom every

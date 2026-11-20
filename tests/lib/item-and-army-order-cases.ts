@@ -1,13 +1,13 @@
 // The item and army orders' cases (plan P1-08j5): Equip Items, Use Item, Send Item, Leave/Transfer Army, Release Hero,
-// Disband Army and Pick Up Army, staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms,
-// each with what must be true after it in game terms. scenario/item-and-army-orders-in-a-whole-turn.test.ts plays each
-// through a whole turn (resolveTurn); unit/item-and-army-orders-called-directly.test.ts calls each order's own function
-// on them, one phase at a time. A case stages its world and the heroes' orders; after them, it reads what it needs from
-// the world and the log (`got`) beside what must be so (`want`), and the test compares the two. Every outcome is
-// certain: none of these orders rolls a die but the Philosopher's Stone's Sage lesson, which no case reads. A company
-// left in a garrison is checked by name, not grade (the turn's end may drill a garrison a grade up), and a band of
-// mercenaries by kind and grade, not place (the turn's end may move a band on): the tests called directly check both.
-import vm from 'node:vm';
+// Disband Army and Pick Up Army, staged on the middle of a bot world (either board:
+// lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each with what must be true after it in game
+// terms. scenario/item-and-army-orders-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
+// unit/item-and-army-orders-called-directly.test.ts calls each order's own function on them, one phase at a time. A
+// case stages its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`)
+// beside what must be so (`want`), and the test compares the two. Every outcome is certain: none of these orders rolls
+// a die but the Philosopher's Stone's Sage lesson, which no case reads. A company left in a garrison is checked by
+// name, not grade (the turn's end may drill a garrison a grade up), and a band of mercenaries by kind and grade, not
+// place (the turn's end may move a band on): the tests called directly check both.
 import {
   hero,
   must,
@@ -21,7 +21,7 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 
 export interface Staged {
@@ -59,9 +59,11 @@ export type Item = Record<string, unknown> & { name: string };
 let nextItemId = 7100;
 /** A fresh copy of the game's item `name` (a lair's, a legendary relic, or the Mithril Armour), with an id of its own. */
 export const item = (b: Board, name: string): Item => {
-  const json = vm.runInContext(
-    `JSON.stringify([...ALL_MAGIC_ITEMS_P, ...LEGENDARY_ITEMS_P, MITHRIL_ARMOUR].find(i=>i.name===${JSON.stringify(name)}))`,
-    b.engine,
+  const table = (n: 'ALL_MAGIC_ITEMS_P' | 'LEGENDARY_ITEMS_P') => b.theEnginesFunctionOrTable(n) as Item[];
+  const json = JSON.stringify(
+    [...table('ALL_MAGIC_ITEMS_P'), ...table('LEGENDARY_ITEMS_P'), b.theEnginesFunctionOrTable('MITHRIL_ARMOUR')].find(
+      (i) => (i as Item).name === name,
+    ),
   ) as string | undefined;
   return { ...(JSON.parse(must(json, 'the item ' + name)) as Item), id: ++nextItemId };
 };

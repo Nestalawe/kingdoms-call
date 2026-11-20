@@ -1,11 +1,17 @@
 // A beaten force never falls back into a Flooded province, and onto sea laid dry by Part Sea only when no ordinary land
 // is open to it (2026-10-08, item 10; ruling R-084): foot, flyers, and the naval split's march inland.
 // Level 1 (unit): retreatOptions, bestRetreat and navalSplitRetreat (src/engine/units/sea-lift-stranding-and-retreats.ts,
-// plan P1-08b) are called directly on a world the engine makes in the bare vm (tests/lib/engine.ts), each case staged
-// on it. It was tests/retreat-dry-ground.test.js, which ran one turn on the GM portal for the anchor hook to hand the
+// plan P1-08b) are called directly on a world the engine makes on its modules (since P1-14m; the bare vm before), each
+// case staged on it. It was tests/retreat-dry-ground.test.js, which ran one turn on the GM portal for the anchor hook to hand the
 // functions back; the checks are the same.
+import '../lib/the-whole-engine.ts';
 import { afterAll, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog, turnContext } from '../lib/engine.ts';
+import {
+  aFreshTurnsContextOnTheWorld,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import type { ASideOfABattle } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 
 interface Province {
@@ -32,19 +38,21 @@ interface World {
   characters: Hero[];
 }
 
-const engine = loadEngine({ seed: 1 });
+const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
 afterAll(restoreLog);
-const tc = turnContext(engine, botWorld(engine, 2, { cols: 12, rows: 7 }, { seaPct: 40 }));
+const tc = aFreshTurnsContextOnTheWorld(engine, botWorld(engine, 2, { cols: 12, rows: 7 }, { seaPct: 40 }));
+// (the engine's own modules, fresh with it)
+const theSeaLift = await import('../../src/engine/units/sea-lift-stranding-and-retreats.ts');
 const G = tc.G as unknown as World;
-const retreatOptions = engineFn(engine, 'retreatOptions') as (
+const retreatOptions = theSeaLift.retreatOptions as unknown as (
   t: typeof tc,
   ch: Hero,
   prov: Province,
   force: unknown[],
 ) => Province[];
-const bestRetreat = engineFn(engine, 'bestRetreat') as (t: typeof tc, ch: Hero, list: Province[]) => Province | null;
-const navalSplitRetreat = engineFn(engine, 'navalSplitRetreat') as (
+const bestRetreat = theSeaLift.bestRetreat as unknown as (t: typeof tc, ch: Hero, list: Province[]) => Province | null;
+const navalSplitRetreat = theSeaLift.navalSplitRetreat as unknown as (
   t: typeof tc,
   ch: Hero,
   prov: Province,
@@ -52,7 +60,7 @@ const navalSplitRetreat = engineFn(engine, 'navalSplitRetreat') as (
   narrative: string[],
   cName: ASideOfABattle,
 ) => string;
-const getNeighborsP = engineFn(engine, 'getNeighborsP') as (
+const getNeighborsP = engine.getNeighborsP as unknown as (
   p: Province,
   cols: number,
   rows: number,

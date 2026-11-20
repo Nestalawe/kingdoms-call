@@ -1,20 +1,18 @@
 // The espionage orders' cases (plan P1-08j6): Spy (on a province or on a hero), Steal, Sabotage, Grand Heist,
-// Assassinate and Vanish, staged on the middle of a bot world (lib/middle-of-a-bot-world.ts), from plain realms, each
-// with what must be true after it in game terms. scenario/espionage-orders-in-a-whole-turn.test.ts plays each through a
-// whole turn (resolveTurn); unit/espionage-orders-called-directly.test.ts calls each order's own function on them, one
-// phase at a time. A case stages its world and the heroes' orders; after them, it reads what it needs from the world and
-// the log (`got`) beside what must be so (`want`), and the test compares the two.
-// Every outcome is certain. These orders roll dice, so a case that reaches a roll fixes the dice for the whole turn
-// (`dice`): every percentile roll at one number and every other die at one value, so the outcome holds however many
-// dice the turn draws before the order. Realms 0 and 1 are at war, 0 and 2 allied (the board's relations).
-import vm from 'node:vm';
+// Assassinate and Vanish, staged on the middle of a bot world (either board:
+// lib/the-board-a-case-is-staged-on-either-way.ts), from plain realms, each with what must be true after it in game
+// terms. scenario/espionage-orders-in-a-whole-turn.test.ts plays each through a whole turn (resolveTurn);
+// unit/espionage-orders-called-directly.test.ts calls each order's own function on them, one phase at a time. A case
+// stages its world and the heroes' orders; after them, it reads what it needs from the world and the log (`got`) beside
+// what must be so (`want`), and the test compares the two. Every outcome is certain. These orders roll dice, so a case
+// that reaches a roll fixes the dice for the whole turn (`dice`): every percentile roll at one number and every other
+// die at one value, so the outcome holds however many dice the turn draws before the order. Realms 0 and 1 are at war,
+// 0 and 2 allied (the board's relations).
 import {
   hero,
   must,
   order,
   plan,
-  withDice,
-  withRolls,
   type Board,
   type Character,
   type HeroSpec,
@@ -23,7 +21,9 @@ import {
   type Province,
   type Unit,
   type World,
-} from './middle-of-a-bot-world.ts';
+  type Dice,
+  type ExperienceRoll,
+} from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, type Item } from './item-and-army-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 
@@ -39,12 +39,8 @@ export interface Staged {
   /** A province the case needs besides the middle. */
   there?: Province;
 }
-/** An experience roll, as trySkillGain starts it: whose, which skill, at what chance. */
-export interface ExperienceRoll {
-  id: unknown;
-  skill: string;
-  base: unknown;
-}
+// (an experience roll, and the dice for the whole turn: the-board-a-case-is-staged-on-either-way.ts')
+export type { Dice, ExperienceRoll };
 export interface Outcome {
   world: World;
   /** The hero's own lines in the log. */
@@ -55,11 +51,6 @@ export interface Outcome {
   turn: number;
   /** Every experience roll started in the turn. */
   xp: ExperienceRoll[];
-}
-/** The dice for the whole turn: every percentile roll (d100) at `roll` (1 to 100), every other die at `die` ([0, 1)). */
-export interface Dice {
-  roll: number;
-  die: number;
 }
 export interface EspionageOrderCase {
   name: string;
@@ -81,31 +72,6 @@ export const UNLUCKY: Dice = { roll: 100, die: 0.99999 };
 export const MISSES_BUT_SLIPS_AWAY: Dice = { roll: 100, die: 0 };
 /** Every roll lands, every other die at its highest. */
 export const LANDS_WITH_HIGH_DICE: Dice = { roll: 1, die: 0.99999 };
-
-/** Runs `body` with the case's dice, if it fixes them. */
-export const withCaseDice = <T>(engine: vm.Context, dice: Dice | undefined, body: () => T): T =>
-  dice ? withDice(engine, [dice.die], () => withRolls(engine, dice.roll, body)) : body();
-
-/** Records every experience roll the engine starts, by wrapping the top-level trySkillGain (plan P1-08c), into the
- *  list `recordExperienceRolls` hands back for the length of `body`. Wrap once per engine. */
-export const recordExperienceRolls = (engine: vm.Context) => {
-  vm.runInContext(
-    `{ const tryOne=trySkillGain;
-       trySkillGain=function(turnContext, char, skill, base){
-         if(globalThis.__xp) globalThis.__xp.push({id:char&&char.id,skill,base});
-         return tryOne.apply(this, arguments); }; }`,
-    engine,
-  );
-  return <T>(body: () => T): { result: T; xp: ExperienceRoll[] } => {
-    const xp: ExperienceRoll[] = [];
-    engine['__xp'] = xp;
-    try {
-      return { result: body(), xp };
-    } finally {
-      engine['__xp'] = undefined;
-    }
-  };
-};
 
 const text = (ls: Line[]) => ls.map((l) => l.text).join('\n');
 /** Whether the hero's lines say `what`. */

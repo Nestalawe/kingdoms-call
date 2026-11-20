@@ -1,51 +1,50 @@
 // The new turn's second part (plan P1-08k5b: src/engine/turn/, a stage lifted out of resolveTurn's own body), called
-// directly in the bare vm on the middle of a bot world (lib/middle-of-a-bot-world.ts). First the cases
+// directly on the engine's modules (since P1-14m; the bare vm before) on the middle of a bot world
+// (lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts). First the cases
 // scenario/new-turn-war-academy-to-the-final-reconcile-in-a-whole-turn plays through a whole turn
-// (lib/new-turn-war-academy-to-the-final-reconcile-cases.ts), here played through the stage alone, as resolveTurn
-// calls it once the new turn's first part has moved the counter on (no phase current, every line filed after the
-// phases), but for those only a whole turn can stage; then, with the helpers it calls stood in (each replaced in the vm
-// by a recorder for the test's length), what it hands them and when; then what the whole turn can't stage: the dice
-// of each company, grave, band and wanderer in turn, a fallen hero at home, heroes with no maximum or no HP, a body
-// whose record is gone or whose grave has no place, a Divine king with nowhere to return, a living hero with a stale
-// grave of the turn before, the save's repair counts, provinces and heroes the map doesn't place, provinces' lists
-// wrong or missing. Properties (fast-check): the War Academy drills exactly the companies at home it may and whose die
-// falls under 7%; the gardens mend each wounded hero of the realm by what it knows, to his maximum; graves rot exactly
-// when their die is at or under their ground's rate; each band retires (told) or moves on to a province around it of
-// its own kind; each wanderer stays or drifts to land around him; a Divine hero rises only when due, on holy ground
-// his realm held, spending it; every province ends listing exactly the heroes standing in it.
-// Level 1: one function, called with the context resolveTurn hands it.
+// (lib/new-turn-war-academy-to-the-final-reconcile-cases.ts), here played through the stage alone, as resolveTurn calls
+// it once the new turn's first part has moved the counter on (no phase current, every line filed after the phases), but
+// for those only a whole turn can stage; then, with the helpers it calls stood in (each by a recorder for the test's
+// length, vi.spyOn on its module), what it hands them and when; then what the whole turn can't stage: the dice of each
+// company, grave, band and wanderer in turn, a fallen hero at home, heroes with no maximum or no HP, a body whose
+// record is gone or whose grave has no place, a Divine king with nowhere to return, a living hero with a stale grave of
+// the turn before, the save's repair counts, provinces and heroes the map doesn't place, provinces' lists wrong or
+// missing. Properties (fast-check): the War Academy drills exactly the companies at home it may and whose die falls
+// under 7%; the gardens mend each wounded hero of the realm by what it knows, to his maximum; graves rot exactly when
+// their die is at or under their ground's rate; each band retires (told) or moves on to a province around it of its own
+// kind; each wanderer stays or drifts to land around him; a Divine hero rises only when due, on holy ground his realm
+// held, spending it; every province ends listing exactly the heroes standing in it. Level 1: one function, called with
+// the context resolveTurn hands it.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile` (P1-08k5b), called
 // directly, the turn moved on first as the first part leaves it: the whole-turn cases through the stage alone (but
 // those only a whole turn stages: the save's repairs counted at the turn's start, a maximum raised by Royal Physicians,
-// an heir crowned, a summons gone, the titles); then, with its helpers stood in by recorders in the `vm`, what each is
-// handed: each realm's Academy, gardens, informants and Observatory in turn, then the reconcile and the stranded
-// guards; the Academy's chance asked once per realm (since P1-19ag; with companies to drill, before); the gardens summed
-// per wounded hero, the king's effects for the king; the Embalmers asked only on held ground; the holy ground measured from the body (or the
-// hero) and spent from the realm's list. Then what a whole turn can't stage: each company's, grave's, band's and
-// wanderer's die in turn; a nameless company; a fallen hero at home; heroes with no maximum or no HP, or past it; a
-// captain standing nowhere; a province no realm mapped or of no terrain, its list of visitors kept; no graveyard, a
-// grave whose hero is gone or that records no turn, a hero of 1 HP; a world with no roll of heroes; a hero at home with
-// no companies list; a body measured from its grave; a king with no
-// ground left, or no longer marked king; a living hero with a stale grave of the turn before ("raised": Parked); graves
-// on a missing realm's ground, a grave-keeping effect with no rate; bands and wanderers standing nowhere, no mercenary
-// list; the repair counts (the retired discoveries' on the turn's context, as the save's upgrade found them, since
-// P1-15a); graves with no place; provinces with no list; guards bare, on a realm's land, holding, fallen. Properties
-// (fast-check): the Academy drills exactly the companies at home that may rise and whose die is under 7%, each told, or
-// says none rose; the gardens mend each wounded hero by what his realm knows, to his maximum; graves rot exactly at or
-// under their ground's rate; each band retires (told once) or moves on to its own kind of ground around it; each
-// wanderer stays or drifts to land around him, listed only there; a Divine hero rises only when due, on holy ground his
-// realm held, spending it, each ground once; every province ends listing exactly the heroes standing in it. Planted
-// faults: in the PR (P1-08k5b)
-// Since P1-23e (R-119): the Informant Network passes over a captain whose Invisibility held this turn (the cases).
-// Since P1-19ag the stage asks the discoveries' registry's runners, not hasDisc, discParam, discEff and discSum (gone):
-// the recorders stand in for the runners, each handed the realm (shown by its place in the list), the Academy's chance
-// asked once for each realm, before it looks for companies; a grave-keeping row with no rate is planted in the table.
+// an heir crowned, a summons gone, the titles); then, with its helpers stood in by recorders (vi.spyOn on each one's
+// module: the calls from other files), what each is handed: each realm's Academy, gardens, informants and Observatory
+// in turn, then the reconcile and the stranded guards; the Academy's chance asked once per realm (since P1-19ag; with
+// companies to drill, before); the gardens summed per wounded hero, the king's effects for the king; the Embalmers
+// asked only on held ground; the holy ground measured from the body (or the hero) and spent from the realm's list. Then
+// what a whole turn can't stage: each company's, grave's, band's and wanderer's die in turn; a nameless company; a
+// fallen hero at home; heroes with no maximum or no HP, or past it; a captain standing nowhere; a province no realm
+// mapped or of no terrain, its list of visitors kept; no graveyard, a grave whose hero is gone or that records no turn,
+// a hero of 1 HP; a world with no roll of heroes; a hero at home with no companies list; a body measured from its
+// grave; a king with no ground left, or no longer marked king; a living hero with a stale grave of the turn before
+// ("raised": Parked); graves on a missing realm's ground, a grave-keeping effect with no rate; bands and wanderers
+// standing nowhere, no mercenary list; the repair counts (the retired discoveries' on the turn's context, as the save's
+// upgrade found them, since P1-15a); graves with no place; provinces with no list; guards bare, on a realm's land,
+// holding, fallen. Properties (fast-check): the Academy drills exactly the companies at home that may rise and whose
+// die is under 7%, each told, or says none rose; the gardens mend each wounded hero by what his realm knows, to his
+// maximum; graves rot exactly at or under their ground's rate; each band retires (told once) or moves on to its own
+// kind of ground around it; each wanderer stays or drifts to land around him, listed only there; a Divine hero rises
+// only when due, on holy ground his realm held, spending it, each ground once; every province ends listing exactly the
+// heroes standing in it. Planted faults: in the PR (P1-08k5b) Since P1-23e (R-119): the Informant Network passes over a
+// captain whose Invisibility held this turn (the cases). Since P1-19ag the stage asks the discoveries' registry's
+// runners, not hasDisc, discParam, discEff and discSum (gone): the recorders stand in for the runners, each handed the
+// realm (shown by its place in the list), the Academy's chance asked once for each realm, before it looks for
+// companies; a grave-keeping row with no rate is planted in the table.
 import fc from 'fast-check';
-import { describe, expect, test } from 'vitest';
-import { botWorld, engineFn, loadEngine, quietEngineLog } from '../lib/engine.ts';
-import { withCaseDice } from '../lib/espionage-order-cases.ts';
+import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
   LANDS,
   NEW_TURN_SECOND_PART_CASES,
@@ -88,17 +87,35 @@ import {
   unit,
   wanderer,
 } from '../lib/new-turn-succession-and-summons-cases.ts';
-import { board, must, withDice, type Board, type Character, type Province } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  must,
+  quietEngineLog,
+  withDice,
+  withCaseDice,
+  type Board,
+  type Character,
+  type Province,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { knows, leads, realm, ring1, ring2 } from '../lib/cast-spell-order-cases.ts';
 import type { WhatTheSavesUpgradeFound } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const world = botWorld(engine, 3, { cols: 10, rows: 8 });
 type Fn = (...a: unknown[]) => unknown;
 type Raw = Record<string, unknown>;
-const STAGE = 'newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile';
-const secondPart = engineFn(engine, STAGE) as Fn;
+// (the engine's own modules, fresh with it; each function and table named, so knip sees which exports are read)
+const { newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile } =
+  await import('../../src/engine/turn/new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-final-reconcile.ts');
+const secondPart = newTurnWarAcademyInformantsDivineResurrectionGravesMercenariesWanderersAndTheFinalReconcile as Fn;
+const theDiscoveryEffects = await import('../../src/engine/rules/the-registry-of-discovery-effects.ts');
+const theConsecratedGround = await import('../../src/engine/heroes/fame-and-consecration.ts');
+const theMarksOnAProvince =
+  await import('../../src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts');
+const theProvinceBookkeeping = await import('../../src/engine/world/province-bookkeeping-and-rallied-garrisons.ts');
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 const tc = (b: Board) => b.tc as unknown as Raw & Board['tc'];
@@ -168,26 +185,145 @@ interface Call {
   /** The lines written before the call. */
   before: number;
 }
-/** Runs `body` with each of `names` replaced by a recorder (in the vm, for the body's length); `returns` gives what a
- *  recorder does, by name (by default it calls the helper it stands in for). */
-function standIn(b: Board, names: string[], body: () => void, returns: Record<string, Fn> = {}): Call[] {
-  const g = engine as unknown as Record<string, unknown>;
-  const was = names.map((f) => [f, g[f]] as const);
+/** Stands `spy` in for `original` by a recorder that notes each call into `calls`, then does what `instead` does or,
+ *  with none, makes the call. */
+function recordEachCall<A extends unknown[], R>(
+  original: (...a: A) => R,
+  spy: MockInstance<(...a: A) => R>,
+  name: string,
+  b: Board,
+  calls: Call[],
+  instead: Fn | undefined,
+) {
+  return spy.mockImplementation((...args: A) => {
+    calls.push({ fn: name, args, before: b.lines().length });
+    return instead ? (instead(...args) as R) : original(...args);
+  });
+}
+/** Each helper the stage calls, stood in by vi.spyOn on the module that exports it, which reaches the calls from other
+ *  files (docs/traps.md): the stage calls each from its own file, but the holy ground's list (consecratedIds), which
+ *  the nearest holy ground reads from its own module, and the spending reads inside its own (liftConsecratedGround,
+ *  so the spending is stood in too, called from the stage's file). */
+const THE_HELPERS_THE_STAGE_CALLS = {
+  theChanceARealmsDiscoveriesPromoteTheCapitalsArmies: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveryEffects.theChanceARealmsDiscoveriesPromoteTheCapitalsArmies,
+      vi.spyOn(theDiscoveryEffects, 'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies'),
+      'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies',
+      b,
+      calls,
+      instead,
+    ),
+  doARealmsDiscoveriesHealTheWounded: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveryEffects.doARealmsDiscoveriesHealTheWounded,
+      vi.spyOn(theDiscoveryEffects, 'doARealmsDiscoveriesHealTheWounded'),
+      'doARealmsDiscoveriesHealTheWounded',
+      b,
+      calls,
+      instead,
+    ),
+  theHpARealmsDiscoveriesHealAWoundedHeroBy: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveryEffects.theHpARealmsDiscoveriesHealAWoundedHeroBy,
+      vi.spyOn(theDiscoveryEffects, 'theHpARealmsDiscoveriesHealAWoundedHeroBy'),
+      'theHpARealmsDiscoveriesHealAWoundedHeroBy',
+      b,
+      calls,
+      instead,
+    ),
+  doARealmsDiscoveriesNameAnUnseenCaptain: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveryEffects.doARealmsDiscoveriesNameAnUnseenCaptain,
+      vi.spyOn(theDiscoveryEffects, 'doARealmsDiscoveriesNameAnUnseenCaptain'),
+      'doARealmsDiscoveriesNameAnUnseenCaptain',
+      b,
+      calls,
+      instead,
+    ),
+  doARealmsDiscoveriesChartAProvince: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveryEffects.doARealmsDiscoveriesChartAProvince,
+      vi.spyOn(theDiscoveryEffects, 'doARealmsDiscoveriesChartAProvince'),
+      'doARealmsDiscoveriesChartAProvince',
+      b,
+      calls,
+      instead,
+    ),
+  theRateARealmsDiscoveriesLetTheGravesRotAt: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveryEffects.theRateARealmsDiscoveriesLetTheGravesRotAt,
+      vi.spyOn(theDiscoveryEffects, 'theRateARealmsDiscoveriesLetTheGravesRotAt'),
+      'theRateARealmsDiscoveriesLetTheGravesRotAt',
+      b,
+      calls,
+      instead,
+    ),
+  nearestConsecratedProv: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theConsecratedGround.nearestConsecratedProv,
+      vi.spyOn(theConsecratedGround, 'nearestConsecratedProv'),
+      'nearestConsecratedProv',
+      b,
+      calls,
+      instead,
+    ),
+  consecratedIds: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theMarksOnAProvince.consecratedIds,
+      vi.spyOn(theMarksOnAProvince, 'consecratedIds'),
+      'consecratedIds',
+      b,
+      calls,
+      instead,
+    ),
+  liftConsecratedGround: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theMarksOnAProvince.liftConsecratedGround,
+      vi.spyOn(theMarksOnAProvince, 'liftConsecratedGround'),
+      'liftConsecratedGround',
+      b,
+      calls,
+      instead,
+    ),
+  reconcileProvinceCharacters: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theProvinceBookkeeping.reconcileProvinceCharacters,
+      vi.spyOn(theProvinceBookkeeping, 'reconcileProvinceCharacters'),
+      'reconcileProvinceCharacters',
+      b,
+      calls,
+      instead,
+    ),
+  normaliseStrandedGuards: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theConsecratedGround.normaliseStrandedGuards,
+      vi.spyOn(theConsecratedGround, 'normaliseStrandedGuards'),
+      'normaliseStrandedGuards',
+      b,
+      calls,
+      instead,
+    ),
+};
+type AHelperTheStageCalls = keyof typeof THE_HELPERS_THE_STAGE_CALLS;
+/** Runs `body` with each of `names` stood in by a recorder (for the body's length); `returns` gives what a recorder
+ *  does, by name (by default it calls the helper it stands in for). */
+function standIn(
+  b: Board,
+  names: AHelperTheStageCalls[],
+  body: () => void,
+  returns: Partial<Record<AHelperTheStageCalls, Fn>> = {},
+): Call[] {
   const calls: Call[] = [];
-  for (const [f, w] of was)
-    g[f] = (...args: unknown[]) => {
-      calls.push({ fn: f, args, before: b.lines().length });
-      const r = returns[f];
-      return r ? r(...args) : (w as Fn)(...args);
-    };
+  const standIns = names.map((f) => THE_HELPERS_THE_STAGE_CALLS[f](b, calls, returns[f]));
   try {
     body();
   } finally {
-    for (const [f, w] of was) g[f] = w;
+    for (const s of standIns) s.mockRestore();
   }
   return calls;
 }
-const HELPERS = [
+const HELPERS: AHelperTheStageCalls[] = [
   'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies',
   'doARealmsDiscoveriesHealTheWounded',
   'theHpARealmsDiscoveriesHealAWoundedHeroBy',
@@ -241,7 +377,7 @@ describe('The new turn’s second part: what it calls', () => {
     knows(b, 0, 'sd08');
     knows(b, 1, 'sd08');
     leads(kingOf(b, 0), [unit('A', 'Men-at-Arms'), unit('B', 'Men-at-Arms')]);
-    const theRunner = engineFn(engine, 'theChanceARealmsDiscoveriesPromoteTheCapitalsArmies');
+    const theRunner = theDiscoveryEffects.theChanceARealmsDiscoveriesPromoteTheCapitalsArmies as Fn;
     const asked: unknown[] = [];
     const calls = standIn(b, ['theChanceARealmsDiscoveriesPromoteTheCapitalsArmies'], () => after(b), {
       theChanceARealmsDiscoveriesPromoteTheCapitalsArmies: (...a) => {
@@ -295,16 +431,18 @@ describe('The new turn’s second part: what it calls', () => {
     d2.location = ring2(b, 7).id;
     holdsOnly(b, 0, [home(b), 10], [ring2(b, 7), 5]);
     consecrated(b, 0, home(b), ring2(b, 7));
-    const calls = standIn(b, ['nearestConsecratedProv', 'consecratedIds'], () => after(b));
+    // On the modules the spending's own read of the list is inside its module, where a stand-in doesn't reach (the vm
+    // saw it as a second consecratedIds): the spending itself is recorded, handed the realm and the ground it spends.
+    const calls = standIn(b, ['nearestConsecratedProv', 'consecratedIds', 'liftConsecratedGround'], () => after(b));
     expect(calls.map((c) => [c.fn, ...c.args.slice(1)])).toEqual([
       ['nearestConsecratedProv', 0, ring1(b, 3).id],
       ['consecratedIds'],
-      ['consecratedIds'],
+      ['liftConsecratedGround', ring2(b, 7).id],
       ['nearestConsecratedProv', 0, ring2(b, 7).id],
       ['consecratedIds'],
-      ['consecratedIds'],
+      ['liftConsecratedGround', home(b).id],
     ]);
-    expect(calls.filter((c) => c.fn === 'consecratedIds').map((c) => c.args[0])).toEqual(
+    expect(calls.filter((c) => c.fn !== 'nearestConsecratedProv').map((c) => c.args[0])).toEqual(
       Array.from({ length: 4 }, () => realm(b, 0)),
     );
     expect([d1.location, d2.location]).toEqual([ring2(b, 7).id, home(b).id]);
@@ -560,7 +698,7 @@ describe('The new turn’s second part: what only a direct call can stage', () =
   test('a grave-keeping effect that names no rate keeps the ground’s own: 10%', () => {
     const b = fresh();
     graves(home(b), 2);
-    const table = engine['DISC_BY_ID'] as Record<string, unknown>;
+    const table = theDiscoveryEffects.DISC_BY_ID as Record<string, unknown>;
     table['test-keeper'] = {
       id: 'test-keeper',
       name: 'Keeper',

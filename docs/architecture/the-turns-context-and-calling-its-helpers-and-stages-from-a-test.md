@@ -75,8 +75,8 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   `fallen-commander-host`, out of `battle-faced-turn`; P1-08g `npc-parity`, which calls `combatVsNPC` on a fresh
   context for each staged battle; P1-08i3 `encounter-seventy`, and `battle-faced-turn`'s erosion part into
   `stalled-battles-unit-gain-and-war-fronts`). A hook that also needs a function still nested hands back the lifted ones
-  wrapped, or leaves them to a test of their own. A test that only watches the calls to a lifted helper wraps the
-  top-level function instead of hooking its first line: the `xp-` tests' `XP_RECORD` wraps `trySkillGain`; one that changes what a helper is
+  wrapped, or leaves them to a test of their own. A test that only watches the calls to a lifted helper stands it
+  in instead of hooking its first line: `recordExperienceRolls` stands in `trySkillGain` on its module; one that changes what a helper is
   given wraps it the same way: `lib/scenario-in-the-vm.ts`' `reportEveryRealm` wraps the views' `buildReports` (P1-08d, on
   the page's `lib/boot.ts` until P1-09a), and `pursuit-one-battle` wraps
   `pursuitCatchChance` for a certain catch. A `typeof f==='function'` guard
@@ -101,8 +101,8 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   `thiefCaughtScuffle(turnContext, prov, thief, victim, what)`; since P1-08j7: `charmBacklash(turnContext, prov, caster,
   t, why)`), and a `processOrder` constant only it reads becomes a top-level constant (`CHARM_BACKLASH_PCT`). Since
   P1-08j9 `processOrder` is top-level itself (`processOrder(turnContext,c,o,ph)`), so a test can call it, or stand in an
-  order's function in the `vm` to see what it is handed: `unit/order-dispatch-called-directly` checks every call's
-  arguments that way.
+  order's function (`vi.spyOn` on its module) to see what it is handed: `unit/order-dispatch-called-directly` checks
+  every call's arguments that way.
 - A stage of the phase loop taken out of `resolveTurn` (since P1-08k1: the start of the phase, intents and reactions,
   the orders in two tiers, the end of the phase, in
   `engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts`) is a function of its statements,
@@ -113,7 +113,7 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   does first: `turnContext._currentPhase` null, `turnContext._afterPhases` true and the log's context clear, so every
   line it writes with no phase of its own is filed after the phases (99). P1-08k4's diplomacy and victory stages read the
   realms' declarations and Reckoning calls from the context (`turnContext.diploDeclarations`, `turnContext.reckoningCalls`,
-  which `turnContext()` in `tests/lib/engine.ts` makes empty): a test that calls them puts the realms' declarations
+  which the turn's board's `aFreshTurnsContextOnTheWorld` makes empty): a test that calls them puts the realms' declarations
   there, as the order merge does. P1-08k5a's first part of the new turn moves the turn counter on itself: a test that
   calls it reads the turn it was played on before the call. The board has no kings (`board()` clears every hero), so a
   whole turn crowns an heir for every realm at its end unless the test stands a king in each, as `stageCase` in
@@ -133,7 +133,7 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   each turn and joins to the context (since P1-08l2; `resolveTurn` declared them before). A test that calls the merge
   gives the context the slot rows (`turnContext.freshPlayers`) and the turn run (`turnContext.expectedTurnToRun`, which
   may differ from `G.turn`) first, and reads what it collected from the context after the call: a collector held from
-  before the call is not the one the merge filled (`turnContext()` in `tests/lib/engine.ts` makes them empty). What the
+  before the call is not the one the merge filled (the turn's board's fresh context has them empty). What the
   set-up leaves in `G.turnOrders` and the per-turn lists is gone by the turn's end: a whole turn reads it as the first
   phase begins. P1-08k8's four stages before the first phase make the movement pools, `SEASONS`, the turn's trackers
   and the war fronts at the start afresh and join them to the context, so a test that calls them reads those from the
@@ -144,30 +144,28 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   pick or plan is a whole turn's, or calls the plan between them. P1-08l2's bots' plan
   (`botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSpringOrdersHygieneAndTheReckoning`, in `engine/bots/`)
   takes the context alone and calls the eight passes in order, each handed the context's own world and bot realms; the
-  movement pass is handed the duel forecast (`botHuntersDuelForecastFoughtOnCopiesOfBothHeroes`, a top-level function
-  now, so a test can stand it in) wrapped with the context. A test that calls the plan readies the context as
-  `resolveTurn` has it there (`ready` in `tests/lib/the-bots-plan-cases.ts`: the merge run with a bot's seat holding no
-  player, so the merge writes nothing for it, then the stages before the plan). P1-08l1's bots' diplomacy
-  (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, in `engine/bots/`) takes the context alone and
-  reads each bot realm's rivals from `turnContext._botEncounteredAtStart`: a copy of each bot's record of whom it had met,
-  made when the turn began, before the merge, and read by both of its calls (before the first phase and after the
-  phases). A test that calls it makes that copy as `resolveTurn` does (`ready` in `tests/lib/bot-diplomacy-cases.ts`);
-  changing a realm's `_encountered` afterwards changes nothing. The loop is the stages' calls, the intents between
-  the first two. A test that calls a stage does what the loop does first: it sets `turnContext._currentPhase`, and the
-  log's context is clear (`{charId:null, phase:null}`) between phases, so a line with no phase of its own is filed under
-  the phase being resolved; the board in `tests/lib/middle-of-a-bot-world.ts` leaves it on its own phase.
-- A test can stand in a top-level **function** by replacing it in the `vm` (`engine.f = …`), as
-  `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly` do. Don't stand in a top-level `const`
-  arrow (`defendSpentThisPhase`, `noteEntered`): until P1-09d a `const` wasn't a property of the `vm`'s global object,
-  so the engine kept calling the original; since then the engine's bundle writes it as a `var`, so the stand-in would
-  reach it in the `vm` but not in a test that imports the module, where a `const` can't be replaced. Stage the
-  state it reads instead. A table declared with `const` (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is
-  read in the `vm` with `vm.runInContext('JSON.stringify(TITLE_DEFS)', engine)`, which works either way.
+  movement pass is handed the duel forecast (`botHuntersDuelForecastFoughtOnCopiesOfBothHeroes`, a top-level function)
+  wrapped with the context; the wrap calls it inside its own file, where a stand-in doesn't reach. A test that calls the
+  plan readies the context as `resolveTurn` has it there (`ready` in `tests/lib/the-bots-plan-cases.ts`: the merge run
+  with a bot's seat holding no player, so the merge writes nothing for it, then the stages before the plan). P1-08l1's
+  bots' diplomacy (`botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim`, in `engine/bots/`) takes the
+  context alone and reads each bot realm's rivals from `turnContext._botEncounteredAtStart`: a copy of each bot's record
+  of whom it had met, made when the turn began, before the merge, and read by both of its calls (before the first phase
+  and after the phases). A test that calls it makes that copy as `resolveTurn` does (`ready` in
+  `tests/lib/bot-diplomacy-cases.ts`); changing a realm's `_encountered` afterwards changes nothing. The loop is the
+  stages' calls, the intents between the first two. A test that calls a stage does what the loop does first: it sets
+  `turnContext._currentPhase`, and the log's context is clear (`{charId:null, phase:null}`) between phases, so a line
+  with no phase of its own is filed under the phase being resolved; the turn's board
+  (`tests/lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts`) leaves it on its own phase.
+- A test stands in a **function** by `vi.spyOn` on the module that exports it (the board's
+  `standInForTheEnginesFunction`), as `unit/order-dispatch-called-directly` and `unit/phase-stages-called-directly`
+  do. It reaches the calls from other files only: for a call inside the function's own file, stage the state it
+  reads instead. A table (`TITLE_DEFS`, `MINOR_TITLES`, `SEA_TYPES`, `SKILL_LABELS`) is imported from its module.
 - **The context is whole at birth** (P1-10b51): `createTurnContext` gives every field of `TurnContext` its start value,
   as `tests/lib/the-fields-resolve-turn-adds-to-the-turns-context.ts` writes them (`unit/turn-context` holds the two
   the same), so no read finds a field unset. Before it, each field joined on its line in `resolveTurn` or in its stage,
   and a read before that line gave `undefined`: the tripwire P1-08a to P1-08l1 ran (a context that throws on such a
   read, through a whole test run and the matrix) found none, nor did P1-10b51's on its base (both sets the same, 120 of
   120 games; only tests that stage a context read one early, `_pcSimulating`, whose start value is as falsy). The
-  stages that make a field afresh each turn (the move pools, the merge's records) still do. `turnContext()` in
-  `tests/lib/engine.ts` sets each of them again, with the same values.
+  stages that make a field afresh each turn (the move pools, the merge's records) still do. The turn's board's
+  `aFreshTurnsContextOnTheWorld` sets each of them again, with the same values.

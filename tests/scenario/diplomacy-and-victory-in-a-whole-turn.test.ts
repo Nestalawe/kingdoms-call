@@ -4,8 +4,9 @@
 // Reckoning (a claim lodged, standing, collapsing or judged, the bar eroding while none stands), elimination and
 // concession decide whether the game is over, and the result is announced once. Each case of
 // lib/diplomacy-and-victory-cases.ts staged on the middle of a bot world of three realms (or four, where an alliance is
-// needed), from plain realms (`stageCase`), and played through resolveTurn, every realm human-held, every hero Resting
-// unless the case says otherwise, with the case's dice fixed for the whole turn. Level 2 (scenario): the stages are
+// needed), from plain realms (`stageCase`), and played through resolveTurn on the engine's modules (since P1-14m; the
+// bare vm before; the two worlds made one after the other, as the vm made them), every realm human-held, every hero
+// Resting unless the case says otherwise, with the case's dice fixed for the whole turn. Level 2 (scenario): the stages are
 // what the turn does once the bots have spoken, reading what the realms sent with their orders, so only a whole turn
 // plays them as the game does. unit/diplomacy-and-victory-called-directly.test.ts calls the stages directly.
 //
@@ -42,11 +43,15 @@
 // doesn't stop a concession. Level 2: the stages are what the turn does once the bots have spoken, with what the realms
 // sent
 import { describe, expect, test } from 'vitest';
-import { botWorld, loadEngine, quietEngineLog } from '../lib/engine.ts';
 import { DIPLOMACY_AND_VICTORY_CASES, playCase, stageCase } from '../lib/diplomacy-and-victory-cases.ts';
-import { board } from '../lib/middle-of-a-bot-world.ts';
+import {
+  board,
+  botWorld,
+  loadTheEngineOnItsModules,
+  quietEngineLog,
+} from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 
-const engine = loadEngine({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
+const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
 const worlds = { 3: botWorld(engine, 3, { cols: 10, rows: 8 }), 4: botWorld(engine, 4, { cols: 10, rows: 8 }) };
 
