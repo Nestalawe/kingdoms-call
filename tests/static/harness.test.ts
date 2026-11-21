@@ -120,7 +120,7 @@ import archConfig from '../../.dependency-cruiser.mts';
 import knipConfig from '../../knip.ts';
 import config from '../../vitest.config.mts';
 import pwConfig from '../../playwright.config.ts';
-import dangerous from '../../.github/scripts/dangerous-paths.js';
+import * as dangerous from '../../.github/scripts/dangerous-paths.ts';
 import { CHECK_LEVELS } from '../../tools/check.ts';
 import { ENGINE_PATHS, isEnginePath } from '../../tools/balance/engine-paths.ts';
 import { pageSources } from '../../tools/balance/run.ts';
@@ -2315,7 +2315,7 @@ describe('the nightly run', () => {
 describe('the mutant scorer', () => {
   const scorerFiles = ['tools/mutants/run.ts', 'tools/mutants/a-helper-added-later.ts'];
   const undangerous = (listText: string) =>
-    scorerFiles.filter((f) => !dangerous.isDangerous(f, dangerous.parsePaths(listText) as string[]));
+    scorerFiles.filter((f) => !dangerous.isDangerous(f, dangerous.parsePaths(listText)));
   const workflowsThatScoreMutants = (texts: { f: string; text: string }[]) =>
     texts.filter(({ text }) => /\bnpm run(?:-script)? mutants\b|\btools\/mutants\b/.test(text)).map(({ f }) => f);
 
@@ -2344,7 +2344,7 @@ describe('the mutant scorer', () => {
 
 describe('dangerous paths', () => {
   test('every harness file gets the warning', () => {
-    const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
+    const globs = dangerous.parsePaths(read('.github/dangerous-paths'));
     const harness = [
       '.claude/settings.json',
       'tsconfig.json',
@@ -2398,7 +2398,7 @@ describe('dangerous paths', () => {
   });
 
   test("the balance baselines are checked by CI's balance job, so a change to play isn't flagged for its data", () => {
-    const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
+    const globs = dangerous.parsePaths(read('.github/dangerous-paths'));
     for (const f of ['tests/balance/baseline/matrix.json', 'tests/balance/baseline/noise.json']) {
       expect(dangerous.isDangerous(f, globs), f).toBe(false);
     }

@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import dangerousPaths from '../../.github/scripts/dangerous-paths.js';
+import * as dangerousPaths from '../../.github/scripts/dangerous-paths.ts';
 
 const { match, commentBody, parsePaths, isDangerous, MARKER } = dangerousPaths;
 
