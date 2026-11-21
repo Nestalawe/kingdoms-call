@@ -7,36 +7,35 @@
 // kc/the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass refuses a read of the turn's log anywhere else in
 // src/views/.
 //
-// For one realm, from the turn's lines in words (the GM's log as it is stored), the world after the turn and the
-// turn's sight, it gives each line the realm reads, in the log's order, with how it reaches it:
-//   told          the line is told to the realm (its targets)
+// For one realm, from the turn's lines in words (the GM's log as it is stored), each line's whole audience beside them
+// (theTurnsLinesInWords hands it), the world after the turn and the turn's sight, it gives each line the realm reads, in
+// the log's order, with how it reaches it:
+//   told          the line is told to the realm (its audience's realms)
 //   its deed      the realm is its actor
 //   its hero      it is about a hero the realm owns (charId, or one of charIds)
-//   the world     a public line with no province: the whole world is told
-//   eyes there    a public line in a province where the realm has eyes at its phase: its own ground, a hero of its own
-//                 standing there that phase, or a spy on it that phase or earlier
-//   the battle    an onlooker's one-line summary of a battle (a public combat line marked summary, which no line is
+//   the world     seen by the world, with no province: the whole world is told
+//   eyes there    seen there, whatever its type, in a province where the realm has eyes at its phase: its own ground, a
+//                 hero of its own standing there that phase, or a spy on it that phase or earlier (R-186)
+//   the battle    an onlooker's one-line summary of a battle (a line seen in the battle marked summary, which no line is
 //                 today: R-138), read with a hero of its own standing there at its phase (eyes there, with no phase)
-// and a line written for everyone but some realms (notFor) never reaches them. A public combat line with no summary
-// reaches only those who fought (told, its deed, its hero). Through perception:
+// and a line its audience excepts some realms from never reaches them. A line seen in a battle, whatever its type,
+// reaches only those who fought in it (told, its deed, its hero): seeing it there grants no one else (R-185). A sight
+// there or in a battle names its province (R-187: the event's type refuses one with none); handed one anyway, no realm
+// reads it by its sight. A line seen by the world in a province, which no game writes and no answer covers, reads as the
+// reports always read it: whoever has eyes there, but a combat line only those who fought. Through perception:
 //   a spy's lingering sight  in a province it spied, from the next phase on: what another realm's heroes do there (a
-//                            line with a deed) or anyone there could see (a public line), but not a line that excepts
-//                            it (R-118)
+//                            line with a deed) or anyone there could see (a line seen by the world, there or in the
+//                            battle), but not a line that excepts it (R-118)
 //   Clairvoyance             every line about the hero it watches (his, or among its heroes), from the phase the watch
 //                            began
-// A line reaches a realm by the first of these that holds.
-//
-// It reads the stored line's keys (public, targets, actor, notFor, its province, type and heroes), as the reports
-// always have: a line's whole audience (seen by the world, there or in the battle) is kept in memory beside it, but the
-// gate doesn't read it yet. So three shapes no game writes read as the reports always read them: a line seen in a
-// battle that isn't a combat line reaches whoever has eyes there; a line seen there that is a combat line reaches only
-// those who fought; and a line seen there or in a battle with no province reaches every realm. (B-18f reads the whole
-// audience, as the maintainers answered.)
+// A line reaches a realm by the first of these that holds. It reads each line's audience, never the stored keys emit
+// derives from it (public, targets, actor, notFor); of the stored line it reads its province, phase, heroes, spy and
+// summary flags, and its type only for a sight of the world in a province.
 import { asItsGuardReadsIt } from '../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theWayALineReachesARealmWhereverItStands } from '../engine/rules-on-plain-values/a-line-told-to-a-realm-or-of-its-own-deed-reaches-it-wherever-it-stands.ts';
 import type { GameState } from '../schemas/saved-game-state.ts';
 import type { TurnContext } from '../engine/turn/context.ts';
-import type { LogLine } from '../engine/turn/events-and-their-audiences.ts';
+import type { LineAudience, LogLine } from '../engine/turn/events-and-their-audiences.ts';
 
 /** The turn's sight, as resolveTurn recorded it (whatTheReportsRead, src/engine/run-turn.ts). */
 export type TheTurnsSight = Pick<TurnContext, 'presenceByPhase' | 'battleCommanders' | 'clairWatch'>;
@@ -90,6 +89,14 @@ function theFirstPhaseItSpiedThere(phase: number | undefined): number {
   return phase;
 }
 
+/** A line's whole audience, as the words pass hands it beside the line: always there for a line emit filed, which every
+ *  line of the turn is (the lint rule kc/narrative-lines-go-through-emit), so a check that throws for none. */
+function theAudienceOfTheLine(audience: LineAudience | null | undefined, at: number): LineAudience {
+  if (audience == null)
+    throw new TypeError(`line ${String(at)} of the turn's log has no audience: emit didn't file it`);
+  return audience;
+}
+
 /** A line let through the gate. */
 function letThrough(
   line: ALineAsTheGateReadsIt,
@@ -102,14 +109,19 @@ function letThrough(
 /** Each line of the turn the realm `pi` reads, and how it reaches it (above).
  *    turnLog  the turn's lines, as the GM's log stores them: each with its words (theTurnsLinesInWords)
  *    G        the world after the turn (the realm's provinces and heroes)
- *    sight    { presenceByPhase, battleCommanders, clairWatch }: the turn's sight facts (whatTheReportsRead) */
+ *    sight    { presenceByPhase, battleCommanders, clairWatch }: the turn's sight facts (whatTheReportsRead)
+ *    theAudienceOfEachLine  each line's whole audience, in turnLog's order (theTurnsLinesInWords'
+ *                           theAudienceOfEachStoredLine) */
 export function theLinesOfTheTurnTheRealmReads(
   turnLog: readonly ALineAsTheGateReadsIt[],
   G: GameState,
   pi: number,
   sight: TheTurnsSight,
+  theAudienceOfEachLine: readonly (LineAudience | null)[],
 ): TheLinesOfTheTurnTheRealmReads {
   const { presenceByPhase, clairWatch } = sight;
+  const audienceOf = (at: number) => theAudienceOfTheLine(theAudienceOfEachLine[at], at);
+  const excepts = (a: LineAudience) => Array.isArray(a.except) && a.except.includes(pi);
   const playerOwnedProvs = new Set(G.players[pi]?.provinces ?? []);
   // Build set of this player's own character IDs
   const ownCharIds = new Set<number>(
@@ -119,8 +131,8 @@ export function theLinesOfTheTurnTheRealmReads(
   // earliest phase this player spied each province this turn (spy sees battles at that phase or
   // later in the same province).
   const spyPhaseByProv: Record<string, number> = {};
-  turnLog.forEach((e) => {
-    if (e.actor === pi && e.spy && e.provinceId != null) {
+  turnLog.forEach((e, at) => {
+    if (audienceOf(at).actor === pi && e.spy && e.provinceId != null) {
       const ph = e.phase ?? 0;
       const spiedAt = spyPhaseByProv[e.provinceId];
       if (spiedAt === undefined || ph < spiedAt) spyPhaseByProv[e.provinceId] = ph;
@@ -152,58 +164,58 @@ export function theLinesOfTheTurnTheRealmReads(
     return canSeeBattle(prov, ph);
   };
 
+  /** A line seen in a province, read by whoever has eyes there at its phase. */
+  const eyesThere = (e: ALineAsTheGateReadsIt): TheWayALineReachesTheRealm | null =>
+    canSeeProvinceNow(e.provinceId, e.phase) ? 'eyes there' : null;
+  /** A battle's line, read by an onlooker only as its one-line summary (a line marked summary, which no line is today:
+   *  R-138): with a hero of its own standing there at its phase, or with eyes there for a line with no phase. */
+  const theBattlesSummaryOrNothing = (e: ALineAsTheGateReadsIt): TheWayALineReachesTheRealm | null => {
+    if (!e.summary) return null;
+    if (e.phase != null) return charPresentAt(e.provinceId, e.phase) ? 'the battle' : null;
+    return canSeeProvinceNow(e.provinceId, e.phase) ? 'the battle' : null;
+  };
   /** How a line reaches the realm's chronicle, or null: it doesn't. */
-  const theWayItReachesTheChronicle = (e: ALineAsTheGateReadsIt): TheWayALineReachesTheRealm | null => {
+  const theWayItReachesTheChronicle = (
+    e: ALineAsTheGateReadsIt,
+    a: LineAudience,
+  ): TheWayALineReachesTheRealm | null => {
     // 0. Written for everyone EXCEPT these realms (the private half of a logSplit pair covers them)
-    if (Array.isArray(e.notFor) && e.notFor.includes(pi)) return null;
+    if (excepts(a)) return null;
     // 1. Directly targeted at this player (wages, intel notifications, spell hits etc.)
     // 2. This player's own character performed the action
-    const toldOrItsDeed = theWayALineReachesARealmWhereverItStands(asItsGuardReadsIt(e.targets) ?? [], e.actor, pi);
+    const toldOrItsDeed = theWayALineReachesARealmWhereverItStands(a.realms ?? [], a.actor, pi);
     if (toldOrItsDeed !== null) return toldOrItsDeed;
     // 4. Entry attributed to one of this player's own characters (charId or charIds match)
     if (e.charId != null && ownCharIds.has(e.charId)) return 'its hero';
     if (Array.isArray(e.charIds) && e.charIds.some((id) => ownCharIds.has(id))) return 'its hero';
-    // 3. Public events. a battle the player did NOT take part in is visible ONLY as a one-line
-    // result SUMMARY, and only if they had a character present in the province at the battle's
-    // phase. The full blow-by-blow (battleDetail) is for participants alone. Non-combat public
-    // events keep the broader "province you can see" visibility.
-    // 3a. WORLD ANNOUNCEMENTS. A public entry with NO province is not
-    // something that happened *somewhere* — it is something the whole world is told: a realm
-    // conceding, the Reckoning being called, a claim collapsing, the crown's price falling,
-    // the game being decided and its final standings.
-    //
-    // ROOT CAUSE of "nobody is told when a player concedes": the province test below was the
-    // ONLY gate on public entries, so any public line with `provinceId: null` failed it and
-    // fell through to "Everything else: hidden". Nine separate world announcements were being
-    // written to the log every game and shown to nobody — the entire endgame commentary
-    // included. They were public in name only.
-    if (e.public && e.provinceId == null) return 'the world';
-    if (e.public && e.provinceId != null) {
-      if (e.type === 'combat') {
-        if (e.summary) {
-          if (e.phase != null) return charPresentAt(e.provinceId, e.phase) ? 'the battle' : null;
-          return canSeeProvinceNow(e.provinceId, e.phase) ? 'the battle' : null;
-        }
-        return null; // battle detail — participants only (handled by the targets/actor/charId checks above)
-      }
-      // 2026-09-27 (Toby item 6) — ROOT CAUSE of "another realm's Call to Arms turned up in my
-      // Realm Events". A public entry carrying a province was shown to anyone in
-      // `playerVisitedProvs`, which is every province the realm has EVER set foot in (plus the
-      // Messenger Birds ring). So a realm that marched through Wendmeadow on turn 2 went on
-      // reading every public line written there for the rest of the game — musters, rites,
-      // resurrections, spell results — with no spy, no character standing there and no claim on
-      // the ground. A public event in a province now needs EYES THERE at the time: the province
-      // is the viewer's own, or one of their characters stood in it that phase, or they spied it
-      // that phase or earlier. That is the same standard battle summaries have used since
-      // 2026-09-26; memory of the MAP is unaffected (that is built separately, from visitedBy).
-      return canSeeProvinceNow(e.provinceId, e.phase) ? 'eyes there' : null;
+    // 3. What it is seen by: its audience's sight, whatever its type (R-185, R-186).
+    switch (a.seen) {
+      case undefined:
+        // Everything else: hidden
+        return null;
+      case 'world':
+        // 3a. WORLD ANNOUNCEMENTS. A line seen by the world with NO province is not something that happened
+        // *somewhere*: it is something the whole world is told: a realm conceding, the Reckoning being called, a claim
+        // collapsing, the crown's price falling, the game being decided and its final standings.
+        if (e.provinceId == null) return 'the world';
+        // Seen by the world in a province: no game writes one and no answer covers it, so it reads as the reports
+        // always read it, by its type: a combat line as a battle's, any other as a line seen there.
+        return e.type === 'combat' ? theBattlesSummaryOrNothing(e) : eyesThere(e);
+      case 'there':
+        // 2026-09-27 (Toby item 6): a line seen in a province needs EYES THERE at the time: the province is the
+        // viewer's own, or one of their characters stood in it that phase, or they spied it that phase or earlier.
+        // Having once walked through the province is not enough (memory of the MAP is built separately, from
+        // visitedBy). Whatever its type (R-186): the type only says where the page shows it.
+        return eyesThere(e);
+      case 'battle':
+        // A battle the realm did NOT fight in: its blow-by-blow is for those who fought alone (told, its deed, its hero,
+        // above), whatever its type (R-185); an onlooker would read only its one-line summary (R-138, not built).
+        return theBattlesSummaryOrNothing(e);
     }
-    // Everything else: hidden
-    return null;
   };
   const chronicle: ALineTheRealmReads[] = [];
   turnLog.forEach((e, at) => {
-    const reachesItBy = theWayItReachesTheChronicle(e);
+    const reachesItBy = theWayItReachesTheChronicle(e, audienceOf(at));
     if (reachesItBy !== null) chronicle.push(letThrough(e, at, reachesItBy));
   });
 
@@ -211,11 +223,10 @@ export function theLinesOfTheTurnTheRealmReads(
   // there in the phases AFTER the spy arrived (the agent's lingering line of sight): entries in the spied province, at
   // a LATER phase, attributed to a character this player does not own.
   // R-118 (Toby, 2026-10-31, question 8): the spy sees what rival heroes do there (a line with a deed, its actor) and
-  // what anyone there could see (a public line: seen by the world, there or in a battle), never their realm's own news
+  // what anyone there could see (a line seen by the world, there or in a battle), never their realm's own news
   // (a line told to a realm with no deed: a hit-point rise, a curse felt, the plague's toll), nor a line that excepts
-  // this realm (notFor).
-  const aSpyThereSees = (e: LogLine) =>
-    (e.actor != null || e.public) && !(Array.isArray(e.notFor) && e.notFor.includes(pi));
+  // this realm (its audience's except).
+  const aSpyThereSees = (a: LineAudience) => (a.actor != null || a.seen !== undefined) && !excepts(a);
   const spysLingeringSight: TheLinesOfTheTurnTheRealmReads['spysLingeringSight'] = [];
   Object.keys(spyPhaseByProv).forEach((pidStr) => {
     const pid = parseInt(pidStr);
@@ -225,7 +236,7 @@ export function theLinesOfTheTurnTheRealmReads(
       if (e.provinceId !== pid) return;
       if (e.phase == null || e.phase <= afterPh) return;
       if (e.charId == null || ownCharIds.has(e.charId)) return;
-      if (!aSpyThereSees(e)) return;
+      if (!aSpyThereSees(audienceOf(at))) return;
       lines.push({ ...letThrough(e, at, "a spy's lingering sight"), phase: e.phase });
     });
     spysLingeringSight.push({ province: pid, afterPhase: afterPh, lines });

@@ -13,6 +13,7 @@ import {
   writeDeferredSkillLines,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+  seenThereInItsProvinceElseByTheWorld,
 } from '../turn/events-and-their-audiences.ts';
 import { aHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
@@ -578,21 +579,28 @@ export function syncAllMaxHp(turnContext: TurnContext) {
     if (d === 0) return;
     const prov = asItsGuardReadsIt(ch.location) != null ? G.world.provinces[ch.location] : null;
     const tgt: EventButItsWords =
-      ch.player != null
+      ch.player == null
         ? {
-            audience:
-              d > 0
-                ? { realms: [ch.player] }
-                : { actor: ch.player, realms: [ch.player], seen: prov ? 'there' : 'world' },
-            hero: ch.id,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-            province: prov ? prov.id : undefined,
-          }
-        : {
             audience: { actor: -1, realms: [] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          };
+          }
+        : d > 0
+          ? {
+              audience: { realms: [ch.player] },
+              hero: ch.id,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+              province: prov ? prov.id : undefined,
+            }
+          : {
+              ...seenThereInItsProvinceElseByTheWorld(
+                { actor: ch.player, realms: [ch.player] },
+                'there',
+                prov ? prov.id : undefined,
+              ),
+              hero: ch.id,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+            };
     emit(turnContext, {
       type: 'system',
       fact:
