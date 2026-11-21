@@ -8,7 +8,7 @@
 // wage, a hit-point rise copied as the line tells it (aHitPointRiseAsTheLineTellsIt, personal combat's), and the skill
 // in play (theSkillInPlayAsALineTellsIt, heroes/effective-skills-and-hidden-heroes.ts); the prose writes every word
 // (src/views/prose/the-words-of-a-heros-experience-lines.ts). Each is filed with the audience its event names (its
-// event's): no audience changes. The skill rises held back to the end of the phase (turnContext._deferredSkillLogs)
+// event's), but the hardening and the maximum-HP rise, his realm's alone (B-19: emit takes them told to it alone). The skill rises held back to the end of the phase (turnContext._deferredSkillLogs)
 // hold their facts until writeDeferredSkillLines files them (turn/events-and-their-audiences.ts).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
@@ -59,15 +59,20 @@ export type TheFactOfAHerosExperienceLine =
     }
   | { kind: "a hero's maximum hit points fall as the phase ends"; heroName: string; by: number; maxHp: number };
 
-/** Each kind's audience: its event's (each is filed on its own). */
-export const THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE: Readonly<
-  Record<TheFactOfAHerosExperienceLine['kind'], Extract<TheAudienceOfAKindOfLine, "its event's">>
-> = {
+/** Each kind's audience (each is filed on its own): its event's, but a hero's hardening and his maximum-HP rise, his
+ *  realm's alone (R-117, R-118), which emit takes only told to that realm (each kind keeps its own audience in the
+ *  table's type, which emit reads). */
+export const THE_AUDIENCE_OF_EACH_KIND_OF_A_HEROS_EXPERIENCE_LINE = {
   'a wandering hero learns from the fighting': "its event's",
   "a hero's skill rises through experience": "its event's",
   'a hero attains mastery of a skill': "its event's",
   "a hero's growing renown raises his wage": "its event's",
-  'a hero is hardened after a fight': "its event's",
-  "a hero's maximum hit points rise as the phase ends": "its event's",
+  'a hero is hardened after a fight': "its hero's realm alone, filed on its own",
+  "a hero's maximum hit points rise as the phase ends": "its hero's realm alone, filed on its own",
   "a hero's maximum hit points fall as the phase ends": "its event's",
-};
+} satisfies Readonly<
+  Record<
+    TheFactOfAHerosExperienceLine['kind'],
+    Extract<TheAudienceOfAKindOfLine, "its event's" | "its hero's realm alone, filed on its own">
+  >
+>;

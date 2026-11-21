@@ -63,7 +63,7 @@ import {
   type Province,
 } from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { plainRealms } from '../lib/recruit-hire-and-realm-works-order-cases.ts';
-import type { LineFact } from '../../src/engine/turn/events-and-their-audiences.ts';
+import type { LineFact, NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 
 const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -135,7 +135,7 @@ const THE_FIRST_BLOW = { kind: 'one fighter has the initiative', firstName: 'Bra
 /** Runs `body` with personal combat stood in by `end` (resolveCharVsChar, by vi.spyOn on its module for the body's
  *  length: the espionage orders call it from another file), recording the plans each side fought on. */
 function duelEndsIn<T>(
-  end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: LineFact[] },
+  end: { atkHp: number; defHp: number; atkKilled?: boolean; defKilled?: boolean; narrative?: NarrativeLine[] },
   body: (plans: string[][][]) => T,
 ): T {
   const plans: string[][][] = [];

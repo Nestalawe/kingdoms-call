@@ -40,6 +40,7 @@ import {
   emit,
   emitNarrLine,
   type EventButItsWords,
+  type LineFact,
   type FightLine,
   narrate,
   notifyTarget,
@@ -465,4 +466,102 @@ describe('a caller handed no phase names the phase the line is written in', () =
       expect(phasesOf(resolving, 4)[0]).toBe(4);
     });
   }
+});
+
+// B-19: the kind decides its audience. A line of a kind whose audience, in its area's table, is one realm's alone
+// compiles only told to that realm (or, of a hero of no realm, to none, nobody's deed): a sight, a deed, a realm
+// excepted or two realms told is a compile error, so no spy, onlooker or rival reads it by its audience. The four kinds
+// are named here, not read from the table: planting one back to the fight's or its event's audience makes the case
+// below fail to compile.
+
+/** An event of `Fact`, told with its place's audience (in its province, if it names one), in phase 2, filed under a
+ *  hero (7). The fact is a parameter, not read from a kind inside, so the compiler doesn't settle the case before it is
+ *  given one. */
+type AnEventToldWith<Fact extends LineFact, Place> = Place & { type: string; fact: Fact; hero: 7; phase: 2 };
+
+/** Whether emit's type takes the event. */
+type EmitTakes<Fact extends LineFact, Place> = AnEventToldWith<Fact, Place> extends TurnEvent ? true : false;
+
+/** Whether two types are the same, each taking the other (no `boolean` passes for `true`). */
+type TheSame<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+
+/** Which audiences emit takes for a fact, in a province (5), but seen by the world (in none). */
+interface TheAudiencesEmitTakes<Fact extends LineFact> {
+  'told to one realm': EmitTakes<Fact, { audience: { realms: [0] }; province: 5 }>;
+  "told to none, nobody's deed": EmitTakes<Fact, { audience: { realms: []; actor: -1 }; province: 5 }>;
+  'seen there': EmitTakes<Fact, { audience: { realms: [0]; seen: 'there' }; province: 5 }>;
+  'seen in the battle': EmitTakes<Fact, { audience: { realms: [0]; seen: 'battle' }; province: 5 }>;
+  'seen by the world': EmitTakes<Fact, { audience: { realms: [0]; seen: 'world' } }>;
+  "its realm's deed": EmitTakes<Fact, { audience: { realms: [0]; actor: 0 }; province: 5 }>;
+  "nobody's deed, named null": EmitTakes<Fact, { audience: { realms: [0]; actor: null }; province: 5 }>;
+  'another realm excepted': EmitTakes<Fact, { audience: { realms: [0]; except: [1] }; province: 5 }>;
+  'two realms told': EmitTakes<Fact, { audience: { realms: [0, 1] }; province: 5 }>;
+}
+
+/** What emit takes for a kind for one realm alone: told to one realm, or to none, and nothing else. */
+interface ForOneRealmAlone {
+  'told to one realm': true;
+  "told to none, nobody's deed": true;
+  'seen there': false;
+  'seen in the battle': false;
+  'seen by the world': false;
+  "its realm's deed": false;
+  "nobody's deed, named null": false;
+  'another realm excepted': false;
+  'two realms told': false;
+}
+
+/** What emit takes for a kind filed with its event's audience: every form. */
+interface ForItsEventsAudience {
+  'told to one realm': true;
+  "told to none, nobody's deed": true;
+  'seen there': true;
+  'seen in the battle': true;
+  'seen by the world': true;
+  "its realm's deed": true;
+  "nobody's deed, named null": true;
+  'another realm excepted': true;
+  'two realms told': true;
+}
+
+/** The fact of `Kind`. */
+type Of<Kind extends LineFact['kind']> = Extract<LineFact, { kind: Kind }>;
+
+/** For each of the four kinds for one realm alone, whether emit takes exactly what ForOneRealmAlone says; and, for a
+ *  kind filed with its event's audience, every form. */
+interface TheFormsEmitTakesAreRight {
+  "a hero's hit points rise in a fight, for his realm alone": TheSame<
+    TheAudiencesEmitTakes<Of<"a hero's hit points rise in a fight, for his realm alone">>,
+    ForOneRealmAlone
+  >;
+  'the surgeons reach a fallen duellist too late, for his realm alone': TheSame<
+    TheAudiencesEmitTakes<Of<'the surgeons reach a fallen duellist too late, for his realm alone'>>,
+    ForOneRealmAlone
+  >;
+  'a hero is hardened after a fight': TheSame<
+    TheAudiencesEmitTakes<Of<'a hero is hardened after a fight'>>,
+    ForOneRealmAlone
+  >;
+  "a hero's maximum hit points rise as the phase ends": TheSame<
+    TheAudiencesEmitTakes<Of<"a hero's maximum hit points rise as the phase ends">>,
+    ForOneRealmAlone
+  >;
+  "a hero's maximum hit points fall as the phase ends": TheSame<
+    TheAudiencesEmitTakes<Of<"a hero's maximum hit points fall as the phase ends">>,
+    ForItsEventsAudience
+  >;
+}
+
+describe('the kind decides its audience (B-19)', () => {
+  test('a kind for one realm alone compiles only told to that realm: no sight, no deed, no realm excepted, no second realm', () => {
+    // compiles only while each form is taken or refused as above (each value below is the type's only value)
+    const theFormsEmitTakesAreRight: TheFormsEmitTakesAreRight = {
+      "a hero's hit points rise in a fight, for his realm alone": true,
+      'the surgeons reach a fallen duellist too late, for his realm alone': true,
+      'a hero is hardened after a fight': true,
+      "a hero's maximum hit points rise as the phase ends": true,
+      "a hero's maximum hit points fall as the phase ends": true,
+    };
+    expect(Object.values(theFormsEmitTakesAreRight)).toEqual([true, true, true, true, true]);
+  });
 });

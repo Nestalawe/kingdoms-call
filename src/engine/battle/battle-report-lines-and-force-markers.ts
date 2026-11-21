@@ -15,7 +15,7 @@ import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
 import type { Quality } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
-import type { FightLine, NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { AFactNotForOneRealmAlone, FightLine, NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
@@ -189,7 +189,8 @@ export function terrainNoteList(force: Army[] | null | undefined, terrain: strin
 
 export function emitBattle(
   turnContext: TurnContext,
-  battle: { narrative?: NarrativeLine[] | undefined; summaryText?: NarrativeLine | undefined } | null | undefined,
+  battle:
+    { narrative?: NarrativeLine[] | undefined; summaryText?: AFactNotForOneRealmAlone | undefined } | null | undefined,
   prov: Province | null | undefined,
   ph: number | null | undefined,
   participants: (number | null | undefined)[] | null | undefined,
@@ -197,7 +198,7 @@ export function emitBattle(
     actor?: number | null | undefined;
     charId?: number | null | undefined;
     charIds?: number[] | null | undefined;
-    summaryText?: NarrativeLine | undefined;
+    summaryText?: AFactNotForOneRealmAlone | undefined;
   } | null,
 ) {
   opts = opts || {};

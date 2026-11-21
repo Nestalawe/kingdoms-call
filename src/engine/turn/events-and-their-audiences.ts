@@ -287,10 +287,18 @@ type TheKindsInTwoAreas<Areas extends readonly { kind: string }[]> = Areas exten
   : never;
 
 /** Who may read a kind of line, as its area's module says beside the kind: the fight's audience (whoever the fight's
- *  lines are written for), its hero's realm alone (a line that names the realm: a hero's hit-point rise in a fight,
- *  what the man across the field must not learn), or its event's (a kind filed on its own: the audience its event
- *  names; in a fight's narrative, the fight's). */
-export type TheAudienceOfAKindOfLine = "the fight's" | "its hero's realm alone" | "its event's";
+ *  lines are written for), its hero's realm alone (a line in a fight's narrative that names the realm: a hero's
+ *  hit-point rise in a fight, what the man across the field must not learn), its hero's realm alone for a kind filed on
+ *  its own (a hero's maximum-HP rise, his hardening outside a fight: R-117, R-118), or its event's (a kind filed on its
+ *  own: the audience its event names; in a fight's narrative, the fight's). */
+export type TheAudienceOfAKindOfLine =
+  "the fight's" | "its hero's realm alone" | "its hero's realm alone, filed on its own" | "its event's";
+
+/** The audiences of a kind that is one realm's alone: in a fight's narrative, or filed on its own. */
+type TheAudiencesOfOneRealmAlone = Extract<
+  TheAudienceOfAKindOfLine,
+  "its hero's realm alone" | "its hero's realm alone, filed on its own"
+>;
 
 /** Each kind's audience, of every area's kinds, while each kind is in one area; else a table that names the kinds in
  *  two (and has no audiences), so a kind declared in two areas is a compile error. */
@@ -298,8 +306,9 @@ type TheAudienceOfEachKindIfEachIsInOneArea = [TheKindsInTwoAreas<TheFactsOfEach
   ? Readonly<Record<LineFact['kind'], TheAudienceOfAKindOfLine>>
   : { readonly 'these kinds are declared in two areas': TheKindsInTwoAreas<TheFactsOfEachArea> };
 
-/** Each kind's audience, of every area's kinds (each kind in one area). */
-const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
+/** Each kind's audience, of every area's kinds (each kind in one area); its type keeps each kind's own audience, as its
+ *  area's table types it, which emit's type reads (TheKindsWhoseAudienceIsOneRealmsAlone). */
+const THE_AUDIENCE_OF_EACH_KIND = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_BATTLES_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_SEA_LIFTS_BATTLE_LINE,
@@ -338,7 +347,32 @@ const THE_AUDIENCE_OF_EACH_KIND: TheAudienceOfEachKindIfEachIsInOneArea = {
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_RALLIED_GARRISON_OR_WRAITHS_TOUCH_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_A_BOTS_CONCESSION_LINE,
   ...THE_AUDIENCE_OF_EACH_KIND_OF_THE_SPY_STEALTH_LINE,
-};
+} satisfies TheAudienceOfEachKindIfEachIsInOneArea;
+
+/** The kinds whose audience, in their area's table, is one realm's alone (B-19): emit takes a line of one only told to
+ *  the realm its fact names (TheAudienceOfALineForOneRealmAlone). */
+export type TheKindsWhoseAudienceIsOneRealmsAlone = {
+  [
+    Kind in keyof typeof THE_AUDIENCE_OF_EACH_KIND
+  ]: (typeof THE_AUDIENCE_OF_EACH_KIND)[Kind] extends TheAudiencesOfOneRealmAlone ? Kind : never;
+}[keyof typeof THE_AUDIENCE_OF_EACH_KIND];
+
+/** A fact of a kind that is one realm's alone: it names that realm (`realm`). */
+export type AFactForOneRealmAlone = Extract<LineFact, { kind: TheKindsWhoseAudienceIsOneRealmsAlone }>;
+
+/** A fact of every other kind: filed with the audience its event, or its fight, names. */
+export type AFactNotForOneRealmAlone = Exclude<LineFact, { kind: TheKindsWhoseAudienceIsOneRealmsAlone }>;
+
+/** Whether a kind's audience is one realm's alone. */
+function isAnAudienceOfOneRealmAlone(audience: TheAudienceOfAKindOfLine): audience is TheAudiencesOfOneRealmAlone {
+  return audience === "its hero's realm alone" || audience === "its hero's realm alone, filed on its own";
+}
+
+/** The kinds whose audience, in their area's table, is one realm's alone, in the table's order: the leak check's "a
+ *  line for one realm alone" reads them (tests/lib/report-leaks.ts). */
+export const THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE: readonly string[] = Object.entries(
+  THE_AUDIENCE_OF_EACH_KIND,
+).flatMap(([kind, audience]) => (isAnAudienceOfOneRealmAlone(audience) ? [kind] : []));
 
 /** Whether a fight's line is for its hero's realm alone, by its kind's audience. */
 function isForItsHerosRealmAlone(fact: LineFact): fact is TheFactOfAFightsLineForItsHerosRealmAlone {
@@ -433,9 +467,26 @@ export type FightLine = EventButItsWords & {
   type: string;
 };
 
+/** Who may read a line of a kind that is one realm's alone: told to the realm its fact names, and no one else (no
+ *  deed, no sight, no realm excepted); a fact that names no realm (a hero of none) is told to none, and its line is
+ *  nobody's deed (the actor -1 its line keeps, as it always has: the GM's alone). */
+export type TheAudienceOfALineForOneRealmAlone =
+  | { realms: [number] | []; actor?: never; seen?: never; except?: never }
+  | { realms: []; actor: -1; seen?: never; except?: never };
+
+/** A line of a kind that is one realm's alone, but its type, its words and its fact: told to that realm alone, where
+ *  and when, whom it is about. */
+export type EventButItsWordsForOneRealmAlone = TheRestOfAnEventButItsWords & {
+  audience: TheAudienceOfALineForOneRealmAlone;
+  province?: number | null | undefined;
+};
+
 /** Something that happened this turn: the fact its words are written from (the views write them, src/views/prose/),
- *  never its words (emit throws on an event handed as words). */
-export type TurnEvent = FightLine & { fact: LineFact };
+ *  never its words (emit throws on an event handed as words). A fact of a kind that is one realm's alone is filed
+ *  only told to that realm (B-19: the kind decides its audience); any other with the audience its event names. */
+export type TurnEvent =
+  | (FightLine & { fact: AFactNotForOneRealmAlone })
+  | (EventButItsWordsForOneRealmAlone & { type: string; fact: AFactForOneRealmAlone });
 
 /** A line of the GM's log (turnLog), as emit writes it: today's stored form, but that a line recording a fact has no
  *  words yet (text null, its fact last) and a battle's line its tier still to work out from the words; the views write
@@ -470,9 +521,17 @@ export interface LogLine {
   kind?: LineFact['kind'];
 }
 
-/** A line of a battle's or a duel's narrative: the fact its words are written from. emitNarrLine writes each
- *  into the GM's log in order, for everyone in the fight or, by its kind, for its hero's realm alone. */
-export type NarrativeLine = LineFact;
+/** The kinds filed on their own whose audience is their hero's realm alone: never a line of a fight's narrative. */
+type TheKindsFiledOnTheirOwnForOneRealmAlone = {
+  [
+    Kind in keyof typeof THE_AUDIENCE_OF_EACH_KIND
+  ]: (typeof THE_AUDIENCE_OF_EACH_KIND)[Kind] extends "its hero's realm alone, filed on its own" ? Kind : never;
+}[keyof typeof THE_AUDIENCE_OF_EACH_KIND];
+
+/** A line of a battle's or a duel's narrative: the fact its words are written from (of any kind but those filed on
+ *  their own for one realm alone). emitNarrLine writes each into the GM's log in order, for everyone in the fight or,
+ *  by its kind, for its hero's realm alone. */
+export type NarrativeLine = Exclude<LineFact, { kind: TheKindsFiledOnTheirOwnForOneRealmAlone }>;
 
 /** The hero a line naming THE_HERO_WHOSE_ORDER_IS_RESOLVING is filed under: that hero, but only when the line already
  *  reaches his realm by its audience (told to it, its deed, seen by the world or seen there; a battle's line reaches
@@ -645,7 +704,7 @@ export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, figh
   emit(turnContext, {
     ...fight,
     fact: line,
-    audience: { realms: [line.realm], actor: null },
+    audience: { realms: [line.realm] },
     heroes: null,
     hero: ('hero' in line ? line.hero : undefined) ?? fight.hero,
   });
@@ -659,7 +718,7 @@ export function emitNarrLine(turnContext: TurnContext, line: NarrativeLine, figh
 export function notifyTarget(
   turnContext: TurnContext,
   targetChar: { id: number; player: number | null; location: number | null } | null | undefined,
-  line: NarrativeLine,
+  line: AFactNotForOneRealmAlone,
   ph?: number | null,
   type?: string,
 ): void {
@@ -691,8 +750,8 @@ export function notifyTarget(
 export function logSplit(
   turnContext: TurnContext,
   type: string,
-  privText: NarrativeLine,
-  pubText: NarrativeLine,
+  privText: AFactNotForOneRealmAlone,
+  pubText: AFactNotForOneRealmAlone,
   place: EventButItsWords & { alsoNotFor?: (number | null)[] | undefined },
 ): void {
   const { alsoNotFor, ...line } = place;
@@ -724,7 +783,7 @@ export function logSplit(
 export function notifyProvinceOwner(
   turnContext: TurnContext,
   prov: { id: number; owner: number | null } | null | undefined,
-  line: NarrativeLine,
+  line: AFactNotForOneRealmAlone,
   casterPlayer: number | null | undefined,
   ph?: number | null,
 ): void {
