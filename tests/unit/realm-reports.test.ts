@@ -647,6 +647,27 @@ describe("one realm's report on a world staged for it", () => {
     expect(theGoldBeyondTheTax({}, 0, false, atThief([9]))[3]).toBe(5);
   });
 
+  // B-06d: the forecast asks the collector's runner for the Host-Leader's cut, a line no matrix game may reach
+  test('the Host-Leader in the forecast: a gold less for each company he leads that draws a wage, once titles are public', () => {
+    const theWages = (heLeads: Hero['armies'], heHoldsIt: boolean) => {
+      const S = world();
+      delete realmOf(S, 0)._lastWages;
+      const king = kingOf(S, 0);
+      king.armies = heLeads;
+      const theWorld = S as unknown as { turn: number };
+      theWorld.turn = Math.max(theWorld.turn, TITLES_PUBLIC_FROM_TURN);
+      const view = playerView(S, 0) as View & { titles: { minor: Record<string, { charId: number }> | null } };
+      view.titles.minor = heHoldsIt ? { hostleader: { charId: king.id } } : {};
+      const k = buildTurnReport(view).kingdom as Report['kingdom'] & { hostLeaderG: number };
+      return [k.armyWages, k.hostLeaderG];
+    };
+    const three = [0, 1, 2].map(() => ({ type: 'Gilded Lances', quality: 'Average' }));
+    const [without = 0] = theWages(three, false);
+    expect(theWages(three, true)).toEqual([without - 3, 3]);
+    expect(theWages(three.slice(0, 1), true)).toEqual([without - 8 - 1, 1]);
+    expect(theWages(three, false)).toEqual([without, 0]);
+  });
+
   test("the realm's heroes are in its own order, the ones it hasn't placed after them in the world's order", () => {
     const S = world();
     const ours = S.characters.filter((c) => c.player === 0).map((c) => c.id);
