@@ -626,6 +626,8 @@ describe("one realm's report on a world staged for it", () => {
     const mine = kingOf(S, 0).id;
     const theirs = kingOf(S, 1).id;
     expect(theGoldBeyondTheTax({ cutpurse: mine, champion: mine, castellan: mine }, 14)).toEqual([2, 2, 2, 0]);
+    expect(theGoldBeyondTheTax({ cutpurse: mine }, 14)).toEqual([2, 0, 0, 0]);
+    expect(theGoldBeyondTheTax({ champion: mine }, 14)).toEqual([0, 2, 0, 0]);
     expect(theGoldBeyondTheTax({ castellan: mine }, 4)).toEqual([0, 0, 0, 0]);
     expect(theGoldBeyondTheTax({ castellan: mine }, 5)).toEqual([0, 0, 1, 0]);
     expect(theGoldBeyondTheTax({ cutpurse: theirs, champion: theirs, castellan: theirs }, 14)).toEqual([0, 0, 0, 0]);
