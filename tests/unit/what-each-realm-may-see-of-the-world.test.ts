@@ -21,7 +21,7 @@
 //   the view, each a point faster for a march discovery that reaches it (the skeletal dead's: the garrison's only).
 // - (P1-23ad, R-124) whether its Grand Cathedral stands, as the turn counts it: in the view's books, and in its report's
 //   kingdom only while it stands (the order form counts its free Bless Province), never in another realm's report.
-// - (P1-11z2, KD-152) the unit-strength effects of its own discoveries, in its report's kingdom for the army card's
+// - (P1-11z2) the unit-strength effects of its own discoveries, in its report's kingdom for the army card's
 //   strength (R-135): its own, in the order it holds them, no other kind's, and never another realm's.
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
@@ -737,7 +737,7 @@ describe("whether realm 0's Grand Cathedral stands (P1-23ad: the order form coun
   });
 });
 
-describe("the unit-strength effects of realm 0's discoveries (P1-11z2, KD-152: the army card counts them, R-135)", () => {
+describe("the unit-strength effects of realm 0's discoveries (P1-11z2: the army card counts them, R-135)", () => {
   /** Each realm's report's `kingdom.theUnitStrengthEffectsOfItsDiscoveries`, realm 0 holding the discoveries given and
    *  realm 1 those given it. */
   const effects = (ids0: readonly string[], ids1: readonly string[]): unknown[] => {

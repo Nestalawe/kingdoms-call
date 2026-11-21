@@ -707,7 +707,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     // No matrix game has a Druid 8 hero leading beasts, a Necromancy 6 hero leading skeletons, or a hero leading with
     // items that lift his units, so the columns are staged. The card counted the unit's base strength, a Druid shortfall,
     // its kin and the Druid mastery: Thunderbirds under a Druid 8 hero read "str 40" where the battle's armStr, with no
-    // ground and no battle, gives 59. Since R-135 it asks the turn's steps in armStr's order. Since P1-11z2 (KD-152) it
+    // ground and no battle, gives 59. Since R-135 it asks the turn's steps in armStr's order. Since P1-11z2 it
     // counts the realm's unit-strength discoveries too, from the effects its report carries: Men-at-Arms under a hero of
     // a realm with War Drums read 17 where the turn gives 18, and Free Lances under a king with Household Knights 17
     // where it gives 20.
