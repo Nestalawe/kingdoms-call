@@ -1345,7 +1345,8 @@ function theCompaniesAHeroMovesAsHeActs(
         .filter(Boolean)
         .forEach((val) => {
           val = val.trim();
-          const idx = led.findIndex((a) => ((a.unitName ?? '') || a.type) === val);
+          // (by its type or its name, as the turn takes it: R-129, P1-11z1)
+          const idx = led.findIndex((a) => a.type === val || a.unitName === val);
           if (idx >= 0) removed.push(...led.splice(idx, 1));
         });
     // handed to a comrade: he takes what the turn gives him, and the beasts past his beast command stay with the giver,

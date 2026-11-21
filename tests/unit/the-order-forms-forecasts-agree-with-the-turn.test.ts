@@ -157,7 +157,8 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // next season by its place (behind the one there before), one taken up as a comrade leaves it in the same season (the turn makes the Pick Up wait), one
     // disbanded; since P1-11e18 (R-129) a Mithril suit sent with "all" (forged to its wearer: the turn and the form keep
     // it on him, the shared theItemsASendItemOrderHandsOver); since P1-11e17 (the forecasts' replay) an item handed over by its name, every company left in the
-    // garrison, one left by its type (the garrison read) and every company handed to a comrade; and since P1-11e19
+    // garrison, one left by its type (his column and the garrison read: since P1-11z1 the form takes it from him) and
+    // every company handed to a comrade; and since P1-11e19
     // (R-129, the turn's rules through src/shared/) a beast past a leader's beast command (his Druid, here 0) mustering
     // into the garrison, staying with the giver or going back to the garrison, a band of garrison troops hired into the
     // garrison, companies taken up last first (by their places and "all"), and risen dead handed to a comrade of a realm

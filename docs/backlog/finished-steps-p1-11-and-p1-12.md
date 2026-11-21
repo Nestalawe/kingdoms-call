@@ -87,7 +87,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-11e41: #488 The order form's forecasts read the report and the orders handed to them
 - P1-11e42: #506 The order form's ledger, chance notes, order list and magic levels read the report and the orders handed to them
 - P1-11e43: #507 The copies file narrowed to the page files no test can import; the forecasts' cases imported (merged through #509)
-- P1-11z1: (this pull request) The order form's companies follow the turn: a chain of hand-overs in one season
+- P1-11z1: (this pull request) The order form's companies follow the turn: a chain of hand-overs in one season, and a company left by its type
 
 ## P1-12
 

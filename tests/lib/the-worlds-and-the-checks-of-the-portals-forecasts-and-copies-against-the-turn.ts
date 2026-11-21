@@ -2648,10 +2648,16 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
     stage('every company left in the garrison', 'companies', p, { leader }, { [id(leader)]: [leave('all')] });
   }
   {
-    // (the garrison alone is read: the form keeps a company left by its type with its leader, Parked)
+    // (the leader's column and the garrison read: the turn takes the company from him by its type or its name, P1-11z1)
     const p = aProvince();
     const leader = at(p, { armies: [unit('Shieldwall Levies'), unit('Men-at-Arms')] });
-    stage('a company left in the garrison by its type', 'companies', p, {}, { [id(leader)]: [leave('Men-at-Arms')] });
+    stage(
+      'a company left in the garrison by its type',
+      'companies',
+      p,
+      { leader },
+      { [id(leader)]: [leave('Men-at-Arms')] },
+    );
   }
   {
     const p = aProvince();
