@@ -285,12 +285,10 @@ export function theTiersOfABattlesLines(lines: readonly LogLine[]): {
 }
 
 /** A line as the GM's log stores it: its words in place of its fact, its tier when it is a battle's, and its fact's
- *  kind last (plan P1-12d39); its audience and the realm of the hero whose order was resolving, like its fact, never
- *  stored (B-18a, B-18b). */
+ *  kind last (plan P1-12d39); its audience, like its fact, never stored (B-18a). */
 function asStored(line: LogLine, text: string | null, tier?: string): LogLine {
   const stored: LogLine = { ...line, text };
   if (tier !== undefined) stored.bTier = tier;
-  delete stored.theRealmTheHeroWhoseOrderWasResolvingServed;
   delete stored.audience;
   delete stored.fact;
   if (line.fact !== undefined) stored.kind = line.fact.kind;

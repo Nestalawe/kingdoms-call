@@ -320,8 +320,7 @@ function unseenHeroes(t: Turn): string[] {
  *  engine's log keeps it until the reports are built (perceptionOfTheTurn): the line, with its words, as the gate reads
  *  it, its audience as given, and the kind of fact it records with the realm the fact names. */
 export interface EventAsEmitted {
-  /** Its line, with its words, less what is never stored (its audience, its fact, the realm of the hero whose order
-   *  was resolving): what the gate reads of it. */
+  /** Its line, with its words, less what is never stored (its audience and its fact): what the gate reads of it. */
   line: ALineAsTheGateReadsIt;
   audience: LineAudience;
   /** The kind of fact its line records (null: a line written with its words). */
@@ -359,7 +358,6 @@ export function perceptionOfTheTurn(
     const line: ALineAsTheGateReadsIt = { ...inMemory, text };
     delete line.audience;
     delete line.fact;
-    delete line.theRealmTheHeroWhoseOrderWasResolvingServed;
     return [
       {
         line,

@@ -461,10 +461,6 @@ export interface LogLine {
   gameEnd?: boolean;
   /** The realms that never read it (audience.except). */
   notFor?: number[];
-  /** Filed under the hero whose order was resolving (its event named THE_HERO_WHOSE_ORDER_IS_RESOLVING, not his id):
-   *  the realm he served as it was written (null: none), for the leak check, until the reports are built (never
-   *  stored: B-18b). */
-  theRealmTheHeroWhoseOrderWasResolvingServed?: number | null;
   /** Who may read it, whole (its event's audience: the realms told, the actor, seen by the world, there or in the
    *  battle, the realms excepted), until the reports are built (never stored: B-18a). */
   audience?: LineAudience;
@@ -562,9 +558,6 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
     line.gameEnd = event.gameEnd ?? false;
   }
   if (audience.except !== undefined) line.notFor = audience.except;
-  if (event.hero === THE_HERO_WHOSE_ORDER_IS_RESOLVING && line.charId !== null)
-    line.theRealmTheHeroWhoseOrderWasResolvingServed =
-      turnContext.G.characters.find((c) => c.id === line.charId)?.player ?? null;
   line.audience = audience;
   line.fact = event.fact;
   turnContext.turnLog.push(line);
