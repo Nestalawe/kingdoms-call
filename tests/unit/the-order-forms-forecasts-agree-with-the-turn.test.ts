@@ -20,9 +20,9 @@
 // change. On a staged world with no guards (`holdingWorld`, each case on its own province), what the forecasts say a
 // hero will carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave
 // them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and
-// disbanded, the beast command, a garrison band, risen dead, a season's heroes in the turn's order; the Move note's
-// column and the Pick Up field's garrison as the turn gives them; pinned where it is not (question 42: the Stone, a
-// chain of company hand-overs in one season). Each of the 46 names of the order list is the order `normaliseAction`
+// disbanded, the beast command, a garrison band, risen dead, a season's heroes in the turn's order (their items, and
+// since P1-11z1 a chain of company hand-overs); the Move note's column and the Pick Up field's garrison as the turn
+// gives them; pinned where it is not (question 42: the Stone, which waits on KD-047). Each of the 46 names of the order list is the order `normaliseAction`
 // reads it as, and on staged heroes of realm 0 under each creed the list offered is what `processOrder` lets him give.
 // The treasury ledger says what the turn spends and adds to Early Winter's wages (R-134), pinned where it can't know
 // (question 43: the Host-Leader on a report that doesn't name him); the Practice Skill note quotes the chance the turn
@@ -168,7 +168,8 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // since P1-11e20 (R-129, the turn's order of the heroes through src/shared/) an item handed to a comrade marching in
     // that season (he arrives first: handed over at once), a chain of hand-overs in one season (the hero who hands to a
     // comrade who hands on goes first), two heroes handing to one comrade (the quicker first: his items first in the
-    // pack), and a comrade beside him who marches away that season (handed over before he sets out).
+    // pack), and a comrade beside him who marches away that season (handed over before he sets out); and since P1-11z1
+    // (R-129) a chain of company hand-overs in one season (the comrade hands on what he was handed).
     const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
@@ -202,11 +203,10 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(field).toHaveLength(1);
   });
 
-  test('what the forecast gets wrong is pinned: the Stone, a chain of company hand-overs in one phase (question 42)', () => {
+  test('what the forecast gets wrong is pinned: the Stone, which waits on KD-047 (question 42)', () => {
     // The form replays the orders, not the turn's checks: the Philosopher's Stone used is destroyed (as an older save's
-    // copy carries it: the one Use Item works), and the form keeps it in his pack; a chain of company hand-overs in one
-    // season goes in the turn's order (the comrade hands on what he was handed), where the form reads each column as the
-    // season begins, so the first hero's companies are lost from every column (Parked, R-129).
+    // copy carries it: the one Use Item works), and the form keeps it in his pack. The form follows the turn (R-129)
+    // once the Stone works (KD-047).
     const list = holdings();
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
@@ -218,11 +218,6 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     };
     const stone = kind("the Philosopher's Stone used");
     expect([stone.copy, stone.engine]).toEqual([{ bearer: ["Philosopher's Stone"] }, { bearer: [] }]);
-    const chain = kind('a chain of company hand-overs in one phase');
-    expect([chain.copy, chain.engine]).toEqual([
-      { 'the first to hand over': [], between: [], last: ['Yeoman Longbows (Average)'] },
-      { 'the first to hand over': [], between: [], last: ['Yeoman Longbows (Average)', 'Men-at-Arms (Average)'] },
-    ]);
   });
 });
 

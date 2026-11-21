@@ -64,7 +64,7 @@ T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| P1-11z | P1-11's rest: the differences the copies test still pins go as the maintainers rule on them; the alignment orders' portal half (with P1-19) | Players: the order form says what the turn does in the cases still pinned; closes P1-11 | Phase 1 | Medium | – | ⬜ | | Phase 1's rest: closes P1-11; its portal half goes with P1-19's |
+| P1-11z | P1-11's rest: the differences the copies test still pins go as the maintainers rule on them; the alignment orders' portal half (with P1-19) | Players: the order form says what the turn does in the cases still pinned; closes P1-11 | Phase 1 | Medium | – | 🟦 | (P1-11z1: opening) | Phase 1's rest: closes P1-11; its portal half goes with P1-19's |
 | B-16 | The three CI scripts in `.github/scripts/` (dangerous-paths, staging, migrations) in TypeScript, in steps: the `.ts` beside the `.js`, the workflows pointed at them, the `.js` deleted; a staging pass. `eslint.config.js` stays JavaScript: it counts as config | Maintainers: the scripts that apply production migrations and rebuild staging are type-checked and linted; closes Phase 1's "All code is TypeScript" | Phase 1 | Small | ✓ | ⬜ | | Phase 1's rest: closes a Phase 1 criterion, but nothing waits on it and it touches the deploy path, so it comes last (a maintainer's choice, 2026-11-20) |
 
 ### 2. The reports' audience in one place

@@ -938,12 +938,9 @@ function theFormsReplayOfThePhasesBefore(
   for (let p = 0; p < upToPhaseExclusive; p++) {
     theItemsAPhasesOrdersHandOver(report, orders, characters, items, byKey, p);
     const added = theCompaniesAPhasesOrdersAddToEachGarrison(report, orders, armies, p);
-    const next = new Map<AHeroAsTheFormsForecastsReadHim, ACompanyAsTheFormCarriesIt[]>();
     // the beasts the phase's Pick Ups take past a leader's beast command, which go back to the garrison
     const goBack = new Map<unknown, ACompanyAsTheFormCarriesIt[]>();
-    characters.forEach((x) => {
-      next.set(x, theCompaniesAHeroLeadsAfterAPhase(report, orders, armies, garrisons, added, x, p, goBack));
-    });
+    const next = theCompaniesEachHeroLeadsAfterAPhase(report, orders, characters, armies, garrisons, added, p, goBack);
     theGarrisonsAfterAPhase(report, orders, garrisons, added, p, goBack);
     armies = next;
   }
@@ -1223,72 +1220,84 @@ function theGarrisonsAfterAPhase(
 // SMALLER phase bound, so no cycle was possible. What the guard actually did was silently truncate legitimate chains —
 // hand a company king → Bryn in Spring and Bryn → Cara in Early Summer and it projected; add Cara → Dain in Late Summer
 // and the company VANISHED from every later form, so Dain could not be ordered to do anything with troops he would
-// really be leading. The replay reads the giver's companies as the phase begins, so a chain of any length projects.
-// The army list the character `char` is LEADING once the phase `prevPh` is over, from what each hero led as it began
+// really be leading. The replay carries each column from phase to phase, so a chain of any length projects; and since
+// P1-11z1 (R-129) a chain within one phase too, as below.
+// The army list each character is LEADING once the phase `prevPh` is over, from what each hero led as it began
 // (`armies`): every order that adds or removes armies — Recruit and Pick Up (add), Leave/Transfer and Disband (remove).
 // This is what the Leave/Transfer and Disband forms show, so an army handed off or disbanded in an earlier phase no
 // longer appears, and one recruited or picked up earlier does. (predictedLocation already accounts for earlier moves /
 // conquests, so the recipient and garrison-eligibility lists reflect where the character will actually be.) Armies
-// TRANSFERRED to this character by ANOTHER of yours earlier this turn — a Leave/Transfer handed over, or a Recruit
+// TRANSFERRED to a character by ANOTHER of yours earlier this turn — a Leave/Transfer handed over, or a Recruit
 // mustered "to:<this id>" — ARE projected in, through chains of any length (2026-09-24).
+// The heroes act in the turn's order of the phase (R-129, P1-11z1: theHeroesInTheOrderTheTurnHasThemActInAPhase, as
+// the items hand over), each on the columns as the heroes before him have left them: a comrade handed companies hands
+// them on in the same phase, and a beast command's room is counted on the column as he acts. A hero the turn's order
+// doesn't name (one who joins this turn, until the phase after, or has fallen) gives no order, as in the turn.
 // Each company moves where the turn's rules send it (R-129, P1-11e19): a recruit, a hand-over and a Pick Up's beasts
 // past a beast command, a garrison company or band, risen dead; the beasts his Pick Up can't take go into `goBack`.
-function theCompaniesAHeroLeadsAfterAPhase(
+function theCompaniesEachHeroLeadsAfterAPhase(
   report: TheReportAsTheFormsForecastsReadIt,
   orders: TheOrdersAsTheFormsForecastsReadThem,
+  characters: readonly AHeroAsTheFormsForecastsReadHim[],
   armies: ReadonlyMap<AHeroAsTheFormsForecastsReadHim, ACompanyAsTheFormCarriesIt[]>,
+  garrisons: ReadonlyMap<unknown, readonly ACompanyAsTheFormCarriesIt[]>,
+  added: ReadonlyMap<unknown, readonly WhatAHeroAddsToAGarrison[]>,
+  prevPh: number,
+  goBack: Map<unknown, ACompanyAsTheFormCarriesIt[]>,
+): Map<AHeroAsTheFormsForecastsReadHim, ACompanyAsTheFormCarriesIt[]> {
+  const columns = new Map<AHeroAsTheFormsForecastsReadHim, ACompanyAsTheFormCarriesIt[]>();
+  characters.forEach((x) => {
+    columns.set(x, (armies.get(x) ?? []).slice());
+  });
+  const theArmyOrders: readonly unknown[] = ['Recruit Armies', 'Pick Up Army', 'Leave/Transfer Army', 'Disband Army'];
+  const givesAnArmyOrder = (x: AHeroAsTheFormsForecastsReadHim) =>
+    theArmyOrders.includes(theFieldOrNoWords(theOrderField(orders, 'action', x.id, prevPh)?.value));
+  if (!characters.some(givesAnArmyOrder)) return columns;
+  theHeroesInTheOrderTheTurnHasThemActInAPhase(report, orders, characters, prevPh).forEach((x) => {
+    theCompaniesAHeroMovesAsHeActs(report, orders, columns, garrisons, added, x, prevPh, goBack);
+  });
+  return columns;
+}
+// What the order of the hero `char` in the phase `prevPh` does to the columns (`columns`, each as the heroes who acted
+// before him have left it): a Recruit musters into his column or the comrade's it names, a Leave/Transfer or a Disband
+// takes from his, a hand-over gives the comrade what he takes of it (the rest stays with the giver), a Pick Up takes from
+// the garrison.
+function theCompaniesAHeroMovesAsHeActs(
+  report: TheReportAsTheFormsForecastsReadIt,
+  orders: TheOrdersAsTheFormsForecastsReadThem,
+  columns: Map<AHeroAsTheFormsForecastsReadHim, ACompanyAsTheFormCarriesIt[]>,
   garrisons: ReadonlyMap<unknown, readonly ACompanyAsTheFormCarriesIt[]>,
   added: ReadonlyMap<unknown, readonly WhatAHeroAddsToAGarrison[]>,
   char: AHeroAsTheFormsForecastsReadHim,
   prevPh: number,
   goBack: Map<unknown, ACompanyAsTheFormCarriesIt[]>,
-): ACompanyAsTheFormCarriesIt[] {
+): void {
   const charId = char.id;
-  let led = (armies.get(char) ?? []).slice();
+  const columnOf = (x: AHeroAsTheFormsForecastsReadHim) => theColumnTheReplayGivesHim(columns, x);
+  // (each column as he acts: a beast command's room is counted on it)
+  const asHeActs = (x: AHeroAsTheFormsForecastsReadHim) => columns.get(x);
   const prevAction = theFieldOrNoWords(theOrderField(orders, 'action', charId, prevPh)?.value);
   const prevTarget = theFieldOrNoWords(theOrderField(orders, 'target', charId, prevPh)?.value);
-  // armies gained FROM OTHER characters of yours earlier this turn — a Recruit mustered "to:<this
-  // id>" or a Leave/Transfer handed to this character — project in too.
-  (report.characters ?? []).forEach((o) => {
-    if (o.id === charId) return;
-    const oAct = theFieldOrNoWords(theOrderField(orders, 'action', o.id, prevPh)?.value);
-    const oTgt = theFieldOrNoWords(theOrderField(orders, 'target', o.id, prevPh)?.value);
-    if (oAct === 'Recruit Armies') {
-      // The engine hires MERCENARIES first and appends native recruits after, so the projection
-      // must use the same order or the Blood Offering S:/E: indices would point at the wrong
-      // units.
-      const toks = theWordsAFieldHolds(oTgt)
-        .split(',')
-        .map((t) => t.trim());
-      const musters = whereTheCompaniesARecruitRaisesMuster(
-        report,
-        orders,
-        o,
-        prevPh,
-        toks,
-        toks.find((t) => t.startsWith('to:')) ?? 'to:self',
-        (x) => armies.get(x),
-      );
-      if (musters.dest === char) musters.toTheColumn.forEach((u) => led.push(u));
-    } else if (oAct === 'Leave/Transfer Army') {
-      const oExtra = theFieldOrNoWords(theOrderField(orders, 'extra', o.id, prevPh)?.value);
-      if (String(oExtra) !== String(charId)) return;
-      const oArm = theCompaniesTheReplayGivesTheHeroOfId(report, armies, o.id);
-      const handed: ACompanyAsTheFormCarriesIt[] = [];
-      if (theWordsAFieldHolds(oTgt).split(',').includes('all')) oArm.forEach((a) => handed.push(a));
-      else
-        theWordsAFieldHolds(oTgt)
-          .split(',')
-          .filter(Boolean)
-          .forEach((val) => {
-            val = val.trim();
-            const a = oArm.find((x) => ((x.unitName ?? '') || x.type) === val);
-            if (a) handed.push(a);
-          });
-      whatAComradeTakesOfAHandOver(report, char, armies.get(char), handed).taken.forEach((a) => led.push(a));
-    }
-  });
   if (prevAction === 'Recruit Armies') {
+    // A Recruit mustered "to:<a comrade's id>" joins that comrade's column. The engine hires MERCENARIES first and
+    // appends native recruits after, so the projection must use the same order or the Blood Offering S:/E: indices
+    // would point at the wrong units.
+    const toks = theWordsAFieldHolds(prevTarget)
+      .split(',')
+      .map((t) => t.trim());
+    const toAComrade = whereTheCompaniesARecruitRaisesMuster(
+      report,
+      orders,
+      char,
+      prevPh,
+      toks,
+      toks.find((t) => t.startsWith('to:')) ?? 'to:self',
+      asHeActs,
+    );
+    if (toAComrade.dest !== char) {
+      const comrades = columns.get(toAComrade.dest);
+      if (comrades) toAComrade.toTheColumn.forEach((u) => comrades.push(u));
+    }
     const wrap = theRecruitBoxesOf(orders, charId, prevPh);
     if (wrap) {
       // the default muster destination is still THIS character, but recruits sent to the province
@@ -1304,11 +1313,13 @@ function theCompaniesAHeroLeadsAfterAPhase(
         prevPh,
         wrap.ticked.map((cb) => theFieldOrNoWords(cb.value)),
         destSel ? destSel.value : 'to:self',
-        (x) => armies.get(x),
+        asHeActs,
       );
+      const led = columnOf(char);
       if (musters.dest === char) musters.toTheColumn.forEach((u) => led.push(u));
     }
   } else if (prevAction === 'Pick Up Army') {
+    const led = columnOf(char);
     const ploc = whereAHeroStandsAfterTheOrdersBefore(report, orders, charId, prevPh);
     const pgarr = ploc ? theGarrisonAPickUpOfThePhaseSees(report, garrisons, added, ploc.id, charId) : []; // garrison as it stands at THAT phase
     // the places the turn takes, the last first, and the beasts past his beast command back to the garrison
@@ -1325,11 +1336,10 @@ function theCompaniesAHeroLeadsAfterAPhase(
     // (a company is taken up only where he stands: `left` holds none where `ploc` is none)
     if (left.length && ploc) goBack.set(ploc.id, [...(goBack.get(ploc.id) ?? []), ...left]);
   } else if (prevAction === 'Leave/Transfer Army' || prevAction === 'Disband Army') {
+    const led = columnOf(char);
     let removed: ACompanyAsTheFormCarriesIt[] = [];
-    if (prevTarget === 'all') {
-      removed = led;
-      led = [];
-    } else
+    if (prevTarget === 'all') removed = led.splice(0, led.length);
+    else
       theWordsAFieldHolds(prevTarget)
         .split(',')
         .filter(Boolean)
@@ -1338,16 +1348,20 @@ function theCompaniesAHeroLeadsAfterAPhase(
           const idx = led.findIndex((a) => ((a.unitName ?? '') || a.type) === val);
           if (idx >= 0) removed.push(...led.splice(idx, 1));
         });
-    // handed to a comrade: the beasts past his beast command stay with the giver, at the end of his column
+    // handed to a comrade: he takes what the turn gives him, and the beasts past his beast command stay with the giver,
+    // at the end of his column
     const extra = prevAction === 'Leave/Transfer Army' ? theOrderField(orders, 'extra', charId, prevPh)?.value : '';
     const recipient =
       extra !== '' && extra != null && inWords(extra) !== '-1'
         ? (report.characters ?? []).find((x) => String(x.id) === inWords(extra))
         : null;
-    if (recipient)
-      whatAComradeTakesOfAHandOver(report, recipient, armies.get(recipient), removed).left.forEach((a) => led.push(a));
+    const comrades = recipient ? columns.get(recipient) : undefined;
+    if (recipient && comrades) {
+      const { taken, left } = whatAComradeTakesOfAHandOver(report, recipient, comrades, removed);
+      taken.forEach((a) => comrades.push(a));
+      left.forEach((a) => led.push(a));
+    }
   }
-  return led;
 }
 // The companies the replay gives the first hero of the report with the id `charId` (none if no hero has it).
 function theCompaniesTheReplayGivesTheHeroOfId(

@@ -2084,8 +2084,9 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: TheForecasts): ASearc
  *  over or taken up past a leader's beast command, a band of garrison troops hired, companies taken up from the
  *  garrison last first, and risen dead handed to a comrade of a realm that is not Undead; since P1-11e20 an item handed
  *  to a comrade who marches in that phase, at once, and the items of a phase handed over in the turn's order of its
- *  heroes), and the one it is known to get wrong (question 42): the Philosopher's Stone used (the turn destroys it), and a chain of company hand-overs in one
- *  phase (the turn hands on what the comrade was handed; the form reads each column as the phase begins). */
+ *  heroes; since P1-11z1 a chain of company hand-overs in one phase, the comrade handing on what he was handed), and
+ *  the one it is known to get wrong (question 42): the Philosopher's Stone used (the turn destroys it; it waits on
+ *  KD-047). */
 export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'items handed to a comrade beside him',
   'an item sent by courier to a comrade elsewhere',
@@ -2105,6 +2106,8 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a chain of hand-overs in one phase',
   'items handed to one comrade by two heroes, the quicker first',
   'an item handed to a comrade beside him who marches away that season',
+  // (P1-11z1, R-129: each phase's companies handed over in the turn's order of its heroes)
+  'a chain of company hand-overs in one phase',
   // (P1-11e19, R-129: the companies a Recruit, a hand-over and a Pick Up move, by the turn's own rules)
   'a beast recruited past his beast command',
   'a band of garrison troops hired',
@@ -2123,11 +2126,11 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a band of beasts and a band hired with the garrison named, in a province of another realm',
   'a beast recruited by a Druid 1 hero leading a beast of the Wild Hunt and a summoned one',
   'a beast recruited under the banner of a comrade at his beast command',
+  // (P1-11z1, R-129: a beast command's room counted on the column as he acts, after the heroes before him)
+  'beasts handed to a Druid 1 comrade by two heroes, the second past his beast command',
+  'a beast handed to a Druid 1 comrade who recruits a beast that season',
 ] as const;
-export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
-  "the Philosopher's Stone used",
-  'a chain of company hand-overs in one phase',
-] as const;
+export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = ["the Philosopher's Stone used"] as const;
 export type AKindOfHolding =
   (typeof THE_HOLDINGS_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_HOLDINGS_THE_FORECAST_GETS_WRONG)[number];
 /** An order of a phase, as the page's fields hold it and the turn reads it: its action, its target and its extra (a
@@ -2512,7 +2515,7 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       },
     );
   }
-  // the one the forecast gets wrong (question 42)
+  // the one the forecast gets wrong (question 42: it waits on KD-047)
   {
     // (a company of the realm for it to raise a tier, so it is spent)
     const p = aProvince();
@@ -2527,6 +2530,8 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       },
     );
   }
+  // (P1-11z1: the companies' chain, which the forecast follows since, staged here so the cases after it keep their
+  // provinces and heroes)
   {
     // the first to hand over is the later hero, as in the items' chain
     const p = aProvince();
@@ -2713,6 +2718,40 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       p,
       { recruiter, comrade },
       { [id(recruiter)]: [recruit(`${beast}|1`, `to:${id(comrade)}`)] },
+    );
+  }
+  // (P1-11z1: the room his beast command leaves as he acts, the heroes before him having handed him a beast)
+  {
+    const p = aProvince();
+    const [first, second] = [at(p, { armies: [unit(beast)] }), at(p, { armies: [unit(otherBeast)] })];
+    const comrade = at(p, { skills: { druid: 1 } });
+    stage(
+      'beasts handed to a Druid 1 comrade by two heroes, the second past his beast command',
+      'companies',
+      null,
+      { first, second, comrade },
+      {
+        [id(first)]: [leave('all', id(comrade))],
+        [id(second)]: [leave('all', id(comrade))],
+      },
+    );
+  }
+  {
+    // (the giver hands over first: a hero handing to a comrade beside him acts before that comrade; the comrade's column
+    // alone is read: the form musters the beast past his command into the garrison from his column as the season
+    // begins, KD-420)
+    const p = offering(aProvince(), otherBeast);
+    const giver = at(p, { armies: [unit(beast)] });
+    const comrade = at(p, { skills: { druid: 1 } });
+    stage(
+      'a beast handed to a Druid 1 comrade who recruits a beast that season',
+      'companies',
+      null,
+      { giver, comrade },
+      {
+        [id(giver)]: [leave('all', id(comrade))],
+        [id(comrade)]: [recruit(`${otherBeast}|1`)],
+      },
     );
   }
   return { world: quietly(() => savedAndReported(g)), holdings };

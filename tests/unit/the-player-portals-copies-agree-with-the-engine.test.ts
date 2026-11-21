@@ -116,8 +116,9 @@
 // P1-11e18, R-129), a beast past a leader's beast command (recruited, handed over, taken up), a band of garrison troops
 // hired, companies taken up (the turn's last first), risen dead handed to a comrade (to their graves: since P1-11e19);
 // and since P1-11e20 each season's items handed over in the turn's order of its heroes (a comrade marching in first, a
-// chain of hand-overs, the quicker hero first; a comrade beside him who marches away after); and pinned where it is not
-// (question 42): the Philosopher's Stone used, a chain of company hand-overs in one season.
+// chain of hand-overs, the quicker hero first; a comrade beside him who marches away after), and since P1-11z1 a chain
+// of company hand-overs in one season; and pinned where it is not (question 42): the Philosopher's Stone used (it
+// waits on KD-047).
 // P1-11d3 (plan P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
 // order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
 // realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`
