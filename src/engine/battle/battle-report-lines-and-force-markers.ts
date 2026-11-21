@@ -203,8 +203,8 @@ export function emitBattle(
   opts = opts || {};
   const parts = (participants || []).filter((x) => x != null);
   // Every line of the battle, told to those who fought in it (and to the realm whose battle it is), in its province
-  // and at its phase. A battle with no province would be read by the world, as buildReports reads a public line with
-  // none (no battle has none today).
+  // and at its phase. A battle with no province would be seen by the world (R-187: a sight in a battle names its
+  // province; no battle has none today).
   const provinceId = prov && prov.id;
   const fight: FightLine = {
     type: 'combat',

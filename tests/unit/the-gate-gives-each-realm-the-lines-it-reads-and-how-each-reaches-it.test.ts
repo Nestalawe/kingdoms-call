@@ -10,7 +10,7 @@
 // - a line that excepts the realm never reaches it, even told; a line with no grant reaches no realm;
 // - a line's sight, whatever its type (the maintainers' answers, B-18f): seen in a battle, only those who fought read it
 //   (told; R-185); seen there, whoever has eyes there (R-186); seen there or in a battle with no province, no realm by
-//   its sight, and the compiler refuses such an event (R-187); seen by the world in a province, which no answer covers,
+//   its sight, and the compiler refuses such an event (R-187); seen by the world in a province, which no answer covers (question 85),
 //   as the reports always read it (eyes there, but a combat line only those who fought);
 // - a spy's lingering sight: in a province it spied, from the next phase on, a rival hero's deed or a public line, not
 //   a line told with no deed, one that excepts it, one with no hero or one of its own hero; the first phase it spied;

@@ -17,7 +17,8 @@
 //   that excepts it. No game of the matrix writes a line that excepts a spying realm in its feed.
 // - Both feeds pass over a line by its kind, as the words pass hands it beside each stored line (P1-12d36): a force
 //   drawn up for battle, and in the Clairvoyance feed the roll lines too; any other kind is read, whatever its words
-//   open with. Every other line here is staged with no kind (null), as a line with no fact.
+//   open with. Every other line here is staged with no kind (null), as a line with no fact. Each line is staged with
+//   its whole audience beside it too, the one emit stores so (the gate reads it: B-18f).
 // - A force drawn up for battle carries its kind into the realm's chronicle, and no other line does, whatever its words
 //   open with and whatever lines the realm can't read come before it: the pages draw a force's rows by it alone.
 // - One realm's report (buildTurnReport, src/views/turn-report.ts, P1-10b30) on its view (playerView) of a world

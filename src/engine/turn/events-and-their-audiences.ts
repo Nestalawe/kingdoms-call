@@ -9,8 +9,11 @@
 // each-realm-reads-and-how-each-reaches-it.ts, B-18a):
 //   realms   these realms are told (a wage bill, a spell that hit them)
 //   actor    the realm whose deed it is
-//   seen     'world': every realm (a public line with no province); 'there': whoever has eyes in the province at that
-//            phase; 'battle': a battle's line, read by those who fought in it (the onlookers' summary waits for Toby)
+//   seen     'world': every realm (a line with no province; one with a province, which no game writes, as the gate
+//            says); 'there': whoever has eyes in the province at that phase, whatever the line's type (R-186);
+//            'battle': a battle's line, read by those who fought in it (told), whatever its type: seeing it there
+//            grants no one else (R-185; an onlooker's one-line summary, R-138, isn't built). A sight 'there' or
+//            'battle' names its province (R-187: the event's type refuses one with none)
 //   except   these realms never read it (the public half of logSplit: they read their own private half)
 // and a line about a hero a realm owns (hero, heroes) reaches that realm. An event with no grant is the GM's alone.
 //
