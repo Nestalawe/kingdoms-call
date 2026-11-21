@@ -17,7 +17,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
-import staging from '../../.github/scripts/staging.js';
+import * as staging from '../../.github/scripts/staging.ts';
 
 const { configFile, onStagingBody, replacedBody, MARKER, TEST_ACCOUNTS, signUpTestAccounts, ciVerdict, waitForCi } =
   staging;

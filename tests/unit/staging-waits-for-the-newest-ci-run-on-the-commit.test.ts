@@ -14,7 +14,7 @@
 // run's `ci` stops it. Level 1: pure functions of the script on made-up runs and jobs, nothing fetched (static can't:
 // it runs code). TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
-import staging from '../../.github/scripts/staging.js';
+import * as staging from '../../.github/scripts/staging.ts';
 
 interface Job {
   id: number;

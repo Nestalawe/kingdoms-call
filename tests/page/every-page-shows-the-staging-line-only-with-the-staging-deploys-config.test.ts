@@ -13,7 +13,7 @@
 // footer, after the page's version guard; no lower level loads a page's scripts together.
 import fs from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
-import staging from '../../.github/scripts/staging.js';
+import * as staging from '../../.github/scripts/staging.ts';
 import { bootJsdom, DB_VERSION, readPage, SITE, sitePath, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';

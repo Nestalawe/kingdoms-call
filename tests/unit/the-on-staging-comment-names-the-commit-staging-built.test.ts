@@ -16,7 +16,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import staging from '../../.github/scripts/staging.js';
+import * as staging from '../../.github/scripts/staging.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const HEAD = 'cc96062' + 'a'.repeat(33);
@@ -34,7 +34,7 @@ describe('the "On staging" comment', () => {
   test('the script refuses to comment without the commit built, or the last commit', () => {
     // Nothing reaches GitHub: the API's address is a closed local port.
     const run = (env: Record<string, string>) =>
-      spawnSync(process.execPath, [path.join(ROOT, '.github', 'scripts', 'staging.js'), 'comment', ''], {
+      spawnSync(process.execPath, [path.join(ROOT, '.github', 'scripts', 'staging.ts'), 'comment', ''], {
         encoding: 'utf8',
         env: {
           PATH: process.env['PATH'] ?? '',
