@@ -2,7 +2,7 @@
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
 This file is its part for the economy: the rules of a realm's gold (B-06, T7, the rules pulled out: its economy
-family, from B-06c). The family's other rows (not paying, the orders' prices, gold found and taken) are in
+family, from B-06c). The family's other rows (the orders' prices, gold found and taken) are in
 [the backlog](../backlog/README.md).
 
 ## What a rule of the economy is
@@ -70,6 +70,20 @@ the heroes' wages.
 - **A realm's company wages under its Host-Leader**: 1g less for each company he leads that draws a wage, the wages
   never below nothing (the caller asks who holds the title).
 
+Three stages of `turnEnd` for a realm that can't pay its wages, in the order Early Winter reaches them (B-06e,
+`the-economy/a-realm-that-cannot-pay-its-wages-disbands-its-companies-and-its-heroes-desert.ts`). The dice are Early
+Winter's, drawn as before and handed in: every company of the realm draws its die for the line, in the realm's order
+(the heroes' companies, then the garrisons), before any is passed over; a hero draws his only while the shortfall lasts.
+
+- **A company's rank in the line to disband unpaid**: the dead after the living, then the grades in content's order
+  (`KC_QUALITY_TIERS`), a company of no known grade as Average. The line compares the ranks rank by rank, the stage's
+  order deciding, then the dice (`theOrderOfTwoCompaniesInTheLineToDisbandUnpaid`). What never goes for want of pay
+  (a summons, the Wild Hunt, the dead of a Deathless Legion) is the caller's, as before.
+- **A company is spared disbanding unpaid**: a ship whose column is at open sea and still needs it to carry its troops
+  (the caller asks that only of a ship). Early Winter asks it again for each ship it spared each time a company goes.
+- **An unpaid hero deserts**: on a die above 0.4, each hero the best paid first (the caller's stable sort), while the
+  shortfall lasts. A shortfall left after the last hero is forgiven.
+
 A hero's wage in service is no stage: one formula, `theWageOfAHeroInService`
 (`src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts`), its numbers in content's
 `KC_A_HEROS_WAGE_IN_SERVICE`. It is what his allegiance was bargained at (1g for a hero never hired), plus his skill
@@ -82,8 +96,9 @@ world's founding and wandering heroes and the release read it. The hire desk quo
   entry, and an entry with no row, fail to compile.
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order, every entry at a stage, no two rows' name.
-- `tests/unit/the-economys-registry-a-provinces-tax-and-a-realms-gold-beyond-it.test.ts` and
-  `tests/unit/the-economys-registry-a-companys-wage-and-a-realms-company-wages.test.ts`: each runner against the
+- `tests/unit/the-economys-registry-a-provinces-tax-and-a-realms-gold-beyond-it.test.ts`,
+  `tests/unit/the-economys-registry-a-companys-wage-and-a-realms-company-wages.test.ts` and
+  `tests/unit/the-economys-registry-a-realm-that-cannot-pay-its-wages.test.ts`: each runner against the
   line it replaced, on every case; Early Winter's own cases (`tests/lib/early-winter-cases.ts`) and the report's
   (`tests/unit/realm-reports.test.ts`) hold the callers.
 - `tests/unit/a-heros-wage-in-service-is-one-formula-the-turn-the-worlds-making-and-the-release-read.test.ts`: the

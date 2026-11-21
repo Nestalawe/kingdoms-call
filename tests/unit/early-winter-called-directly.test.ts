@@ -5,7 +5,8 @@
 // stage alone, as the loop calls it after the last season's four stages; then, with the helpers it calls stood in (each
 // by a recorder, vi.spyOn on its module, for the test's length), what it hands them and when; then what the whole turn can't stage: a phantom or summoned
 // company in garrison (the season's start strips phantoms, the turn's end dissolves summons), a fallen hero's companies
-// (the season's end garrisons them), two ships kept, a garrison of a realm that isn't, the Charm's lasting marks.
+// (the season's end garrisons them), two ships kept, a garrison of a realm that isn't, the Charm's lasting marks, the
+// dice not paying draws (a die every company, then a hero's only while the shortfall lasts: B-06e).
 // Properties (fast-check): Orcish war-spoils halve a host's wages exactly (half the 2g-and-up wages, rounded down, and
 // 1 for each 1g company); a realm that can pay loses nothing, one that can't loses its companies in order (the living
 // before the dead, the rawest first, field before garrison within a grade) until the debt is met, and no more; a
@@ -17,8 +18,9 @@
 // through the stage alone; then, with its helpers stood in by recorders on their modules, a charmed hero's movement worked
 // out afresh under his own lord (not for one already home) and the stranded settled once, last, for the last season;
 // then what a whole turn can't stage: a fallen hero's companies, pay, tax items and Thief skill; phantom and summoned
-// companies in garrison; a garrison of a realm the world doesn't have; two ships kept (the plural line); an Orcish
-// company of a realm that isn't Orcish; the Charm's lasting marks. Properties (fast-check): Orcish war-spoils halve a
+// companies in garrison; a garrison of a realm the world doesn't have; two ships kept (the plural line); the dice not
+// paying draws (one every company of the realm, even one that can never go, then one a hero only while the shortfall
+// lasts) and a shortfall left forgiven; an Orcish company of a realm that isn't Orcish; the Charm's lasting marks. Properties (fast-check): Orcish war-spoils halve a
 // host's 2g-and-up wages exactly, 1 for each 1g company; a realm that can pay loses nothing, one that can't loses
 // companies in order until the debt is met, and no more; a garrison company rises at most one grade, never past Elite,
 // and only in a realm-held garrison. Planted faults: in the PR (P1-08k2)
@@ -325,6 +327,50 @@ describe('Early Winter: what only a direct call can stage', () => {
       const gone = accounts(outcome(b)).filter((t) => t.includes(' disbands — '));
       expect(gone).toEqual([disbands(unit(first, 'Men-at-Arms'), nameOf(b))]);
     }
+  });
+
+  test('not paying draws a die for every company of the realm, those that can never go too, then one a hero only while the shortfall lasts; a shortfall left is forgiven', () => {
+    /** A realm whose companies can never go for want of pay (two summoned, one in garrison, and the Wild Hunt) and
+     *  whose two heroes draw 5 and 3, with `purse` gold. */
+    const staged = (purse: number) => {
+      const b = fresh();
+      holdsOnly(b, 0, [b.X, 0]);
+      realm(b)['gold'] = purse;
+      king(b, [
+        unit('Summoned', 'Men-at-Arms', 'Green', 'Human', { _temporary: true }),
+        unit('Hunt', 'Great Bears', 'Green', 'Human', { _wildHuntUntilTurn: b.G.turn + 1 }),
+      ]);
+      b.X.garrisonArmies = [unit('Grove', 'Men-at-Arms', 'Green', 'Human', { _temporary: true })];
+      return { b, dear: paid(b, 5), cheap: paid(b, 3) };
+    };
+    /** The dice the stage draws on `b`, every one of them `die`. */
+    const theDiceDrawn = (b: Board, die: number) => {
+      setUp(b);
+      let drawn = 0;
+      const was = engine.kcRng.use(() => {
+        drawn += 1;
+        return die;
+      });
+      try {
+        winter(b);
+      } finally {
+        engine.kcRng.use(was);
+      }
+      return drawn;
+    };
+    // paid in full (8 owed), the stage draws its other dice; owing all 8, the line draws 3 more, one a company, and
+    // each hero draws his: the die 0.4 holds them both, and the 8 left unpaid are forgiven
+    const paidInFull = theDiceDrawn(staged(8).b, 0.4);
+    const owingAll = staged(0);
+    expect(theDiceDrawn(owingAll.b, 0.4) - paidInFull).toBe(3 + 2);
+    expect([owingAll.dear.player, owingAll.cheap.player, realm(owingAll.b)['gold']]).toEqual([0, 0, 0]);
+    const n = nameOf(owingAll.b);
+    expect(accounts(outcome(owingAll.b))).toEqual([has(n, 0), owes(n, 8, 0, 8), cannotPay(n, 8, 0)]);
+    // 4 short, the die 0.9: the best paid deserts and meets the debt, so the other draws no die and stays
+    const paidInFullOnTheHighDie = theDiceDrawn(staged(8).b, 0.9);
+    const fourShort = staged(4);
+    expect(theDiceDrawn(fourShort.b, 0.9) - paidInFullOnTheHighDie).toBe(3 + 1);
+    expect([fourShort.dear.player, fourShort.cheap.player]).toEqual([null, 0]);
   });
 
   test('a realm that owes and cannot pay is warned with what it had, and the warning goes before any company leaves', () => {
