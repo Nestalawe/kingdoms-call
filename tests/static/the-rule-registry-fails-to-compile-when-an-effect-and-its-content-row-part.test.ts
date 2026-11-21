@@ -28,6 +28,9 @@
 // same way, `satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>`, on the keys of its content rows (the
 // abilities: src/content/alignment-abilities-their-keys-names-numbers-and-words.ts), and the copies plant the same two
 // faults in it.
+// Since B-06c the economy's registry (src/engine/rules/the-registry-of-the-economys-rules.ts) ends the same way,
+// `satisfies Record<TheEconomysRuleSlug, EconomysRuleEntry>`, on the keys of its content rows (the rules of a realm's
+// gold: src/content/the-economys-rules-their-keys-names-and-numbers.ts), and the copies plant the same two faults in it.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/, src/engine/rules/ and (since P1-19m)
 // src/engine/rules-on-plain-values/ (the registries import nothing else: npm run lint:arch), so each compiles on its own
@@ -53,10 +56,12 @@ const PERKS_REGISTRY = 'src/engine/rules/the-registry-of-guardian-perks.ts';
 const PERKS_ROWS = 'src/content/guardian-perks-their-kinds-numbers-and-words.ts';
 const ABILITIES_REGISTRY = 'src/engine/rules/the-registry-of-alignment-abilities.ts';
 const ABILITIES_ROWS = 'src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+const ECONOMY_REGISTRY = 'src/engine/rules/the-registry-of-the-economys-rules.ts';
+const ECONOMY_ROWS = 'src/content/the-economys-rules-their-keys-names-and-numbers.ts';
 /** The files a copy holds, whose errors it reads: the content and the registry's folder (since P1-19j, the rows of a
  *  unit no longer raised, which the content's rows read; since P1-19m, the items' rows; since P1-19u, the spells';
  *  since P1-19aa, the discoveries' kinds; since P1-19ai, the guardian perks' kinds; since P1-19at1, the alignment
- *  abilities). */
+ *  abilities; since B-06c, the economy's rules). */
 const COPIED = [
   'src/content/kingdoms-call-data.ts',
   'src/content/the-abilities-of-a-unit-no-longer-raised.ts',
@@ -66,6 +71,7 @@ const COPIED = [
   DISCOVERIES_ROWS,
   PERKS_ROWS,
   ABILITIES_ROWS,
+  ECONOMY_ROWS,
   ...filesUnder(path.join(ROOT, 'src', 'engine', 'rules')).map((f) => `src/engine/rules/${f}`),
 ];
 /** And, since P1-19m, the rules on plain values, which the items' effects read (they import only themselves and the
@@ -102,6 +108,13 @@ const SIEGECRAFT_ENTRY =
 const THORNS_ENTRY = '  thorns: {},\n';
 const NEUTRAL_TRADE_ENTRY = `  'neutral-trade': {
     turnEnd: { "a realm's alignment adds to its tax": A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX['neutral-trade'] },
+  },
+`;
+const THE_THIEF_NETWORK_ENTRY = `  'the-thief-network': {
+    turnEnd: {
+      "a realm's gold beyond its tax from a hero's mastery":
+        A_REALMS_GOLD_BEYOND_ITS_TAX_FROM_A_HEROS_MASTERY['the-thief-network'],
+    },
   },
 `;
 const UNDEAD_BONUS_ENTRY =
@@ -208,6 +221,20 @@ const PLANTS: Record<string, Record<string, string>> = {
       NEUTRAL_TRADE_ENTRY + "  'planted-ability': {},\n",
     ),
   },
+  "an economy's rule's row with no entry": {
+    [ECONOMY_ROWS]: replacedOnce(
+      read(ECONOMY_ROWS),
+      '} as const satisfies Readonly<Record<string, ARuleOfTheEconomy>>;',
+      "  'planted-rule': { name: 'Planted Rule', theNumbers: {} },\n} as const satisfies Readonly<Record<string, ARuleOfTheEconomy>>;",
+    ),
+  },
+  "an economy's rule's entry with no row": {
+    [ECONOMY_REGISTRY]: replacedOnce(
+      read(ECONOMY_REGISTRY),
+      THE_THIEF_NETWORK_ENTRY,
+      THE_THIEF_NETWORK_ENTRY + "  'planted-rule': {},\n",
+    ),
+  },
 };
 
 /** The slug a compiler message is about: the key a `satisfies` found missing, or the key it doesn't know; else, for a
@@ -244,6 +271,7 @@ function errorsIn(copies: Record<string, Record<string, string>>): Record<string
       path.join(dirOf(name), DISCOVERIES_REGISTRY),
       path.join(dirOf(name), PERKS_REGISTRY),
       path.join(dirOf(name), ABILITIES_REGISTRY),
+      path.join(dirOf(name), ECONOMY_REGISTRY),
     ]),
     config.options,
   );
@@ -279,6 +307,7 @@ test(
     const atTheDiscoveries = (declaration: string) => `${path.basename(DISCOVERIES_REGISTRY)}, ${declaration}`;
     const atThePerks = (declaration: string) => `${path.basename(PERKS_REGISTRY)}, ${declaration}`;
     const atTheAbilities = (declaration: string) => `${path.basename(ABILITIES_REGISTRY)}, ${declaration}`;
+    const atTheEconomy = (declaration: string) => `${path.basename(ECONOMY_REGISTRY)}, ${declaration}`;
     expect(errorsIn(PLANTS)).toEqual({
       'as they are': [],
       'a content row with no entry': [
@@ -326,6 +355,13 @@ test(
       ],
       "an alignment ability's entry with no row": [
         `TS2353 in ${atTheAbilities('THE_REGISTRY_OF_ALIGNMENT_ABILITIES')}: planted-ability`,
+      ],
+      "an economy's rule's row with no entry": [
+        `TS1360 in ${atTheEconomy('THE_REGISTRY_OF_THE_ECONOMYS_RULES')}: planted-rule`,
+        `TS2741 in ${atTheEconomy('ENTRIES')}: planted-rule`,
+      ],
+      "an economy's rule's entry with no row": [
+        `TS2353 in ${atTheEconomy('THE_REGISTRY_OF_THE_ECONOMYS_RULES')}: planted-rule`,
       ],
     });
   },

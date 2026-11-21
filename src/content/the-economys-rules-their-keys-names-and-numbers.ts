@@ -1,0 +1,47 @@
+// The economy's rules (B-06, T7, the rules pulled out: its economy family, from B-06c): one row per rule of a realm's
+// gold, keyed by its slug, giving its name as the books write it and the numbers the turn reads for it. The economy's
+// registry (src/engine/rules/the-registry-of-the-economys-rules.ts) has one entry for each row and no other: a row with
+// no entry, or an entry with no row, fails to compile. A row holds only what the turn reads: who holds a title, a
+// mastery or a Wonder is the caller's to ask, as before. How to add one:
+// docs/architecture/the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md.
+
+/** A row: a rule's name, and the numbers the turn reads for it, by what each is. */
+export interface ARuleOfTheEconomy {
+  readonly name: string;
+  readonly theNumbers: Readonly<Record<string, number>>;
+}
+
+/** The economy's rules the registry holds, by slug, in the order of their stages. */
+export const THE_ECONOMYS_RULES = {
+  // ── A province's tax this turn: the marks this turn's spells and spies leave (the report's forecast leaves them out) ──
+  // an Earthquake cast on the province this turn: it yields nothing this turn
+  'an-earthquake-wrecks-a-provinces-tax-this-turn': { name: 'Earthquake', theNumbers: {} },
+  // a Spy's Sabotage on the province this turn: it yields nothing this turn
+  'sabotage-wrecks-a-provinces-tax-this-turn': { name: 'Sabotage', theNumbers: {} },
+  // Bless Province: the province yields its blessing's own measure this turn (×1.6, or ×2 from a Divine king, as the
+  // cast recorded it), rounded; a blessing that recorded none yields the spell's ×1.6
+  'bless-province-raises-a-provinces-tax-this-turn': {
+    name: 'Bless Province',
+    theNumbers: { theYieldOfABlessThatRecordedNone: 1.6 },
+  },
+  // ── A province's tax while a mark lasts ──
+  // Evil's Enslave: the province's resentment costs a gold of its tax while it lasts, never below nothing
+  'enslave-cuts-a-provinces-tax-while-it-resents': { name: 'Enslave', theNumbers: { theGoldItCuts: 1 } },
+  // ── A province's tax from the realm's Wonder ──
+  // Good's Grand Design: every province the realm holds that keeps a garrison yields more
+  'the-free-city-charter-adds-to-a-garrisoned-provinces-tax': {
+    name: 'Free City Charter',
+    theNumbers: { theGoldItAdds: 2 },
+  },
+  // ── A realm's gold beyond its tax, from a hero's minor title (the holders worked out at the turn's start) ──
+  'the-cutpurses-gold': { name: 'The Cutpurse', theNumbers: { theGold: 2 } },
+  'the-champion-of-the-peoples-gold': { name: 'Champion of the People', theNumbers: { theGold: 2 } },
+  // a gold for every so many provinces the realm holds, rounded down
+  'the-castellans-gold': { name: 'The Castellan', theNumbers: { theProvincesForEachGold: 5 } },
+  // ── A realm's gold beyond its tax, from a hero's mastery ──
+  // the Thief's sixth mastery: a personal stipend each turn
+  'the-thief-network': { name: 'Thief network', theNumbers: { theGold: 5 } },
+} as const satisfies Readonly<Record<string, ARuleOfTheEconomy>>;
+
+/** A rule of the economy, by its slug. */
+export type TheEconomysRuleSlug = keyof typeof THE_ECONOMYS_RULES;

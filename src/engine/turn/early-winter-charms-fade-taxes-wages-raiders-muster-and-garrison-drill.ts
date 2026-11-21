@@ -49,6 +49,14 @@ import {
   whatARealmsDiscoveriesEarnInInterest,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { theTaxOfAProvinceOnConsecratedGround } from '../rules/the-registry-of-alignment-abilities.ts';
+import {
+  theGoldAHerosMasteriesAddBeyondTheTax,
+  theGoldAHerosMinorTitlesAddBeyondTheTax,
+  theTaxOfAProvinceFromTheRealmsWonder,
+  theTaxOfAProvinceThisTurn,
+  theTaxOfAProvinceWhileAMarkLasts,
+  type AMinorTitlesGoldBeyondTheTax,
+} from '../rules/the-registry-of-the-economys-rules.ts';
 import type { TurnContext } from './context.ts';
 import type { AGarrisonCompanyDrilledAGrade, ATitlesPerkOfGold } from './the-facts-early-winters-lines-record.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
@@ -93,6 +101,13 @@ type AHeroAsEarlyWinterReadsHisArmies = Omit<Character, 'armies'> & {
 type AProvinceAsEarlyWinterReadsItsGarrison = Omit<ProvinceInABattle, 'garrisonArmies'> & {
   garrisonArmies?: ArmyInABattle[] | null;
 };
+
+/** The perk each minor title's gold is noted by on the tax line, from the gold it gave. */
+const THE_PERK_EACH_MINOR_TITLES_GOLD_IS_NOTED_BY = {
+  'the-cutpurses-gold': () => ({ kind: "the Cutpurse's two gold" }),
+  'the-champion-of-the-peoples-gold': () => ({ kind: "the Champion of the People's two gold" }),
+  'the-castellans-gold': (gold) => ({ kind: "the Castellan's gold for every five provinces", gold }),
+} satisfies Record<AMinorTitlesGoldBeyondTheTax, (gold: number) => ATitlesPerkOfGold>;
 
 export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext: TurnContext) {
   const { G }: { readonly G: TheStateAsEarlyWinterReadsIt } = turnContext;
@@ -166,22 +181,31 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       const pv: AProvinceAsEarlyWinterReadsItsGarrison | undefined = G.world.provinces[id];
       if (!pv) return s;
       let t = pv.tax || 0;
-      if (pv._earthquakeNoTax === G.turn) t = 0; // Earthquake: no revenue this turn
-      if (pv._sabotagedForTurn === G.turn) t = 0; // SPY L7 Sabotage: wrecked province yields no tax this turn
-      if (pv._blessedTurn === G.turn) t = Math.round(t * (Number(pv._blessedMult) || 1.6)); // Bless Province: +60% (or +100% from a Divine king)
+      // this turn's marks: an Earthquake's or a SPY L7 Sabotage's nothing, Bless Province's +60% (or +100% from a
+      // Divine king) (the economy's registry's since B-06c: "turnEnd: a province's tax this turn")
+      t = theTaxOfAProvinceThisTurn({ theTax: t, theTurn: G.turn, theProvince: pv });
       if (isConsecrated(p, pv.id)) {
         const _cb = t;
         t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
         _consecBonus += t - _cb;
       } // DIVINE — Consecrate: hallowed ground prospers (+50%)
-      if (theEnslavedProvinceStillPaysLess(pv, G.turn)) t = Math.max(0, t - 1); // EVIL — Enslave: resentment (−1 tax while it lasts)
+      // EVIL — Enslave: resentment (−1 tax while it lasts) (the economy's registry's since B-06c: "turnEnd: a province's
+      // tax while a mark lasts")
+      t = theTaxOfAProvinceWhileAMarkLasts({
+        theTax: t,
+        itStillResentsItsEnslavement: theEnslavedProvinceStillPaysLess(pv, G.turn),
+      });
       if (pv._earthquakeTax) t = Math.max(0, t - (pv._earthquakeTax || 0));
       // every province-tax discovery (sd11 / sd15 / sd18 and the heritage & creed ones), capped
       // per discovery — see discTaxAdd. Keep in step with buildTurnReport.
       t += discTaxAdd(p, pv, G, pi, _taxAcc, _taxCap);
       // GRAND DESIGN — Good (Free City Charter): +2 tax on every province you hold with a
-      // garrison.
-      if (gdActive(turnContext, pi, 'Good') && (pv.garrisonArmies ?? []).length > 0) t += 2;
+      // garrison. (the economy's registry's since B-06c: "turnEnd: a province's tax from the realm's Wonder")
+      t = theTaxOfAProvinceFromTheRealmsWonder({
+        theTax: t,
+        itKeepsAGarrison: (pv.garrisonArmies ?? []).length > 0,
+        theFreeCityCharterStands: () => gdActive(turnContext, pi, 'Good'),
+      });
       return s + t;
     }, 0);
     const pChars = (G.characters ?? []).filter((c) => c.player === p.id && c.alive);
@@ -215,27 +239,27 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // per 5 provinces.
     // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
     // (each perk that adds gold is noted on the tax line: its fact holds them, in the order the heroes hold them)
+    // (how much each gives: the economy's registry's since B-06c, "turnEnd: a realm's gold beyond its tax from a hero's
+    // minor title"; whether he holds it, as before)
     let titlePerkGold = 0;
     const titlePerks: ATitlesPerkOfGold[] = [];
     pChars.forEach((pc) => {
-      if (charMinor(turnContext, pc, 'cutpurse')) {
-        titlePerkGold += 2;
-        titlePerks.push({ kind: "the Cutpurse's two gold" });
-      }
-      if (charMinor(turnContext, pc, 'champion')) {
-        titlePerkGold += 2;
-        titlePerks.push({ kind: "the Champion of the People's two gold" });
-      }
-      if (charMinor(turnContext, pc, 'castellan')) {
-        const cg = Math.floor(provincesOrNone().filter((pv) => pv.owner === pi).length / 5);
-        if (cg > 0) {
-          titlePerkGold += cg;
-          titlePerks.push({ kind: "the Castellan's gold for every five provinces", gold: cg });
-        }
-      }
+      theGoldAHerosMinorTitlesAddBeyondTheTax({
+        heHoldsTheCutpurse: charMinor(turnContext, pc, 'cutpurse'),
+        heHoldsTheChampionOfThePeople: charMinor(turnContext, pc, 'champion'),
+        heHoldsTheCastellan: charMinor(turnContext, pc, 'castellan'),
+        theProvincesHisRealmHolds: () => provincesOrNone().filter((pv) => pv.owner === pi).length,
+      }).forEach(([theTitlesGold, theGold]) => {
+        titlePerkGold += theGold;
+        titlePerks.push(THE_PERK_EACH_MINOR_TITLES_GOLD_IS_NOTED_BY[theTitlesGold](theGold));
+      });
     });
-    // THIEF L6: +5g income per Thief-6 character. Pay it here.
-    const thiefStipend = pChars.reduce((sm, ch) => sm + (perkTier(ch, 'thief') > 0 ? 5 : 0), 0);
+    // THIEF L6: +5g income per Thief-6 character. Pay it here. (the economy's registry's since B-06c: "turnEnd: a
+    // realm's gold beyond its tax from a hero's mastery")
+    const thiefStipend = pChars.reduce(
+      (sm, ch) => sm + theGoldAHerosMasteriesAddBeyondTheTax({ heHoldsTheThiefNetwork: perkTier(ch, 'thief') > 0 }),
+      0,
+    );
     p.gold =
       (p.gold || 0) +
       income +

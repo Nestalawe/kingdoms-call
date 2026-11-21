@@ -53,6 +53,10 @@
 // Since P1-19ax2 the graves on Undead land (0.05, else 0.1), an Undead hero as undead in personal combat, and the
 // shared readers of war without warning, a broken alliance, the doctrine and the risen dead's hand-over, as the
 // engine's and the page's checks gave them.
+// Since B-06c the economy's registry (src/engine/rules/the-registry-of-the-economys-rules.ts) is held to the same:
+// each effect once in its stage's order (THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY), each order naming only entries with an
+// effect there, each content row with its entry and each entry with its row, no two rows' name, and every entry at a
+// stage (its runners' values: tests/unit/the-economys-registry-a-provinces-tax-and-a-realms-gold-beyond-it.test.ts).
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -105,6 +109,11 @@ import {
   ALIGNMENT_ABILITIES,
   THE_ALIGNMENT_ORDERS,
 } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { THE_ECONOMYS_RULES } from '../../src/content/the-economys-rules-their-keys-names-and-numbers.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY,
+  THE_REGISTRY_OF_THE_ECONOMYS_RULES,
+} from '../../src/engine/rules/the-registry-of-the-economys-rules.ts';
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES,
   theCheckAnAlignmentOrderRefusesAHeroOn,
@@ -1059,4 +1068,39 @@ test('the runner of "who may give an alignment order" refuses as each resolver\'
           `${slug}, ${String(theAlignmentOfHisRealm)}, king ${String(isHeTheKing)}`,
         ).toBe(theOldRefusal);
       }
+});
+
+const ECONOMY_ENTRIES: Entries = THE_REGISTRY_OF_THE_ECONOMYS_RULES;
+const ECONOMY_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY;
+const ECONOMY_ROWS: Readonly<Record<string, { readonly name: string }>> = THE_ECONOMYS_RULES;
+const ECONOMY = (entries: Entries, orders: Orders, rows: Readonly<Record<string, { readonly name: string }>>) =>
+  whatTheRegistryBreaks(entries, orders, rows, () => []);
+
+test("the economy's registry holds each effect once, in the order of its stage, each entry at a stage, and each content row with its entry", () => {
+  expect(ECONOMY(ECONOMY_ENTRIES, ECONOMY_ORDERS, ECONOMY_ROWS)).toEqual([]);
+  const ordered = Object.values(ECONOMY_ORDERS).flatMap((stages) => Object.values(stages).flat());
+  expect([...ordered].sort()).toEqual(Object.keys(ECONOMY_ENTRIES).sort());
+});
+
+test("planted in the economy's registry, an entry left out of its order, one named twice, a row with no entry and two rows' name, are found", () => {
+  const orders: Orders = {
+    ...ECONOMY_ORDERS,
+    turnEnd: {
+      ...ECONOMY_ORDERS['turnEnd'],
+      "a province's tax this turn": [
+        'an-earthquake-wrecks-a-provinces-tax-this-turn',
+        'an-earthquake-wrecks-a-provinces-tax-this-turn',
+      ],
+      "a realm's gold beyond its tax from a hero's mastery": [],
+    },
+  };
+  const rows = { ...ECONOMY_ROWS, 'a-planted-rule': { name: 'Enslave' } };
+  expect(ECONOMY(ECONOMY_ENTRIES, orders, rows)).toEqual([
+    "an-earthquake-wrecks-a-provinces-tax-this-turn is in the order of turnEnd: a province's tax this turn 2 times",
+    "sabotage-wrecks-a-provinces-tax-this-turn is in the order of turnEnd: a province's tax this turn 0 times",
+    "bless-province-raises-a-provinces-tax-this-turn is in the order of turnEnd: a province's tax this turn 0 times",
+    "the-thief-network is in the order of turnEnd: a realm's gold beyond its tax from a hero's mastery 0 times",
+    'a-planted-rule and enslave-cuts-a-provinces-tax-while-it-resents share the name Enslave',
+    'a-planted-rule has a content row and no entry',
+  ]);
 });

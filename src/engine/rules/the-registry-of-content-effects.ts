@@ -1657,6 +1657,57 @@ export interface TheTaxOfAProvinceOnConsecratedGround {
   readonly theTax: number;
 }
 
+/** A province's tax so far and the marks this turn's spells and spies leave on it, as Early Winter's collection hands
+ *  them (the economy's registry, B-06c: the report's forecast leaves this turn's marks out, as it always has). */
+export interface AProvincesTaxAndItsMarksOfThisTurn {
+  readonly theTax: number;
+  /** The turn being collected. */
+  readonly theTurn: number;
+  /** The province's own marks: the turn an Earthquake or a Sabotage wrecked it, the turn it was blessed and the
+   *  blessing's own measure (none: the rule's). */
+  readonly theProvince: {
+    readonly _earthquakeNoTax?: number | undefined;
+    readonly _sabotagedForTurn?: number | undefined;
+    readonly _blessedTurn?: number | undefined;
+    readonly _blessedMult?: number | undefined;
+  };
+}
+
+/** A province's tax so far (after its consecrated ground), and whether a mark that lasts lies on it, as Early Winter's
+ *  collection and the report's forecast hand them (the economy's registry, B-06c). */
+export interface AProvincesTaxUnderAMarkThatLasts {
+  readonly theTax: number;
+  /** Whether it was enslaved and still resents it (theEnslavedProvinceStillPaysLess). */
+  readonly itStillResentsItsEnslavement: boolean;
+}
+
+/** A province's tax so far (after the discoveries'), whether it keeps a garrison, and whether the realm's Wonder that
+ *  adds to it stands (asked only when an effect needs it), as Early Winter's collection and the report's forecast hand
+ *  them (the economy's registry, B-06c). */
+export interface AProvincesTaxAndTheRealmsWonder {
+  readonly theTax: number;
+  readonly itKeepsAGarrison: boolean;
+  /** Whether the realm's Free City Charter (Good's Grand Design) stands. */
+  readonly theFreeCityCharterStands: () => boolean;
+}
+
+/** A hero of the realm, as the gold his minor titles add beyond the tax reads him: the titles he holds (the caller
+ *  asks, as before) and the provinces his realm holds (asked only when an effect needs it), as Early Winter's
+ *  collection and the report's forecast hand them (the economy's registry, B-06c). */
+export interface AHeroAsTheGoldOfHisMinorTitlesReadsHim {
+  readonly heHoldsTheCutpurse: boolean;
+  readonly heHoldsTheChampionOfThePeople: boolean;
+  readonly heHoldsTheCastellan: boolean;
+  readonly theProvincesHisRealmHolds: () => number;
+}
+
+/** A hero of the realm, as the gold his masteries add beyond the tax reads him, as Early Winter's collection and the
+ *  report's forecast hand it (the economy's registry, B-06c). */
+export interface AHeroAsTheGoldOfHisMasteriesReadsHim {
+  /** Whether he holds the Thief's sixth mastery (perkTier). */
+  readonly heHoldsTheThiefNetwork: boolean;
+}
+
 /** The provinces' tax income a realm's alignment adds to, as Early Winter's collection and the report's forecast hand
  *  it (after the provinces' own tax, the discoveries' and the Wonder's). */
 export interface TheIncomeARealmsAlignmentAddsTo {
@@ -2082,6 +2133,29 @@ export interface TheStagesOfEachHookPoint {
      *  the abilities its alignment holds, in the stage's order (neutralTradeGold, which Early Winter's collection and the
      *  report's forecast ask: the alignment abilities' registry, plan P1-19at1). */
     readonly "a realm's alignment adds to its tax": (facts: TheIncomeARealmsAlignmentAddsTo) => number;
+    /** A province's tax this turn, from its own tax, after this turn's marks (an Earthquake's or a Sabotage's nothing,
+     *  a Bless's yield); the runner hands each effect, in the stage's order, the tax the one before gave (Early
+     *  Winter's collection, first of a province's tax: the economy's registry, B-06c). */
+    readonly "a province's tax this turn": (facts: AProvincesTaxAndItsMarksOfThisTurn) => number;
+    /** A province's tax while a mark lasts on it (Enslave's resentment), from its tax after its consecrated ground; the
+     *  runner hands each effect, in the stage's order, the tax the one before gave (Early Winter's collection and the
+     *  report's forecast, before the earthquake's lasting damage: the economy's registry, B-06c). */
+    readonly "a province's tax while a mark lasts": (facts: AProvincesTaxUnderAMarkThatLasts) => number;
+    /** A province's tax with what the realm's Wonder adds (the Free City Charter), from its tax after the discoveries';
+     *  the runner hands each effect, in the stage's order, the tax the one before gave (Early Winter's collection and
+     *  the report's forecast, last of a province's tax: the economy's registry, B-06c). */
+    readonly "a province's tax from the realm's Wonder": (facts: AProvincesTaxAndTheRealmsWonder) => number;
+    /** The gold a minor title a hero holds adds to his realm's beyond the tax, or nothing; the runner gives each the
+     *  stage's order gives gold, in it (Early Winter's collection, hero by hero, which notes each on the tax line, and
+     *  the report's forecast: the economy's registry, B-06c). */
+    readonly "a realm's gold beyond its tax from a hero's minor title": (
+      facts: AHeroAsTheGoldOfHisMinorTitlesReadsHim,
+    ) => number | null;
+    /** The gold a mastery a hero holds adds to his realm's beyond the tax (the Thief network); the runner adds them
+     *  (Early Winter's collection and the report's forecast, hero by hero: the economy's registry, B-06c). */
+    readonly "a realm's gold beyond its tax from a hero's mastery": (
+      facts: AHeroAsTheGoldOfHisMasteriesReadsHim,
+    ) => number;
     /** The tax of a province on a realm's consecrated ground, from its tax so far (after Bless, an earthquake and
      *  Sabotage; before Enslave and the discoveries); the runner hands each effect, in the stage's order, the tax the
      *  one before gave. The caller asks whether the realm's consecration list holds the province, as before (Early

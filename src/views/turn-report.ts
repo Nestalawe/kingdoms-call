@@ -86,6 +86,12 @@ import {
   whatARealmsAlignmentAddsToResearch,
 } from '../engine/rules/the-registry-of-alignment-abilities.ts';
 import {
+  theGoldAHerosMasteriesAddBeyondTheTax,
+  theGoldAHerosMinorTitlesAddBeyondTheTax,
+  theTaxOfAProvinceFromTheRealmsWonder,
+  theTaxOfAProvinceWhileAMarkLasts,
+} from '../engine/rules/the-registry-of-the-economys-rules.ts';
+import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
@@ -1031,11 +1037,14 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
       _consecG += t - _cb;
     }
-    if (theEnslavedProvinceStillPaysLess(pv, _nextTurn)) {
+    {
       const _e0 = t;
-      t = Math.max(0, t - 1);
+      t = theTaxOfAProvinceWhileAMarkLasts({
+        theTax: t,
+        itStillResentsItsEnslavement: theEnslavedProvinceStillPaysLess(pv, _nextTurn),
+      });
       _enslaveReduction += _e0 - t;
-    } // EVIL — Enslave resentment
+    } // EVIL — Enslave resentment (the collector's runner since B-06c: "turnEnd: a province's tax while a mark lasts")
     const _t0 = t;
     if (pv._earthquakeTax) t = Math.max(0, t - (pv._earthquakeTax || 0)); // lingering earthquake damage
     _eqReduction += _t0 - t; // gold lost to earthquakes (positive)
@@ -1046,10 +1055,16 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       t += Number(_dt); // (none for a missing province: `+ null` added nothing)
       _sdCreed += Number(_dt);
     }
-    if (view.books.wonderBlesses.Good && (pv.garrison ?? []).length > 0) {
-      t += 2;
-      _sdGrand += 2;
-    } // GRAND DESIGN — Good: +2 tax per garrisoned province (only while the Wonder's province is held)
+    {
+      const _w0 = t;
+      t = theTaxOfAProvinceFromTheRealmsWonder({
+        theTax: t,
+        itKeepsAGarrison: (pv.garrison ?? []).length > 0,
+        theFreeCityCharterStands: () => view.books.wonderBlesses.Good,
+      });
+      _sdGrand += t - _w0;
+    } // GRAND DESIGN — Good: +2 tax per garrisoned province (only while the Wonder's province is held) (the collector's
+    // runner since B-06c: "turnEnd: a province's tax from the realm's Wonder")
     return s + t;
   }, 0);
   const _pChars = view.ownHeroes.filter((c) => c.player === playerIndex && c.alive);
@@ -1102,17 +1117,29 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       const h = _min[key];
       return !!(h && _pChars.some((c) => c.id === h.charId));
     };
-    if (_charHasMinor('cutpurse')) cutpurseG = 2;
-    if (_charHasMinor('champion')) championG = 2;
-    if (_charHasMinor('castellan')) {
-      const _owned = view.books.provincesItHoldsByTheirRecord;
-      castellanG = Math.floor(_owned / 5);
-    }
+    // (how much each gives: the collector's runner since B-06c, "turnEnd: a realm's gold beyond its tax from a hero's
+    // minor title", handed the realm's heroes as one, since one hero holds a title; whether one holds it, as before)
+    const _titlesGold = new Map(
+      theGoldAHerosMinorTitlesAddBeyondTheTax({
+        heHoldsTheCutpurse: _charHasMinor('cutpurse'),
+        heHoldsTheChampionOfThePeople: _charHasMinor('champion'),
+        heHoldsTheCastellan: _charHasMinor('castellan'),
+        theProvincesHisRealmHolds: () => view.books.provincesItHoldsByTheirRecord,
+      }),
+    );
+    cutpurseG = _titlesGold.get('the-cutpurses-gold') ?? 0;
+    championG = _titlesGold.get('the-champion-of-the-peoples-gold') ?? 0;
+    castellanG = _titlesGold.get('the-castellans-gold') ?? 0;
     if (_charHasMinor('hostleader')) _hostLeaderChar = _pChars.find((c) => c.id === _min['hostleader']?.charId) ?? null; // wage forecast mirror
   } catch {}
   const titlePerkGold = cutpurseG + championG + castellanG;
   const baseTaxIncome = provTaxIncome; // province tax after persistent modifiers (before the flat bonuses)
-  const thiefStipend = _pChars.reduce((sm, ch) => sm + (perkTier(ch, 'thief') > 0 ? 5 : 0), 0); // THIEF L6: +5g income per Thief-6 character
+  // THIEF L6: +5g income per Thief-6 character (the collector's runner since B-06c: "turnEnd: a realm's gold beyond its
+  // tax from a hero's mastery")
+  const thiefStipend = _pChars.reduce(
+    (sm, ch) => sm + theGoldAHerosMasteriesAddBeyondTheTax({ heHoldsTheThiefNetwork: perkTier(ch, 'thief') > 0 }),
+    0,
+  );
   const taxIncome =
     provTaxIncome +
     taxBonus +
