@@ -14906,12 +14906,13 @@ export const KC_UNIT_TYPE = {
 // A table here keyed by unit type ends in `satisfies` on the part it covers, so that a unit left out of it, or a name
 // that is no unit type, fails to compile (docs/traps.md, "A new army unit is a dozen tables"):
 //   KC_UNIT_BASE_STR     every humanoid unit and every elemental (the primal units' strength is PRIMAL_ARMY_DEFS_P's)
+//   KC_EACH_UNIT_TYPES_PRICE_AND_WAGE   every humanoid unit (the primal units' cost is PRIMAL_ARMY_DEFS_P's)
 //   ARMY_UNIT_NAMES      every unit type PRIMAL_UNIT_NAMES doesn't name, and no other
 //   PRIMAL_UNIT_NAMES    primal units only
 //   PRIMAL_ARMY_DEFS_P, KC_CARRIER_BERTHS   unit types only (so KC_UNIT_TYPE must list every primal unit)
 // tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts compiles copies of this file, each with a
 // unit left out.
-// The engine's own tables keyed by unit type (UNIT_SHORT, ARMY_COST_MASTER, TERRAIN_MODS, ARMY_RACE_OF_TYPE) get theirs
+// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS, ARMY_RACE_OF_TYPE) get theirs
 // when their files lose their ts-nocheck line: a `satisfies` checks nothing in a file with it (plan P1-10, Decision 6).
 export type UnitType = keyof typeof KC_UNIT_TYPE;
 /** The wild's units, a Druid's or a monster's: PRIMAL_ARMY_DEFS_P's. */
@@ -14981,7 +14982,7 @@ export const KC_DRUID_LEVELS = {
 // primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place primal stats are written),
 // then the five summoned elementals. 2026-10-11 (Toby, the army roster): Free Lances 5→6, Gilded
 // Lances 6→7, Forest Wardens 5→4, Shadow Archers 6→7, Ironwood Crossbows 5→4, Warg Riders 5→6; the
-// costs moved with them in ARMY_COST_MASTER (GM portal).
+// costs moved with them in KC_EACH_UNIT_TYPES_PRICE_AND_WAGE (below).
 // tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds both to the decided table.
 export const KC_UNIT_BASE_STR = Object.assign(
   {
@@ -15026,6 +15027,57 @@ export const KC_UNIT_BASE_STR = Object.assign(
     'Darkness Elemental': 11,
   } satisfies Record<ElementalUnitType, number>,
 );
+// Each unit type's price, which is BOTH the price to raise a company of it and the wage it draws each turn it exists
+// (B-06b: one table, here; the engine reads it as ARMY_COST_MASTER, the same object). The humanoid units and fleets,
+// then every primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place a primal unit's cost is written),
+// in that order: the report and the GM page walk its keys. 2026-10-11 (Toby, the army roster): Forest Wardens 3→2,
+// Shadow Archers 3→4, Ironwood Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR).
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds both to the decided table.
+export const KC_EACH_UNIT_TYPES_PRICE_AND_WAGE = Object.assign(
+  {
+    // ── Human ──
+    'Shieldwall Levies': 2,
+    'Free Lances': 3,
+    'Yeoman Longbows': 2,
+    'Gilded Lances': 4,
+    'Human Garrison': 1,
+    'Noble Griffons': 4,
+    'Galleon Fleet': 3,
+    'Corsair Fleet': 3,
+    'Men-at-Arms': 3,
+    // ── Elven ──
+    'Elven Bowmen': 3,
+    'Forest Wardens': 2,
+    'Shadow Archers': 4,
+    'Elven Garrison': 1,
+    'Eagle Riders': 4,
+    'Elven Galleys': 3,
+    'Whale Cohort': 3,
+    'Stag Riders': 3,
+    // ── Dwarven ──
+    'Dwarven Guard': 3,
+    'Ironwood Crossbows': 2,
+    'Mountain Guns': 4,
+    'Dwarf Garrison': 1,
+    'Gnomish Gyrocopters': 3,
+    'Dwarf Ironclads': 4,
+    'Ironhoof Rams': 3,
+    // ── Orcish ──
+    'Warg Riders': 3,
+    'Orc Berserkers': 3,
+    'Goblin Horde': 2,
+    'Orc Garrison': 1,
+    'Wyvern Riders': 4,
+    'Orcish Longships': 3,
+    'Black Arrows': 2,
+  } satisfies Record<HumanoidUnitType, number>,
+  Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t, d]) => [t, d.cost])),
+);
+// The price of a company of a type the table above prices at nothing or not at all (the turn, the report, the ledger
+// and the bots charge it, by thePriceOfACompanyOfAType).
+export const KC_THE_PRICE_OF_A_COMPANY_THE_TABLE_PRICES_AT_NOTHING = 2;
+// A skeletal company's wage, whatever its type: a flat 1g (by theWageOfACompany).
+export const KC_THE_WAGE_OF_A_SKELETAL_COMPANY = 1;
 export const KC_UNIT_Q_MULT = { Green: 1, Average: 2, Veteran: 3, Crack: 4, Elite: 5 };
 export const KC_QUALITY_TIERS = ['Green', 'Average', 'Veteran', 'Crack', 'Elite'] as const;
 export const KC_QUALITY_UP = { Green: 'Average', Average: 'Veteran', Veteran: 'Crack', Crack: 'Elite', Elite: 'Elite' };

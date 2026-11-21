@@ -16,7 +16,8 @@
 // with the report's figure and without; each red on a fault planted in the line it reads (P1-11e42's PR; the march
 // before a recruit, P1-21o's mutation session); since P1-16b, which typed the file, the ledger's and the notes' fallbacks
 // on a figure the report leaves out, a hero's wage cut by his alignment, a seized enemy hero's mastery and a hire's wage
-// on a report of no creed, each red on its plant.
+// on a report of no creed, each red on its plant; since B-06b, a company the province doesn't offer at the report's
+// table's price, or the price rule's 2g where the table leaves it out (not the content's), red on its plant.
 import { afterEach, describe, expect, test } from 'vitest';
 import {
   ACTION_DISPLAY_ORDER,
@@ -188,6 +189,18 @@ describe('the treasury ledger, on the orders handed in', () => {
     );
     expect([L.cats.armies.g, L.cats.mercs.g, L.cats.mercs.n, L.cats.intel.g]).toEqual([2, 0, 1, 1]);
     expect([L.gold, L.tax, L.armyW, L.heroW]).toEqual([0, 0, 0, 0]);
+  });
+  test('a company the province doesn’t offer at the report’s price, or at 2g where its table leaves it out, though the content’s prices it (B-06b)', () => {
+    // Gilded Lances, content's 4g: the ledger reads the report's table, with the price rule's 2g for a type it leaves out
+    const priced = aReport();
+    Object.assign(priced.orderPrices.unitCost, { 'Gilded Lances': 5 });
+    const lances = ordersOf({ 1: [recruit('Gilded Lances')] });
+    expect(theTreasuryLedgerOnTheseOrders(priced, lances).cats.armies).toEqual({ g: 5, n: 1, wage: 5 });
+    expect(theTreasuryLedgerOnTheseOrders(aReport(), lances).cats.armies).toEqual({ g: 2, n: 1, wage: 2 });
+    // a report that gives the upkeep discoveries' cuts (none here): the wage from the same price
+    const withTheCuts = aReport();
+    Object.assign(withTheCuts.kingdom, { theUpkeepDiscoveriesCutsAndTheirRoom: [] });
+    expect(theTreasuryLedgerOnTheseOrders(withTheCuts, lances).cats.armies).toEqual({ g: 2, n: 1, wage: 2 });
   });
   test("a discovery's cut of a hero's wage is the one for the hero's alignment", () => {
     // (P1-16b: the cut read by his alignment's name)

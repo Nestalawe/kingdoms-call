@@ -45,6 +45,10 @@ import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-
 import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.ts';
 import { lairRumourKey } from '../engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
 import { dispFloor } from '../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
+import {
+  thePriceOfACompanyOfAType,
+  theWageOfACompany,
+} from '../engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.ts';
 import { MAGIC_L8_SCHOOLS, castChanceFor } from '../engine/chances-and-lair-grades.ts';
 import { MINOR_TITLES } from '../engine/titles/reckoning.ts';
@@ -334,7 +338,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       speed: (ARMY_SPEED_P[a.type] ?? 0) || 3,
       unitName: a.unitName,
       race: a.race || null,
-      cost: a._temporary || a._wildHuntUntilTurn != null ? 0 : a._isSkeletal ? 1 : (ARMY_COST_MASTER[a.type] ?? 0) || 2,
+      cost: a._temporary || a._wildHuntUntilTurn != null ? 0 : theWageOfACompany(a),
       skeletal: !!a._isSkeletal,
       temporary: !!a._temporary,
       wildHunt: a._wildHuntUntilTurn != null,
@@ -878,7 +882,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       // registry's since plan P1-19av1).
       cost: Math.max(
         1,
-        ((ARMY_COST_MASTER[String(merc.type)] ?? 0) || 2) -
+        thePriceOfACompanyOfAType(String(merc.type)) -
           theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(player.alignment) +
           whatARealmsDiscoveriesAddToAMercenaryBandsPrice(player, { theUnitsType: theTypeEveryBandHolds(merc.type) }),
       ), // + merc discoveries (the discoveries' registry's since plan P1-19ae: the rule the hire reads)
@@ -1123,7 +1127,6 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
   // and interest discoveries) is rolled into ONE total. Must satisfy
   // rawTaxBase + bonuses − reductions === taxIncome (asserted by the tax ledger test).
   const sageDiscG = _sdAgri + _sdMining + _sdAqueduct + _sdCreed + _sdRecords + interestBonus;
-  const ARMY_COST_TR = ARMY_COST_MASTER; // alias → master table at top of script
   const playerCharsForWages = view.ownHeroes.filter((c) => c.player === playerIndex && c.alive);
   const allArmiesForWages = playerCharsForWages.flatMap((c) => asItsGuardReadsIt(c.armies) ?? []);
   const garrisonArmiesForWages = view.books.unitsGarrisonedInTheProvincesItHolds;
@@ -1144,8 +1147,8 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
   let _discUpkeepR = 0; // `upkeep` discoveries (mirrors the collector)
   let armyWages = [...allArmiesForWages, ...garrisonArmiesForWages].reduce((s: number, a: AUnitAsTheReportReadsIt) => {
     if (aCompanyDrawsNoWage(a)) return s;
-    /* Wild Hunt beasts serve the old gods, not a paymaster */ if (a._isSkeletal) return s + 1;
-    /* skeletons are a flat 1g everywhere */ let w = (ARMY_COST_TR[a.type] ?? 0) || 2;
+    /* Wild Hunt beasts serve the old gods, not a paymaster */ if (a._isSkeletal) return s + theWageOfACompany(a);
+    /* skeletons are a flat 1g everywhere */ let w = thePriceOfACompanyOfAType(a.type);
     if (_druidHalfWageR.has(a)) w = theWageABeastPaysUnderADruid(w);
     {
       const _w0 = w;
@@ -1572,7 +1575,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
     orderPrices: (() => {
       const unitWage: Partial<Record<string, number>> = {};
       Object.keys(ARMY_COST_MASTER).forEach((t) => {
-        unitWage[t] = discUpkeepWage(player, { type: t }, (ARMY_COST_MASTER[t] ?? 0) || 2, new Map(), _taxCapR);
+        unitWage[t] = discUpkeepWage(player, { type: t }, thePriceOfACompanyOfAType(t), new Map(), _taxCapR);
       });
       return {
         unitWage,
@@ -2094,7 +2097,6 @@ function provinceOrderDataOf(view: PlayerView, availableHeroesByProv: ReturnType
   view.provinces
     .filter((p) => p.seen.owned || p.seen.visited || p.seen.nextToOwnedOrVisited || p.seen.heroThere)
     .forEach((p) => {
-      const ARMY_COST_OD = ARMY_COST_MASTER; // alias → master table at top of script
       const isOwned = p.seen.owned;
       const isVisited = p.seen.visited;
       const isAdjacent = p.seen.nextToOwnedOrVisited;
@@ -2128,7 +2130,7 @@ function provinceOrderDataOf(view: PlayerView, availableHeroesByProv: ReturnType
           .filter((at) => !(PRIMAL_SEA_NAMES.has(at) && p.terrain !== 'sea'))
           .map((at) => ({
             type: at,
-            cost: realmRecruitCost(view.me, at, (ARMY_COST_OD[at] ?? 0) || 2), // realm discounts shown in the preview
+            cost: realmRecruitCost(view.me, at, thePriceOfACompanyOfAType(at)), // realm discounts shown in the preview
             maxPerTurn: twoATurn(at) || isHome ? 2 : 1, // the same gate as getRecruitLimit (garrisons, fleets, Goblin Hordes; two of anything at the founder's capital)
           })),
         features: (() => {

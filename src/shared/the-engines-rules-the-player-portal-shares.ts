@@ -32,7 +32,8 @@
 // read as it is, since P1-16e: the map's guards on a province's place, which its type requires; the creeds that war
 // without warning, break an alliance into war and conquer by a doctrine, since P1-19ax2: the march's forecast, the
 // diplomacy card's button and the order form's doctrine; the alignments one realm a game may hold, since P1-19ay1: the
-// join form; a force's row's kind and its colour of six hex digits: the Chronicle draws a force's rows by them).
+// join form; a force's row's kind and its colour of six hex digits: the Chronicle draws a force's rows by them; the price
+// of a company of a type, since B-06b: the treasury ledger prices a company the report's table prices at nothing).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -133,6 +134,7 @@ export {
   aWageAfterEachCut,
   aWageUnderEachCeiling,
 } from '../engine/rules-on-plain-values/a-wage-after-each-cut-and-ceiling-a-realms-discoveries-make.ts';
+export { thePriceOfACompanyOfAType } from '../engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 export {
   doesAnAlignmentBreakAnAllianceIntoWar,
   doesAnAlignmentConquerByADoctrine,

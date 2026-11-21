@@ -3,7 +3,8 @@
 // parts are declared there). TypeScript compiles copies of the file, each with one fault planted, and must refuse
 // each in the tables named, naming the unit:
 // - a humanoid unit's base strength left out (KC_UNIT_BASE_STR), and an elemental's;
-// - a new unit type with nothing else written for it (its base strength and its names are missing);
+// - a humanoid unit's price left out (KC_EACH_UNIT_TYPES_PRICE_AND_WAGE, since B-06b);
+// - a new unit type with nothing else written for it (its base strength, its price and its names are missing);
 // - a unit's names left out (ARMY_UNIT_NAMES with PRIMAL_UNIT_NAMES name every unit type);
 // - a primal unit KC_UNIT_TYPE doesn't list (PRIMAL_ARMY_DEFS_P, ARMY_UNIT_NAMES and KC_CARRIER_BERTHS name unit
 //   types only).
@@ -37,6 +38,7 @@ const PLANTS: Record<string, string> = {
   'as it is': DATA,
   "Black Arrows' base strength left out": replacedOnce(DATA, "    'Black Arrows': 4,\n", ''),
   "the Darkness Elemental's base strength left out": replacedOnce(DATA, "    'Darkness Elemental': 11,\n", ''),
+  "Black Arrows' price left out": replacedOnce(DATA, "    'Black Arrows': 2,\n", ''),
   'a new unit type, Planted Pikemen, with nothing else written for it': replacedOnce(
     DATA,
     "  'Black Arrows': 'ranged',\n",
@@ -95,8 +97,10 @@ test(
       'as it is': [],
       "Black Arrows' base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Black Arrows'],
       "the Darkness Elemental's base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Darkness Elemental'],
+      "Black Arrows' price left out": ['TS1360 in KC_EACH_UNIT_TYPES_PRICE_AND_WAGE: Black Arrows'],
       'a new unit type, Planted Pikemen, with nothing else written for it': [
         'TS1360 in ARMY_UNIT_NAMES: Planted Pikemen',
+        'TS1360 in KC_EACH_UNIT_TYPES_PRICE_AND_WAGE: Planted Pikemen',
         'TS1360 in KC_UNIT_BASE_STR: Planted Pikemen',
       ],
       "Black Arrows' names left out": ['TS1360 in ARMY_UNIT_NAMES: Black Arrows'],

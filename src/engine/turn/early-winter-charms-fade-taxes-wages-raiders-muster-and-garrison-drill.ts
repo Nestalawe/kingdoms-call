@@ -1,5 +1,9 @@
 import { kcRng } from '../rng.ts';
-import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
+import { QUALITY_TIERS } from '../army-tables.ts';
+import {
+  thePriceOfACompanyOfAType,
+  theWageOfACompany,
+} from '../rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
 import { CARRIER_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
@@ -124,8 +128,6 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         });
     }
   });
-  const ARMY_COST = ARMY_COST_MASTER; // alias → master table at top of script
-  // Army cost lookup (matches ARMY_TYPES cost values in game.js)
 
   // ── SAGE DISCOVERIES ────
   // 40 discoveries organised by category. effect: {type,...params} — applied at turn resolution time
@@ -327,8 +329,8 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       // (A summons draws none either: both are aCompanyDrawsNoWage.)
       if (aCompanyDrawsNoWage(a)) return s;
-      if (a._isSkeletal) return s + 1;
-      let w = Number(ARMY_COST[a.type]) || 2;
+      if (a._isSkeletal) return s + theWageOfACompany(a);
+      let w = thePriceOfACompanyOfAType(a.type);
       if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
         const _w0 = w,
           _half = _w0 * 0.5;
@@ -491,7 +493,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
             continue; // still carrying
           _oc.armies.splice(_oc.armies.indexOf(_h), 1);
           _sparedHulls.splice(_i--, 1);
-          deficit -= _h._isSkeletal ? 1 : Number(ARMY_COST[_h.type]) || 2;
+          deficit -= theWageOfACompany(_h);
           emit(turnContext, {
             type: 'hire',
             fact: {
@@ -516,7 +518,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         if (army._isSkeletal && gdActive(turnContext, p.id, 'Undead')) return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
         // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons)
         // still free
-        const cost = army._isSkeletal ? 1 : Number(ARMY_COST[army.type]) || 2;
+        const cost = theWageOfACompany(army);
         if (cost === 0) return; // other free armies never disband for non-payment
         // 2026-09-23c (Toby): a hull that is carrying land troops at sea is protected — disbanding it
         // would strand the men aboard. Judged live, so a hull made spare by a unit already gone

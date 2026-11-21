@@ -2,6 +2,10 @@ import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.t
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import {
+  thePriceOfACompanyOfAType,
+  theWageOfACompany,
+} from '../rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 import { aRealmsDiscoveriesLetABeastFollowWithoutItsDruid } from '../rules/the-registry-of-discovery-effects.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
@@ -447,12 +451,7 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     const _wage = (x: Character) =>
       (asItsGuardReadsIt(x.armies) ?? []).reduce(
         (w, a: AUnitAsTheWagesReadIt | null | undefined) =>
-          w +
-          (!a || a._temporary || a._wildHuntUntilTurn != null
-            ? 0
-            : a._isSkeletal
-              ? 1
-              : (ARMY_COST_MASTER[a.type] ?? 0) || 2),
+          w + (!a || a._temporary || a._wildHuntUntilTurn != null ? 0 : theWageOfACompany(a)),
         0,
       );
     const full = L.upkeepCap;
@@ -689,7 +688,7 @@ export function botFieldRecruitTokensCore(
       if (done[t] || BOT_FLYING_TYPES.has(t) || !botLiftable(t) || BOT_SEA_ALL.has(t)) continue;
       if (foot >= flyers) break;
       if (!canAff(1)) break;
-      const cost = (ARMY_COST_MASTER[t] ?? 0) || 2;
+      const cost = thePriceOfACompanyOfAType(t);
       let q = 0;
       while (q < perTypeLimit && foot < flyers && canAff(cost)) {
         q++;
@@ -712,7 +711,7 @@ export function botFieldRecruitTokensCore(
       break;
     }
     if (adm && (!botLiftable(t) || berths <= 0)) continue;
-    const cost = (ARMY_COST_MASTER[t] ?? 0) || 2;
+    const cost = thePriceOfACompanyOfAType(t);
     let q = 0;
     while (q < perTypeLimit && canAff(cost) && (!adm || berths > 0)) {
       q++;

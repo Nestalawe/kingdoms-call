@@ -4,6 +4,7 @@ import {
   KC_RUMOUR_COST_BY_POWER,
   KC_SKILL_LABELS,
   KC_SKILLS,
+  KC_THE_WAGE_OF_A_SKELETAL_COMPANY,
 } from '../../content/kingdoms-call-data.ts';
 import {
   aCompanyIsABeastADruidHalves,
@@ -22,6 +23,7 @@ import {
   theLevelAHerosSkillCountsAt,
   theNameTheFormWritesOfTheAlignmentOrder,
   thePriceADruidPaysForABeast,
+  thePriceOfACompanyOfAType,
   theWageABeastPaysUnderADruid,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
@@ -410,8 +412,7 @@ export function theTreasuryLedgerOnTheseOrders(
   const P = rep.orderPrices ?? {};
   const wageOf = (t: string) => {
     const theWage = P.unitWage?.[t];
-    const theCosts = P.unitCost ?? {};
-    return theWage ?? ((theCosts[t] ?? 0) || 2);
+    return theWage ?? thePriceOfACompanyOfAType(t, P.unitCost ?? {});
   };
   const mk = () => ({ g: 0, n: 0, wage: 0 });
   const cats = { armies: mk(), mercs: mk(), heroes: mk(), intel: mk(), other: mk() };
@@ -492,8 +493,7 @@ export function theTreasuryLedgerOnTheseOrders(
           // (one company's: each draws on the upkeep discoveries' room in turn)
           const theWageOf = (type: string, joinsTheColumn: boolean) => {
             const halved = joinsTheColumn && hisBeastsPayHalfWages && aCompanyIsABeastADruidHalves(type);
-            const theCosts = P.unitCost ?? {};
-            const raw = (theCosts[type] ?? 0) || 2;
+            const raw = thePriceOfACompanyOfAType(type, P.unitCost ?? {});
             let w: number;
             if (upkeepCuts) {
               // the turn halves the wage before the upkeep discoveries' cuts, each under its room (P1-11e30)
@@ -529,8 +529,7 @@ export function theTreasuryLedgerOnTheseOrders(
             const type = String(first);
             const n = Math.max(1, parseInt(String(q)) || 1);
             const at = (pd?.armyTypes ?? []).find((a) => a.type === type);
-            const theCosts = P.unitCost ?? {};
-            let cost = at?.cost ?? ((theCosts[type] ?? 0) || 2);
+            let cost = at?.cost ?? thePriceOfACompanyOfAType(type, P.unitCost ?? {});
             if (rawSkillLvl(c, 'druid') >= 6 && aCompanyIsABeastADruidHalves(type))
               cost = thePriceADruidPaysForABeast(cost); // a Druid 6 recruiter's half price (R-134)
             cats.armies.g += cost * n;
@@ -549,7 +548,7 @@ export function theTreasuryLedgerOnTheseOrders(
         } else if (act === 'Harvest the Field') {
           cats.armies.g += P.harvest ?? theNumbersOfTheRow(ALIGN_ACTIONS['Harvest the Field']).thePrice.value; // its row's, on a report that names no price
           cats.armies.n++;
-          cats.armies.wage += 1; // a skeletal unit's wage is a flat 1g
+          cats.armies.wage += KC_THE_WAGE_OF_A_SKELETAL_COMPANY; // a skeletal unit's wage is a flat 1g
         } else if (act === 'Perform Rite' && /^wild/i.test(tgt)) {
           const loc = whereAHeroStandsAfterTheOrdersBefore(report, orders, c.id, ph);
           const pd = loc ? theOrderDataOfAProvince(rep, loc.id) : null;

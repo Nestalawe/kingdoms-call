@@ -59,7 +59,7 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 - **Where:** the tables of `src/content/kingdoms-call-data.ts`, the one source both portals read (each table's name
   says what it holds: `SPELL_DEFS_P`, `ALL_MAGIC_ITEMS_P`, `SAGE_DISCOVERIES_P`, `MONSTERS_P`, `TITLE_DEFS` and the
   `KC_` tables), or an effect's row in its family's file in `src/content/`, whose names end in `numbers-and-words.ts`.
-  A unit's cost and speed are in `src/engine/army-tables.ts`.
+  A unit's cost is in `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE`; its speed in `src/engine/army-tables.ts`.
 - **The words:** a row's own text, and the tables of both rulebooks (below).
 - **What a game already running holds:** whether a realm that holds the thing, or a save that copied it, gets the new
   number: [Live saves keep copies](../traps.md#live-saves-keep-copies).

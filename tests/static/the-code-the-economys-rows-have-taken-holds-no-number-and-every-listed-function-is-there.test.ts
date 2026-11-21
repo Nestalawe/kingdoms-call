@@ -1,8 +1,7 @@
 // The code the economy's rows have taken holds no number, and every function the economy's counts list is there (B-06,
 // T7, the rules pulled out: its economy family, B-06b to B-06h). Each function or table of the engine or the bots the
 // family's rows have taken holds no number other than 0 (the gold, the wages, the prices and the shares are read from
-// content's rows instead), whatever the code does with it. Each row adds what it takes to TAKEN, which is empty until
-// the first of them (B-06b). With them, the ratchet's two counts of the economy's numbers (tools/ratchet.ts's
+// content's rows instead), whatever the code does with it. Each row adds what it takes to TAKEN (from B-06b). With them, the ratchet's two counts of the economy's numbers (tools/ratchet.ts's
 // economyNumbersInEngine and economyNumbersInTheBots, by their helper economyNumbersByFunction), which only fall. A
 // count of listed functions can be lowered by moving a number out of the list, so every function the lists name must
 // still be declared: one a row deletes or renames leaves its list in that row's pull request, and a function a row
@@ -28,8 +27,20 @@ import {
 const TOP = '(top)';
 
 /** Each function or table (or a file's top level) the economy's rows have taken, by its file, from the row that took
- *  it. Empty until B-06b: each of the family's rows adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+ *  it: each of the family's rows adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  ['src/engine/army-tables.ts', 'ARMY_COST_MASTER', "B-06b, the price table: content's, the same object"],
+  [
+    'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
+    'thePriceOfACompanyOfAType',
+    "B-06b, the price rule: content's table and its 2g for a type priced at nothing",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
+    'theWageOfACompany',
+    "B-06b, the wage rule: content's 1g for a skeletal company",
+  ],
+];
 
 const LISTED = [...THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE, ...THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS];
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
