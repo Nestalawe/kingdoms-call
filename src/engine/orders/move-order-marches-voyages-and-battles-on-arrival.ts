@@ -78,7 +78,7 @@ import type {
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { Army, Character, GameState, Province, ProvinceFeature, Realm } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from '../turn/context.ts';
-import type { NarrativeLine, TurnEvent } from '../turn/events-and-their-audiences.ts';
+import type { EventButItsWords, NarrativeLine } from '../turn/events-and-their-audiences.ts';
 
 /** A province as the Move order reads it: a province, a Flood's mark (the Cast Spell order's), and the mark a step
  *  into it sets on an Illusory Terrain cast there (an enemy has entered it: the new turn lifts the illusion). */
@@ -114,7 +114,7 @@ type ALineOfWhatTheMarchSpots = [
         | 'a hero spots several sites as he marches into a province';
     }
   >,
-  Omit<TurnEvent, 'type' | 'fact'>,
+  EventButItsWords,
 ];
 /** A province's owner, read again after the calls since the test that narrowed it (a battle and its bookkeeping may
  *  hand the province on: setProvinceOwner), as the province keeps it: the compiler keeps a test's narrowing across a

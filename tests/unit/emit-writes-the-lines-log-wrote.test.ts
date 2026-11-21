@@ -246,7 +246,9 @@ describe('the hero whose order is resolving files a line only when it already re
     { id: 7, player: 0 },
     { id: 9, player: null },
   ];
-  type ItsPlace = Omit<EventButItsWords, 'hero' | 'phase'> & Partial<Pick<TurnEvent, 'hero' | 'phase'>>;
+  /** An event but its words, its hero and its phase, kept whole for each of its forms (a sight and its province). */
+  type ItsPlace = (EventButItsWords extends infer E ? (E extends unknown ? Omit<E, 'hero' | 'phase'> : never) : never) &
+    Partial<Pick<TurnEvent, 'hero' | 'phase'>>;
   const filedUnder = (event: ItsPlace, state = resolving) => {
     const tc = newContext(state, heroes);
     emit(tc, {

@@ -9,8 +9,11 @@
 // each-realm-reads-and-how-each-reaches-it.ts, B-18a):
 //   realms   these realms are told (a wage bill, a spell that hit them)
 //   actor    the realm whose deed it is
-//   seen     'world': every realm (a public line with no province); 'there': whoever has eyes in the province at that
-//            phase; 'battle': a battle's line, read by those who fought in it (the onlookers' summary waits for Toby)
+//   seen     'world': every realm (a line with no province; one with a province, which no game writes, as the gate
+//            says); 'there': whoever has eyes in the province at that phase, whatever the line's type (R-186);
+//            'battle': a battle's line, read by those who fought in it (told), whatever its type: seeing it there
+//            grants no one else (R-185; an onlooker's one-line summary, R-138, isn't built). A sight 'there' or
+//            'battle' names its province (R-187: the event's type refuses one with none)
 //   except   these realms never read it (the public half of logSplit: they read their own private half)
 // and a line about a hero a realm owns (hero, heroes) reaches that realm. An event with no grant is the GM's alone.
 //
@@ -372,12 +375,32 @@ export interface LineAudience {
   except?: number[] | undefined;
 }
 
+/** Who may read a line and where it happened: a line seen there, or in the battle, names its province (R-187); one
+ *  seen by the world, or by no one beyond its realms, may name one or none. A caller whose province may be missing says
+ *  `seen: prov ? 'there' : 'world'`, as seenThereInItsProvinceElseByTheWorld writes it. */
+export type ASightAndItsProvince =
+  | { audience: LineAudience; province: number }
+  | { audience: LineAudience & { seen?: 'world' | undefined }; province?: number | null | undefined };
+
+/** A line's audience and its province where it may have none (R-187): seen there, or in the battle, in its province;
+ *  with none, seen by the world, as the reports read such a line (`seen: prov ? 'there' : 'world'`). */
+export function seenThereInItsProvinceElseByTheWorld(
+  audience: Omit<LineAudience, 'seen'>,
+  seen: 'there' | 'battle',
+  province: number | null | undefined,
+): ASightAndItsProvince {
+  return province != null
+    ? { audience: { ...audience, seen }, province }
+    : { audience: { ...audience, seen: 'world' }, province };
+}
+
 /** An event but its type and its words: who may read a line, where and when, whom it is about. A caller that files
  *  several lines alike, or hands a helper the line's place (logSplit, reportHeroFall, the skill rises held back),
  *  builds it once: emit(turnContext, { type, text, ...place }). */
-export interface EventButItsWords {
-  audience: LineAudience;
-  province?: number | null | undefined;
+export type EventButItsWords = ASightAndItsProvince & TheRestOfAnEventButItsWords;
+
+/** An event but its type, its words, its audience and its province: where and when, whom it is about. */
+interface TheRestOfAnEventButItsWords {
   /** 0 to 4, or 99 for the end of the turn; THE_PHASE_THE_LINE_IS_WRITTEN_IN: the order's phase, else the phase
    *  resolving; 'none': no phase. */
   phase: number | 'none' | typeof THE_PHASE_THE_LINE_IS_WRITTEN_IN;
@@ -404,10 +427,10 @@ export interface EventButItsWords {
 
 /** What every line of a fight is, but its words: its type, its audience (those who fought in it), its province,
  *  phase, heroes and battle. emitNarrLine files each line of the fight's narrative with it. */
-export interface FightLine extends EventButItsWords {
+export type FightLine = EventButItsWords & {
   /** 'system', 'combat', 'move', 'hire', 'explore', 'message', … */
   type: string;
-}
+};
 
 /** Something that happened this turn: the fact its words are written from (the views write them, src/views/prose/),
  *  never its words (emit throws on an event handed as words). */
@@ -690,17 +713,15 @@ export function logSplit(
       actor: line.audience.actor,
     },
   });
-  // The public half: no hero, in the bare form.
+  // The public half: no hero, in the bare form; seen there, in its province (by the world, with none: R-187).
   emit(turnContext, {
     type,
     fact: pubText,
-    audience: {
-      actor: null,
-      realms: [],
-      seen: 'there',
-      except: [actor].concat(alsoNotFor ?? []).filter((x) => x != null),
-    },
-    province: line.province,
+    ...seenThereInItsProvinceElseByTheWorld(
+      { actor: null, realms: [], except: [actor].concat(alsoNotFor ?? []).filter((x) => x != null) },
+      'there',
+      line.province,
+    ),
     hero: null,
     phase: line.phase,
     form: 'bare',

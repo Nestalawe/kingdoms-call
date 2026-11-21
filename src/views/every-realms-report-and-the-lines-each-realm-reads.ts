@@ -16,7 +16,7 @@ import {
 } from './the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts';
 import type { Character, GameState, Realm } from '../schemas/saved-game-state.ts';
 import type { TurnContext } from '../engine/turn/context.ts';
-import type { LineFact, LogLine } from '../engine/turn/events-and-their-audiences.ts';
+import type { LineAudience, LineFact, LogLine } from '../engine/turn/events-and-their-audiences.ts';
 
 /** A line a spy's lingering sight shows its realm: its phase and its words. */
 interface ALineTheSpySees {
@@ -49,6 +49,8 @@ interface WhatTheReportsRead extends Pick<TurnContext, 'freshPlayers' | 'G' | 't
 //                      (theTurnsLinesInWords' theKindOfEachStoredLine; P1-12d36): the spy and
 //                      Clairvoyance feeds pass over a line by its kind (the-kinds-of-line-the-spy-and-scrying-feeds-
 //                      pass-over.ts)
+//   theAudienceOfEachLine  each line's whole audience, in turnLog's order, as the words pass hands it beside the log
+//                          (theAudienceOfEachStoredLine): the gate reads who may read each line from it (B-18f)
 // Returns { lastTurnLog, provinceEvents, spyActivity, spiedProvincesAndTheirFirstPhase,
 //           provincesWithABattleLineItRead, provincesItStoodOnAtSomePhase }; provinceEvents: { text, phase, provinceId }.
 export function playerEvents(
@@ -57,10 +59,11 @@ export function playerEvents(
   pi: number,
   sight: TheTurnsSight,
   theKindOfEachLine: readonly (LineFact['kind'] | null)[],
+  theAudienceOfEachLine: readonly (LineAudience | null)[],
 ) {
   const { presenceByPhase, battleCommanders, clairWatch } = sight;
   // The lines of the turn the realm reads, each with how it reaches it: the gate's.
-  const theLinesItReads = theLinesOfTheTurnTheRealmReads(turnLog, G, pi, sight);
+  const theLinesItReads = theLinesOfTheTurnTheRealmReads(turnLog, G, pi, sight, theAudienceOfEachLine);
   const playerOwnedProvs = new Set(G.players[pi]?.provinces ?? []);
   const playerCharProvs = new Set(
     (asItsGuardReadsIt(G.characters) ?? []).filter((c) => c.player === pi && c.alive).map((c) => c.location),
@@ -330,18 +333,22 @@ export function playerEvents(
 // over for it (whatTheReportsRead, src/engine/run-turn.ts): the slot rows, the world after the turn (the working
 // copy), the turn's log, the turn's sight and the telemetry (_tel: the realms' snapshots and the facts for the
 // statistics). It writes every line's words first (theTurnsLinesInWords, src/views/prose/: P1-12c3), and every realm's
-// lines are picked from the lines in words, each line's kind beside them (P1-12d36). Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
+// lines are picked from the lines in words, each line's kind (P1-12d36) and its whole audience (B-18f) beside them. Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
 // slot row it is for), tel what telemetry reads (its lists built from the facts: theStatisticsOfTheTurn, P1-12d33)
 // and gmLog the GM's log of the turn in words, in its stored form, which the shell saves.
 export function buildReports(whatTheReportsRead: WhatTheReportsRead) {
   const { freshPlayers, G, sight, _tel } = whatTheReportsRead;
-  const { gmLog: turnLog, theKindOfEachStoredLine } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
+  const {
+    gmLog: turnLog,
+    theKindOfEachStoredLine,
+    theAudienceOfEachStoredLine,
+  } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
   const activePlayers = freshPlayers.filter((p) => p.user_id);
   const reports = [];
   for (const gp of activePlayers) {
     // Build a per-player chronicle using the structured log metadata
     const pi = gp.player_index;
-    const itsLines = playerEvents(turnLog, G, pi, sight, theKindOfEachStoredLine);
+    const itsLines = playerEvents(turnLog, G, pi, sight, theKindOfEachStoredLine, theAudienceOfEachStoredLine);
     // What the realm may see of the world (playerView), its lines of the turn (itsLines) beside it: the report reads
     // only these two.
     const view = playerView(G, pi, itsLines);

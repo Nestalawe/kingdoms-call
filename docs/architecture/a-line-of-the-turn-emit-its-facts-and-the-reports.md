@@ -49,8 +49,9 @@ check finds were made.
   beaten side holds the field) is overwritten with a fact of another kind.
 - **One gate says which lines each realm reads** (B-18a,
   `src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts`): each line with
-  how it reaches the realm, a type only it makes. `playerEvents` takes every line from it; a lint rule refuses another
-  read of the log in `src/views/`. A line keeps its whole `audience` beside its fact until the words pass, which stores
+  how it reaches the realm, a type only it makes, read from its audience whatever its type: a battle's line reaches
+  those who fought (R-185), a line seen there whoever has eyes there (R-186). `playerEvents` takes every line from it; a
+  lint rule refuses another read of the log in `src/views/`. A line keeps its whole `audience` beside its fact until the words pass, which stores
   neither and hands it beside each stored line; filed under the hero whose order was resolving, it keeps the realm he
   served then too, for the leak check (B-18b).
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
@@ -63,9 +64,8 @@ check finds were made.
   experience lines' kinds) until `writeDeferredSkillLines` files each. What `notifyTarget` and `notifyProvinceOwner`
   are handed, and each half `logSplit` is handed, is a fact too, filed as `fact: line`. Build it as the event's own
   fields, never as the old `log()` meta
-  (`targets`, `provinceId`, `charId`, `public`). A line seen by those there but with no province is seen by the world
-  (`seen: 'world'`), as the report reads it: where the province may be missing, say so
-  (`seen: prov ? 'there' : 'world'`).
+  (`targets`, `provinceId`, `charId`, `public`). A sight `'there'` or `'battle'` names its province (R-187, by its
+  type); where it may be missing, `seenThereInItsProvinceElseByTheWorld` says `seen: prov ? 'there' : 'world'`.
 - **Every event names its hero**. `hero` is a hero's id (`hero: c.id`), `null` for no hero, or
   `THE_HERO_WHOSE_ORDER_IS_RESOLVING` (a named constant in the events file) for the hero whose order is resolving
   (`turnContext._logCtx.charId`). `emit` files a line naming the constant under that hero only when the line already
@@ -125,10 +125,9 @@ check finds were made.
   TS2590 ("too complex to represent"); read such a value with an `if` (as `emitBattle` reads its summary line). `forceMarker` returns its fact, and `narrate` takes it as it
   takes words. **`src/engine/battle/` and `src/engine/personal-combat/` write no line's words**: a new line
   there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
-  those fields' words into the prose); since P1-12d5 the lines a battle took from another folder's helper (a unit
+  those fields' words into the prose); the lines a battle took from another folder's helper (a unit
   disbanding, a sea trap, a naval hold and the naval split, the wanderer's escape, a hero's death) are kinds too, and
-  since P1-12d6 every line of five order families, since P1-12d7 of eight, since P1-12d8 of ten, since P1-12d9 of eleven,
-  since P1-12d10 of all twelve: `src/engine/orders/` writes no line's words (a new line there is a new kind); since
+  so is every line of the twelve order families: `src/engine/orders/` writes no line's words (a new line there is a new kind); since
   P1-12d12 neither does `src/engine/heroes/` (a chase, a hero's experience and hit points, a hero's death), since
   P1-12d13 nor `src/engine/titles/` (the title intelligence: each line opens with its title's bracketed name, "[The
   Throne] ", written by the prose; the player page groups the title lines by it, `TITLE_INTEL_RE`, from the words

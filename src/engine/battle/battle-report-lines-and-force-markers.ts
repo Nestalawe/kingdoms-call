@@ -8,6 +8,7 @@ import {
   narrate,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+  seenThereInItsProvinceElseByTheWorld,
 } from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
@@ -202,17 +203,16 @@ export function emitBattle(
   opts = opts || {};
   const parts = (participants || []).filter((x) => x != null);
   // Every line of the battle, told to those who fought in it (and to the realm whose battle it is), in its province
-  // and at its phase. A battle with no province would be read by the world, as buildReports reads a public line with
-  // none (no battle has none today).
+  // and at its phase. A battle with no province would be seen by the world (R-187: a sight in a battle names its
+  // province; no battle has none today).
   const provinceId = prov && prov.id;
   const fight: FightLine = {
     type: 'combat',
-    audience: {
-      realms: parts,
-      actor: opts.actor != null ? opts.actor : null,
-      seen: provinceId == null ? 'world' : 'battle',
-    },
-    province: provinceId,
+    ...seenThereInItsProvinceElseByTheWorld(
+      { realms: parts, actor: opts.actor != null ? opts.actor : null },
+      'battle',
+      provinceId,
+    ),
     phase: ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
     hero: opts.charId ?? THE_HERO_WHOSE_ORDER_IS_RESOLVING,
     heroes: opts.charIds || null,

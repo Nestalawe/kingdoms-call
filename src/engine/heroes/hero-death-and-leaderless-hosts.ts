@@ -22,6 +22,7 @@ import {
   recordForTheStatistics,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+  seenThereInItsProvinceElseByTheWorld,
 } from '../turn/events-and-their-audiences.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type {
@@ -111,14 +112,13 @@ export function disperseDeadCharArmies(
         heroName: deadChar.name,
         units: theUnitsAsTheLineNamesThem(tempArmies),
       },
-      audience: {
-        actor: deadChar.player,
-        realms: deadChar.player != null ? [deadChar.player] : [],
-        seen: prov?.id != null ? 'there' : 'world',
-      },
+      ...seenThereInItsProvinceElseByTheWorld(
+        { actor: deadChar.player, realms: deadChar.player != null ? [deadChar.player] : [] },
+        'there',
+        prov?.id,
+      ),
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      province: prov?.id,
     });
   }
   const deadArmies = (deadChar.armies ?? []).filter((a) => !a._isSkeletal && !a._temporary);
@@ -409,14 +409,13 @@ export function handleHeroDeath(
     emit(turnContext, {
       type: 'combat',
       fact: { kind: 'the blow meant for a vanished hero passes through shadow', heroName: deadChar.name },
-      audience: {
-        actor: killerChar?.player ?? null,
-        realms: deadChar.player != null ? [deadChar.player] : [],
-        seen: asItsGuardReadsIt(deadChar.location) != null ? 'battle' : 'world',
-      },
+      ...seenThereInItsProvinceElseByTheWorld(
+        { actor: killerChar?.player ?? null, realms: deadChar.player != null ? [deadChar.player] : [] },
+        'battle',
+        asItsGuardReadsIt(deadChar.location) ?? undefined,
+      ),
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      province: asItsGuardReadsIt(deadChar.location) ?? undefined,
     });
     return false;
   }
@@ -429,14 +428,13 @@ export function handleHeroDeath(
     emit(turnContext, {
       type: 'combat',
       fact: _garrethEscapeLine(deadChar),
-      audience: {
-        actor: killerChar?.player ?? null,
-        realms: [],
-        seen: asItsGuardReadsIt(deadChar.location) != null ? 'battle' : 'world',
-      },
+      ...seenThereInItsProvinceElseByTheWorld(
+        { actor: killerChar?.player ?? null, realms: [] },
+        'battle',
+        asItsGuardReadsIt(deadChar.location) ?? undefined,
+      ),
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      province: asItsGuardReadsIt(deadChar.location) ?? undefined,
     });
     return false;
   }
@@ -485,15 +483,17 @@ export function handleHeroDeath(
           roll: _sRoll,
         },
         {
-          audience: {
-            actor: deadChar.player,
-            realms: [deadChar.player, killerChar?.player ?? null].filter((x) => x != null),
-            seen: asItsGuardReadsIt(deadChar.location) != null ? 'battle' : 'world',
-          },
+          ...seenThereInItsProvinceElseByTheWorld(
+            {
+              actor: deadChar.player,
+              realms: [deadChar.player, killerChar?.player ?? null].filter((x) => x != null),
+            },
+            'battle',
+            asItsGuardReadsIt(deadChar.location) ?? undefined,
+          ),
           hero: deadChar.id,
           heroes: [deadChar.id, killerChar?.id ?? null].filter((x) => x != null),
           phase: turnContext._logCtx.phase ?? turnContext._currentPhase ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          province: asItsGuardReadsIt(deadChar.location) ?? undefined,
         },
       );
       return false;
@@ -687,14 +687,13 @@ export function handleHeroDeath(
       emit(turnContext, {
         type: 'system',
         fact: { kind: 'a fallen Divine monarch will rise again on holy ground', heroName: deadChar.name },
-        audience: {
-          actor: deadChar.player,
-          realms: [deadChar.player],
-          seen: asItsGuardReadsIt(deadChar.location) != null ? 'there' : 'world',
-        },
+        ...seenThereInItsProvinceElseByTheWorld(
+          { actor: deadChar.player, realms: [deadChar.player] },
+          'there',
+          asItsGuardReadsIt(deadChar.location) ?? undefined,
+        ),
         hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        province: asItsGuardReadsIt(deadChar.location) ?? undefined,
       });
     } else if (theRealmRaisesItsFallen) {
       emit(turnContext, {
