@@ -51,9 +51,24 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06d, the Druid's half wage: his row's share and least wage in the economy's rules",
   ],
   [
+    'src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts',
+    'heroSkillWage',
+    "B-06d, the hero's skill premium: content's skill points for each gold and the gold it takes off",
+  ],
+  [
+    'src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts',
+    'theWageOfAHeroInService',
+    "B-06d, the hero's wage in service, the one formula: content's least wage",
+  ],
+  [
     'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
     'theHostLeadersCut',
     "B-06d, the Host-Leader's cut: his row's gold on each company",
+  ],
+  [
+    'src/engine/heroes/effective-skills-and-hidden-heroes.ts',
+    'recalcHeroPay',
+    "B-06d, the hero's wage: the one formula (theWageOfAHeroInService) and content's allegiance of a hero never hired",
   ],
 ];
 

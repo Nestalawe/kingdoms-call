@@ -15,7 +15,7 @@
     "guardianPerkChecksInEngine": 0,
     "alignmentOrderChecksInEngine": 0,
     "alignmentChecksInEngine": 70,
-    "economyNumbersInEngine": 43,
+    "economyNumbersInEngine": 39,
     "economyNumbersInTheBots": 14,
     "titleChecksInEngine": 112,
     "eslintSuppressions": 216,

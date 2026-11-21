@@ -1,4 +1,5 @@
-import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theWageOfAHeroInService } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { KC_A_HEROS_WAGE_IN_SERVICE } from '../../content/kingdoms-call-data.ts';
 import { theInitiativeAHeroActsBy } from '../rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
 import { activeItems } from '../items/equipment.ts';
 import { theHerosItemsHideHisFace } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -236,6 +237,6 @@ export function recalcHeroPay(
   // base = what the crown agreed to pay for this hero's ALLEGIANCE (the alignment part of the
   // hire bargain, 1g for a founding hero who was never hired), plus the skill premium as it
   // stands now. Same formula the hire desk quotes, so a wage never jumps when a hero changes
-  // hands and the alignment premium survives every later rise.
-  c.pay = Math.max(1, (c._hireAlignWage ?? 1) + heroSkillWage(c));
+  // hands and the alignment premium survives every later rise (the one formula, theWageOfAHeroInService: B-06d).
+  c.pay = theWageOfAHeroInService(c._hireAlignWage ?? KC_A_HEROS_WAGE_IN_SERVICE.theAllegianceOfAHeroNeverHired, c);
 }

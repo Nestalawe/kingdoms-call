@@ -625,6 +625,7 @@ export const THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE: readonly (readonly
     'theWageABeastPaysUnderADruid',
   ],
   ['src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts', 'heroSkillWage'],
+  ['src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts', 'theWageOfAHeroInService'],
   [
     'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
     'theHostLeadersCut',

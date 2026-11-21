@@ -1,4 +1,4 @@
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_A_HEROS_WAGE_IN_SERVICE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
 import { unitAsItsRealmSeesIt } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
@@ -7,7 +7,7 @@ import {
   theRisenDeadFollowAHandOverTo,
   whereAHandOversRisenDeadGo,
 } from '../rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
-import { heroSkillWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theWageOfAHeroInService } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { isCharmedNow, isPreOrderRef, noteServedRealm, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import {
   emit,
@@ -380,7 +380,7 @@ export function resolveReleaseHeroOrder(
   c._releasedTurn = G.turn;
   c._releasedBy = _relPi;
   delete c._hireAlignWage;
-  c.pay = Math.max(1, 1 + heroSkillWage(c)); // wandering default; the real asking price is rebuilt at the hire desk (alignment + skill premium)
+  c.pay = theWageOfAHeroInService(KC_A_HEROS_WAGE_IN_SERVICE.theAllegianceOfAHeroNeverHired, c); // wandering default; the real asking price is rebuilt at the hire desk (alignment + skill premium)
   const hisOrders = G.turnOrders[c.id];
   if (hisOrders) for (let p2 = ph + 1; p2 < 5; p2++) hisOrders[p2] = null;
   theProvinceIsHanded(prov);

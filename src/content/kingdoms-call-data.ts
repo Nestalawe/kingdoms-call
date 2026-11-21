@@ -15078,6 +15078,16 @@ export const KC_EACH_UNIT_TYPES_PRICE_AND_WAGE = Object.assign(
 export const KC_THE_PRICE_OF_A_COMPANY_THE_TABLE_PRICES_AT_NOTHING = 2;
 // A skeletal company's wage, whatever its type: a flat 1g (by theWageOfACompany).
 export const KC_THE_WAGE_OF_A_SKELETAL_COMPANY = 1;
+// A hero's wage in service (by theWageOfAHeroInService, B-06d): what his allegiance was bargained at (a hero never
+// hired, a founding or a wandering one: 1g), plus his skill premium (a gold for every 4 skill points, rounded up, less
+// the 1g a starting hero's skills already earn, never below nothing), never below 1g. The hire desk quotes the same
+// premium on top of the alignment's price (heroHireWage).
+export const KC_A_HEROS_WAGE_IN_SERVICE = {
+  theAllegianceOfAHeroNeverHired: 1,
+  theSkillPointsForEachGold: 4,
+  theGoldTheSkillPremiumTakesOff: 1,
+  theLeastWage: 1,
+} as const;
 export const KC_UNIT_Q_MULT = { Green: 1, Average: 2, Veteran: 3, Crack: 4, Elite: 5 };
 export const KC_QUALITY_TIERS = ['Green', 'Average', 'Veteran', 'Crack', 'Elite'] as const;
 export const KC_QUALITY_UP = { Green: 'Average', Average: 'Veteran', Veteran: 'Crack', Crack: 'Elite', Elite: 'Elite' };
