@@ -11,8 +11,8 @@
 // 2026-10-31 (R-118, P1-23d): a hero hardened outside a fight's narrative is told to his realm with no deed (a spy who
 // stays in the province reads deeds, never a realm's news); a neutral's is told to no realm.
 // Level 1 (unit): the fight engine, the HP award and the narrative emitters called directly on the engine's modules
-// (tests/lib/personal-combat.ts), with the turn's own log, which is what each realm's report is cut from (an entry's
-// targets and its public flag). Plan P1-08e: this was a script that took them from the "  // 4. Run all 5 phases" hook
+// (tests/lib/personal-combat.ts), with the turn's own log, which is what each realm's report is cut from (by each
+// entry's audience; read here as the targets and the public flag emit stores from it). Plan P1-08e: this was a script that took them from the "  // 4. Run all 5 phases" hook
 // after a turn on the GM portal.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):

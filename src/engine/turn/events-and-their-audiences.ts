@@ -377,7 +377,7 @@ export interface LineAudience {
 
 /** Who may read a line and where it happened: a line seen there, or in the battle, names its province (R-187); one
  *  seen by the world, or by no one beyond its realms, may name one or none. A caller whose province may be missing says
- *  `seen: prov ? 'there' : 'world'`, as seenThereElseByTheWorld writes it. */
+ *  `seen: prov ? 'there' : 'world'`, as seenThereInItsProvinceElseByTheWorld writes it. */
 export type ASightAndItsProvince =
   | { audience: LineAudience; province: number }
   | { audience: LineAudience & { seen?: 'world' | undefined }; province?: number | null | undefined };
