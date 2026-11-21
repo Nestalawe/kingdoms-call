@@ -280,3 +280,4 @@ re-planned in B-09.
 - B-13: #638 A runner for planted faults, several at a time
 - B-14: #639 The Stop hook skips a session that changed no file
 - B-15: #640 Tier 0 leaves the matrix to CI
+- B-16: #700, #701 The three CI scripts in TypeScript; the workflows run them, and the JavaScript goes
