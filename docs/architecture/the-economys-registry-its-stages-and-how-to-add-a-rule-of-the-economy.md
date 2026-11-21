@@ -2,7 +2,7 @@
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
 This file is its part for the economy: the rules of a realm's gold (B-06, T7, the rules pulled out: its economy
-family, from B-06c). The family's other rows (gold found and taken) are in [the backlog](../backlog/README.md).
+family, from B-06c). The family's other row (the bots' worth of gold) is in [the backlog](../backlog/README.md).
 
 ## What a rule of the economy is
 
@@ -95,6 +95,15 @@ the discoveries', 1g at the least), which the Recruit Armies order and the repor
 beast the table doesn't price costs 6g (`wildHuntPrice`: the rite, the report and the bots), and a province of tax 7
 or more is rich enough for a Grand Heist (`GRAND_HEIST_RICH_TAX`: the order and the bots). The bots still price their
 recruits at the table's bare price.
+
+Gold found is no stage either (B-06g). A lair's gold is content's band for its guardian's power (Weak 5-8, Moderate
+12-18, Powerful 20-30, Legendary 40-60; 1-5 for a power the table doesn't list), rolled by one rule on plain values,
+`theGoldALairsHoardHoldsOnADie`, with the die its caller draws where it drew it: `encounterClearGold` (a scout's figure
+and a clear's, rolled once and kept) and `ensureLairHoard` (the hoard stocked as the world is made, or a lair first
+read). A Sage 6's 5g for each new discovery is content's value, read at the Research order's three finds. A raid's
+loot has no number of its own: a coastal raid takes the province's whole tax, and an Evil conquest's plunder is the
+alignment abilities' and the discoveries' registries' shares. The spies' gold and the duel purse stay with espionage
+and the duels.
 
 ## The tests
 
