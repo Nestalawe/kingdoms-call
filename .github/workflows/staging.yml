@@ -6,7 +6,7 @@
 # PR it replaced is told so. Merging changes nothing on staging.
 #
 # Before the site goes up, the staging database is rebuilt for this PR (P0-33,
-# .github/scripts/migrations.js `reset staging`): emptied (games and accounts too), rebuilt from main's
+# .github/scripts/migrations.ts `reset staging`): emptied (games and accounts too), rebuilt from main's
 # migrations, the test accounts signed up (password: secret STAGING_TEST_PASSWORD), made-up games seeded
 # (supabase/seeds/staging.sql), then this PR's own migrations applied on top and the seed run again. So a
 # database change is tried before it's merged. Any failure stops the run before the site is published.
@@ -14,7 +14,7 @@
 #
 # Only for PRs from this repo (a fork gets no secrets). Nothing is published until CI has passed on this
 # commit: the job doesn't run the tests itself (CI's ci and db jobs run them on the same commit at the same
-# time), it waits for the verdict of CI's newest run on it (.github/scripts/staging.js wait-ci, up to 20
+# time), it waits for the verdict of CI's newest run on it (.github/scripts/staging.ts wait-ci, up to 20
 # minutes; CI keeps one run per pull request, and the label that starts this run cancels CI's run still going)
 # and stops if CI failed. The site is pushed to the staging repo with a deploy key (secret STAGING_DEPLOY_KEY), with a
 # kc-config.js pointing at the staging database (variables STAGING_SUPABASE_URL, STAGING_SUPABASE_KEY),
@@ -98,7 +98,7 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Wait for CI to pass on this commit
-        run: node .github/scripts/staging.js wait-ci
+        run: node .github/scripts/staging.ts wait-ci
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_SHA: ${{ github.event.pull_request.head.sha }}
@@ -114,7 +114,7 @@ jobs:
           git worktree add "$RUNNER_TEMP/main" FETCH_HEAD
 
       - name: Rebuild the staging database for this pull request
-        run: node .github/scripts/migrations.js reset staging
+        run: node .github/scripts/migrations.ts reset staging
         env:
           DB_URL: ${{ secrets.STAGING_DB_URL }}
           MAIN_DIR: ${{ runner.temp }}/main
@@ -130,7 +130,7 @@ jobs:
           path: site/
 
       - name: Write the staging config
-        run: node .github/scripts/staging.js config > site/kc-config.js
+        run: node .github/scripts/staging.ts config > site/kc-config.js
         env:
           STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
           STAGING_SUPABASE_KEY: ${{ vars.STAGING_SUPABASE_KEY }}
@@ -172,7 +172,7 @@ jobs:
       # The comment names the pull request's last commit (the staging line in each footer) and the commit the build job
       # built, GitHub's test merge of it into its base (github.sha: the build line in each footer).
       - name: Comment on the pull requests
-        run: node .github/scripts/staging.js comment "${{ steps.publish.outputs.previous }}"
+        run: node .github/scripts/staging.ts comment "${{ steps.publish.outputs.previous }}"
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

@@ -10,8 +10,9 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Each of `.github/scripts/`'s TypeScript scripts (`staging.ts`, `migrations.ts`, `dangerous-paths.ts`) loads under
-// the pinned Node alone, from a copy of the folder outside the repository (no packages, no transform), prints nothing
-// and exits 0: its main doesn't run on import. Level 1: Node runs it (static can't: Node's answer). TypeScript, in `unit/`
+// the pinned Node alone, from a copy of the folder outside the repository (no packages, no transform; the repository's
+// package.json above it), prints nothing (no warning from Node either: the folder's package.json says they are
+// modules) and exits 0: its main doesn't run on import. Level 1: Node runs it (static can't: Node's answer). TypeScript, in `unit/`
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,12 +25,18 @@ const SCRIPTS = path.join(ROOT, '.github', 'scripts');
 /** The CI scripts in TypeScript; a new one joins this list. */
 const THE_SCRIPTS = ['dangerous-paths.ts', 'migrations.ts', 'staging.ts'];
 
-/** What plain Node says when it imports the script from a copy of the folder outside the repository. */
+/**
+ * What plain Node says when it imports the script from a copy of the folder outside the repository, under a copy of the
+ * repository's own package.json (which has no "type"), as in the workflows' checkouts.
+ */
 function whatNodeSaysImporting(script: string): { status: number | null; stdout: string; stderr: string } {
   const copy = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-ci-scripts-'));
   try {
-    for (const f of fs.readdirSync(SCRIPTS)) fs.copyFileSync(path.join(SCRIPTS, f), path.join(copy, f));
-    const href = pathToFileURL(path.join(copy, script)).href;
+    const folder = path.join(copy, '.github', 'scripts');
+    fs.mkdirSync(folder, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(copy, 'package.json'));
+    for (const f of fs.readdirSync(SCRIPTS)) fs.copyFileSync(path.join(SCRIPTS, f), path.join(folder, f));
+    const href = pathToFileURL(path.join(folder, script)).href;
     const r = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(href)});`], {
       cwd: copy,
       encoding: 'utf8',
@@ -55,5 +62,8 @@ describe("each CI script loads under the workflow's plain Node", () => {
     const said = whatNodeSaysImporting(script);
     expect(said.status, said.stderr).toBe(0);
     expect(said.stdout, 'its main ran').toBe('');
+    // No MODULE_TYPELESS_PACKAGE_JSON: the folder's package.json says the scripts are modules, where the repository's
+    // has no "type".
+    expect(said.stderr, 'Node warned').toBe('');
   });
 });
