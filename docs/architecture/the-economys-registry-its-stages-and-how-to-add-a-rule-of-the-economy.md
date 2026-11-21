@@ -2,8 +2,7 @@
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
 This file is its part for the economy: the rules of a realm's gold (B-06, T7, the rules pulled out: its economy
-family, from B-06c). The family's other rows (the orders' prices, gold found and taken) are in
-[the backlog](../backlog/README.md).
+family, from B-06c). The family's other rows (gold found and taken) are in [the backlog](../backlog/README.md).
 
 ## What a rule of the economy is
 
@@ -89,6 +88,13 @@ A hero's wage in service is no stage: one formula, `theWageOfAHeroInService`
 `KC_A_HEROS_WAGE_IN_SERVICE`. It is what his allegiance was bargained at (1g for a hero never hired), plus his skill
 premium (`heroSkillWage`: a gold for every 4 skill points, rounded up, less 1), 1g at the least. `recalcHeroPay`, the
 world's founding and wandering heroes and the release read it. The hire desk quotes the same premium (`heroHireWage`).
+
+The orders' prices are no stage either: content's values, beside the price table in `kingdoms-call-data.ts` (B-06f).
+A mercenary band's price is one rule, `thePriceOfAMercenaryBand` (its type's price, less the alignment's cut, plus
+the discoveries', 1g at the least), which the Recruit Armies order and the report's price read. A Wild Hunt whose
+beast the table doesn't price costs 6g (`wildHuntPrice`: the rite, the report and the bots), and a province of tax 7
+or more is rich enough for a Grand Heist (`GRAND_HEIST_RICH_TAX`: the order and the bots). The bots still price their
+recruits at the table's bare price.
 
 ## The tests
 
