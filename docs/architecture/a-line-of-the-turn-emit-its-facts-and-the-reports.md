@@ -11,8 +11,8 @@ written from: below), where and when (`province`, `phase`), whom it is about (`h
 and `except` the realms that never read it). A line pushed past it chooses its own audience, the way the leaks the report
 check finds were made.
 - The lint rule `kc/narrative-lines-go-through-emit` refuses, in all of `src/engine` and `src/views` but the events file
-  (since P1-12a4; folder by folder from P1-12a2), any write to `turnLog`, a `log(…)` call (but `console.log` and
-  `Math.log`; there is no `log()` helper any more) and a narrative written by hand: add a fight's line with
+  any write to `turnLog`, a `log(…)` call (but `console.log` and
+  `Math.log`) and a narrative written by hand: add a fight's line with
   `narrate(narrative, line)`: a fact (below). Since P1-12d18 it also refuses a line handed as words: an event or a
   place with a `text` key (once it names its hero), and a string (a string literal, a template, a `+` or a choice with
   one) handed to `narrate`, `emitNarrLine`, `narrateAll` or `narrateAt`, alone or in an array written there. It runs on
@@ -47,6 +47,11 @@ check finds were made.
   between heroes' "Battle for …" line and its "… a battle is initiated." line by their kinds alone (P1-12c5, c6: no
   line of `battle/` is words any more, so `narrText` went). A line overwritten in place (a battle's heading, once the
   beaten side holds the field) is overwritten with a fact of another kind.
+- **One gate says which lines each realm reads** (B-18a,
+  `src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts`): each line with
+  how it reaches the realm, a type only it makes. `playerEvents` takes every line from it; a lint rule refuses another
+  read of the log in `src/views/`. A line keeps its whole `audience` beside its fact until the words pass, which stores
+  neither and hands it beside each stored line.
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
   (the event without its type and fact: `{ audience, province, hero, phase, … }`), and files it with
@@ -69,10 +74,8 @@ check finds were made.
   too. A hero who serves no realm keeps his lines. `emit` throws on an event with no `hero`; the lint rule refuses
   `emit`'s event, and an event's place (an object literal with an `audience`, as handed to `logSplit`,
   `reportHeroFall` or the held-back skill rises), written without `hero` and without a spread; a spread place carries
-  its own. Before P1-12c2 a `hero` left out or `null` meant the hero whose order is resolving and `'none'` meant no
-  hero; the script that named every hero made the first the constant and `'none'` `null` (a line for the GM alone, the
-  Philosopher's Stone's note on the hoards, says `hero: null`:
-  `tests/scenario/a-line-for-the-gm-alone-reaches-no-realm.test.ts`). Where a hero's id may be missing, say what then
+  its own. A line for the GM alone says `hero: null`:
+  `tests/scenario/a-line-for-the-gm-alone-reaches-no-realm.test.ts`. Where a hero's id may be missing, say what then
   (`hero: dest ? dest.id : THE_HERO_WHOSE_ORDER_IS_RESOLVING`, or `?? THE_HERO_WHOSE_ORDER_IS_RESOLVING`). The cases:
   `tests/unit/emit-writes-the-lines-log-wrote.test.ts`; the audience check (`tests/lib/report-leaks.ts`) states the
   same rule apart. The area rows of P1-12c replace the constant with the hero each fact names. Every event
@@ -245,8 +248,7 @@ check finds were made.
   with; a force's colour only as six hex digits, any other form in the default grey
   (`src/engine/rules-on-plain-values/a-forces-row-on-a-page-its-kind-and-its-colour-of-six-hex-digits.ts`). The matrix hashes the
   stored log (`writes`), and every realm's report is compared line for line (`npm run balance`). `tests/unit/emit-writes-the-lines-log-wrote.test.ts`
-  checks the forms (its oracle against copies of the old code ran from P1-12a2 to P1-12a4, until every caller was
-  converted).
+  checks the forms.
 
 ## Views never write
 

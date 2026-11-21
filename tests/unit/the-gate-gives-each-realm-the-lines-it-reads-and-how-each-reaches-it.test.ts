@@ -23,7 +23,12 @@
 // runs.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
-import { emit, type LineAudience, type TurnEvent } from '../../src/engine/turn/events-and-their-audiences.ts';
+import {
+  emit,
+  type LineAudience,
+  type LogLine,
+  type TurnEvent,
+} from '../../src/engine/turn/events-and-their-audiences.ts';
 import { theTurnsLinesInWords } from '../../src/views/prose/the-words-of-each-line.ts';
 import {
   theLinesOfTheTurnTheRealmReads,
@@ -369,11 +374,15 @@ describe('Clairvoyance', () => {
   });
 });
 
+/** Whether a line, its place and its way, made outside the gate, would pass for one the gate let through: never, for a
+ *  line the realm reads carries the gate's own mark, which no other module can write. */
+type AForgedLinePasses = { line: LogLine; at: number; reachesItBy: 'told' } extends ALineTheRealmReads ? true : false;
+
 test('only the gate makes a line it lets through: the compiler refuses one made elsewhere', () => {
-  const { gmLog } = theTurnsLines([{ words: 'Forged', audience: {} }]);
-  const line = gmLog[0];
-  if (line === undefined) throw new Error('no line filed');
-  // @ts-expect-error: a line the realm reads carries the gate's own mark, which no other module can write
-  const forged: ALineTheRealmReads = { line, at: 0, reachesItBy: 'told' };
-  expect(forged.line.text).toBe(inWords('Forged'));
+  // compiles only while a line made elsewhere doesn't pass (the type above is false)
+  const aForgedLinePasses: AForgedLinePasses = false;
+  expect(aForgedLinePasses).toBe(false);
+  const { gmLog } = theTurnsLines([{ words: 'Let through', audience: { seen: 'world' } }]);
+  const [read] = theLinesOfTheTurnTheRealmReads(gmLog, aWorld(), ALDMOOR, aSight()).chronicle;
+  expect(read && Object.getOwnPropertySymbols(read)).toHaveLength(1);
 });
