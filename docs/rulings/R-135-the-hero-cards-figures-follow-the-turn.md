@@ -4,7 +4,9 @@
 - **Status:** Confirmed
 - **Source:** Question 45: the hero card's figures left out lifts and costs the turn counts: which is right? Answer: option 1, the card and the form follow the turn. Built in the pull requests of P1-11e31 (the sea note), stacked on PR #477, and P1-11e33 (the magic level), stacked on PR #479, P1-11e34 (the upkeep), stacked on PR #480, P1-11e38 (the strength), stacked on PR #484, and P1-11z2 (the realm's discoveries in the strength), stacked on PR #696.
 - **Enforced by:** [`the-player-portals-copies-agree-with-the-engine`](../../tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts),
-  [`the-strength-a-unit-has-before-the-ground-and-the-foe`](../../tests/unit/the-strength-a-unit-has-before-the-ground-and-the-foe.test.ts)
+  [`the-strength-a-unit-has-before-the-ground-and-the-foe`](../../tests/unit/the-strength-a-unit-has-before-the-ground-and-the-foe.test.ts),
+  [`what-each-realm-may-see-of-the-world`](../../tests/unit/what-each-realm-may-see-of-the-world.test.ts) (the report's
+  unit-strength effects: the realm's own alone)
 
 The figures on a hero's card, and the order form's, say what the turn will do. The army card's sea note asks the
 turn's own sea lift: a column's hulls (each carries double under a trained Naval of 8 or more) and its humanoid flyers
