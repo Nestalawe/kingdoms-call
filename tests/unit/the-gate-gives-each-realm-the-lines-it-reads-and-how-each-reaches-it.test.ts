@@ -4,17 +4,20 @@
 // stored line's audience beside it, and stores none) and read as the GM's log stores them, each with its audience:
 // - told, its deed (told first when both), its hero (the line's hero, or one of its heroes);
 // - the world (a public line with no province); eyes there (seen there: its own ground, a hero of its own standing
-//   there that phase, a spy on it that phase or earlier; not a phase before its spy, nor a phase its hero wasn't there);
+//   there that phase, a spy on it that phase or earlier; not a phase before its spy, nor a phase its hero wasn't there;
+//   with no phase, a spy on it at any phase, not a hero standing there);
 // - the battle (an onlooker's summary, which no line carries today: read with a hero standing there at its phase, or
 //   on its own ground with no phase); a battle's own lines reach only those who fought (told);
-// - a line that excepts the realm never reaches it, even told; a line with no grant reaches no realm;
+// - a line that excepts the realm never reaches it, even told, its deed or about its hero; a line with no grant
+//   reaches no realm;
 // - a line's sight, whatever its type (the maintainers' answers, B-18f): seen in a battle, only those who fought read it
 //   (told; R-185); seen there, whoever has eyes there (R-186); seen there or in a battle with no province, no realm by
 //   its sight, and the compiler refuses such an event (R-187), while a caller whose province may be missing is seen
 //   there, else by the world (with no province); seen by the world with a province, every realm, as the world, and
 //   the compiler refuses such an event (R-188);
-// - a spy's lingering sight: in a province it spied, from the next phase on, a rival hero's deed or a public line, not
-//   a line told with no deed, one that excepts it, one with no hero or one of its own hero; the first phase it spied;
+// - a spy's lingering sight: in a province it spied, from the next phase on, a rival hero's deed, a public line or a
+//   battle's line, not a line told with no deed, one that excepts it, one with no hero or one of its own hero; the
+//   first phase it spied;
 // - Clairvoyance: every line about the watched hero (his, or among its heroes) from the phase the watch began; none
 //   with no watch;
 // - only the gate makes a line it lets through (the compiler refuses one made elsewhere).
@@ -245,6 +248,23 @@ describe('the chronicle: each way a line reaches a realm', () => {
     ]);
   });
 
+  test('eyes there, for a line with no phase: a spy on the province at any phase, not a hero standing there', () => {
+    const sight = aSight([{ phase: 2, province: 5, realms: [ALDMOOR] }]);
+    const lines: ALineToFile[] = [
+      { words: 'The spy', audience: { actor: CORRITH }, province: 6, phase: 3, spy: true },
+      { words: 'Spied, no phase', audience: { seen: 'there' }, province: 6, phase: 'none' },
+      { words: 'Stood, no phase', audience: { seen: 'there' }, province: 5, phase: 'none' },
+    ];
+    expect(whatEachRealmReads(lines, sight)).toEqual([
+      [],
+      [],
+      [
+        ['The spy', 'its deed'],
+        ['Spied, no phase', 'eyes there'],
+      ],
+    ]);
+  });
+
   test("the battle: an onlooker's summary, read with a hero standing there at its phase, or on its own ground with no phase", () => {
     const { gmLog, audiences } = filed([
       { words: 'Spied', audience: { actor: CORRITH }, province: 5, phase: 1, spy: true },
@@ -294,6 +314,14 @@ describe('the chronicle: each way a line reaches a realm', () => {
         ['Told but excepted', 'told'],
       ],
     ]);
+  });
+  test('a line that excepts a realm never reaches it, though it is its deed or about its hero', () => {
+    expect(
+      whatEachRealmReads([
+        { words: 'Its deed excepted', audience: { actor: BRENVALE, except: [BRENVALE] } },
+        { words: 'Its hero excepted', audience: { realms: [CORRITH], except: [BRENVALE] }, hero: WENNA },
+      ]),
+    ).toEqual([[], [], [['Its hero excepted', 'told']]]);
   });
 });
 
@@ -490,6 +518,24 @@ describe("a spy's lingering sight", () => {
     ]);
     // a realm that spied nothing has none
     expect(theGatesReading(log, ALDMOOR, aSight()).spysLingeringSight).toEqual([]);
+  });
+
+  test("a battle's line in the province it spied, from the next phase on: anyone there could see it", () => {
+    const log = filed([
+      { words: 'The spy', audience: { actor: CORRITH }, province: 6, phase: 1, spy: true, hero: TAVETH },
+      {
+        words: 'Its battle',
+        audience: { realms: [BRENVALE], seen: 'battle' },
+        type: 'combat',
+        province: 6,
+        hero: WENNA,
+      },
+    ]);
+    const read = theGatesReading(log, CORRITH, aSight());
+    expect(read.chronicle.map((l) => [nameOf(l), l.reachesItBy])).toEqual([['The spy', 'its deed']]);
+    expect(read.spysLingeringSight.map(({ lines }) => lines.map((l) => [nameOf(l), l.reachesItBy, l.phase]))).toEqual([
+      [['Its battle', "a spy's lingering sight", 2]],
+    ]);
   });
 });
 
