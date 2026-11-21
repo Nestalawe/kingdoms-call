@@ -17,7 +17,7 @@ phase, from the orders it holds. It follows the turn, not the order as written:
 4. **Risen dead handed to a comrade of a realm that is not Undead go to their graves.**
 
 All four parts are agreement cases of the parity test (part 1 since P1-11e18, parts 3 and 4 since P1-11e19, the
-Move note's column too, part 2 since P1-11e20: a season's items are handed over in the turn's order of its heroes).
+Move note's column too, part 2 since P1-11e20 and P1-11z1: a season's items and companies are handed over in the turn's order of its heroes).
 What the report doesn't show stays a forecast limit: a hero hired, charmed or raised this turn (his pack and his levels
 are hidden, so his beast command and his place in the season's order too), a skill that rises during the turn, a
 pursuit under way or a march the turn cancels (they change the season's order), and a province taken this turn (the

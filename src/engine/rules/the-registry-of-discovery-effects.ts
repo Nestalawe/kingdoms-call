@@ -547,6 +547,16 @@ function theEffectsOfTheStageARealmHolds(
   );
 }
 
+/** The effects of "strength: a realm's discoveries strengthen a unit" the realm holds, in the order it holds them (its
+ *  report carries them for the army card: plan P1-11z2). */
+export function theEffectsARealmsDiscoveriesStrengthenAUnitWith(
+  theRealm: ARealmAsTheDiscoveriesReadIt | null | undefined,
+): TheEffectOfADiscovery[] {
+  return theEffectsOfTheStageARealmHolds(theRealm, STRENGTH["a realm's discoveries strengthen a unit"]).map(
+    ([, e]) => e,
+  );
+}
+
 /** The runner of "strength: a realm's discoveries strengthen a unit" (discUnitMult, which armStr asks): the realm's
  *  effects of the stage's kind, handed in the order it holds them to their product, capped at the kind's ceiling (on
  *  plain values since plan P1-11e36: the stage holds its one kind, whose entry is that product's effect). */
@@ -555,7 +565,7 @@ export function theFactorARealmsDiscoveriesStrengthenAUnitBy(
   facts: AUnitARealmsDiscoveriesMayStrengthen,
 ): number {
   return theFactorTheUnitStrengthDiscoveriesARealmHoldsStrengthenAUnitBy(
-    theEffectsOfTheStageARealmHolds(theRealm, STRENGTH["a realm's discoveries strengthen a unit"]).map(([, e]) => e),
+    theEffectsARealmsDiscoveriesStrengthenAUnitWith(theRealm),
     facts,
   );
 }

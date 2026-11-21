@@ -9,8 +9,8 @@
 // than half its time limit (tests/setup/reporter.ts; the hooks timed by tests/setup/hook-times.ts).
 //
 // This file is .mts and imports only types, constants and one pure check (tests/lib/the-coverage-runs-ceiling.mts) from
-// tests/: package.json has no "type" (eslint.config.js and .github/scripts/ are CommonJS), so this is how Node and
-// Vite load the config as an ES module without warnings.
+// tests/: package.json has no "type" (eslint.config.js is CommonJS), so this is how Node and Vite load the config as an
+// ES module without warnings.
 import os from 'node:os';
 import { defineConfig, type TestProjectInlineConfiguration } from 'vitest/config';
 import { DEFAULT_SEED, FIXED } from './tests/setup/fixed.mts';

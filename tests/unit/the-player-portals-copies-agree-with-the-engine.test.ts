@@ -7,7 +7,7 @@
 // turn report's flying carry and druidNeedP's shortfall cases are dropped (each checked one call twice). The account
 // below is of the checks as they were built, where each now runs.
 // The player portal's copies of the engine's rules agree with the engine, and the report hands the portal what the
-// engine reads (plan P1-11a2, P1-11a4). P1-11a4 swapped
+// engine reads (P1-11a2, P1-11a4). P1-11a4 swapped
 // the 16 copies that agreed for the engine's own functions (the portal imports them through src/shared/), so their
 // swap cases went with them; for the 9 whose value the report makes from the state, the truth case stays as a
 // projection case: the engine's function on the report's value and on the state's, the same answer (and for the beast
@@ -21,15 +21,16 @@
 // the content's spells, its target field and its casting count against the engine's Cast Spell order, and the army
 // card's kin and feud against the battle's armStr. Since P1-11d1, the march: the portal's three hex steps (the engine's
 // own since P1-11d6, handed through src/shared/: projection cases) against the engine's step, where the form says a hero
-// will stand after his Moves and Forced Marches against where the turn leaves him, and the share marching in maps against the turn's (each known difference pinned: question 44). Since P1-11d2,
-// what a hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
-// phases (each known difference pinned: question 42). Since P1-11d3, the orders: the order list's names against the
-// turn's, the orders it offers a hero against those the turn lets him give, and the creed orders' fields against their
-// rows and the turn (each known difference pinned: questions 36, 39 and 41). Since P1-11d4, gold and practice: the
-// treasury ledger against what the turn spends and Early Winter charges, the Practice Skill note against the chance
-// the turn rolls, and the comrades a hero's field counts as practising beside him against the turn's (each known
-// difference pinned: question 43; the practice note's none since P1-11e28). And each engine function leaves its input
-// as it was.
+// will stand after his Moves and Forced Marches against where the turn leaves him, and the share marching in maps
+// against the turn's (they agree since R-128, but for the forecast limits it accepts, pinned). Since P1-11d2, what a
+// hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
+// phases (they agree since R-129, but for the Stone used, pinned: it waits on KD-047). Since P1-11d3, the orders: the
+// order list's names against the turn's, the orders it offers a hero against those the turn lets him give, and the
+// creed orders' fields against their rows and the turn (they agree since R-131, R-132 and R-133). Since P1-11d4, gold
+// and practice: the treasury ledger against what the turn spends and Early Winter charges, the Practice Skill note
+// against the chance the turn rolls, and the comrades a hero's field counts as practising beside him against the
+// turn's (they agree since R-134, but for its forecast limit, pinned: the Host-Leader on a report that doesn't name
+// him). And each engine function leaves its input as it was.
 // Level 1 (unit): pure functions on values, from a game played with the engine's modules imported directly and a world
 // staged through the report's own projection. No page is needed, and a static test can't compare what two functions
 // answer.
@@ -74,9 +75,9 @@
 // `getSeaCapability`'s answer, a Naval 8 hero's too (R-125), and on staged columns of flyers beside too few hulls, its
 // words written out (R-135: the card asks `seaLiftOfAColumn`); its upkeep, on staged columns under a Druid 6 hero and a
 // Druidic Wonder, is what Early Winter charges (R-135); its strength of a unit, on staged columns under Druid 8, Druid 3
-// and Necromancy 6 heroes and with items, is armStr's with no ground and no battle (R-135); with War Drums and under the
-// king, the card leaves the realm's discoveries out (pinned). Every engine function leaves its input as it was (the values are frozen, so a write
-// throws). P1-11c1 (plan P1-11c, before the form takes its tables and its check from the engine's side): the order
+// and Necromancy 6 heroes and with items, is armStr's with no ground and no battle (R-135), and with War Drums and under
+// the king too (since P1-11z2 the card counts the unit-strength discoveries its realm's report carries). Every engine function leaves its input as it was (the values are frozen, so a write
+// throws). P1-11c1 (P1-11c, before the form takes its tables and its check from the engine's side): the order
 // form's eight Cast Spell tables (`order-chances.ts` run whole, the others read by their declarations) are the ones
 // `SPELL_DEFS_P` makes, each as the form reads it (a list in its order, a map, a set), but an Encounter plan lists the
 // combat spells of three schools in its own order (pinned); the target field (`spellSecondaryHtml`, on a staged report
@@ -92,7 +93,7 @@
 // of a unit (`theArmyCardsFiguresOfAColumn`'s, which `renderReportView` calls) is `armStr`'s, kin and feud with it, and a Druid shortfall in the
 // battle's order (R-122: taken off the unit's base first, rounded down, then kin and feud). Since P1-11c4 the target field's six lists that look in the caster's
 // province ask the engine's mark check (through `src/shared/`), so a case pins the heroes each of the 13 spells aimed
-// at a hero offers on the staged report. P1-11d1 (plan P1-11d; since P1-11d6 the three call the engine's hex step, so
+// at a hero offers on the staged report. P1-11d1 (P1-11d; since P1-11d6 the three call the engine's hex step, so
 // these are projection cases: what the portal makes of it): the portal's three hex tables (`predictedLocation`, the
 // Move field's directions (`theMoveFieldsDirectionsFromWhereAHeroStandsInAPhase`, which `buildTargetField` calls),
 // `lastMoveDirOf`, each run as the page runs it on the orders staged in its fields) step where `neighborInDir` and
@@ -106,7 +107,7 @@
 // one step toward a far province (the turn's route on the report's map, round a neutral or unmet realm's province, none
 // for a fleet inland or Men-at-Arms to a far sea, a step past his pace; a Search Lair after it); and the share `exploreMoveGainBefore` counts a march
 // as mapping is the turn's at March 6 and 0 leading companies, at Explorer 7 and for a sea sailed into, and since
-// P1-11e13 for a Travelworn Drape (the share his card gives) and Naval 6's charting of the coast. P1-11d2 (plan P1-11d, before any of it is shared):
+// P1-11e13 for a Travelworn Drape (the share his card gives) and Naval 6's charting of the coast. P1-11d2 (P1-11d, before any of it is shared):
 // on a staged world with no guards (`holdingWorld`, each case on its own province), what `predictedItems`,
 // `projectedLedArmies` and `projectedGarrison` (with `_projRecruitUnits`) say a hero will
 // carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave them
@@ -116,9 +117,10 @@
 // P1-11e18, R-129), a beast past a leader's beast command (recruited, handed over, taken up), a band of garrison troops
 // hired, companies taken up (the turn's last first), risen dead handed to a comrade (to their graves: since P1-11e19);
 // and since P1-11e20 each season's items handed over in the turn's order of its heroes (a comrade marching in first, a
-// chain of hand-overs, the quicker hero first; a comrade beside him who marches away after); and pinned where it is not
-// (question 42): the Philosopher's Stone used, a chain of company hand-overs in one season.
-// P1-11d3 (plan P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
+// chain of hand-overs, the quicker hero first; a comrade beside him who marches away after), and since P1-11z1 a chain
+// of company hand-overs in one season; and pinned where it is not (R-129): the Philosopher's Stone used (it
+// waits on KD-047; not a forecast limit).
+// P1-11d3 (P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
 // order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
 // realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`
 // offers is what `processOrder` lets him give (no refusal the list restates): each of the 20 masteries from its level
@@ -132,7 +134,7 @@
 // Arms' company, the carters' grave, grade and price with Corpse-Carters, and the Wild Hunt's term with The Long Hunt
 // (the turn's and the report's since P1-11e26), and the Blood Offering's rows and hint (since P1-11e27, R-133: a
 // company the rite never takes is locked, and the hint names what the turn gives and raises, a side left empty too).
-// P1-11d4 (plan P1-11d, before the ledger's wages, the practice chance and the co-trainer are shared): on staged heroes
+// P1-11d4 (P1-11d, before the ledger's wages, the practice chance and the co-trainer are shared): on staged heroes
 // of realm 0 (its report as the engine builds it from each world), what the treasury ledger (`computeOrderLedgerP`)
 // says the orders will spend and add to the wages is what the turn takes from the treasury in their phase and adds to
 // Early Winter's wages (each hero who served before at his wage without them): a company of the province, two at the
@@ -140,7 +142,7 @@
 // and since P1-11e29 (R-134) a Druid 6 hero's beast (half price and half wage), a beast under a Druidic Wonder (half
 // wage) and a company under the Host-Leader where the report names him (1g less), and since P1-11e30 (R-134) the upkeep
 // and hero-wage discoveries' savings shared under their caps (Supply Depots past its cap, Granaries, Inspiring
-// Leadership), Harvest the Field, the Wild Hunt; pinned where it can't (question 43, a forecast limit): a company under
+// Leadership), Harvest the Field, the Wild Hunt; pinned where it can't (a forecast limit, R-134): a company under
 // the Host-Leader on a report that doesn't name him (the titles not yet public); the Practice Skill note (`orderChanceNote`)
 // quotes the chance `processOrder` rolls at Melee 0 to 4, for a Human hero of another realm and with the practice
 // discoveries, and since P1-11e28 (R-134) for a Human of a Human realm (the turn's x1.5, which it names) and at Melee 5
@@ -469,7 +471,7 @@ function playerPortalCopies(): Copies {
       }),
     // its strength for one unit `a` of the hero `c`, as its line shows it ("str …"): the unit's kin (its realm's
     // king's and its leader's), a rival kin's leader, a Druid shortfall and the Druid mastery, in the battle's order
-    // since R-122 (plan P1-11c1): the shortfall off the unit's base strength first, then its kin, then the mastery
+    // since R-122 (P1-11c1): the shortfall off the unit's base strength first, then its kin, then the mastery
     armyCardUnitStrength: (a, c, report) => atRest(() => theArmyCardsFiguresOfAUnit(a, c, report)['bs']),
     // its upkeep for the column `arr` the hero `c` leads, as its "💰 Upkeep" figure gives it: the wage it adds for
     // each unit (P1-11e34)
@@ -606,7 +608,7 @@ describe('a copy that stays (it reads the report’s shape)', () => {
     expect(list.filter((x) => x.copy !== x.report)).toEqual([]);
   });
 
-  test('effMagicLvl is the level the turn casts at: a trained level counts to 5, two items of one name once (R-135, question 45 (c))', () => {
+  test('effMagicLvl is the level the turn casts at: a trained level counts to 5, two items of one name once (R-135)', () => {
     // No matrix game trains a school past 5 or holds two of one item, so the heroes are staged. The form added every
     // item and took a trained 7 as 7: a Psychic 2 hero with two Dreamstones was offered a third Psychic cast the turn
     // refuses, and White 7 read "Lv7" where the turn counts 5. Since R-135 it asks the turn's own rule, with the items
@@ -618,7 +620,7 @@ describe('a copy that stays (it reads the report’s shape)', () => {
 });
 
 describe('the copies that read the realm, the report’s shape or the world (P1-11b1)', () => {
-  test('the values reach every Druid level and class of unit, under each realm and hero, and each pinned case', () => {
+  test('the values reach every Druid level and class of unit, under each realm and hero, and a Loremaster, a Trailblazer and a Naval 8 hero', () => {
     const about = (x: { on: unknown }) => x.on as { unit: unknown[]; hero: unknown[]; realm: [unknown, unknown[]] };
     const need = armyCardShortfall();
     const types = new Set(need.map((x) => about(x).unit[0]));
@@ -658,7 +660,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
   test("the march-in share the Explore forecast counts is what the Move order maps, a Traveller's Cloak only when worn (R-125)", () => {
     // The Move order counts a worn item's +20% alone (activeItems); the forecast counted any Traveller's Cloak the hero
     // held, a spare in his pack too (30 for 10 at Explorer 0). Since R-125 it counts a worn one alone, by its name (a
-    // cloak of another name: question 44).
+    // cloak of another name: since R-128).
     const list = marchIn();
     for (const cloak of ['none', 'worn', 'carried']) expect(list.filter((x) => x.cloak === cloak).length).toBe(2);
     expect(differences(list)).toEqual([]);
@@ -673,7 +675,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(differences(list)).toEqual([]);
   });
 
-  test("the army card's sea note pools the flyers' lift with the hulls, as the turn does (R-135, question 45 (d))", () => {
+  test("the army card's sea note pools the flyers' lift with the hulls, as the turn does (R-135)", () => {
     // No matrix game leads humanoid flyers beside too few hulls, so the columns are staged, at Naval 0 and 8. The card
     // counted the hulls alone: Eagle Riders and a Galleon Fleet with two Knights read "needs 2 hulls, has 1" where the
     // turn sails them (a hull and a flyer). Since R-135 it asks the turn's seaLiftOfAColumn, as the Move note does.
@@ -683,7 +685,7 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     expect(differences(list)).toEqual([]);
   });
 
-  test("the army card's upkeep is the wages the turn charges: a Druid 6 leader's beasts, or a Druidic Wonder's, pay half (R-135, question 45 (b))", () => {
+  test("the army card's upkeep is the wages the turn charges: a Druid 6 leader's beasts, or a Druidic Wonder's, pay half (R-135)", () => {
     // No matrix game has a Druid 6 hero leading beasts, so the columns are staged. The card summed each unit's whole
     // wage: two Thunderbirds under a Druid 6 hero read 8g where Early Winter charges 4g. Since R-135 it halves a beast's
     // wage as the turn does (e23's rule, with the report's Wonder flag); a skeleton, a summons and a Wild Hunt beast as
@@ -702,18 +704,16 @@ describe('the copies that read the realm, the report’s shape or the world (P1-
     ]);
   });
 
-  test("the army card's strength of a unit is the turn's before the ground and the foe: Druid 8, Necromancy 6, his items (R-135, question 45 (a)); the realm's discoveries pinned", () => {
+  test("the army card's strength of a unit is the turn's before the ground and the foe: Druid 8, Necromancy 6, his items, the realm's discoveries (R-135)", () => {
     // No matrix game has a Druid 8 hero leading beasts, a Necromancy 6 hero leading skeletons, or a hero leading with
     // items that lift his units, so the columns are staged. The card counted the unit's base strength, a Druid shortfall,
     // its kin and the Druid mastery: Thunderbirds under a Druid 8 hero read "str 40" where the battle's armStr, with no
-    // ground and no battle, gives 59. Since R-135 it asks the turn's steps in armStr's order. The realm's unit-strength
-    // discoveries it can't count yet (the report doesn't carry their effects, and the page holds no table of them): the
-    // two columns they lift are pinned, the card's figure before them.
+    // ground and no battle, gives 59. Since R-135 it asks the turn's steps in armStr's order. Since P1-11z2 it
+    // counts the realm's unit-strength discoveries too, from the effects its report carries: Men-at-Arms under a hero of
+    // a realm with War Drums read 17 where the turn gives 18, and Free Lances under a king with Household Knights 17
+    // where it gives 20.
     const list = theArmyCardsStrengthAgainstTheTurn(copies);
-    expect(list.filter((x) => x.copy !== x.engine).map((x) => [...(x.on as string[]), x.copy, x.engine])).toEqual([
-      ['Men-at-Arms under a hero of a realm with War Drums', 'Men-at-Arms', 17, 18],
-      ["Free Lances under the king of a realm whose discovery lifts its king's cavalry", 'Free Lances', 17, 20],
-    ]);
+    expect(differences(list)).toEqual([]);
     expect(list.map((x) => [...(x.on as string[]), x.engine])).toEqual([
       ['Thunderbirds under a Druid 8 hero', 'Thunderbirds', 59],
       ['Thunderbirds under a Druid 3 hero', 'Thunderbirds', 17],
@@ -872,8 +872,8 @@ describe('the order form’s Cast Spell tables and checks, and the army card’s
   test("the army card's strength of a unit is the battle's: its kin, a rival kin's leader and a Druid shortfall, in the battle's order (R-122)", () => {
     // The card's line ("str …") counts the unit's kin (its king's, its leader's: ×1.2 each) and a rival kin's leader
     // (×0.8) as the battle's armStr does, each rounded. Under a leader short of Druid, it takes the shortfall off the
-    // unit's base strength first, rounded down, then its kin and feud, as the battle does (R-122, Toby's answer to
-    // question 28 (b)). Veteran Shieldwall Levies (12) of the Elves, under a Human with no Druid: 9 on both.
+    // unit's base strength first, rounded down, then its kin and feud, as the battle does (R-122).
+    // Veteran Shieldwall Levies (12) of the Elves, under a Human with no Druid: 9 on both.
     const list = kin();
     const short = list.filter((x) => x.druidMultiplier < 1);
     expect(differences(list)).toEqual([]);
@@ -944,17 +944,17 @@ describe('the march: where the order form says a hero will stand, and what march
 
   test('the share of a province the Explore forecast counts a march as mapping is what the turn maps: a Travelworn Drape, March 6, 5 and 0 leading companies, Explorer 7, a sea sailed into and the coast Naval 6 charts beside it, and none elsewhere or with no ships (R-128)', () => {
     // The turn adds the share his worn items add (a Travelworn Drape is a Traveller's Cloak by another name: its 20%),
-    // 2% for each company led at March 6 or more (its mastery; the companies he leads as the turn begins on the form:
-    // question 61), 5% a level of his Explorer as it counts (to 5), and sailing into a sea at Naval 6 with ships 5% of
-    // each land province beside it (not one further off, not a sea, not with flyers alone). Since P1-11e13 the forecast
-    // reads the share his card gives and charts the coast too.
+    // 2% for each company led at March 6 or more (its mastery; the companies he leads as the turn begins on the form,
+    // until P1-23av builds R-169), 5% a level of his Explorer as it counts (to 5), and sailing into a sea at Naval 6
+    // with ships 5% of each land province beside it (not one further off, not a sea, not with flyers alone). Since
+    // P1-11e13 the forecast reads the share his card gives and charts the coast too.
     const list = marchesIn();
     expect(list.map((x) => x.kind)).toEqual([...THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
     expect(list.map((x) => x.engine)).toEqual([30, 14, 10, 10, 35, 10, 5, 0, 0, 0]);
   });
 
-  test('a hero whose card gives no share of his worn items marches in with none on the form (a report older than the field: a forecast limit, P1-11e13)', () => {
+  test('a hero whose card gives no share of his worn items marches in with none on the form (a report older than the field: a forecast limit, R-128; P1-11e13)', () => {
     // A report written before the card gave the share (P1-11e8) holds no figure for it: the form counts none, as for a
     // hero with no cloak, until the next turn's report gives it.
     const { given, notGiven, noCloak } = theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems(copies);
@@ -967,7 +967,7 @@ describe('the march: where the order form says a hero will stand, and what march
     expect(theMarchInShareOfAHeroWhoseExplorerCountsAboveHisTrainedLevel(copies)).toBe(25);
   });
 
-  test('a coast beside a sea the report shows no ground of is charted by no voyage on the form (a forecast limit, P1-11e13)', () => {
+  test('a coast beside a sea the report shows no ground of is charted by no voyage on the form (a forecast limit, R-128; P1-11e13)', () => {
     // The report's unknown tier gives a province's ground as null, which the form can't tell from land: so a voyage
     // into such a sea charts nothing of the coast on the form, where the turn charts its 5%.
     expect(theCoastBesideASeaTheReportShowsNoGroundOf(copies)).toEqual({ forecast: 0, turn: 5 });

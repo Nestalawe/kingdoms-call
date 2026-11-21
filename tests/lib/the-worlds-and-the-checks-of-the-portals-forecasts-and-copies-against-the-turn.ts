@@ -1,21 +1,22 @@
 // The values, the staged worlds and the checks of the player portal's copies and of its order form's forecasts, each
-// against the engine or the turn (plan P1-11a, Decisions 5, 6 and 7; since P1-11e43 apart from the copies' loader).
+// against the engine or the turn (P1-11a2, #174; since P1-11e43 apart from the copies' loader).
 // Three tests read them: tests/unit/the-order-forms-forecasts-agree-with-the-turn.test.ts (the order form's forecasts,
 // its treasury ledger, its Practice Skill note and its order list, imported from their files with no vm: below, "The
 // forecasts, imported"), tests/unit/the-rules-the-shared-door-hands-the-portal-answer-alike-on-the-report-and-the-state.test.ts
 // (the projection cases) and tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts (the copies it imports
 // from their page files and hands the checks).
 //
-// Two ways of checking (Decision 7):
+// Two ways of checking:
 //   projection  the engine's function on the report's value against it on the state's value the report made it from:
 //               the report hands the portal what the engine reads (the 11 rules the portal takes through src/shared/
 //               whose value the report makes from the state).
 //   truth       a copy or a forecast on the report's value, the engine's function or the turn on the state's: whether
-//               the portal tells the player what the turn will do; where it is known to disagree (a question for Toby,
-//               or a forecast limit), the difference is pinned exactly.
+//               the portal tells the player what the turn will do; where it is known to disagree (a forecast limit
+//               the rulings accept, R-128 and R-134; or the used Stone, which waits on KD-047), the difference is
+//               pinned exactly.
 // The engine's functions and the forecasts are imported directly, with no vm (P1-11a1, P1-11e43).
 //
-// The values (Decision 5): the balance matrix's game scripted-05 played with the engine's modules imported directly,
+// The values: the balance matrix's game scripted-05 played with the engine's modules imported directly,
 // its scripted realm's report after every turn and the state it was built from; and a staged world in the engine's
 // shape handed through the report's own projection (buildTurnReport): every catalogue item, held by a hero of every
 // race and alignment; every unit type at every quality, with the flags the engine and the report use; columns made of
@@ -166,7 +167,7 @@ export const COPY_FUNCTIONS = [
 export type CopyName = (typeof COPY_FUNCTIONS)[number];
 export type Copies = Record<CopyName, (...args: unknown[]) => unknown>;
 
-/** The order form's Cast Spell tables, as it declares them (plan P1-11c1; since P1-11c3 each is the call of the engine
+/** The order form's Cast Spell tables, as it declares them (P1-11c1; since P1-11c3 each is the call of the engine
  *  folder's function that makes it, and these are the answers): every school's spells, each spell's school and the
  *  mastery spells' levels (order-chances.ts, at top level), the action spells and those offered a hero of unseen levels
  *  (buildTargetField), the combat spells by school an Encounter plan offers (the Encounter's plan), and the spells
@@ -860,7 +861,7 @@ const engineFameText = (hero: unknown): { answer: unknown; changed: boolean } =>
 };
 
 /** The 9 rules of the 16 P1-11a4 swapped whose value the report makes from the state, and the beast command P1-11b3
- *  swapped: their truth cases, now that the portal calls the engine's function, as projection cases (Decision 7). */
+ *  swapped: their truth cases, now that the portal calls the engine's function, as projection cases. */
 export const PROJECTIONS: Projection[] = [
   {
     engine: 'unitTypeOf',
@@ -995,7 +996,7 @@ function theSeaLiftOf(armies: unknown, hero: Obj) {
 // ── The copies that stay ────
 
 /** One value compared: what the copy answers, what the engine answers, and whether the engine's function tried to
- *  change its input (a read that writes: plan P1-11a, "What the code is"). The values are frozen, so a write throws:
+ *  change its input (a read that writes). The values are frozen, so a write throws:
  *  the answer is then "(wrote to its input)". */
 export interface Comparison {
   readonly on: unknown;
@@ -1034,10 +1035,9 @@ export function effMagicLvlAgainstTheReport(
 }
 
 // ── The copies that read the realm, the report's shape or the world (P1-11b1) ────
-// Truth parity (Decision 6), each a copy on the report's value against the engine's function on the state's: what
-// the portal tells the player against what the turn does. Where the two are known to disagree (plan P1-11b's
-// Decisions, questions 13 and 15 for Toby), the difference is pinned exactly: the check fails the day either side
-// changes alone, which is when the fix rewrites it.
+// Truth parity, each a copy on the report's value against the engine's function on the state's: what the portal
+// tells the player against what the turn does. They agree since R-120 and R-125; where two are known to disagree, the
+// difference is pinned exactly: the check fails the day either side changes alone, which is when the fix rewrites it.
 
 /** What a case is about, short enough for a line. */
 const aboutTheUnit = (world: World, hero: Projected & { state: Obj }, unit: Projected) => ({
@@ -1277,11 +1277,12 @@ export function marchInGainAgainstTheMoveOrder(c: Copies): MarchComparison[] {
 }
 
 // ── The march (P1-11d1) ────
-// Plan P1-11d's parity cases on movement, before any of it is shared: where the order form says a hero will stand after
+// P1-11d's parity cases on movement, before any of it is shared: where the order form says a hero will stand after
 // his Moves and Forced Marches (predictedLocation, which every later phase's form reads), the Move field's directions,
 // the direction a fresh Move opens on (lastMoveDirOf), and the share of a province marching in maps
 // (exploreMoveGainBefore). Each runs as the portal's own code, on the orders staged in its fields. Where the forecast
-// disagrees with the turn (question 44), the difference is pinned exactly: each case says which kind it is.
+// disagrees with the turn (a forecast limit, R-128: ground the report leaves unknown, a report older than the field a
+// part reads, a hero who joins this turn), the difference is pinned exactly: each case says which kind it is.
 
 /** The compass words of the Move field (its DIRECTIONS), by the direction each names. */
 const THE_MOVE_FIELDS_WORDS: Record<string, string> = {
@@ -1486,7 +1487,7 @@ export interface AStagedMarch {
   readonly realm?: WhatAStagedMarchChangesOfTheRealm;
 }
 /** The kinds of staged march into a province whose share the march maps is read, each one the forecast and the turn
- *  agree on: since P1-11e13 (question 44, R-128) a cloak of another name (the share the report gives of his worn
+ *  agree on: since P1-11e13 (R-128) a cloak of another name (the share the report gives of his worn
  *  items) and the coast Naval 6 charts beside a sea sailed into, and an Explorer trained past 5 (both count 5). */
 export const THE_MARCHES_IN_THE_FORECAST_GETS_RIGHT = [
   'a Travelworn Drape worn',
@@ -1586,7 +1587,7 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
   const ourProvinces: unknown[] = Array.isArray(ourRealm['provinces']) ? ourRealm['provinces'] : [];
   if (!ourProvinces.includes(start['id'])) ourRealm['provinces'] = [...ourProvinces, start['id']];
   // (a far sea, with the coast beside it in realm 0's own list on that march alone, so its report shows the ground:
-  // P1-11e12; ground the report shows as unknown is read as land, a forecast limit)
+  // P1-11e12; ground the report shows as unknown is read as land, a forecast limit, R-128)
   const farSea = provinces.find((p) => !isLand(p) && !beside.includes(p) && nextTo(p).some(ours));
   const farCoast = farSea ? nextTo(farSea).find(ours) : undefined;
   if (!farSea || !farCoast) throw new Error('the staged world has no far sea with a coast of realm 0');
@@ -1887,7 +1888,7 @@ export function theMarchInForecastAgainstTheTurn(c: Copies): MarchInForecastComp
 }
 /** The share of the coast the Explore forecast counts the Naval 6 voyage beside it as charting, and the share the turn
  *  charts, on the staged report where the sea he sails into is of the unknown tier (its ground null: a forecast limit,
- *  P1-11e13: the form can't tell it is a sea). */
+ *  R-128; P1-11e13: the form can't tell it is a sea). */
 export function theCoastBesideASeaTheReportShowsNoGroundOf(c: Copies): { forecast: unknown; turn: unknown } {
   const { world, marchesIn } = marchingWorld();
   const m = marchesIn.find((x) => x.kind === 'the coast beside the sea he sails into, charted at Naval 6');
@@ -1900,7 +1901,7 @@ export function theCoastBesideASeaTheReportShowsNoGroundOf(c: Copies): { forecas
 }
 /** The share of the province the Explore forecast counts the march of the hero wearing a Travelworn Drape as mapping,
  *  on the staged report and on a copy of it whose card of his gives no share of his worn items (a report older than
- *  the field, P1-11e8: a forecast limit, his items then add none); with the share of a march with no cloak. */
+ *  the field, P1-11e8: a forecast limit, R-128; his items then add none); with the share of a march with no cloak. */
 export function theMarchInShareOfAHeroWhoseCardGivesNoShareOfHisWornItems(c: Copies): {
   given: unknown;
   notGiven: unknown;
@@ -2012,8 +2013,8 @@ export function theMarchForecastAsWhatItReadsChanges(c: TheForecasts): {
 }
 /** Where the order form says the hero ordered past his pace (on land) will stand, on the report changed as the form
  *  holds a hero who joins this turn (hired, charmed or raised: in a phase of this turn, his pace the page's) and as a
- *  report that shows no pace of his (P1-11e11: neither gives the turn's pools, so neither stops him); with the province
- *  his orders name and the one his pace stops him in. */
+ *  report that shows no pace of his (a forecast limit, R-128; P1-11e11: neither gives the turn's pools, so neither
+ *  stops him); with the province his orders name and the one his pace stops him in. */
 export function theMarchPastHisPaceOfAHeroTheReportShowsNoPaceOf(c: TheForecasts): {
   joined: unknown;
   noPace: unknown;
@@ -2072,20 +2073,22 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: TheForecasts): ASearc
   });
 }
 // ── What a hero holds (P1-11d2) ────
-// Plan P1-11d's parity cases on what a hero will carry and lead, before any of it is shared: the items in his pack
+// P1-11d's parity cases on what a hero will carry and lead, before any of it is shared: the items in his pack
 // (predictedItems, which every later phase's Send Item, Equip Items and Use Item fields read), the companies he leads
 // (projectedLedArmies, which the Leave/Transfer, Disband and Blood Offering fields and the Move note read) and those a
 // province holds unled (projectedGarrison, which the Pick Up field reads), with the units a Recruit musters
 // (_projRecruitUnits) and where each musters (since P1-11e19 the turn's rule). Each runs as the portal's own code,
 // on the orders staged in its fields; the turn's side is its phases, played one at a time as its loop plays them. Where
-// the forecast disagrees with the turn (question 42), the difference is pinned exactly: each case says which kind it is.
+// the forecast disagrees with the turn (the used Stone, which waits on KD-047: R-129), the difference is pinned exactly:
+// each case says which kind it is.
 
 /** The kinds of staged holding: those the forecast and the turn agree on (since P1-11e19 a beast recruited, handed
  *  over or taken up past a leader's beast command, a band of garrison troops hired, companies taken up from the
  *  garrison last first, and risen dead handed to a comrade of a realm that is not Undead; since P1-11e20 an item handed
  *  to a comrade who marches in that phase, at once, and the items of a phase handed over in the turn's order of its
- *  heroes), and the one it is known to get wrong (question 42): the Philosopher's Stone used (the turn destroys it), and a chain of company hand-overs in one
- *  phase (the turn hands on what the comrade was handed; the form reads each column as the phase begins). */
+ *  heroes; since P1-11z1 a chain of company hand-overs in one phase, the comrade handing on what he was handed), and
+ *  the one it is known to get wrong (R-129; not a forecast limit): the Philosopher's Stone used (the turn destroys
+ *  it; it waits on KD-047). */
 export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'items handed to a comrade beside him',
   'an item sent by courier to a comrade elsewhere',
@@ -2105,6 +2108,8 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a chain of hand-overs in one phase',
   'items handed to one comrade by two heroes, the quicker first',
   'an item handed to a comrade beside him who marches away that season',
+  // (P1-11z1, R-129: each phase's companies handed over in the turn's order of its heroes)
+  'a chain of company hand-overs in one phase',
   // (P1-11e19, R-129: the companies a Recruit, a hand-over and a Pick Up move, by the turn's own rules)
   'a beast recruited past his beast command',
   'a band of garrison troops hired',
@@ -2123,11 +2128,11 @@ export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'a band of beasts and a band hired with the garrison named, in a province of another realm',
   'a beast recruited by a Druid 1 hero leading a beast of the Wild Hunt and a summoned one',
   'a beast recruited under the banner of a comrade at his beast command',
+  // (P1-11z1, R-129: a beast command's room counted on the column as he acts, after the heroes before him)
+  'beasts handed to a Druid 1 comrade by two heroes, the second past his beast command',
+  'a beast handed to a Druid 1 comrade who recruits a beast that season',
 ] as const;
-export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = [
-  "the Philosopher's Stone used",
-  'a chain of company hand-overs in one phase',
-] as const;
+export const THE_HOLDINGS_THE_FORECAST_GETS_WRONG = ["the Philosopher's Stone used"] as const;
 export type AKindOfHolding =
   (typeof THE_HOLDINGS_THE_FORECAST_GETS_RIGHT)[number] | (typeof THE_HOLDINGS_THE_FORECAST_GETS_WRONG)[number];
 /** An order of a phase, as the page's fields hold it and the turn reads it: its action, its target and its extra (a
@@ -2512,7 +2517,7 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       },
     );
   }
-  // the one the forecast gets wrong (question 42)
+  // the one the forecast gets wrong (R-129: it waits on KD-047; not a forecast limit)
   {
     // (a company of the realm for it to raise a tier, so it is spent)
     const p = aProvince();
@@ -2527,6 +2532,8 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       },
     );
   }
+  // (P1-11z1: the companies' chain, which the forecast follows since, staged here so the cases after it keep their
+  // provinces and heroes)
   {
     // the first to hand over is the later hero, as in the items' chain
     const p = aProvince();
@@ -2643,10 +2650,16 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
     stage('every company left in the garrison', 'companies', p, { leader }, { [id(leader)]: [leave('all')] });
   }
   {
-    // (the garrison alone is read: the form keeps a company left by its type with its leader, Parked)
+    // (the leader's column and the garrison read: the turn takes the company from him by its type or its name, P1-11z1)
     const p = aProvince();
     const leader = at(p, { armies: [unit('Shieldwall Levies'), unit('Men-at-Arms')] });
-    stage('a company left in the garrison by its type', 'companies', p, {}, { [id(leader)]: [leave('Men-at-Arms')] });
+    stage(
+      'a company left in the garrison by its type',
+      'companies',
+      p,
+      { leader },
+      { [id(leader)]: [leave('Men-at-Arms')] },
+    );
   }
   {
     const p = aProvince();
@@ -2713,6 +2726,40 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       p,
       { recruiter, comrade },
       { [id(recruiter)]: [recruit(`${beast}|1`, `to:${id(comrade)}`)] },
+    );
+  }
+  // (P1-11z1: the room his beast command leaves as he acts, the heroes before him having handed him a beast)
+  {
+    const p = aProvince();
+    const [first, second] = [at(p, { armies: [unit(beast)] }), at(p, { armies: [unit(otherBeast)] })];
+    const comrade = at(p, { skills: { druid: 1 } });
+    stage(
+      'beasts handed to a Druid 1 comrade by two heroes, the second past his beast command',
+      'companies',
+      null,
+      { first, second, comrade },
+      {
+        [id(first)]: [leave('all', id(comrade))],
+        [id(second)]: [leave('all', id(comrade))],
+      },
+    );
+  }
+  {
+    // (the giver hands over first: a hero handing to a comrade beside him acts before that comrade; the comrade's column
+    // alone is read: the form musters the beast past his command into the garrison from his column as the season
+    // begins, KD-420)
+    const p = offering(aProvince(), otherBeast);
+    const giver = at(p, { armies: [unit(beast)] });
+    const comrade = at(p, { skills: { druid: 1 } });
+    stage(
+      'a beast handed to a Druid 1 comrade who recruits a beast that season',
+      'companies',
+      null,
+      { giver, comrade },
+      {
+        [id(giver)]: [leave('all', id(comrade))],
+        [id(comrade)]: [recruit(`${otherBeast}|1`)],
+      },
     );
   }
   return { world: quietly(() => savedAndReported(g)), holdings };
@@ -2936,7 +2983,7 @@ export function armyCardSeaNoteAgainstTheEngine(c: Copies, s: Samples): SeaNoteC
       };
     });
 }
-/** Staged columns of humanoid flyers beside too few hulls (P1-11e31, question 45 (d)), which no matrix game leads: the
+/** Staged columns of humanoid flyers beside too few hulls (P1-11e31, R-135), which no matrix game leads: the
  *  card's verdict for each, at a trained Naval of 0 and of 8, against getSeaCapability's on the same column and hero. */
 const THE_STAGED_SEA_COLUMNS: Readonly<Record<string, readonly string[]>> = {
   'Eagle Riders, a Galleon Fleet and four Men-at-Arms': [
@@ -2987,7 +3034,7 @@ export function armyCardSeaNoteOnStagedColumns(c: Copies): SeaNoteComparison[] {
   );
 }
 
-// ── The army card's upkeep (P1-11e34, R-135, question 45 (b)) ────
+// ── The army card's upkeep (P1-11e34, R-135) ────
 /** The columns the army card's upkeep cases stage, each led by a hero of realm 0 in a world of its own: beasts under a
  *  Druid 6 leader or a Druidic Wonder (half wages, as Early Winter charges them), and those whose wage no Druid halves. */
 export const THE_ARMY_CARDS_UPKEEP_COLUMNS = [
@@ -3062,7 +3109,7 @@ export function theArmyCardsUpkeepAgainstTheTurn(c: Copies): AnUpkeepComparison[
   });
 }
 
-// ── The army card's strength (P1-11e38, R-135, question 45 (a)) ────
+// ── The army card's strength (P1-11e38, R-135) ────
 /** The columns the army card's strength cases stage, each led by a hero of realm 0 in a world of its own: a lift or a
  *  step armStr takes before the ground and the foe (Druid 8, Necromancy 6, his items, the realm's discoveries), and a
  *  Druid shortfall with none of them. */
@@ -3183,7 +3230,7 @@ export function theArmyCardsStrengthAgainstTheTurn(c: Copies): AStrengthComparis
 }
 
 // ── The order form's Cast Spell tables and checks, and the army card's kin and feud (P1-11c1) ────
-// Plan P1-11c's parity cases, before the form takes its tables and its check from the engine's side (P1-11c2 to c5).
+// P1-11c's parity cases, before the form takes its tables and its check from the engine's side (P1-11c2 to c5).
 // The truth, as above: the form's copy on what the realm's report holds, against the content's spells (SPELL_DEFS_P)
 // or the engine's function on the state. The Warlock's extra cast agrees since R-123, the army card's kin and feud since
 // R-122, a Grand Cathedral's free Bless Province since R-124.
@@ -3519,7 +3566,7 @@ export function castingLimitAgainstTheOrder(form: TheOrderFormsSpells): CastingL
 }
 
 /** The order form's level of a magic school (effMagicLvl) and its third cast of one school, on heroes no matrix game
- *  holds (P1-11e33, question 45 (c)): a Psychic 2 hero with two Dreamstones, a hero trained to White 7, and one with a
+ *  holds (P1-11e33, R-135): a Psychic 2 hero with two Dreamstones, a hero trained to White 7, and one with a
  *  Chalice of Dawn too, each of realm 0 by its king. The form handed its realm's report as the engine builds it; the
  *  engine's side, the level the turn casts at (effSkillOf, which effStat asks) and its Cast Spell order (a third
  *  Oratory, the Dreamstones' hero's). */
@@ -3645,13 +3692,12 @@ export function armyCardKinAgainstTheBattle(c: Copies, world: World): KinCompari
 }
 
 // ── The orders (P1-11d3) ────
-// Plan P1-11d's parity cases on the orders a hero's form offers him, before any of it is shared (d7 to d11 share the
+// P1-11d's parity cases on the orders a hero's form offers him, before any of it is shared (d7 to d11 share the
 // creed and king check and the masteries' table): the order list (actionsFor) against the turn's own checks of each
 // order (processOrder and the order's function), each name the list holds against the order the turn reads it as
 // (normaliseAction), and the creed orders' target fields (buildTargetField) against their rows and what the turn does.
 // Each runs as the portal's own code, on a report the engine builds; the turn's side is processOrder on a copy of the
-// state the report was built from. Where the form disagrees with the turn (questions 36, 39 and 41), the difference is
-// pinned exactly (question 40's Steal agrees since P1-11e21, R-130).
+// state the report was built from. The form follows the turn (R-130 to R-133): no difference is pinned.
 
 /** The turn's refusals the order list restates, each by its line's kind: a creed's order outside its creed, a king's
  *  order by another hero, Steal with no Thief, Research with no Sage, a king releasing himself, a second Grand Design,
@@ -4558,10 +4604,11 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
 // the comrades a hero's Practice Skill field counts as practising beside him (practiceCompanionSkill), each run as the
 // page runs it on realm 0's report as the engine builds it, its fields holding the orders staged; the turn's side is its
 // phases played on a copy of the state the report was built from (theTurnPlaysThePhases), and for the wages, Early
-// Winter's reckoning after them. Where the form disagrees with the turn (question 43), the difference is pinned exactly.
+// Winter's reckoning after them. Where the ledger can't know (a forecast limit, R-134), the difference is pinned
+// exactly.
 
 /** The orders the ledger cases stage, each in a world of its own: those the ledger and the turn agree on, and the one
- *  it can't know (question 43, a forecast limit): the Host-Leader's 1g a company on a report that doesn't name him.
+ *  it can't know (a forecast limit, R-134): the Host-Leader's 1g a company on a report that doesn't name him.
  *  Since P1-11e30 the upkeep and hero-wage discoveries' savings are shared under their caps, as the turn shares them. */
 export const THE_LEDGERS_THE_TURN_AGREES_WITH = [
   'a company of the province raised into his column',

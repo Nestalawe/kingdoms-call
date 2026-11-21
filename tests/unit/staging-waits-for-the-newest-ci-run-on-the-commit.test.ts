@@ -1,4 +1,4 @@
-// Staging waits for CI's newest run on the commit (.github/scripts/staging.js, wait-ci). CI keeps one run per pull
+// Staging waits for CI's newest run on the commit (.github/scripts/staging.ts, wait-ci). CI keeps one run per pull
 // request (ci.yml's concurrency group): the "staging" label starts staging's run and a new CI run at the same moment,
 // and the new CI run cancels the one still going, whose "ci" job then fails at once. Its own "ci" starts only once its
 // other jobs are done, minutes later. Read across every run on the commit, that failed "ci" stopped staging; read from
@@ -7,14 +7,14 @@
 // code.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// Staging's wait for CI (`.github/scripts/staging.js` `wait-ci`) reads the jobs of CI's newest run on the commit alone:
+// Staging's wait for CI (`.github/scripts/staging.ts` `wait-ci`) reads the jobs of CI's newest run on the commit alone:
 // a run cancelled by a newer one (the `staging` label starts a new CI run, which cancels the one still going; its `ci`
 // job then fails at once) never stops staging, which waits for the newer run, then goes; the newest is the highest run
 // id, in any order; no run yet means wait. Read across every run on the commit, as the check runs were, the cancelled
 // run's `ci` stops it. Level 1: pure functions of the script on made-up runs and jobs, nothing fetched (static can't:
 // it runs code). TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
-import staging from '../../.github/scripts/staging.js';
+import * as staging from '../../.github/scripts/staging.ts';
 
 interface Job {
   id: number;

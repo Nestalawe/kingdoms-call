@@ -10,8 +10,9 @@
 //   numbers rounded down, a multiplier kept;
 // - skills-and-projections.ts: a source of no known kind, the sign-aware fallback, the skill row from raw levels and
 //   from scoped extras (capped, a scope with no mark), the Druid a commander needs on the page's own report, the army
-//   card's figures with no kingdom and no items, a primal race's class, and the army label's short, humanoid, moving and
-//   Wild Hunt forms.
+//   card's figures with no kingdom and no items, its strength with the unit-strength effects its realm's report
+//   carries and on an older report without them (P1-11z2), a primal race's class, and the army label's short,
+//   humanoid, moving and Wild Hunt forms.
 // Level 1 (unit): the page's three files import in Node (P1-13e8); their functions called on plain values, the
 // controls on a jsdom document set as the page's own. A page test would boot the whole page to reach each one.
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -346,6 +347,24 @@ describe('skills-and-projections.ts: the skill row, the Druid and the army card'
     expect(f.totalCost).toBe(5);
     expect(f.units).toHaveLength(2);
     expect(f.totalStr).toBe(2 * (f.units[0]?.bs ?? NaN));
+  });
+
+  test("the army card's strength counts the unit-strength effects its realm's report carries; an older report without them, none (P1-11z2)", () => {
+    // Human Men-at-Arms under a Human hero of a Human realm: 12, and +44% for their kin, 17 (17.28, rounded); War Drums'
+    // +4% makes 18 (17.97). A report stored before the report carried the effects, or with none, shows the strength
+    // before them, as the card did then.
+    const strength = (fields: Record<string, unknown>) =>
+      theArmyCardsFiguresOfAColumn(
+        [{ type: 'Men-at-Arms', quality: 'Average', race: 'Human' }],
+        { id: 1, items: null, race: 'Human' },
+        { kingdom: { race: 'Human', ...fields } },
+      ).units[0]?.bs;
+    expect([
+      strength({ theUnitStrengthEffectsOfItsDiscoveries: [{ kind: 'unitStr', pct: 0.04 }] }),
+      strength({}),
+      strength({ theUnitStrengthEffectsOfItsDiscoveries: null }),
+      strength({ theUnitStrengthEffectsOfItsDiscoveries: [] }),
+    ]).toEqual([18, 17, 17, 17]);
   });
 
   test("a primal race's class: a known sub-race, an unknown one, a bare Primal by its unit's type", () => {

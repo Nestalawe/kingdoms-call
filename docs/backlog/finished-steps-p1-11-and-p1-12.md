@@ -9,7 +9,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 
 ## P1-11
 
-- P1-11: delivered in its rows, below: the player portal uses the engine's functions, and the copies file is gone; the rest is P1-11z
+- P1-11: delivered in its rows, below: the player portal uses the engine's functions, the copies file is gone, and P1-11z closed its rest
 - P1-11a: done in its rows, below
 - P1-11a1: #173 The two casting limits get one engine function each
 - P1-11a2: #174 The player portal's copies checked against the engine
@@ -87,6 +87,10 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-11e41: #488 The order form's forecasts read the report and the orders handed to them
 - P1-11e42: #506 The order form's ledger, chance notes, order list and magic levels read the report and the orders handed to them
 - P1-11e43: #507 The copies file narrowed to the page files no test can import; the forecasts' cases imported (merged through #509)
+- P1-11z: done in its rows, below (#696, #697, #699)
+- P1-11z1: #696 The order form's companies follow the turn: a chain of hand-overs in one season, and a company left by its type
+- P1-11z2: #697 The hero card's strength counts the realm's own strength discoveries
+- P1-11z3: #699 Each pin that stays names its ruling, and P1-11 closes
 
 ## P1-12
 

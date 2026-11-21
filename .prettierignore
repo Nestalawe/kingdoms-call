@@ -6,6 +6,7 @@
 !/tsconfig.json
 !/.prettierrc.json
 !/.github/dependabot.yml
+!/.github/scripts/*.ts
 !/.claude/settings.json
 !/tests/ratchet.json
 !/tests/**/*.ts

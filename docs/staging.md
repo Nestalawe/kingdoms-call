@@ -94,6 +94,6 @@ on another branch and never go live.
 - **"Missing from the database" on the GM portal's game list** means the site on staging is ahead of
   staging's database: usually a site change labelled without the database change it needs. Stack it on
   that pull request (above).
-- How it works underneath: `.github/workflows/staging.yml`, `.github/scripts/migrations.js` (`reset
+- How it works underneath: `.github/workflows/staging.yml`, `.github/scripts/migrations.ts` (`reset
   staging`), `supabase/seeds/staging.sql` (the made-up games), and, for the live database,
   `.github/workflows/deploy.yml` ([supabase/README.md](../supabase/README.md#how-a-migration-goes-live)).

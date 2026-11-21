@@ -50,11 +50,12 @@
 // request's last commit (planted copies: without the built commit, the head passed as built, no comment, a build of
 // another commit); each TypeScript script a workflow runs with Node says it is a module (its name ends `.mts`, or the
 // `package.json` nearest its folder, as the workflow checks it out, says `"type": "module"`: `tools/deploy/`,
-// `tools/balance/`, `tools/github/`), so Node never warns `MODULE_TYPELESS_PACKAGE_JSON` (planted copies: the keep
-// step's script in a folder without one, the folder's `package.json` gone, the balance report's sparse checkout without
-// it; renamed `.mts`, let through); the `balance` job decides first in plain Node, runs `npm ci` and the matrix only on
-// its `play=true`, and compares with a pull request's base or the commit before a push; on a pull request only, it
-// makes the balance report once the games were played and uploads it (P1-03a), CI keeps only permission to read, and
+// `tools/balance/`, `tools/github/`, `.github/scripts/`), so Node never warns `MODULE_TYPELESS_PACKAGE_JSON` (planted
+// copies: the keep step's script in a folder without one, the folder's `package.json` gone, the balance report's and
+// the dangerous-paths warning's sparse checkouts without it; renamed `.mts`, let through); the `balance` job decides
+// first in plain Node, runs `npm ci` and the matrix only on its `play=true`, and compares with a pull request's base
+// or the commit before a push; on a pull request only, it makes the balance report once the games were played and
+// uploads it (P1-03a), CI keeps only permission to read, and
 // `balance-report.yml` posts it without checking out or running the pull request's code (only the default branch's or
 // the base commit's script, with values from the event as environment only); the engine paths are the files in `src/`
 // the GM portal's page is built from and the pages' templates (exactly those), `public/`, the build and its page list,
@@ -120,7 +121,7 @@ import archConfig from '../../.dependency-cruiser.mts';
 import knipConfig from '../../knip.ts';
 import config from '../../vitest.config.mts';
 import pwConfig from '../../playwright.config.ts';
-import dangerous from '../../.github/scripts/dangerous-paths.js';
+import * as dangerous from '../../.github/scripts/dangerous-paths.ts';
 import { CHECK_LEVELS } from '../../tools/check.ts';
 import { ENGINE_PATHS, isEnginePath } from '../../tools/balance/engine-paths.ts';
 import { pageSources } from '../../tools/balance/run.ts';
@@ -2010,7 +2011,7 @@ describe('CI', () => {
     const workflow = readWorkflow(text);
     const problems: string[] = [];
     if (/^ {10}ref:/m.test(workflow.jobs.get('build') ?? '')) problems.push('build: checks out another commit');
-    const comment = stepsOf(workflow.jobs.get('staging') ?? '').find((s) => s.includes('staging.js comment')) ?? '';
+    const comment = stepsOf(workflow.jobs.get('staging') ?? '').find((s) => s.includes('staging.ts comment')) ?? '';
     if (!comment) return [...problems, 'staging: no "On staging" comment'];
     if (!/^ {10}BUILT_SHA: \$\{\{ github\.sha \}\}$/m.test(comment))
       problems.push('staging: the comment is not told the commit the build job built');
@@ -2049,7 +2050,7 @@ describe('CI', () => {
   // Each TypeScript script a workflow runs with Node says it is a module: its name ends .mts, or the package.json nearest
   // its folder says "type": "module". Otherwise Node parses it as CommonJS first, fails, parses it again as a module and
   // prints MODULE_TYPELESS_PACKAGE_JSON (the deploy's keep step did on every deploy, #187, #188). The repository's own
-  // package.json has no type: its .js files (eslint.config.js, .github/scripts/) are CommonJS.
+  // package.json has no type: its one .js file, eslint.config.js, is CommonJS.
   function moduleTypeOf(dir: string, files: (f: string) => string | undefined): string | undefined {
     for (let d = dir; ; d = path.posix.dirname(d)) {
       const text = files(d === '.' ? 'package.json' : `${d}/package.json`);
@@ -2073,6 +2074,13 @@ describe('CI', () => {
   test('each TypeScript script a workflow runs with Node says it is a module', () => {
     const scripts = workflows.flatMap(({ text }) => [...text.matchAll(/\bnode ([\w./-]+\.m?ts)\b/g)].map((m) => m[1]));
     expect(scripts).toContain('tools/deploy/keep-the-previous-deploys-files.ts');
+    expect(scripts).toEqual(
+      expect.arrayContaining([
+        '.github/scripts/dangerous-paths.ts',
+        '.github/scripts/migrations.ts',
+        '.github/scripts/staging.ts',
+      ]),
+    );
     expect(typelessScripts(workflows)).toEqual([]);
     // Planted: the keep step's script in a folder whose nearest package.json has no type (the repository's); the
     // folder's package.json gone; and renamed .mts, which needs none.
@@ -2092,6 +2100,13 @@ describe('CI', () => {
     expect(notCheckedOut).not.toBe(report);
     expect(typelessScripts([{ f: 'balance-report.yml', text: notCheckedOut }])).toEqual([
       'balance-report.yml: tools/github/balance-comment.ts',
+    ]);
+    // The same for the dangerous-paths warning's sparse checkout of the base commit.
+    const warning = read('.github/workflows/dangerous-paths.yml');
+    const withoutTheType = warning.replace(/^ {12}\.github\/scripts\/package\.json\n/gm, '');
+    expect(withoutTheType).not.toBe(warning);
+    expect(typelessScripts([{ f: 'dangerous-paths.yml', text: withoutTheType }])).toEqual([
+      'dangerous-paths.yml: .github/scripts/dangerous-paths.ts',
     ]);
   });
 
@@ -2315,7 +2330,7 @@ describe('the nightly run', () => {
 describe('the mutant scorer', () => {
   const scorerFiles = ['tools/mutants/run.ts', 'tools/mutants/a-helper-added-later.ts'];
   const undangerous = (listText: string) =>
-    scorerFiles.filter((f) => !dangerous.isDangerous(f, dangerous.parsePaths(listText) as string[]));
+    scorerFiles.filter((f) => !dangerous.isDangerous(f, dangerous.parsePaths(listText)));
   const workflowsThatScoreMutants = (texts: { f: string; text: string }[]) =>
     texts.filter(({ text }) => /\bnpm run(?:-script)? mutants\b|\btools\/mutants\b/.test(text)).map(({ f }) => f);
 
@@ -2344,7 +2359,7 @@ describe('the mutant scorer', () => {
 
 describe('dangerous paths', () => {
   test('every harness file gets the warning', () => {
-    const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
+    const globs = dangerous.parsePaths(read('.github/dangerous-paths'));
     const harness = [
       '.claude/settings.json',
       'tsconfig.json',
@@ -2398,7 +2413,7 @@ describe('dangerous paths', () => {
   });
 
   test("the balance baselines are checked by CI's balance job, so a change to play isn't flagged for its data", () => {
-    const globs = dangerous.parsePaths(read('.github/dangerous-paths')) as string[];
+    const globs = dangerous.parsePaths(read('.github/dangerous-paths'));
     for (const f of ['tests/balance/baseline/matrix.json', 'tests/balance/baseline/noise.json']) {
       expect(dangerous.isDangerous(f, globs), f).toBe(false);
     }

@@ -58,23 +58,17 @@ here: each row is placed by [the default order](../ways-of-working/ordering-the-
 of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
 T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
-[the finished list](finished-steps-p1-13-to-p1-25.md).
+[the finished list](finished-steps-p1-13-to-p1-25.md). The tranche "Phase 1's rest" is done too: P1-11z and B-16 are
+in the finished lists.
 
-### 1. Phase 1's rest
-
-| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
-|---|---|---|---|---|---|---|---|---|
-| P1-11z | P1-11's rest: the differences the copies test still pins go as the maintainers rule on them; the alignment orders' portal half (with P1-19) | Players: the order form says what the turn does in the cases still pinned; closes P1-11 | Phase 1 | Medium | – | ⬜ | | Phase 1's rest: closes P1-11; its portal half goes with P1-19's |
-| B-16 | The three CI scripts in `.github/scripts/` (dangerous-paths, staging, migrations) in TypeScript, in steps: the `.ts` beside the `.js`, the workflows pointed at them, the `.js` deleted; a staging pass. `eslint.config.js` stays JavaScript: it counts as config | Maintainers: the scripts that apply production migrations and rebuild staging are type-checked and linted; closes Phase 1's "All code is TypeScript" | Phase 1 | Small | ✓ | ⬜ | | Phase 1's rest: closes a Phase 1 criterion, but nothing waits on it and it touches the deploy path, so it comes last (a maintainer's choice, 2026-11-20) |
-
-### 2. The reports' audience in one place
+### 1. The reports' audience in one place
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
 | B-18 | The audience gate: one function decides which realm reads each line of the turn, from the line's whole audience (`seen` as world, there or battle; told; the deed's realm; never), kept in memory until the reports are built, so the save is unchanged. The reports (`playerEvents`) and the leak check both call it; a realm's report takes only the lines it returns (a type and a lint rule). A `refactor-only` PR: every realm's report identical over the balance games. Then the leak check on the engine's modules, on `KC_SEED` (KD-382's part), and KD-379's staged case, each its own PR. Folds in KD-378: the gate replaces its observer | The maintainers: who reads each line is decided in one place, not two, so the reports and the leak check can't disagree; the leak check plays new games every night and leaves the vm. Players notice nothing | The ground for the redesign | Medium | ✓ | ⬜ | | After Phase 1's rest and before T7: B-06 and B-09 add lines and audiences, and every new one is checked by the one gate |
 | B-19 | The kind decides its audience: `emit` typed by the kind of fact, so a line whose kind is its hero's realm's alone type-checks only with that realm's audience; the leak check's own list of those kinds goes. After B-18 | The maintainers: a wrong audience fails to compile, not in a nightly game | The ground for the redesign | Small | – | ⬜ | | B-18's follow-up, mostly types: before T7 moves the rules and their lines |
 
-### 3. T7, the rules pulled out
+### 2. T7, the rules pulled out
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|

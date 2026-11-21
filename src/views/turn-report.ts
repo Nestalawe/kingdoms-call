@@ -62,6 +62,7 @@ import {
   taxBonusCap,
   taxRecordsGold,
 } from '../engine/discoveries.ts';
+import { aCopyMadeThroughJson } from '../engine/rules-on-plain-values/a-copy-made-through-json-and-typed-as-its-original.ts';
 import {
   doARealmsDiscoveriesAddToTheRealmsTax,
   whatARealmsDiscoveriesEarnInInterest,
@@ -73,6 +74,7 @@ import {
   theSharesARealmsDiscoveriesAddToPracticeSkillBySkill,
   theCutsARealmsUpkeepDiscoveriesMakeAndTheirRoom,
   theCutsAndCeilingsARealmsHeroWageDiscoveriesMakeAndTheirRoom,
+  theEffectsARealmsDiscoveriesStrengthenAUnitWith,
 } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import {
   theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice,
@@ -1269,6 +1271,11 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       // and each hero-wage discovery's cut or ceiling and room (plan P1-11e30)
       theHeroWageDiscoveriesCutsAndTheirRoom: theHeroWageDiscoveriesCutsCeilingsAndRoom.theCuts,
       theHeroWageDiscoveriesCeilingsAndTheirRoom: theHeroWageDiscoveriesCutsCeilingsAndRoom.theCeilings,
+      // and the unit-strength effects its own discoveries carry, in the order it holds them, for the army card's
+      // strength (plan P1-11z2, R-135): never another realm's, each a copy (not the discoveries' table's own rows)
+      theUnitStrengthEffectsOfItsDiscoveries: aCopyMadeThroughJson(
+        theEffectsARealmsDiscoveriesStrengthenAUnitWith(player),
+      ),
     },
     exploreDiscMult: Object.fromEntries(
       ['plain', 'desert', 'forest', 'mountain', 'jungle', 'sea'].map((t) => [t, discExploreMult(player, t)]),

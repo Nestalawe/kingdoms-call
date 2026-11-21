@@ -4,7 +4,7 @@
     "tsIgnore": 0,
     "eslintDisable": 0,
     "allowlistEntries": 1,
-    "javascriptFiles": 4,
+    "javascriptFiles": 1,
     "quarantinedTests": 0,
     "sourceJavascriptFiles": 2,
     "vmLoaderTests": 4,

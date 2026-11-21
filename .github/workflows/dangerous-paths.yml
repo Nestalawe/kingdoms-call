@@ -34,14 +34,16 @@ jobs:
           sparse-checkout: |
             .nvmrc
             .github/dangerous-paths
-            .github/scripts/dangerous-paths.js
+            .github/scripts/dangerous-paths.ts
+            .github/scripts/package.json
           sparse-checkout-cone-mode: false
 
-      # The PR that adds this warning has nothing on its base branch to run yet.
+      # The PR that adds this warning has nothing on its base branch to run yet. The script's package.json (it says the
+      # script is a module) isn't asked for: without it Node still runs the script, after a warning.
       - name: Check the base branch has the warning
         id: base
         run: |
-          if [ -f .github/scripts/dangerous-paths.js ] && [ -f .github/dangerous-paths ]; then
+          if [ -f .github/scripts/dangerous-paths.ts ] && [ -f .github/dangerous-paths ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "The base branch doesn't have the dangerous-paths warning yet, so there's nothing to run."
@@ -54,7 +56,7 @@ jobs:
 
       - if: steps.base.outputs.ready == 'true'
         name: Warn
-        run: node .github/scripts/dangerous-paths.js
+        run: node .github/scripts/dangerous-paths.ts
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

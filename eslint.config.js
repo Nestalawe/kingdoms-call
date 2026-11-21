@@ -294,6 +294,16 @@ module.exports = defineConfig(
     },
   },
   {
+    // The CI scripts the workflows run with plain Node (.github/scripts/): the site's two rules on assertions, no `as`
+    // (but `as const`) and no `x!`, after the type-aware sets above (whose stylistic set allows `as`). They read
+    // GitHub's and the Supabase CLI's JSON through type guards.
+    files: ['.github/scripts/**/*.ts'],
+    rules: {
+      '@typescript-eslint/consistent-type-assertions': siteRules['@typescript-eslint/consistent-type-assertions'],
+      '@typescript-eslint/no-non-null-assertion': siteRules['@typescript-eslint/no-non-null-assertion'],
+    },
+  },
+  {
     files: ['tests/**/*.ts'],
     ignores: ['tests/browser/**'],
     extends: atError(vitest.configs.recommended),

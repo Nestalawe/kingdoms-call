@@ -1,4 +1,4 @@
-// The "On staging" comment (.github/scripts/staging.js, comment) names the commit staging built and the pull request's
+// The "On staging" comment (.github/scripts/staging.ts, comment) names the commit staging built and the pull request's
 // last commit. Staging runs on pull_request, so its build job builds GitHub's test merge of the pull request into its
 // base (github.sha); the footers' build line names that merge, and each page's staging line names the last commit.
 // #187's comment named only the last commit, so a click-list asking for "the comment's commit" in the build line would
@@ -8,7 +8,7 @@
 // that staging.yml passes both commits.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
-// The "On staging" comment (`.github/scripts/staging.js` `comment`) names the pull request's last commit (each page's
+// The "On staging" comment (`.github/scripts/staging.ts` `comment`) names the pull request's last commit (each page's
 // staging line) and the commit staging built, GitHub's test merge of it into its base (the footers' build line); the
 // script, run as `staging.yml` runs it, stops with an error for the job when either commit is missing, before it
 // reaches GitHub. Level 1: a pure function and the script run with no network (static can't: it runs code);
@@ -16,7 +16,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import staging from '../../.github/scripts/staging.js';
+import * as staging from '../../.github/scripts/staging.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const HEAD = 'cc96062' + 'a'.repeat(33);
@@ -34,7 +34,7 @@ describe('the "On staging" comment', () => {
   test('the script refuses to comment without the commit built, or the last commit', () => {
     // Nothing reaches GitHub: the API's address is a closed local port.
     const run = (env: Record<string, string>) =>
-      spawnSync(process.execPath, [path.join(ROOT, '.github', 'scripts', 'staging.js'), 'comment', ''], {
+      spawnSync(process.execPath, [path.join(ROOT, '.github', 'scripts', 'staging.ts'), 'comment', ''], {
         encoding: 'utf8',
         env: {
           PATH: process.env['PATH'] ?? '',

@@ -1,10 +1,11 @@
-// The order form's forecasts agree with the turn (plan P1-11d1 to d4; since P1-11e43 imported from their files, with
+// The order form's forecasts agree with the turn (P1-11d1 to d4; since P1-11e43 imported from their files, with
 // no vm and no syntax tree): where the form says a hero will stand after his marches, what it says he will carry and
 // lead and a garrison will hold, the order list it offers him, its treasury ledger and its Practice Skill note, each on
 // a staged world in the engine's shape handed through the report's own projection, against what the turn does with the
-// same orders; each known difference pinned (questions 42 and 43, forecast limits). The forecasts' and the ledger's
-// files (src/ui/player/the-order-forms-forecast-…, the-order-forms-ledger-…, P1-11e41, e42) read the report and the
-// orders handed them, so the checks of tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts
+// same orders; each difference that stays is pinned: a forecast limit the rulings accept (R-128, R-134), or the
+// Stone, which waits on KD-047 (R-129). The forecasts' and the ledger's files
+// (src/ui/player/the-order-forms-forecast-…, the-order-forms-ledger-…, P1-11e41, e42) read the report and the orders
+// handed them, so the checks of tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts
 // ask them on the orders staged, made into the snapshot the page's form holds (theOrdersAsTheFormHoldsThem).
 // Level 1 (unit): functions on plain values against the turn's own functions; a page would ask the same functions
 // through the DOM, and a static test can't compare two functions' answers.
@@ -16,17 +17,17 @@
 // the sea, a neutral realm's border, the war declared this turn: then a Search Lair after it names where he stands); a
 // march past his pace (the report's pools, each step spending the pool the turn's rule names); one step toward a far
 // province (the turn's route on the report's map); a hero who joins this turn, or whose pace the report doesn't show,
-// marches at no pace (a forecast limit); and the answer follows the orders, the war declared and the report as they
-// change. On a staged world with no guards (`holdingWorld`, each case on its own province), what the forecasts say a
+// marches at no pace (a forecast limit, R-128); and the answer follows the orders, the war declared and the report as
+// they change. On a staged world with no guards (`holdingWorld`, each case on its own province), what the forecasts say a
 // hero will carry and lead, and a garrison hold, as the season after his orders begins, is what the turn's phases leave
 // them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and
-// disbanded, the beast command, a garrison band, risen dead, a season's heroes in the turn's order; the Move note's
-// column and the Pick Up field's garrison as the turn gives them; pinned where it is not (question 42: the Stone, a
-// chain of company hand-overs in one season). Each of the 46 names of the order list is the order `normaliseAction`
-// reads it as, and on staged heroes of realm 0 under each creed the list offered is what `processOrder` lets him give.
-// The treasury ledger says what the turn spends and adds to Early Winter's wages (R-134), pinned where it can't know
-// (question 43: the Host-Leader on a report that doesn't name him); the Practice Skill note quotes the chance the turn
-// rolls (R-134).
+// disbanded, the beast command, a garrison band, risen dead, a season's heroes in the turn's order (their items, and
+// since P1-11z1 a chain of company hand-overs); the Move note's column and the Pick Up field's garrison as the turn
+// gives them; pinned where it is not: the Stone, which waits on KD-047 (R-129; not a forecast limit). Each of the 46
+// names of the order list is the order `normaliseAction` reads it as, and on staged heroes of realm 0 under each creed
+// the list offered is what `processOrder` lets him give. The treasury ledger says what the turn spends and adds to
+// Early Winter's wages (R-134), pinned where it can't know (a forecast limit, R-134: the Host-Leader on a report that
+// doesn't name him); the Practice Skill note quotes the chance the turn rolls (R-134).
 import { describe, expect, test } from 'vitest';
 import {
   aSearchLairAfterEachMarchTheTurnRefuses,
@@ -126,7 +127,7 @@ describe('the march: where the order form says a hero will stand (P1-11d1)', () 
     );
   });
 
-  test('a hero who joins this turn, or whose pace the report does not show, marches at no pace on the form (a forecast limit, P1-11e11)', () => {
+  test('a hero who joins this turn, or whose pace the report does not show, marches at no pace on the form (a forecast limit, R-128; P1-11e11)', () => {
     // The form's stand-in for a hero hired, charmed or raised this turn carries a pace of the page's own (5 on land,
     // none at sea), not the turn's pools; and a report that shows no pace gives none. Neither stops a march: the
     // column past his pace, so staged, is forecast where his orders name, as before P1-11e11.
@@ -157,7 +158,8 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // next season by its place (behind the one there before), one taken up as a comrade leaves it in the same season (the turn makes the Pick Up wait), one
     // disbanded; since P1-11e18 (R-129) a Mithril suit sent with "all" (forged to its wearer: the turn and the form keep
     // it on him, the shared theItemsASendItemOrderHandsOver); since P1-11e17 (the forecasts' replay) an item handed over by its name, every company left in the
-    // garrison, one left by its type (the garrison read) and every company handed to a comrade; and since P1-11e19
+    // garrison, one left by its type (his column and the garrison read: since P1-11z1 the form takes it from him) and
+    // every company handed to a comrade; and since P1-11e19
     // (R-129, the turn's rules through src/shared/) a beast past a leader's beast command (his Druid, here 0) mustering
     // into the garrison, staying with the giver or going back to the garrison, a band of garrison troops hired into the
     // garrison, companies taken up last first (by their places and "all"), and risen dead handed to a comrade of a realm
@@ -168,7 +170,8 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     // since P1-11e20 (R-129, the turn's order of the heroes through src/shared/) an item handed to a comrade marching in
     // that season (he arrives first: handed over at once), a chain of hand-overs in one season (the hero who hands to a
     // comrade who hands on goes first), two heroes handing to one comrade (the quicker first: his items first in the
-    // pack), and a comrade beside him who marches away that season (handed over before he sets out).
+    // pack), and a comrade beside him who marches away that season (handed over before he sets out); and since P1-11z1
+    // (R-129) a chain of company hand-overs in one season (the comrade hands on what he was handed).
     const list = holdings().filter((x) => (THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(x.kind));
     expect(list.map((x) => x.kind)).toEqual([...THE_HOLDINGS_THE_FORECAST_GETS_RIGHT]);
     expect(differences(list)).toEqual([]);
@@ -202,11 +205,10 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(field).toHaveLength(1);
   });
 
-  test('what the forecast gets wrong is pinned: the Stone, a chain of company hand-overs in one phase (question 42)', () => {
+  test('what the forecast gets wrong is pinned: the Stone, which waits on KD-047 (R-129; not a forecast limit)', () => {
     // The form replays the orders, not the turn's checks: the Philosopher's Stone used is destroyed (as an older save's
-    // copy carries it: the one Use Item works), and the form keeps it in his pack; a chain of company hand-overs in one
-    // season goes in the turn's order (the comrade hands on what he was handed), where the form reads each column as the
-    // season begins, so the first hero's companies are lost from every column (Parked, R-129).
+    // copy carries it: the one Use Item works), and the form keeps it in his pack. The form follows the turn (R-129)
+    // once the Stone works (KD-047).
     const list = holdings();
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
@@ -218,11 +220,6 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     };
     const stone = kind("the Philosopher's Stone used");
     expect([stone.copy, stone.engine]).toEqual([{ bearer: ["Philosopher's Stone"] }, { bearer: [] }]);
-    const chain = kind('a chain of company hand-overs in one phase');
-    expect([chain.copy, chain.engine]).toEqual([
-      { 'the first to hand over': [], between: [], last: ['Yeoman Longbows (Average)'] },
-      { 'the first to hand over': [], between: [], last: ['Yeoman Longbows (Average)', 'Men-at-Arms (Average)'] },
-    ]);
   });
 });
 
@@ -291,7 +288,7 @@ describe('the orders: what the order form offers a hero (P1-11d3)', () => {
     const list = orderList();
     expect(differences(list)).toEqual([]);
     expect(list.length).toBe(212);
-    // the gloves' Thief is offered Steal, as the turn lets him steal (question 40)
+    // the gloves' Thief is offered Steal, as the turn lets him steal (R-130)
     expect(
       list.filter((x) => x.order === 'Steal' && x.who.includes('wearing')).map((x) => [x.who, x.copy, x.engine]),
     ).toEqual([['thief 0, wearing Gloves of the Nightcrawler', true, true]]);
@@ -328,9 +325,9 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
     expect(list.filter((x) => x.kind === 'Harvest the Field, by a realm with Corpse-Carters').map(added)).toEqual([1]);
   });
 
-  test('what the treasury ledger can’t know is pinned: the Host-Leader on a report that doesn’t name him (question 43, a forecast limit)', () => {
+  test('what the treasury ledger can’t know is pinned: the Host-Leader on a report that doesn’t name him (a forecast limit, R-134)', () => {
     // The ledger leaves out the Host-Leader's 1g a company he leads where the report doesn't name him (the titles not
-    // yet public: a forecast limit, Decision 6; since P1-11e29 it counts it where the report names him, as it does a
+    // yet public: a forecast limit, R-134; since P1-11e29 it counts it where the report names him, as it does a
     // Druid 6 leader's half price and half wage for a beast; since P1-11e30 it shares the upkeep and hero-wage
     // discoveries' savings under their caps, as the turn does).
     const list = ledgers();
@@ -398,7 +395,7 @@ describe('gold and practice: what the treasury ledger and the Practice Skill not
     // again) against the chance processOrder's line gives and whether it counts him a quick learner, each hero
     // practising alone: an Elven hero of a Human realm at each level a practice can raise, a Human hero of an Elven
     // realm, and a realm with Astronomical Tables (+3), Blooded Retinues (Melee +10) and Tradecraft Manuals (Spy and
-    // Thief: none for Melee). Since P1-11e28 (R-134, question 43 (b)): a Human hero of a Human realm (x1.5, the turn's
+    // Thief: none for Melee). Since P1-11e28 (R-134): a Human hero of a Human realm (x1.5, the turn's
     // quick learner, on the base and the realm's discoveries both: (25 + 3) x 1.5 = 42 with Astronomical Tables), and
     // an Elven hero at Melee 5 (the note says no roll is made; the turn makes none).
     const list = practiceNotes().filter((x) =>

@@ -566,16 +566,17 @@ jobs:
           persist-credentials: false
           fetch-depth: 2
 
-      # A merged migration may already be applied, so it never changes; a new one must sort after the rest
-      # (.github/scripts/migrations.js). Pull requests only: HEAD is GitHub's merge commit with the base.
-      - if: github.event_name == 'pull_request'
-        run: node .github/scripts/migrations.js pr-check
-
       - id: node
         uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
+
+      # A merged migration may already be applied, so it never changes; a new one must sort after the rest
+      # (.github/scripts/migrations.ts). Pull requests only: HEAD is GitHub's merge commit with the base. After
+      # setup-node: the pinned Node runs the TypeScript (it strips the types), the runner's own may not.
+      - if: github.event_name == 'pull_request'
+        run: node .github/scripts/migrations.ts pr-check
 
       - id: modules
         uses: actions/cache/restore@v6

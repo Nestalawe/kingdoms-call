@@ -2,7 +2,7 @@
 // ("Staging · PR #21 · abcdef1", linking to the pull request); on the live site, nothing new shows. Each page of site/
 // (or $KC_SITE) is booted in jsdom on a fake database (tests/lib/fake-db.ts):
 //   - with site/kc-config.js as it is (the live one: no `deployed`): no staging line;
-//   - with the kc-config.js the staging deploy writes (.github/scripts/staging.js): the line, in the page's <footer>
+//   - with the kc-config.js the staging deploy writes (.github/scripts/staging.ts): the line, in the page's <footer>
 //     where it has one, else in a small fixed stamp, its letters as written; on a page that uses the database it also
 //     names the database's version, once the version guard has read it (P0-34);
 //   - (two pages) with a hand-made config whose `deployed` isn't a number and a commit: no line, no markup.
@@ -13,7 +13,7 @@
 // footer, after the page's version guard; no lower level loads a page's scripts together.
 import fs from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
-import staging from '../../.github/scripts/staging.js';
+import * as staging from '../../.github/scripts/staging.ts';
 import { bootJsdom, DB_VERSION, readPage, SITE, sitePath, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
