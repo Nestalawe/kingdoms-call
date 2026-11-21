@@ -21,6 +21,8 @@
 //   the view, each a point faster for a march discovery that reaches it (the skeletal dead's: the garrison's only).
 // - (P1-23ad, R-124) whether its Grand Cathedral stands, as the turn counts it: in the view's books, and in its report's
 //   kingdom only while it stands (the order form counts its free Bless Province), never in another realm's report.
+// - (P1-11z2, KD-152) the unit-strength effects of its own discoveries, in its report's kingdom for the army card's
+//   strength (R-135): its own, in the order it holds them, no other kind's, and never another realm's.
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
 // sight fault planted in it.
@@ -53,7 +55,9 @@
 // by the discoveries for its class, and the corpse-carters' cost). P1-19af's: how fast its units march by its
 // discoveries (its king's column in the report, its garrison's unit in the view). P1-23ad's: whether its Grand Cathedral
 // stands (sited and held, or raised before Wonders were sited), in its books and in its report's kingdom, and nothing
-// there once lapsed, before it is raised, for another alignment's Wonder, or in another realm's report. Level 1 because the function is called on a
+// there once lapsed, before it is raised, for another alignment's Wonder, or in another realm's report. P1-11z2's: the
+// unit-strength effects of its own discoveries in its report's kingdom (its own, in the order it holds them, no other
+// kind's, an empty list with none), and never another realm's. Level 1 because the function is called on a
 // world made in the test; the every-realm half of `npm run balance` checks the report built from it. Each case is red
 // on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5, one or more cases each); several of
 // P1-12b5's change no report, because the report's own sections still ask the same of what they read: only this test
@@ -730,6 +734,40 @@ describe("whether realm 0's Grand Cathedral stands (P1-23ad: the order form coun
     expect(cathedral(['gd'], { heldBy: 1 })).toEqual(none); // the province it stands in taken
     expect(cathedral([])).toEqual(none);
     expect(cathedral(['gd'], { alignment: 'Good' })).toEqual(none); // the Free City Charter
+  });
+});
+
+describe("the unit-strength effects of realm 0's discoveries (P1-11z2, KD-152: the army card counts them, R-135)", () => {
+  /** Each realm's report's `kingdom.theUnitStrengthEffectsOfItsDiscoveries`, realm 0 holding the discoveries given and
+   *  realm 1 those given it. */
+  const effects = (ids0: readonly string[], ids1: readonly string[]): unknown[] => {
+    const state = worldWithDiscoveries(ids0);
+    const s = state as unknown as { players: Record<string, unknown>[] };
+    Object.assign(s.players[1] ?? {}, { discoveries: ids1.map((id) => ({ id })) });
+    return [0, 1].map((realm) => {
+      const kingdom = buildTurnReport(playerView(state, realm, itsLines)).kingdom as Record<string, unknown>;
+      return 'theUnitStrengthEffectsOfItsDiscoveries' in kingdom
+        ? kingdom['theUnitStrengthEffectsOfItsDiscoveries']
+        : '(none)';
+    });
+  };
+  const warDrums = { kind: 'unitStr', pct: 0.04 };
+  const householdKnights = { kind: 'unitStr', pct: 0.18, cls: 'cavalry', king: true };
+  const pikeSquares = { kind: 'unitStr', pct: 0.3, cls: 'infantry', side: 'def' };
+  const ag09sSecond = { kind: 'unitStr', pct: 0.06, side: 'def' };
+
+  test('its report carries its own, in the order it holds them, and none of another realm’s; never another discovery’s', () => {
+    // War Drums (sd02) and Household Knights (rh10) lift a unit; Road Network (sd13) speeds a march and maps, so its two
+    // effects stay out. Realm 1 holds Pike Squares (sd41) and ag09, whose first effect stirs fanaticism and whose
+    // second lifts a unit: realm 0's report carries neither, and realm 1's none of realm 0's.
+    expect(effects(['rh10', 'sd13', 'sd02'], ['ag09', 'sd41'])).toEqual([
+      [householdKnights, warDrums],
+      [ag09sSecond, pikeSquares],
+    ]);
+  });
+
+  test('a realm with none carries an empty list', () => {
+    expect(effects([], ['sd02'])).toEqual([[], [warDrums]]);
   });
 });
 

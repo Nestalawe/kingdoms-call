@@ -1,6 +1,7 @@
 import { kcArg, kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
 
 import { KC_GRAND_DESIGNS, KC_ITEM_SLOT_CAP, KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import type { TheEffectOfADiscovery } from '../../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import { itemRaceOf, itemSlot, itemUsableBy } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
@@ -45,13 +46,19 @@ interface ALead {
   readonly category?: string | undefined;
   readonly desc?: string | undefined;
 }
-/** The report as the page's lists, the Wonder's hint, the research choice and the concession read it: the order form's
- *  report, every realm's name, the pairs of leads, and whether the realm has conceded. */
+/** The report as the page's lists, the Wonder's hint, the research choice, the concession and the army card read it:
+ *  the order form's report, every realm's name, the pairs of leads, whether the realm has conceded, and the
+ *  unit-strength effects of its discoveries (none on a report stored before it carried them: plan P1-11z2). */
 export interface TheReportAsThePagesListsReadIt extends TheReportAsTheOrderFormReadsIt {
   readonly allKingdoms?: readonly (ARealmEveryReportNames | null | undefined)[] | null | undefined;
   readonly pendingDiscoveryChoices?: readonly (APairOfLeads | null | undefined)[] | null | undefined;
   readonly kingdom?:
-    (NonNullable<TheReportAsTheOrderFormReadsIt['kingdom']> & { readonly conceded?: unknown }) | null | undefined;
+    | (NonNullable<TheReportAsTheOrderFormReadsIt['kingdom']> & {
+        readonly conceded?: unknown;
+        readonly theUnitStrengthEffectsOfItsDiscoveries?: readonly TheEffectOfADiscovery[] | null | undefined;
+      })
+    | null
+    | undefined;
 }
 /** The slots' caps, labels and the tiers' names and colours, read by any slot or tier. */
 const theSlotCaps: Readonly<Partial<Record<string, number>>> = { ...KC_ITEM_SLOT_CAP };

@@ -749,7 +749,7 @@ export function renderReportView(report: TheReportAsTheReportScreenReadsIt) {
               druidUnits > 0
                 ? kcHtml` · 🌿 ${druidUnits} unit${druidUnits !== 1 ? 's' : ''} need Druid ${druidShort > 0 ? kcHtml`<span style="color:var(--crimson)">(${druidShort} under-led — losing strength)</span>` : kcHtml`<span style="color:#1d5a1d">(${theNameToSplit(c.name).split(' ')[0]} qualifies)</span>`}`
                 : '';
-            const summary = kcHtml`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(before your discoveries, the ground, the foe and the battle's tactics)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2 !== 1 ? 's' : ''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
+            const summary = kcHtml`<div style="margin-top:3px;font-size:.7rem;color:var(--stone);border-top:1px dotted var(--parchment-dark);padding-top:2px">⚔ Total strength <strong>${totalStr}</strong> <span style="font-size:.64rem">(before the ground, the foe and the battle's tactics)</span> · 🏃 Move <strong>${effSpd2}</strong> province${effSpd2 !== 1 ? 's' : ''}/turn · 💰 Upkeep <strong>${totalCost}g/turn</strong>${druNote}${_airNote}${_seaNote}</div>`;
             // ONE line stands for the whole army — strength, a count of each unit type, and the
             // land / flying / sea pace — with a button that unfolds the full unit list (and the
             // upkeep/druid/sea-transport notes) beneath it. The list starts folded.

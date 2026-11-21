@@ -371,8 +371,9 @@ export function theArmyCardsFiguresOfAColumn(
       : 0;
     // In armStr's order: Druid 8 and Necromancy 6 lift its quality (his trained levels); its base strength at
     // that quality; the shortfall, rounded down; its kin (+20% your king's, +20% its leader's: +44% both) and
-    // a rival kin's leader (−20%); the items he uses; the Druid mastery; his minor titles (those the report
-    // names). Your realm's unit-strength discoveries, and what a battle or a spell of the turn adds, are left out.
+    // a rival kin's leader (−20%); the unit-strength effects of the realm's discoveries its report carries (none on
+    // a report stored before it carried them: plan P1-11z2); the items he uses; the Druid mastery; his minor titles
+    // (those the report names). What the ground, the foe, a battle or a spell of the turn adds is left out.
     const _str = theStrengthAUnitHasBeforeTheGroundAndTheFoe(
       { unitType: a.type, quality: a.quality, isSkeletal: !!a.skeletal, race: a.race },
       {
@@ -381,8 +382,7 @@ export function theArmyCardsFiguresOfAColumn(
         theShareHisDruidShortfallLeaves: theShareHisShortfallLeaves,
         theKingsRace: kingdom.race,
         hisRace: c.race,
-        // (not yet: the report doesn't carry its discoveries' effects, and the page holds no table of them)
-        theRealmsUnitStrengthEffects: [],
+        theRealmsUnitStrengthEffects: kingdom.theUnitStrengthEffectsOfItsDiscoveries ?? [],
         heIsTheKing: !!c.isKing,
         theItemsHeUses: theItemsAHeroUses(c.items ?? [], c),
         theRealmsAlignment: kingdom.alignment,
