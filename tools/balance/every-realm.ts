@@ -4,7 +4,7 @@
 // too, and each realm's report is hashed, play and words apart (hash.ts), against its own committed baseline,
 // tests/balance/baseline/reports.json (both sets). The leak checks (tests/lib/report-leaks.ts) run on every realm's
 // report after every turn, the audience check among them (P1-12b3: every line a realm reads comes from an event whose
-// audience admits it; the turn's events are recorded as they are emitted, scenarioInTheVm's recordTheEvents): a breach
+// audience admits it; the turn's events as their lines keep them in memory, scenarioInTheVm's recordTheEvents): a breach
 // fails the run, as on the page, but the game plays on, so a fault shows in every game it reaches.
 //
 // It is the matrix's own game: the set-up, the seed, the scripted realm on its scripted orders, and the shell's work

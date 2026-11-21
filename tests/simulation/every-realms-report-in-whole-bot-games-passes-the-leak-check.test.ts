@@ -8,11 +8,10 @@
 // count, never a check.
 //
 // Level 3 (simulation): it plays whole seeded games, in the engine's bare vm (tests/lib/scenario-in-the-vm.ts), as the
-// shell plays them, and the leaks it looks for are in whatever the bots happen to do: no staged turn shows them. On the
-// vm, not the engine's modules: the audience check needs every event as it is emitted, with its audience, and emit is
-// called inside its own file (src/engine/turn/events-and-their-audiences.ts), where a vi.spyOn on its module can't
-// reach (docs/traps.md); in the vm it is stood in by name. So the games play at seed 1, as since plan P1-09a, not from
-// KC_SEED (plan P1-14's Decision 6).
+// shell plays them, and the leaks it looks for are in whatever the bots happen to do: no staged turn shows them. The
+// audience check reads every event with its whole audience as its line keeps it in memory (B-18b), so nothing in the
+// engine is stood in; the games play on the vm at seed 1, as since plan P1-09a, not from KC_SEED (plan P1-14's
+// Decision 6), until they move to the engine's modules on the same games.
 //
 // Until plan P1-14i this was tests/report-privacy.test.js, a script on the same vm. Its checks are kept as they were:
 // the leak check on every turn, every turn's events recorded, a report for every realm every turn, and a turn that
