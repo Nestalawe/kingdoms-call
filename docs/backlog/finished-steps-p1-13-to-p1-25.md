@@ -281,3 +281,4 @@ re-planned in B-09.
 - B-14: #639 The Stop hook skips a session that changed no file
 - B-15: #640 Tier 0 leaves the matrix to CI
 - B-16: #700, #701 The three CI scripts in TypeScript; the workflows run them, and the JavaScript goes
+- B-18: #702, #703, #705, #706, #707, #708, #709 The audience gate: one place decides which lines each realm reads; the reports and the leak check ask it
