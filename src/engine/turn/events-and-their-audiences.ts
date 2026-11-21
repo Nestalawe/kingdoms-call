@@ -5,8 +5,8 @@
 // lint rule kc/narrative-lines-go-through-emit refuses a write anywhere but here (docs/traps.md, "A line goes through
 // emit").
 //
-// The audience, as the reports read the line today (playerEvents, src/views/every-realms-report-and-the-lines-each-
-// realm-reads.ts):
+// The audience, as the reports read the line today (the gate, src/views/the-gate-that-says-which-lines-of-the-turn-
+// each-realm-reads-and-how-each-reaches-it.ts, B-18a):
 //   realms   these realms are told (a wage bill, a spell that hit them)
 //   actor    the realm whose deed it is
 //   seen     'world': every realm (a public line with no province); 'there': whoever has eyes in the province at that
@@ -34,7 +34,8 @@
 // beside its code; src/engine/battle/the-facts-a-battles-lines-record.ts is the first), never its words: since
 // P1-12d18 emit throws on an event handed as words, and the lint rule refuses one (a text key, a string narrated). The
 // views write a fact's words after the turn (src/views/prose/; docs/traps.md, "A line goes through emit"), and the GM's
-// log is stored with every line's words, in the form above: a fact never reaches the store. A battle's lines take their
+// log is stored with every line's words, in the form above: a fact never reaches the store, nor does the line's whole
+// audience, which it keeps beside its fact until then (B-18a). A battle's lines take their
 // tiers from their kinds, and its losses tally its place and its words from their facts, in the views too (emitBattle).
 //
 // Each kind of fact has its audience, written once beside it in its area's module (Decision 6): the fight's, for most
@@ -47,6 +48,7 @@
 // owner it happened to (notifyTarget, notifyProvinceOwner), a private line with a public twin (logSplit), and the
 // placement of the skill rises held back to the end of the phase (writeDeferredSkillLines).
 import type { TurnContext } from './context.ts';
+import { theWayALineReachesARealmWhereverItStands } from '../rules-on-plain-values/a-line-told-to-a-realm-or-of-its-own-deed-reaches-it-wherever-it-stands.ts';
 import type { TheFactOfABattleForTheStatistics } from '../battle/the-facts-a-battles-lines-record.ts';
 import type { TheFactOfAHerosDeathForTheStatistics } from '../heroes/the-facts-a-heros-death-lines-record.ts';
 import type { TheFactOfAProvinceChangingHandsForTheStatistics } from '../realms/the-facts-relations-and-captures-lines-record.ts';
@@ -435,6 +437,9 @@ export interface LogLine {
   gameEnd?: boolean;
   /** The realms that never read it (audience.except). */
   notFor?: number[];
+  /** Who may read it, whole (its event's audience: the realms told, the actor, seen by the world, there or in the
+   *  battle, the realms excepted), until the reports are built (never stored: B-18a). */
+  audience?: LineAudience;
   /** What a typed line records, until the views write its words (never stored). */
   fact?: LineFact;
   /** Its fact's kind, as the GM's log stores it (theTurnsLinesInWords, since plan P1-12d39; emit writes none). */
@@ -459,8 +464,7 @@ function theHeroWhoseOrderIsResolvingIfTheLineReachesHisRealm(
   const hisRealm = turnContext.G.characters.find((c) => c.id === resolving)?.player;
   if (hisRealm == null) return resolving;
   const reachesHisRealm =
-    audience.actor === hisRealm ||
-    (audience.realms ?? []).includes(hisRealm) ||
+    theWayALineReachesARealmWhereverItStands(audience.realms ?? [], audience.actor, hisRealm) !== null ||
     audience.seen === 'world' ||
     audience.seen === 'there';
   return reachesHisRealm ? resolving : null;
@@ -530,6 +534,7 @@ export function emit(turnContext: TurnContext, event: TurnEvent): void {
     line.gameEnd = event.gameEnd ?? false;
   }
   if (audience.except !== undefined) line.notFor = audience.except;
+  line.audience = audience;
   line.fact = event.fact;
   turnContext.turnLog.push(line);
   console.log(`[${event.type}] ${event.fact.kind}`);

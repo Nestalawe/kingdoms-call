@@ -1,6 +1,7 @@
 // emit, the one door into the GM's log (src/engine/turn/events-and-their-audiences.ts; plan P1-12, Decisions 2 to 5),
 // writes today's stored forms, so nothing stored changes in P1-12a and P1-12b: a line has the 17 keys log() gave it, a
-// 'bare' one (the lines once pushed straight into turnLog) the first 14, `except` adds notFor, and the fact comes last
+// 'bare' one (the lines once pushed straight into turnLog) the first 14, `except` adds notFor, and the line's whole
+// audience (B-18a: kept in memory until the reports are built) and then the fact come last
 // (the views write its words in its place, and the stored line has no fact); an audience grants what the line's fields
 // say; every event names its hero (P1-12c2): a hero left out throws, null is no hero, and
 // THE_HERO_WHOSE_ORDER_IS_RESOLVING is that hero, but only when the line already reaches his realm (P1-12c1); a phase
@@ -16,7 +17,8 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `emit`, the one door into the GM's log (`src/engine/turn/events-and-their-audiences.ts`, P1-12a2; plan P1-12's
-// Decisions 2 to 5), writes today's stored forms: 17 keys, a `'bare'` line's 14, `notFor`, the fact last; what each
+// Decisions 2 to 5), writes today's stored forms: 17 keys, a `'bare'` line's 14, `notFor`, the whole audience (B-18a)
+// and the fact last; what each
 // part of an audience writes; every event names its hero (P1-12c2): a hero left out throws and writes no line, `null`
 // is no hero (even while a hero's order resolves and the line reaches his realm), and
 // `THE_HERO_WHOSE_ORDER_IS_RESOLVING` takes the hero of the order resolving; `phase`, named `THE_PHASE_THE_LINE_IS_WRITTEN_IN` (or null, from a file not type-checked), takes the phase of the order resolving (else the phase resolving, else 99 once the phases are over) and `'none'` is a real null, and one left out throws and writes no line (P1-12d38); the
@@ -104,7 +106,7 @@ describe("emit's forms", () => {
     'gameEnd',
   ];
 
-  test("a line has the 17 keys log() gave it; a 'bare' one the first 14; `except` adds notFor; the fact comes last", () => {
+  test("a line has the 17 keys log() gave it; a 'bare' one the first 14; `except` adds notFor; its whole audience, then the fact, come last", () => {
     const tc = newContext(state);
     emit(tc, { type: 'system', fact: A_LINE, audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });
     emit(tc, {
@@ -125,11 +127,13 @@ describe("emit's forms", () => {
       form: 'bare',
     });
     expect(tc.turnLog.map((l) => Object.keys(l))).toEqual([
-      [...FULL, 'fact'],
-      [...FULL.slice(0, 14), 'fact'],
-      [...FULL.slice(0, 14), 'notFor', 'fact'],
+      [...FULL, 'audience', 'fact'],
+      [...FULL.slice(0, 14), 'audience', 'fact'],
+      [...FULL.slice(0, 14), 'notFor', 'audience', 'fact'],
     ]);
     expect(tc.turnLog[2]).toMatchObject({ public: true, provinceId: 4, notFor: [1], targets: [], actor: null });
+    // the whole audience, kept in memory until the reports are built (B-18a): 'there', which `public` doesn't say
+    expect(tc.turnLog.map((l) => l.audience)).toEqual([{}, {}, { seen: 'there', except: [1] }]);
   });
 
   test("an audience grants what the line's fields say: realms told, the actor, seen by any", () => {
