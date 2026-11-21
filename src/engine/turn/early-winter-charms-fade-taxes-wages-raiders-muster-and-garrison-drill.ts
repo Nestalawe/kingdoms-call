@@ -48,12 +48,16 @@ import {
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { theTaxOfAProvinceOnConsecratedGround } from '../rules/the-registry-of-alignment-abilities.ts';
 import {
+  aCompanyIsSparedDisbandingUnpaid,
+  anUnpaidHeroDeserts,
   theCompanyWagesUnderTheHostLeader,
   theGoldAHerosMasteriesAddBeyondTheTax,
   theGoldAHerosMinorTitlesAddBeyondTheTax,
   theTaxOfAProvinceFromTheRealmsWonder,
   theTaxOfAProvinceThisTurn,
   theTaxOfAProvinceWhileAMarkLasts,
+  theOrderOfTwoCompaniesInTheLineToDisbandUnpaid,
+  theRanksOfACompanyInTheLineToDisbandUnpaid,
   theWageOfACompanyThisTurn,
   theWageOfACompanyUnderItsLeader,
   type AMinorTitlesGoldBeyondTheTax,
@@ -480,13 +484,19 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // 3. Within one experience tier the choice is RANDOM ACROSS THE WHOLE EMPIRE — no more
       // "garrisons always, field armies never". A random key is decorated onto each unit up
       // front so the comparator stays a valid (consistent) ordering.
-      const _qRank = (a: ArmyInABattle) => {
-        const i = QUALITY_TIERS.indexOf(a.quality);
-        return i < 0 ? 1 : i;
-      }; // unknown quality ≈ Average
+      // The ranks are the economy's registry's since B-06e ("turnEnd: a company's rank in the line to disband unpaid":
+      // the dead last, then the grades, a company of no known grade as Average). Every company of the realm draws its
+      // die here, in the realm's order, before any is passed over below.
       const sortedArmies = [...allKingdomArmies]
-        .map((a) => ({ a, skel: a._isSkeletal ? 1 : 0, q: _qRank(a), r: kcRng() }))
-        .sort((x, y) => x.skel - y.skel || x.q - y.q || x.r - y.r)
+        .map((a) => ({
+          a,
+          theRanks: theRanksOfACompanyInTheLineToDisbandUnpaid({
+            itIsOfTheDead: Boolean(a._isSkeletal),
+            itsGrade: a.quality,
+          }),
+          theDie: kcRng(),
+        }))
+        .sort(theOrderOfTwoCompaniesInTheLineToDisbandUnpaid)
         .map((x) => x.a);
       const _sparedHulls: ArmyInABattle[] = []; // 2026-09-23c: ships carrying troops at sea are never disbanded from under them
       // A hull spared earlier in this pass is looked at again every time a unit disbands: once the
@@ -503,11 +513,15 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           }
           const theHeroAsGuarded: AHeroAsEarlyWinterReadsHisArmies = _oc;
           if (
-            isOpenSea(G.world.provinces[_oc.location]) &&
-            seaLiftShortfall(
-              (theHeroAsGuarded.armies ?? []).filter((a) => a !== _h),
-              _oc,
-            ) > 0
+            aCompanyIsSparedDisbandingUnpaid({
+              itIsAShip: CARRIER_TYPES.has(_h.type),
+              itCarriesTroopsAtOpenSea: () =>
+                isOpenSea(G.world.provinces[_oc.location]) &&
+                seaLiftShortfall(
+                  (theHeroAsGuarded.armies ?? []).filter((a) => a !== _h),
+                  _oc,
+                ) > 0,
+            })
           )
             continue; // still carrying
           _oc.armies.splice(_oc.armies.indexOf(_h), 1);
@@ -541,22 +555,28 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         if (cost === 0) return; // other free armies never disband for non-payment
         // 2026-09-23c (Toby): a hull that is carrying land troops at sea is protected — disbanding it
         // would strand the men aboard. Judged live, so a hull made spare by a unit already gone
-        // this pass can still go.
-        if (CARRIER_TYPES.has(army.type)) {
-          const _oc: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find(
-            (ch: AHeroAsEarlyWinterReadsHisArmies) => (ch.armies ?? []).includes(army),
-          );
-          if (
-            _oc &&
-            isOpenSea(G.world.provinces[_oc.location]) &&
-            seaLiftShortfall(
-              (_oc.armies ?? []).filter((a) => a !== army),
-              _oc,
-            ) > 0
-          ) {
-            _sparedHulls.push(army);
-            return;
-          }
+        // this pass can still go. The sparing is the economy's registry's since B-06e ("turnEnd: a company is spared
+        // disbanding unpaid"); its column is looked for only for a ship, as before.
+        if (
+          aCompanyIsSparedDisbandingUnpaid({
+            itIsAShip: CARRIER_TYPES.has(army.type),
+            itCarriesTroopsAtOpenSea: () => {
+              const _oc: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find(
+                (ch: AHeroAsEarlyWinterReadsHisArmies) => (ch.armies ?? []).includes(army),
+              );
+              return (
+                _oc !== undefined &&
+                isOpenSea(G.world.provinces[_oc.location]) &&
+                seaLiftShortfall(
+                  (_oc.armies ?? []).filter((a) => a !== army),
+                  _oc,
+                ) > 0
+              );
+            },
+          })
+        ) {
+          _sparedHulls.push(army);
+          return;
         }
         // Find and remove this army from its owner character or garrison match the EXACT army
         // object (identity), never a same-type stand-in — the old `a.type===army.type`
@@ -611,13 +631,15 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
-      // If still in deficit, heroes desert
+      // If still in deficit, heroes desert: the best paid first (a stable sort), each on a die drawn for him only while
+      // the deficit lasts; whether he deserts on it is the economy's registry's since B-06e ("turnEnd: an unpaid hero
+      // deserts"). A deficit left after the last hero is forgiven.
       if (deficit > 0) {
         heroes
           .sort((a, b) => (b.pay || 0) - (a.pay || 0))
           .forEach((h) => {
             if (deficit <= 0) return;
-            if (kcRng() > 0.4) {
+            if (anUnpaidHeroDeserts({ theDie: kcRng() })) {
               noteServedRealm(h, h.player);
               h.player = null;
               h.name = h.name.replace(' (wandering)', '') + ' (wandering)';

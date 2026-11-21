@@ -19,8 +19,15 @@ import {
   A_COMPANYS_WAGE_UNDER_ITS_LEADER,
   A_REALMS_COMPANY_WAGES_UNDER_ITS_HOST_LEADER,
 } from './the-economy/a-companys-wage-and-a-realms-company-wages-at-the-turns-end.ts';
+import {
+  A_COMPANYS_RANK_IN_THE_LINE_TO_DISBAND_UNPAID,
+  A_COMPANY_IS_SPARED_DISBANDING_UNPAID,
+  AN_UNPAID_HERO_DESERTS,
+} from './the-economy/a-realm-that-cannot-pay-its-wages-disbands-its-companies-and-its-heroes-desert.ts';
 import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import type {
+  ACompanyAsTheLineToDisbandUnpaidReadsIt,
+  ACompanyAsTheSparingOfAnUnpaidCompanyReadsIt,
   ACompanysWageAndTheLeaderItMarchesUnder,
   ACompanysWageAndTheWarSpoilsItTookThisTurn,
   ACompanysWageThisTurnAndTheHalfGoldsCarried,
@@ -29,6 +36,7 @@ import type {
   AProvincesTaxAndItsMarksOfThisTurn,
   AProvincesTaxAndTheRealmsWonder,
   AProvincesTaxUnderAMarkThatLasts,
+  AnUnpaidHerosRollOfLoyalty,
   HookPointName,
   TheCompanyWagesUnderTheHostLeader,
   TheStagesOfEachHookPoint,
@@ -105,6 +113,29 @@ export const THE_REGISTRY_OF_THE_ECONOMYS_RULES = {
         A_REALMS_COMPANY_WAGES_UNDER_ITS_HOST_LEADER['the-host-leaders-cut-of-his-companies-wages'],
     },
   },
+  'the-dead-disband-last-for-want-of-pay': {
+    turnEnd: {
+      "a company's rank in the line to disband unpaid":
+        A_COMPANYS_RANK_IN_THE_LINE_TO_DISBAND_UNPAID['the-dead-disband-last-for-want-of-pay'],
+    },
+  },
+  'the-least-experienced-disband-first-for-want-of-pay': {
+    turnEnd: {
+      "a company's rank in the line to disband unpaid":
+        A_COMPANYS_RANK_IN_THE_LINE_TO_DISBAND_UNPAID['the-least-experienced-disband-first-for-want-of-pay'],
+    },
+  },
+  'a-ship-carrying-troops-at-sea-is-kept-at-the-oars-unpaid': {
+    turnEnd: {
+      'a company is spared disbanding unpaid':
+        A_COMPANY_IS_SPARED_DISBANDING_UNPAID['a-ship-carrying-troops-at-sea-is-kept-at-the-oars-unpaid'],
+    },
+  },
+  'an-unpaid-hero-deserts-unless-his-loyalty-holds': {
+    turnEnd: {
+      'an unpaid hero deserts': AN_UNPAID_HERO_DESERTS['an-unpaid-hero-deserts-unless-his-loyalty-holds'],
+    },
+  },
 } satisfies Record<TheEconomysRuleSlug, EconomysRuleEntry>;
 
 /** Each stage's effects, in the order the turn runs them (not by a number: the tax so far is each effect's, and the
@@ -127,6 +158,12 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY = {
     "a company's wage this turn": ['the-orcish-war-spoils-halve-a-companys-wage-this-turn'],
     "a company's wage under its leader": ['a-druid-halves-a-beasts-price-and-wage'],
     "a realm's company wages under its Host-Leader": ['the-host-leaders-cut-of-his-companies-wages'],
+    "a company's rank in the line to disband unpaid": [
+      'the-dead-disband-last-for-want-of-pay',
+      'the-least-experienced-disband-first-for-want-of-pay',
+    ],
+    'a company is spared disbanding unpaid': ['a-ship-carrying-troops-at-sea-is-kept-at-the-oars-unpaid'],
+    'an unpaid hero deserts': ['an-unpaid-hero-deserts-unless-his-loyalty-holds'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -229,4 +266,45 @@ export function theCompanyWagesUnderTheHostLeader(facts: TheCompanyWagesUnderThe
     },
     { theGoldSaved: 0, theWagesLeft: facts.theCompanyWages },
   );
+}
+
+/** The runner of "turnEnd: a company's rank in the line to disband unpaid" (Early Winter, once the realm can't pay,
+ *  for each company of the realm in its order, before any is passed over): its rank by each effect of the stage, in
+ *  its order. The line compares them rank by rank (theOrderOfTwoCompaniesInTheLineToDisbandUnpaid). */
+export function theRanksOfACompanyInTheLineToDisbandUnpaid(
+  facts: ACompanyAsTheLineToDisbandUnpaidReadsIt,
+): readonly number[] {
+  const theStage = "a company's rank in the line to disband unpaid";
+  return TURN_END[theStage].flatMap((slug) => {
+    const theRank = ENTRIES[slug].turnEnd?.[theStage]?.(facts);
+    return theRank === undefined ? [] : [theRank];
+  });
+}
+
+/** Two companies' order in the line to disband unpaid, as a sort compares them: by their ranks, rank by rank, the
+ *  first that differs deciding, then by the die each drew (written as Early Winter wrote it,
+ *  `x.skel - y.skel || x.q - y.q || x.r - y.r`). */
+export function theOrderOfTwoCompaniesInTheLineToDisbandUnpaid(
+  x: { readonly theRanks: readonly number[]; readonly theDie: number },
+  y: { readonly theRanks: readonly number[]; readonly theDie: number },
+): number {
+  return (
+    x.theRanks.reduce((theOrder, theRank, i) => theOrder || theRank - (y.theRanks[i] ?? theRank), 0) ||
+    x.theDie - y.theDie
+  );
+}
+
+/** The runner of "turnEnd: a company is spared disbanding unpaid" (Early Winter, when a company's turn in the line
+ *  comes, and again for each ship it spared each time a company goes): whether any effect of the stage spares it, in
+ *  its order. */
+export function aCompanyIsSparedDisbandingUnpaid(facts: ACompanyAsTheSparingOfAnUnpaidCompanyReadsIt): boolean {
+  const theStage = 'a company is spared disbanding unpaid';
+  return TURN_END[theStage].some((slug) => ENTRIES[slug].turnEnd?.[theStage]?.(facts) ?? false);
+}
+
+/** The runner of "turnEnd: an unpaid hero deserts" (Early Winter, hero by hero, the best paid first, while the
+ *  shortfall lasts, on a die drawn for him): whether any effect of the stage has him desert, in its order. */
+export function anUnpaidHeroDeserts(facts: AnUnpaidHerosRollOfLoyalty): boolean {
+  const theStage = 'an unpaid hero deserts';
+  return TURN_END[theStage].some((slug) => ENTRIES[slug].turnEnd?.[theStage]?.(facts) ?? false);
 }

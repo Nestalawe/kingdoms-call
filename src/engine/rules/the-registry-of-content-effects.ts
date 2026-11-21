@@ -1743,6 +1743,33 @@ export interface TheCompanyWagesUnderTheHostLeader {
   readonly theCompaniesHeSavesOn: number;
 }
 
+/** A company of a realm that can't pay its wages, as its place in the line to disband reads it, as Early Winter hands
+ *  it, each company of the realm in its order (the heroes' companies, then the garrisons), before any is passed over
+ *  (the economy's registry, B-06e). */
+export interface ACompanyAsTheLineToDisbandUnpaidReadsIt {
+  /** Whether it is a company of the dead (`_isSkeletal`). */
+  readonly itIsOfTheDead: boolean;
+  /** Its grade (`quality`). */
+  readonly itsGrade: string;
+}
+
+/** A company of a realm that can't pay its wages, as the sparing of a company reads it, as Early Winter hands it when
+ *  its turn in the line comes, and again for a ship it spared each time a company goes (the economy's registry,
+ *  B-06e). */
+export interface ACompanyAsTheSparingOfAnUnpaidCompanyReadsIt {
+  /** Whether it is a ship (CARRIER_TYPES). */
+  readonly itIsAShip: boolean;
+  /** Whether the column it sails in is at open sea and still needs it to carry its troops (the caller asks, only of a
+   *  ship, as before: isOpenSea and seaLiftShortfall). */
+  readonly itCarriesTroopsAtOpenSea: () => boolean;
+}
+
+/** An unpaid hero's roll of loyalty, as Early Winter hands it: a die drawn for him, only while the shortfall lasts
+ *  (the economy's registry, B-06e). */
+export interface AnUnpaidHerosRollOfLoyalty {
+  readonly theDie: number;
+}
+
 /** The provinces' tax income a realm's alignment adds to, as Early Winter's collection and the report's forecast hand
  *  it (after the provinces' own tax, the discoveries' and the Wonder's). */
 export interface TheIncomeARealmsAlignmentAddsTo {
@@ -2207,6 +2234,19 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's company wages under its Host-Leader": (
       facts: TheCompanyWagesUnderTheHostLeader,
     ) => TheHostLeadersCut;
+    /** A company's rank in the line a realm that can't pay its wages disbands its companies in, the lowest first; the
+     *  runner gives each effect's rank, in the stage's order, and the line compares them rank by rank, a die each
+     *  company drew breaking a tie (Early Winter, once the realm can't pay: the economy's registry, B-06e). */
+    readonly "a company's rank in the line to disband unpaid": (
+      facts: ACompanyAsTheLineToDisbandUnpaidReadsIt,
+    ) => number;
+    /** Whether a company is passed over when its turn in the line to disband unpaid comes (a ship carrying troops at
+     *  sea); the runner asks whether any effect spares it (Early Winter, in the line, and again for each ship spared
+     *  each time a company goes: the economy's registry, B-06e). */
+    readonly 'a company is spared disbanding unpaid': (facts: ACompanyAsTheSparingOfAnUnpaidCompanyReadsIt) => boolean;
+    /** Whether an unpaid hero deserts on his die; the runner asks whether any effect has him desert (Early Winter, hero
+     *  by hero, the best paid first, while the shortfall lasts: the economy's registry, B-06e). */
+    readonly 'an unpaid hero deserts': (facts: AnUnpaidHerosRollOfLoyalty) => boolean;
     /** The tax of a province on a realm's consecrated ground, from its tax so far (after Bless, an earthquake and
      *  Sabotage; before Enslave and the discoveries); the runner hands each effect, in the stage's order, the tax the
      *  one before gave. The caller asks whether the realm's consecration list holds the province, as before (Early

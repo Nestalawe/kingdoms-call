@@ -63,6 +63,29 @@ export const THE_ECONOMYS_RULES = {
     name: 'The Host-Leader',
     theNumbers: { theGoldOnEachCompany: 1 },
   },
+  // ── A company's ranks in the line to disband unpaid (B-06e: a realm that can't pay its wages disbands its
+  // companies in the line these ranks give, rank by rank in this order, a die each company drew breaking a tie) ──
+  // the dead (skeletal companies) go last: nothing living stays while one of them could go
+  'the-dead-disband-last-for-want-of-pay': {
+    name: 'Skeletal units always last',
+    theNumbers: { theRankOfTheLiving: 0, theRankOfTheDead: 1 },
+  },
+  // then the least experienced first, by the grades' order (KC_QUALITY_TIERS); a company of no known grade ranks as
+  // the grade at this place in it (Average)
+  'the-least-experienced-disband-first-for-want-of-pay': {
+    name: 'The least experienced first',
+    theNumbers: { theRankOfACompanyOfNoKnownGrade: 1 },
+  },
+  // ── A company spared disbanding unpaid ──
+  // a ship (KC_UNIT_CLASS.carrier) at open sea that its column still needs to carry its troops is kept at the oars
+  'a-ship-carrying-troops-at-sea-is-kept-at-the-oars-unpaid': { name: 'Kept at the oars', theNumbers: {} },
+  // ── An unpaid hero deserts (once no company is left that may go: each hero, the best paid first, while the
+  // shortfall lasts; a shortfall left after the last is forgiven) ──
+  // his loyalty holds on a die at or below this, and he deserts on one above it
+  'an-unpaid-hero-deserts-unless-his-loyalty-holds': {
+    name: 'Heroes desert',
+    theNumbers: { theDieHisLoyaltyHoldsAtOrBelow: 0.4 },
+  },
 } as const satisfies Readonly<Record<string, ARuleOfTheEconomy>>;
 
 /** A rule of the economy, by its slug. */
