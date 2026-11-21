@@ -3,9 +3,9 @@
 // lead and a garrison will hold, the order list it offers him, its treasury ledger and its Practice Skill note, each on
 // a staged world in the engine's shape handed through the report's own projection, against what the turn does with the
 // same orders; each difference that stays is pinned: a forecast limit the rulings accept (R-128, R-134), or the
-// Stone, which waits on KD-047 (R-129). The forecasts' and the ledger's files (src/ui/player/the-order-forms-forecast-…,
-// the-order-forms-ledger-…, P1-11e41, e42) read the report and the
-// orders handed them, so the checks of tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts
+// Stone, which waits on KD-047 (R-129). The forecasts' and the ledger's files
+// (src/ui/player/the-order-forms-forecast-…, the-order-forms-ledger-…, P1-11e41, e42) read the report and the orders
+// handed them, so the checks of tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts
 // ask them on the orders staged, made into the snapshot the page's form holds (theOrdersAsTheFormHoldsThem).
 // Level 1 (unit): functions on plain values against the turn's own functions; a page would ask the same functions
 // through the DOM, and a static test can't compare two functions' answers.

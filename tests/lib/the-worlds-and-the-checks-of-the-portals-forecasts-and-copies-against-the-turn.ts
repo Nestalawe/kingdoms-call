@@ -2013,8 +2013,8 @@ export function theMarchForecastAsWhatItReadsChanges(c: TheForecasts): {
 }
 /** Where the order form says the hero ordered past his pace (on land) will stand, on the report changed as the form
  *  holds a hero who joins this turn (hired, charmed or raised: in a phase of this turn, his pace the page's) and as a
- *  report that shows no pace of his (a forecast limit, R-128; P1-11e11: neither gives the turn's pools, so neither stops him); with the province
- *  his orders name and the one his pace stops him in. */
+ *  report that shows no pace of his (a forecast limit, R-128; P1-11e11: neither gives the turn's pools, so neither
+ *  stops him); with the province his orders name and the one his pace stops him in. */
 export function theMarchPastHisPaceOfAHeroTheReportShowsNoPaceOf(c: TheForecasts): {
   joined: unknown;
   noPace: unknown;
@@ -4604,7 +4604,8 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
 // the comrades a hero's Practice Skill field counts as practising beside him (practiceCompanionSkill), each run as the
 // page runs it on realm 0's report as the engine builds it, its fields holding the orders staged; the turn's side is its
 // phases played on a copy of the state the report was built from (theTurnPlaysThePhases), and for the wages, Early
-// Winter's reckoning after them. Where the ledger can't know (a forecast limit, R-134), the difference is pinned exactly.
+// Winter's reckoning after them. Where the ledger can't know (a forecast limit, R-134), the difference is pinned
+// exactly.
 
 /** The orders the ledger cases stage, each in a world of its own: those the ledger and the turn agree on, and the one
  *  it can't know (a forecast limit, R-134): the Host-Leader's 1g a company on a report that doesn't name him.
