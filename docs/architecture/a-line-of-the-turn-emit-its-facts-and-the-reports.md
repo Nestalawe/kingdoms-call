@@ -50,10 +50,10 @@ check finds were made.
 - **One gate says which lines each realm reads** (B-18a,
   `src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts`): each line with
   how it reaches the realm, a type only it makes, read from its audience whatever its type: a battle's line reaches
-  those who fought (R-185), a line seen there whoever has eyes there (R-186). `playerEvents` takes every line from it; a
-  lint rule refuses another read of the log in `src/views/`. A line keeps its whole `audience` beside its fact until the words pass, which stores
-  neither and hands it beside each stored line; filed under the hero whose order was resolving, it keeps the realm he
-  served then too, for the leak check (B-18b).
+  those who fought (R-185), a line seen there whoever has eyes there (R-186). `playerEvents` takes every line from it,
+  and the leak check asks it (B-18g); a lint rule refuses another read of the log in `src/views/`. A line keeps its
+  whole `audience` beside its fact until the words pass, which stores neither and hands it beside each stored line;
+  filed under the hero whose order was resolving, it keeps the realm he served then too, which nothing reads (KD-422).
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
   (the event without its type and fact: `{ audience, province, hero, phase, … }`), and files it with
@@ -78,8 +78,7 @@ check finds were made.
   its own. A line for the GM alone says `hero: null`:
   `tests/scenario/a-line-for-the-gm-alone-reaches-no-realm.test.ts`. Where a hero's id may be missing, say what then
   (`hero: dest ? dest.id : THE_HERO_WHOSE_ORDER_IS_RESOLVING`, or `?? THE_HERO_WHOSE_ORDER_IS_RESOLVING`). The cases:
-  `tests/unit/emit-writes-the-lines-log-wrote.test.ts`; the audience check (`tests/lib/report-leaks.ts`) states the
-  same rule apart. The area rows of P1-12c replace the constant with the hero each fact names. Every event
+  `tests/unit/emit-writes-the-lines-log-wrote.test.ts`. The area rows of P1-12c replace the constant with the hero each fact names. Every event
   names its `phase` too (P1-12d37 and d38): a number, `THE_PHASE_THE_LINE_IS_WRITTEN_IN` (the phase of that order, else
   the phase resolving, else 99 once the phases are over) or `'none'` (no phase); an expression that may be null takes
   `?? THE_PHASE_THE_LINE_IS_WRITTEN_IN`. `emit` throws on an event with no `phase`, and the lint rule refuses one

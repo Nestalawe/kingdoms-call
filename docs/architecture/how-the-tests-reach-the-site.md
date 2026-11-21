@@ -113,8 +113,8 @@
   log in words, as the views write it for the shell to save (`buildReports`' `gmLog`, P1-12c3), and so is
   `lib/a-staged-turn-on-the-engines-modules.ts`' and the turn's board's `lines()`: a typed
   line has no words in the engine's own log. In either harness, `recordTheEvents()` has
-  `play` return `perception` too: each event as its line keeps it in memory (its whole audience, the phase and hero it
-  was filed under, whether it named that hero, and the realm he served then: P1-12c1, B-18b; nothing stood in), with its
+  `play` return `perception` too: each event's line as the gate reads it, with its whole audience and its fact's kind
+  and realm, as the line keeps them in memory (B-18b; nothing stood in), with its
   line's words as the views wrote them (a battle's tally place left empty is no event: P1-12c3), and the turn's sight, for the leak check's audience check. Its `W` is the engine's global scope,
   where a top-level function can be stood in for the turn (`W.pursuitCatchChance = …`): `scenario/pursuit-one-battle`
   plays here, as its certain catch reaches a call no spy reaches and no staging can make (Spy counts to 5, so 95%).
@@ -172,16 +172,15 @@
     Clairvoyance on him; title intelligence; and, from the phase he first acts on the reader, every line (acting on a
     realm reveals him to it: R-119, part 2). A line of the reader's own order naming him is a breach too: every order
     and reaction of another realm aimed at him finds no one (R-119);
-  - **a line its audience does not admit** (P1-12b3, P1-12's Decision 12): every line a realm reads (the chronicle,
-    province events, spy activity) comes from an event of the turn, with its text in its phase, whose audience admits
-    it, by the audience model stated there again, apart from the views' `playerEvents`: told, its own deed, its hero
-    (a line that names none, filed under the hero whose order was resolving, only when its audience reached the realm he
-    served then, or he served none: P1-12c1, as `emit` files it), the world, eyes there (its own province, a hero of its own there that phase, a spy on it that phase or before), a
-    battle's lines to those told; a spy's lingering sight (R-118: in a province it spied, from the next phase, a deed or
-    what anyone there could see, never a kind for one realm alone or a line that excepts it); Clairvoyance (the watched hero's events from the watch's phase, and where he ends the turn); an unmet
-    realm's name read as "an unknown realm". It runs only where the harness records the turn's events
-    (`Turn.perception`: the matrix's every-realm half, `simulation/every-realms-report-…`, the turn fuzz, a staged grove and a staged invisible hero). A line of a spied province
-    that its audience keeps from the spy reads "through its spy";
+  - **a line its audience does not admit** (P1-12b3; B-18g, answer 84): every line a realm reads came through the
+    gate (`theLinesOfTheTurnTheRealmReads`, `src/views/`), asked on the turn's events, the world after it and its
+    sight, by the way its part of the report needs: a line of the chronicle or the province events by told, its deed,
+    its hero, the world, eyes there or the battle; a line of the spy feed by a spy's lingering sight in that province;
+    a Clairvoyance line by Clairvoyance (but where the watched hero ends the turn, which the views write from the
+    world). The check keeps no audience model of its own: the gate's case table states each way and edge. A line
+    matches by its words and phase, an unmet realm's name read as "an unknown realm"; one the gate gives only another
+    way says which. It runs only where the harness records the turn's events (`Turn.perception`: the matrix's
+    every-realm half, `simulation/every-realms-report-…`, the turn fuzz, a staged grove and a staged invisible hero);
   - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
     (`KINDS_FOR_ONE_REALM_ALONE`, the check's own list: a hero's hit-point rise in a fight, the surgeons' word to a
     fallen duellist's realm, a hero's maximum-HP rise outside a fight, R-117, and a hero hardened after a fight outside
@@ -189,7 +188,7 @@
     whatever audience the engine gave it (the recorder notes each event's kind and the realm its fact names).
     Clairvoyance's lines are allowed. It runs where the harness records the turn's events.
 
-  What they can't see yet: in a harness that doesn't record the events (the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
+  What they can't see yet: in a harness that doesn't record the events (the page's matrix), a private line not on the list (a skill rise, say); a fault in the gate (the audience check asks it; its case table is its guard) or a line it keeps from the realm that should read it; whether the engine gave an event the right
   audience, but for the kinds for one realm alone (the audience check takes it as given: every realm's report against its baseline sees a change); the
   portal's name tables (`LOOKUP_TABLES`, for colouring names; until P2-06 trims a report to its reader); Spy stealth and the spotting roll in your own land (only Invisibility is checked); a name two heroes share.
   They read only the reports a harness has: the turn fuzz's human realms, the matrix's scripted realm, every realm in
