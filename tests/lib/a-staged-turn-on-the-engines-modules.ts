@@ -12,6 +12,9 @@
 //   r.extra  what prepare returned
 //   sc.play(state, rows)  one turn of a saved world on slot rows of the test's own (an all-bot game, say)
 //   sc.reportEveryRealm()  from now on, a report for every realm, bots' too
+//   sc.recordTheEvents()   from now on, r.perception: what perception read besides the world (the turn's events with
+//                          their audiences, as its lines keep them, and its sight), for the leak check's audience
+//                          check (lib/report-leaks.ts), as tests/lib/scenario-in-the-vm.ts's
 //
 // Fresh modules: it calls vi.resetModules() and imports the whole engine again (tests/lib/the-whole-engine.ts) before
 // it seeds the dice, so the world doesn't depend on what the tests before it made (the name pools are the modules'
@@ -26,6 +29,7 @@
 import { vi } from 'vitest';
 import type { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
 import type { TheGamesSlotRow } from '../../src/engine/turn/context.ts';
+import { perceptionOfTheTurn } from './report-leaks.ts';
 
 export interface Order {
   action: string;
@@ -101,6 +105,7 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
   const { generateNewGame } = await import('../../src/engine/world/generate.ts');
   const { resolveTurn } = await import('../../src/engine/run-turn.ts');
   const reportsModule = await import('../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts');
+  const { theTurnsLinesInWords } = await import('../../src/views/prose/the-words-of-each-line.ts');
   kcRng.seed(seed);
 
   const rest = (): Order[] => [0, 1, 2, 3, 4].map(() => ({ action: 'rest', target: '', extra: '', desc: '' }));
@@ -183,7 +188,8 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
   /** Plays one turn of the saved world `state` on the slot rows `rows`, as the shell does (src/ui/gm/turn-shell.ts):
    *  a seed drawn from the engine's dice, resolveTurn, then the Spy-stealth step and the views' buildReports on what the
    *  turn hands over for the reports. Returns the world
-   *  after the turn, the GM's log, each report by its realm, and the turn's statistics. */
+   *  after the turn, the GM's log, each report by its realm, the turn's statistics, and (after recordTheEvents) what
+   *  perception read. */
   function play(state: World | string, rows: unknown[]) {
     const json = typeof state === 'string' ? state : JSON.stringify(state);
     const turnNumber = (JSON.parse(json) as World).turn;
@@ -193,10 +199,12 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
     const resolved = quietly(
       () => resolveTurn(json, plain(rows) as TheGamesSlotRow[], turnNumber, turnSeed) as unknown as Resolved,
     );
-    const built: Built = quietly(() => {
+    const { built, forTheReports } = quietly(() => {
       resolved.spyStealthAndInvisibilityStampedForTheReports();
+      const handedOver = resolved.whatTheReportsRead();
       // through the module, so a stand-in set on it (reportEveryRealm, a test's vi.spyOn) is the one called
-      return reportsModule.buildReports(resolved.whatTheReportsRead());
+      const reportsBuilt: Built = reportsModule.buildReports(handedOver);
+      return { built: reportsBuilt, forTheReports: handedOver };
     });
     // The GM's log in words, as the views wrote it and the shell saves it (P1-12c3).
     const log = plain(built.gmLog) as Line[];
@@ -207,6 +215,17 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
       log,
       reports,
       collected: plain(built.tel.collected) as Record<string, unknown>,
+      ...(recording
+        ? {
+            perception: plain(
+              perceptionOfTheTurn(
+                forTheReports.turnLog,
+                theTurnsLinesInWords(forTheReports.turnLog).wordsOfEachLine,
+                forTheReports.sight,
+              ),
+            ),
+          }
+        : {}),
       seed: turnSeed,
       text: (charId?: unknown) =>
         log
@@ -229,7 +248,13 @@ export async function aStagedTurnOnTheEnginesModules({ seed }: { seed: number })
       }),
     );
   }
-  return { world, turn, play, reportEveryRealm, rest };
+  /** From now on play returns r.perception: each event of the turn as its line in the engine's log keeps it until the
+   *  reports are built, with its line's words, and the turn's sight (lib/report-leaks.ts's perceptionOfTheTurn). */
+  let recording = false;
+  function recordTheEvents() {
+    recording = true;
+  }
+  return { world, turn, play, reportEveryRealm, recordTheEvents, rest };
 }
 
 /** One phase's order: `order('move', 12)`. */

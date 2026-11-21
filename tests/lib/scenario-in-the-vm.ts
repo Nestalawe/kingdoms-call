@@ -12,7 +12,8 @@
 //   sc.play(state, rows)  one turn of a saved world on slot rows of the test's own (an all-bot game, say)
 //   sc.reportEveryRealm()  from now on, a report for every realm, bots' too
 //   sc.recordTheEvents()   from now on, r.perception: what perception read besides the world (the turn's events with
-//                          their audiences, and its sight), for the leak check's audience check (lib/report-leaks.ts)
+//                          their audiences, as its lines keep them, and its sight), for the leak check's audience
+//                          check (lib/report-leaks.ts)
 //
 // The turn is the shell's: resolveTurn on the saved world (JSON) and the slot rows, with a seed drawn from the
 // engine's dice as the shell draws it from the page's (src/ui/gm/turn-shell.ts), then the Spy-stealth step, and the
@@ -23,7 +24,9 @@
 // calls made inside the engine (until it is put back), and `W.eval(code)` runs code there.
 import vm from 'node:vm';
 import { loadEngine, quietEngineLog } from './engine.ts';
-import type { EventAsEmitted, Perception } from './report-leaks.ts';
+import type { LogLine } from '../../src/engine/turn/events-and-their-audiences.ts';
+import type { TheTurnsSight } from '../../src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts';
+import { perceptionOfTheTurn, type Perception } from './report-leaks.ts';
 
 export interface Order {
   action: string;
@@ -69,7 +72,7 @@ interface Resolved {
   state: string;
   log: Line[];
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  whatTheReportsRead(): { sight: { presenceByPhase: unknown; clairWatch: unknown } };
+  whatTheReportsRead(): { turnLog: LogLine[]; sight: Pick<TheTurnsSight, 'presenceByPhase' | 'clairWatch'> };
 }
 /** What the views' buildReports returns. */
 interface Built {
@@ -202,7 +205,6 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
     // the shell's seed: one number from the dice, as a 32-bit integer (0 read as 1)
     const seed = Math.floor((run('kcRng()') as number) * 2 ** 32) || 1;
     const rowsInVm = (run('(j)=>JSON.parse(j)') as (j: string) => unknown)(JSON.stringify(rows));
-    if (recording) run('__kcEventsOfTheTurn.length = 0; __kcLinesOfTheTurn.length = 0;');
     const resolved = quietly(() => call('resolveTurn', json, rowsInVm, turn, seed) as Resolved);
     const { built, forTheReports } = quietly(() => {
       resolved.spyStealthAndInvisibilityStampedForTheReports();
@@ -218,7 +220,7 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
       log,
       reports,
       collected: plain(built.tel.collected),
-      ...(recording ? { perception: perceptionOf(forTheReports, resolved.log, log.length) } : {}),
+      ...(recording ? { perception: perceptionOf(forTheReports) } : {}),
       seed,
       text: (charId?: unknown) =>
         log
@@ -239,60 +241,21 @@ export function scenarioInTheVm(opts: { seed?: number; src?: string } = {}) {
     );
   }
 
-  /** From now on each turn's events are recorded as they are emitted (emit, src/engine/turn/events-and-their-
-   *  audiences.ts, stood in, in the vm, to note each event after it has filed its line), with the phase and the hero
-   *  its line was filed under (emit's fallbacks worked out), whether the event named that hero, the realm he served
-   *  as the line was written, and the kind of fact it records with the realm the fact names (a line for one realm
-   *  alone, P1-12c4); and play returns them with the turn's sight as r.perception, each with its line's words
-   *  as the views wrote them (a fact's; a battle's tally place left empty is no line, P1-12c3). */
+  /** From now on play returns r.perception: each event of the turn as its line in the engine's log keeps it until the
+   *  reports are built (its whole audience, the phase and the hero its line was filed under, whether the event named
+   *  that hero, the realm he served as it was written, and the kind of fact it records with the realm the fact names:
+   *  B-18a, B-18b), each with its line's words as the views wrote them (a battle's tally place left empty is no line,
+   *  P1-12c3), and the turn's sight (lib/report-leaks.ts's perceptionOfTheTurn). Nothing in the engine is stood in. */
   let recording = false;
   function recordTheEvents() {
-    if (recording) return;
     recording = true;
-    run(`{ globalThis.__kcEventsOfTheTurn = []; globalThis.__kcLinesOfTheTurn = []; const emitFor = emit;
-      emit = function (turnContext, event) {
-        emitFor(turnContext, event);
-        const line = turnContext.turnLog[turnContext.turnLog.length - 1];
-        __kcLinesOfTheTurn.push(line);
-        __kcEventsOfTheTurn.push({ type: event.type, text: event.text, audience: { ...event.audience },
-          province: event.province ?? null, phase: line.phase, hero: line.charId,
-          heroNamed: typeof event.hero === 'number',
-          heroRealmThen: line.charId == null ? null : (turnContext.G.characters.find((c) => c && c.id === line.charId)?.player ?? null),
-          heroes: event.heroes ?? null, spy: !!event.spy,
-          kind: event.fact?.kind ?? null, factsRealm: event.fact?.realm ?? null });
-      }; }`);
   }
-  /** The turn's recorded events (as many as its log in words has lines, or it throws: a line that didn't come through
-   *  emit), each with its line's words (theTurnsLinesInWords on the engine's log, `engineLog`), and its sight, from what
-   *  it handed over for the reports, as plain values. */
-  function perceptionOf(
-    forTheReports: ReturnType<Resolved['whatTheReportsRead']>,
-    engineLog: unknown,
-    lines: number,
-  ): Perception {
-    const events = JSON.parse(
-      (
-        run(`(engineLog) => { const { wordsOfEachLine } = theTurnsLinesInWords(engineLog);
-          const wordsOf = new Map(engineLog.map((line, at) => [line, wordsOfEachLine[at]]));
-          return JSON.stringify(__kcEventsOfTheTurn.flatMap((event, i) => {
-            const line = __kcLinesOfTheTurn[i];
-            if (line.fact === undefined) return [event];
-            const words = wordsOf.get(line);
-            return words == null ? [] : [{ ...event, text: words }];
-          })); }`) as (engineLog: unknown) => string
-      )(engineLog),
-    ) as EventAsEmitted[];
-    if (events.length !== lines)
-      throw new Error(`recorded ${String(events.length)} events, but the GM's log has ${String(lines)} lines`);
-    const presence = JSON.parse(
-      (
-        run(`(byPhase) => { const out = [];
-          byPhase.forEach((m, phase) => { if (m) m.forEach((who, province) => { out.push({ phase, province, realms: [...who] }); }); });
-          return JSON.stringify(out); }`) as (byPhase: unknown) => string
-      )(forTheReports.sight.presenceByPhase),
-    ) as Perception['presence'];
-    const clairvoyance = plain(forTheReports.sight.clairWatch) as Perception['clairvoyance'];
-    return { events, presence, clairvoyance };
+  /** What perception read besides the world, from what the turn handed over for the reports, as plain values. */
+  function perceptionOf(forTheReports: ReturnType<Resolved['whatTheReportsRead']>): Perception {
+    const { wordsOfEachLine } = call('theTurnsLinesInWords', forTheReports.turnLog) as {
+      wordsOfEachLine: (string | null)[];
+    };
+    return plain(perceptionOfTheTurn(forTheReports.turnLog, wordsOfEachLine, forTheReports.sight));
   }
   return { engine, W, turn, play, reportEveryRealm, recordTheEvents, errs: [] as string[] };
 }
