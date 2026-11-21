@@ -180,7 +180,7 @@
     battle's lines to those told; a spy's lingering sight (R-118: in a province it spied, from the next phase, a deed or
     what anyone there could see, never a kind for one realm alone or a line that excepts it); Clairvoyance (the watched hero's events from the watch's phase, and where he ends the turn); an unmet
     realm's name read as "an unknown realm". It runs only where the harness records the turn's events
-    (`Turn.perception`: the matrix's every-realm half, `simulation/every-realms-report-…`, the turn fuzz and a staged grove). A line of a spied province
+    (`Turn.perception`: the matrix's every-realm half, `simulation/every-realms-report-…`, the turn fuzz, a staged grove and a staged invisible hero). A line of a spied province
     that its audience keeps from the spy reads "through its spy";
   - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
     (`KINDS_FOR_ONE_REALM_ALONE`, the check's own list: a hero's hit-point rise in a fight, the surgeons' word to a
