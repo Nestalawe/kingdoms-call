@@ -1273,7 +1273,9 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       theHeroWageDiscoveriesCeilingsAndTheirRoom: theHeroWageDiscoveriesCutsCeilingsAndRoom.theCeilings,
       // and the unit-strength effects its own discoveries carry, in the order it holds them, for the army card's
       // strength (plan P1-11z2, R-135): never another realm's, each a copy (not the discoveries' table's own rows)
-      theUnitStrengthEffectsOfItsDiscoveries: aCopyMadeThroughJson(theEffectsARealmsDiscoveriesStrengthenAUnitWith(player)),
+      theUnitStrengthEffectsOfItsDiscoveries: aCopyMadeThroughJson(
+        theEffectsARealmsDiscoveriesStrengthenAUnitWith(player),
+      ),
     },
     exploreDiscMult: Object.fromEntries(
       ['plain', 'desert', 'forest', 'mountain', 'jungle', 'sea'].map((t) => [t, discExploreMult(player, t)]),
