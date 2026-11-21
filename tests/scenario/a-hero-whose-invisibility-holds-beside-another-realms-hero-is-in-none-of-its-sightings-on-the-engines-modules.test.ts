@@ -14,7 +14,7 @@
 // and casts no Clairvoyance. The two rolls of the cast are the chosen ones: a stand-in on resolveCastSpellOrder (called
 // from the orders' dispatch) makes every percentile roll (d100, called from the cast's files) a 1 while the cast is
 // resolved, so the cast lands and the spell holds (80% or less). Each stand-in is on the module that exports the
-// function, and reaches calls from other files only (docs/traps.md).
+// function, and reaches calls from other files only (docs/traps.md): the test checks both were reached.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // A hero whose Invisibility holds beside another realm's hero is in none of its sightings, on the engine's modules
@@ -57,11 +57,18 @@ test("a hero whose Invisibility holds beside another realm's hero is in none of 
     await import('../../src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts');
   // The cast's rolls: while the cast is resolved, every percentile roll is a 1 (the cast lands, and the spell holds).
   let casting = false;
+  let castsResolved = 0;
+  let rollsChosen = 0;
   const d100 = dice.d100;
-  vi.spyOn(dice, 'd100').mockImplementation(() => (casting ? 1 : d100()));
+  vi.spyOn(dice, 'd100').mockImplementation(() => {
+    if (!casting) return d100();
+    rollsChosen++;
+    return 1;
+  });
   const resolveCastSpellOrder = cast.resolveCastSpellOrder;
   vi.spyOn(cast, 'resolveCastSpellOrder').mockImplementation((...args: Parameters<typeof resolveCastSpellOrder>) => {
     casting = true;
+    castsResolved++;
     try {
       resolveCastSpellOrder(...args);
     } finally {
@@ -101,12 +108,15 @@ test("a hero whose Invisibility holds beside another realm's hero is in none of 
     ...(r.perception ? { perception: r.perception } : {}),
   });
   expect({
-    // the turn got there: the spell held (the turn it was cast is saved), the two kings still share the province at
-    // the turn's end (so realm 1 would see him without it, R-110), and the turn's events were handed over
+    // the turn got there: the cast went through the stand-ins (one cast, its two rolls at least: the cast's and the
+    // spell's), the spell held (the turn it was cast is saved), the two kings still share the province at the turn's
+    // end (so realm 1 would see him without it, R-110), and the turn's events were handed over
+    castsResolved,
+    theRollsWereChosen: rollsChosen >= 2,
     held: after(caster)?._invisTurn === r.S.turn,
     together: after(onlooker)?.location === after(caster)?.location,
     recorded: r.perception !== undefined,
-  }).toEqual({ held: true, together: true, recorded: true });
+  }).toEqual({ castsResolved: 1, theRollsWereChosen: true, held: true, together: true, recorded: true });
   // a breach is said in full (a long list in an object would be cut short)
   expect(describeBreaches('the turn', breaches)).toBe('');
 });
