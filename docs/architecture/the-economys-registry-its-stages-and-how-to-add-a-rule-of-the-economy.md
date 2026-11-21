@@ -2,13 +2,13 @@
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
 This file is its part for the economy: the rules of a realm's gold (B-06, T7, the rules pulled out: its economy
-family, from B-06c). The family's other rows (the wages, not paying, the orders' prices, gold found and taken) are in
+family, from B-06c). The family's other rows (not paying, the orders' prices, gold found and taken) are in
 [the backlog](../backlog/README.md).
 
 ## What a rule of the economy is
 
 A **rule of the economy** is a rule that adds to or takes from a realm's gold: a mark on a province's tax, a minor
-title's gold, a mastery's stipend. It is one row in `src/content/the-economys-rules-their-keys-names-and-numbers.ts`
+title's gold, a mastery's stipend, a cut of a company's wage. It is one row in `src/content/the-economys-rules-their-keys-names-and-numbers.ts`
 and one entry in `src/engine/rules/the-registry-of-the-economys-rules.ts`, keyed by the same slug
 (`'the-cutpurses-gold'`). Its effects are in `src/engine/rules/the-economy/`, a file per group of stages.
 
@@ -23,7 +23,11 @@ and one entry in `src/engine/rules/the-registry-of-the-economys-rules.ts`, keyed
   `THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY`. Within a stage the effects run in the order the list gives.
 - **A rule two copies write the same** (Early Winter's collection and the report's forecast) is asked of the one
   runner by both. Where the copies differ, each keeps its own code (no switch, no parameter): the forecast leaves this
-  turn's marks out, and reads the end-of-turn holders of the minor titles with no check of `TITLE_PERKS_ENABLED`.
+  turn's marks and this turn's war-spoils out, and reads the end-of-turn holders of the minor titles with no check of
+  `TITLE_PERKS_ENABLED`.
+- **A rule the player portal shares** (the Druid's half, the Host-Leader's cut: the order form's ledger and the army
+  card read them) keeps its function in `src/engine/rules-on-plain-values/`, reading its row's numbers, and its
+  effect asks it.
 
 ## The stages written so far
 
@@ -49,15 +53,41 @@ so every step keeps its place.
   title, and reads each title's gold by its slug.
 - **A realm's gold beyond its tax from a hero's mastery**: the Thief network's 5, hero by hero.
 
+Three stages of `turnEnd` for the wages, in the order Early Winter's wages reach them (B-06d,
+`the-economy/a-companys-wage-and-a-realms-company-wages-at-the-turns-end.ts`). A company that draws no wage, and a
+skeletal one's flat 1g (`theWageOfACompany`), are the caller's, before them. Each other company's wage runs, in order:
+its type's price, **a company's wage this turn**, **a company's wage under its leader**, the upkeep discoveries (the
+discoveries' registry). Once every company's wage is added: **a realm's company wages under its Host-Leader**, then
+the heroes' wages.
+
+- **A company's wage this turn** (Early Winter alone; the forecast leaves it out, as the stamped wages cover it): the
+  Orcish war-spoils, half the wage of an Orcish company of an Orcish realm that won attacking this turn, rounded down.
+  The half golds are carried in one carry a realm, handed to each company in turn (the heroes' companies in their
+  order, then the garrisons in the provinces' order), and paid once a whole gold builds up (within 1e-9). A company
+  whose half falls below 1g pays 1g, and neither banks a half gold nor spends one.
+- **A company's wage under its leader**: the Druid's half, for a beast a Druid 6 leads or any under the Druidic Wonder
+  (the caller asks which), rounded down, 1g at the least. The same row gives the half price a Druid 6 recruiter pays.
+- **A realm's company wages under its Host-Leader**: 1g less for each company he leads that draws a wage, the wages
+  never below nothing (the caller asks who holds the title).
+
+A hero's wage in service is no stage: one formula, `theWageOfAHeroInService`
+(`src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts`), its numbers in content's
+`KC_A_HEROS_WAGE_IN_SERVICE`. It is what his allegiance was bargained at (1g for a hero never hired), plus his skill
+premium (`heroSkillWage`: a gold for every 4 skill points, rounded up, less 1), 1g at the least. `recalcHeroPay`, the
+world's founding and wandering heroes and the release read it. The hire desk quotes the same premium (`heroHireWage`).
+
 ## The tests
 
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
   entry, and an entry with no row, fail to compile.
 - `tests/unit/the-rule-registry-holds-each-effect-once-in-the-order-of-its-stage.test.ts`: each effect once in its
   stage's order, every entry at a stage, no two rows' name.
-- `tests/unit/the-economys-registry-a-provinces-tax-and-a-realms-gold-beyond-it.test.ts`: each runner against the
+- `tests/unit/the-economys-registry-a-provinces-tax-and-a-realms-gold-beyond-it.test.ts` and
+  `tests/unit/the-economys-registry-a-companys-wage-and-a-realms-company-wages.test.ts`: each runner against the
   line it replaced, on every case; Early Winter's own cases (`tests/lib/early-winter-cases.ts`) and the report's
   (`tests/unit/realm-reports.test.ts`) hold the callers.
+- `tests/unit/a-heros-wage-in-service-is-one-formula-the-turn-the-worlds-making-and-the-release-read.test.ts`: the
+  formula against each copy it replaced.
 - The ratchet's `economyNumbersInEngine`, which only falls, and the economy's static test of the functions its rows
   have taken
   (`tests/static/the-code-the-economys-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts`).

@@ -23,6 +23,7 @@ import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-pr
 import type {
   ACompanysWageAndTheLeaderItMarchesUnder,
   ACompanysWageAndTheWarSpoilsItTookThisTurn,
+  ACompanysWageThisTurnAndTheHalfGoldsCarried,
   AHeroAsTheGoldOfHisMasteriesReadsHim,
   AHeroAsTheGoldOfHisMinorTitlesReadsHim,
   AProvincesTaxAndItsMarksOfThisTurn,
@@ -192,13 +193,15 @@ export function theGoldAHerosMasteriesAddBeyondTheTax(facts: AHeroAsTheGoldOfHis
 }
 
 /** The runner of "turnEnd: a company's wage this turn" (Early Winter's wages alone: the report's forecast leaves this
- *  turn's war-spoils out): a company's wage after each effect of the stage, in its order, each handed the wage the one
- *  before gave. The war-spoils' effect adds to and spends from the realm's carry the caller hands it. */
-export function theWageOfACompanyThisTurn(facts: ACompanysWageAndTheWarSpoilsItTookThisTurn): number {
+ *  turn's war-spoils out): a company's wage and the half golds carried after each effect of the stage, in its order,
+ *  each handed the wage and the carry the one before gave. The caller hands the carry on to the next company. */
+export function theWageOfACompanyThisTurn(
+  facts: ACompanysWageAndTheWarSpoilsItTookThisTurn,
+): ACompanysWageThisTurnAndTheHalfGoldsCarried {
   const theStage = "a company's wage this turn";
-  return TURN_END[theStage].reduce(
-    (theWage, slug) => ENTRIES[slug].turnEnd?.[theStage]?.({ ...facts, theWage }) ?? theWage,
-    facts.theWage,
+  return TURN_END[theStage].reduce<ACompanysWageThisTurnAndTheHalfGoldsCarried>(
+    (soFar, slug) => ENTRIES[slug].turnEnd?.[theStage]?.({ ...facts, ...soFar }) ?? soFar,
+    { theWage: facts.theWage, theHalfGoldsCarried: facts.theHalfGoldsCarried },
   );
 }
 

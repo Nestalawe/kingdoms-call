@@ -58,7 +58,6 @@ import {
   theWageOfACompanyUnderItsLeader,
   type AMinorTitlesGoldBeyondTheTax,
 } from '../rules/the-registry-of-the-economys-rules.ts';
-import type { TheHalfGoldsTheWarSpoilsCarry } from '../rules/the-registry-of-content-effects.ts';
 import type { TurnContext } from './context.ts';
 import type { AGarrisonCompanyDrilledAGrade, ATitlesPerkOfGold } from './the-facts-early-winters-lines-record.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
@@ -349,9 +348,9 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // as soon as a whole gold has built up. Across the qualifying units the total is exactly half
     // (or half rounded to the nearest gold), which is what "half upkeep" has always meant.
     // The 1g floor still applies per unit, so a 1g unit is never free.
-    // The halving and its carry are the economy's registry's since B-06d ("turnEnd: a company's wage this turn"): one
-    // carry for the realm, handed to each company in turn, the heroes' companies first, then the garrisons.
-    const _orcCarry: TheHalfGoldsTheWarSpoilsCarry = { theHalfGoldsCarried: 0 };
+    // The halving is the economy's registry's since B-06d ("turnEnd: a company's wage this turn"): the realm's carry
+    // is handed to each company in turn, the heroes' companies first, then the garrisons, and back.
+    let _orcFrac = 0;
     let armyWages = allKingdomArmies.reduce((s, a: ArmyInABattle) => {
       // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
@@ -361,11 +360,13 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       let w = thePriceOfACompanyOfAType(a.type);
       {
         const _w0 = w;
-        w = theWageOfACompanyThisTurn({
+        const theWageThisTurn = theWageOfACompanyThisTurn({
           theWage: w,
           itTookTheWarSpoilsThisTurn: _orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn,
-          theHalfGoldsTheWarSpoilsCarry: _orcCarry,
+          theHalfGoldsCarried: _orcFrac,
         });
+        w = theWageThisTurn.theWage;
+        _orcFrac = theWageThisTurn.theHalfGoldsCarried;
         _orcSpoilsG += _w0 - w;
       } // ORC WAR-SPOILS
       w = theWageOfACompanyUnderItsLeader({ theWage: w, itIsABeastADruidHalves: _druidHalfWage.has(a) }); // DRUID L6

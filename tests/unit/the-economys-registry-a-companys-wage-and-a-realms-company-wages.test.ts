@@ -32,7 +32,7 @@ test("a company's wage this turn: the Orcish war-spoils' half, its half golds ca
   for (const host of everyHost()) {
     hosts += 1;
     let _orcFrac = 0;
-    const theCarry = { theHalfGoldsCarried: 0 };
+    let theCarry = 0;
     host.forEach(([price, tookTheSpoils], i) => {
       let w = price;
       if (tookTheSpoils) {
@@ -53,31 +53,33 @@ test("a company's wage this turn: the Orcish war-spoils' half, its half golds ca
       const got = theWageOfACompanyThisTurn({
         theWage: price,
         itTookTheWarSpoilsThisTurn: tookTheSpoils,
-        theHalfGoldsTheWarSpoilsCarry: theCarry,
+        theHalfGoldsCarried: theCarry,
       });
-      expect(got, `${JSON.stringify(host)}: company ${String(i)}'s wage`).toBe(w);
-      expect(theCarry.theHalfGoldsCarried, `${JSON.stringify(host)}: the carry after company ${String(i)}`).toBe(
-        _orcFrac,
-      );
+      theCarry = got.theHalfGoldsCarried;
+      expect(got.theWage, `${JSON.stringify(host)}: company ${String(i)}'s wage`).toBe(w);
+      expect(theCarry, `${JSON.stringify(host)}: the carry after company ${String(i)}`).toBe(_orcFrac);
     });
   }
   expect(hosts).toBe(16 + 16 ** 2 + 16 ** 3 + 16 ** 4);
   // the reported case (2026-09-27): four 3g companies and a 4g one, 16g, pay 8g
-  const theCarry = { theHalfGoldsCarried: 0 };
-  const paid = [3, 3, 3, 3, 4].map((theWage) =>
-    theWageOfACompanyThisTurn({ theWage, itTookTheWarSpoilsThisTurn: true, theHalfGoldsTheWarSpoilsCarry: theCarry }),
-  );
-  expect(paid).toEqual([1, 2, 1, 2, 2]);
-  // a 1g company pays 1 and leaves the carry as it was
-  const theHalfGold = { theHalfGoldsCarried: 0.5 };
-  expect(
-    theWageOfACompanyThisTurn({
-      theWage: 1,
+  let theCarry = 0;
+  const paid = [3, 3, 3, 3, 4].map((theWage) => {
+    const got = theWageOfACompanyThisTurn({
+      theWage,
       itTookTheWarSpoilsThisTurn: true,
-      theHalfGoldsTheWarSpoilsCarry: theHalfGold,
-    }),
-  ).toBe(1);
-  expect(theHalfGold.theHalfGoldsCarried).toBe(0.5);
+      theHalfGoldsCarried: theCarry,
+    });
+    theCarry = got.theHalfGoldsCarried;
+    return got.theWage;
+  });
+  expect(paid).toEqual([1, 2, 1, 2, 2]);
+  // a 1g company pays 1 and leaves the carry as it was; one that took none, its wage and the carry
+  expect(theWageOfACompanyThisTurn({ theWage: 1, itTookTheWarSpoilsThisTurn: true, theHalfGoldsCarried: 0.5 })).toEqual(
+    { theWage: 1, theHalfGoldsCarried: 0.5 },
+  );
+  expect(
+    theWageOfACompanyThisTurn({ theWage: 5, itTookTheWarSpoilsThisTurn: false, theHalfGoldsCarried: 0.5 }),
+  ).toEqual({ theWage: 5, theHalfGoldsCarried: 0.5 });
 });
 
 test("a company's wage under its leader: a beast a Druid halves pays half, rounded down, 1 at the least", () => {

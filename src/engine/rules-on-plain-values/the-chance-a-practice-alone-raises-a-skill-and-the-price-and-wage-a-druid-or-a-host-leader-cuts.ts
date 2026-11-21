@@ -8,7 +8,9 @@
 // registry (src/engine/turn/early-winter-…ts, and the report's forecast of them in src/views/turn-report.ts): the
 // companies that draw none, a beast's half wage under a Druid 6 leader or a Druidic Wonder, and the Host-Leader's 1g a
 // company he leads. The upkeep discoveries' cut reads the discoveries' registry, so it stays engine side
-// (discUpkeepWage).
+// (discUpkeepWage). Since B-06d the Druid's and the Host-Leader's numbers are their rows in the economy's rules
+// (src/content/the-economys-rules-their-keys-names-and-numbers.ts), and Early Winter and the forecast ask these through
+// the economy's registry; the order form's ledger and the army card ask them here.
 import { THE_ECONOMYS_RULES } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
 import { CREATURE_ARMIES, MONSTER_ARMIES } from './units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 

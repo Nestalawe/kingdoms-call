@@ -1709,22 +1709,22 @@ export interface AHeroAsTheGoldOfHisMasteriesReadsHim {
   readonly heHoldsTheThiefNetwork: boolean;
 }
 
-/** The half golds the Orcish war-spoils carry from company to company of one realm's host in one turn's wages (Early
- *  Winter's `_orcFrac`): the caller makes it at nothing for each realm and hands the same one for each company, in
- *  its order (the heroes' companies in their order, then the garrisons in the provinces' order). */
-export interface TheHalfGoldsTheWarSpoilsCarry {
-  theHalfGoldsCarried: number;
-}
-
-/** A company's wage so far (its type's price) and whether it took the Orcish war-spoils this turn, as Early Winter's
- *  wages hand them (the economy's registry, B-06d: the report's forecast leaves this turn's war-spoils out, as the
- *  stamped wages cover it). */
+/** A company's wage so far (its type's price), whether it took the Orcish war-spoils this turn, and the half golds the
+ *  war-spoils carry from company to company of the realm's host (Early Winter's `_orcFrac`), as Early Winter's wages
+ *  hand them, each company in its order: the heroes' companies in their order, then the garrisons in the provinces'
+ *  (the economy's registry, B-06d: the report's forecast leaves this turn's war-spoils out, as the stamped wages cover
+ *  it). */
 export interface ACompanysWageAndTheWarSpoilsItTookThisTurn {
   readonly theWage: number;
   /** Whether it is an Orcish company of an Orcish realm that won attacking this turn (the caller asks, as before). */
   readonly itTookTheWarSpoilsThisTurn: boolean;
-  /** The realm's carry, which the war-spoils' effect adds to and spends from. */
-  readonly theHalfGoldsTheWarSpoilsCarry: TheHalfGoldsTheWarSpoilsCarry;
+  readonly theHalfGoldsCarried: number;
+}
+
+/** A company's wage this turn, and the half golds the war-spoils carry on to the next company. */
+export interface ACompanysWageThisTurnAndTheHalfGoldsCarried {
+  readonly theWage: number;
+  readonly theHalfGoldsCarried: number;
 }
 
 /** A company's wage so far (after this turn's war-spoils) and whether a leader's mastery or the realm's Wonder halves
@@ -2191,10 +2191,12 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's gold beyond its tax from a hero's mastery": (
       facts: AHeroAsTheGoldOfHisMasteriesReadsHim,
     ) => number;
-    /** A company's wage this turn, from its type's price, after this turn's war-spoils (the Orcish half); the runner
-     *  hands each effect, in the stage's order, the wage the one before gave (Early Winter's wages alone, before the
-     *  Druid's half: the economy's registry, B-06d). */
-    readonly "a company's wage this turn": (facts: ACompanysWageAndTheWarSpoilsItTookThisTurn) => number;
+    /** A company's wage this turn, from its type's price, after this turn's war-spoils (the Orcish half), and the half
+     *  golds carried on; the runner hands each effect, in the stage's order, the wage and the carry the one before gave
+     *  (Early Winter's wages alone, before the Druid's half: the economy's registry, B-06d). */
+    readonly "a company's wage this turn": (
+      facts: ACompanysWageAndTheWarSpoilsItTookThisTurn,
+    ) => ACompanysWageThisTurnAndTheHalfGoldsCarried;
     /** A company's wage under its leader (the Druid's half), from its wage after this turn's; the runner hands each
      *  effect, in the stage's order, the wage the one before gave (Early Winter's wages and the report's forecast,
      *  before the upkeep discoveries: the economy's registry, B-06d). */

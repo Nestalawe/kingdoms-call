@@ -20,16 +20,17 @@ import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effect
 type TheTurnsEndsStages = TheStagesOfEachHookPoint['turnEnd'];
 
 /** "turnEnd: a company's wage this turn": an Orcish company of an Orcish realm that won attacking this turn pays half
- *  its wage, rounded down, the half gold it leaves carried in the realm's carry; once the carry holds a whole gold (to
+ *  its wage, rounded down, the half gold it leaves added to the half golds carried; once they hold a whole gold (to
  *  within 1e-9), the company pays it and the carry gives it up. Across the host the total is half (rounded to the
  *  nearest gold). A company whose half falls below the least wage pays the least wage, and neither banks a half gold
  *  nor spends one. The carry's arithmetic is written exactly as Early Winter wrote it (`_orcFrac`). */
 export const A_COMPANYS_WAGE_THIS_TURN = {
   'the-orcish-war-spoils-halve-a-companys-wage-this-turn': (facts) => {
-    if (!facts.itTookTheWarSpoilsThisTurn) return facts.theWage;
+    if (!facts.itTookTheWarSpoilsThisTurn)
+      return { theWage: facts.theWage, theHalfGoldsCarried: facts.theHalfGoldsCarried };
     const { theShareOfTheWage, theLeastWage } =
       THE_ECONOMYS_RULES['the-orcish-war-spoils-halve-a-companys-wage-this-turn'].theNumbers;
-    const theCarry = facts.theHalfGoldsTheWarSpoilsCarry;
+    let _orcFrac = facts.theHalfGoldsCarried;
     const _half = facts.theWage * theShareOfTheWage;
     let _wHalf = Math.floor(_half);
     if (_wHalf < theLeastWage) {
@@ -38,13 +39,13 @@ export const A_COMPANYS_WAGE_THIS_TURN = {
       // every time.)
       _wHalf = theLeastWage;
     } else {
-      theCarry.theHalfGoldsCarried += _half - _wHalf;
-      if (theCarry.theHalfGoldsCarried >= 1 - 1e-9) {
+      _orcFrac += _half - _wHalf;
+      if (_orcFrac >= 1 - 1e-9) {
         _wHalf += 1;
-        theCarry.theHalfGoldsCarried -= 1;
+        _orcFrac -= 1;
       }
     }
-    return _wHalf;
+    return { theWage: _wHalf, theHalfGoldsCarried: _orcFrac };
   },
 } satisfies Partial<Record<TheEconomysRuleSlug, TheTurnsEndsStages["a company's wage this turn"]>>;
 
