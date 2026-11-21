@@ -1,4 +1,4 @@
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -218,7 +218,7 @@ export function resolveResearchOrder(
         });
         TM(c).discoveries += 1;
         if (perkTier(c, 'sage') > 0) {
-          player.gold = (player.gold || 0) + 5;
+          player.gold = (player.gold || 0) + KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS;
         }
         if (perkTier(c, 'sage') >= 3) {
           const _sp = provOf(turnContext, c);
@@ -287,7 +287,7 @@ export function resolveResearchOrder(
       });
       TM(c).discoveries += 1; // TITLE MERIT: Loremaster — the deed is the research, whichever is kept
       if (perkTier(c, 'sage') > 0) {
-        player.gold = (player.gold || 0) + 5;
+        player.gold = (player.gold || 0) + KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS;
       } // SAGE L6: +5g per new discovery
       if (perkTier(c, 'sage') >= 3) {
         const _sp = provOf(turnContext, c);
@@ -322,7 +322,7 @@ export function resolveResearchOrder(
       });
       TM(c).discoveries += 1; // TITLE MERIT: Loremaster
       if (perkTier(c, 'sage') > 0) {
-        player.gold = (player.gold || 0) + 5;
+        player.gold = (player.gold || 0) + KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS;
       } // SAGE L6: +5g per new discovery
       if (perkTier(c, 'sage') >= 3) {
         const _sp = provOf(turnContext, c);

@@ -1,6 +1,7 @@
 import {
   KC_HUMANOID_RACES,
   KC_TEMPERS,
+  KC_THE_GOLD_A_LAIRS_HOARD_HOLDS_BY_ITS_GUARDIANS_POWER,
   KC_TERRAIN_COLORS,
   KC_UNIT_CLASS,
   KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS,
@@ -23,6 +24,7 @@ import {
   theRoomALeadersBeastCommandLeaves,
   unitAsItsRealmSeesIt,
 } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
+import { theGoldALairsHoardHoldsOnADie } from '../rules-on-plain-values/the-gold-a-lairs-hoard-holds-drawn-from-its-guardians-band.ts';
 
 // Its types (plan P1-10b19): each parameter typed as wide as the body's guards (plan P1-10's Decision 2), so each guard
 // stays. A table read by any string is read through a typed local inside its function.
@@ -345,20 +347,13 @@ export function setFeatureTreasure(f: { treasure?: AFeaturesTreasure } | null | 
 // the gold a hero collects for CLEARING a feature guardian is a tier-band roll. We roll it ONCE and
 // cache it on the feature, so a Scout can report the EXACT figure a clearer will receive and the
 // victory branch pays out that same amount (rolled here if the site was never scouted).
-export const ENCOUNTER_CLEAR_GOLD_BANDS = {
-  Weak: [5, 8],
-  Moderate: [12, 18],
-  Powerful: [20, 30],
-  Legendary: [40, 60],
-} satisfies Record<string, readonly [min: number, max: number]>; // was 5–12 / 14–28 / 30–50 / 55–90
+// The bands and the roll are content's and a rule's since B-06g (theGoldALairsHoardHoldsOnADie).
+export const ENCOUNTER_CLEAR_GOLD_BANDS = KC_THE_GOLD_A_LAIRS_HOARD_HOLDS_BY_ITS_GUARDIANS_POWER;
 export function encounterClearGold(feat: ALairAsItsHoardIsStocked | null | undefined): number {
   if (!feat) return 0;
   if (feat._hoardV2) return featureTreasure(feat); // the one hoard figure
   if (feat._clearGold == null) {
-    // the bands read by any power's name
-    const bands: Readonly<Partial<Record<string, readonly [min: number, max: number]>>> = ENCOUNTER_CLEAR_GOLD_BANDS;
-    const band = bands[(feat.monster?.power ?? '') || 'Weak'] ?? [1, 5];
-    feat._clearGold = Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
+    feat._clearGold = theGoldALairsHoardHoldsOnADie((feat.monster?.power ?? '') || 'Weak', kcRng());
   }
   return feat._clearGold;
 }
@@ -375,11 +370,9 @@ export function ensureLairHoard(
   if (f._hoardV2) return;
   f._hoardV2 = true;
   const power = (f.monster?.power ?? '') || 'Weak';
-  // the bands and the odds read by any power's name
-  const bands: Readonly<Partial<Record<string, readonly [min: number, max: number]>>> = ENCOUNTER_CLEAR_GOLD_BANDS;
+  // the odds read by any power's name
   const odds: Readonly<Partial<Record<string, (typeof LAIR_ITEM_ODDS)['Weak']>>> = LAIR_ITEM_ODDS;
-  const band = bands[power] ?? [1, 5];
-  const gold = f._clearGold ?? Math.floor(kcRng() * (band[1] - band[0] + 1)) + band[0];
+  const gold = f._clearGold ?? theGoldALairsHoardHoldsOnADie(power, kcRng());
   delete f._clearGold;
   setFeatureTreasure(f, gold);
   // Thief revision: remember the hoard as it stood at generation — a thief's cut is a share of the

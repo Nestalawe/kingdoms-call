@@ -15087,6 +15087,23 @@ export const KC_THE_PRICE_OF_A_WILD_HUNT_WHOSE_BEAST_THE_TABLE_DOES_NOT_PRICE = 
 // The tax base at or above which a province is rich enough to stage a Grand Heist in (a realm's home capital always
 // is): B-06f, the order and the bots read it (as GRAND_HEIST_RICH_TAX).
 export const KC_THE_TAX_THAT_MAKES_A_PROVINCE_RICH_ENOUGH_FOR_A_GRAND_HEIST = 7;
+// The gold a lair's hoard holds, by its guardian's power: a roll between the band's least and most, both counted
+// (B-06g: a scout's figure and a clear's, and the hoard stocked when the world is made or a lair first read, by
+// theGoldALairsHoardHoldsOnADie). The engine names it ENCOUNTER_CLEAR_GOLD_BANDS.
+export const KC_THE_GOLD_A_LAIRS_HOARD_HOLDS_BY_ITS_GUARDIANS_POWER = {
+  Weak: [5, 8],
+  Moderate: [12, 18],
+  Powerful: [20, 30],
+  Legendary: [40, 60],
+} satisfies Record<string, readonly [min: number, max: number]>; // was 5–12 / 14–28 / 30–50 / 55–90
+// The band of a lair whose guardian's power the table above doesn't list (B-06g).
+export const KC_THE_GOLD_A_LAIRS_HOARD_HOLDS_WHOSE_GUARDIANS_POWER_THE_TABLE_DOES_NOT_LIST: readonly [
+  min: number,
+  max: number,
+] = [1, 5];
+// The gold a hero's realm wins for each new discovery he makes from Sage 6 (the Sage's first mastery perk): B-06g, the
+// Research order's three finds read it (the unlooked-for find, the choice of two, the field's last).
+export const KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS = 5;
 // A hero's wage in service (by theWageOfAHeroInService, B-06d): what his allegiance was bargained at (a hero never
 // hired, a founding or a wandering one: 1g), plus his skill premium (a gold for every 4 skill points, rounded up, less
 // the 1g a starting hero's skills already earn, never below nothing), never below 1g. The hire desk quotes the same

@@ -626,6 +626,33 @@ describe("an older save's lair, stocked when it is first read (encounterClearGol
     expect(withDice(engine, [0.99], () => encounterClearGold(f))).toBe(15);
   });
 
+  // B-06g: both call sites read the one roll (theGoldALairsHoardHoldsOnADie): each band's ends, and a power no band has.
+  test("a scout's or a clear's gold, and a hoard stocked when it is first read, at each band's ends and 1 to 5 for a power no band has", () => {
+    const highest = 1 - 2 ** -32;
+    const powers = ['Weak', 'Moderate', 'Powerful', 'Legendary', 'Mythic'];
+    const theClearsGold = (power: string, die: number) => goldOf({ power }, die).gold;
+    const theHoardsGold = (power: string, die: number) => {
+      const f: Record<string, unknown> = { name: 'Old Barrow', monster: { power }, treasure: 0, cleared: false };
+      withDice(engine, [die], () => ensureLairHoard(f, null));
+      return [f['treasure'], f['_hoardGoldOrig']];
+    };
+    const ends = (gold: (power: string, die: number) => unknown) =>
+      Object.fromEntries(powers.map((p) => [p, [gold(p, 0), gold(p, highest)]]));
+    const theBands = { Weak: [5, 8], Moderate: [12, 18], Powerful: [20, 30], Legendary: [40, 60], Mythic: [1, 5] };
+    expect(ends(theClearsGold)).toEqual(theBands);
+    expect(ends(theHoardsGold)).toEqual(
+      Object.fromEntries(
+        Object.entries(theBands).map(([p, [a, z]]) => [
+          p,
+          [
+            [a, a],
+            [z, z],
+          ],
+        ]),
+      ),
+    );
+  });
+
   test("its hoard takes the items it held before hoards (version 2's step moves them), then rolls one item no other lair holds, with the next id", () => {
     const names = ALL_MAGIC_ITEMS_P.map((i) => i.name);
     const b = board(engine, world, 0);

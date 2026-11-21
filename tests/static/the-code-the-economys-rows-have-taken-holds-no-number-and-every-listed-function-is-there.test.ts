@@ -90,6 +90,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'GRAND_HEIST_RICH_TAX',
     "B-06f, the Grand Heist's rich province, the order's and the bots': content's tax, the same value",
   ],
+  [
+    'src/engine/world/tables.ts',
+    'ENCOUNTER_CLEAR_GOLD_BANDS',
+    "B-06g, the lairs' gold bands: content's, the same object",
+  ],
+  [
+    'src/engine/world/tables.ts',
+    'encounterClearGold',
+    "B-06g, a scout's and a clear's gold: the one roll (theGoldALairsHoardHoldsOnADie), content's bands and fallback",
+  ],
 ];
 
 const LISTED = [...THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE, ...THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS];
