@@ -18,7 +18,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test, vi } from 'vitest';
-import migrations from '../../.github/scripts/migrations.js';
+import * as migrations from '../../.github/scripts/migrations.ts';
 
 const { parseNameStatus, classify, mixedChange, planSummary, cliError, resetGuard, connectHint, resetSummary, reset } =
   migrations;
