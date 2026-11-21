@@ -10,8 +10,9 @@
 // - a line that excepts the realm never reaches it, even told; a line with no grant reaches no realm;
 // - a line's sight, whatever its type (the maintainers' answers, B-18f): seen in a battle, only those who fought read it
 //   (told; R-185); seen there, whoever has eyes there (R-186); seen there or in a battle with no province, no realm by
-//   its sight, and the compiler refuses such an event (R-187); seen by the world in a province, which no answer covers (question 85),
-//   as the reports always read it (eyes there, but a combat line only those who fought);
+//   its sight, and the compiler refuses such an event (R-187), while a caller whose province may be missing is seen
+//   there, else by the world; seen by the world in a province, which no answer covers (question 85), as the reports
+//   always read it (eyes there, but a combat line only those who fought);
 // - a spy's lingering sight: in a province it spied, from the next phase on, a rival hero's deed or a public line, not
 //   a line told with no deed, one that excepts it, one with no hero or one of its own hero; the first phase it spied;
 // - Clairvoyance: every line about the watched hero (his, or among its heroes) from the phase the watch began; none
@@ -26,6 +27,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createTurnContext, type TurnContext } from '../../src/engine/turn/context.ts';
 import {
   emit,
+  seenThereInItsProvinceElseByTheWorld,
   type ASightAndItsProvince,
   type LineAudience,
   type LogLine,
@@ -335,7 +337,35 @@ describe("the maintainers' answers to the B-18 scoping's questions 81 to 83: a l
     expect(REALMS.map((realm) => theChronicle([], realm, aSight(), { gmLog, audiences }))).toEqual([[], [], []]);
   });
 
-  test('seen by the world in a province, which no game writes and no answer covers: read as the reports always read it, by its type', () => {
+  test("R-187: where the province may be missing, seen there in its province, else by the world: today's reading", () => {
+    const where = (province: number | null) => seenThereInItsProvinceElseByTheWorld({ realms: [] }, 'there', province);
+    const inABattle = (province: number | null) =>
+      seenThereInItsProvinceElseByTheWorld({ realms: [CORRITH] }, 'battle', province);
+    expect([where(5), where(null), inABattle(5), inABattle(null)]).toEqual([
+      { audience: { realms: [], seen: 'there' }, province: 5 },
+      { audience: { realms: [], seen: 'world' }, province: null },
+      { audience: { realms: [CORRITH], seen: 'battle' }, province: 5 },
+      { audience: { realms: [CORRITH], seen: 'world' }, province: null },
+    ]);
+    expect(
+      whatEachRealmReads(
+        [
+          { words: 'Here', ...where(5) },
+          { words: 'Nowhere', ...where(null) },
+        ],
+        sight,
+      ),
+    ).toEqual([
+      [
+        ['Here', 'eyes there'],
+        ['Nowhere', 'the world'],
+      ],
+      [['Nowhere', 'the world']],
+      [['Nowhere', 'the world']],
+    ]);
+  });
+
+  test('seen by the world in a province, which no game writes and no answer covers (question 85): read as the reports always read it, by its type', () => {
     expect(
       whatEachRealmReads(
         [
