@@ -1,8 +1,8 @@
 // The report-leak check (tests/lib/report-leaks.ts, P1-04c) on a small made-up turn: it passes, each planted leak
 // breaks exactly the check meant to catch it, saying what leaked, and what the rules allow passes. The audience check
-// (P1-12b3, P1-12's Decision 12) on a made-up turn of its own, with the events it was emitted from and its sight: each
-// line read that no event admits is a breach, and what the audience model admits passes; and the check of the kinds for
-// one realm alone (P1-12c4) on the same turn. Level 1 (unit): pure
+// (P1-12b3; B-18g) on a made-up turn of its own, with the events it was emitted from and its sight: each line read that
+// the gate doesn't give the realm the way its part of the report needs is a breach, and what the gate gives passes;
+// and the check of the kinds for one realm alone (P1-12c4) on the same turn. Level 1 (unit): pure
 // functions on made-up values; the turn fuzz, simulation/every-realms-report-… and the balance matrix run the same checks over whole games
 // (level 3; the audience check where the turn's events are recorded: the matrix's every-realm half).
 //
@@ -16,19 +16,20 @@
 // hero's deeds on the reader and what follows, title intelligence); in spy activity (R-118) another realm's hit-point
 // rise breaks it, as in the chronicle, and a rival's deed (his Call to Arms) doesn't, though two chronicles reading it
 // do; a line of the reader's own order naming an invisible hero breaks it as any other line does (R-119). The
-// audience check (P1-12b3, P1-12's Decision 12) on a made-up turn of its own, with its events and
-// sight, that passes: each line read that no event admits breaks it alone (another realm's private line; a line seen
-// there where the reader had no eyes that phase; the public half of a pair by the realm it excepts; a battle it didn't
-// fight; a line no event wrote, or in another phase; a province event; a world line made nameless from an event that
-// wasn't the world's; a Clairvoyance line from before the watch, about another hero, or with no watch; a spy's feed
-// line of another province, or from its spy's own phase; a line told to another realm, filed under the reader's hero
-// only because his order was resolving, P1-12c1); what the model admits passes (a line naming its hero; one filed under
-// the hero whose order was resolving when told to his realm then, its deed or seen there, read by the realm that holds
-// him as the report is built; one of a hero who served no realm, P1-12c1; a line seen in a battle through a spy's
-// lingering sight, an unmet realm read as "an unknown realm"); with no events recorded it checks nothing; a spy's
-// lingering sight (R-118) admits a rival's deed there, never his realm's news, a kind for one realm alone or a line
-// that excepts the reader. The check of a line for one realm alone (P1-12c4, P1-12's Decision 6; R-117, R-118) on the
-// same turn: its own list names the four kinds; read by its own
+// audience check (P1-12b3; B-18g: it asks the gate, theLinesOfTheTurnTheRealmReads) on a made-up turn of its own,
+// with its events and sight, that passes: each line read that the gate doesn't give the realm breaks it alone (another
+// realm's private line; a line seen there where the reader had no eyes that phase; the public half of a pair by the
+// realm it excepts; a battle it didn't fight; a line no event wrote, or in another phase, its own or not; a province
+// event; a world line made nameless from an event that wasn't the world's; a Clairvoyance line from before the watch,
+// about another hero, or with no watch, where he stands as the turn ends too; a spy's feed line of another province, or
+// from its spy's own phase); one the gate gives only another way than its part needs breaks it and says which (a
+// chronicle line from its spy's feed or its own chronicle given as Clairvoyance, a feed line of another spied province
+// or of its chronicle); what the gate gives passes (a line filed under a hero the realm holds as the report is built,
+// whatever its audience; a line seen in a battle through a spy's lingering sight; an unmet realm read as "an unknown
+// realm"); with no events recorded it checks nothing; a spy's lingering sight (R-118) gives a rival's deed there, never
+// his realm's news or a line that excepts the reader, and a kind for one realm alone given a deed breaks the check of
+// a line for one realm alone. The check of a line for one realm alone (P1-12c4, P1-12's Decision 6; R-117, R-118) on the
+// same turn: it reads the four kinds the engine's table gives one realm alone (B-19); read by its own
 // realm, no breach; planted, each breaks it alone (the surgeons' word given the battle's audience and read across the
 // field, which the audience check admits; given the world, in province events; a maximum-HP rise outside a fight seen
 // there, read by the province's owner; in another realm's spy feed); let through: Clairvoyance, the same words from a
@@ -37,13 +38,8 @@
 // audience check, since P1-12b3) run them over games. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { checkLeaks, checkTurn, type SavedState, type Turn } from '../lib/invariants.ts';
-import {
-  KINDS_FOR_ONE_REALM_ALONE,
-  LEAK_CHECKS,
-  type EventAsEmitted,
-  type Perception,
-  type RealmReport,
-} from '../lib/report-leaks.ts';
+import { THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE } from '../../src/engine/turn/events-and-their-audiences.ts';
+import { LEAK_CHECKS, type EventAsEmitted, type Perception, type RealmReport } from '../lib/report-leaks.ts';
 
 // Three realms. Ashmark (0) and Brightvale (1) have met; neither has met Coldharbour (2), whose hero Corin cast
 // Invisibility in phase 1 of the turn just played (turn 7: the state after it is turn 8). Ashmark and Brightvale have
@@ -417,7 +413,9 @@ test("a line of the reader's own order naming an invisible hero breaks the check
 // The same three realms (Ashmark 0 and Brightvale 1 have met; neither has met Coldharbour 2), each owning one province:
 // Ashmark Wexby (0), Brightvale Fenwick (1), Coldharbour Coldmere (2). Nobody is invisible. Aldo (Ashmark) moves to
 // Fenwick in phase 1 and stands there through phase 2; he spies on Coldmere in phase 1. Brightvale watches Dorn
-// (Coldharbour) by Clairvoyance from phase 2. Each report holds exactly the lines the audience model admits.
+// (Coldharbour) by Clairvoyance from phase 2. Each report holds exactly the lines the gate gives each realm.
+/** An event of the turn: its line with its words, as emit files it from the audience (its actor, the realms told,
+ *  public when seen), and its audience beside it. */
 const ev = (
   text: string,
   phase: number | null,
@@ -425,11 +423,6 @@ const ev = (
   place: {
     province?: number | null;
     hero?: number | null;
-    /** Left out: the hero is named when one is given (false: emit filed the line under the hero whose order was
-     *  resolving). */
-    heroNamed?: boolean;
-    /** The realm the hero served as the line was written (left out: none). */
-    heroRealmThen?: number | null;
     heroes?: number[] | null;
     spy?: boolean;
     type?: string;
@@ -438,16 +431,24 @@ const ev = (
     factsRealm?: number;
   } = {},
 ): EventAsEmitted => ({
-  type: place.type ?? 'system',
-  text,
+  line: {
+    type: place.type ?? 'system',
+    text,
+    actor: audience.actor ?? null,
+    targets: audience.realms ?? [],
+    provinceId: place.province ?? null,
+    public: audience.seen !== undefined,
+    spy: place.spy ?? false,
+    system: false,
+    armyEstimate: null,
+    charId: place.hero ?? null,
+    charIds: place.heroes ?? null,
+    phase,
+    pinNotice: false,
+    env: false,
+    ...(audience.except ? { notFor: audience.except } : {}),
+  },
   audience,
-  province: place.province ?? null,
-  phase,
-  hero: place.hero ?? null,
-  heroNamed: place.heroNamed ?? place.hero != null,
-  heroRealmThen: place.heroRealmThen ?? null,
-  heroes: place.heroes ?? null,
-  spy: place.spy ?? false,
   kind: place.kind ?? null,
   factsRealm: place.factsRealm ?? null,
 });
@@ -499,6 +500,7 @@ function perceived(edit: (t: Turn, r: RealmReport[], p: Perception) => void = ()
       { phase: 2, province: 1, realms: [0, 1] },
       { phase: 3, province: 1, realms: [1] },
     ],
+    battleCommanders: {},
     clairvoyance: { 1: { charId: 13, fromPhase: 2 } },
   };
   const reports: RealmReport[] = [
@@ -602,20 +604,13 @@ describe('the audience check: every line a realm reads comes from an event whose
     [
       'a battle it did not fight in (seen in the battle grants no onlooker)',
       (_, r, p) => {
-        const battle = p.events.find((e) => e.text === BATTLE);
-        if (battle) Object.assign(battle, { audience: { realms: [1], seen: 'battle' }, hero: 11, heroes: [11] });
+        const battle = p.events.find((e) => e.line.text === BATTLE);
+        if (battle) {
+          battle.audience = { realms: [1], seen: 'battle' };
+          Object.assign(battle.line, { charId: 11, charIds: [11] });
+        }
       },
       'realm 0 reads a line its audience does not admit at lastTurnLog[4]',
-    ],
-    [
-      // P1-12c1: a line filed under a hero only because his order was resolving reaches his realm by its audience alone.
-      "a line told to another realm, filed under the reader's hero only because his order was resolving",
-      (_, r, p) => {
-        const told = 'Your garrison in Fenwick resumes its post.';
-        p.events.push(ev(told, 1, { realms: [1] }, { hero: 10, heroNamed: false, heroRealmThen: 0, province: 1 }));
-        read(r, 0, told, 1);
-      },
-      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
     ],
     [
       'a line no event of the turn wrote',
@@ -632,6 +627,13 @@ describe('the audience check: every line a realm reads comes from an event whose
       'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
     ],
     [
+      'a line it reads, in another phase than its own',
+      (_, r) => {
+        read(r, 0, MOVES, 2);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
       'a province event it may not read',
       (_, r) => {
         read(r, 0, WARD, 3, 'provinceEvents');
@@ -641,7 +643,7 @@ describe('the audience check: every line a realm reads comes from an event whose
     [
       "a world line made nameless, from an event that wasn't the world's",
       (_, r, p) => {
-        const claim = p.events.find((e) => e.text === CLAIMS);
+        const claim = p.events.find((e) => e.line.text === CLAIMS);
         if (claim) claim.audience = { realms: [2] };
       },
       'realm 0 reads a line its audience does not admit at lastTurnLog[6]',
@@ -668,6 +670,13 @@ describe('the audience check: every line a realm reads comes from an event whose
       'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
     ],
     [
+      'where the watched hero stands as the turn ends, with no watch',
+      (_, r) => {
+        read(r, 0, STANDS, null);
+      },
+      'realm 0 reads a line its audience does not admit at lastTurnLog[8]',
+    ],
+    [
       "a spy's feed with a line of a province it didn't spy",
       (_, r) => spied(r, 0, 1, MUSTERS, 3),
       'realm 0 reads a line its audience does not admit at spyActivity[0].lines[0]',
@@ -687,48 +696,48 @@ describe('the audience check: every line a realm reads comes from an event whose
     expect(breaches[0]?.what[0]).toMatch(new RegExp(`^${at.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: "`));
   });
 
-  test('what the model admits: told, its own deed, its hero, the world, eyes there, a spy’s lingering sight, Clairvoyance', () => {
+  test('what the gate gives passes: told, its own deed, its hero, the world, eyes there, a spy’s lingering sight, Clairvoyance', () => {
     // Each line of the made-up turn is one of these; the turn passes (above). The spy's lingering sight lets a line of
-    // the spied province seen in a battle through, which no other grant gives the realm.
+    // the spied province seen in a battle through, which no other way gives the realm.
     expect(audienceCheck?.(perceived())).toEqual([]);
     expect(
       audienceCheck?.(
         perceived((_, __, p) => {
-          const clash = p.events.find((e) => e.text === CLASH);
-          if (clash) clash.province = 1;
+          const clash = p.events.find((e) => e.line.text === CLASH);
+          if (clash) clash.line.provinceId = 1;
         }),
       ),
     ).toEqual([`realm 0 reads a line its audience does not admit at spyActivity[0].lines[1]: "${CLASH}"`]);
-    // P1-12c1: a line that names its hero is about him, whatever its audience; one filed under the hero whose order was
-    // resolving is about him when it reached his realm then, so the realm holding him as the report is built reads it
-    // (Aldo's own deed, a line told to Ashmark or one seen where he was, read by Brightvale had he joined it that turn),
-    // or when he served no realm.
+    // P1-12c1: a line filed under a hero is about him, whatever its audience, so the realm holding him as the report is
+    // built reads it (Aldo's own line; his deed, a line told to Ashmark or one seen where he was, read by Brightvale had
+    // he joined it that turn; a line of a hero who served no realm, by the realm he joined). emit files a line written
+    // while his order resolved under him only when it reached his realm then (emit's own cases).
     const rests = 'Aldo the Bold rests and recovers.';
     const wage = "Aldo the Bold's wage is paid.";
     const digs = 'Aldo the Bold digs in before Coldmere.';
     const stranger = 'Ewan the Unsworn wanders into Fenwick.';
     const admitted = [
       perceived((_, r, p) => {
-        p.events.push(ev(STORM, 1, {}, { hero: 10, heroRealmThen: 0, province: 1 }));
+        p.events.push(ev(STORM, 1, {}, { hero: 10, province: 1 }));
         read(r, 0, STORM, 1);
       }),
       perceived((t, r, p) => {
         char(t.after, 10).player = 1;
-        p.events.push(ev(rests, 1, { actor: 0 }, { hero: 10, heroNamed: false, heroRealmThen: 0 }));
+        p.events.push(ev(rests, 1, { actor: 0 }, { hero: 10 }));
         read(r, 1, rests, 1);
       }),
       perceived((t, r, p) => {
         char(t.after, 10).player = 1;
-        p.events.push(ev(wage, 1, { realms: [0] }, { hero: 10, heroNamed: false, heroRealmThen: 0 }));
+        p.events.push(ev(wage, 1, { realms: [0] }, { hero: 10 }));
         read(r, 1, wage, 1);
       }),
       perceived((t, r, p) => {
         char(t.after, 10).player = 1;
-        p.events.push(ev(digs, 1, { seen: 'there' }, { hero: 10, heroNamed: false, heroRealmThen: 0, province: 2 }));
+        p.events.push(ev(digs, 1, { seen: 'there' }, { hero: 10, province: 2 }));
         read(r, 1, digs, 1);
       }),
       perceived((_, r, p) => {
-        p.events.push(ev(stranger, 1, { realms: [2] }, { hero: 11, heroNamed: false, province: 1 }));
+        p.events.push(ev(stranger, 1, { realms: [2] }, { hero: 11, province: 1 }));
         read(r, 1, stranger, 1);
       }),
     ];
@@ -754,9 +763,45 @@ describe('the audience check: every line a realm reads comes from an event whose
     ]);
   });
 
+  test('a line the gate gives the realm only another way than its part of the report needs breaks it, and says which', () => {
+    // Marches is in Ashmark's chronicle (eyes there: its spy on Coldmere) and its spy feed; Dorn's ward only in the feed.
+    expect(
+      audienceCheck?.(
+        perceived((_, r) => {
+          read(r, 0, SCRY + MARCHES, 3);
+        }),
+      ),
+    ).toEqual([
+      `realm 0 reads a line its audience does not admit at lastTurnLog[8]: "${SCRY + MARCHES}" (the gate gives it only by eyes there, a spy's lingering sight in province 2)`,
+    ]);
+    expect(
+      audienceCheck?.(
+        perceived((_, r) => {
+          read(r, 0, WARD, 3);
+        }),
+      ),
+    ).toEqual([
+      `realm 0 reads a line its audience does not admit at lastTurnLog[8]: "${WARD}" (the gate gives it only by a spy's lingering sight in province 2)`,
+    ]);
+    // spied in Fenwick too, it reads Dorn's mustering there through that spy, not through the one on Coldmere
+    const spiesOnFenwick = perceived((_, r, p) => {
+      p.events.push(
+        ev('Aldo the Bold spies on Fenwick.', 1, { actor: 0, realms: [0] }, { hero: 10, province: 1, spy: true }),
+      );
+      spied(r, 0, 2, MUSTERS, 3);
+    });
+    expect(audienceCheck?.(spiesOnFenwick)).toEqual([
+      `realm 0 reads a line its audience does not admit at spyActivity[0].lines[0]: "${MUSTERS}" (the gate gives it only by eyes there, a spy's lingering sight in province 1)`,
+    ]);
+    expect(audienceCheck?.(perceived((_, r) => spied(r, 0, 1, STORM, 2)))).toEqual([
+      `realm 0 reads a line its audience does not admit at spyActivity[0].lines[0]: "${STORM}" (the gate gives it only by eyes there)`,
+    ]);
+  });
+
   // R-118 (P1-23d): a spy who stays reads what rival heroes do there (a deed) or anyone there could see, never their
-  // realm's news (a line told to it with no deed), a kind for one realm alone, or a line that excepts the reader.
-  test("a spy's lingering sight admits a rival's deed; not his realm's news, a kind for one realm alone, or a line that excepts it", () => {
+  // realm's news (a line told to it with no deed), or a line that excepts the reader. A kind for one realm alone given a
+  // deed reaches the spy through the gate, as through the views: the check of a line for one realm alone catches it.
+  test("a spy's lingering sight gives a rival's deed; not his realm's news or a line that excepts it", () => {
     // Dorn's ward is his own deed (Coldharbour its actor, told to Coldharbour): read through the spy, not in the
     // chronicle, where realm 0 has no eyes on Coldmere.
     expect(leaks(perceived((_, r) => spied(r, 0, 2, WARD, 3)))).toEqual([]);
@@ -769,15 +814,16 @@ describe('the audience check: every line a realm reads comes from an event whose
     ).toEqual(['a line its audience does not admit']);
     const feels = '🩸 Dorn the Red feels a curse settle on him.';
     const hardened = '💪 Dorn the Red is hardened by the wounds of the fight — maximum HP +2 → 12.';
-    const keptFrom = (text: string) =>
-      `realm 0 reads, through its spy, a line its audience keeps from it at spyActivity[0].lines[0]: "${text}"`;
+    const notAdmitted = (text: string) =>
+      `realm 0 reads a line its audience does not admit at spyActivity[0].lines[0]: "${text}"`;
     const news = perceived((_, r, p) => {
       p.events.push(ev(feels, 3, { realms: [2] }, { hero: 13, province: 2 }));
       spied(r, 0, 2, feels, 3);
     });
-    expect(audienceCheck?.(news)).toEqual([keptFrom(feels)]);
+    expect(audienceCheck?.(news)).toEqual([notAdmitted(feels)]);
     expect(leaks(news)).toEqual(['a line its audience does not admit']);
-    // planted with a deed, as before R-118: a kind for one realm alone is still kept from the spy
+    // planted with a deed, as before R-118: the gate gives it to the spy; the kind for one realm alone breaks the check
+    // of a line for one realm alone (and his hardening is another realm's private line)
     const oneRealms = perceived((_, r, p) => {
       p.events.push(
         ev(
@@ -789,17 +835,13 @@ describe('the audience check: every line a realm reads comes from an event whose
       );
       spied(r, 0, 2, hardened, 3);
     });
-    expect(audienceCheck?.(oneRealms)).toEqual([keptFrom(hardened)]);
-    expect(leaks(oneRealms)).toEqual([
-      "another realm's private line",
-      'a line its audience does not admit',
-      'a line for one realm alone',
-    ]);
+    expect(audienceCheck?.(oneRealms)).toEqual([]);
+    expect(leaks(oneRealms)).toEqual(["another realm's private line", 'a line for one realm alone']);
     const excepted = perceived((_, r, p) => {
       p.events.push(ev(STRANGER.replace('Fenwick', 'Coldmere'), 3, { seen: 'there', except: [0] }, { province: 2 }));
       spied(r, 0, 2, STRANGER.replace('Fenwick', 'Coldmere'), 3);
     });
-    expect(audienceCheck?.(excepted)).toEqual([keptFrom(STRANGER.replace('Fenwick', 'Coldmere'))]);
+    expect(audienceCheck?.(excepted)).toEqual([notAdmitted(STRANGER.replace('Fenwick', 'Coldmere'))]);
   });
 });
 
@@ -832,12 +874,12 @@ const rises = (audience: EventAsEmitted['audience']) =>
   });
 
 describe('a line for one realm alone is read by that realm and no other', () => {
-  test('its own list names the four kinds for one realm alone', () => {
-    expect(KINDS_FOR_ONE_REALM_ALONE).toEqual([
+  test("it reads the four kinds the engine's table gives one realm alone (B-19)", () => {
+    expect(THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE).toEqual([
       "a hero's hit points rise in a fight, for his realm alone",
       'the surgeons reach a fallen duellist too late, for his realm alone',
-      "a hero's maximum hit points rise as the phase ends",
       'a hero is hardened after a fight',
+      "a hero's maximum hit points rise as the phase ends",
     ]);
   });
 
@@ -887,7 +929,12 @@ describe('a line for one realm alone is read by that realm and no other', () => 
   // In another realm's spy feed it breaks the check too (R-118: the spy never reads a rival realm's news).
   test("in another realm's spy feed it breaks the check, as in the chronicle", () => {
     const feed = perceived((_, r, p) => {
-      p.events.push({ ...surgeons({ seen: 'there' }), province: 2, phase: 3 });
+      // Brightvale's spy on Coldmere in phase 1 sees what anyone there could see from phase 2 on
+      p.events.push(
+        ev('Bera the Wise spies on Coldmere.', 1, { actor: 1, realms: [1] }, { hero: 11, province: 2, spy: true }),
+      );
+      const there = surgeons({ seen: 'there' });
+      p.events.push({ ...there, line: { ...there.line, provinceId: 2, phase: 3 } });
       r[1] = { realm: 1, report: { ...of(r, 1), spyActivity: [{ provId: 2, lines: [{ phase: 3, text: SURGEONS }] }] } };
     });
     expect(forOneRealmAlone?.(feed)).toEqual([
@@ -908,7 +955,7 @@ describe('a line for one realm alone is read by that realm and no other', () => 
       read(r, 1, SURGEONS, 2);
     });
     expect(forOneRealmAlone?.(shared)).toEqual([]);
-    // the realm the hero it is filed under served this turn (he joined it): it reads his own lines (the audience model)
+    // the realm the hero it is filed under served this turn (he joined it): it reads his own lines (the gate: its hero)
     const joined = perceived((t, r, p) => {
       char(t.after, 10).player = 1;
       p.events.push(surgeons({ realms: [0], actor: null }));

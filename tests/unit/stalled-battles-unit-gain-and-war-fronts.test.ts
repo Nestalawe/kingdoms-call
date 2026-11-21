@@ -20,7 +20,8 @@
 //   not where the province was fought over already, or once he has gone; two hosts on ground nobody owns, the stronger
 //   attacks; on a third realm's land they fight each other and the owner keeps it.
 // - syncAllMaxHp (a property): every living hero's maximum HP is brought in line, each change told once; a second pass
-//   finds nothing. And a rise, in a province or in none, is told to his realm alone, its fact naming it (R-117).
+//   finds nothing. And a rise, in a province or in none, is told to his realm alone, its fact naming it (R-117); a
+//   hero of no realm's to none, nobody's deed (B-19).
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The balance
 // matrix runs all of them, but never the war front's battle, a leaderless neutral garrison fighting on, a repelled
 // attacker's retreat, a contest between realms at peace, or a lone host on an ally's ground (V8 block coverage,
@@ -681,7 +682,7 @@ describe('every hero’s maximum HP kept in step (syncAllMaxHp)', () => {
   );
 
   // R-117 (Toby, 2026-10-31): a rise is his own realm's alone, told to it (no deed, no sight), in a province or in none,
-  // and its fact names that realm (the leak check's KINDS_FOR_ONE_REALM_ALONE reads it).
+  // and its fact names that realm (the leak check's "a line for one realm alone" reads it).
   test.each([
     ['in a province', true],
     ['in no province', false],
@@ -716,6 +717,43 @@ describe('every hero’s maximum HP kept in step (syncAllMaxHp)', () => {
         targets: [1],
         public: false,
         at: inAProvince ? b.X.id : null,
+      },
+    ]);
+  });
+
+  // B-19: a rise of a hero of no realm is told to none, nobody's deed (the actor -1 its line has always kept), under no
+  // hero while no order resolves; its fact names no realm.
+  test('a rise of a hero of no realm is told to none, and is nobody’s deed', () => {
+    const b = fresh();
+    const c = hero(b, { player: null, at: b.X });
+    c.maxHp = computeMaxHp(c, b.G.players) - 4;
+    c.hp = c.maxHp - 3;
+    const from = b.tc.turnLog.length;
+    syncAllMaxHp(b.tc);
+    expect(
+      b.tc.turnLog.slice(from).map((l) => ({
+        fact: l['fact'],
+        actor: l['actor'],
+        targets: l['targets'],
+        public: l['public'],
+        charId: l['charId'],
+        at: l['provinceId'],
+      })),
+    ).toEqual([
+      {
+        fact: {
+          kind: "a hero's maximum hit points rise as the phase ends",
+          realm: null,
+          heroName: c.name,
+          by: 4,
+          maxHp: c.maxHp,
+          hp: c.hp,
+        },
+        actor: -1,
+        targets: [],
+        public: false,
+        charId: null,
+        at: null,
       },
     ]);
   });

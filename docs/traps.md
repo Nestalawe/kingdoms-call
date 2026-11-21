@@ -98,7 +98,8 @@ full, with "Every event names its hero" and "A line for one realm alone inside a
 [a line of the turn](architecture/a-line-of-the-turn-emit-its-facts-and-the-reports.md). Checks: the lint rule
 `kc/narrative-lines-go-through-emit` (it also refuses an event with a `text` key and a string handed to `narrate`,
 `emitNarrLine`, `narrateAll` or `narrateAt`); `emit` throws on an event with no `hero` or no `phase`, or handed as
-words; `a-lines-facts-hold-values-not-words`; the report-leak check (`tests/lib/report-leaks.ts`).
+words; `emit`'s type takes a kind for one realm alone only told to that realm (B-19);
+`a-lines-facts-hold-values-not-words`; the report-leak check (`tests/lib/report-leaks.ts`).
 
 ## Views never write
 

@@ -93,7 +93,7 @@ export interface Turn {
   players: PlayerRow[];
   /** The realms' reports the turn wrote (none in an all-bot game). */
   reports?: RealmReport[];
-  /** What perception read besides the world, where the harness records it (scenarioInTheVm's recordTheEvents). */
+  /** What perception read besides the world, where the harness records it (either harness's recordTheEvents). */
   perception?: Perception;
 }
 export interface Breach {

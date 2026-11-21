@@ -72,8 +72,8 @@ export function theCodeFiles(all = files()): [file: string, text: string][] {
 }
 
 // The engine's loader (plan P1-09, Decision 11): the engine's bundle run in a vm. P1-14 moved the tests to importing
-// the engine's modules directly; four test files still reach it, themselves or through a helper of tests/
-// (unit/engine-loads, unit/engine-purity, simulation/every-realms-report-…, scenario/pursuit-one-battle:
+// the engine's modules directly; three test files still reach it, themselves or through a helper of tests/
+// (unit/engine-loads, unit/engine-purity, scenario/pursuit-one-battle:
 // docs/architecture/how-the-tests-reach-the-site.md says why), and their number only falls.
 const ENGINE_LOADER = 'tests/lib/engine.ts';
 /** The test files (tests/**\/*.test.{js,ts}, not the quarantine) whose relative imports and requires reach the

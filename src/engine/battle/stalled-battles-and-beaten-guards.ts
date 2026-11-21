@@ -23,7 +23,7 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
 import type { Army, Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
-import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type { AFactNotForOneRealmAlone } from '../turn/events-and-their-audiences.ts';
 
 // ── STALLED BATTLES AND A BEATEN GUARD'S SURVIVORS (plan P1-08i3: lifted out of resolveTurn) ────
 // A province where a battle was left unresolved (the loser could not retreat) is fought over again at the start of
@@ -265,7 +265,7 @@ export function resolveStalledBattles(
           const adj = retreatOptions(turnContext, attacker, prov, asItsGuardReadsIt(attacker.armies) ?? []); // 2026-09-23c: the one retreat rule (was own LAND only)
           // 2026-09-27 (Toby item 3): a pinned column with ships tries the naval split first — the
           // fleet sails for friendly water with what it can lift and the rest falls back or holds.
-          const _nrLines: NarrativeLine[] = [];
+          const _nrLines: AFactNotForOneRealmAlone[] = [];
           const _nrRes = navalSplitRetreat(
             turnContext,
             attacker,

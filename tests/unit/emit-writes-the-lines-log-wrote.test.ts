@@ -1,6 +1,7 @@
 // emit, the one door into the GM's log (src/engine/turn/events-and-their-audiences.ts; plan P1-12, Decisions 2 to 5),
 // writes today's stored forms, so nothing stored changes in P1-12a and P1-12b: a line has the 17 keys log() gave it, a
-// 'bare' one (the lines once pushed straight into turnLog) the first 14, `except` adds notFor, and the fact comes last
+// 'bare' one (the lines once pushed straight into turnLog) the first 14, `except` adds notFor, and the line's whole
+// audience (B-18a: kept in memory until the reports are built) and then the fact come last
 // (the views write its words in its place, and the stored line has no fact); an audience grants what the line's fields
 // say; every event names its hero (P1-12c2): a hero left out throws, null is no hero, and
 // THE_HERO_WHOSE_ORDER_IS_RESOLVING is that hero, but only when the line already reaches his realm (P1-12c1); a phase
@@ -8,7 +9,8 @@
 // order resolving (else the phase resolving, else 99 once the phases are over), 'none' a real null, and a phase left out
 // throws (P1-12d38); narrate adds a line to a fight: for everyone in it, or, a fact of a kind whose audience is its
 // hero's realm alone (P1-12c4), one that emitNarrLine files to that realm under its hero; and an event records a fact,
-// never words (P1-12d18): an event handed as words, or a fight's line as a string, throws and writes no line.
+// never words (P1-12d18): an event handed as words, or a fight's line as a string, throws and writes no line; and
+// a kind for one realm alone compiles only told to that realm (B-19).
 // (The oracle that checked emit against copies of the code before it, for any input, ran from P1-12a2 to P1-12a4 and
 // went with log() in P1-12a4, as Decision 5 planned. The lines a capture writes, which went straight into turnLog
 // before: tests/unit/a-capture-tells-the-realm-that-lost-it-with-no-hero-and-no-phase.test.ts.)
@@ -16,7 +18,8 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // `emit`, the one door into the GM's log (`src/engine/turn/events-and-their-audiences.ts`, P1-12a2; plan P1-12's
-// Decisions 2 to 5), writes today's stored forms: 17 keys, a `'bare'` line's 14, `notFor`, the fact last; what each
+// Decisions 2 to 5), writes today's stored forms: 17 keys, a `'bare'` line's 14, `notFor`, the whole audience (B-18a)
+// and the fact last; what each
 // part of an audience writes; every event names its hero (P1-12c2): a hero left out throws and writes no line, `null`
 // is no hero (even while a hero's order resolves and the line reaches his realm), and
 // `THE_HERO_WHOSE_ORDER_IS_RESOLVING` takes the hero of the order resolving; `phase`, named `THE_PHASE_THE_LINE_IS_WRITTEN_IN` (or null, from a file not type-checked), takes the phase of the order resolving (else the phase resolving, else 99 once the phases are over) and `'none'` is a real null, and one left out throws and writes no line (P1-12d38); the
@@ -25,7 +28,10 @@
 // `narrate`, and `emitNarrLine` filing a fact of a kind for its hero's realm alone to that realm alone under its hero
 // (P1-12c4; before, `narrateTo`'s line); an event records its fact (P1-12c3), never its words (P1-12d18): a fact is
 // filed with no words yet and the fact last, an event with both, an event handed as words and a fight's line handed to
-// `emitNarrLine` as a string each throw and write no line, and `narrate` and `emitNarrLine` take a fact. From P1-12a2
+// `emitNarrLine` as a string each throw and write no line, and `narrate` and `emitNarrLine` take a fact; the kind
+// decides its audience (B-19): a case that compiles only while each of the four kinds for one realm alone is taken
+// told to one realm (or to none, nobody's deed) and refused with a sight, a deed, a realm excepted or two realms, and a
+// kind filed with its event's audience takes each (red when a kind's table entry is planted back). From P1-12a2
 // to P1-12a4 an oracle half (fast-check) checked `emit`, `logSplit`, `notifyProvinceOwner`, `writeDeferredSkillLines`,
 // `emitNarrLine` and `emitBattle` against copies of the code before `emit`, for any input; it went in P1-12a4 with
 // `log()` and the copies (Decision 5), once every caller was converted. Level 1: each function is called on a context
@@ -38,6 +44,7 @@ import {
   emit,
   emitNarrLine,
   type EventButItsWords,
+  type LineFact,
   type FightLine,
   narrate,
   notifyTarget,
@@ -104,7 +111,7 @@ describe("emit's forms", () => {
     'gameEnd',
   ];
 
-  test("a line has the 17 keys log() gave it; a 'bare' one the first 14; `except` adds notFor; the fact comes last", () => {
+  test("a line has the 17 keys log() gave it; a 'bare' one the first 14; `except` adds notFor; its whole audience, then the fact, come last", () => {
     const tc = newContext(state);
     emit(tc, { type: 'system', fact: A_LINE, audience: {}, hero: null, phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN });
     emit(tc, {
@@ -125,11 +132,13 @@ describe("emit's forms", () => {
       form: 'bare',
     });
     expect(tc.turnLog.map((l) => Object.keys(l))).toEqual([
-      [...FULL, 'fact'],
-      [...FULL.slice(0, 14), 'fact'],
-      [...FULL.slice(0, 14), 'notFor', 'fact'],
+      [...FULL, 'audience', 'fact'],
+      [...FULL.slice(0, 14), 'audience', 'fact'],
+      [...FULL.slice(0, 14), 'notFor', 'audience', 'fact'],
     ]);
     expect(tc.turnLog[2]).toMatchObject({ public: true, provinceId: 4, notFor: [1], targets: [], actor: null });
+    // the whole audience, kept in memory until the reports are built (B-18a): 'there', which `public` doesn't say
+    expect(tc.turnLog.map((l) => l.audience)).toEqual([{}, {}, { seen: 'there', except: [1] }]);
   });
 
   test("an audience grants what the line's fields say: realms told, the actor, seen by any", () => {
@@ -242,7 +251,9 @@ describe('the hero whose order is resolving files a line only when it already re
     { id: 7, player: 0 },
     { id: 9, player: null },
   ];
-  type ItsPlace = Omit<EventButItsWords, 'hero' | 'phase'> & Partial<Pick<TurnEvent, 'hero' | 'phase'>>;
+  /** An event but its words, its hero and its phase, kept whole for each of its forms (a sight and its province). */
+  type ItsPlace = (EventButItsWords extends infer E ? (E extends unknown ? Omit<E, 'hero' | 'phase'> : never) : never) &
+    Partial<Pick<TurnEvent, 'hero' | 'phase'>>;
   const filedUnder = (event: ItsPlace, state = resolving) => {
     const tc = newContext(state, heroes);
     emit(tc, {
@@ -459,4 +470,102 @@ describe('a caller handed no phase names the phase the line is written in', () =
       expect(phasesOf(resolving, 4)[0]).toBe(4);
     });
   }
+});
+
+// B-19: the kind decides its audience. A line of a kind whose audience, in its area's table, is one realm's alone
+// compiles only told to that realm (or, of a hero of no realm, to none, nobody's deed): a sight, a deed, a realm
+// excepted or two realms told is a compile error, so no spy, onlooker or rival reads it by its audience. The four kinds
+// are named here, not read from the table: planting one back to the fight's or its event's audience makes the case
+// below fail to compile.
+
+/** An event of `Fact`, told with its place's audience (in its province, if it names one), in phase 2, filed under a
+ *  hero (7). The fact is a parameter, not read from a kind inside, so the compiler doesn't settle the case before it is
+ *  given one. */
+type AnEventToldWith<Fact extends LineFact, Place> = Place & { type: string; fact: Fact; hero: 7; phase: 2 };
+
+/** Whether emit's type takes the event. */
+type EmitTakes<Fact extends LineFact, Place> = AnEventToldWith<Fact, Place> extends TurnEvent ? true : false;
+
+/** Whether two types are the same, each taking the other (no `boolean` passes for `true`). */
+type TheSame<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+
+/** Which audiences emit takes for a fact, in a province (5), but seen by the world (in none). */
+interface TheAudiencesEmitTakes<Fact extends LineFact> {
+  'told to one realm': EmitTakes<Fact, { audience: { realms: [0] }; province: 5 }>;
+  "told to none, nobody's deed": EmitTakes<Fact, { audience: { realms: []; actor: -1 }; province: 5 }>;
+  'seen there': EmitTakes<Fact, { audience: { realms: [0]; seen: 'there' }; province: 5 }>;
+  'seen in the battle': EmitTakes<Fact, { audience: { realms: [0]; seen: 'battle' }; province: 5 }>;
+  'seen by the world': EmitTakes<Fact, { audience: { realms: [0]; seen: 'world' } }>;
+  "its realm's deed": EmitTakes<Fact, { audience: { realms: [0]; actor: 0 }; province: 5 }>;
+  "nobody's deed, named null": EmitTakes<Fact, { audience: { realms: [0]; actor: null }; province: 5 }>;
+  'another realm excepted': EmitTakes<Fact, { audience: { realms: [0]; except: [1] }; province: 5 }>;
+  'two realms told': EmitTakes<Fact, { audience: { realms: [0, 1] }; province: 5 }>;
+}
+
+/** What emit takes for a kind for one realm alone: told to one realm, or to none, and nothing else. */
+interface ForOneRealmAlone {
+  'told to one realm': true;
+  "told to none, nobody's deed": true;
+  'seen there': false;
+  'seen in the battle': false;
+  'seen by the world': false;
+  "its realm's deed": false;
+  "nobody's deed, named null": false;
+  'another realm excepted': false;
+  'two realms told': false;
+}
+
+/** What emit takes for a kind filed with its event's audience: every form. */
+interface ForItsEventsAudience {
+  'told to one realm': true;
+  "told to none, nobody's deed": true;
+  'seen there': true;
+  'seen in the battle': true;
+  'seen by the world': true;
+  "its realm's deed": true;
+  "nobody's deed, named null": true;
+  'another realm excepted': true;
+  'two realms told': true;
+}
+
+/** The fact of `Kind`. */
+type Of<Kind extends LineFact['kind']> = Extract<LineFact, { kind: Kind }>;
+
+/** For each of the four kinds for one realm alone, whether emit takes exactly what ForOneRealmAlone says; and, for a
+ *  kind filed with its event's audience, every form. */
+interface TheFormsEmitTakesAreRight {
+  "a hero's hit points rise in a fight, for his realm alone": TheSame<
+    TheAudiencesEmitTakes<Of<"a hero's hit points rise in a fight, for his realm alone">>,
+    ForOneRealmAlone
+  >;
+  'the surgeons reach a fallen duellist too late, for his realm alone': TheSame<
+    TheAudiencesEmitTakes<Of<'the surgeons reach a fallen duellist too late, for his realm alone'>>,
+    ForOneRealmAlone
+  >;
+  'a hero is hardened after a fight': TheSame<
+    TheAudiencesEmitTakes<Of<'a hero is hardened after a fight'>>,
+    ForOneRealmAlone
+  >;
+  "a hero's maximum hit points rise as the phase ends": TheSame<
+    TheAudiencesEmitTakes<Of<"a hero's maximum hit points rise as the phase ends">>,
+    ForOneRealmAlone
+  >;
+  "a hero's maximum hit points fall as the phase ends": TheSame<
+    TheAudiencesEmitTakes<Of<"a hero's maximum hit points fall as the phase ends">>,
+    ForItsEventsAudience
+  >;
+}
+
+describe('the kind decides its audience (B-19)', () => {
+  test('a kind for one realm alone compiles only told to that realm: no sight, no deed, no realm excepted, no second realm', () => {
+    // compiles only while each form is taken or refused as above (each value below is the type's only value)
+    const theFormsEmitTakesAreRight: TheFormsEmitTakesAreRight = {
+      "a hero's hit points rise in a fight, for his realm alone": true,
+      'the surgeons reach a fallen duellist too late, for his realm alone': true,
+      'a hero is hardened after a fight': true,
+      "a hero's maximum hit points rise as the phase ends": true,
+      "a hero's maximum hit points fall as the phase ends": true,
+    };
+    expect(Object.values(theFormsEmitTakesAreRight)).toEqual([true, true, true, true, true]);
+  });
 });

@@ -3,17 +3,30 @@
 // - another realm's private line: a line that is one realm's own business (PRIVATE_LINES) reaches another;
 // - an unmet realm: a report names a realm its reader hasn't met, before the game is over (ruling R-046);
 // - an unseen hero: a hero under Invisibility is seen by another realm (only Clairvoyance pierces it);
-// - a line its audience does not admit (P1-12b3, P1-12's Decision 12): a line a realm reads comes from no event of the
-//   turn whose audience admits it, by the audience model stated here (linesTheirAudienceDoesNotAdmit), apart from the
-//   views' own (playerEvents); where the harness records the turn's events (Turn.perception);
-// - a line for one realm alone (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
-//   (KINDS_FOR_ONE_REALM_ALONE, this check's own list) is read by another realm, whatever audience the engine gave it;
-//   where the harness records the turn's events.
+// - a line its audience does not admit (P1-12b3; B-18g): a line a realm reads didn't come through the gate
+//   (theLinesOfTheTurnTheRealmReads, src/views/) by the way its part of the report needs; the check asks the gate and
+//   keeps no audience model of its own (linesTheirAudienceDoesNotAdmit); where the harness records the turn's events
+//   (Turn.perception);
+// - a line for one realm alone (P1-12c4, P1-12's Decision 6): a line of a kind whose audience, in the engine's table,
+//   is one realm's alone (THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE, B-19) is read by another realm, whatever
+//   audience the engine gave it; where the harness records the turn's events.
 // The first three read the report's text and today's state and log metadata (an entry's actor and targets); what they
 // can't see yet is in docs/architecture/how-the-tests-reach-the-site.md.
 //
 // Test code until P1-18's turn shell runs these checks; then it moves into src/. invariants.ts imports it, so it is
 // an engine path (tools/balance/engine-paths.ts).
+import {
+  THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE,
+  type LineAudience,
+  type LogLine,
+} from '../../src/engine/turn/events-and-their-audiences.ts';
+import type { GameState } from '../../src/schemas/saved-game-state.ts';
+import {
+  theLinesOfTheTurnTheRealmReads,
+  type ALineAsTheGateReadsIt,
+  type ALineTheRealmReads,
+  type TheTurnsSight,
+} from '../../src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts';
 import type { Character, SavedState, Turn } from './invariants.ts';
 
 /** A line that is one realm's own business. `line` names the hero whose realm it belongs to (group `hero`); a line
@@ -32,17 +45,6 @@ export const PRIVATE_LINES: readonly { name: string; line: RegExp; inASpysFeedTo
   },
   { name: 'Phantasmal Armies', line: /✨ (?<hero>.+?) conjures phantasmal duplicates/ },
   { name: 'Phantom Host', line: /✨ (?<hero>.+?) conjures a Phantom Host/ },
-];
-
-/** The kinds of line that are one realm's alone (P1-12c4, P1-12's Decision 6; R-117; R-118), listed here apart from
- *  the engine's audience of each kind: a hero's hit-point rise in a fight, the surgeons' word to a fallen duellist's
- *  own realm, a hero's maximum-HP rise outside a fight, and a hero hardened after a fight outside one. Each names its
- *  realm (its fact's `realm`). */
-export const KINDS_FOR_ONE_REALM_ALONE: readonly string[] = [
-  "a hero's hit points rise in a fight, for his realm alone",
-  'the surgeons reach a fallen duellist too late, for his realm alone',
-  "a hero's maximum hit points rise as the phase ends",
-  'a hero is hardened after a fight',
 ];
 
 /** A chronicle line scried by Clairvoyance starts with this. The rulebook gives the caster everything that happens to
@@ -307,40 +309,72 @@ function unseenHeroes(t: Turn): string[] {
   });
 }
 
-/** An event as the turn emitted it (TurnEvent, src/engine/turn/events-and-their-audiences.ts), as scenarioInTheVm's
- *  recordTheEvents notes it: its audience as given, the phase and the hero its line was filed under, and whether the
- *  event named that hero (else emit filed it under the hero whose order was resolving, or under none). */
+/** An event as the turn emitted it (TurnEvent, src/engine/turn/events-and-their-audiences.ts), as its line in the
+ *  engine's log keeps it until the reports are built (perceptionOfTheTurn): the line, with its words, as the gate reads
+ *  it, its audience as given, and the kind of fact it records with the realm the fact names. */
 export interface EventAsEmitted {
-  type?: unknown;
-  text?: unknown;
-  audience: {
-    realms?: unknown[] | undefined;
-    actor?: unknown;
-    seen?: 'world' | 'there' | 'battle' | undefined;
-    except?: unknown[] | undefined;
-  };
-  province: unknown;
-  phase: unknown;
-  hero: unknown;
-  /** The event named its hero by his id (a number), not as the hero whose order is resolving (emit works that one
-   *  out). */
-  heroNamed: boolean;
-  /** The realm the hero it was filed under served as the line was written (null: none, or no hero). */
-  heroRealmThen: unknown;
-  heroes: unknown[] | null;
-  spy: boolean;
+  /** Its line, with its words, less what is never stored (its audience and its fact): what the gate reads of it. */
+  line: ALineAsTheGateReadsIt;
+  audience: LineAudience;
   /** The kind of fact its line records (null: a line written with its words). */
-  kind?: unknown;
-  /** The realm its fact names (a line for one realm alone: KINDS_FOR_ONE_REALM_ALONE), else null. */
-  factsRealm?: unknown;
+  kind: unknown;
+  /** The realm its fact names (a line for one realm alone: THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE), else null. */
+  factsRealm: unknown;
 }
 /** What perception read besides the world: the turn's events, and its sight (resolveTurn's whatTheReportsRead). */
 export interface Perception {
   events: EventAsEmitted[];
   /** Whose heroes stood in each province at the start of each phase. */
-  presence: { phase: unknown; province: unknown; realms: unknown[] }[];
+  presence: { phase: number; province: number; realms: number[] }[];
+  /** The heroes of each realm in each battle, by `province@phase`. */
+  battleCommanders: TheTurnsSight['battleCommanders'];
   /** Each realm's Clairvoyance watch, by realm: the hero, and the phase it began. */
-  clairvoyance: Record<string, { charId?: unknown; fromPhase?: unknown } | undefined>;
+  clairvoyance: TheTurnsSight['clairWatch'];
+}
+
+/** What perception read besides the world, from what the turn hands over for the reports (whatTheReportsRead): each
+ *  line of the engine's log as emit filed it, with its whole audience and its fact (kept on the line until the reports
+ *  are built, never stored: B-18a, B-18b), and the turn's sight; with each line's words as the views wrote them
+ *  (theTurnsLinesInWords' wordsOfEachLine: a battle's tally place left empty is no line, P1-12c3). A line with no
+ *  audience didn't come through emit: it throws. Values made in the engine's vm read the same, but they are its own:
+ *  copy the result as JSON. */
+export function perceptionOfTheTurn(
+  turnLog: readonly LogLine[],
+  wordsOfEachLine: readonly (string | null)[],
+  sight: TheTurnsSight,
+): Perception {
+  const events = turnLog.flatMap((inMemory, at): EventAsEmitted[] => {
+    const { audience, fact } = inMemory;
+    if (audience === undefined) throw new Error(`line ${String(at)} of the turn's log didn't come through emit`);
+    const text = wordsOfEachLine[at] ?? null;
+    if (text === null) return [];
+    const line: ALineAsTheGateReadsIt = { ...inMemory, text };
+    delete line.audience;
+    delete line.fact;
+    return [
+      {
+        line,
+        audience: { ...audience },
+        kind: fact?.kind ?? null,
+        factsRealm: (fact !== undefined && 'realm' in fact ? fact.realm : null) ?? null,
+      },
+    ];
+  });
+  const presence = sight.presenceByPhase.flatMap((byProvince, phase) =>
+    [...byProvince].map(([province, who]) => ({ phase, province, realms: [...who] })),
+  );
+  return { events, presence, battleCommanders: sight.battleCommanders, clairvoyance: sight.clairWatch };
+}
+
+/** The turn's sight, as the gate reads it, from perception's (its presence back into a map for each phase). */
+function theSightOf(p: Perception): TheTurnsSight {
+  const presenceByPhase: Map<number, Set<number>>[] = [];
+  for (const { phase, province, realms } of p.presence) {
+    const byProvince = presenceByPhase[phase] ?? new Map<number, Set<number>>();
+    byProvince.set(province, new Set(realms));
+    presenceByPhase[phase] = byProvince;
+  }
+  return { presenceByPhase, battleCommanders: p.battleCommanders, clairWatch: p.clairvoyance };
 }
 
 /** A realm's name, made nameless as a reader who hasn't met it reads it, in a line it is no party to (R-046). */
@@ -350,29 +384,28 @@ const LINES_READ: readonly string[] = ['lastTurnLog[]', 'provinceEvents[]'];
 const isNumber = (v: unknown): v is number => typeof v === 'number';
 const phaseOf = (v: unknown): number | null => (isNumber(v) ? v : null);
 
-/** Every line a realm reads (the chronicle, its province events, its spy feed) comes from an event of the turn whose
- *  audience admits it, by the audience model (P1-12's Decision 7: eight grants, and perception's two), stated here apart
- *  from the views' playerEvents, so a fault in either shows. A realm reads a line only if an event of the turn with its text, in its
- *  phase, admits it. Not if the event excepts the realm (except); otherwise:
- *  - told: the realm is among the event's realms;
- *  - its own deed: the realm is its actor;
- *  - about its hero: its hero, or one of its heroes, is one the realm owns as the report is built; but a line that
- *    names no hero, filed under the hero whose order was resolving, is about him only when its audience reached the
- *    realm he served as it was written (told it, its deed, seen by the world or there), or he served none (P1-12c1);
- *  - the world: seen by the world;
- *  - eyes there: seen there, in a province the realm owns, or where a hero of its own stood that phase, or that it spied
- *    that phase or before (any phase, for a line with none);
- *  - a battle's lines: read by those who fought in it, who are told (realms); seen in the battle grants no one else;
- *  - nobody else (the GM's own lines);
- *  and through perception:
- *  - a spy's lingering sight (its report's spyActivity; R-118): in a province the realm spied, from the next phase on,
- *    what rival heroes do there or anyone there could see: an event with a deed (an actor) or seen by the world, there
- *    or in the battle, that doesn't except it and isn't of a kind for one realm alone (KINDS_FOR_ONE_REALM_ALONE);
- *  - Clairvoyance (a chronicle line starting CLAIRVOYANCE): every event about the hero the realm watches (his, or among
- *    its heroes), from the phase the watch began; and, with no phase, where he stands as the turn ends.
- *  In a line the realm reads, an unmet realm's name may be "an unknown realm" (R-046). Each breach says which line
- *  and where; a line of a province the realm spied, after its spy, that its audience keeps from it is told apart
- *  ("through its spy"). Runs where the harness records the turn's events (Turn.perception). */
+/** The ways a line reaches a realm's chronicle and its province events (the gate's): all but a spy's and
+ *  Clairvoyance's. */
+const THE_CHRONICLES_WAYS: ReadonlySet<ALineTheRealmReads['reachesItBy']> = new Set([
+  'told',
+  'its deed',
+  'its hero',
+  'the world',
+  'eyes there',
+  'the battle',
+]);
+
+/** Every line a realm reads came through the gate (theLinesOfTheTurnTheRealmReads, src/views/, the one place that
+ *  says which lines of the turn each realm reads and how each reaches it; its case table states each way and each
+ *  edge), with the way its part of the report needs (answer 84, B-18g): the check asks the gate, on the turn's events
+ *  as perception recorded them, the world after the turn and the turn's sight, what each realm reads, and keeps no
+ *  model of its own. A line of the chronicle or the province events comes through the chronicle's ways (told, its
+ *  deed, its hero, the world, eyes there, the battle); a line of a spy's feed through a spy's lingering sight in that
+ *  province; a Clairvoyance line (a chronicle line starting CLAIRVOYANCE) through Clairvoyance, but the one with no
+ *  phase, where the watched hero stands as the turn ends (the views write it from the world). A line matches one the
+ *  gate gives by its words and its phase, an unmet realm's name in it read as "an unknown realm" (R-046). A line the
+ *  gate gives the realm no way is a breach, and so is one it gives only another way, which the breach names ("the gate
+ *  gives it only by …"). Runs where the harness records the turn's events (Turn.perception). */
 function linesTheirAudienceDoesNotAdmit(t: Turn): string[] {
   const p = t.perception;
   if (!p) return [];
@@ -385,115 +418,79 @@ function linesTheirAudienceDoesNotAdmit(t: Turn): string[] {
     .map((n) => new RegExp(named(n).source, 'g'));
   const nameless = (text: string) => names.reduce((x, re) => x.replace(re, '\0'), text);
   const unknownRealms = (text: string) => text.replace(new RegExp(UNKNOWN_REALM.source, 'g'), '\0');
-  const key = (phase: number | null, text: string) => `${String(phase)}|${text}`;
-  const byLine = new Map<string, EventAsEmitted[]>();
-  const byPhase = new Map<number | null, EventAsEmitted[]>();
-  for (const e of p.events) {
-    if (typeof e.text !== 'string') continue;
-    const phase = phaseOf(e.phase);
-    const k = key(phase, e.text);
-    byLine.set(k, [...(byLine.get(k) ?? []), e]);
-    byPhase.set(phase, [...(byPhase.get(phase) ?? []), e]);
-  }
-  /** The events a line of `text` in `phase` may come from: those with its text, or with a realm's name where it reads
-   *  "an unknown realm". */
-  const sources = (text: string, phase: number | null): EventAsEmitted[] => {
-    const exact = byLine.get(key(phase, text));
-    if (exact) return exact;
-    if (!UNKNOWN_REALM.test(text)) return [];
-    const masked = nameless(unknownRealms(text));
-    return (byPhase.get(phase) ?? []).filter((e) => typeof e.text === 'string' && nameless(e.text) === masked);
-  };
-  const present = new Set(
-    p.presence.flatMap((x) => x.realms.map((r) => `${String(x.phase)}|${String(x.province)}|${String(r)}`)),
-  );
+  /** Whether the gate's line has a report line's words, in its phase. */
+  const sameLine = (line: ALineAsTheGateReadsIt, text: string, phase: number | null) =>
+    phaseOf(line.phase) === phase &&
+    typeof line.text === 'string' &&
+    (line.text === text || (UNKNOWN_REALM.test(text) && nameless(line.text) === nameless(unknownRealms(text))));
+  const lines = p.events.map((e) => e.line);
+  const audiences = p.events.map((e) => e.audience);
+  const sight = theSightOf(p);
+  // The world after the turn, as saved: of it the gate reads each realm's provinces and its heroes.
+  const world = s as unknown as GameState;
   const heroName = new Map(s.characters.map((c) => [c.id, c.name]));
   return (t.reports ?? []).flatMap((r) => {
     const realm = r.realm;
-    const owned = new Set(s.players?.[realm]?.provinces ?? []);
-    const ownHeroes = new Set(s.characters.filter((c) => c.player === realm).map((c) => c.id));
-    // The provinces it spied, each from the first phase it did (a spy's line: its actor the realm, its province).
-    const spied = new Map<unknown, number>();
-    for (const e of p.events)
-      if (e.spy && e.audience.actor === realm && e.province != null) {
-        const phase = phaseOf(e.phase) ?? 0;
-        const was = spied.get(e.province);
-        if (was === undefined || phase < was) spied.set(e.province, phase);
-      }
-    const eyesThere = (province: unknown, phase: number | null) => {
-      if (owned.has(province)) return true;
-      if (phase != null && present.has(`${String(phase)}|${String(province)}|${String(realm)}`)) return true;
-      const from = spied.get(province);
-      return from !== undefined && (phase == null || from <= phase);
-    };
-    const excepted = (e: EventAsEmitted) => (e.audience.except ?? []).includes(realm);
-    /** The hero it is filed under is the line's own: named by the event, or the hero whose order was resolving when
-     *  its audience reached his realm then (or he served none). A line seen by the world reaches every realm anyway. */
-    const filedUnderItsOwnHero = (e: EventAsEmitted) => {
-      const a = e.audience;
-      const then = e.heroRealmThen;
-      return e.heroNamed || then == null || (a.realms ?? []).includes(then) || a.actor === then || a.seen === 'there';
-    };
-    const admits = (e: EventAsEmitted) => {
-      const a = e.audience;
-      if (excepted(e)) return false;
-      return (
-        (a.realms ?? []).includes(realm) ||
-        a.actor === realm ||
-        (e.hero != null && ownHeroes.has(e.hero) && filedUnderItsOwnHero(e)) ||
-        (e.heroes ?? []).some((h) => ownHeroes.has(h)) ||
-        a.seen === 'world' ||
-        (a.seen === 'there' && e.province != null && eyesThere(e.province, phaseOf(e.phase)))
-      );
-    };
-    const watch = p.clairvoyance[String(realm)];
-    const watched = watch?.charId;
-    /** A Clairvoyance line: an event about the watched hero, from the watch's phase; or, with no phase, where he stands
-     *  as the turn ends. */
-    const scried = (text: string, phase: number | null) => {
-      if (watched == null) return false;
-      if (phase == null) return text.startsWith(`as the turn ends, ${String(heroName.get(watched))} stands in `);
-      const from = phaseOf(watch?.fromPhase) ?? 0;
-      return (
-        phase >= from && sources(text, phase).some((e) => e.hero === watched || (e.heroes ?? []).includes(watched))
-      );
-    };
+    const read = theLinesOfTheTurnTheRealmReads(lines, world, realm, sight, audiences);
+    /** Every line the gate gives the realm, with its way and, for a spy's, the province it spied. */
+    const given: { line: ALineAsTheGateReadsIt; way: ALineTheRealmReads['reachesItBy']; province: number | null }[] = [
+      ...read.chronicle.map((l) => ({ line: l.line, way: l.reachesItBy, province: null })),
+      ...read.spysLingeringSight.flatMap(({ province, lines: seen }) =>
+        seen.map((l) => ({ line: l.line, way: l.reachesItBy, province })),
+      ),
+      ...read.clairvoyance.map((l) => ({ line: l.line, way: l.reachesItBy, province: null })),
+    ];
     const out: string[] = [];
-    const notAdmitted = (at: string, text: string) =>
-      `realm ${String(realm)} reads a line its audience does not admit at ${at}: ${quote(text)}`;
+    /** A report line at `at`, its words matched by `words` (a Clairvoyance line's without its mark): through a way
+     *  `needed` allows, else a breach. */
+    const check = (
+      at: string,
+      text: string,
+      phase: number | null,
+      words: string,
+      needed: (g: (typeof given)[number]) => boolean,
+    ) => {
+      const matches = given.filter((g) => sameLine(g.line, words, phase));
+      if (matches.some(needed)) return;
+      const ways = [
+        ...new Set(matches.map((g) => (g.province === null ? g.way : `${g.way} in province ${String(g.province)}`))),
+      ];
+      out.push(
+        `realm ${String(realm)} reads a line its audience does not admit at ${at}: ${quote(text)}` +
+          (ways.length ? ` (the gate gives it only by ${ways.join(', ')})` : ''),
+      );
+    };
+    const watched = p.clairvoyance[realm]?.charId;
     for (const { at, value } of LINES_READ.flatMap((path) => select(r.report, path))) {
       const text = textOf(value);
       if (typeof text !== 'string') continue;
       const phase = phaseOf(record(value)['phase']);
       if (at.startsWith('lastTurnLog[') && text.startsWith(CLAIRVOYANCE)) {
-        if (!scried(text.slice(CLAIRVOYANCE.length), phase)) out.push(notAdmitted(at, text));
+        const scried = text.slice(CLAIRVOYANCE.length);
+        // where the watched hero stands as the turn ends: the views' own line, from the world
+        if (
+          phase === null &&
+          watched != null &&
+          scried.startsWith(`as the turn ends, ${String(heroName.get(watched))} stands in `)
+        )
+          continue;
+        check(at, text, phase, scried, (g) => g.way === 'Clairvoyance');
         continue;
       }
-      if (!sources(text, phase).some(admits)) out.push(notAdmitted(at, text));
+      check(at, text, phase, text, (g) => THE_CHRONICLES_WAYS.has(g.way));
     }
     for (const { at, value } of select(r.report, 'spyActivity[]')) {
       const province = record(value)['provId'];
-      const from = spied.get(province);
       for (const line of select(record(value), 'lines[]')) {
         const text = textOf(line.value);
         if (typeof text !== 'string') continue;
         const phase = phaseOf(record(line.value)['phase']);
-        const where = `${at}.${line.at}`;
-        const events = sources(text, phase);
-        if (events.some(admits)) continue;
-        // its spy's lingering sight: the province it spied, from the next phase on
-        const lingering = events.filter(
-          (e) => e.province === province && from !== undefined && phase != null && phase > from,
-        );
-        const aSpyThereSees = (e: EventAsEmitted) =>
-          (e.audience.actor != null || e.audience.seen !== undefined) &&
-          !excepted(e) &&
-          !KINDS_FOR_ONE_REALM_ALONE.includes(String(e.kind));
-        if (lingering.some(aSpyThereSees)) continue;
-        out.push(
-          lingering.length
-            ? `realm ${String(realm)} reads, through its spy, a line its audience keeps from it at ${where}: ${quote(text)}`
-            : notAdmitted(where, text),
+        check(
+          `${at}.${line.at}`,
+          text,
+          phase,
+          text,
+          (g) => g.way === "a spy's lingering sight" && g.province === province,
         );
       }
     }
@@ -501,12 +498,12 @@ function linesTheirAudienceDoesNotAdmit(t: Turn): string[] {
   });
 }
 
-/** No realm reads a line of a kind that is another realm's alone (KINDS_FOR_ONE_REALM_ALONE): such a line is read by
- *  the realm its fact names, or one the hero it is filed under served this turn (realmsServed: he joined it, or a Charm
- *  lent him to it), and by no other, whatever audience the engine gave it, so a line of one given the fight's audience
- *  shows (which the audience check, taking the audience as given, lets through). A line a realm reads (the chronicle,
- *  province events, spy activity: LINES) whose every event of the turn with its words and phase is of such a kind for
- *  other realms is a breach. Clairvoyance's lines are let through (CLAIRVOYANCE). Runs where the harness records the
+/** No realm reads a line of a kind that is another realm's alone (its audience in the engine's table:
+ *  THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE): such a line is read by the realm its fact names, or one the hero it
+ *  is filed under served this turn (realmsServed: he joined it, or a Charm lent him to it), and by no other, whatever
+ *  audience the engine gave it, so a line of one given the fight's audience shows (which the audience check, taking
+ *  the audience as given, lets through). A line a realm reads (the chronicle, province events, spy activity: LINES)
+ *  whose every event of the turn with its words and phase is of such a kind for other realms is a breach. Clairvoyance's lines are let through (CLAIRVOYANCE). Runs where the harness records the
  *  turn's events (Turn.perception). */
 function linesForOneRealmAloneReadByAnother(t: Turn): string[] {
   const p = t.perception;
@@ -514,15 +511,16 @@ function linesForOneRealmAloneReadByAnother(t: Turn): string[] {
   const key = (phase: number | null, text: string) => `${String(phase)}|${text}`;
   const byLine = new Map<string, EventAsEmitted[]>();
   for (const e of p.events) {
-    if (typeof e.text !== 'string') continue;
-    const k = key(phaseOf(e.phase), e.text);
+    if (typeof e.line.text !== 'string') continue;
+    const k = key(phaseOf(e.line.phase), e.line.text);
     byLine.set(k, [...(byLine.get(k) ?? []), e]);
   }
-  const forOneRealm = (e: EventAsEmitted) => KINDS_FOR_ONE_REALM_ALONE.includes(String(e.kind));
+  const forOneRealm = (e: EventAsEmitted) => THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE.includes(String(e.kind));
   /** Whether `realm` may read the line of `e`: the realm its fact names, or one its hero served this turn. */
   const itsOwn = (e: EventAsEmitted, realm: number) => {
     if (e.factsRealm === realm) return true;
-    const hero = t.after.characters.find((c) => c.id === e.hero) ?? t.before.characters.find((c) => c.id === e.hero);
+    const hero =
+      t.after.characters.find((c) => c.id === e.line.charId) ?? t.before.characters.find((c) => c.id === e.line.charId);
     return hero !== undefined && realmsServed(t, hero).has(realm);
   };
   return (t.reports ?? []).flatMap((r) =>

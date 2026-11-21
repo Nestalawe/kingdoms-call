@@ -18,9 +18,11 @@
 // one-line summary is 's' (shown only to a realm with nothing else of the battle). The result is the GM's log
 // as it is stored (turn_logs, player index −1): the form before, key for key, with each line's kind after them (since
 // P1-12d39: the GM page draws a force's rows by it; an older turn's line, with no kind, is read by its words). Beside it,
-// each stored line's kind in a list (since P1-12d36: the spy and Clairvoyance feeds pass over a line by its kind). In
+// each stored line's kind in a list (since P1-12d36: the spy and Clairvoyance feeds pass over a line by its kind), and
+// each stored line's whole audience, which the store never holds (B-18a). In
 // this run a line's words are the same for every reader.
 import type {
+  LineAudience,
   LineFact,
   LogLine,
   TheAudienceOfAKindOfLine,
@@ -220,11 +222,13 @@ export function theWordsOf(fact: LineFact): string {
 
 /** The GM's log of the turn with every line's words and its kind, as it is stored and as the realms' lines are read
  *  from it; the kind of each of its lines, in its order, beside it (null: a line with no fact; plan P1-12d36: the spy
- *  and Clairvoyance feeds pass over a line by its kind); and the words of each line of the engine's log, in its order
- *  (null: a battle's tally place left empty, which is no line). */
+ *  and Clairvoyance feeds pass over a line by its kind); each line's whole audience, in its order, beside it too (null:
+ *  a line emit didn't file, as an older turn's; B-18a: the audience is kept in memory, never stored); and the words of
+ *  each line of the engine's log, in its order (null: a battle's tally place left empty, which is no line). */
 export interface TheTurnsLinesInWords {
   gmLog: LogLine[];
   theKindOfEachStoredLine: (LineFact['kind'] | null)[];
+  theAudienceOfEachStoredLine: (LineAudience | null)[];
   wordsOfEachLine: (string | null)[];
 }
 
@@ -281,10 +285,11 @@ export function theTiersOfABattlesLines(lines: readonly LogLine[]): {
 }
 
 /** A line as the GM's log stores it: its words in place of its fact, its tier when it is a battle's, and its fact's
- *  kind last (plan P1-12d39). */
+ *  kind last (plan P1-12d39); its audience, like its fact, never stored (B-18a). */
 function asStored(line: LogLine, text: string | null, tier?: string): LogLine {
   const stored: LogLine = { ...line, text };
   if (tier !== undefined) stored.bTier = tier;
+  delete stored.audience;
   delete stored.fact;
   if (line.fact !== undefined) stored.kind = line.fact.kind;
   return stored;
@@ -295,9 +300,11 @@ function asStored(line: LogLine, text: string | null, tier?: string): LogLine {
 export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLinesInWords {
   const gmLog: LogLine[] = [];
   const theKindOfEachStoredLine: (LineFact['kind'] | null)[] = [];
+  const theAudienceOfEachStoredLine: (LineAudience | null)[] = [];
   const stored = (line: LogLine, text: string | null, tier?: string) => {
     gmLog.push(asStored(line, text, tier));
     theKindOfEachStoredLine.push(line.fact?.kind ?? null);
+    theAudienceOfEachStoredLine.push(line.audience ?? null);
   };
   const wordsOfEachLine: (string | null)[] = turnLog.map(() => null);
   const wordsOfLine = (line: LogLine): string | null => (line.fact === undefined ? line.text : theWordsOf(line.fact));
@@ -340,6 +347,7 @@ export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLines
     if (line.fact === undefined) {
       gmLog.push(line);
       theKindOfEachStoredLine.push(null);
+      theAudienceOfEachStoredLine.push(line.audience ?? null);
       wordsOfEachLine[at] = line.text;
       return;
     }
@@ -348,5 +356,5 @@ export function theTurnsLinesInWords(turnLog: readonly LogLine[]): TheTurnsLines
     wordsOfEachLine[at] = words;
   });
   theBattlesLinesWritten(null);
-  return { gmLog, theKindOfEachStoredLine, wordsOfEachLine };
+  return { gmLog, theKindOfEachStoredLine, theAudienceOfEachStoredLine, wordsOfEachLine };
 }

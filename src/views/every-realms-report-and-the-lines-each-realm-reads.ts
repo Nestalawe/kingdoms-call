@@ -8,28 +8,20 @@ import {
   THE_KINDS_OF_A_ROLL_LINE,
 } from './the-kinds-of-line-the-spy-and-scrying-feeds-pass-over.ts';
 import { asItsGuardReadsIt } from '../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import {
+  theLinesOfTheTurnTheRealmReads,
+  type ALineAsTheGateReadsIt,
+  type ALineTheRealmReads,
+  type TheTurnsSight,
+} from './the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts';
 import type { Character, GameState, Realm } from '../schemas/saved-game-state.ts';
 import type { TurnContext } from '../engine/turn/context.ts';
-import type { LineFact, LogLine } from '../engine/turn/events-and-their-audiences.ts';
-
-/** The turn's sight, as resolveTurn recorded it (whatTheReportsRead, src/engine/run-turn.ts). */
-type TheTurnsSight = Pick<TurnContext, 'presenceByPhase' | 'battleCommanders' | 'clairWatch'>;
-
-/** A line of the turn as the realm's filter reads it: an onlooker's summary flag too, which no line carries today (the
- *  onlookers' question, plan P1-12's Decision 3: battle-report-lines-and-force-markers.ts). */
-type ALineAsTheFilterReadsIt = LogLine & { readonly summary?: unknown };
+import type { LineAudience, LineFact, LogLine } from '../engine/turn/events-and-their-audiences.ts';
 
 /** A line a spy's lingering sight shows its realm: its phase and its words. */
 interface ALineTheSpySees {
   phase: number;
   text: string | null;
-}
-
-/** The first phase the realm spied a province, read by a key of the record that holds it: always there (the keys are
- *  the record's own), so a check that throws for none. */
-function theFirstPhaseItSpiedThere(phase: number | undefined): number {
-  if (phase === undefined) throw new TypeError('no first phase is recorded for a province the realm spied');
-  return phase;
 }
 
 /** What resolveTurn hands over for the reports (whatTheReportsRead, src/engine/run-turn.ts). */
@@ -39,10 +31,12 @@ interface WhatTheReportsRead extends Pick<TurnContext, 'freshPlayers' | 'G' | 't
 
 // ── THE LINES EACH REALM READS (plan P1-12b3: P1-12's Decision 10, out of buildReports) ────
 // playerEvents works out, from the turn's events (the GM's log, as emit stores them), which of them one realm reads,
-// in their order: its own deeds, the lines sent to it or about its heroes, the world's announcements and what happened
-// where it had eyes at the time (its own ground, a hero of its own standing there that phase, a spy on it that phase
-// or earlier); unmet realms left nameless in them; its spies' lingering sight (R-118: a rival's deeds and what anyone
-// there could see, never his realm's news); and its Clairvoyance feed. It also gives
+// in their order, each taken from the gate (theLinesOfTheTurnTheRealmReads, the-gate-that-says-which-lines-of-the-turn-
+// each-realm-reads-and-how-each-reaches-it.ts, B-18a): its own deeds, the lines sent to it or about its heroes, the
+// world's announcements and what happened where it had eyes at the time (its own ground, a hero of its own standing
+// there that phase, a spy on it that phase or earlier); unmet realms left nameless in them; its spies' lingering sight
+// (R-118: a rival's deeds and what anyone there could see, never his realm's news); and its Clairvoyance feed. The
+// feeds pass over some of the gate's lines (a force drawn up for battle, the roll lines, a line already read). It also gives
 // the provinces it spied (and the first phase of each) and the two sets the map's battle markers read; the province
 // events come unnamed (provinceEventsItReads: the realm's view names their provinces, buildReports). It reads the
 // world (G: the realm's provinces, heroes, discoveries and meetings, the watched hero's place) and the turn's sight
@@ -55,16 +49,21 @@ interface WhatTheReportsRead extends Pick<TurnContext, 'freshPlayers' | 'G' | 't
 //                      (theTurnsLinesInWords' theKindOfEachStoredLine; P1-12d36): the spy and
 //                      Clairvoyance feeds pass over a line by its kind (the-kinds-of-line-the-spy-and-scrying-feeds-
 //                      pass-over.ts)
+//   theAudienceOfEachLine  each line's whole audience, in turnLog's order, as the words pass hands it beside the log
+//                          (theAudienceOfEachStoredLine): the gate reads who may read each line from it (B-18f)
 // Returns { lastTurnLog, provinceEvents, spyActivity, spiedProvincesAndTheirFirstPhase,
 //           provincesWithABattleLineItRead, provincesItStoodOnAtSomePhase }; provinceEvents: { text, phase, provinceId }.
 export function playerEvents(
-  turnLog: readonly ALineAsTheFilterReadsIt[],
+  turnLog: readonly ALineAsTheGateReadsIt[],
   G: GameState,
   pi: number,
   sight: TheTurnsSight,
   theKindOfEachLine: readonly (LineFact['kind'] | null)[],
+  theAudienceOfEachLine: readonly (LineAudience | null)[],
 ) {
   const { presenceByPhase, battleCommanders, clairWatch } = sight;
+  // The lines of the turn the realm reads, each with how it reaches it: the gate's.
+  const theLinesItReads = theLinesOfTheTurnTheRealmReads(turnLog, G, pi, sight, theAudienceOfEachLine);
   const playerOwnedProvs = new Set(G.players[pi]?.provinces ?? []);
   const playerCharProvs = new Set(
     (asItsGuardReadsIt(G.characters) ?? []).filter((c) => c.player === pi && c.alive).map((c) => c.location),
@@ -118,90 +117,7 @@ export function playerEvents(
     (asItsGuardReadsIt(G.characters) ?? []).filter((c) => c.player === pi).map((c) => c.id),
   );
 
-  // earliest phase this player spied each province this turn (spy sees battles at that phase or
-  // later in the same province).
-  const spyPhaseByProv: Record<string, number> = {};
-  turnLog.forEach((e) => {
-    if (e.actor === pi && e.spy && e.provinceId != null) {
-      const ph = e.phase ?? 0;
-      const spiedAt = spyPhaseByProv[e.provinceId];
-      if (spiedAt === undefined || ph < spiedAt) spyPhaseByProv[e.provinceId] = ph;
-    }
-  });
-  // True if this player could witness a battle in prov at phase ph: a character present there at
-  // that phase, or a spy on that province in the same phase or earlier.
-  const canSeeBattle = (prov: number | null, ph: number | null) => {
-    if (prov == null) return false;
-    if (ph != null && presenceByPhase[ph]?.get(prov)?.has(pi)) return true;
-    const sp = spyPhaseByProv[prov];
-    if (sp !== undefined && (ph == null || sp <= ph)) return true;
-    return false;
-  };
-
-  // a non-participant may witness a battle only if a character of theirs was PRESENT in the
-  // province at that phase — spies/scouts no longer see battles they weren't near.
-  const charPresentAt = (prov: number | null, ph: number | null) => {
-    if (prov == null) return false;
-    if (ph != null && presenceByPhase[ph]?.get(prov)?.has(pi)) return true;
-    return false;
-  };
-  // 2026-09-27 (Toby item 6): can this realm SEE what happens in a province right now? Its own
-  // ground, a character of its own standing there at that phase, or a spy on it that phase or
-  // earlier. Having once walked through the province is explicitly NOT enough.
-  const canSeeProvinceNow = (prov: number | null, ph: number | null) => {
-    if (prov == null) return false;
-    if (playerOwnedProvs.has(prov)) return true;
-    return canSeeBattle(prov, ph);
-  };
-
-  const _filteredLog = turnLog.filter((e) => {
-    // 0. Written for everyone EXCEPT these realms (the private half of a logSplit pair covers them)
-    if (Array.isArray(e.notFor) && e.notFor.includes(pi)) return false;
-    // 1. Directly targeted at this player (wages, intel notifications, spell hits etc.)
-    if ((asItsGuardReadsIt(e.targets) ?? []).includes(pi)) return true;
-    // 2. This player's own character performed the action
-    if (e.actor === pi) return true;
-    // 4. Entry attributed to one of this player's own characters (charId or charIds match)
-    if (e.charId != null && ownCharIds.has(e.charId)) return true;
-    if (Array.isArray(e.charIds) && e.charIds.some((id) => ownCharIds.has(id))) return true;
-    // 3. Public events. a battle the player did NOT take part in is visible ONLY as a one-line
-    // result SUMMARY, and only if they had a character present in the province at the battle's
-    // phase. The full blow-by-blow (battleDetail) is for participants alone. Non-combat public
-    // events keep the broader "province you can see" visibility.
-    // 3a. WORLD ANNOUNCEMENTS. A public entry with NO province is not
-    // something that happened *somewhere* — it is something the whole world is told: a realm
-    // conceding, the Reckoning being called, a claim collapsing, the crown's price falling,
-    // the game being decided and its final standings.
-    //
-    // ROOT CAUSE of "nobody is told when a player concedes": the province test below was the
-    // ONLY gate on public entries, so any public line with `provinceId: null` failed it and
-    // fell through to "Everything else: hidden". Nine separate world announcements were being
-    // written to the log every game and shown to nobody — the entire endgame commentary
-    // included. They were public in name only.
-    if (e.public && e.provinceId == null) return true;
-    if (e.public && e.provinceId != null) {
-      if (e.type === 'combat') {
-        if (e.summary) {
-          if (e.phase != null) return charPresentAt(e.provinceId, e.phase);
-          return canSeeProvinceNow(e.provinceId, e.phase);
-        }
-        return false; // battle detail — participants only (handled by the targets/actor/charId checks above)
-      }
-      // 2026-09-27 (Toby item 6) — ROOT CAUSE of "another realm's Call to Arms turned up in my
-      // Realm Events". A public entry carrying a province was shown to anyone in
-      // `playerVisitedProvs`, which is every province the realm has EVER set foot in (plus the
-      // Messenger Birds ring). So a realm that marched through Wendmeadow on turn 2 went on
-      // reading every public line written there for the rest of the game — musters, rites,
-      // resurrections, spell results — with no spy, no character standing there and no claim on
-      // the ground. A public event in a province now needs EYES THERE at the time: the province
-      // is the viewer's own, or one of their characters stood in it that phase, or they spied it
-      // that phase or earlier. That is the same standard battle summaries have used since
-      // 2026-09-26; memory of the MAP is unaffected (that is built separately, from visitedBy).
-      return canSeeProvinceNow(e.provinceId, e.phase);
-    }
-    // Everything else: hidden
-    return false;
-  });
+  const _filteredLog = theLinesItReads.chronicle;
 
   // the map's crossed-swords icon marks provinces where this player WITNESSED a real battle this
   // turn — an actual battle occurred (_hadBattleThisTurn) AND the player has a visible line OF
@@ -224,14 +140,14 @@ export function playerEvents(
   const _visibleBattleProvs = new Set(
     _filteredLog
       .filter(
-        (e) =>
+        ({ line: e }) =>
           e.type === 'combat' &&
           e.battleId != null &&
           e.provinceId != null &&
           !e.env &&
           !/^\[Intel/i.test(e.text ?? ''),
       )
-      .map((e) => e.provinceId),
+      .map(({ line: e }) => e.provinceId),
   );
   // …and ground this player's own characters actually STOOD ON at some phase this turn is
   // witnessed by definition, whatever the log looks like — so a battle site can never lose its
@@ -245,31 +161,18 @@ export function playerEvents(
   });
 
   // ── Spy Activity — for each province this player SPIED, what OTHER realms' characters did
-  // there in the phases AFTER the spy arrived (the agent's lingering line of sight). Rebuilt from
-  // the resolved turnLog: entries in the spied province, at a LATER phase, attributed to a
-  // character this player does not own. A force drawn up for battle is passed over, by its kind (P1-12d36).
-  // R-118 (Toby, 2026-10-31, question 8): the spy sees what rival heroes do there (a line with a deed, its actor) and
-  // what anyone there could see (a public line: seen by the world, there or in a battle), never their realm's own news
-  // (a line told to a realm with no deed: a hit-point rise, a curse felt, the plague's toll), nor a line that excepts
-  // this realm (notFor).
-  const aSpyThereSees = (e: LogLine) =>
-    (e.actor != null || e.public) && !(Array.isArray(e.notFor) && e.notFor.includes(pi));
+  // there in the phases AFTER the spy arrived (the agent's lingering line of sight): the gate's (R-118). A force drawn up
+  // for battle is passed over, by its kind (P1-12d36), and a line read twice in a phase once.
   const spyActivity: { provId: number; provName: string; sincePhase: number; lines: ALineTheSpySees[] }[] = [];
-  Object.keys(spyPhaseByProv).forEach((pidStr) => {
-    const pid = parseInt(pidStr);
-    const afterPh = theFirstPhaseItSpiedThere(spyPhaseByProv[pid]);
+  theLinesItReads.spysLingeringSight.forEach(({ province: pid, afterPhase: afterPh, lines: theLinesItSees }) => {
     const seen = new Set<string>();
     const lines: ALineTheSpySees[] = [];
-    turnLog.forEach((e, at) => {
-      if (e.provinceId !== pid) return;
-      if (e.phase == null || e.phase <= afterPh) return;
-      if (e.charId == null || ownCharIds.has(e.charId)) return;
-      if (!aSpyThereSees(e)) return;
+    theLinesItSees.forEach(({ line: e, at, phase }) => {
       if (theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE) return;
-      const key = `${String(e.phase)}|${String(e.text)}`;
+      const key = `${String(phase)}|${String(e.text)}`;
       if (seen.has(key)) return;
       seen.add(key);
-      lines.push({ phase: e.phase, text: e.text });
+      lines.push({ phase, text: e.text });
     });
     if (lines.length) {
       lines.sort((a, b) => a.phase - b.phase);
@@ -340,24 +243,26 @@ export function playerEvents(
   };
   // A force drawn up for battle carries its kind into the realm's chronicle (the pages draw its rows by it alone); no
   // other line carries one.
-  const theForcesRows = new Set(
-    turnLog.filter((_e, at) => theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE),
-  );
-  const lastTurnLog = _filteredLog.map((e) => ({
-    // Preserve charId and phase so the player portal can group entries correctly
-    type: e.type,
-    text: _maskText(e),
-    charId: _reattributeCharId(e),
-    phase: e.phase ?? null,
-    pinNotice: Boolean(asItsGuardReadsIt(e.pinNotice)), // battle-lock notice — the player portal hoists this to the top of its phase
-    env: Boolean(asItsGuardReadsIt(e.env)), // routed to Province Reports, kept OUT of Chronicle / Realm Events
-    ...(e.gameEnd ? { gameEnd: true } : {}), // 2026-09-28: shown at the TOP of the player report, under the Game-is-Decided banner
-    ...(e.battleId != null ? { battleId: e.battleId, bTier: e.bTier } : {}), // 2026-09-23d: battle folding (player portal)
-    ...(theForcesRows.has(e) ? { kind: THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE } : {}),
-  }));
+  const isAForcesRow = ({ at }: ALineTheRealmReads) =>
+    theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE;
+  const lastTurnLog = _filteredLog.map((read) => {
+    const e = read.line;
+    return {
+      // Preserve charId and phase so the player portal can group entries correctly
+      type: e.type,
+      text: _maskText(e),
+      charId: _reattributeCharId(e),
+      phase: e.phase ?? null,
+      pinNotice: Boolean(asItsGuardReadsIt(e.pinNotice)), // battle-lock notice — the player portal hoists this to the top of its phase
+      env: Boolean(asItsGuardReadsIt(e.env)), // routed to Province Reports, kept OUT of Chronicle / Realm Events
+      ...(e.gameEnd ? { gameEnd: true } : {}), // 2026-09-28: shown at the TOP of the player report, under the Game-is-Decided banner
+      ...(e.battleId != null ? { battleId: e.battleId, bTier: e.bTier } : {}), // 2026-09-23d: battle folding (player portal)
+      ...(isAForcesRow(read) ? { kind: THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE } : {}),
+    };
+  });
   // ── Task 7(a): CLAIRVOYANCE FEED ────
   // If this player watched an enemy character via Clairvoyance, surface everything that character
-  // did (or that befell them) from the cast phase onward — filed into KINGDOM EVENTS (charId
+  // did (or that befell them) from the cast phase onward (the gate's) — filed into KINGDOM EVENTS (charId
   // null, not env), prefixed so it reads as scried intelligence. Deduped against what the player
   // already sees. A force drawn up for battle and the roll lines (too noisy for a scry feed) are passed over, by their
   // kind (P1-12d36).
@@ -365,25 +270,21 @@ export function playerEvents(
     const _watch: { readonly charId: number | null | undefined; readonly fromPhase: number } | undefined =
       clairWatch[pi];
     if (_watch?.charId != null) {
-      const W = _watch.charId,
-        F = _watch.fromPhase || 0;
+      const W = _watch.charId;
       const _seenKeys = new Set(lastTurnLog.map((e) => `${String(e.phase ?? 'x')}|${e.text ?? ''}`));
-      turnLog.forEach((e, at) => {
-        if (e.phase == null || e.phase < F) return;
-        const aboutW = e.charId === W || (Array.isArray(e.charIds) && e.charIds.includes(W));
-        if (!aboutW) return;
+      theLinesItReads.clairvoyance.forEach(({ line: e, at, phase }) => {
         const kind = theKindOfEachLine[at];
         const theRollLines: ReadonlySet<LineFact['kind'] | null | undefined> = THE_KINDS_OF_A_ROLL_LINE;
         if (kind === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE || theRollLines.has(kind)) return;
         const t = e.text ?? '';
-        const key = `${String(e.phase)}|${t}`;
+        const key = `${String(phase)}|${t}`;
         if (_seenKeys.has(key)) return; // already visible to this player
         _seenKeys.add(key);
         lastTurnLog.push({
           type: 'system',
           text: '\u{1F52E} Clairvoyance \u2014 ' + t,
           charId: null,
-          phase: e.phase,
+          phase,
           pinNotice: false,
           env: false,
         });
@@ -406,8 +307,8 @@ export function playerEvents(
     }
   }
   const provinceEvents = _filteredLog
-    .filter((e) => e.env)
-    .map((e) => ({
+    .filter(({ line: e }) => e.env)
+    .map(({ line: e }) => ({
       text: e.text,
       phase: e.phase ?? null,
       provinceId: e.provinceId ?? null,
@@ -416,7 +317,7 @@ export function playerEvents(
     lastTurnLog,
     provinceEvents,
     spyActivity,
-    spiedProvincesAndTheirFirstPhase: spyPhaseByProv,
+    spiedProvincesAndTheirFirstPhase: theLinesItReads.spiedProvincesAndTheirFirstPhase,
     provincesWithABattleLineItRead: _visibleBattleProvs,
     provincesItStoodOnAtSomePhase: _presentProvsAnyPhase,
   };
@@ -432,18 +333,22 @@ export function playerEvents(
 // over for it (whatTheReportsRead, src/engine/run-turn.ts): the slot rows, the world after the turn (the working
 // copy), the turn's log, the turn's sight and the telemetry (_tel: the realms' snapshots and the facts for the
 // statistics). It writes every line's words first (theTurnsLinesInWords, src/views/prose/: P1-12c3), and every realm's
-// lines are picked from the lines in words, each line's kind beside them (P1-12d36). Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
+// lines are picked from the lines in words, each line's kind (P1-12d36) and its whole audience (B-18f) beside them. Returns {reports, tel, gmLog}, where reports is [{gp, report}] (gp: the
 // slot row it is for), tel what telemetry reads (its lists built from the facts: theStatisticsOfTheTurn, P1-12d33)
 // and gmLog the GM's log of the turn in words, in its stored form, which the shell saves.
 export function buildReports(whatTheReportsRead: WhatTheReportsRead) {
   const { freshPlayers, G, sight, _tel } = whatTheReportsRead;
-  const { gmLog: turnLog, theKindOfEachStoredLine } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
+  const {
+    gmLog: turnLog,
+    theKindOfEachStoredLine,
+    theAudienceOfEachStoredLine,
+  } = theTurnsLinesInWords(whatTheReportsRead.turnLog);
   const activePlayers = freshPlayers.filter((p) => p.user_id);
   const reports = [];
   for (const gp of activePlayers) {
     // Build a per-player chronicle using the structured log metadata
     const pi = gp.player_index;
-    const itsLines = playerEvents(turnLog, G, pi, sight, theKindOfEachStoredLine);
+    const itsLines = playerEvents(turnLog, G, pi, sight, theKindOfEachStoredLine, theAudienceOfEachStoredLine);
     // What the realm may see of the world (playerView), its lines of the turn (itsLines) beside it: the report reads
     // only these two.
     const view = playerView(G, pi, itsLines);

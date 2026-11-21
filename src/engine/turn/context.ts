@@ -18,9 +18,9 @@
 import type { Dispatch, PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type {
+  AFactNotForOneRealmAlone,
   EventButItsWords,
   LogLine,
-  NarrativeLine,
   TheFactForTheStatistics,
 } from './events-and-their-audiences.ts';
 import type { telOrdersFor, telRealmSnapshot } from './log-line-helpers.ts';
@@ -276,7 +276,7 @@ export interface TurnContext {
   _chieftainDuelGain: { used: boolean } | null;
   /** Skill rises held back to the end of the phase: each line's words or fact (since P1-12d12, a hero's experience
    *  line's fact) and its place (afterBattleIn: the province of the battle it follows). */
-  _deferredSkillLogs: [NarrativeLine, EventButItsWords & { afterBattleIn?: number | undefined }][];
+  _deferredSkillLogs: [AFactNotForOneRealmAlone, EventButItsWords & { afterBattleIn?: number | undefined }][];
   /** A simulated fight is running (the odds of a lair, a bot's forecast): no skill may rise. */
   _pcSimulating: boolean;
   _elvenEscapeQueue: ElvenEscape[];

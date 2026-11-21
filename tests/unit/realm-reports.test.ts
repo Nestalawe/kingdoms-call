@@ -17,7 +17,8 @@
 //   that excepts it. No game of the matrix writes a line that excepts a spying realm in its feed.
 // - Both feeds pass over a line by its kind, as the words pass hands it beside each stored line (P1-12d36): a force
 //   drawn up for battle, and in the Clairvoyance feed the roll lines too; any other kind is read, whatever its words
-//   open with. Every other line here is staged with no kind (null), as a line with no fact.
+//   open with. Every other line here is staged with no kind (null), as a line with no fact. Each line is staged with
+//   its whole audience beside it too, the one emit stores so (the gate reads it: B-18f).
 // - A force drawn up for battle carries its kind into the realm's chronicle, and no other line does, whatever its words
 //   open with and whatever lines the realm can't read come before it: the pages draw a force's rows by it alone.
 // - One realm's report (buildTurnReport, src/views/turn-report.ts, P1-10b30) on its view (playerView) of a world
@@ -39,6 +40,7 @@ import {
   type TurnContext,
 } from '../lib/the-middle-of-a-bot-world-in-a-turn-on-the-engines-modules.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
+import type { LineAudience } from '../../src/engine/turn/events-and-their-audiences.ts';
 
 const engine = await loadTheEngineOnItsModules({ seed: 1 });
 const restoreLog = quietEngineLog(engine);
@@ -67,6 +69,7 @@ const playerEvents = playerEventsAsItsModuleExportsIt as unknown as (
   realm: number,
   sight: { presenceByPhase: unknown; battleCommanders: unknown; clairWatch: unknown },
   theKindOfEachLine: (string | null)[],
+  theAudienceOfEachLine: LineAudience[],
 ) => { lastTurnLog: Line[]; spyActivity: { provId: number; lines: { phase: number; text: string }[] }[] };
 /** The turn's sight, as the context starts it: nobody has stood anywhere in a phase, fought or watched yet. */
 const sight = {
@@ -76,6 +79,16 @@ const sight = {
 };
 /** Each staged line's kind, beside the log as the words pass hands it: none (null), as a line with no fact. */
 const noKinds = (log: readonly Entry[]) => log.map(() => null);
+/** Each staged line's whole audience, beside the log as the words pass hands it: the one emit stores so (the realms it
+ *  is told to, its actor and the realms it excepts; a public line seen by the world with no province, in the battle as
+ *  a combat line, else there). */
+const theirAudiences = (log: readonly Entry[]) =>
+  log.map((e): LineAudience => ({
+    realms: e.targets,
+    actor: e.actor,
+    ...(e.public ? { seen: e.provinceId == null ? 'world' : e.type === 'combat' ? 'battle' : 'there' } : {}),
+    ...(e.notFor ? { except: e.notFor } : {}),
+  }));
 
 interface Line {
   text: string;
@@ -135,6 +148,7 @@ test('each realm reads exactly the lines the visibility rule allows, in the log�
           pi,
           sight,
           noKinds(log),
+          theirAudiences(log),
         );
         const ownHeroes = new Set(G.characters.filter((c) => c.player === pi).map((c) => c.id));
         const ownProvinces = new Set(G.players[pi]?.provinces ?? []);
@@ -211,6 +225,7 @@ describe('the Clairvoyance feed', () => {
       0,
       watching,
       noKinds(log),
+      theirAudiences(log),
     ).lastTurnLog.map((l) => ({ text: l.text, phase: l.phase }));
   const where = G.world.provinces[watched.location]?.name;
 
@@ -240,6 +255,7 @@ describe('the Clairvoyance feed', () => {
       0,
       watching,
       noKinds(log),
+      theirAudiences(log),
     ).lastTurnLog;
     expect(read.filter((l) => l.text.includes('🔮 Clairvoyance — [about'))).toHaveLength(2);
     expect(read.filter((l) => l.phase === null)).toEqual([]);
@@ -251,6 +267,7 @@ describe('the Clairvoyance feed', () => {
       2,
       watching,
       noKinds(log),
+      theirAudiences(log),
     ).lastTurnLog.filter((l) => l.text.includes('Clairvoyance') || l.text.includes('[about'));
     expect(lines).toEqual([]);
   });
@@ -269,6 +286,7 @@ describe('the Clairvoyance feed', () => {
       0,
       watching,
       staged.map(([, kind]) => kind),
+      theirAudiences(staged.map(([e]) => e)),
     ).lastTurnLog.filter((l) => l.phase !== null);
     expect(scried.map((l) => l.text)).toEqual([
       '🔮 Clairvoyance — 📊 [a spell fizzles]',
@@ -303,6 +321,7 @@ test("a force drawn up for battle carries its kind into the realm's chronicle; e
     0,
     sight,
     staged.map(([, kind]) => kind),
+    theirAudiences(staged.map(([e]) => e)),
   ).lastTurnLog.map((l): [string, unknown] => [l.text, l.kind]);
   expect(read).toEqual([
     ['⚑FORCE⚑{"name":"Aldric"}', 'a force drawn up for battle'],
@@ -338,6 +357,7 @@ test("a line the realm can't read, before a force's row: the kind sits on the fo
     0,
     sight,
     staged.map(([, kind]) => kind),
+    theirAudiences(staged.map(([e]) => e)),
   ).lastTurnLog.map((l): [string, unknown] => [l.text, l.kind]);
   expect(read).toEqual([
     ['⚑FORCE⚑{"name":"Aldric"}', 'a force drawn up for battle'],
@@ -386,6 +406,7 @@ describe("the spy feed: what rival heroes do there, never their realm's news (R-
       0,
       sight,
       noKinds(log),
+      theirAudiences(log),
     ).spyActivity.flatMap((s) => s.lines.map((l) => l.text));
 
   test('it reads his deeds and what anyone there could see after the spy came; never his realm’s news, a line with no reader, or one that excepts it', () => {
@@ -405,6 +426,7 @@ describe("the spy feed: what rival heroes do there, never their realm's news (R-
         0,
         sight,
         staged.map(([, kind]) => kind),
+        theirAudiences(staged.map(([e]) => e)),
       ).spyActivity.flatMap((s) => s.lines.map((l) => l.text)),
     ).toEqual(['⚑FORCE⚑ [a battle decided]', '📊 [a spell rolled]']);
   });

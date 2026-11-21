@@ -13,12 +13,17 @@ import {
   writeDeferredSkillLines,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+  seenThereInItsProvinceElseByTheWorld,
 } from '../turn/events-and-their-audiences.ts';
 import { aHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { AHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import type { TheFactOfAHerosExperienceLine } from './the-facts-a-heros-experience-lines-record.ts';
-import type { EventButItsWords, NarrativeLine } from '../turn/events-and-their-audiences.ts';
+import type {
+  EventButItsWords,
+  EventButItsWordsForOneRealmAlone,
+  NarrativeLine,
+} from '../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 
@@ -577,35 +582,54 @@ export function syncAllMaxHp(turnContext: TurnContext) {
     const d = syncMaxHp(ch, G.players);
     if (d === 0) return;
     const prov = asItsGuardReadsIt(ch.location) != null ? G.world.provinces[ch.location] : null;
+    // A rise is a kind for one realm alone: emit takes it only told to his realm (B-19), so it is filed apart.
+    if (d > 0) {
+      const toHisRealmAlone: EventButItsWordsForOneRealmAlone =
+        ch.player == null
+          ? {
+              audience: { actor: -1, realms: [] },
+              hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+            }
+          : {
+              audience: { realms: [ch.player] },
+              hero: ch.id,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+              province: prov ? prov.id : undefined,
+            };
+      emit(turnContext, {
+        type: 'system',
+        fact: {
+          kind: "a hero's maximum hit points rise as the phase ends",
+          realm: ch.player,
+          heroName: ch.name,
+          by: d,
+          maxHp: ch.maxHp,
+          hp: ch.hp,
+        },
+        ...toHisRealmAlone,
+      });
+      return;
+    }
     const tgt: EventButItsWords =
-      ch.player != null
+      ch.player == null
         ? {
-            audience:
-              d > 0
-                ? { realms: [ch.player] }
-                : { actor: ch.player, realms: [ch.player], seen: prov ? 'there' : 'world' },
-            hero: ch.id,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-            province: prov ? prov.id : undefined,
-          }
-        : {
             audience: { actor: -1, realms: [] },
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          }
+        : {
+            ...seenThereInItsProvinceElseByTheWorld(
+              { actor: ch.player, realms: [ch.player] },
+              'there',
+              prov ? prov.id : undefined,
+            ),
+            hero: ch.id,
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           };
     emit(turnContext, {
       type: 'system',
-      fact:
-        d > 0
-          ? {
-              kind: "a hero's maximum hit points rise as the phase ends",
-              realm: ch.player,
-              heroName: ch.name,
-              by: d,
-              maxHp: ch.maxHp,
-              hp: ch.hp,
-            }
-          : { kind: "a hero's maximum hit points fall as the phase ends", heroName: ch.name, by: -d, maxHp: ch.maxHp },
+      fact: { kind: "a hero's maximum hit points fall as the phase ends", heroName: ch.name, by: -d, maxHp: ch.maxHp },
       ...tgt,
     });
   });
