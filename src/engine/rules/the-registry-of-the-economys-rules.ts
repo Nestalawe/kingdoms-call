@@ -14,13 +14,22 @@ import {
   A_REALMS_GOLD_BEYOND_ITS_TAX_FROM_A_HEROS_MASTERY,
   A_REALMS_GOLD_BEYOND_ITS_TAX_FROM_A_HEROS_MINOR_TITLE,
 } from './the-economy/a-provinces-tax-and-a-realms-gold-beyond-it-at-the-turns-end.ts';
+import {
+  A_COMPANYS_WAGE_THIS_TURN,
+  A_COMPANYS_WAGE_UNDER_ITS_LEADER,
+  A_REALMS_COMPANY_WAGES_UNDER_ITS_HOST_LEADER,
+} from './the-economy/a-companys-wage-and-a-realms-company-wages-at-the-turns-end.ts';
+import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import type {
+  ACompanysWageAndTheLeaderItMarchesUnder,
+  ACompanysWageAndTheWarSpoilsItTookThisTurn,
   AHeroAsTheGoldOfHisMasteriesReadsHim,
   AHeroAsTheGoldOfHisMinorTitlesReadsHim,
   AProvincesTaxAndItsMarksOfThisTurn,
   AProvincesTaxAndTheRealmsWonder,
   AProvincesTaxUnderAMarkThatLasts,
   HookPointName,
+  TheCompanyWagesUnderTheHostLeader,
   TheStagesOfEachHookPoint,
 } from './the-registry-of-content-effects.ts';
 
@@ -79,6 +88,22 @@ export const THE_REGISTRY_OF_THE_ECONOMYS_RULES = {
         A_REALMS_GOLD_BEYOND_ITS_TAX_FROM_A_HEROS_MASTERY['the-thief-network'],
     },
   },
+  'the-orcish-war-spoils-halve-a-companys-wage-this-turn': {
+    turnEnd: {
+      "a company's wage this turn": A_COMPANYS_WAGE_THIS_TURN['the-orcish-war-spoils-halve-a-companys-wage-this-turn'],
+    },
+  },
+  'a-druid-halves-a-beasts-price-and-wage': {
+    turnEnd: {
+      "a company's wage under its leader": A_COMPANYS_WAGE_UNDER_ITS_LEADER['a-druid-halves-a-beasts-price-and-wage'],
+    },
+  },
+  'the-host-leaders-cut-of-his-companies-wages': {
+    turnEnd: {
+      "a realm's company wages under its Host-Leader":
+        A_REALMS_COMPANY_WAGES_UNDER_ITS_HOST_LEADER['the-host-leaders-cut-of-his-companies-wages'],
+    },
+  },
 } satisfies Record<TheEconomysRuleSlug, EconomysRuleEntry>;
 
 /** Each stage's effects, in the order the turn runs them (not by a number: the tax so far is each effect's, and the
@@ -98,6 +123,9 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY = {
       'the-castellans-gold',
     ],
     "a realm's gold beyond its tax from a hero's mastery": ['the-thief-network'],
+    "a company's wage this turn": ['the-orcish-war-spoils-halve-a-companys-wage-this-turn'],
+    "a company's wage under its leader": ['a-druid-halves-a-beasts-price-and-wage'],
+    "a realm's company wages under its Host-Leader": ['the-host-leaders-cut-of-his-companies-wages'],
   },
 } as const satisfies {
   readonly [H in HookPointName]?: {
@@ -161,4 +189,41 @@ export function theGoldAHerosMinorTitlesAddBeyondTheTax(
 export function theGoldAHerosMasteriesAddBeyondTheTax(facts: AHeroAsTheGoldOfHisMasteriesReadsHim): number {
   const theStage = "a realm's gold beyond its tax from a hero's mastery";
   return TURN_END[theStage].reduce((theGold, slug) => theGold + (ENTRIES[slug].turnEnd?.[theStage]?.(facts) ?? 0), 0);
+}
+
+/** The runner of "turnEnd: a company's wage this turn" (Early Winter's wages alone: the report's forecast leaves this
+ *  turn's war-spoils out): a company's wage after each effect of the stage, in its order, each handed the wage the one
+ *  before gave. The war-spoils' effect adds to and spends from the realm's carry the caller hands it. */
+export function theWageOfACompanyThisTurn(facts: ACompanysWageAndTheWarSpoilsItTookThisTurn): number {
+  const theStage = "a company's wage this turn";
+  return TURN_END[theStage].reduce(
+    (theWage, slug) => ENTRIES[slug].turnEnd?.[theStage]?.({ ...facts, theWage }) ?? theWage,
+    facts.theWage,
+  );
+}
+
+/** The runner of "turnEnd: a company's wage under its leader" (Early Winter's wages and the report's forecast, before
+ *  the upkeep discoveries): a company's wage after each effect of the stage, in its order. */
+export function theWageOfACompanyUnderItsLeader(facts: ACompanysWageAndTheLeaderItMarchesUnder): number {
+  const theStage = "a company's wage under its leader";
+  return TURN_END[theStage].reduce(
+    (theWage, slug) => ENTRIES[slug].turnEnd?.[theStage]?.({ ...facts, theWage }) ?? theWage,
+    facts.theWage,
+  );
+}
+
+/** The runner of "turnEnd: a realm's company wages under its Host-Leader" (Early Winter's wages and the report's
+ *  forecast, once every company's wage is added, only when the realm has a Host-Leader): the gold each effect of the
+ *  stage saves, added, and the wages the last one leaves, each handed the wages the one before left. */
+export function theCompanyWagesUnderTheHostLeader(facts: TheCompanyWagesUnderTheHostLeader): TheHostLeadersCut {
+  const theStage = "a realm's company wages under its Host-Leader";
+  return TURN_END[theStage].reduce<TheHostLeadersCut>(
+    (theCutSoFar, slug) => {
+      const theCut = ENTRIES[slug].turnEnd?.[theStage]?.({ ...facts, theCompanyWages: theCutSoFar.theWagesLeft });
+      return theCut
+        ? { theGoldSaved: theCutSoFar.theGoldSaved + theCut.theGoldSaved, theWagesLeft: theCut.theWagesLeft }
+        : theCutSoFar;
+    },
+    { theGoldSaved: 0, theWagesLeft: facts.theCompanyWages },
+  );
 }

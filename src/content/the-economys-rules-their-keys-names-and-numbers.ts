@@ -41,6 +41,28 @@ export const THE_ECONOMYS_RULES = {
   // ── A realm's gold beyond its tax, from a hero's mastery ──
   // the Thief's sixth mastery: a personal stipend each turn
   'the-thief-network': { name: 'Thief network', theNumbers: { theGold: 5 } },
+  // ── A company's wage this turn (B-06d: Early Winter alone; the report's forecast leaves it out, as the stamped
+  // wages cover it) ──
+  // an Orcish company of an Orcish realm that won attacking this turn: half its wage, the half golds carried from
+  // company to company so the host pays half in all, and never below the least wage
+  'the-orcish-war-spoils-halve-a-companys-wage-this-turn': {
+    name: 'Orcish war-spoils',
+    theNumbers: { theShareOfTheWage: 0.5, theLeastWage: 1 },
+  },
+  // ── A company's wage under its leader ──
+  // the Druid's sixth mastery (or the Druidic Wonder): a creature or a monster he leads costs half to recruit (rounded
+  // down) and draws half its wage (rounded down, never below the least wage)
+  'a-druid-halves-a-beasts-price-and-wage': {
+    name: 'Druid',
+    theNumbers: { theShareOfThePriceAndTheWage: 0.5, theLeastWage: 1 },
+  },
+  // ── A realm's company wages under its Host-Leader ──
+  // the realm's greatest general: a gold less for each company he leads that draws a wage, the wages never below
+  // nothing
+  'the-host-leaders-cut-of-his-companies-wages': {
+    name: 'The Host-Leader',
+    theNumbers: { theGoldOnEachCompany: 1 },
+  },
 } as const satisfies Readonly<Record<string, ARuleOfTheEconomy>>;
 
 /** A rule of the economy, by its slug. */

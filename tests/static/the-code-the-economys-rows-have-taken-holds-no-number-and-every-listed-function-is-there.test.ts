@@ -40,6 +40,21 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'theWageOfACompany',
     "B-06b, the wage rule: content's 1g for a skeletal company",
   ],
+  [
+    'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
+    'thePriceADruidPaysForABeast',
+    "B-06d, the Druid's half price: his row's share in the economy's rules",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
+    'theWageABeastPaysUnderADruid',
+    "B-06d, the Druid's half wage: his row's share and least wage in the economy's rules",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
+    'theHostLeadersCut',
+    "B-06d, the Host-Leader's cut: his row's gold on each company",
+  ],
 ];
 
 const LISTED = [...THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE, ...THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS];

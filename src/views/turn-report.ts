@@ -28,8 +28,6 @@ import {
   aCompanyIsABeastADruidHalves,
   aLeadersBeastsPayHalfWages,
   theCompaniesTheHostLeaderSavesOn,
-  theHostLeadersCut,
-  theWageABeastPaysUnderADruid,
 } from '../engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { neutralTradeGold } from '../engine/grand-design.ts';
 import { twoATurn } from '../engine/world/tables.ts';
@@ -86,10 +84,12 @@ import {
   whatARealmsAlignmentAddsToResearch,
 } from '../engine/rules/the-registry-of-alignment-abilities.ts';
 import {
+  theCompanyWagesUnderTheHostLeader,
   theGoldAHerosMasteriesAddBeyondTheTax,
   theGoldAHerosMinorTitlesAddBeyondTheTax,
   theTaxOfAProvinceFromTheRealmsWonder,
   theTaxOfAProvinceWhileAMarkLasts,
+  theWageOfACompanyUnderItsLeader,
 } from '../engine/rules/the-registry-of-the-economys-rules.ts';
 import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
@@ -1176,7 +1176,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
     if (aCompanyDrawsNoWage(a)) return s;
     /* Wild Hunt beasts serve the old gods, not a paymaster */ if (a._isSkeletal) return s + theWageOfACompany(a);
     /* skeletons are a flat 1g everywhere */ let w = thePriceOfACompanyOfAType(a.type);
-    if (_druidHalfWageR.has(a)) w = theWageABeastPaysUnderADruid(w);
+    w = theWageOfACompanyUnderItsLeader({ theWage: w, itIsABeastADruidHalves: _druidHalfWageR.has(a) }); // the collector's runner since B-06d
     {
       const _w0 = w;
       w = discUpkeepWage(player, a, w, _upkAccR, _taxCapR);
@@ -1200,7 +1200,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
   let hostLeaderG = 0;
   if (_hostLeaderChar) {
     const led = theCompaniesTheHostLeaderSavesOn(asItsGuardReadsIt(_hostLeaderChar.armies) ?? []);
-    const theCut = theHostLeadersCut(armyWages, led);
+    const theCut = theCompanyWagesUnderTheHostLeader({ theCompanyWages: armyWages, theCompaniesHeSavesOn: led }); // the collector's runner since B-06d
     hostLeaderG = theCut.theGoldSaved;
     armyWages = theCut.theWagesLeft;
   }

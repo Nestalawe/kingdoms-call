@@ -73,6 +73,7 @@ import type {
   AUnitLedByACommander,
 } from '../rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
 import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
+import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -1708,6 +1709,40 @@ export interface AHeroAsTheGoldOfHisMasteriesReadsHim {
   readonly heHoldsTheThiefNetwork: boolean;
 }
 
+/** The half golds the Orcish war-spoils carry from company to company of one realm's host in one turn's wages (Early
+ *  Winter's `_orcFrac`): the caller makes it at nothing for each realm and hands the same one for each company, in
+ *  its order (the heroes' companies in their order, then the garrisons in the provinces' order). */
+export interface TheHalfGoldsTheWarSpoilsCarry {
+  theHalfGoldsCarried: number;
+}
+
+/** A company's wage so far (its type's price) and whether it took the Orcish war-spoils this turn, as Early Winter's
+ *  wages hand them (the economy's registry, B-06d: the report's forecast leaves this turn's war-spoils out, as the
+ *  stamped wages cover it). */
+export interface ACompanysWageAndTheWarSpoilsItTookThisTurn {
+  readonly theWage: number;
+  /** Whether it is an Orcish company of an Orcish realm that won attacking this turn (the caller asks, as before). */
+  readonly itTookTheWarSpoilsThisTurn: boolean;
+  /** The realm's carry, which the war-spoils' effect adds to and spends from. */
+  readonly theHalfGoldsTheWarSpoilsCarry: TheHalfGoldsTheWarSpoilsCarry;
+}
+
+/** A company's wage so far (after this turn's war-spoils) and whether a leader's mastery or the realm's Wonder halves
+ *  it, as Early Winter's wages and the report's forecast hand them (the economy's registry, B-06d). */
+export interface ACompanysWageAndTheLeaderItMarchesUnder {
+  readonly theWage: number;
+  /** Whether it is a beast its leader's Druid 6 or the realm's Druidic Wonder halves (the caller asks, as before). */
+  readonly itIsABeastADruidHalves: boolean;
+}
+
+/** A realm's company wages (after each company's cuts) and how many of the companies its Host-Leader leads he saves
+ *  on, as Early Winter's wages and the report's forecast hand them, only when the realm has a Host-Leader (the
+ *  economy's registry, B-06d). */
+export interface TheCompanyWagesUnderTheHostLeader {
+  readonly theCompanyWages: number;
+  readonly theCompaniesHeSavesOn: number;
+}
+
 /** The provinces' tax income a realm's alignment adds to, as Early Winter's collection and the report's forecast hand
  *  it (after the provinces' own tax, the discoveries' and the Wonder's). */
 export interface TheIncomeARealmsAlignmentAddsTo {
@@ -2156,6 +2191,20 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's gold beyond its tax from a hero's mastery": (
       facts: AHeroAsTheGoldOfHisMasteriesReadsHim,
     ) => number;
+    /** A company's wage this turn, from its type's price, after this turn's war-spoils (the Orcish half); the runner
+     *  hands each effect, in the stage's order, the wage the one before gave (Early Winter's wages alone, before the
+     *  Druid's half: the economy's registry, B-06d). */
+    readonly "a company's wage this turn": (facts: ACompanysWageAndTheWarSpoilsItTookThisTurn) => number;
+    /** A company's wage under its leader (the Druid's half), from its wage after this turn's; the runner hands each
+     *  effect, in the stage's order, the wage the one before gave (Early Winter's wages and the report's forecast,
+     *  before the upkeep discoveries: the economy's registry, B-06d). */
+    readonly "a company's wage under its leader": (facts: ACompanysWageAndTheLeaderItMarchesUnder) => number;
+    /** A realm's company wages under its Host-Leader: the gold he saves and the wages left; the runner hands each
+     *  effect, in the stage's order, the wages the one before left, and adds the gold saved (Early Winter's wages and
+     *  the report's forecast, after every company's wage and before the heroes': the economy's registry, B-06d). */
+    readonly "a realm's company wages under its Host-Leader": (
+      facts: TheCompanyWagesUnderTheHostLeader,
+    ) => TheHostLeadersCut;
     /** The tax of a province on a realm's consecrated ground, from its tax so far (after Bless, an earthquake and
      *  Sabotage; before Enslave and the discoveries); the runner hands each effect, in the stage's order, the tax the
      *  one before gave. The caller asks whether the realm's consecration list holds the province, as before (Early
