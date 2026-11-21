@@ -67,27 +67,3 @@ march for Sir Aldric; the GM's tab runs the turn at 21:00.
 
 *Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
 deadline are refused).
-
-## 85. A line told to the whole world that also names a province: who reads it?
-
-Found on 2026-11-21.
-
-A line can be told to the whole world (a realm concedes, the game is decided), and those lines name no province. No
-game writes one that names a province too, and no ruling says who would read it. The reports read it as a line seen
-in that province (a combat line: only those who fought); the leak check reads it as told to every realm. Example: a
-line "the crown's price falls" is told to the world and names Wendmeadow; Brenvale has no eyes in Wendmeadow.
-
-1. **Every realm reads it, the province only says where.** Impact: Brenvale reads it. Nothing in play changes today.
-2. **Only realms with eyes there read it, as the reports read it now.** Impact: Brenvale reads nothing of it. Nothing
-   in play changes today.
-3. **None is written: a line told to the world names no province,** and the engine refuses one, as
-   [R-187](rulings/R-187-a-line-seen-in-a-province-or-in-a-battle-names-its-province.md) refuses a line seen in a
-   province with no province. Impact: nothing in play changes; the question can't come back.
-
-*Assessment:* option 3: a line has one reading, and the reports and the leak check can't disagree on it.
-
-*Unlocks:* the one reading the reports' gate keeps for such a line (B-18).
-
-*Touches:* [R-185](rulings/R-185-a-battles-line-is-read-only-by-those-who-fought-in-it-whatever-its-type.md),
-[R-186](rulings/R-186-a-line-seen-in-a-province-is-read-by-whoever-has-eyes-there-whatever-its-type.md) and
-[R-187](rulings/R-187-a-line-seen-in-a-province-or-in-a-battle-names-its-province.md) (who reads a line, by its sight).

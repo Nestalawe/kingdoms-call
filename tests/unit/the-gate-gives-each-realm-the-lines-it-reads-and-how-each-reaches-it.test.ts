@@ -11,15 +11,15 @@
 // - a line's sight, whatever its type (the maintainers' answers, B-18f): seen in a battle, only those who fought read it
 //   (told; R-185); seen there, whoever has eyes there (R-186); seen there or in a battle with no province, no realm by
 //   its sight, and the compiler refuses such an event (R-187), while a caller whose province may be missing is seen
-//   there, else by the world; seen by the world in a province, which no answer covers (question 85), as the reports
-//   always read it (eyes there, but a combat line only those who fought);
+//   there, else by the world (with no province); seen by the world with a province, every realm, as the world, and
+//   the compiler refuses such an event (R-188);
 // - a spy's lingering sight: in a province it spied, from the next phase on, a rival hero's deed or a public line, not
 //   a line told with no deed, one that excepts it, one with no hero or one of its own hero; the first phase it spied;
 // - Clairvoyance: every line about the watched hero (his, or among its heroes) from the phase the watch began; none
 //   with no watch;
 // - only the gate makes a line it lets through (the compiler refuses one made elsewhere).
 // Realms, heroes and provinces are made up. The balance matrix's games reach none of the summary, the sights above
-// on a line of the other type or with no province, a sight of the world in a province, or the excepted spy line; its
+// on a line of the other type or with no province, a sight of the world with a province, or the excepted spy line; its
 // every-realm reports cover the rest in play.
 // Level 1 (unit): emit, the words pass and the gate are called on a context made in the test; nothing else of the turn
 // runs.
@@ -151,7 +151,12 @@ const whatEachRealmReads = (lines: ALineToFile[], sight = aSight()) =>
 
 describe('the words pass hands each stored line its whole audience beside it, and stores none', () => {
   test("each stored line's audience, in its order; no stored line holds one", () => {
-    const audiences: LineAudience[] = [{ realms: [BRENVALE] }, { seen: 'there', except: [ALDMOOR] }, { actor: 2 }];
+    // (each in province 4, so none is seen by the world: R-188)
+    const audiences: (LineAudience & { seen?: 'there' })[] = [
+      { realms: [BRENVALE] },
+      { seen: 'there', except: [ALDMOOR] },
+      { actor: 2 },
+    ];
     const { gmLog, theAudienceOfEachStoredLine } = theTurnsLines(
       audiences.map((audience, k) => ({ words: `Line ${String(k)}`, audience, province: 4 })),
     );
@@ -292,7 +297,7 @@ describe('the chronicle: each way a line reaches a realm', () => {
   });
 });
 
-describe("the maintainers' answers to the B-18 scoping's questions 81 to 83: a line's sight, whatever its type", () => {
+describe("the maintainers' answers to the B-18 scoping's questions 81 to 83, and to question 85: a line's sight, whatever its type", () => {
   const sight = aSight([{ phase: 2, province: 5, realms: [ALDMOOR] }]);
 
   test('R-185: seen in a battle, whatever its type, only those who fought (told) read it, not those with eyes there', () => {
@@ -365,16 +370,20 @@ describe("the maintainers' answers to the B-18 scoping's questions 81 to 83: a l
     ]);
   });
 
-  test('seen by the world in a province, which no game writes and no answer covers (question 85): read as the reports always read it, by its type', () => {
-    expect(
-      whatEachRealmReads(
-        [
-          { words: 'World there', audience: { seen: 'world' }, type: 'system', province: 5 },
-          { words: 'World battle', audience: { seen: 'world' }, type: 'combat', province: 5 },
-        ],
-        sight,
-      ),
-    ).toEqual([[['World there', 'eyes there']], [], []]);
+  test('R-188: seen by the world with a province, handed anyway, every realm reads it as the world', () => {
+    // The compiler refuses such an event (below): staged as the stored lines it would give (as a line seen there gives
+    // them), with its audience beside them.
+    const { gmLog } = theTurnsLines([
+      { words: 'World there', audience: { seen: 'there' }, type: 'system', province: 5 },
+      { words: 'World battle', audience: { seen: 'there' }, type: 'combat', province: 5 },
+    ]);
+    const audiences: LineAudience[] = [{ seen: 'world' }, { seen: 'world' }];
+    expect(REALMS.map((realm) => theChronicle([], realm, sight, { gmLog, audiences }))).toEqual(
+      REALMS.map(() => [
+        ['World there', 'the world'],
+        ['World battle', 'the world'],
+      ]),
+    );
   });
 });
 
@@ -398,7 +407,29 @@ type AnEventSeenInABattleWithNoProvinceCompiles = {
 } extends TurnEvent
   ? true
   : false;
-/** Whether an event seen there, with its province, compiles: always; and one seen by the world with no province. */
+/** Whether an event seen by the world with a province would compile: never (R-188). */
+type AnEventSeenByTheWorldInAProvinceCompiles = {
+  type: 'system';
+  fact: { kind: 'a hero hired this phase will act from the next'; heroName: string };
+  audience: { seen: 'world' };
+  province: 5;
+  phase: 2;
+  hero: null;
+} extends TurnEvent
+  ? true
+  : false;
+/** Whether an event seen by the world with no province compiles: always. */
+type AnEventSeenByTheWorldWithNoProvinceCompiles = {
+  type: 'system';
+  fact: { kind: 'a hero hired this phase will act from the next'; heroName: string };
+  audience: { seen: 'world' };
+  province: null;
+  phase: 2;
+  hero: null;
+} extends TurnEvent
+  ? true
+  : false;
+/** Whether an event seen there, with its province, compiles: always. */
 type AnEventSeenThereInItsProvinceCompiles = {
   type: 'system';
   fact: { kind: 'a hero hired this phase will act from the next'; heroName: string };
@@ -415,6 +446,13 @@ test('R-187: a sight there or in a battle names its province: the compiler refus
   const refused: [AnEventSeenThereWithNoProvinceCompiles, AnEventSeenInABattleWithNoProvinceCompiles] = [false, false];
   const compiles: AnEventSeenThereInItsProvinceCompiles = true;
   expect([refused, compiles]).toEqual([[false, false], true]);
+});
+
+test('R-188: a line told to the whole world names no province: the compiler refuses an event seen by the world with one', () => {
+  // compiles only while that event is refused (its type is false) and one with no province isn't
+  const refused: AnEventSeenByTheWorldInAProvinceCompiles = false;
+  const compiles: AnEventSeenByTheWorldWithNoProvinceCompiles = true;
+  expect([refused, compiles]).toEqual([false, true]);
 });
 
 describe("a spy's lingering sight", () => {

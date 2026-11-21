@@ -9,11 +9,11 @@
 // each-realm-reads-and-how-each-reaches-it.ts, B-18a):
 //   realms   these realms are told (a wage bill, a spell that hit them)
 //   actor    the realm whose deed it is
-//   seen     'world': every realm (a line with no province; one with a province, which no game writes, as the gate
-//            says); 'there': whoever has eyes in the province at that phase, whatever the line's type (R-186);
-//            'battle': a battle's line, read by those who fought in it (told), whatever its type: seeing it there
-//            grants no one else (R-185; an onlooker's one-line summary, R-138, isn't built). A sight 'there' or
-//            'battle' names its province (R-187: the event's type refuses one with none)
+//   seen     'world': every realm (it names no province: R-188); 'there': whoever has eyes in the province at that
+//            phase, whatever the line's type (R-186); 'battle': a battle's line, read by those who fought in it
+//            (told), whatever its type: seeing it there grants no one else (R-185; an onlooker's one-line summary,
+//            R-138, isn't built). A sight 'there' or 'battle' names its province (R-187); the event's type refuses
+//            either form
 //   except   these realms never read it (the public half of logSplit: they read their own private half)
 // and a line about a hero a realm owns (hero, heroes) reaches that realm. An event with no grant is the GM's alone.
 //
@@ -376,11 +376,12 @@ export interface LineAudience {
 }
 
 /** Who may read a line and where it happened: a line seen there, or in the battle, names its province (R-187); one
- *  seen by the world, or by no one beyond its realms, may name one or none. A caller whose province may be missing says
- *  `seen: prov ? 'there' : 'world'`, as seenThereInItsProvinceElseByTheWorld writes it. */
+ *  seen by the world names none (R-188); one seen by no one beyond its realms may name one or none. A caller whose
+ *  province may be missing says `seen: prov ? 'there' : 'world'`, as seenThereInItsProvinceElseByTheWorld writes it. */
 export type ASightAndItsProvince =
-  | { audience: LineAudience; province: number }
-  | { audience: LineAudience & { seen?: 'world' | undefined }; province?: number | null | undefined };
+  | { audience: LineAudience & { seen?: 'there' | 'battle' | undefined }; province: number }
+  | { audience: LineAudience & { seen?: 'world' | undefined }; province?: null | undefined }
+  | { audience: LineAudience & { seen?: undefined }; province?: number | null | undefined };
 
 /** A line's audience and its province where it may have none (R-187): seen there, or in the battle, in its province;
  *  with none, seen by the world, as the reports read such a line (`seen: prov ? 'there' : 'world'`). */

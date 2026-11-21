@@ -64,8 +64,8 @@ check finds were made.
   experience lines' kinds) until `writeDeferredSkillLines` files each. What `notifyTarget` and `notifyProvinceOwner`
   are handed, and each half `logSplit` is handed, is a fact too, filed as `fact: line`. Build it as the event's own
   fields, never as the old `log()` meta
-  (`targets`, `provinceId`, `charId`, `public`). A sight `'there'` or `'battle'` names its province (R-187, by its
-  type); where it may be missing, `seenThereInItsProvinceElseByTheWorld` says `seen: prov ? 'there' : 'world'`.
+  (`targets`, `provinceId`, `charId`, `public`). A sight `'there'` or `'battle'` names its province, `'world'` none (R-187,
+  R-188, by type); where it may be missing, `seenThereInItsProvinceElseByTheWorld` says `seen: prov ? 'there' : 'world'`.
 - **Every event names its hero**. `hero` is a hero's id (`hero: c.id`), `null` for no hero, or
   `THE_HERO_WHOSE_ORDER_IS_RESOLVING` (a named constant in the events file) for the hero whose order is resolving
   (`turnContext._logCtx.charId`). `emit` files a line naming the constant under that hero only when the line already
@@ -94,10 +94,10 @@ check finds were made.
   `src/engine/personal-combat/the-facts-a-personal-combats-lines-record.ts`, P1-12c4; since P1-12d5 the sea lift's lines
   in a battle, `src/engine/units/the-facts-the-sea-lifts-battle-lines-record.ts`, a hero's death's,
   `src/engine/heroes/the-facts-a-heros-death-lines-record.ts`, and the wanderer's escape's,
-  `src/engine/the-facts-the-wanderers-escape-line-records.ts`; since P1-12d6 the Encounter and Defend orders', the order
-  dispatch's, the item orders', the Research and Practice orders' and the Recruit and Hire orders', since P1-12d7
-  the army orders', the realm works' and the war masteries', since P1-12d8 the espionage orders' and the explore and
-  search orders', since P1-12d9 the Cast Spell order's, and since P1-12d10 the move order's, each beside its file in
+  `src/engine/the-facts-the-wanderers-escape-line-records.ts`; the Encounter and Defend orders', the order
+  dispatch's, the item orders', the Research and Practice orders' and the Recruit and Hire orders',
+  the army orders', the realm works' and the war masteries', the espionage orders' and the explore and
+  search orders', the Cast Spell order's, and the move order's, each beside its file in
   `src/engine/orders/`; since P1-12d12 a chase's, `src/engine/heroes/the-facts-a-chases-lines-record.ts`, and a hero's
   experience and hit points', `src/engine/heroes/the-facts-a-heros-experience-lines-record.ts`; since P1-12d13 the title
   intelligence's, `src/engine/titles/the-facts-the-title-intelligence-lines-record.ts`; since P1-12d14 the Defend

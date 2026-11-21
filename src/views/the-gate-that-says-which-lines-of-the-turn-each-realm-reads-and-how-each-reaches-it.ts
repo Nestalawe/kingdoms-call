@@ -13,7 +13,7 @@
 //   told          the line is told to the realm (its audience's realms)
 //   its deed      the realm is its actor
 //   its hero      it is about a hero the realm owns (charId, or one of charIds)
-//   the world     seen by the world, with no province: the whole world is told
+//   the world     seen by the world (which names no province: R-188): the whole world is told
 //   eyes there    seen there, whatever its type, in a province where the realm has eyes at its phase: its own ground, a
 //                 hero of its own standing there that phase, or a spy on it that phase or earlier (R-186)
 //   the battle    an onlooker's one-line summary of a battle (a line seen in the battle marked summary, which no
@@ -22,17 +22,15 @@
 // and a line its audience excepts some realms from never reaches them. A line seen in a battle, whatever its type,
 // reaches only those who fought in it (told, its deed, its hero): seeing it there grants no one else (R-185). A sight
 // there or in a battle names its province (R-187: the event's type refuses one with none); handed one anyway, no
-// realm reads it by its sight. A line seen by the world in a province, which no game writes and no answer covers
-// (question 85), reads as the reports always read it: whoever has eyes there, but a combat line only those who
-// fought. Through perception:
+// realm reads it by its sight. Through perception:
 //   a spy's lingering sight  in a province it spied, from the next phase on: what another realm's heroes do there (a
 //                            line with a deed) or anyone there could see (a line seen by the world, there or in the
 //                            battle), but not a line that excepts it (R-118)
 //   Clairvoyance             every line about the hero it watches (his, or among its heroes), from the phase the watch
 //                            began
 // A line reaches a realm by the first of these that holds. It reads each line's audience, never the stored keys emit
-// derives from it (public, targets, actor, notFor); of the stored line it reads its province, phase, heroes, spy and
-// summary flags, and its type only for a sight of the world in a province.
+// derives from it (public, targets, actor, notFor), and never its type; of the stored line it reads its province,
+// phase, heroes, spy and summary flags.
 import { asItsGuardReadsIt } from '../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theWayALineReachesARealmWhereverItStands } from '../engine/rules-on-plain-values/a-line-told-to-a-realm-or-of-its-own-deed-reaches-it-wherever-it-stands.ts';
 import type { GameState } from '../schemas/saved-game-state.ts';
@@ -190,19 +188,17 @@ export function theLinesOfTheTurnTheRealmReads(
     // 4. Entry attributed to one of this player's own characters (charId or charIds match)
     if (e.charId != null && ownCharIds.has(e.charId)) return 'its hero';
     if (Array.isArray(e.charIds) && e.charIds.some((id) => ownCharIds.has(id))) return 'its hero';
-    // 3. What it is seen by: its audience's sight, whatever its type (R-185, R-186).
+    // 3. What it is seen by: its audience's sight, whatever its type (R-185, R-186, R-188).
     switch (a.seen) {
       case undefined:
         // Everything else: hidden
         return null;
       case 'world':
-        // 3a. WORLD ANNOUNCEMENTS. A line seen by the world with NO province is not something that happened
-        // *somewhere*: it is something the whole world is told: a realm conceding, the Reckoning being called, a claim
-        // collapsing, the crown's price falling, the game being decided and its final standings.
-        if (e.provinceId == null) return 'the world';
-        // Seen by the world in a province: no game writes one and no answer covers it (question 85), so it reads as
-        // the reports always read it, by its type: a combat line as a battle's, any other as a line seen there.
-        return e.type === 'combat' ? theBattlesSummaryOrNothing(e) : eyesThere(e);
+        // 3a. WORLD ANNOUNCEMENTS. A line seen by the world is not something that happened *somewhere*: it is
+        // something the whole world is told: a realm conceding, the Reckoning being called, a claim collapsing, the
+        // crown's price falling, the game being decided and its final standings. It names no province (R-188: the
+        // event's type refuses one); handed one anyway, every realm still reads it.
+        return 'the world';
       case 'there':
         // 2026-09-27 (Toby item 6): a line seen in a province needs EYES THERE at the time: the province is the
         // viewer's own, or one of their characters stood in it that phase, or they spied it that phase or earlier.
