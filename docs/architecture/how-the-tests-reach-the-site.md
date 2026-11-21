@@ -17,7 +17,7 @@
     `DB_VERSION`, the newest migration in `supabase/migrations/`, so pages pass their database version guard. `bootJsdom`'s
     `opts.dbVersion` sets another answer (an older version, `null` for a missing function, `'offline'`, or a
     list used in order) and `opts.dbCalls` records the page's database calls.
-- **`lib/engine.ts`** loads the engine's bundle in Node, for the three tests left on it: `loadEngine({seed})` runs its
+- **`lib/engine.ts`** loads the engine's bundle in Node, for the tests left on it: `loadEngine({seed})` runs its
   bundle (P1-09d: Vite's build of an entry that re-exports the data file and every file under `src/engine/` and
   `src/views/`, in the GM page's order, `tools/pages.ts`'s `engineEntryFiles`) in a bare `vm` context with nothing but
   the seed and `console`, and returns the context, where the bundle's top-level names are the globals. It reads
@@ -26,8 +26,8 @@
   copy's is built the first time a process asks (about a second). Every other test reaches the engine on its modules
   ("The engine's modules", next: P1-14m moved them). The ratchet counts the test files on the loader
   (`vmLoaderTests`), which only falls: `unit/engine-loads` (the bundle loads alone, and the modules hold what it
-  holds), `unit/engine-purity` (a whole game with no screen and no database) and `scenario/pursuit-one-battle` (below: a question for the
-  maintainers, in #691).
+  holds), `unit/engine-purity` (a whole game with no screen and no database) and `scenario/pursuit-one-battle`
+  (below: a question for the maintainers, in #691).
   There the turn is `resolveTurn` (`src/engine/run-turn.ts`, P1-18d): give it the saved state (JSON), the slot rows
   and the turn, and it returns the new state, the GM's log, the Spy-stealth step and `whatTheReportsRead`, which the
   shell calls in that order after the save, then hands what the second returns to the views' `buildReports`
