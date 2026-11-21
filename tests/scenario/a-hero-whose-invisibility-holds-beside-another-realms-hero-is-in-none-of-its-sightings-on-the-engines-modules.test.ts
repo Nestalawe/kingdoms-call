@@ -18,7 +18,7 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // A hero whose Invisibility holds beside another realm's hero is in none of its sightings, on the engine's modules
-// (B-18e, KD-379): in a real turn (`lib/a-staged-turn-on-the-engines-modules.ts`, from `KC_SEED`, a report for every
+// (B-18e): in a real turn (`lib/a-staged-turn-on-the-engines-modules.ts`, from `KC_SEED`, a report for every
 // realm, the turn's events recorded) realm 0's king casts Invisibility in his home province, the cast's rolls chosen,
 // while realm 1's king stands there; the spell holds, realm 1's king still stands with him at the turn's end, and no
 // realm's report breaks a leak check
