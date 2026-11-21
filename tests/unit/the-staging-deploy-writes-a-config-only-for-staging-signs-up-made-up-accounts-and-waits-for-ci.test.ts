@@ -1,4 +1,4 @@
-// The staging deploy's logic (.github/scripts/staging.js), with no GitHub involved: the kc-config.js it writes for the
+// The staging deploy's logic (.github/scripts/staging.ts), with no GitHub involved: the kc-config.js it writes for the
 // staging site, the comments it posts on pull requests, the test accounts it signs up, and its wait for CI. Moved from
 // the old script tests/staging.test.js (P1-14z), check for check.
 // Level 1 (unit): the script's pure functions, and its sign-up and wait on stand-ins for the network and the clock;

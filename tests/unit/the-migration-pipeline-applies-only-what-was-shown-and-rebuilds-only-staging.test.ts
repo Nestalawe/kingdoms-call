@@ -1,4 +1,4 @@
-// The migration pipeline's logic (.github/scripts/migrations.js), with no database or GitHub involved: which changes to
+// The migration pipeline's logic (.github/scripts/migrations.ts), with no database or GitHub involved: which changes to
 // supabase/migrations/ are allowed, what each database gets, what is shown before production is approved, and the
 // staging rebuild. Moved from the old script tests/migrations.test.js (P1-14z), check for check.
 // Level 1 (unit): the script's pure functions on made-up lists, and its staging rebuild run against a stand-in Supabase
@@ -22,8 +22,8 @@ import * as migrations from '../../.github/scripts/migrations.ts';
 
 const { parseNameStatus, classify, mixedChange, planSummary, cliError, resetGuard, connectHint, resetSummary, reset } =
   migrations;
-// The script is plain JavaScript: where TypeScript can't read a function's arguments or answer from it, the test
-// names them here (`as`: the function is the script's own, called as the script's callers call it).
+// The test names some functions' arguments and answers here (`as`: the function is the script's own, called as the
+// script's callers call it). The script's own types would do (KD-421).
 const decide = migrations.decide as (arg: {
   list: { local: string; remote: string; time: string }[];
   expected: string[];

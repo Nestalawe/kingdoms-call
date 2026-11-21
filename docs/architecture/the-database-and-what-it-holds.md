@@ -130,7 +130,7 @@ Each page's version is in its HTML, filled in by `tools/build.ts` after Vite:
 A second copy of the site at <https://kingdoms-call-staging.github.io/>, with its own Supabase project and
 no real players. A pull request labelled `staging` is tested; then the staging database is rebuilt for it
 (emptied, `main`'s migrations, the test accounts, the made-up games of `supabase/seeds/staging.sql`, then the
-pull request's own migrations and the seed again: `.github/scripts/migrations.js reset staging`); then the
+pull request's own migrations and the seed again: `.github/scripts/migrations.ts reset staging`); then the
 site, built from the pull request by a job of its own that may only read, is published there with a `kc-config.js`
 pointing at the staging database (`.github/workflows/staging.yml`: its `build` job, then its `staging` job). One pull request is on staging at a time, and its PR comment says so;
 merging changes nothing there. That `kc-config.js` also carries `deployed: {pr, sha}`, so every page's

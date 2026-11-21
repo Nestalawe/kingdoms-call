@@ -53,7 +53,7 @@ refuses it); every migration has pgTAP tests.
    (`ON CONFLICT DO NOTHING`). Then label the pull request `staging` and try it there before merging.
 
 **Rules for `migrations/`.** CI's `db` job refuses a pull request that breaks the first two
-(`.github/scripts/migrations.js pr-check`):
+(`.github/scripts/migrations.ts pr-check`):
 - **A migration never changes once it's merged:** no edits or renames. It may already be applied. To change
   or undo it, write a new migration. That's also how a rollback is applied: forward. The one exception:
   withdrawing a migration that production rejected, by deleting its file (CI warns; if it was applied after
@@ -152,7 +152,7 @@ records the baseline as applied without running it: the live structure is the ba
 with no history and no game tables is refused: the pipeline never builds one from nothing.
 
 **Staging's database** is never migrated by this pipeline: it's emptied and rebuilt for each pull request put
-on it (`.github/scripts/migrations.js reset staging`), so it can hold an unmerged pull request's migrations.
+on it (`.github/scripts/migrations.ts reset staging`), so it can hold an unmerged pull request's migrations.
 Nobody applies a migration by hand.
 
 ## Break-glass: the one exception

@@ -1,5 +1,5 @@
 // A pull request that changes a path listed in .github/dangerous-paths gets one warning comment asking to talk the
-// change through before merging (.github/scripts/dangerous-paths.js, decision D-07). It never blocks. Moved from the old
+// change through before merging (.github/scripts/dangerous-paths.ts, decision D-07). It never blocks. Moved from the old
 // script tests/dangerous-paths.test.js (P1-14z), check for check.
 // Level 1 (unit): the script's pure functions, on made-up file lists and on the real paths file; nothing reaches
 // GitHub. Static can't: it runs code.
@@ -36,7 +36,7 @@ function theRealPathsFilesGlobs(): string[] {
   return globs;
 }
 
-/** The script is plain JavaScript, so its lists come untyped: each must be a list of strings. */
+/** The list, checked to be a list of strings as the test reads it (KD-421: the typed script makes it so). */
 function theStringsIn(list: unknown): string[] {
   if (!Array.isArray(list) || !list.every((x) => typeof x === 'string'))
     throw new Error(`not a list of strings: ${JSON.stringify(list)}`);

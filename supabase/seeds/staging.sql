@@ -5,7 +5,7 @@
 -- file), and again after the pull request's own migrations (its copy). So it must be idempotent: a second
 -- run changes nothing. A pull request that adds a table adds its made-up rows here.
 --
--- The test accounts (.github/scripts/staging-seed.js, TEST_ACCOUNTS) sign up through the site's own sign-up,
+-- The test accounts (.github/scripts/staging.ts, TEST_ACCOUNTS) sign up through the site's own sign-up,
 -- so their profiles come from the sign-up trigger. Their password is the staging environment's
 -- STAGING_TEST_PASSWORD secret. Rows below find them by email; a missing account skips its rows.
 --

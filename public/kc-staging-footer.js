@@ -1,6 +1,6 @@
 // Kingdoms Call: on the staging site, says which pull request and commit this copy is (P0-33), as
 // "Staging · PR #21 · abcdef1", linking to the pull request. Reads KC_CONFIG.deployed, which only the
-// staging kc-config.js has (.github/scripts/staging.js writes it), so the live site shows nothing.
+// staging kc-config.js has (.github/scripts/staging.ts writes it), so the live site shows nothing.
 // On a page that uses the database it adds " · database <version>" once the version guard (src/db/kc-db-guard.ts,
 // P0-34) has read it: before this script runs (<html data-kc-db>) or after (the "kc-db-version" event).
 // Loaded at the end of <body>, after kc-config.js. Adds no global names (every page's top-level names
