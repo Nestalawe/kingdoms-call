@@ -72,7 +72,7 @@ interface Resolved {
   state: string;
   log: Line[];
   spyStealthAndInvisibilityStampedForTheReports(): void;
-  whatTheReportsRead(): { turnLog: LogLine[]; sight: Pick<TheTurnsSight, 'presenceByPhase' | 'clairWatch'> };
+  whatTheReportsRead(): { turnLog: LogLine[]; sight: TheTurnsSight };
 }
 /** What the views' buildReports returns. */
 interface Built {

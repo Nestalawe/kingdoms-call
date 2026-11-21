@@ -2,9 +2,9 @@
 // public half of the line, and every realm's report passes the leak check (tests/lib/report-leaks.ts), the audience
 // check among them, on the engine's modules. The public half of a line with two audiences (logSplit,
 // src/engine/turn/events-and-their-audiences.ts) is seen there: whoever has eyes in the province reads it, the druid's
-// own realm excepted (it reads its own private half). The leak check's audience check reads each line's whole audience
-// as emit kept it in memory (`r.perception`, B-18b), so a fault in that audience (the public half seen only in a
-// battle, say) shows here, where no matrix game need cast it.
+// own realm excepted (it reads its own private half). A fault in that audience (the public half seen only in a battle,
+// say) hides the line from realm 1, which this test reads, where no matrix game need cast it: the audience check asks
+// the same gate the reports do (B-18g), so it can't see a line go missing.
 //
 // Level 2 (scenario): the audience check reads a whole turn's reports against the audiences of its lines; only a turn
 // played with its reports joins the two. The turn is certain on every world: the druid is realm 0's king in his home
