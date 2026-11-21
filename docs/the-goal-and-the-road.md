@@ -85,7 +85,7 @@ the module it changes.
 | The balance matrix and the invariants run on every engine pull request; the nightly run exists; `KNOWN_BREACHES` is empty | Met |
 | Every report line goes through `emit` and the perception pass; `playerView` exists | Met |
 | No content effect is checked by name outside the registry | Met for every content family; the alignments' checks by name (the ratchet counts them) move with "every rule into the registry" |
-| No copy of a rule is left in the player portal; a maintainer ruled each disagreement | Met as far as the checks find: the copies file is retired; its rest (P1-11z) is still open |
+| No copy of a rule is left in the player portal; a maintainer ruled each disagreement | Met: the pins that stay are forecast limits the rulings accept (R-128, R-134); the used Stone waits on KD-047; the known defects KD-140, KD-142, KD-151, KD-153 and KD-420 are fixes to come |
 | All code is TypeScript; the engine side is strict; database access is typed | Not yet met: every test is TypeScript (P1-14z); the CI scripts in `.github/scripts/` are still JavaScript (B-16); `eslint.config.js` counts as config and stays JavaScript (a maintainer's choice); lint refuses `@ts-nocheck` in every TypeScript file |
 | No known import-rule violation and no unused code; no ESLint suppression on the engine side | Not yet met: the ratchet still counts known violations and unused code, and `src/engine/` and `src/views/` still hold suppressions |
 | No hand-typed stamps; hashed assets; the version banner works | Met |
