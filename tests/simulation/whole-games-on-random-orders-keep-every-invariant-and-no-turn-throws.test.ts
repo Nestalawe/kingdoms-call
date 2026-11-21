@@ -1,7 +1,7 @@
 // The engine's fuzz (2026-09-27): whole games played turn by turn, with random orders for the human-held realms and
 // the bots playing the rest. No turn may throw or write to the error console, and every turn keeps the invariants
 // (tests/lib/invariants.ts, plan P1-04b) and passes the report-leak check (tests/lib/report-leaks.ts) on the human
-// realms' reports.
+// realms' reports, its audience check among them (the turn's events recorded, B-18b).
 //
 // Level 3 (simulation): it plays whole seeded games, as the shell plays them (resolveTurn, then the reports), on the
 // engine's modules imported directly (tests/lib/a-staged-turn-on-the-engines-modules.ts's play), and the faults it looks
@@ -65,6 +65,8 @@ let ordersGiven = 0;
 beforeAll(
   async () => {
     const sc = await aStagedTurnOnTheEnginesModules({ seed: SEED });
+    // each turn's events with their audiences, so the leak check's audience check runs (played.perception)
+    sc.recordTheEvents();
     // the same fresh modules the turns play on
     const { generateNewGame } = await import('../../src/engine/world/generate.ts');
     const { kcRngStream } = await import('../../src/engine/rng.ts');
@@ -175,6 +177,7 @@ beforeAll(
             // the shell's (see the header)
             players: [],
             reports: Object.entries(played.reports).map(([realm, report]) => ({ realm: Number(realm), report })),
+            ...(played.perception ? { perception: played.perception } : {}),
           });
           if (broke.length) breaches.push(describeBreaches(where, broke));
           state = JSON.stringify(played.S2);

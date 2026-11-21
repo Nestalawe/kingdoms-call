@@ -113,10 +113,10 @@
   too (an all-bot game writes no report otherwise: `simulation/every-realms-report-…`). Its `log` (and `text()`) is the GM's
   log in words, as the views write it for the shell to save (`buildReports`' `gmLog`, P1-12c3), and so is
   `lib/a-staged-turn-on-the-engines-modules.ts`' and the turn's board's `lines()`: a typed
-  line has no words in the engine's own log. `recordTheEvents()` has
-  `play` return `perception` too: each event as it was emitted (its audience, the phase and hero its line was filed
-  under, whether it named that hero, and the realm he served then: P1-12c1; `emit` stood in), with its line's words as
-  the views wrote them (a battle's tally place left empty is no event: P1-12c3), and the turn's sight, for the leak check's audience check (`every-realm`, `simulation/every-realms-report-…`). Its `W` is the engine's global scope,
+  line has no words in the engine's own log. In either harness, `recordTheEvents()` has
+  `play` return `perception` too: each event as its line keeps it in memory (its whole audience, the phase and hero it
+  was filed under, whether it named that hero, and the realm he served then: P1-12c1, B-18b; nothing stood in), with its
+  line's words as the views wrote them (a battle's tally place left empty is no event: P1-12c3), and the turn's sight, for the leak check's audience check. Its `W` is the engine's global scope,
   where a top-level function can be stood in for the turn (`W.pursuitCatchChance = …`): `scenario/pursuit-one-battle`
   plays here, as its certain catch reaches a call no spy reaches and no staging can make (Spy counts to 5, so 95%).
 - **A page's own names**: its scripts are modules, so in a browser a test reaches only what the page
@@ -181,7 +181,7 @@
     battle's lines to those told; a spy's lingering sight (R-118: in a province it spied, from the next phase, a deed or
     what anyone there could see, never a kind for one realm alone or a line that excepts it); Clairvoyance (the watched hero's events from the watch's phase, and where he ends the turn); an unmet
     realm's name read as "an unknown realm". It runs only where the harness records the turn's events
-    (`Turn.perception`: the matrix's every-realm half, and `simulation/every-realms-report-…` since P1-21b). A line of a spied province
+    (`Turn.perception`: the matrix's every-realm half, `simulation/every-realms-report-…`, the turn fuzz and a staged grove). A line of a spied province
     that its audience keeps from the spy reads "through its spy";
   - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
     (`KINDS_FOR_ONE_REALM_ALONE`, the check's own list: a hero's hit-point rise in a fight, the surgeons' word to a
@@ -190,7 +190,7 @@
     whatever audience the engine gave it (the recorder notes each event's kind and the realm its fact names).
     Clairvoyance's lines are allowed. It runs where the harness records the turn's events.
 
-  What they can't see yet: in a harness that doesn't record the events (the turn fuzz, the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
+  What they can't see yet: in a harness that doesn't record the events (the page's matrix), a private line not on the list (a skill rise, say); whether the engine gave an event the right
   audience, but for the kinds for one realm alone (the audience check takes it as given: every realm's report against its baseline sees a change); the
   portal's name tables (`LOOKUP_TABLES`, for colouring names; until P2-06 trims a report to its reader); Spy stealth and the spotting roll in your own land (only Invisibility is checked); a name two heroes share.
   They read only the reports a harness has: the turn fuzz's human realms, the matrix's scripted realm, every realm in

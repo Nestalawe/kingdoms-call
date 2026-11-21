@@ -14,6 +14,8 @@
 //
 // Test code until P1-18's turn shell runs these checks; then it moves into src/. invariants.ts imports it, so it is
 // an engine path (tools/balance/engine-paths.ts).
+import type { LogLine } from '../../src/engine/turn/events-and-their-audiences.ts';
+import type { TheTurnsSight } from '../../src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts';
 import type { Character, SavedState, Turn } from './invariants.ts';
 
 /** A line that is one realm's own business. `line` names the hero whose realm it belongs to (group `hero`); a line
@@ -307,9 +309,10 @@ function unseenHeroes(t: Turn): string[] {
   });
 }
 
-/** An event as the turn emitted it (TurnEvent, src/engine/turn/events-and-their-audiences.ts), as scenarioInTheVm's
- *  recordTheEvents notes it: its audience as given, the phase and the hero its line was filed under, and whether the
- *  event named that hero (else emit filed it under the hero whose order was resolving, or under none). */
+/** An event as the turn emitted it (TurnEvent, src/engine/turn/events-and-their-audiences.ts), as its line in the
+ *  engine's log keeps it until the reports are built (perceptionOfTheTurn): its audience as given, the phase and the
+ *  hero its line was filed under, and whether the event named that hero (else emit filed it under the hero whose order
+ *  was resolving, or under none). */
 export interface EventAsEmitted {
   type?: unknown;
   text?: unknown;
@@ -325,7 +328,8 @@ export interface EventAsEmitted {
   /** The event named its hero by his id (a number), not as the hero whose order is resolving (emit works that one
    *  out). */
   heroNamed: boolean;
-  /** The realm the hero it was filed under served as the line was written (null: none, or no hero). */
+  /** The realm the hero it was filed under served as the line was written, when the event didn't name him (null:
+   *  none, no hero, or a hero the event named, whose realm the audience check doesn't read). */
   heroRealmThen: unknown;
   heroes: unknown[] | null;
   spy: boolean;
@@ -341,6 +345,46 @@ export interface Perception {
   presence: { phase: unknown; province: unknown; realms: unknown[] }[];
   /** Each realm's Clairvoyance watch, by realm: the hero, and the phase it began. */
   clairvoyance: Record<string, { charId?: unknown; fromPhase?: unknown } | undefined>;
+}
+
+/** What perception read besides the world, from what the turn hands over for the reports (whatTheReportsRead): each
+ *  line of the engine's log as emit filed it, with its whole audience, its fact and, filed under the hero whose order
+ *  was resolving, the realm he served then (kept on the line until the reports are built, never stored: B-18a,
+ *  B-18b), and the turn's sight; with each line's words as the views wrote them (theTurnsLinesInWords'
+ *  wordsOfEachLine: a battle's tally place left empty is no line, P1-12c3). A line with no audience didn't come through
+ *  emit: it throws. Values made in the engine's vm read the same, but they are its own: copy the result as JSON. */
+export function perceptionOfTheTurn(
+  turnLog: readonly LogLine[],
+  wordsOfEachLine: readonly (string | null)[],
+  sight: Pick<TheTurnsSight, 'presenceByPhase' | 'clairWatch'>,
+): Perception {
+  const events = turnLog.flatMap((line, at): EventAsEmitted[] => {
+    const { audience, fact } = line;
+    if (audience === undefined) throw new Error(`line ${String(at)} of the turn's log didn't come through emit`);
+    const text = wordsOfEachLine[at] ?? null;
+    if (text === null) return [];
+    const resolvingHerosRealm = line.theRealmTheHeroWhoseOrderWasResolvingServed;
+    return [
+      {
+        type: line.type,
+        text,
+        audience: { ...audience },
+        province: line.provinceId,
+        phase: line.phase,
+        hero: line.charId,
+        heroNamed: line.charId !== null && resolvingHerosRealm === undefined,
+        heroRealmThen: resolvingHerosRealm ?? null,
+        heroes: line.charIds,
+        spy: line.spy,
+        kind: fact?.kind ?? null,
+        factsRealm: (fact !== undefined && 'realm' in fact ? fact.realm : null) ?? null,
+      },
+    ];
+  });
+  const presence = sight.presenceByPhase.flatMap((byProvince, phase) =>
+    [...byProvince].map(([province, who]) => ({ phase, province, realms: [...who] })),
+  );
+  return { events, presence, clairvoyance: sight.clairWatch };
 }
 
 /** A realm's name, made nameless as a reader who hasn't met it reads it, in a line it is no party to (R-046). */

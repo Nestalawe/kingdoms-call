@@ -51,14 +51,15 @@ check finds were made.
   `src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts`): each line with
   how it reaches the realm, a type only it makes. `playerEvents` takes every line from it; a lint rule refuses another
   read of the log in `src/views/`. A line keeps its whole `audience` beside its fact until the words pass, which stores
-  neither and hands it beside each stored line.
+  neither and hands it beside each stored line; filed under the hero whose order was resolving, it keeps the realm he
+  served then too, for the leak check (B-18b).
 - **A line handed to a helper is an event but its words.** A helper that writes a line for its caller (`logSplit`,
   `reportHeroFall`, the skill rises held back in `_deferredSkillLogs`) takes the line's place as `EventButItsWords`
   (the event without its type and fact: `{ audience, province, hero, phase, … }`), and files it with
   `emit(turnContext, { type, fact, ...place })`. `reportHeroFall` takes the line as a fact, as `notifyTarget` does
-  (since P1-12d11: one kind, "a hero is slain outside a battle", the way he fell a value, `how`, one for each of its 12
+  (one kind, "a hero is slain outside a battle", the way he fell a value, `how`, one for each of its 12
   callers), and who slew a hero is a record (`TheOneWhoSlewAHero`: a killer's name, or a lair's guardian and its
-  province), not words. The skill rises held back (`_deferredSkillLogs`) hold their facts (since P1-12d12: a hero's
+  province), not words. The skill rises held back (`_deferredSkillLogs`) hold their facts (a hero's
   experience lines' kinds) until `writeDeferredSkillLines` files each. What `notifyTarget` and `notifyProvinceOwner`
   are handed, and each half `logSplit` is handed, is a fact too, filed as `fact: line`. Build it as the event's own
   fields, never as the old `log()` meta
@@ -120,7 +121,7 @@ check finds were made.
   `src/views/prose/` writes their words after the turn, one module per area (a new area adds its facts to `LineFact`'s
   list, its audience table to the route in `the-words-of-each-line.ts` and its own words module), a `switch` over the
   kinds with a `never` default: a new kind with no words doesn't compile there. TypeScript can't reduce the union of
-  every kind (over a thousand since P1-12d12): `||`, `??` or `?:` on a `NarrativeLine` makes it try, and fails with
+  every kind (over a thousand): `||`, `??` or `?:` on a `NarrativeLine` makes it try, and fails with
   TS2590 ("too complex to represent"); read such a value with an `if` (as `emitBattle` reads its summary line). `forceMarker` returns its fact, and `narrate` takes it as it
   takes words. **`src/engine/battle/` and `src/engine/personal-combat/` write no line's words**: a new line
   there is a new kind (its words in `src/views/prose/`), or a field of one where the words are a fragment (P1-12d moves
@@ -162,7 +163,7 @@ check finds were made.
   P1-12d3): the views drawing their own would move every draw after it. The table of words moves to the prose, and its
   length is pinned to the engine's count (`satisfies { length: … }`), so the two can't drift apart. The static test
   `a-lines-facts-hold-values-not-words` refuses a field holding words in an area its list names, but the slugs it
-  lists (no label since P1-12d29); a facts module's kinds include the
+  lists (no label); a facts module's kinds include the
   kinds of the records its facts hold (why a unit stands or faces as it does, a ladder's modifiers: P1-12d4), so a
   record's literal is read too. **The engine reads no word it wrote:** a choice made on a line's words (the faced
   clause once read the facing's "empty column") is made on the record's kind. It can't see words handed in through a
@@ -187,7 +188,7 @@ check finds were made.
   Since P1-12d25 a personal combat's fighter is a record (`AFighterOfAPersonalCombat`: his name, and whether he is a
   guardian, "the Barrow Wight"), a realm's tag is the realm's name (`theRealmsTag` writes " (Westmarch)"), and a unit a
   battle's line names is a record (`AUnitAsALineNamesIt`: its owner as a side or the defenders, its name, type and
-  quality, and the form: `unitRef`'s, `ownedUnitName`'s (the prose's, since P1-13g), or its name alone). Since P1-12d26 a battle's outcome is two
+  quality, and the form: `unitRef`'s, `ownedUnitName`'s (the prose's), or its name alone). Since P1-12d26 a battle's outcome is two
   kinds, merged by sense within one audience: `a battle is decided` (the fight's: which battle, the sides, the winner's
   role and what becomes of the province, as slugs; a head line rewritten in place when the beaten side holds the field
   sets that value) and `a contest for a province is decided` (its event's: a newly gathered host's or a stalled
@@ -210,7 +211,7 @@ check finds were made.
   (`ASideOfABattle`). Since P1-12d32 the sea lift's lines (the naval split, the sea trap) take that side too, and the
   hulls' hold its claimant as a realm's name or a side; no helper takes a side's words any more. The compiler refuses
   words there from a typed caller. Nothing in the matrix sees a fact holding a live part on a path played the same either way: a copy that
-  freezes each fact as it is told (a throwaway script, P1-12d's scoping) makes the engine's next write to it throw. So **the engine's log holds no words for a
+  freezes each fact as it is told makes the engine's next write to it throw. So **the engine's log holds no words for a
   typed line** (its `text` is `null`, its `fact` last): read a
   line's words from the GM's log in words (`theTurnsLinesInWords(turnLog).gmLog`, `src/views/prose/the-words-of-each-
   line.ts`), never from `resolveTurn`'s `log` or `turnContext.turnLog`. `buildReports` writes them before it picks any

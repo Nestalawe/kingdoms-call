@@ -372,6 +372,7 @@ CI's `db` job, not by `npm test`.
 
 - `tests/scenario/a-defend-order-is-done-once-it-has-brought-its-general-to-battle.test.ts` (scenario): A Defend order is done once its general has fought: no later ride-out without a fresh order, and the battle season's order doesn't set the watch again; a fresh order for a later season does
 - `tests/scenario/a-general-on-defend-who-leads-ships-never-rides-overland.test.ts` (scenario): A general on Defend whose column has ships never rides overland to a land neighbour, whether the enemy marches in or already stands there; he ends the turn where he began
+- `tests/scenario/a-grove-awakened-before-another-realms-hero-passes-the-leak-check-on-the-engines-modules.test.ts` (scenario): B-18b: on the modules (`KC_SEED`), a king awakens his home's grove before another realm's king: that realm reads the onlookers' line; no report breaks a leak check
 - `tests/scenario/a-hero-pulled-into-a-friends-assault-still-has-a-line-in-every-season.test.ts` (scenario): A hero pulled into a friend's Fall assault on a guarded province (Contingent unify) has a Fall line saying he joined; every living hero of the realm has a line in each season of its report
 - `tests/scenario/a-line-for-the-gm-alone-reaches-no-realm.test.ts` (scenario): A line for the GM alone reaches no realm: in a real turn (`lib/a-staged-turn-on-the-engines-modules.ts`, from `KC_SEED`, a report for every realm) a king works the Philosopher's Stone (as an older save holds it) …
 - `tests/scenario/a-province-battles-lines-name-whom-each-company-fought.test.ts` (scenario): A whole turn: a province battle's casualty lines name whom each company fought (one attacking company sure to fall), a beaten guard's survivors name who beat them, the tally counts each side's own losses
@@ -423,7 +424,7 @@ CI's `db` job, not by `npm test`.
 - `tests/simulation/no-province-of-a-new-world-holds-two-lairs-of-one-name-or-two-of-one-guardian.test.ts` (simulation): R-108: five worlds on the modules, 2 to 10 realms: no province holds two lairs of one base name ("Wolf Den" / "Wolf Den of Karnholt") or two of one guardian
 - `tests/simulation/no-two-lairs-near-each-other-hold-an-item-with-the-same-effect-on-any-map-size.test.ts` (simulation): R-052: five worlds on the modules: each lair holds one item of its guardian's tier; no two within 1 province (3 on maps of up to 4 realms) hold the same effect
 - `tests/simulation/whole-all-bot-games-pay-whole-wages-and-no-realms-titles-name-a-realm-it-has-not-met.test.ts` (simulation): All-bot games on the modules (`KC_SEED`): no turn throws; wages and the Orcish discount whole, not below 0; titles name no unmet realm or hero (R-046). 3 × 10 turns
-- `tests/simulation/whole-games-on-random-orders-keep-every-invariant-and-no-turn-throws.test.ts` (simulation): Whole games on the modules, random orders (`KC_SEED`): no turn throws, every turn keeps the invariants and the leak check (the orders flag: `page/turn-shell`). 4 × 6 turns
+- `tests/simulation/whole-games-on-random-orders-keep-every-invariant-and-no-turn-throws.test.ts` (simulation): Whole games on the modules, random orders (`KC_SEED`): no turn throws, every turn keeps the invariants and the leak check, its audience check too (orders flag: `page/turn-shell`). 4 × 6
 
 ## Page (level 4)
 

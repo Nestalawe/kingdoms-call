@@ -78,7 +78,7 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   a report for every realm every turn, bots' too (`lib/scenario-in-the-vm.ts`'s `reportEveryRealm`: built from copies
   of the slot rows, after the turn is saved). It checks that each turn's saved state hashes as the page's did (the
   turns are untouched), runs the leak checks on every realm's report (the audience check among them, on the turn's
-  events, recorded as they are emitted: `recordTheEvents`, P1-12b3), and hashes each report, play and words apart,
+  events, as their lines keep them in memory: `recordTheEvents`, P1-12b3, B-18b), and hashes each report, play and words apart,
   against `balance/baseline/reports.json` (both sets: about 5,800 reports a set). A difference names the game, the
   first turn, the realms and the report sections. It reads `src/`, so with `KC_SITE` it isn't played: its fail-first
   proof is a planted copy of the branch. `--out FILE` writes its run beside FILE (`every-realm.json`), and the balance
