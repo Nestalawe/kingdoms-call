@@ -121,7 +121,7 @@ function theTurnsLines(lines: ALineToFile[]) {
 /** The words a line is written in, for its hero's name. */
 const inWords = (name: string) => `${name} was hired this phase and will be ready to act from the next phase.`;
 /** The name a line's words stand for (above). */
-const nameOf = ({ line }: ALineTheRealmReads) => String(line.text).replace(/ was hired this phase.*$/, '');
+const nameOf = ({ line }: ALineTheRealmReads) => String(line.text).split(' was hired this phase')[0];
 
 /** What a realm reads in its chronicle: each line's name and how it reaches the realm, in the log's order. */
 function theChronicle(lines: ALineToFile[], realm: number, sight = aSight(), log?: ALineAsTheGateReadsIt[]) {
