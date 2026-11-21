@@ -282,3 +282,4 @@ re-planned in B-09.
 - B-15: #640 Tier 0 leaves the matrix to CI
 - B-16: #700, #701 The three CI scripts in TypeScript; the workflows run them, and the JavaScript goes
 - B-18: #702, #703, #705, #706, #707, #708, #709 The audience gate: one place decides which lines each realm reads; the reports and the leak check ask it
+- B-19: #710 The kind decides its audience: a line for one realm alone compiles only told to that realm
