@@ -7,15 +7,19 @@
 //   (theLinesOfTheTurnTheRealmReads, src/views/) by the way its part of the report needs; the check asks the gate and
 //   keeps no audience model of its own (linesTheirAudienceDoesNotAdmit); where the harness records the turn's events
 //   (Turn.perception);
-// - a line for one realm alone (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
-//   (KINDS_FOR_ONE_REALM_ALONE, this check's own list) is read by another realm, whatever audience the engine gave it;
-//   where the harness records the turn's events.
+// - a line for one realm alone (P1-12c4, P1-12's Decision 6): a line of a kind whose audience, in the engine's table,
+//   is one realm's alone (THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE, B-19) is read by another realm, whatever
+//   audience the engine gave it; where the harness records the turn's events.
 // The first three read the report's text and today's state and log metadata (an entry's actor and targets); what they
 // can't see yet is in docs/architecture/how-the-tests-reach-the-site.md.
 //
 // Test code until P1-18's turn shell runs these checks; then it moves into src/. invariants.ts imports it, so it is
 // an engine path (tools/balance/engine-paths.ts).
-import type { LineAudience, LogLine } from '../../src/engine/turn/events-and-their-audiences.ts';
+import {
+  THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE,
+  type LineAudience,
+  type LogLine,
+} from '../../src/engine/turn/events-and-their-audiences.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import {
   theLinesOfTheTurnTheRealmReads,
@@ -41,17 +45,6 @@ export const PRIVATE_LINES: readonly { name: string; line: RegExp; inASpysFeedTo
   },
   { name: 'Phantasmal Armies', line: /✨ (?<hero>.+?) conjures phantasmal duplicates/ },
   { name: 'Phantom Host', line: /✨ (?<hero>.+?) conjures a Phantom Host/ },
-];
-
-/** The kinds of line that are one realm's alone (P1-12c4, P1-12's Decision 6; R-117; R-118), listed here apart from
- *  the engine's audience of each kind: a hero's hit-point rise in a fight, the surgeons' word to a fallen duellist's
- *  own realm, a hero's maximum-HP rise outside a fight, and a hero hardened after a fight outside one. Each names its
- *  realm (its fact's `realm`). */
-export const KINDS_FOR_ONE_REALM_ALONE: readonly string[] = [
-  "a hero's hit points rise in a fight, for his realm alone",
-  'the surgeons reach a fallen duellist too late, for his realm alone',
-  "a hero's maximum hit points rise as the phase ends",
-  'a hero is hardened after a fight',
 ];
 
 /** A chronicle line scried by Clairvoyance starts with this. The rulebook gives the caster everything that happens to
@@ -325,7 +318,7 @@ export interface EventAsEmitted {
   audience: LineAudience;
   /** The kind of fact its line records (null: a line written with its words). */
   kind: unknown;
-  /** The realm its fact names (a line for one realm alone: KINDS_FOR_ONE_REALM_ALONE), else null. */
+  /** The realm its fact names (a line for one realm alone: THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE), else null. */
   factsRealm: unknown;
 }
 /** What perception read besides the world: the turn's events, and its sight (resolveTurn's whatTheReportsRead). */
@@ -505,12 +498,12 @@ function linesTheirAudienceDoesNotAdmit(t: Turn): string[] {
   });
 }
 
-/** No realm reads a line of a kind that is another realm's alone (KINDS_FOR_ONE_REALM_ALONE): such a line is read by
- *  the realm its fact names, or one the hero it is filed under served this turn (realmsServed: he joined it, or a Charm
- *  lent him to it), and by no other, whatever audience the engine gave it, so a line of one given the fight's audience
- *  shows (which the audience check, taking the audience as given, lets through). A line a realm reads (the chronicle,
- *  province events, spy activity: LINES) whose every event of the turn with its words and phase is of such a kind for
- *  other realms is a breach. Clairvoyance's lines are let through (CLAIRVOYANCE). Runs where the harness records the
+/** No realm reads a line of a kind that is another realm's alone (its audience in the engine's table:
+ *  THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE): such a line is read by the realm its fact names, or one the hero it
+ *  is filed under served this turn (realmsServed: he joined it, or a Charm lent him to it), and by no other, whatever
+ *  audience the engine gave it, so a line of one given the fight's audience shows (which the audience check, taking
+ *  the audience as given, lets through). A line a realm reads (the chronicle, province events, spy activity: LINES)
+ *  whose every event of the turn with its words and phase is of such a kind for other realms is a breach. Clairvoyance's lines are let through (CLAIRVOYANCE). Runs where the harness records the
  *  turn's events (Turn.perception). */
 function linesForOneRealmAloneReadByAnother(t: Turn): string[] {
   const p = t.perception;
@@ -522,7 +515,7 @@ function linesForOneRealmAloneReadByAnother(t: Turn): string[] {
     const k = key(phaseOf(e.line.phase), e.line.text);
     byLine.set(k, [...(byLine.get(k) ?? []), e]);
   }
-  const forOneRealm = (e: EventAsEmitted) => KINDS_FOR_ONE_REALM_ALONE.includes(String(e.kind));
+  const forOneRealm = (e: EventAsEmitted) => THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE.includes(String(e.kind));
   /** Whether `realm` may read the line of `e`: the realm its fact names, or one its hero served this turn. */
   const itsOwn = (e: EventAsEmitted, realm: number) => {
     if (e.factsRealm === realm) return true;

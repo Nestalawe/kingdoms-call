@@ -29,7 +29,7 @@
 // realm"); with no events recorded it checks nothing; a spy's lingering sight (R-118) gives a rival's deed there, never
 // his realm's news or a line that excepts the reader, and a kind for one realm alone given a deed breaks the check of
 // a line for one realm alone. The check of a line for one realm alone (P1-12c4, P1-12's Decision 6; R-117, R-118) on the
-// same turn: its own list names the four kinds; read by its own
+// same turn: it reads the four kinds the engine's table gives one realm alone (B-19); read by its own
 // realm, no breach; planted, each breaks it alone (the surgeons' word given the battle's audience and read across the
 // field, which the audience check admits; given the world, in province events; a maximum-HP rise outside a fight seen
 // there, read by the province's owner; in another realm's spy feed); let through: Clairvoyance, the same words from a
@@ -38,13 +38,8 @@
 // audience check, since P1-12b3) run them over games. TypeScript, in `unit/`
 import { describe, expect, test } from 'vitest';
 import { checkLeaks, checkTurn, type SavedState, type Turn } from '../lib/invariants.ts';
-import {
-  KINDS_FOR_ONE_REALM_ALONE,
-  LEAK_CHECKS,
-  type EventAsEmitted,
-  type Perception,
-  type RealmReport,
-} from '../lib/report-leaks.ts';
+import { THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE } from '../../src/engine/turn/events-and-their-audiences.ts';
+import { LEAK_CHECKS, type EventAsEmitted, type Perception, type RealmReport } from '../lib/report-leaks.ts';
 
 // Three realms. Ashmark (0) and Brightvale (1) have met; neither has met Coldharbour (2), whose hero Corin cast
 // Invisibility in phase 1 of the turn just played (turn 7: the state after it is turn 8). Ashmark and Brightvale have
@@ -879,12 +874,12 @@ const rises = (audience: EventAsEmitted['audience']) =>
   });
 
 describe('a line for one realm alone is read by that realm and no other', () => {
-  test('its own list names the four kinds for one realm alone', () => {
-    expect(KINDS_FOR_ONE_REALM_ALONE).toEqual([
+  test("it reads the four kinds the engine's table gives one realm alone (B-19)", () => {
+    expect(THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE).toEqual([
       "a hero's hit points rise in a fight, for his realm alone",
       'the surgeons reach a fallen duellist too late, for his realm alone',
-      "a hero's maximum hit points rise as the phase ends",
       'a hero is hardened after a fight',
+      "a hero's maximum hit points rise as the phase ends",
     ]);
   });
 

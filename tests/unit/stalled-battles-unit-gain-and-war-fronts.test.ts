@@ -681,7 +681,7 @@ describe('every hero’s maximum HP kept in step (syncAllMaxHp)', () => {
   );
 
   // R-117 (Toby, 2026-10-31): a rise is his own realm's alone, told to it (no deed, no sight), in a province or in none,
-  // and its fact names that realm (the leak check's KINDS_FOR_ONE_REALM_ALONE reads it).
+  // and its fact names that realm (the leak check's "a line for one realm alone" reads it).
   test.each([
     ['in a province', true],
     ['in no province', false],
