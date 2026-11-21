@@ -58,20 +58,14 @@ here: each row is placed by [the default order](../ways-of-working/ordering-the-
 of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
 T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
-[the finished list](finished-steps-p1-13-to-p1-25.md). The tranche "Phase 1's rest" is done too: P1-11z and B-16 are
-in the finished lists.
+[the finished list](finished-steps-p1-13-to-p1-25.md). The tranches "Phase 1's rest" and "The reports' audience in one
+place" are done too: P1-11z, B-16, B-18 and B-19 are in the finished lists.
 
-### 1. The reports' audience in one place
-
-| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
-|---|---|---|---|---|---|---|---|---|
-| B-19 | The kind decides its audience: `emit` typed by the kind of fact, so a line whose kind is its hero's realm's alone type-checks only with that realm's audience; the leak check's own list of those kinds goes. After B-18 | The maintainers: a wrong audience fails to compile, not in a nightly game | The ground for the redesign | Small | – | ⬜ | | B-18's follow-up, mostly types: before T7 moves the rules and their lines |
-
-### 2. T7, the rules pulled out
+### 1. T7, the rules pulled out
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| B-06 | The rules pulled out: each family of rules counted and moved into the content, each with its bot valuation hook | The maintainers: a redesign item becomes a content change | The ground for the redesign | Large | – | ⬜ | | T7, the next tranche after Phase 1's rest: a redesign item becomes a content change |
+| B-06 | The rules pulled out: each family of rules counted and moved into the content, each with its bot valuation hook | The maintainers: a redesign item becomes a content change | The ground for the redesign | Large | – | ⬜ | | T7, the next tranche after the reports' audience: a redesign item becomes a content change |
 
 ## Not yet assessed
 

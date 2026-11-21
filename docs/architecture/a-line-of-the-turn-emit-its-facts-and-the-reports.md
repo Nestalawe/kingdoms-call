@@ -29,12 +29,13 @@ check finds were made.
   Two kinds are for one realm alone: a hero's hit-point rise in a
   fight (`awardHpRoll`'s line) and the surgeons' word to a fallen duellist's own realm (`preBattleDuel`); each names its
   `realm` (and the rise its `hero`), and `emitNarrLine` files it told to that realm alone, with no heroes, under its
-  hero (else the fight's). A new line the man across the field must not read is a new kind of that audience, and the
-  leak check's own list of them (`KINDS_FOR_ONE_REALM_ALONE`, `tests/lib/report-leaks.ts`) gains it: the check "a line
-  for one realm alone" reads every realm's report against the recorded events, whatever audience the engine gave them.
-  The list holds two kinds filed on their own as well: a hero's maximum-HP rise outside a fight (`syncAllMaxHp`,
-  R-117) and a hero hardened after a fight outside its narrative (`awardHpRoll` with no narrative, R-118), whose events
-  tell his realm alone (no deed, no sight) and whose facts name its `realm`. A line told to a realm with no deed is that
+  hero (else the fight's). Two kinds filed on their own are his realm's alone too ("its hero's realm alone, filed on
+  its own"): a hero's maximum-HP rise outside a fight (`syncAllMaxHp`, R-117) and a hero hardened after a fight outside
+  its narrative (`awardHpRoll` with no narrative, R-118); their facts name its `realm`. **The kind decides its
+  audience** (B-19): `emit`'s type takes a fact of these four kinds only told to its realm (no deed, no sight, no realm
+  excepted; a hero of no realm's, to none). A new line the man across the field must not read is a new kind of one of
+  these audiences in its table, and the check "a line for one realm alone" reads them from the tables
+  (`THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE`): every realm's report against the recorded events. A line told to a realm with no deed is that
   realm's news: a spy who stays in the province reads a rival's deeds and what anyone there could see, never that
   (`playerEvents`' spy feed, R-118). Since P1-12d36 the spy feed and the Clairvoyance feed pass over a line by its
   kind, which the words pass hands beside each stored line (`theKindOfEachStoredLine`): both a force

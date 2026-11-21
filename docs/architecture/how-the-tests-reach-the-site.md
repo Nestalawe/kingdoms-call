@@ -181,15 +181,15 @@
     matches by its words and phase, an unmet realm's name read as "an unknown realm"; one the gate gives only another
     way says which. It runs only where the harness records the turn's events (`Turn.perception`: the matrix's
     every-realm half, `simulation/every-realms-report-…`, the turn fuzz, a staged grove and a staged invisible hero);
-  - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind that is its hero's realm's alone
-    (`KINDS_FOR_ONE_REALM_ALONE`, the check's own list: a hero's hit-point rise in a fight, the surgeons' word to a
-    fallen duellist's realm, a hero's maximum-HP rise outside a fight, R-117, and a hero hardened after a fight outside
-    one, R-118) is read by another realm than the one its fact names or one its hero served this turn,
+  - **a line for one realm alone** (P1-12c4, P1-12's Decision 6): a line of a kind whose audience, in its table, is
+    its hero's realm's alone (`THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE`, read from the engine's tables, B-19: a
+    hero's hit-point rise in a fight, the surgeons' word to a fallen duellist's realm, a hero's maximum-HP rise outside
+    a fight, R-117, and a hero hardened after a fight outside one, R-118) is read by another realm than the one its fact names or one its hero served this turn,
     whatever audience the engine gave it (the recorder notes each event's kind and the realm its fact names).
     Clairvoyance's lines are allowed. It runs where the harness records the turn's events.
 
   What they can't see yet: in a harness that doesn't record the events (the page's matrix), a private line not on the list (a skill rise, say); a fault in the gate (the audience check asks it; its case table is its guard) or a line it keeps from the realm that should read it; whether the engine gave an event the right
-  audience, but for the kinds for one realm alone (the audience check takes it as given: every realm's report against its baseline sees a change); the
+  audience, but for the kinds for one realm alone (their type takes only their realm; the audience check takes the rest as given: every realm's report against its baseline sees a change); the
   portal's name tables (`LOOKUP_TABLES`, for colouring names; until P2-06 trims a report to its reader); Spy stealth and the spotting roll in your own land (only Invisibility is checked); a name two heroes share.
   They read only the reports a harness has: the turn fuzz's human realms, the matrix's scripted realm, every realm in
   the matrix's every-realm half and in `simulation/every-realms-report-…`.

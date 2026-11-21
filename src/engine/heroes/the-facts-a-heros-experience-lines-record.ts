@@ -8,8 +8,9 @@
 // wage, a hit-point rise copied as the line tells it (aHitPointRiseAsTheLineTellsIt, personal combat's), and the skill
 // in play (theSkillInPlayAsALineTellsIt, heroes/effective-skills-and-hidden-heroes.ts); the prose writes every word
 // (src/views/prose/the-words-of-a-heros-experience-lines.ts). Each is filed with the audience its event names (its
-// event's), but the hardening and the maximum-HP rise, his realm's alone (B-19: emit takes them told to it alone). The skill rises held back to the end of the phase (turnContext._deferredSkillLogs)
-// hold their facts until writeDeferredSkillLines files them (turn/events-and-their-audiences.ts).
+// event's), but the hardening and the maximum-HP rise, his realm's alone (B-19: emit takes them told to it alone).
+// The skill rises held back to the end of the phase (turnContext._deferredSkillLogs) hold their facts until
+// writeDeferredSkillLines files them (turn/events-and-their-audiences.ts).
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
 import type { AHitPointRiseAsTheLineTellsIt } from '../personal-combat/the-facts-a-personal-combats-lines-record.ts';
 import type { ASkillInPlayAsALineTellsIt } from './effective-skills-and-hidden-heroes.ts';

@@ -9,7 +9,8 @@
 // order resolving (else the phase resolving, else 99 once the phases are over), 'none' a real null, and a phase left out
 // throws (P1-12d38); narrate adds a line to a fight: for everyone in it, or, a fact of a kind whose audience is its
 // hero's realm alone (P1-12c4), one that emitNarrLine files to that realm under its hero; and an event records a fact,
-// never words (P1-12d18): an event handed as words, or a fight's line as a string, throws and writes no line.
+// never words (P1-12d18): an event handed as words, or a fight's line as a string, throws and writes no line; and
+// a kind for one realm alone compiles only told to that realm (B-19).
 // (The oracle that checked emit against copies of the code before it, for any input, ran from P1-12a2 to P1-12a4 and
 // went with log() in P1-12a4, as Decision 5 planned. The lines a capture writes, which went straight into turnLog
 // before: tests/unit/a-capture-tells-the-realm-that-lost-it-with-no-hero-and-no-phase.test.ts.)
@@ -27,7 +28,10 @@
 // `narrate`, and `emitNarrLine` filing a fact of a kind for its hero's realm alone to that realm alone under its hero
 // (P1-12c4; before, `narrateTo`'s line); an event records its fact (P1-12c3), never its words (P1-12d18): a fact is
 // filed with no words yet and the fact last, an event with both, an event handed as words and a fight's line handed to
-// `emitNarrLine` as a string each throw and write no line, and `narrate` and `emitNarrLine` take a fact. From P1-12a2
+// `emitNarrLine` as a string each throw and write no line, and `narrate` and `emitNarrLine` take a fact; the kind
+// decides its audience (B-19): a case that compiles only while each of the four kinds for one realm alone is taken
+// told to one realm (or to none, nobody's deed) and refused with a sight, a deed, a realm excepted or two realms, and a
+// kind filed with its event's audience takes each (red when a kind's table entry is planted back). From P1-12a2
 // to P1-12a4 an oracle half (fast-check) checked `emit`, `logSplit`, `notifyProvinceOwner`, `writeDeferredSkillLines`,
 // `emitNarrLine` and `emitBattle` against copies of the code before `emit`, for any input; it went in P1-12a4 with
 // `log()` and the copies (Decision 5), once every caller was converted. Level 1: each function is called on a context

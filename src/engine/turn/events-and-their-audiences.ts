@@ -44,7 +44,10 @@
 // Each kind of fact has its audience, written once beside it in its area's module (Decision 6): the fight's, for most
 // of a fight's lines; its hero's realm alone (THE_AUDIENCE_OF_EACH_KIND, which emitNarrLine reads); or, for a kind
 // filed on its own and not in a fight's narrative (a host gained in a province, a stalled battle), its event's: the
-// audience the event that files it names (its caller hands emit the fact).
+// audience the event that files it names (its caller hands emit the fact); or its hero's realm alone, filed on its own
+// (a hero's maximum-HP rise, his hardening outside a fight). The kind decides its audience (B-19): emit's type takes a
+// fact of a kind for one realm alone only told to that realm (no deed, no sight, no realm excepted), and the leak
+// check reads those kinds from the tables (THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE).
 //
 // It also holds the helpers that write lines: a fight's narrative (narrate, narrateAll, narrateAt, takeBackLinesFrom;
 // emitNarrLine writes it out with the fight's event, FightLine, or its hero's realm alone), a line to the hero or the province
