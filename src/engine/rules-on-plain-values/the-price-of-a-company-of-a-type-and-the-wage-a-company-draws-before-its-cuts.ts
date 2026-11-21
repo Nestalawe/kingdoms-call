@@ -6,9 +6,11 @@
 // else its type's price). Early Winter's wages and their disbanding, the Recruit Armies order's price and a band's,
 // the report's forecast of the wages and its prices, the bots' ledger and recruits, and the order form's treasury
 // ledger read them. The figures are content's (kingdoms-call-data.ts); the copies that differ keep their own code (the
-// army card's upkeep, the ledger's Harvest the Field, the bots' other fallbacks).
+// army card's upkeep, the ledger's Harvest the Field, the bots' other fallbacks). A mercenary band's price after its
+// cuts, never below its least (B-06f): the Recruit Armies order and the report's price read it.
 import {
   KC_EACH_UNIT_TYPES_PRICE_AND_WAGE,
+  KC_THE_LEAST_PRICE_OF_A_MERCENARY_BAND,
   KC_THE_PRICE_OF_A_COMPANY_THE_TABLE_PRICES_AT_NOTHING,
   KC_THE_WAGE_OF_A_SKELETAL_COMPANY,
 } from '../../content/kingdoms-call-data.ts';
@@ -33,4 +35,18 @@ export function theWageOfACompany(company: {
   readonly _isSkeletal?: boolean | null | undefined;
 }): number {
   return company._isSkeletal ? KC_THE_WAGE_OF_A_SKELETAL_COMPANY : thePriceOfACompanyOfAType(company.type);
+}
+
+/** A mercenary band's price to hire (B-06f): its type's price, less the gold the realm's alignment cuts from it, plus
+ *  what the realm's discoveries add (a cut is a negative addition), never below content's least, 1g. The caller asks
+ *  each of the three, in this order. */
+export function thePriceOfAMercenaryBand(thePrices: {
+  readonly itsTypesPrice: number;
+  readonly theGoldTheRealmsAlignmentCuts: number;
+  readonly whatTheRealmsDiscoveriesAdd: number;
+}): number {
+  return Math.max(
+    KC_THE_LEAST_PRICE_OF_A_MERCENARY_BAND,
+    thePrices.itsTypesPrice - thePrices.theGoldTheRealmsAlignmentCuts + thePrices.whatTheRealmsDiscoveriesAdd,
+  );
 }

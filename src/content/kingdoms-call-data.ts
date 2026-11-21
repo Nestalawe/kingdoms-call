@@ -15078,6 +15078,15 @@ export const KC_EACH_UNIT_TYPES_PRICE_AND_WAGE = Object.assign(
 export const KC_THE_PRICE_OF_A_COMPANY_THE_TABLE_PRICES_AT_NOTHING = 2;
 // A skeletal company's wage, whatever its type: a flat 1g (by theWageOfACompany).
 export const KC_THE_WAGE_OF_A_SKELETAL_COMPANY = 1;
+// The least a mercenary band costs to hire, after the realm's alignment's cut and its discoveries' (B-06f: the
+// Recruit Armies order and the report's price read it, by thePriceOfAMercenaryBand).
+export const KC_THE_LEAST_PRICE_OF_A_MERCENARY_BAND = 1;
+// The price of a Wild Hunt whose beast the table prices at nothing or not at all (B-06f: the rite, the report and the
+// bots read it, by wildHuntPrice).
+export const KC_THE_PRICE_OF_A_WILD_HUNT_WHOSE_BEAST_THE_TABLE_DOES_NOT_PRICE = 6;
+// The tax base at or above which a province is rich enough to stage a Grand Heist in (a realm's home capital always
+// is): B-06f, the order and the bots read it (as GRAND_HEIST_RICH_TAX).
+export const KC_THE_TAX_THAT_MAKES_A_PROVINCE_RICH_ENOUGH_FOR_A_GRAND_HEIST = 7;
 // A hero's wage in service (by theWageOfAHeroInService, B-06d): what his allegiance was bargained at (a hero never
 // hired, a founding or a wandering one: 1g), plus his skill premium (a gold for every 4 skill points, rounded up, less
 // the 1g a starting hero's skills already earn, never below nothing), never below 1g. The hire desk quotes the same

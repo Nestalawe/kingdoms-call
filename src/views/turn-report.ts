@@ -45,6 +45,7 @@ import { lairRumourKey } from '../engine/rules-on-plain-values/the-bands-hunting
 import { dispFloor } from '../engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import {
   thePriceOfACompanyOfAType,
+  thePriceOfAMercenaryBand,
   theWageOfACompany,
 } from '../engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.ts';
@@ -884,14 +885,15 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       unitName: merc.unitName,
       race: (merc.race ?? '') || null,
       // Hire price, so the Recruit Armies order form can list mercenaries beside native units.
-      // Neutral realms get 2g off (min 1g), as the hire takes it: the rule the hire reads (the alignment abilities'
-      // registry's since plan P1-19av1).
-      cost: Math.max(
-        1,
-        thePriceOfACompanyOfAType(String(merc.type)) -
-          theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(player.alignment) +
-          whatARealmsDiscoveriesAddToAMercenaryBandsPrice(player, { theUnitsType: theTypeEveryBandHolds(merc.type) }),
-      ), // + merc discoveries (the discoveries' registry's since plan P1-19ae: the rule the hire reads)
+      // Neutral realms get 2g off (min 1g: B-06f's one price of a band), as the hire takes it: the rule the hire reads
+      // (the alignment abilities' registry's since plan P1-19av1).
+      cost: thePriceOfAMercenaryBand({
+        itsTypesPrice: thePriceOfACompanyOfAType(String(merc.type)),
+        theGoldTheRealmsAlignmentCuts: theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(player.alignment),
+        whatTheRealmsDiscoveriesAdd: whatARealmsDiscoveriesAddToAMercenaryBandsPrice(player, {
+          theUnitsType: theTypeEveryBandHolds(merc.type),
+        }),
+      }), // + merc discoveries (the discoveries' registry's since plan P1-19ae: the rule the hire reads)
       location: (p2?.name ?? '') || 'unknown',
       locationId: merc.location,
       isSea: merc.isSea,

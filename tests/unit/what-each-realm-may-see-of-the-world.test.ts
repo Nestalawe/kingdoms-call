@@ -694,6 +694,24 @@ describe("what realm 0 is quoted, by its discoveries (P1-19ae: the view and the 
       [1, 0],
     ]);
   });
+
+  test("its report: a band's price never falls below 1g, however much its realm's alignment and discoveries cut (B-06f)", () => {
+    const price = (band: string, alignment: string, ids: readonly string[] = []) =>
+      (
+        buildTurnReport(playerView(worldWithDiscoveries(ids, { alignment, band }), 0, itsLines)).mercIntel as {
+          id: string;
+          cost: number;
+        }[]
+      ).find((m) => m.id === 'm1')?.cost;
+    // Great Bears 4g; Black Arrows 2g; Human Garrison 1g. Neutral's 2g off; Black Market's (ae20) 3g off a beast.
+    expect([
+      price('Great Bears', 'Neutral'),
+      price('Black Arrows', 'Neutral'),
+      price('Human Garrison', 'Neutral'),
+      price('Human Garrison', 'Good'),
+      price('Great Bears', 'Neutral', ['ae20']),
+    ]).toEqual([2, 1, 1, 1, 1]);
+  });
 });
 
 describe("whether realm 0's Grand Cathedral stands (P1-23ad: the order form counts its free Bless Province, R-124)", () => {

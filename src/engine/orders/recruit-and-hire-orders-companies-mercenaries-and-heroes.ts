@@ -3,7 +3,10 @@ import {
   KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM,
 } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { thePriceOfACompanyOfAType } from '../rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
+import {
+  thePriceOfACompanyOfAType,
+  thePriceOfAMercenaryBand,
+} from '../rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
@@ -309,12 +312,15 @@ export function resolveRecruitArmiesOrder(
       }
       const baseMercCost = thePriceOfACompanyOfAType(merc.type);
       // the realm's alignment's cut (Neutral: 2g less; min 1g: the alignment abilities' registry's since plan P1-19av1)
-      const mCost = Math.max(
-        1,
-        baseMercCost -
-          theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(G.players[c.player]?.alignment) +
-          whatARealmsDiscoveriesAddToAMercenaryBandsPrice(G.players[c.player], { theUnitsType: merc.type }),
-      ); // + merc discoveries (the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries cut a
+      const mCost = thePriceOfAMercenaryBand({
+        itsTypesPrice: baseMercCost,
+        theGoldTheRealmsAlignmentCuts: theGoldARealmsAlignmentCutsFromAMercenaryBandsPrice(
+          G.players[c.player]?.alignment,
+        ),
+        whatTheRealmsDiscoveriesAdd: whatARealmsDiscoveriesAddToAMercenaryBandsPrice(G.players[c.player], {
+          theUnitsType: merc.type,
+        }),
+      }); // never below content's least (B-06f); + merc discoveries (the discoveries' registry's since plan P1-19ae: "orderOutcome: a realm's discoveries cut a
       // company's price", which the report's price asks too)
       if ((player.gold || 0) < mCost) {
         emit(turnContext, {

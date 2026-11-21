@@ -70,6 +70,26 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'recalcHeroPay',
     "B-06d, the hero's wage: the one formula (theWageOfAHeroInService) and content's allegiance of a hero never hired",
   ],
+  [
+    'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
+    'thePriceOfAMercenaryBand',
+    "B-06f, a mercenary band's price, the order's and the report's: content's least price of a band",
+  ],
+  [
+    'src/engine/items/tiers-and-hoards.ts',
+    'WILD_HUNT_COST',
+    "B-06f, the Wild Hunt's fallback price: content's, the same value",
+  ],
+  [
+    'src/engine/items/tiers-and-hoards.ts',
+    'wildHuntPrice',
+    "B-06f, the Wild Hunt's price, the rite's, the report's and the bots': the table's, or content's fallback",
+  ],
+  [
+    'src/engine/items/tiers-and-hoards.ts',
+    'GRAND_HEIST_RICH_TAX',
+    "B-06f, the Grand Heist's rich province, the order's and the bots': content's tax, the same value",
+  ],
 ];
 
 const LISTED = [...THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE, ...THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS];

@@ -653,6 +653,10 @@ export const THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE: readonly (readonly
     'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
     'theWageOfACompany',
   ],
+  [
+    'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
+    'thePriceOfAMercenaryBand',
+  ],
 ];
 /** The bots' copies of the economy: their ledger, their wages, their tax and what they can afford. */
 export const THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS: readonly (readonly [file: string, fn: string])[] = [
