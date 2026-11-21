@@ -532,6 +532,48 @@ describe('the lint rules', () => {
     },
   );
 
+  // kc/the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass (B-18a): in the views, the turn's lines are read
+  // only by the gate that says which lines each realm reads, and by the words pass. It runs, with no options, on every
+  // file of the views but those two, and nowhere else. A planted read is refused exactly there.
+  const THE_GATE = 'src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts';
+  const THE_WORDS_PASS = 'src/views/prose/the-words-of-each-line.ts';
+  test(
+    "the rule that the views read the turn's log only in the gate runs in all of the views but the gate and the words pass",
+    timeLimitForTheWork({ toolRuns: 1 }),
+    async () => {
+      const wrong: string[] = [];
+      for (const file of srcFiles) {
+        const rules = ((await eslint.calculateConfigForFile(path.join(ROOT, file))) as Linter.Config).rules ?? {};
+        const entry = rules['kc/the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass'];
+        const options: unknown[] = Array.isArray(entry) ? entry.slice(1) : [];
+        const runs = file.startsWith('src/views/') && file !== THE_GATE && file !== THE_WORDS_PASS;
+        const expected = runs ? 'in full' : 'off';
+        const found =
+          level(entry) !== 2 ? 'off' : options.length ? `with options ${JSON.stringify(options)}` : 'in full';
+        if (found !== expected) wrong.push(`${file}: ${found}, not ${expected}`);
+      }
+      expect(wrong).toEqual([]);
+      const planted = [
+        'export function planted(turnLog: unknown[], built: { gmLog: unknown[] }) {',
+        '  return [turnLog.length, built.gmLog[0]];',
+        '}',
+      ].join('\n');
+      const refused = async (file: string) => {
+        const [result] = await eslint.lintText(planted, { filePath: path.join(ROOT, file) });
+        expect(fatalOf(result), file).toEqual([]);
+        return (result?.messages ?? [])
+          .filter((m) => m.ruleId === 'kc/the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass')
+          .map((m) => m.line);
+      };
+      expect(await refused(IN_PLACE_OF.views)).toEqual([2, 2]);
+      expect(await refused('src/views/every-realms-report-and-the-lines-each-realm-reads.ts')).toEqual([2, 2]);
+      expect(await refused(THE_GATE)).toEqual([]);
+      expect(await refused(THE_WORDS_PASS)).toEqual([]);
+      expect(await refused(IN_PLACE_OF.engine)).toEqual([]);
+      expect(await refused(IN_PLACE_OF.gmPage)).toEqual([]);
+    },
+  );
+
   // kc/html-is-built-only-through-kc-html's reviewed exceptions (eslint.config.js's HTML_EXCEPTIONS; plan P1-13,
   // Decision 8): the rule refuses one that matches nothing in its file, but only as it lints that file, so each must
   // name a file of src/ or public/ that ESLint lints, with its reason.

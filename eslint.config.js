@@ -165,6 +165,10 @@ const kcRules = {
 // in the events file, the one door. In the engine and the views (all of them since P1-12a4), nothing else writes to
 // turnLog, calls a log(), or writes a fight's narrative but through the events file's helpers (narrate, narrateTo, …).
 const EVENTS_FILE = 'src/engine/turn/events-and-their-audiences.ts';
+// kc/the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass (B-18a): in the views, the turn's lines are read
+// only by the gate that says which lines each realm reads and how each reaches it, and by the words pass.
+const THE_GATE = 'src/views/the-gate-that-says-which-lines-of-the-turn-each-realm-reads-and-how-each-reaches-it.ts';
+const THE_WORDS_PASS = 'src/views/prose/the-words-of-each-line.ts';
 // A retry, retries or repeats written in a test file's options (below): refused.
 const RETRY_KEY = '/^(retry|retries|repeats)$/';
 const RETRY_REFUSED =
@@ -203,6 +207,11 @@ module.exports = defineConfig(
     files: ['src/engine/**/*.ts', 'src/views/**/*.ts'],
     ignores: [EVENTS_FILE],
     rules: { 'kc/narrative-lines-go-through-emit': 'error' },
+  },
+  {
+    files: ['src/views/**/*.ts'],
+    ignores: [THE_GATE, THE_WORDS_PASS],
+    rules: { 'kc/the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass': 'error' },
   },
   {
     files: SITE,

@@ -7,6 +7,7 @@ import bigTablesAndProfilesAreReadByNamedColumns from './big-tables-and-profiles
 import htmlIsBuiltOnlyThroughKcHtml from './html-is-built-only-through-kc-html.ts';
 import narrativeLinesGoThroughEmit from './narrative-lines-go-through-emit.ts';
 import noRandomOrArgumentLessSortComparator from './no-random-or-argument-less-sort-comparator.ts';
+import theViewsReadTheTurnsLogOnlyInTheGateAndTheWordsPass from './the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass.ts';
 
 const plugin: ESLint.Plugin = {
   meta: { name: 'kc' },
@@ -15,6 +16,8 @@ const plugin: ESLint.Plugin = {
     'html-is-built-only-through-kc-html': htmlIsBuiltOnlyThroughKcHtml,
     'narrative-lines-go-through-emit': narrativeLinesGoThroughEmit,
     'no-random-or-argument-less-sort-comparator': noRandomOrArgumentLessSortComparator,
+    'the-views-read-the-turns-log-only-in-the-gate-and-the-words-pass':
+      theViewsReadTheTurnsLogOnlyInTheGateAndTheWordsPass,
   },
 };
 
