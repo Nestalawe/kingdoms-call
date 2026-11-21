@@ -10,12 +10,13 @@
 // engine's modules imported directly (tests/lib/a-staged-turn-on-the-engines-modules.ts's play), and the leaks it looks
 // for are in whatever the bots happen to do: no staged turn shows them. It can run there because each line keeps its
 // whole audience in memory until the reports are built (B-18a, B-18b), so the audience check needs nothing stood in
-// the engine. The dice are seeded 1, as on the vm, not from KC_SEED (KD-382; a moved test keeps its seed).
+// the engine. The dice are seeded from KC_SEED (B-18d), so a pull request plays its run's games and the nightly new
+// ones every night; a leak names its seed, and KC_SEED=<seed> plays the same games again.
 //
-// Until plan P1-14i this was tests/report-privacy.test.js, a script on the engine's vm, and it played there until B-18c.
+// Until plan P1-14i this was tests/report-privacy.test.js, a script on the engine's vm; it played there until B-18c.
 // Its checks are kept as they were: the leak check on every turn, every turn's events handed over, a report for every
-// realm every turn, and a turn that throws fails (here the test, at once). The games are the same as on the vm: the
-// same seed, sizes, calls and order. 3 games of 10 turns with 5 realms (KC_FULL: 6 of 20 with 6).
+// realm every turn, and a turn that throws fails (here the test, at once). 3 games of 10 turns with 5 realms (KC_FULL:
+// 6 of 20 with 6).
 import { expect, test, vi } from 'vitest';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
 import { checkLeaks, describeBreaches, type SavedState } from '../lib/invariants.ts';
@@ -25,6 +26,8 @@ const full = process.env['KC_FULL'] === '1';
 const GAMES = full ? 6 : 3;
 const TURNS = full ? 20 : 10;
 const REALMS = full ? 6 : 5;
+/** The dice's seed: the run's KC_SEED, as the other tests read it (0 or none read as 1). */
+const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 
 /** Lines an onlooker standing in the province may see: counted, never failed. A realm's own business is the leak
  *  check's PRIVATE_LINES (tests/lib/report-leaks.ts). */
@@ -41,7 +44,7 @@ test(
   "no realm's report in whole all-bot games reads another realm's private business, and every turn is checked",
   timeLimitForTheWork({ matrixGamesPlayed: GAMES }),
   async () => {
-    const sc = await aStagedTurnOnTheEnginesModules({ seed: 1 });
+    const sc = await aStagedTurnOnTheEnginesModules({ seed: SEED });
     const { generateBotSetups } = await import('../../src/engine/bots/setup.ts');
     const { generateNewGame } = await import('../../src/engine/world/generate.ts');
     // Reports are built only for the realms people play, so an all-bot game writes none: one for every realm, bots'
@@ -103,7 +106,8 @@ test(
           ...(r.perception ? { perception: r.perception } : {}),
         });
         if (!r.perception) unrecorded++;
-        if (broke.length) leaks.push(describeBreaches(`game ${String(g)} turn ${String(t)}`, broke));
+        if (broke.length)
+          leaks.push(describeBreaches(`seed ${String(SEED)} game ${String(g)} turn ${String(t)}`, broke));
       }
     }
     const lines = Object.entries(seenBy);
@@ -115,7 +119,10 @@ test(
           return `${label} ${String(hits.length)} (to more than one realm ${String(hits.filter(([, s]) => s.size > 1).length)})`;
         }).join(', '),
     );
-    expect(leaks, 'no turn leaked another realm’s business into a report').toEqual([]);
+    expect(
+      leaks,
+      `no turn leaked another realm’s business into a report (KC_SEED=${String(SEED)} plays these games again)`,
+    ).toEqual([]);
     expect(unrecorded, 'every turn handed over its recorded events, so the audience check ran on it').toBe(0);
     expect(reportsSeen, 'one report a realm a turn, or there is nothing to check').toBe(turns * REALMS);
   },
