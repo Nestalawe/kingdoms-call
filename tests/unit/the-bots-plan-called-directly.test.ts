@@ -1440,6 +1440,40 @@ describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", 
       '[[{"leaders":[4,3],"defenders":[],"primaryId":4,"reach":2,"want":1},{"income":0,"warFooting":false,"upkeepCap":12,"upkeep":16,"budget":27,"recruitedByProv":{},"rumourFund":0,"warChest":0,"diag":{"gold":30,"income":0,"reserve":3,"budget0":27,"upkeep0":18,"cap":16,"calls":0,"noTypes":0,"noKin":0,"capStop":0,"budgetStop":0,"tokens":0,"holdersIdle":0,"holdersInRecruit":0,"navCap":4,"airCap":0},"defReserve":0,"navReserve":0,"airReserve":0,"nav":{"cap":4,"upkeep":2,"id":3},"air":null},18],5,0,4,0,0,[],[],4,8]',
     );
   });
+  // B-06h: the bots' upkeep asks the wage rules. No matrix game hands a garrison a summons or a Wild Hunt beast; a
+  // hero's beast of the Wild Hunt draws nothing either, his other companies their type's price, and a skeletal 4g
+  // company of a garrison its flat 1g.
+  test("the bots' upkeep: a company that draws no wage costs nothing, a skeletal one 1g, in a column or a garrison (B-06h)", () => {
+    const aCompany = (fields: Record<string, unknown> = {}) => ({ type: 'Gilded Lances', ...fields });
+    const theUpkeep = (lists: Record<string, unknown>) => fn('botUpkeep')(aWorld(lists), 0);
+    expect({
+      theGarrisons: theUpkeep({
+        world: {
+          provinces: [
+            aProvince({
+              garrisonArmies: [
+                aCompany({ _temporary: true }),
+                aCompany({ _wildHuntUntilTurn: 4 }),
+                aCompany(),
+                aCompany({ _isSkeletal: true }),
+              ],
+            }),
+          ],
+        },
+      }),
+      aHerosColumn: theUpkeep({
+        world: { provinces: [] },
+        characters: [
+          {
+            player: 0,
+            alive: true,
+            pay: 2,
+            armies: [aCompany({ _wildHuntUntilTurn: 4 }), aCompany({ type: 'Free Lances' })],
+          },
+        ],
+      }),
+    }).toEqual({ theGarrisons: 4 + 1, aHerosColumn: 3 + 2 });
+  });
   test('the enemies in sight, the defence of a province and the bodies to raise, on a world that lacks its lists', () => {
     expect(
       results([

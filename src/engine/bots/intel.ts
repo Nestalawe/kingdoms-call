@@ -60,6 +60,16 @@ interface AHeroWhoseSkillsAreKnown {
   readonly id?: number | string | null | undefined;
   readonly skills?: Readonly<Partial<Record<string, number>>> | null | undefined;
 }
+// The kinds of result a bot weighs (B-06h, T7: the rules pulled out). The rule says what, the bot says how much
+// (docs/decisions/README.md): the bot asks a rule what an effect does (a company's wage: 3 gold a turn), and its
+// version's weights file (the-weights-of-the-bots-first-version-…ts) says what it makes of a unit of each kind of
+// result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
+// it gives no weights fails to compile. The economy's is the first kind; the titles' and the alignments' join it
+// (B-06r, P1-19bb8). The weights are the bots', never content's: content holds the rules only.
+/** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs. */
+export type AKindOfResultABotWeighs = 'gold';
+/** A kind of result's weights in a bot version: each a number, named for what it weighs. */
+export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 /** The bots' weights at a difficulty. */
 interface ABotDifficultysWeights {
   readonly attackMarginMult: number;

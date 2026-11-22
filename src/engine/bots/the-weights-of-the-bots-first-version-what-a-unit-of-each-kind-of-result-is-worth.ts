@@ -1,11 +1,8 @@
 // ── The weights of the bots' first version: what a unit of each kind of result is worth to it (B-06h) ──
-// One file a bot version (the kinds and the shape: the-kinds-of-result-a-bot-weighs-and-the-shape-of-a-bot-versions-
-// weights.ts). Each number is the one the bots' code wrote before T7, copied exactly; weights tuned by kind come after
-// T7, the old bot played against the new.
-import type {
-  AKindOfResultABotWeighs,
-  TheWeightsOfAKindOfResult,
-} from './the-kinds-of-result-a-bot-weighs-and-the-shape-of-a-bot-versions-weights.ts';
+// One file a bot version (the kinds and the shape: bots/intel.ts, beside the bots' other shapes). Each number is the
+// one the bots' code wrote before T7, copied exactly; weights tuned by kind come after T7, the old bot played against
+// the new.
+import type { AKindOfResultABotWeighs, TheWeightsOfAKindOfResult } from './intel.ts';
 
 /** What the bots' first version makes of each kind of result, by the kind. */
 export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
