@@ -2104,6 +2104,10 @@ export interface TheStagesOfEachHookPoint {
     /** The points a realm's alignment adds to the chance a column converging on a hero's battle unites with his force
      *  (resolveMoveOrder, both its rolls; the alignment abilities' registry, P1-19au2). */
     readonly "a realm's alignment helps converging columns unite": () => number;
+    /** The move points a minor title adds to its holder's pool on land or at sea, from its title's rows; the runner
+     *  adds those of each title he holds, in the stage's order, asking whether he holds one only where it adds
+     *  (computeMovePoolMax, each pool only where it exists: the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to his move points": (thePool: 'land' | 'sea') => number;
   };
   /** The checks the Cast Spell order makes of the spell named, before it is worked and as it is (plan P1-19's spells
    *  family: its row P1-19y typed them; the spells' registry, one spell an order, found by its name). In the order the
@@ -2135,6 +2139,10 @@ export interface TheStagesOfEachHookPoint {
     readonly 'who may give an alignment order': (
       facts: AHeroAsTheChecksOfAnAlignmentOrderReadHim,
     ) => TheCheckAnAlignmentOrderRefusesAHeroOn | null;
+    /** The spells more of his best school a minor title lets its holder cast each turn, from its row; the runner adds
+     *  those of each title he holds, in the stage's order, asking whether he holds one only where it adds
+     *  (resolveCastSpellOrder's casting limit, his best school only: the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to the casts he may make in his best school": () => number;
   };
   /** A hero's experience (plan P1-19's discoveries family: its row P1-19ac typed it). */
   readonly experience: {
@@ -2330,6 +2338,23 @@ export interface TheStagesOfEachHookPoint {
     /** Whether an item the caster carries makes the cast of a spell sure (resolveCastSpellOrder, before the cast chance:
      *  plan P1-19y; the items' registry: any of his items, in the stage's order). */
     readonly "a spell's cast cannot fail": (facts: ASpellAboutToBeCast) => boolean;
+    /** Whether a minor title keeps its holder's spying unseen: no roll to catch him spying on a hero, and a false face
+     *  when he spies out a province; the runner says whether any title he holds does, in the stage's order, asking
+     *  whether he holds one only where it does (resolveSpyOrder, both places: the minor titles' registry, B-06l). */
+    readonly "a hero's titles keep his spying unseen": () => boolean;
+    /** The levels a minor title adds to its holder's Sage for his chance of a discovery, from its title's rows; the
+     *  runner adds those of each title he holds, in the stage's order, asking whether he holds one only where it adds
+     *  (resolveResearchOrder, each level worth what a Sage level is: the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to his Sage in research": () => number;
+    /** The hit points a minor title adds to its holder's heal when he rests, from its row; the runner adds those of
+     *  each title he holds, in the stage's order, asking whether he holds one only where it adds (resolveRestOrder,
+     *  before the discoveries' and the items': the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to a rest's heal": () => number;
+    /** The factor a minor title multiplies the share of a province its holder maps by, from its row; the runner
+     *  multiplies those of each title he holds, in the stage's order, asking whether he holds one only where it
+     *  multiplies (resolveExploreOrder, before the discoveries' factor and the rounding down: the minor titles'
+     *  registry, B-06l). */
+    readonly "a hero's titles multiply the share of a province he maps": () => number;
     /** The share a discovery a spy's realm holds adds to his chance, or nothing (it names other ground); the runner
      *  adds them (resolveSpyOrder, both his rolls; the report's odds, where no province is named: plan P1-19ad). */
     readonly "a realm's discoveries add to a spy's chance": (

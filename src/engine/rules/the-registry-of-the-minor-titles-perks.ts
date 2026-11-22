@@ -5,10 +5,12 @@
 // their stages are the content effects' (one union, in the-registry-of-content-effects.ts); each stage's order is
 // THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES, and each stage's runner is here. The Duelist, the Marksman, the
 // Widowmaker and the Relic-Hunter act at personalCombat (B-06j); the Strategist, the Naturalist, the Cavalier, the
-// Beastmaster and the Ironclad at strength (B-06k); every other entry is at no stage yet (its perk is still checked
-// where it acts, by the holders worked out at the turn's start: `charMinor` and its kin). Here too is the
-// measure a hero is held to for a title, which the awarding (computeMinorTitles) asks. The rows after B-06k give each
-// other perk its effect, at the hook points TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
+// Beastmaster and the Ironclad at strength (B-06k); the Swift and the Sea-Wolf at movementCost, the Warlock at
+// orderValidity, the Shadow, the Loreseeker, the Colossus and the Trailblazer at orderOutcome (B-06l); every other entry
+// is at no stage yet (its perk is still checked where it acts, by the holders worked out at the turn's start:
+// `charMinor` and its kin). Here too is the measure a hero is held to for a title, which the awarding
+// (computeMinorTitles) asks. The rows after B-06l give each other perk its effect, at the hook points
+// TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
 // docs/architecture/the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md.
 import {
   THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN,
@@ -29,6 +31,14 @@ import {
   A_HEROS_TITLES_ADD_TO_HIS_TACTICAL,
   THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS,
 } from './the-minor-titles/a-heros-titles-add-to-his-tactical-and-lift-the-units-he-leads-in-a-battle.ts';
+import {
+  A_HEROS_TITLES_ADD_TO_A_RESTS_HEAL,
+  A_HEROS_TITLES_ADD_TO_HIS_MOVE_POINTS,
+  A_HEROS_TITLES_ADD_TO_HIS_SAGE_IN_RESEARCH,
+  A_HEROS_TITLES_ADD_TO_THE_CASTS_HE_MAY_MAKE_IN_HIS_BEST_SCHOOL,
+  A_HEROS_TITLES_KEEP_HIS_SPYING_UNSEEN,
+  A_HEROS_TITLES_MULTIPLY_THE_SHARE_OF_A_PROVINCE_HE_MAPS,
+} from './the-minor-titles/a-heros-titles-on-a-march-and-on-an-order.ts';
 
 /** The hook points a minor title's perk acts at, each filled by a row of the family: `personalCombat` (B-06j: a hero's
  *  titles add to his skills in a fight), `strength` (B-06k: to his Tactical in a battle, and the units the commander's
@@ -54,16 +64,33 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   strategist: {
     strength: { "a hero's titles add to his Tactical": A_HEROS_TITLES_ADD_TO_HIS_TACTICAL.strategist },
   },
-  swift: {}, // movement (B-06l)
-  seawolf: {}, // movement (B-06l)
-  shadow: {}, // orders (B-06l)
+  swift: {
+    movementCost: { "a hero's titles add to his move points": A_HEROS_TITLES_ADD_TO_HIS_MOVE_POINTS.swift },
+  },
+  seawolf: {
+    movementCost: { "a hero's titles add to his move points": A_HEROS_TITLES_ADD_TO_HIS_MOVE_POINTS.seawolf },
+  },
+  shadow: {
+    orderOutcome: { "a hero's titles keep his spying unseen": A_HEROS_TITLES_KEEP_HIS_SPYING_UNSEEN.shadow },
+  },
   cutpurse: {}, // turnEnd (B-06m; its gold is the economy's registry's)
   naturalist: {
     strength: { "the commander's minor titles": THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS.naturalist },
   },
-  loreseeker: {}, // orders (B-06l)
-  trailblazer: {}, // orders (B-06l)
-  colossus: {}, // orders (B-06l)
+  loreseeker: {
+    orderOutcome: {
+      "a hero's titles add to his Sage in research": A_HEROS_TITLES_ADD_TO_HIS_SAGE_IN_RESEARCH.loreseeker,
+    },
+  },
+  trailblazer: {
+    orderOutcome: {
+      "a hero's titles multiply the share of a province he maps":
+        A_HEROS_TITLES_MULTIPLY_THE_SHARE_OF_A_PROVINCE_HE_MAPS.trailblazer,
+    },
+  },
+  colossus: {
+    orderOutcome: { "a hero's titles add to a rest's heal": A_HEROS_TITLES_ADD_TO_A_RESTS_HEAL.colossus },
+  },
   widowmaker: {
     personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.widowmaker },
   },
@@ -82,7 +109,12 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
     personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.relichunter },
   },
   castellan: {}, // turnEnd (B-06m; its gold is the economy's registry's)
-  warlock: {}, // orders (B-06l)
+  warlock: {
+    orderValidity: {
+      "a hero's titles add to the casts he may make in his best school":
+        A_HEROS_TITLES_ADD_TO_THE_CASTS_HE_MAY_MAKE_IN_HIS_BEST_SCHOOL.warlock,
+    },
+  },
 } satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>;
 
 /** Each stage's effects, in the order the turn runs them (a hero's skills: the character card's, SKILL_EXTRA_MINORS';
@@ -95,6 +127,18 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES = {
     "the commander's minor titles": THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN,
     "a hero's titles add to his Tactical": ['strategist'],
   },
+  movementCost: {
+    "a hero's titles add to his move points": ['swift', 'seawolf'],
+  },
+  orderValidity: {
+    "a hero's titles add to the casts he may make in his best school": ['warlock'],
+  },
+  orderOutcome: {
+    "a hero's titles keep his spying unseen": ['shadow'],
+    "a hero's titles add to his Sage in research": ['loreseeker'],
+    "a hero's titles add to a rest's heal": ['colossus'],
+    "a hero's titles multiply the share of a province he maps": ['trailblazer'],
+  },
 } as const satisfies {
   readonly [H in TheHookPointsAMinorTitlesPerkActsAt]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly AMinorTitlesSlug[];
@@ -105,6 +149,9 @@ const ENTRIES: Readonly<Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtE
   THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS;
 const PERSONAL_COMBAT = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.personalCombat;
 const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.strength;
+const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.movementCost;
+const ORDER_VALIDITY = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.orderValidity;
+const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.orderOutcome;
 
 /** The runner of "personalCombat: a hero's titles add to his skills" (pcCharCombatant, for his Melee and his Archery
  *  and their raw levels, after his items and before his realm's discoveries): the levels each title of the stage adds
@@ -148,6 +195,85 @@ export function theStrengthOfAUnitOnceItsCommandersMinorTitlesLiftIt(
     theStrengthSoFar,
     heHoldsTheTitle,
   );
+}
+
+/** The runner of "movementCost: a hero's titles add to his move points" (computeMovePoolMax, for his land pool and his
+ *  sea pool, each only where it exists): the move points each title of the stage adds to the pool, in the stage's
+ *  order, added for each he holds. Whether he holds a title is asked only of a title that adds to the pool, in that
+ *  order (charMinor was asked of the Swift and the Sea-Wolf before). */
+export function theMovePointsAHerosTitlesAddToHisPool(
+  thePool: 'land' | 'sea',
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): number {
+  const theStage = "a hero's titles add to his move points";
+  return MOVEMENT_COST[theStage].reduce((thePoints, slug) => {
+    const added = ENTRIES[slug].movementCost?.[theStage]?.(thePool) ?? 0;
+    return added !== 0 && heHoldsTheTitle(slug) ? thePoints + added : thePoints;
+  }, 0);
+}
+
+/** The runner of "orderValidity: a hero's titles add to the casts he may make in his best school" (resolveCastSpellOrder's
+ *  casting limit, which adds them in his best school only): the casts each title of the stage adds, in the stage's
+ *  order, added for each he holds. Whether he holds a title is asked only of a title that adds. */
+export function theCastsAHerosTitlesAddInHisBestSchool(
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): number {
+  const theStage = "a hero's titles add to the casts he may make in his best school";
+  return ORDER_VALIDITY[theStage].reduce((theCasts, slug) => {
+    const added = ENTRIES[slug].orderValidity?.[theStage]?.() ?? 0;
+    return added !== 0 && heHoldsTheTitle(slug) ? theCasts + added : theCasts;
+  }, 0);
+}
+
+/** The runner of "orderOutcome: a hero's titles keep his spying unseen" (resolveSpyOrder: no roll to catch him spying
+ *  on a hero; a false face when he spies out a province): whether a title of the stage he holds keeps it unseen, the
+ *  first in the stage's order. Whether he holds a title is asked only of a title that does, in that order, until one
+ *  he holds is found. */
+export function aHerosTitlesKeepHisSpyingUnseen(heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean): boolean {
+  const theStage = "a hero's titles keep his spying unseen";
+  return ORDER_OUTCOME[theStage].some(
+    (slug) => ENTRIES[slug].orderOutcome?.[theStage]?.() === true && heHoldsTheTitle(slug),
+  );
+}
+
+/** The runner of "orderOutcome: a hero's titles add to his Sage in research" (resolveResearchOrder, each level worth
+ *  what a level of his Sage is to his chance of a discovery): the levels each title of the stage adds, in the stage's
+ *  order, added for each he holds. Whether he holds a title is asked only of a title that adds. */
+export function theLevelsAHerosTitlesAddToHisSageInResearch(
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): number {
+  const theStage = "a hero's titles add to his Sage in research";
+  return ORDER_OUTCOME[theStage].reduce((theLevels, slug) => {
+    const added = ENTRIES[slug].orderOutcome?.[theStage]?.() ?? 0;
+    return added !== 0 && heHoldsTheTitle(slug) ? theLevels + added : theLevels;
+  }, 0);
+}
+
+/** The runner of "orderOutcome: a hero's titles add to a rest's heal" (resolveRestOrder, before the discoveries' and
+ *  the items'): the hit points each title of the stage adds, in the stage's order, added for each he holds. Whether he
+ *  holds a title is asked only of a title that adds. */
+export function theHitPointsAHerosTitlesAddToARestsHeal(
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): number {
+  const theStage = "a hero's titles add to a rest's heal";
+  return ORDER_OUTCOME[theStage].reduce((theHitPoints, slug) => {
+    const added = ENTRIES[slug].orderOutcome?.[theStage]?.() ?? 0;
+    return added !== 0 && heHoldsTheTitle(slug) ? theHitPoints + added : theHitPoints;
+  }, 0);
+}
+
+/** The runner of "orderOutcome: a hero's titles multiply the share of a province he maps" (resolveExploreOrder, before
+ *  his realm's discoveries' factor and the rounding down, on plain values): the factor each title of the stage
+ *  multiplies it by, in the stage's order, multiplied for each he holds (1 if none). Whether he holds a title is asked
+ *  only of a title whose factor isn't 1. */
+export function theFactorAHerosTitlesMultiplyTheShareOfAProvinceHeMapsBy(
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): number {
+  const theStage = "a hero's titles multiply the share of a province he maps";
+  return ORDER_OUTCOME[theStage].reduce((theFactor, slug) => {
+    const by = ENTRIES[slug].orderOutcome?.[theStage]?.() ?? 1;
+    return by !== 1 && heHoldsTheTitle(slug) ? theFactor * by : theFactor;
+  }, 1);
 }
 
 /** A hero as the minor titles measure him: his skills, his hit points, his kills of another realm's heroes, his merits,

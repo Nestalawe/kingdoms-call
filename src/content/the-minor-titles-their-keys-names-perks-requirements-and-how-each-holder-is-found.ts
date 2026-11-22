@@ -49,6 +49,15 @@ export interface AMinorTitleAsItsRowWritesIt {
     readonly by: number;
     readonly thePerk: AMinorTitlesArmyPerk;
   };
+  /** For a title whose holder maps more of a province with an Explore order (the minor titles' registry, orderOutcome:
+   *  a hero's titles multiply the share he maps): the factor the share is multiplied by, before it is rounded down. */
+  readonly theShareOfAProvinceItsHolderMapsIsMultipliedBy?: number;
+  /** For a title whose holder recovers more hit points when resting (the minor titles' registry, orderOutcome: a
+   *  hero's titles add to a rest's heal): the hit points added to his heal. */
+  readonly theHitPointsItsHolderRecoversMoreWhenResting?: number;
+  /** For a title whose holder may cast more spells of his best school each turn (the minor titles' registry,
+   *  orderValidity: a hero's titles add to the casts he may make in his best school): the casts added to his limit. */
+  readonly theSpellsMoreItsHolderMayCastInHisBestSchoolEachTurn?: number;
 }
 
 /** The minor titles, in the order their holders are found (it decides a tie, and the order their lines print). */
@@ -127,6 +136,7 @@ export const MINOR_TITLES = [
     perk: '+5% exploration',
     req: 'Highest Explorer skill.',
     howTheHolderIsFound: { theMeasure: 'his level of a skill', theSkill: 'explorer' },
+    theShareOfAProvinceItsHolderMapsIsMultipliedBy: 1.05,
   },
   {
     key: 'colossus',
@@ -134,6 +144,7 @@ export const MINOR_TITLES = [
     perk: '+2 HP recovered when resting',
     req: 'Highest maximum HP.',
     howTheHolderIsFound: { theMeasure: 'his maximum hit points', theHitPointsOfAHeroWithNoneWritten: 20 },
+    theHitPointsItsHolderRecoversMoreWhenResting: 2,
   },
   {
     key: 'widowmaker',
@@ -204,6 +215,7 @@ export const MINOR_TITLES = [
     perk: '+1 spell of your best school/turn',
     req: 'Highest single magic-school level.',
     howTheHolderIsFound: { theMeasure: 'his highest level in a magic school' },
+    theSpellsMoreItsHolderMayCastInHisBestSchoolEachTurn: 1,
   },
 ] as const satisfies readonly AMinorTitleAsItsRowWritesIt[];
 

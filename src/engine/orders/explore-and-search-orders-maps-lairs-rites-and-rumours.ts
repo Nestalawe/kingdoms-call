@@ -9,7 +9,7 @@ import {
 } from '../world/tables.ts';
 import { guardianCanUseItem, itemLore } from '../items/tiers-and-hoards.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
-import { theShareOfAProvinceAnExploreOrderMaps } from '../rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';
+import { theShareOfAProvinceAnExploreOrderMapsByHisTitlesFactor } from '../rules-on-plain-values/the-share-of-a-province-an-explore-order-maps.ts';
 import { recordDeadHeroSighting } from '../graves.ts';
 import { noteItemFound, rollMagicItemFor } from '../items/lair-items.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -34,6 +34,7 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { theFactorAHerosTitlesMultiplyTheShareOfAProvinceHeMapsBy } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import {
   SKILLGAIN_COMMON,
@@ -97,15 +98,23 @@ export function resolveExploreOrder(turnContext: TurnContext, c: Character, prov
   theProvinceIsHanded(prov);
   // The share of the province he maps: the folder's rule (plan P1-11d14), which the order form's forecast asks too.
   const explorerSkill = effStat(turnContext, c, 'explorer');
-  // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line)
-  const hasTrail = charMinor(turnContext, c, 'trailblazer');
+  // Trailblazer minor: +5% (Loremaster explore bonus removed \u2014 now an intel line): the minor titles' registry's
+  // since B-06l ("orderOutcome: a hero's titles multiply the share of a province he maps"), its factor from his row
+  const theFactorHisTitles = theFactorAHerosTitlesMultiplyTheShareOfAProvinceHeMapsBy((theTitle) =>
+    charMinor(turnContext, c, theTitle),
+  );
   // (The old Elven "Pathfinder" double forest/jungle exploration has been REPLACED this session by
   // the Elven escape ability — see recordBattleGraves / flushElvenEscapes. No exploration
   // bonus now.)
   // explore discoveries (the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to
   // exploring", the rule discExploreMult ships to the report)
   const _discExpl = theFactorARealmsDiscoveriesMultiplyExploringBy(G.players[c.player], { theGround: prov.terrain });
-  const gain = theShareOfAProvinceAnExploreOrderMaps(prov.terrain, explorerSkill, hasTrail, _discExpl);
+  const gain = theShareOfAProvinceAnExploreOrderMapsByHisTitlesFactor(
+    prov.terrain,
+    explorerSkill,
+    theFactorHisTitles,
+    _discExpl,
+  );
   prov.exploredBy ??= {};
   const before = Number(prov.exploredBy[c.player]) || 0;
   const mappedNow = Math.min(100, before + gain); // the share his realm has mapped now, read back below as written

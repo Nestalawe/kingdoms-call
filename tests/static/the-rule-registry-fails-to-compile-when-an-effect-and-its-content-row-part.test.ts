@@ -129,7 +129,9 @@ const THE_THIEF_NETWORK_ENTRY = `  'the-thief-network': {
     },
   },
 `;
-const WARLOCK_ENTRY = '  warlock: {}, // orders (B-06l)\n';
+/** The minor titles' registry's last line, which no row fills (a planted entry goes before it). */
+const THE_MINOR_TITLES_REGISTRYS_END =
+  '} satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>;';
 const UNDEAD_BONUS_ENTRY =
   "  'undead-bonus': { strength: { \"the commander's items\": THE_COMMANDERS_ITEMS['undead-bonus'] } },\n";
 
@@ -258,8 +260,8 @@ const PLANTS: Record<string, Record<string, string>> = {
   "a minor title's entry with no row": {
     [MINOR_TITLES_REGISTRY]: replacedOnce(
       read(MINOR_TITLES_REGISTRY),
-      WARLOCK_ENTRY,
-      WARLOCK_ENTRY + "  'planted-title': {},\n",
+      THE_MINOR_TITLES_REGISTRYS_END,
+      "  'planted-title': {},\n" + THE_MINOR_TITLES_REGISTRYS_END,
     ),
   },
 };

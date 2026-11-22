@@ -1,5 +1,5 @@
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
-import { actionSpellsAHeroMayCastInASchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
+import { actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
   aCharmedHeroWillNotTurnThisSpellOnHisLord,
   aCloakedMarkIsShieldedFromThisSpell,
@@ -20,6 +20,7 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { theCastsAHerosTitlesAddInHisBestSchool } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import {
   effStat,
   isHiddenByInvisibilityFrom,
@@ -122,8 +123,14 @@ export function resolveCastSpellOrder(
     const _school = spellDef.school;
     const _lvl = effStat(turnContext, c, _school);
     // the Warlock's extra cast in his best school is the shared rule's (R-123; the Archmage's +1-cast perk was removed:
-    // it is an intel line now)
-    const _limit = actionSpellsAHeroMayCastInASchoolEachTurn(c, _school, _lvl, charMinor(turnContext, c, 'warlock'));
+    // it is an intel line now), its casts the minor titles' registry's since B-06l ("orderValidity: a hero's titles add
+    // to the casts he may make in his best school"), from his row
+    const _limit = actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd(
+      c,
+      _school,
+      _lvl,
+      theCastsAHerosTitlesAddInHisBestSchool((theTitle) => charMinor(turnContext, c, theTitle)),
+    );
     const _divCath = gdActive(turnContext, c.player, 'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot (the spells' registry, plan P1-19y)
     // NORMALISE the saved action: the player portal writes "Cast Spell", the bots write
     // "cast_spell". Comparing the raw string counted only the bots' casts, so a human caster

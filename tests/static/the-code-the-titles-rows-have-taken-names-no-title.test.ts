@@ -69,6 +69,36 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'theStrengthAUnitsCommandersMinorTitlesLiftItTo',
     "B-06k, the army perks, to their rows and the minor titles' registry (strength: the commander's minor titles)",
   ],
+  [
+    'src/engine/units/movement-pools.ts',
+    'computeMovePoolMax',
+    "B-06l, the Swift's and the Sea-Wolf's move points, to the minor titles' registry (movementCost)",
+  ],
+  [
+    'src/engine/orders/espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts',
+    'resolveSpyOrder',
+    "B-06l, the Shadow's unseen spying, both places, to the minor titles' registry (orderOutcome)",
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolveResearchOrder',
+    "B-06l, the Loreseeker's level of Sage, to the minor titles' registry (orderOutcome)",
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolveRestOrder',
+    "B-06l, the Colossus's hit points, to the minor titles' registry (orderOutcome)",
+  ],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolveExploreOrder',
+    "B-06l, the Trailblazer's factor, to the minor titles' registry (orderOutcome)",
+  ],
+  [
+    'src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts',
+    'resolveCastSpellOrder',
+    "B-06l, the Warlock's cast, to the minor titles' registry (orderValidity)",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
