@@ -3,10 +3,11 @@
 `generateNewGame` (`src/engine/world/generate.ts`) makes a new world at Turn 0 in eighteen stages, S0 to S17: the
 set-up, the capitals, each home's ring, the provinces, and so on to the naming pass. The stages, in order, with what
 each makes, are the world proof's stage table
-([tools/proof/the-worlds-makings-stages.ts](../../tools/proof/the-worlds-makings-stages.ts)). The split rows of B-06
-(B-06v to B-06aa) move the stages out of `generateNewGame`, a few a row, into files of their own in
-`src/engine/world/the-worlds-making/`. A stage with `fn` in the stage table has moved; the rest are still in
-`generateNewGame`. This file is the shape every moved stage takes, so the later rows follow the first.
+([tools/proof/the-worlds-makings-stages.ts](../../tools/proof/the-worlds-makings-stages.ts)). The split is finished:
+every stage is a function in a file of its own in `src/engine/world/the-worlds-making/` (B-06v to B-06aa), each
+with `fn` in the stage table, and `generateNewGame` is the set-up's call and the seventeen stages' calls after it, in
+order, threading each stage's results to the next. B-06ab makes the stages one typed list, in order, that
+`generateNewGame` runs. This file is the shape every stage takes.
 
 ## Where a stage lives
 
