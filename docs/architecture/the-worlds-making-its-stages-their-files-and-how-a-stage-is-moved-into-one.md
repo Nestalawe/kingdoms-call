@@ -16,9 +16,9 @@ each makes, are the world proof's stage table
   by the name of the function that drew it.
 - **What two or more stages read** is in
   `what-every-stage-shares-the-shapes-it-hands-on-and-its-two-checks.ts`: the shapes the stages hand on (a realm as
-  the setup hands it, a cell of the grid, a terrain, a ring cell's tailoring, a province as the world makes it) and
-  the two checks `theCardDealt` and `theOneMadeSure`. A type only one stage reads stays in that stage's file
-  (`ALayoutsScore`, in S1's).
+  the setup hands it, a cell of the grid, a terrain, a ring cell's tailoring, a province as the world makes it, a
+  hero as the world makes him) and the two checks `theCardDealt` and `theOneMadeSure`. A type only one stage reads
+  stays in that stage's file (`ALayoutsScore`, in S1's).
 - **A stage's file never imports `generate.ts`**: that would be an import cycle, which `npm run lint:arch` refuses. So
   a helper of `generate.ts`'s top level that a stage calls moves to a file of its own beside the stages, and
   `generate.ts` re-exports it for its other callers (the sea share the GM picks, `normSeaPct`, which S0 reads).
