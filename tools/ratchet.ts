@@ -848,6 +848,10 @@ export const THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES: readonly (readonly [file: 
     'src/engine/world/the-worlds-making/s02-each-homes-ring-tailored-and-the-seas-fill-rates.ts',
     'eachHomesRingTailoredAndTheSeasFillRates',
   ],
+  [
+    'src/engine/world/the-worlds-making/s03-every-province-made-its-terrain-tax-armies-and-lairs.ts',
+    'everyProvinceMadeItsTerrainTaxArmiesAndLairs',
+  ],
   ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P'],
   ['src/engine/world/tables.ts', 'provincePoolSize'],
   ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP'],

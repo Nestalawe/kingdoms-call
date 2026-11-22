@@ -47,6 +47,7 @@ export const THE_WORLDS_MAKINGS_STAGES: readonly AStageOfTheWorldsMaking[] = [
     stage: 'S3',
     what: 'the provinces: tax, primal, armies, features and lairs, ritual sites',
     anchor: '// ── PHASE 3:',
+    fn: 'everyProvinceMadeItsTerrainTaxArmiesAndLairs',
   },
   { stage: 'S4', what: 'the races dealt to their heartlands', anchor: '// Post-generation: add fleet types' },
   { stage: 'S5', what: 'the coastal fleets', anchor: 'const FLEET_BY_RACE =' },
