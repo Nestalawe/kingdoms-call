@@ -8,9 +8,9 @@
 // - "turnEnd: the board a hero's Imperial Title shows his realm": the Cartographer (each realm's atlas), the Beastlord
 //   (each realm's monsters under arms) and the Wildwarden (each realm's creatures in the field).
 // Each effect is handed the seat of the realm holding its title, the world as its board reads it, the standings and
-// whether the holder has met a realm, and returns its lines' facts, in the order the block wrote them; the turn writes
-// each line, for the holder's realm alone, and then the line for the realms he hasn't met. No effect draws a die. The
-// runner is in the-registry-of-the-imperial-titles-effects.ts.
+// whether the holder has met a realm, and returns its board, its lines' facts in the order the block wrote them; the
+// turn writes each line, for the holder's realm alone, and then the line for the realms he hasn't met. No effect draws
+// a die. The runner is in the-registry-of-the-imperial-titles-effects.ts.
 // The facts (plan P1-12d13): each kind holds plain values, a realm as the line names it, a hero's or a province's name
 // as the world holds it (null where it has none), counts and figures; the prose writes the words
 // (src/views/prose/the-words-of-the-title-intelligence-lines.ts). The other kinds of the title intelligence, and each
@@ -107,7 +107,7 @@ export const THE_BOARD_AN_IMPERIAL_TITLE_OF_THE_REALM_SHOWS_ITS_HOLDER = {
         percent: pct,
       });
     });
-    return theLines;
+    return { theLines };
   },
   // THE VAULTKEEPER — each rival's treasury (own line).
   vault: ({ theHoldersSeat: pi, theWorld: G, heHasMet: met }) => {
@@ -124,7 +124,7 @@ export const THE_BOARD_AN_IMPERIAL_TITLE_OF_THE_REALM_SHOWS_ITS_HOLDER = {
         gold: pl.gold || 0,
       });
     });
-    return theLines;
+    return { theLines };
   },
 } satisfies Partial<
   Record<AnImperialTitlesSlug, TheTurnsEndsStages['the board an Imperial Title of the realm shows its holder']>
@@ -181,7 +181,7 @@ export const THE_BOARD_A_HEROS_IMPERIAL_TITLE_SHOWS_HIS_REALM = {
       });
     }
     if (!any) theLines.push({ kind: "the Cartographer's holder finds no rival realm to survey" });
-    return theLines;
+    return { theLines };
   },
   // THE BEASTLORD — the rival menagerie. For each realm: how many Monster-category units they
   // field, and the province holding their largest monster host. Garrisoned beasts are counted in
@@ -236,7 +236,7 @@ export const THE_BOARD_A_HEROS_IMPERIAL_TITLE_SHOWS_HIS_REALM = {
       line(i, { realmName: (G.players[i]?.name ?? '') || null, seat: i });
     }
     if (!any) theLines.push({ kind: "the Beastlord's holder finds no rival realm to reckon" });
-    return theLines;
+    return { theLines };
   },
   // THE WILDWARDEN — the rival wild host. The same census, for the free beasts: thunderbirds, ents,
   // bears, giants, unicorns, mammoths, rocs, whale cohorts and great turtles (KC_UNIT_CLASS.creature). Deliberately symmetrical with the Beastlord's board so
@@ -290,7 +290,7 @@ export const THE_BOARD_A_HEROS_IMPERIAL_TITLE_SHOWS_HIS_REALM = {
       line(i, { realmName: (G.players[i]?.name ?? '') || null, seat: i });
     }
     if (!any) theLines.push({ kind: "the Wildwarden's holder finds no rival realm to reckon" });
-    return theLines;
+    return { theLines };
   },
 } satisfies Partial<
   Record<AnImperialTitlesSlug, TheTurnsEndsStages["the board a hero's Imperial Title shows his realm"]>

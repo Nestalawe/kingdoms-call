@@ -1,7 +1,5 @@
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { noteGraveIntel } from '../graves.ts';
 import { TITLES_PUBLIC_FROM_TURN } from './perks.ts';
 import { MINOR_TITLES } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
@@ -11,22 +9,17 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../turn/events-and-their-audiences.ts';
-import {
-  aLevelAboveNothing,
-  asItsGuardReadsIt,
-} from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
 import type { ATitleThatCountsTheRealmsNotMet } from './the-facts-the-title-intelligence-lines-record.ts';
 import {
   theBoardsOfTheImperialTitlesAtAStage,
   type AStageOfAnImperialTitlesBoard,
+  type TheTitlesWhoseBoardsAreToldAt,
 } from '../rules/the-registry-of-the-imperial-titles-effects.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type {
-  Army,
-  Character,
   GameState,
-  Grave,
   MajorTitleHolder,
   MajorTitleSnapshot,
   MinorTitleHolder,
@@ -34,9 +27,6 @@ import type {
   Province,
   Realm,
 } from '../../schemas/saved-game-state.ts';
-
-/** An act of espionage as the Spymaster's ledger keeps it this turn. */
-type TheLedgersEntry = NonNullable<GameState['_espionageLedger']>[number];
 
 // ── THE TITLES AT THE TURN'S END (plan P1-08k6: the last stages taken out of the end of resolveTurn's body) ─────────
 // Once the new turn is done (new-turn-war-academy-informants-divine-resurrection-graves-mercenaries-wanderers-and-the-
@@ -98,35 +88,26 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       });
   };
-  const isNaval = (t: string) => SEA_TYPES.has(t);
-  const kindStr = (ch: Character, naval: boolean) =>
-    (asItsGuardReadsIt(ch.armies) ?? [])
-      .filter((a) => (naval ? isNaval(a.type) : !isNaval(a.type)))
-      .reduce((s, a) => s + unitBaseStrength(a), 0);
-  // Strongest land/sea force for a rival → the COMMANDING character, so we can name them AND give
-  // their current province.
-  const strongestChar = (pi: number, naval: boolean) => {
-    let best = -1,
-      bc: Character | null = null;
-    for (const c of (asItsGuardReadsIt(G.characters) ?? []).filter((c) => c.alive && c.player === pi)) {
-      const st = kindStr(c, naval);
-      if (st > best) {
-        best = st;
-        bc = c;
-      }
-    }
-    return best > 0 ? bc : null;
-  };
-  // The boards of the titles that read each rival realm as a whole (B-06o): each title's effect, in the registry of the
-  // Imperial Titles' effects, gives its board's lines in the order its block wrote them; each is written for the
-  // holder's realm alone, then the line for the realms it hasn't met.
-  const tellTheBoardsAt = (theStage: AStageOfAnImperialTitlesBoard) => {
+  // Each title's board (B-06o, B-06p): each title's effect, in the registry of the Imperial Titles' effects, gives its
+  // board's lines in the order its block wrote them; each is written for the holder's realm alone, what the
+  // Deathpriest's Grave-sight finds filed under the realm's Graveyards Known just before its line; then the
+  // Loremaster's scholars copy one fresh discovery a met realm made, if there is one his realm lacks (the one die of
+  // the title intelligence, drawn here, after his board's lines); then, at the stages whose titles count them, the
+  // line for the realms the holder hasn't met.
+  const tellTheBoardsAt = <TheStage extends AStageOfAnImperialTitlesBoard>(
+    theStage: TheStage,
+    thenTheRealmsNotMet: (theTitle: TheTitlesWhoseBoardsAreToldAt<TheStage>, pi: number) => void,
+  ) => {
     theBoardsOfTheImperialTitlesAtAStage(
       theStage,
       holder,
       (pi) => ({ theHoldersSeat: pi, theWorld: G, theProvinces: provs, theStandings: STD, heHasMet: met }),
-      (theTitle, pi, theLines) => {
-        for (const fact of theLines)
+      (theTitle, pi, theBoard) => {
+        const _dpl = G.players[pi];
+        theBoard.theLines.forEach((fact, k) => {
+          const theGraveSight = theBoard.theGraveSightItFilesBeforeEachLine?.[k];
+          if (theGraveSight && _dpl)
+            noteGraveIntel(_dpl, theGraveSight.theProvinceId, G.turn, theGraveSight.theDead, { partial: true });
           emit(turnContext, {
             type: 'system',
             fact,
@@ -134,248 +115,10 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
-        unmetLine(pi, theTitle);
-      },
-    );
-  };
-  // THE THRONE and THE VAULTKEEPER, the titles of the realm (their boards: rules/the-imperial-titles/the-boards-of-
-  // the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts).
-  tellTheBoardsAt('the board an Imperial Title of the realm shows its holder');
-  // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
-  {
-    const pi = holder('marshal');
-    if (pi != null) {
-      let any = false;
-      {
-        const oc = strongestChar(pi, false);
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Grand Marshal's holder learns his realm's strongest land army",
-            army: oc
-              ? {
-                  commanderName: oc.name,
-                  provinceName: (provs[oc.location]?.name ?? '') || null,
-                  strength: kindStr(oc, false),
-                }
-              : null,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
-      }
-      for (const [i] of G.players.entries()) {
-        if (i === pi || !met(pi, i)) continue;
-        const c = strongestChar(i, false);
-        if (c) {
-          any = true;
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Grand Marshal's holder learns a rival's strongest land army",
-              realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-              army: {
-                commanderName: c.name,
-                provinceName: (provs[c.location]?.name ?? '') || null,
-                strength: kindStr(c, false),
-              },
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        }
-      }
-      if (!any)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Grand Marshal's holder learns no rival fields a land army" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      unmetLine(pi, 'marshal');
-    }
-  }
-  // THE SEA LORD — each rival's strongest fleet: commander + province (own line).
-  {
-    const pi = holder('sea');
-    if (pi != null) {
-      let any = false;
-      {
-        const oc = strongestChar(pi, true);
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Sea Lord's holder learns his realm's strongest fleet",
-            fleet: oc
-              ? {
-                  commanderName: oc.name,
-                  provinceName: (provs[oc.location]?.name ?? '') || null,
-                  strength: kindStr(oc, true),
-                }
-              : null,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      }
-      for (const [i] of G.players.entries()) {
-        if (i === pi || !met(pi, i)) continue;
-        const c = strongestChar(i, true);
-        if (c) {
-          any = true;
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Sea Lord's holder learns a rival's strongest fleet",
-              realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-              fleet: {
-                commanderName: c.name,
-                provinceName: (provs[c.location]?.name ?? '') || null,
-                strength: kindStr(c, true),
-              },
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        }
-      }
-      if (!any)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Sea Lord's holder learns no rival fields a fleet" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      unmetLine(pi, 'sea');
-    }
-  }
-  // THE MONSTER-BANE — 2026-09-17: was the single runner-up for the title. Now the foremost
-  // monster-slayer of EVERY rival realm, each on their own line with province and tally, so the
-  // holder can see the whole field coming rather than only the nearest challenger. An unsworn
-  // hero
-  // (player==null) is nobody's champion and is left out.
-  {
-    const pi = holder('monster');
-    if (pi != null) {
-      const bestOf = (i: number) => {
-        let b: Character | null = null,
-          bm = 0;
-        for (const c of (asItsGuardReadsIt(G.characters) ?? []).filter((c) => c.alive && c.player === i)) {
-          const m = Number(c.tm?.monster) || 0;
-          if (m > bm) {
-            bm = m;
-            b = c;
-          }
-        }
-        return b ? { c: b, m: bm } : null;
-      };
-      const own = bestOf(pi);
-      emit(turnContext, {
-        type: 'system',
-        fact: {
-          kind: "the Monster-Bane's holder learns his realm's champion",
-          champion: own
-            ? { heroName: own.c.name, provinceName: (provs[own.c.location]?.name ?? '') || null, monsterBlood: own.m }
-            : null,
-        },
-        audience: { actor: pi, realms: [pi] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      });
-      let any = false;
-      for (const [i] of G.players.entries()) {
-        if (i === pi || !met(pi, i)) continue;
-        const r = bestOf(i);
-        if (r) {
-          any = true;
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Monster-Bane's holder learns a rival's champion",
-              realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-              champion: {
-                heroName: r.c.name,
-                provinceName: (provs[r.c.location]?.name ?? '') || null,
-                monsterBlood: r.m,
-              },
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        }
-      }
-      if (!any)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Monster-Bane's holder learns no rival's hero has drawn monster-blood" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      unmetLine(pi, 'monster');
-    }
-  }
-  // THE LOREMASTER — 2026-09-17: was this turn's discoveries only, which in most turns is nothing
-  // at all. Now the FULL holding of every rival realm, so the holder can see the whole shape of
-  // what others know. The free copy still comes from what was discovered THIS turn: the title
-  // reads a rival's library, it does not empty it.
-  {
-    const pi = holder('lore');
-    if (pi != null) {
-      const tt = G.turn - 1;
-      const fresh: { d: NonNullable<Realm['discoveries']>[number]; i: number }[] = [];
-      let anyHeld = false;
-      for (const [i, pl] of G.players.entries()) {
-        if (i === pi || !met(pi, i)) continue;
-        const ds = asItsGuardReadsIt(pl)?.discoveries ?? [];
-        if (ds.length) {
-          anyHeld = true;
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Loremaster's holder learns a rival's discoveries",
-              realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-              discoveries: ds.map((d) => d.name),
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        } else
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Loremaster's holder learns a rival holds no discoveries",
-              realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        ds.forEach((d) => {
-          if (d.turnDiscovered === tt) fresh.push({ d, i });
-        });
-      }
-      if (!anyHeld)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Loremaster's holder learns no rival has learned anything worth copying" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      const lp = G.players[pi];
-      if (lp && fresh.length) {
-        const owned = new Set((lp.discoveries ?? []).map((d) => d.id));
-        const learn = fresh.filter((f) => !owned.has(f.d.id));
-        if (learn.length) {
+        const lp = G.players[pi];
+        const learn = theBoard.theFreshDiscoveriesHisScholarsMayCopy ?? [];
+        if (lp && learn.length) {
           const pk = theOneThePickFell(learn[Math.floor(kcRng() * learn.length)]).d;
           const itsDiscoveries = lp.discoveries ?? [];
           lp.discoveries = itsDiscoveries;
@@ -394,237 +137,33 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
             phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
           });
         }
-      }
-      unmetLine(pi, 'lore');
-    }
-  }
-  // THE ARCHMAGE — 2026-09-17: the foremost mage of each school OUTSIDE the holder's own realm.
-  // Naming the holder's own archmage back to them was the one line in the whole title system that
-  // told a player something they already knew; this is a rivals' board.
-  {
-    const pi = holder('arch');
-    if (pi != null) {
-      const tot = (c: Character) => {
-        const itsSkills: Character['skills'] = asItsGuardReadsIt(c.skills) ?? {};
-        return Object.values(itsSkills).reduce((s: number, v) => s + (Number(v) || 0), 0);
-      };
-      (['white', 'psychic', 'illusory', 'elemental', 'necromancy'] as const).forEach((sk) => {
-        let best: Character | null = null,
-          bl = -1,
-          bt = -1;
-        for (const c of (asItsGuardReadsIt(G.characters) ?? []).filter(
-          (c) => c.alive && c.player !== pi && (c.player == null || met(pi, c.player)),
-        )) {
-          const l = Number(asItsGuardReadsIt(c.skills)?.[sk]) || 0;
-          if (l > bl || (l === bl && tot(c) > bt)) {
-            bl = l;
-            bt = tot(c);
-            best = c;
-          }
-        }
-        if (best && bl > 0)
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Archmage's holder learns a school's foremost mage outside his realm",
-              school: sk,
-              heroName: best.name,
-              level: bl,
-              realm:
-                best.player != null
-                  ? { realmName: (G.players[best.player]?.name ?? '') || null, seat: best.player }
-                  : null,
-              provinceName: (provs[best.location]?.name ?? '') || null,
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        else
-          emit(turnContext, {
-            type: 'system',
-            fact: { kind: "the Archmage's holder learns of no mage of a school outside his realm", school: sk },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-      });
-      unmetLine(pi, 'arch');
-    }
-  }
-  // THE HIEROPHANT — 2026-09-17: was the largest skeletal army, which is the Deathpriest's ground
-  // and read as a necromancer's perk on a title of the White faith. Now the priest reads the
-  // dead: every fallen hero this realm can SEE gives up the skills they carried in life.
-  // Visibility mirrors buildTurnReport's `visibleDeadHeroes` — own dead, a fall witnessed this
-  // turn, or a body lying in a province the realm holds or has a character standing in — so the
-  // title never reveals a corpse the player could not already see on their map, only what that
-  // corpse knew.
-  {
-    const pi = holder('hiero');
-    if (pi != null) {
-      const seen = new Set(G.players[pi]?.seenDeadHeroIds ?? []);
-      const eyes = new Set(provs.filter((pv): pv is Province => pv?.owner === pi).map((pv) => pv.id));
-      (asItsGuardReadsIt(G.characters) ?? [])
-        .filter((c: Character | null | undefined) => c?.alive && c.player === pi)
-        .forEach((c) => {
-          if (asItsGuardReadsIt(c.location) != null) eyes.add(c.location);
-        });
-      const vis = (asItsGuardReadsIt(G.heroGraveyard) ?? []).filter(
-        (g: Grave | null | undefined) =>
-          g && (g.player === pi || seen.has(g.id) || (asItsGuardReadsIt(g.location) != null && eyes.has(g.location))),
-      );
-      if (vis.length) {
-        vis.forEach((g) => {
-          const itsSkills: Grave['skills'] = asItsGuardReadsIt(g.skills) ?? {};
-          const skills = Object.entries(itsSkills)
-            .filter(aLevelAboveNothing)
-            .sort((a, b) => b[1] - a[1])
-            .map(([skill, level]) => ({ skill, level }));
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Hierophant's holder hears what a fallen hero knew",
-              heroName: g.name,
-              realm: g.player != null ? { realmName: (G.players[g.player]?.name ?? '') || null, seat: g.player } : null,
-              isKing: Boolean(asItsGuardReadsIt(g.isKing)),
-              provinceName: (provs[g.location]?.name ?? '') || null,
-              skills,
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        });
-      } else
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Hierophant's holder finds no fallen hero to read" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-    }
-  }
-  // THE DEATHPRIEST — Grave-sight: each province with Crack/Elite dead (own line). Item 8: every
-  // Grave-sight find is also written into the realm's graveyard lore, so the Deathpriest's
-  // provinces appear in the report's Graveyards Known alongside what their own necromancers have
-  // walked over. The reading is PARTIAL — the title picks out crack and elite dead only and is
-  // blind to whatever lesser ranks lie beside them — so it is flagged as such and the report says
-  // "at least". A province with no crack/elite dead is left alone, never marked bare: Grave-sight
-  // seeing nothing worth naming there is not the same as seeing empty ground.
-  {
-    const pi = holder('necro');
-    if (pi != null) {
-      let any = false;
-      const _dpl = G.players[pi];
-      const theProvinces: readonly (Province | null | undefined)[] = asItsGuardReadsIt(G.world.provinces) ?? [];
-      for (const pv of theProvinces) {
-        if (!pv) continue;
-        const _fine = (pv.battleGraves ?? []).filter(
-          (g: Army | null | undefined) => g && (g.quality === 'Crack' || g.quality === 'Elite'),
-        );
-        const n = _fine.length;
-        if (n > 0) {
-          any = true;
-          if (_dpl) noteGraveIntel(_dpl, pv.id, G.turn, _fine, { partial: true });
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Deathpriest's Grave-sight finds crack and elite dead in a province",
-              provinceName: (provs[pv.id]?.name ?? '') || null,
-              count: n,
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        }
-      }
-      if (!any)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Deathpriest's Grave-sight finds no crack or elite dead" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-    }
-  }
-  // ── THE FOUR NEW TITLES ────
-  // THE SPYMASTER — the counter-intelligence ledger. Every successful act of espionage worked
-  // against THIS realm's provinces this turn, named with the realm that worked it and where. This
-  // is the RAW ledger: a disguised agent who beat the province watch is still listed here, which
-  // is the whole point of the title. Only espionage against ground this realm actually owns is
-  // reported.
-  {
-    const pi = holder('spy');
-    if (pi != null) {
-      const led = (G._espionageLedger ?? []).filter(
-        (e: TheLedgersEntry | null | undefined) => e && provs[e.provId]?.owner === pi && e.byPi !== pi,
-      );
-      if (led.length) {
-        // NAME THE AGENT, not the crown. Knowing "Arden pried into your lands" is barely
-        // actionable; knowing WHICH hero did it, and where they were standing when they did,
-        // tells you who to hunt and where they are. The realm is still given, after the name.
-        led.forEach((e) => {
-          emit(turnContext, {
-            type: 'system',
-            fact: {
-              kind: "the Spymaster's holder learns of an act of espionage against his lands",
-              agentIsKing: Boolean(asItsGuardReadsIt(e.isKing)),
-              agentName: e.charName || null,
-              agentsRealm:
-                asItsGuardReadsIt(e.byPi) != null
-                  ? { realmName: (G.players[e.byPi]?.name ?? '') || null, seat: e.byPi }
-                  : null,
-              whatTheAgentDid: e.kind,
-              provinceName: (provs[e.provId]?.name ?? '') || null,
-            },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-        });
-        // A hero who worked twice in one turn is ONE name on the roll, with a count — the per-act
-        // lines above already carry the detail, and the roll is meant to be read at a glance.
-        const byChar = new Map<number, { name: string; pi: number; n: number }>();
-        led.forEach((e) => {
-          const k = e.charId;
-          const r = byChar.get(k) ?? { name: e.charName, pi: e.byPi, n: 0 };
-          r.n++;
-          byChar.set(k, r);
-        });
-        const heroes = [...byChar.values()]
-          .sort((a, b) => b.n - a.n)
-          .map((r) => ({
-            heroName: r.name || null,
-            realm:
-              asItsGuardReadsIt(r.pi) != null ? { realmName: (G.players[r.pi]?.name ?? '') || null, seat: r.pi } : null,
-            times: r.n,
-          }));
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Spymaster's holder learns who intruded into his lands this turn",
-            intrusions: led.length,
-            heroes,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      } else
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Spymaster's holder learns no hand was raised against his lands" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-    }
-  }
-  // THE CARTOGRAPHER, THE BEASTLORD and THE WILDWARDEN (their boards: the same file).
-  tellTheBoardsAt("the board a hero's Imperial Title shows his realm");
+        thenTheRealmsNotMet(theTitle, pi);
+      },
+    );
+  };
+  const thenTheLineForTheRealmsNotMet = (theTitle: ATitleThatCountsTheRealmsNotMet, pi: number) => {
+    unmetLine(pi, theTitle);
+  };
+  const andNoLineForTheRealmsNotMet = () => {
+    // the boards of the fallen and of the spies count no realm the holder hasn't met
+  };
+  // THE THRONE and THE VAULTKEEPER, the titles of the realm (their boards: rules/the-imperial-titles/the-boards-of-
+  // the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts).
+  tellTheBoardsAt('the board an Imperial Title of the realm shows its holder', thenTheLineForTheRealmsNotMet);
+  // THE GRAND MARSHAL, THE SEA LORD, THE MONSTER-BANE, THE LOREMASTER (and his copy) and THE ARCHMAGE (their boards:
+  // rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-realms-heroes-lore-the-fallen-and-the-spies-and-
+  // the-facts-their-lines-record.ts).
+  tellTheBoardsAt(
+    "the board a hero's Imperial Title shows of each realm's heroes and lore",
+    thenTheLineForTheRealmsNotMet,
+  );
+  // THE HIEROPHANT, THE DEATHPRIEST and THE SPYMASTER (their boards: the same file): no line for the realms not met.
+  tellTheBoardsAt(
+    "the board a hero's Imperial Title shows of the fallen and of the spies in his lands",
+    andNoLineForTheRealmsNotMet,
+  );
+  // THE CARTOGRAPHER, THE BEASTLORD and THE WILDWARDEN (their boards: the first file).
+  tellTheBoardsAt("the board a hero's Imperial Title shows his realm", thenTheLineForTheRealmsNotMet);
 }
 
 /** A title as its changes are told: its key and name, and whether a realm (not a hero) holds it. */

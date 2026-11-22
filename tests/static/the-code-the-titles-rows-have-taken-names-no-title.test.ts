@@ -124,6 +124,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'creditBattle',
     "B-06n, the Grand Marshal's and the Sea Lord's battle merit, from their rows (theBattlesItsDeedsCount)",
   ],
+  [
+    'src/engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.ts',
+    'imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy',
+    "B-06o and B-06p, each title's board, to the Imperial Titles' registry (turnEnd)",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
