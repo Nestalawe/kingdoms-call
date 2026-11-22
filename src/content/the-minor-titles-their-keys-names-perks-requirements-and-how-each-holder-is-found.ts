@@ -210,6 +210,16 @@ export const MINOR_TITLES = [
 /** A minor title, by its key (the slug its registry's entry has). */
 export type AMinorTitlesSlug = (typeof MINOR_TITLES)[number]['key'];
 
+/** The minor titles whose holder's companies fight stronger, in the order their steps lift a unit, each rounded before
+ *  the next (the minor titles' registry's order of the stage "strength: the commander's minor titles", which the army
+ *  card reads too). A title with the perk in its row is in it once (a unit case). */
+export const THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN = [
+  'naturalist',
+  'beastmaster',
+  'cavalier',
+  'ironclad',
+] as const satisfies readonly AMinorTitlesSlug[];
+
 // ── The skills a minor title adds to at their point of use ──
 // skillBonusBreakdown covers everything that changes the skill ITSELF — equipped items, the Crown
 // of Command aura and the Curse spell. It does NOT cover the bonuses the engine adds at the point

@@ -9,6 +9,7 @@
 import { KC_QUALITY_UP, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import {
   MINOR_TITLES,
+  THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN,
   type AKindOfCompanyAMinorTitleCounts,
   type AMinorTitlesArmyPerk,
 } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
@@ -108,16 +109,10 @@ const THE_ARMY_PERK_OF_EACH_MINOR_TITLE: ReadonlyMap<
   ARowWithAnArmyPerk['theCompaniesItsHolderLeadsFightStronger']
 > = new Map(THE_ROWS_WITH_AN_ARMY_PERK.map((row) => [row.key, row.theCompaniesItsHolderLeadsFightStronger]));
 
-/** The titles with an army perk in the order their steps are made: the perks in the order of the first row that gives
- *  each, and a perk's titles in their rows' order (the Naturalist, the Beastmaster, the Cavalier, the Ironclad: a unit
- *  case pins it to the minor titles' registry's order of the stage "strength: the commander's minor titles"). */
-export const THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER: readonly AMinorTitleWithAnArmyPerk[] = [
-  ...new Set(THE_ROWS_WITH_AN_ARMY_PERK.map((row) => row.theCompaniesItsHolderLeadsFightStronger.thePerk)),
-].flatMap((thePerk) =>
-  THE_ROWS_WITH_AN_ARMY_PERK.filter((row) => row.theCompaniesItsHolderLeadsFightStronger.thePerk === thePerk).map(
-    (row) => row.key,
-  ),
-);
+/** The titles with an army perk in the order their steps are made (content's
+ *  THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN: the Naturalist, the Beastmaster, the Cavalier, the Ironclad). */
+export const THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER: readonly AMinorTitleWithAnArmyPerk[] =
+  THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN;
 
 /** What the stage "strength: the commander's minor titles" hands an effect (armStr, after his Druid mastery): the unit
  *  its commander leads. Whether he holds the title, the runner's caller says. */

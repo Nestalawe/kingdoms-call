@@ -178,6 +178,14 @@ describe("the commander's minor titles lift the units he leads", () => {
       ...THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER,
     ]);
     expect([...THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER]).toEqual(THE_TITLES);
+    expect(
+      MINOR_TITLES.filter((t) => 'theCompaniesItsHolderLeadsFightStronger' in t).map((t) => t.key),
+      'the titles with an army perk in their rows, each in the order once',
+    ).toEqual(
+      [...THE_TITLES].sort(
+        (x, y) => MINOR_TITLES.findIndex((t) => t.key === x) - MINOR_TITLES.findIndex((t) => t.key === y),
+      ),
+    );
     /** The units each title lifts, as the old rule wrote them. */
     const theOldKind: Readonly<Record<AMinorTitleWithAnArmyPerk, (type: string) => boolean>> = {
       naturalist: (type) => CREATURE_ARMIES.has(type) || MONSTER_ARMIES.has(type),

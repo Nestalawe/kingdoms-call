@@ -50,7 +50,8 @@ battle is a stage of `strength`, beside the commander's items.
   perk two titles give (the Naturalist's and the Beastmaster's) once (armStr, after his Druid mastery, through
   `theStrengthOfAUnitOnceItsCommandersMinorTitlesLiftIt`). The step and its product are on plain values
   (`rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts`),
-  which the army card reads too, in the order its rows give; a unit case holds that order to the stage's.
+  which the army card reads too; the stage's order is content's `THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN`,
+  beside the rows, which both read (a title given the perk in its row joins it).
 - `movementCost`, `orderValidity` and `orderOutcome` (B-06l): the Swift and the Sea-Wolf's movement points; the
   Shadow, the Loreseeker, the Trailblazer, the Colossus and the Warlock's orders.
 - `turnEnd` (B-06m): the Host-Leader's cut of the wages. The Cutpurse's, the Champion of the People's and the

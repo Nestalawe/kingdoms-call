@@ -10,9 +10,10 @@
 // measure a hero is held to for a title, which the awarding (computeMinorTitles) asks. The rows after B-06k give each
 // other perk its effect, at the hook points TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
 // docs/architecture/the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md.
-import type {
-  AMinorTitlesSlug,
-  HowTheHolderOfAMinorTitleIsFound,
+import {
+  THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN,
+  type AMinorTitlesSlug,
+  type HowTheHolderOfAMinorTitleIsFound,
 } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import { theHighestLevelAHeroHasTrainedInAMagicSchool } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
@@ -85,14 +86,13 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
 } satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>;
 
 /** Each stage's effects, in the order the turn runs them (a hero's skills: the character card's, SKILL_EXTRA_MINORS';
- *  the commander's minor titles: armStr's, which the army card's THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER
- *  reads from the rows, a unit case pinning the two together). */
+ *  the commander's minor titles: armStr's, content's list beside the rows, which the army card reads too). */
 export const THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES = {
   personalCombat: {
     "a hero's titles add to his skills": ['duelist', 'marksman', 'widowmaker', 'relichunter'],
   },
   strength: {
-    "the commander's minor titles": ['naturalist', 'beastmaster', 'cavalier', 'ironclad'],
+    "the commander's minor titles": THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN,
     "a hero's titles add to his Tactical": ['strategist'],
   },
 } as const satisfies {
