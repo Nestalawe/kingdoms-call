@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, the world's making's numbers and lists, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -817,6 +817,116 @@ export function titleChecksInEngine(codeFiles: readonly (readonly [file: string,
   return n;
 }
 
+// The world's making's numbers and lists written in the engine's code (B-06, T7, the rules pulled out: its world
+// generation family, B-06s to B-06ab), as the conductor decided them on 2026-11-22 (Run 2a's scoping, section 1): in
+// the functions and tables THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES lists (generateNewGame and the sea share's limits,
+// the province pools and their chances, the bots' realms), counted by syntax tree. worldMakingNumbersInEngine counts
+// each number other than 0 and 1 (not a literal type, nor the index of an element read, `a[2]`); 1s are left out, as
+// most of generateNewGame's are its structure (`rows - 2`, `+ 1`, `length - 1`). worldMakingListsInEngine counts each
+// string that is an element of an array literal (`['plain', 'forest']`, the one inside `new Set([...])` too): the name
+// pools, the terrains, the beasts, the fleets. Everything a top-level function or table holds counts for it, its nested
+// functions' too, named or not. The family's rows move the lists and the numbers into content's rows, so both counts
+// only fall; a listed function a row moves keeps its entry at its new home, and one a row empties stays at 0:
+// tests/static/the-code-the-worlds-making-rows-have-taken-holds-no-number-nor-list-and-every-listed-function-is-there.test.ts
+// holds the functions the rows have taken, and fails on a listed function the code no longer declares.
+/** The world's making's functions and tables, by their file: what the counts above read. */
+export const THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES: readonly (readonly [file: string, fn: string])[] = [
+  ['src/engine/world/generate.ts', 'SEA_PCT_MIN'],
+  ['src/engine/world/generate.ts', 'SEA_PCT_MAX'],
+  ['src/engine/world/generate.ts', 'SEA_PCT_DEFAULT'],
+  ['src/engine/world/generate.ts', 'normSeaPct'],
+  ['src/engine/world/generate.ts', 'generateNewGame'],
+  ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P'],
+  ['src/engine/world/tables.ts', 'provincePoolSize'],
+  ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP'],
+  ['src/engine/world/tables.ts', 'PRIMAL_LAND_CHANCE'],
+  ['src/engine/world/tables.ts', 'COASTAL_NAVAL_CHANCE'],
+  ['src/engine/world/tables.ts', 'buildHumanoidPool'],
+  ['src/engine/world/tables.ts', 'LAND_TERRAINS_GEN'],
+  ['src/engine/world/tables.ts', 'HUMANOID_FLEET_TYPES'],
+  ['src/engine/bots/setup.ts', 'BOT_SKILL_BUILD'],
+  ['src/engine/bots/setup.ts', 'BOT_KINGDOM_NAME_UNIT'],
+  ['src/engine/bots/setup.ts', 'botKingdomName'],
+  ['src/engine/bots/setup.ts', 'pickBotAlignmentBalanced'],
+  ['src/engine/bots/setup.ts', 'generateBotSetups'],
+];
+/** The name a top-level function or table is declared by: a function, or a `const` (a table, or an arrow or a
+ *  function given to it). */
+function nameOfATopLevelFunctionOrTable(node: ts.Node): string | null {
+  if (ts.isFunctionDeclaration(node) && node.name && ts.isSourceFile(node.parent)) return node.name.text;
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isIdentifier(node.name) &&
+    ts.isVariableDeclarationList(node.parent) &&
+    ts.isVariableStatement(node.parent.parent) &&
+    ts.isSourceFile(node.parent.parent.parent)
+  )
+    return node.name.text;
+  return null;
+}
+/** What the world's making's two counts find in one function or table. */
+export interface TheWorldsMakingsCounts {
+  /** The numbers other than 0 and 1, a literal type's and an element's index aside. */
+  numbers: number;
+  /** The strings that are an array literal's elements. */
+  lists: number;
+}
+/** Each top-level function and table of a file, by its name, with its numbers and its lists' strings (above; 0 for one
+ *  with none); what a nested function holds counts for the top-level one around it, and what no top-level function or
+ *  table holds for '(top)'. */
+export function worldMakingCountsByFunction(file: string, text: string): Map<string, TheWorldsMakingsCounts> {
+  const counts = new Map<string, TheWorldsMakingsCounts>();
+  const theCountsOf = (fn: string): TheWorldsMakingsCounts => {
+    const kept = counts.get(fn) ?? { numbers: 0, lists: 0 };
+    counts.set(fn, kept);
+    return kept;
+  };
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfATopLevelFunctionOrTable(node);
+    const fn = named ?? inside;
+    const theirs = theCountsOf(fn);
+    if (
+      ts.isNumericLiteral(node) &&
+      Number(node.text) !== 0 &&
+      Number(node.text) !== 1 &&
+      !ts.isLiteralTypeNode(node.parent) &&
+      !(ts.isElementAccessExpression(node.parent) && node.parent.argumentExpression === node)
+    )
+      theirs.numbers++;
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      ts.isArrayLiteralExpression(node.parent)
+    )
+      theirs.lists++;
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** One of the world's making's counts over the functions and tables listed, for the files given as [path from the
+ *  repository's root, text]. */
+function worldMakingCountIn(
+  what: keyof TheWorldsMakingsCounts,
+  codeFiles: readonly (readonly [file: string, text: string])[],
+): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    const theFunctions = THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES.filter(([f]) => f === file).map(([, fn]) => fn);
+    if (theFunctions.length === 0) continue;
+    const counts = worldMakingCountsByFunction(file, text);
+    for (const fn of theFunctions) n += counts.get(fn)?.[what] ?? 0;
+  }
+  return n;
+}
+/** The world's making's numbers in the functions and tables listed (above). */
+export const worldMakingNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  worldMakingCountIn('numbers', codeFiles);
+/** The world's making's lists' strings in the functions and tables listed (above). */
+export const worldMakingListsInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  worldMakingCountIn('lists', codeFiles);
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -910,6 +1020,8 @@ export function measure(): Counts {
     economyNumbersInEngine: economyNumbersInEngine(codeFiles),
     economyNumbersInTheBots: economyNumbersInTheBots(codeFiles),
     titleChecksInEngine: titleChecksInEngine(codeFiles),
+    worldMakingNumbersInEngine: worldMakingNumbersInEngine(codeFiles),
+    worldMakingListsInEngine: worldMakingListsInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),
