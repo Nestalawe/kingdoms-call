@@ -3,6 +3,7 @@ import {
   THE_BOTS_STARTING_SKILLS_BY_ALIGNMENT,
   THE_UNIT_WHOSE_COMPANIES_NAMES_NAME_A_BOTS_REALM_BY_ITS_RACE,
 } from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import { THE_BOTS_REALMS } from '../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../rng.ts';
 import { RACES_P, TEMPERS_P } from '../world/tables.ts';
 import { ALIGNMENTS_P, alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -118,7 +119,7 @@ export function botKingdomName(race: string) {
   const namesOfUnit: Readonly<Partial<Record<string, readonly string[]>>> = ARMY_UNIT_NAMES;
   const unit = unitOfRace[race] ?? 'Free Lances';
   const pool = (typeof ARMY_UNIT_NAMES !== 'undefined' ? namesOfUnit[unit] : undefined) ?? ['the Free Company'];
-  for (let att = 0; att < 400; att++) {
+  for (let att = 0; att < THE_BOTS_REALMS.theTriesForANameNotYetTaken; att++) {
     const nm = theOneThePickFell(pool[Math.floor(kcRng() * pool.length)]);
     if (!_usedBotKingdomNames.has(nm)) {
       _usedBotKingdomNames.add(nm);
@@ -184,7 +185,7 @@ export function pickBotAlignmentBalanced(
       const friendly = alignDistP(a, ha) <= BOT_ALLY_ALIGN_DIST;
       cost += friendly ? (friends[h] ?? 0) : (foes[h] ?? 0);
     });
-    cost += (takenCounts[a] ?? 0) * 0.25; // mild preference for an alignment not yet in play
+    cost += (takenCounts[a] ?? 0) * THE_BOTS_REALMS.theCostOfEachRealmOfAnAlignmentInPlay; // mild preference for an alignment not yet in play
     if (!best || cost < best.cost) best = { cost, ties: [a] };
     else if (Math.abs(cost - best.cost) < 1e-9) best.ties.push(a);
   }

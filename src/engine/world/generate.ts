@@ -23,6 +23,22 @@ import {
   THE_WILD_CREATURES_BY_TERRAIN,
   THE_WILD_MONSTERS_BY_TERRAIN,
 } from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import {
+  A_KING_AND_HIS_HEROES,
+  EACH_HOMES_RING_AND_THE_SEAS_FILL,
+  EACH_PROVINCE,
+  THE_CAPITALS,
+  THE_HOMES,
+  THE_NEUTRAL_HEROES,
+  THE_PROVINCES_NAMES,
+  THE_SEAS_BY_KIND,
+  THE_SEA_FEATURES_AND_THEIR_GUARDIANS,
+  THE_SEA_SHARE_THE_GM_PICKS,
+  THE_STRONGEST_NEUTRAL_MIX,
+  THE_TAX_BANDS,
+  THE_TAX_FLOOR,
+  THE_WILD_COUNTRY_NEAR_THE_TWO_CROWNS,
+} from '../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../rng.ts';
 import { UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { HOME_FLEET_BY_RACE } from '../grand-design.ts';
@@ -165,9 +181,9 @@ function theCardDealt<Card>(card: Card | undefined): Card {
 // coasts are grown or shrunk until the count matches. Home cells and their tailored rings are never
 // touched, so every home guarantee (≤2 sea neighbours, a poor and a prosperous land, a sea for a
 // naval king) holds at any share.
-export const SEA_PCT_MIN = 20,
-  SEA_PCT_MAX = 80,
-  SEA_PCT_DEFAULT = 35;
+export const SEA_PCT_MIN = THE_SEA_SHARE_THE_GM_PICKS.theLeast,
+  SEA_PCT_MAX = THE_SEA_SHARE_THE_GM_PICKS.theMost,
+  SEA_PCT_DEFAULT = THE_SEA_SHARE_THE_GM_PICKS.theDefault;
 export function normSeaPct(v: unknown) {
   let pct = parseInt(String(v));
   if (!Number.isFinite(pct)) pct = SEA_PCT_DEFAULT;
@@ -295,7 +311,7 @@ export function generateNewGame(
       do {
         name = themedName(p);
         tries++;
-      } while (nameSet.has(name) && tries < 50);
+      } while (nameSet.has(name) && tries < THE_PROVINCES_NAMES.theTriesForANameNotYetTaken);
       if (nameSet.has(name)) {
         let k = 2;
         while (nameSet.has(name + ' ' + toRoman(k))) k++;
@@ -363,7 +379,7 @@ export function generateNewGame(
   // HARD FLOOR: a minimum spacing of 4 hexes — i.e. at least 3 empty ("neutral") provinces between
   // every pair of capitals. The map ladder (sizemap) is sized so this is reliably achievable at
   // each player count.
-  const KING_MIN_SPACING = 4; // >=3 neutral hexes between capitals
+  const KING_MIN_SPACING = THE_CAPITALS.theLeastHexesBetweenTwoCapitals; // >=3 neutral hexes between capitals
   // 2026-09-27 (Toby item 1): capitals are now placed as FAR APART AS THE MAP ALLOWS, not merely
   // "far enough". The previous pass drew up to 1,200 farthest-point layouts, kept every one that
   // reached the floor of 4, and then chose among them AT RANDOM — so a world that could have seated
@@ -410,7 +426,7 @@ export function generateNewGame(
     }
     return 0;
   };
-  const HOME_REFINE_SWEEPS = 6;
+  const HOME_REFINE_SWEEPS = THE_CAPITALS.theSweepsThatRefineALayout;
   const refineLayout = (
     hc: readonly (ACellOfTheGrid | undefined)[],
   ): readonly [cells: (ACellOfTheGrid | undefined)[], score: ALayoutsScore] => {
@@ -447,11 +463,11 @@ export function generateNewGame(
   // Seeds: a handful of refined layouts is worth far more than a thousand raw ones, but on an
   // undersized custom map keep drawing (raw, unrefined, which is cheap) until something reaches the
   // floor before spending the refinement budget.
-  const HOME_SEEDS = 10;
+  const HOME_SEEDS = THE_CAPITALS.theLayoutsRefined;
   const _cands: (readonly [cells: (ACellOfTheGrid | undefined)[], score: ALayoutsScore])[] = [];
   for (let att = 0; att < HOME_SEEDS; att++) _cands.push(refineLayout(buildLayout()));
   if (!_cands.some((x) => isFinite(x[1][0]) && x[1][0] >= KING_MIN_SPACING)) {
-    for (let att = 0; att < 400; att++) {
+    for (let att = 0; att < THE_CAPITALS.theRawLayoutsTriedWhenNoneKeepsTheSpacing; att++) {
       const raw = buildLayout();
       if (layoutMinDist(raw) >= KING_MIN_SPACING) {
         _cands.push(refineLayout(raw));
@@ -484,15 +500,25 @@ export function generateNewGame(
   // not be built: every home ring pinned at ≥4 land held the reachable share to ~70% (measured).
   // The ring still always holds the poor AND the prosperous land the home rules demand, so ≥2 land
   // neighbours survive at any share.
-  const HOME_MAX_SEA = seaPct >= 70 ? 4 : seaPct >= 60 ? 3 : 2;
+  const _theMostSea = EACH_HOMES_RING_AND_THE_SEAS_FILL.theMostSeaAHomeBorders;
+  const HOME_MAX_SEA =
+    seaPct >= _theMostSea.fromTheHigherCut.theSeaShareFrom
+      ? _theMostSea.fromTheHigherCut.theSeas
+      : seaPct >= _theMostSea.fromTheLowerCut.theSeaShareFrom
+        ? _theMostSea.fromTheLowerCut.theSeas
+        : _theMostSea.belowBoth;
   // The fill's two rates scale with the chosen share: 0.28 / 0.55 were the old fixed figures, which
   // are exactly what a 40% target gives here (0.7× and 1.375× the share), so the shape of the seas is
   // unchanged at the old rates and simply seeds more or less water at other shares.
-  const SEA_BASE_RATE = Math.min(0.9, seaTarget * 0.7),
-    SEA_CLUSTER_RATE = Math.min(0.95, seaTarget * 1.375);
+  const { theBaseRate, theClusterRate } = EACH_HOMES_RING_AND_THE_SEAS_FILL;
+  const SEA_BASE_RATE = Math.min(theBaseRate.theMost, seaTarget * theBaseRate.theShareOfTheSeaShare),
+    SEA_CLUSTER_RATE = Math.min(theClusterRate.theMost, seaTarget * theClusterRate.theShareOfTheSeaShare);
   // Ring cells roll at the fill's base rate; from 60% (where the cap opens) at its cluster rate, so a
   // drowned world's homes are island capitals rather than the one dry patch holding the share back.
-  const HOME_RING_SEA_CHANCE = seaPct >= 60 ? SEA_CLUSTER_RATE : SEA_BASE_RATE;
+  const HOME_RING_SEA_CHANCE =
+    seaPct >= EACH_HOMES_RING_AND_THE_SEAS_FILL.theSeaShareFromWhichARingRollsAtTheClusterRate
+      ? SEA_CLUSTER_RATE
+      : SEA_BASE_RATE;
   homeCells.forEach((home, ki) => {
     constraint[home.id] = { terrain: pickLand(), taxBand: null, isHome: true }; // home is land (race/pool set later)
     const ringAll = neighbourCells(home.r, home.c).filter((n) => !homeIdSet.has(n.id));
@@ -526,7 +552,7 @@ export function generateNewGame(
   // exactly half-and-half; parity is seeded randomly so it isn't always Creature-first. "Primal"
   // stays the internal umbrella — players only ever see the Creature / Monster label (see
   // formatRace / primalClass in the player portal).
-  let _primalCreatureNext = kcRng() < 0.5;
+  let _primalCreatureNext = kcRng() < EACH_PROVINCE.theChanceTheFirstWildLandIsTheCreatures;
   // Non-primal land provinces are split EXACTLY equally between the four humanoid races. A plain
   // per-province random draw drifted several provinces off even on a normal map, which visibly
   // favoured one race's units. Instead we deal from a repeatedly-reshuffled four-card deck: within
@@ -597,18 +623,21 @@ export function generateNewGame(
       if (con) {
         // Home / tailored-neighbour cell: terrain (and sometimes tax band) was decided in Phase 2.
         if (con.taxBand === 'poor')
-          taxOverride = rP(2, 3); // Poor = 2-3 (2026-09-21: no province is ever tax 1)
-        else if (con.taxBand === 'prosperous') taxOverride = rP(4, 6); // Prosperous = 3-6; capped at 6 so this band never leaks into the Rich tier (tax>=7)
+          taxOverride = rP(THE_TAX_BANDS.thePoor.theLeast, THE_TAX_BANDS.thePoor.theMost); // Poor = 2-3 (2026-09-21: no province is ever tax 1)
+        else if (con.taxBand === 'prosperous')
+          taxOverride = rP(THE_TAX_BANDS.theProsperous.theLeast, THE_TAX_BANDS.theProsperous.theMost); // Prosperous = 3-6; capped at 6 so this band never leaks into the Rich tier (tax>=7)
       }
+      // all six terrains rolled, in this order, for a province no band decides (the dice read each roll)
+      const _taxOf = EACH_PROVINCE.theTaxOfEachTerrain;
       const baseTax =
         taxOverride ??
         {
-          plain: rP(4, 9),
-          desert: rP(2, 4),
-          forest: rP(3, 7),
-          jungle: rP(2, 6),
-          mountain: rP(3, 7),
-          sea: rP(0, 2),
+          plain: rP(_taxOf.plain.theLeast, _taxOf.plain.theMost),
+          desert: rP(_taxOf.desert.theLeast, _taxOf.desert.theMost),
+          forest: rP(_taxOf.forest.theLeast, _taxOf.forest.theMost),
+          jungle: rP(_taxOf.jungle.theLeast, _taxOf.jungle.theMost),
+          mountain: rP(_taxOf.mountain.theLeast, _taxOf.mountain.theMost),
+          sea: rP(_taxOf.sea.theLeast, _taxOf.sea.theMost),
         }[terrain];
       // PRIMAL_LAND_CHANCE of LAND provinces are Primal (non-humanoid), split evenly Creature /
       // Monster. Each such province recruits exactly ONE unit type — a single wild unit makes these
@@ -640,7 +669,10 @@ export function generateNewGame(
       } else {
         race = nextHumanoidRace();
       }
-      const population = terrain === 'sea' ? 0 : rP(1, 6);
+      const population =
+        terrain === 'sea'
+          ? 0
+          : rP(EACH_PROVINCE.thePeopleOfALandProvince.theLeast, EACH_PROVINCE.thePeopleOfALandProvince.theMost);
       // Build army pool — primal provinces recruit their single wild unit; all others use the pool.
       let fullPool: readonly string[];
       if (primalUnit) {
@@ -667,7 +699,13 @@ export function generateNewGame(
         // Primal (single wild unit) and sea provinces keep whatever their pool already holds.
         const nonGarrison = fullPool.filter((t) => !t.toLowerCase().includes('garrison'));
         const garrison = fullPool.filter((t) => t.toLowerCase().includes('garrison'));
-        const poolCount = Math.min(nonGarrison.length, rP(2, 3));
+        const poolCount = Math.min(
+          nonGarrison.length,
+          rP(
+            EACH_PROVINCE.theUnitTypesAWildOrSeaProvinceOffers.theLeast,
+            EACH_PROVINCE.theUnitTypesAWildOrSeaProvinceOffers.theMost,
+          ),
+        );
         const shuffled = shuffleP(nonGarrison).slice(0, poolCount);
         armyPool = [...shuffled, ...garrison];
       }
@@ -676,7 +714,10 @@ export function generateNewGame(
       const features: ProvinceFeature[] = [];
       if (terrain !== 'sea') {
         const pool = featurePools[terrain] ?? FEATURE_POOLS_P.plain;
-        const fcount = rP(2, 4);
+        const fcount = rP(
+          EACH_PROVINCE.theFeaturesOfALandProvince.theLeast,
+          EACH_PROVINCE.theFeaturesOfALandProvince.theMost,
+        );
         const used = new Set<string>();
         for (let fi = 0; fi < fcount; fi++) {
           let fname: string,
@@ -684,7 +725,7 @@ export function generateNewGame(
           do {
             fname = theOneMadeSure(pool[Math.floor(kcRng() * pool.length)]);
             tries++;
-          } while (used.has(fname) && tries < 20);
+          } while (used.has(fname) && tries < EACH_PROVINCE.theTriesForAFeaturesNameNotYetTaken);
           used.add(fname);
           // Land features: exclude EVERY sea guardian so land lairs never get sea beasts.
           const landMonsters = MONSTERS_P.filter((m) => !SEA_GUARDIAN_NAMES.has(m.name));
@@ -703,7 +744,14 @@ export function generateNewGame(
             monster: { ...m },
             discovered: false,
             cleared: false,
-            treasure: Math.max(1, Math.round(rP(1, 10) * (0.4 + kcRng() * 0.6))),
+            treasure: Math.max(
+              1,
+              Math.round(
+                rP(EACH_PROVINCE.aLairsTreasure.theLeastOfTheRoll, EACH_PROVINCE.aLairsTreasure.theMostOfTheRoll) *
+                  (EACH_PROVINCE.aLairsTreasure.theLeastShare +
+                    kcRng() * EACH_PROVINCE.aLairsTreasure.theShareTheDieAdds),
+              ),
+            ),
           });
         }
         // ── PAGAN: ritual sites ── Standing stones of the old gods, where Pagan characters may
@@ -736,7 +784,11 @@ export function generateNewGame(
         // Neutral army count by wealth tier — Rich 3-4 / Prosperous 2-3 / Poor 1-2. Applies to
         // humanoid AND primal land alike; primal quality still leans Veteran below.
         const dc = neutralDefCount(baseTax);
-        const defQuality = isPrimalProv ? (kcRng() < 0.5 ? 'Veteran' : 'Average') : 'Average';
+        const defQuality = isPrimalProv
+          ? kcRng() < EACH_PROVINCE.theChanceAWildProvincesDefendersAreVeterans
+            ? 'Veteran'
+            : 'Average'
+          : 'Average';
         // Starting neutral defenders draw only from NON-Garrison army types (garrisons stay in
         // armyTypes so they remain recruitable once the province is owned, but no neutral army
         // begins the game as a Garrison unit). Fall back to the full pool only if a province
@@ -867,17 +919,17 @@ export function generateNewGame(
     .filter((p) => p.terrain === 'sea')
     .forEach((p) => {
       const r = kcRng();
-      if (r < 0.2) {
+      if (r < THE_SEAS_BY_KIND.theDieUnderWhichASeaIsPrimal) {
         const chosen = theOneMadeSure(PRIMAL_SEA_TYPES[Math.floor(kcRng() * PRIMAL_SEA_TYPES.length)]);
         p.armyTypes = [chosen];
         p.race = 'Primal:' + chosen.replace(/s$/, '').replace('Eldritch Kraken', 'Kraken'); // 'Primal:Sea Giant' / 'Primal:Kraken'
         // Primal seas are Prosperous waters — tax 4-6, same band as prosperous land. (Capped at 6:
         // tax 7 displays as "Rich", so the old rP(4,7) was quietly minting rich sea provinces.)
-        p.tax = rP(4, 6);
+        p.tax = rP(THE_SEAS_BY_KIND.thePrimalSeasTax.theLeast, THE_SEAS_BY_KIND.thePrimalSeasTax.theMost);
         // Defender count and quality (2026-10-13: both primal sea beasts are Druid 4; the Druid-5 Leviathans
         // are gone, so no sea is guarded by Veterans alone any more).
         const defCount = neutralDefCount(p.tax); // p.tax set to 4-6 above -> Prosperous 2-3
-        const defQuality = kcRng() < 0.4 ? 'Veteran' : 'Average';
+        const defQuality = kcRng() < THE_SEAS_BY_KIND.theChanceAPrimalSeasDefendersAreVeterans ? 'Veteran' : 'Average';
         // a name once drawn here and read by nothing: its die is still drawn, for a beast with names
         if (unitNamesByType[chosen] != null) kcRng();
         p.neutralDefenders = Array.from({ length: defCount }, () => ({
@@ -888,14 +940,14 @@ export function generateNewGame(
         }));
         p.npcArmies = defCount;
         p.explored = 0;
-      } else if (r < 0.4) {
+      } else if (r < THE_SEAS_BY_KIND.theDieUnderWhichASeaIsPoorWaters) {
         // Poor waters: whale waters and shark waters, turn about.
         const poorSea = theOneMadeSure(POOR_SEAS[_poorSeasDealt % POOR_SEAS.length]);
         _poorSeasDealt++;
         const beast = poorSea.type;
         p.armyTypes = [beast];
         p.race = poorSea.raceTag;
-        p.tax = rP(2, 3); // Poor waters — 2-3, matching the poor land band (2026-09-21: no 1-tax band province)
+        p.tax = rP(THE_SEAS_BY_KIND.thePoorWatersTax.theLeast, THE_SEAS_BY_KIND.thePoorWatersTax.theMost); // Poor waters — 2-3, matching the poor land band (2026-09-21: no 1-tax band province)
         const defCount = neutralDefCount(p.tax);
         p.neutralDefenders = Array.from({ length: defCount }, () => ({
           type: beast,
@@ -930,14 +982,25 @@ export function generateNewGame(
       const rr = kcRng();
       // 2026-09-10 item 6: softened alongside land lairs (was 50/50 P/M · 25/60/15 W/M/P · 70/30
       // W/M).
-      if (tax >= 5) return rr < 0.35 ? 'Powerful' : rr < 0.85 ? 'Moderate' : 'Weak'; // rich/primal seas: nastier
-      if (tax >= 3) return rr < 0.35 ? 'Weak' : rr < 0.9 ? 'Moderate' : 'Powerful';
-      return rr < 0.75 ? 'Weak' : 'Moderate'; // poor / open water: mostly weak
+      const { theRichSeas, theMiddlingSeas, theOtherSeas } = THE_SEA_FEATURES_AND_THEIR_GUARDIANS;
+      if (tax >= theRichSeas.theTaxFrom)
+        return rr < theRichSeas.theDieUnderWhichPowerful
+          ? 'Powerful'
+          : rr < theRichSeas.theDieUnderWhichModerate
+            ? 'Moderate'
+            : 'Weak'; // rich/primal seas: nastier
+      if (tax >= theMiddlingSeas.theTaxFrom)
+        return rr < theMiddlingSeas.theDieUnderWhichWeak
+          ? 'Weak'
+          : rr < theMiddlingSeas.theDieUnderWhichModerate
+            ? 'Moderate'
+            : 'Powerful';
+      return rr < theOtherSeas.theDieUnderWhichWeak ? 'Weak' : 'Moderate'; // poor / open water: mostly weak
     };
     provinces
       .filter((p) => p.terrain === 'sea')
       .forEach((p) => {
-        const fcount = 1 + (kcRng() < 0.5 ? 1 : 0); // 1-2 features
+        const fcount = 1 + (kcRng() < THE_SEA_FEATURES_AND_THEIR_GUARDIANS.theChanceOfASecondFeature ? 1 : 0); // 1-2 features
         const used = new Set<string>();
         p.features = []; // unified source — replace anything set earlier
         for (let fi = 0; fi < fcount; fi++) {
@@ -946,7 +1009,7 @@ export function generateNewGame(
           do {
             fname = theOneMadeSure(SEA_FEATURE_NAMES[Math.floor(kcRng() * SEA_FEATURE_NAMES.length)]);
             tries++;
-          } while (used.has(fname) && tries < 20);
+          } while (used.has(fname) && tries < THE_SEA_FEATURES_AND_THEIR_GUARDIANS.theTriesForAFeaturesNameNotYetTaken);
           used.add(fname);
           const tier = _pickTier(p.tax || 1);
           const pool = _byTier[tier].length ? _byTier[tier] : _seaMons;
@@ -1001,10 +1064,10 @@ export function generateNewGame(
     best.owner = pi;
     best.npcArmies = 0;
     best.neutralDefenders = [];
-    best.exploredBy = { [pi]: 100 };
-    best.explored = 100;
+    best.exploredBy = { [pi]: THE_HOMES.howWellARealmKnowsItsHome };
+    best.explored = THE_HOMES.howWellARealmKnowsItsHome;
     best.visitedBy = [pi];
-    best.tax = 10;
+    best.tax = THE_HOMES.theTaxOfAHome;
     best.race = sp.race;
     // The home province is the ONE humanoid province exempt from the 2-3-types cap: a king opens
     // with his race's complete land roster. Restoring it here overwrites anything the coastal pass
@@ -1088,23 +1151,26 @@ export function generateNewGame(
     ];
     // Pick the poor neighbour: an existing poor humanoid, else an existing poor primal, else force
     // one.
+    const { thePoor: _thePoor, theProsperous: _theProsperous } = THE_TAX_BANDS;
     let poorNbr =
-      homeLandNbrs.find((n) => n.tax >= 2 && n.tax <= 3 && _isHumanoid(n)) ??
-      homeLandNbrs.find((n) => n.tax >= 2 && n.tax <= 3) ??
+      homeLandNbrs.find((n) => n.tax >= _thePoor.theLeast && n.tax <= _thePoor.theMost && _isHumanoid(n)) ??
+      homeLandNbrs.find((n) => n.tax >= _thePoor.theLeast && n.tax <= _thePoor.theMost) ??
       null;
     if (!poorNbr && homeLandNbrs.length >= 1) {
       poorNbr = theOneMadeSure(homeLandNbrs[0]);
-      poorNbr.tax = rP(2, 3);
+      poorNbr.tax = rP(_thePoor.theLeast, _thePoor.theMost);
     }
     let prospNbr =
-      homeLandNbrs.find((n) => n !== poorNbr && n.tax >= 4 && n.tax <= 6 && _isHumanoid(n)) ??
-      homeLandNbrs.find((n) => n !== poorNbr && n.tax >= 4 && n.tax <= 6) ??
+      homeLandNbrs.find(
+        (n) => n !== poorNbr && n.tax >= _theProsperous.theLeast && n.tax <= _theProsperous.theMost && _isHumanoid(n),
+      ) ??
+      homeLandNbrs.find((n) => n !== poorNbr && n.tax >= _theProsperous.theLeast && n.tax <= _theProsperous.theMost) ??
       null;
     if (!prospNbr) {
       const cands = homeLandNbrs.filter((n) => n !== poorNbr);
       if (cands.length) {
         prospNbr = theOneMadeSure(cands[0]);
-        prospNbr.tax = rP(4, 6);
+        prospNbr.tax = rP(_theProsperous.theLeast, _theProsperous.theMost);
       }
     }
     // Both must be humanoid; at least one must be the king's race.
@@ -1162,7 +1228,7 @@ export function generateNewGame(
           cand = pool.find((n) => n.terrain === 'forest' || n.terrain === 'jungle') ?? pool[0];
           if (cand) {
             if (cand.terrain !== 'forest' && cand.terrain !== 'jungle')
-              cand.terrain = kcRng() < 0.5 ? 'forest' : 'jungle';
+              cand.terrain = kcRng() < THE_HOMES.theChanceTheStonesNeighbourIsForest ? 'forest' : 'jungle';
           }
         } else {
           // Druidic or Evil
@@ -1175,7 +1241,9 @@ export function generateNewGame(
             ? (creaturesByTerrain[cand.terrain] ?? ['Stone Giants'])
             : monsterOnly
               ? (monstersByTerrain[cand.terrain] ?? ['Cave Trolls'])
-              : ((kcRng() < 0.5 ? creaturesByTerrain : monstersByTerrain)[cand.terrain] ?? ['Stone Giants']);
+              : ((kcRng() < THE_HOMES.theChanceTheCreedsNeighbourHoldsCreatures
+                  ? creaturesByTerrain
+                  : monstersByTerrain)[cand.terrain] ?? ['Stone Giants']);
           const primalUnit = theOneMadeSure(bank[Math.floor(kcRng() * bank.length)]);
           const candsRace = 'Primal:' + ((primalDefs[primalUnit]?.race ?? '') || primalUnit);
           cand.race = candsRace;
@@ -1183,7 +1251,7 @@ export function generateNewGame(
           const dc = neutralDefCount(cand.tax);
           cand.neutralDefenders = Array.from({ length: dc }, () => ({
             type: primalUnit,
-            quality: kcRng() < 0.5 ? 'Veteran' : 'Average',
+            quality: kcRng() < THE_HOMES.theChanceTheCreedsNeighboursDefendersAreVeterans ? 'Veteran' : 'Average',
             race: candsRace,
             unitName: theOneMadeSure(armyUnitName(primalUnit)),
           }));
@@ -1242,7 +1310,7 @@ export function generateNewGame(
             discovered: true,
             discoveredBy: [pi],
             cleared: false,
-            treasure: Math.max(1, rP(1, 6)),
+            treasure: Math.max(1, rP(1, THE_HOMES.theMostTreasureOfAHomesWeakLair)),
           });
         } else if (!best.features.some((f) => f.monster?.power === 'Weak')) {
           // 2026-09-09g: softening a starting lair swaps its guardian, so its own difficulty must
@@ -1257,7 +1325,7 @@ export function generateNewGame(
     playerStarts.push(best);
 
     // Build king skills
-    const kingSkills: Partial<Record<string, number>> = { melee: 2, archery: 1, sage: 1 };
+    const kingSkills: Partial<Record<string, number>> = { ...A_KING_AND_HIS_HEROES.theKingsSkills };
     // his alignment's skill a level more, from its row (P1-19ay1): Divine White, Druidic Druid, Evil Druid (2026-10-13,
     // Toby: the mirror — an Evil king drives his Monsters from turn one), Pagan Explorer (the old faith walks the wild
     // places), Undead Necromancy
@@ -1314,8 +1382,8 @@ export function generateNewGame(
       race: sp.race,
       alignment: sp.alignment,
       temper: sp.temper,
-      hp: 15,
-      maxHp: 15,
+      hp: A_KING_AND_HIS_HEROES.theHpTheyAreMadeWith,
+      maxHp: A_KING_AND_HIS_HEROES.theHpTheyAreMadeWith,
       skills: kingSkills,
       aptitude: {},
       armies: (() => {
@@ -1345,7 +1413,7 @@ export function generateNewGame(
       locationName: best.name,
     };
     ABILITIES_P.forEach((ab) => {
-      king.aptitude[ab] = rP(1, 4);
+      king.aptitude[ab] = rP(A_KING_AND_HIS_HEROES.eachAptitude.theLeast, A_KING_AND_HIS_HEROES.eachAptitude.theMost);
     });
     // Undead kings get one skeletal starter army in addition to normal starting armies (its row: P1-19ay1)
     if (doesAKingOfTheAlignmentStartWithASkeletalCompany(sp.alignment)) {
@@ -1368,10 +1436,10 @@ export function generateNewGame(
     const heroIds: number[] = [];
     // each is dealt an alignment within the ladder's steps of the king's (P1-19av2: one), by the rungs' order
     const _within = THE_LADDER_OF_THE_ALIGNMENTS.theNumbers.theStepsAKingsHeroesAreDealtWithin.value;
-    for (let h = 0; h < 2; h++) {
+    for (let h = 0; h < A_KING_AND_HIS_HEROES.theHeroesARealmStartsWith; h++) {
       const hid = allChars.length;
       const hSkills: Partial<Record<string, number>> = {};
-      for (let s = 0; s < 3; s++) {
+      for (let s = 0; s < A_KING_AND_HIS_HEROES.theSkillPointsOfAStartingHero; s++) {
         const sk = theOneMadeSure(ABILITIES_P[Math.floor(kcRng() * ABILITIES_P.length)]);
         hSkills[sk] = (hSkills[sk] ?? 0) + 1;
       }
@@ -1392,8 +1460,8 @@ export function generateNewGame(
         player: pi,
         race: _hRace, // hero 0 = king's race; hero 1 = random non-feuding race
         alignment: heroAlign,
-        temper: TEMPERS_P[Math.floor(kcRng() * 4)],
-        hp: 15,
+        temper: TEMPERS_P[Math.floor(kcRng() * A_KING_AND_HIS_HEROES.theTempersAHeroIsDealtFrom)],
+        hp: A_KING_AND_HIS_HEROES.theHpTheyAreMadeWith,
         maxHp: 0,
         skills: hSkills,
         aptitude: {},
@@ -1409,7 +1477,7 @@ export function generateNewGame(
       };
       hero.maxHp = hero.hp;
       ABILITIES_P.forEach((ab) => {
-        hero.aptitude[ab] = rP(1, 4);
+        hero.aptitude[ab] = rP(A_KING_AND_HIS_HEROES.eachAptitude.theLeast, A_KING_AND_HIS_HEROES.eachAptitude.theMost);
       });
       // Same wage formula as every other hero (theWageOfAHeroInService, B-06d): 3 starting skill points → 1g.
       hero.pay = theWageOfAHeroInService(KC_A_HEROS_WAGE_IN_SERVICE.theAllegianceOfAHeroNeverHired, hero);
@@ -1430,7 +1498,7 @@ export function generateNewGame(
       race: sp.race,
       alignment: sp.alignment,
       temper: sp.temper,
-      gold: 20,
+      gold: A_KING_AND_HIS_HEROES.theGoldARealmStartsWith,
       king: kingId,
       heroes: [...heroIds],
       provinces: [best.id],
@@ -1538,7 +1606,8 @@ export function generateNewGame(
       cand.armyTypes = [unit];
       cand.neutralDefenders = Array.from({ length: neutralDefCount(cand.tax) }, () => ({
         type: unit,
-        quality: kcRng() < 0.5 ? 'Veteran' : 'Average',
+        quality:
+          kcRng() < THE_WILD_COUNTRY_NEAR_THE_TWO_CROWNS.theChanceItsDefendersAreVeterans ? 'Veteran' : 'Average',
         race: candsRace,
         unitName: theOneMadeSure(armyUnitName(unit)),
       }));
@@ -1617,7 +1686,8 @@ export function generateNewGame(
   // at least 2 before garrisons are sized off its FINAL tax. Sea is deliberately exempt — open water
   // is pinned at tax 1 as the "worthless ocean" marker the home-coastal guarantee relies on.
   provinces.forEach((p) => {
-    if (p.terrain !== 'sea' && (p.tax || 0) < 2) p.tax = 2;
+    if (p.terrain !== 'sea' && (p.tax || 0) < THE_TAX_FLOOR.theLeastTaxOfALandProvince)
+      p.tax = THE_TAX_FLOOR.theLeastTaxOfALandProvince;
   });
 
   // ── COASTAL SHIPYARDS (2026-09-21, Toby) ── EVERY humanoid land province that touches the sea offers
@@ -1665,7 +1735,11 @@ export function generateNewGame(
     if (!defs.length) return;
     const quals = defs
       .map((d) => d.quality || 'Average')
-      .sort((a, b) => ((UNIT_Q_MULT[b] ?? 0) || 2) - ((UNIT_Q_MULT[a] ?? 0) || 2));
+      .sort(
+        (a, b) =>
+          ((UNIT_Q_MULT[b] ?? 0) || THE_STRONGEST_NEUTRAL_MIX.theWeightOfAGradeTheTableGivesNone) -
+          ((UNIT_Q_MULT[a] ?? 0) || THE_STRONGEST_NEUTRAL_MIX.theWeightOfAGradeTheTableGivesNone),
+      );
     const mix = bestNeutralMix(p.armyTypes, quals, p.terrain, p.race);
     if (!mix) return;
     const left = defs.slice();
@@ -1707,7 +1781,7 @@ export function generateNewGame(
   // 20-card deck (1/2/4/6/4/2/1) so every 20 neutral heroes hit the mix exactly (the ladder's column: P1-19ay1).
   const _dealAlign = _mkDeck(theWanderingHeroesDeckOfAlignments());
   const _dealRace = _mkDeck(RACES_P);
-  const _dealTemper = _mkDeck(TEMPERS_P.slice(0, 4));
+  const _dealTemper = _mkDeck(TEMPERS_P.slice(0, THE_NEUTRAL_HEROES.theTempersOneIsDealtFrom));
   // ── SECRET Easter egg: reserve Garreth the Independent and pick which neutral LAND province he
   // guards. Reserving his name parts BEFORE the loop keeps "Garreth"/"the Independent" out of every
   // other hero's draw (item: unique names). He is otherwise an ordinary neutral guard.
@@ -1743,7 +1817,7 @@ export function generateNewGame(
             NEUTRAL_SKILL_POOL[(NEUTRAL_SKILL_POOL.indexOf(_primary) + 1) % NEUTRAL_SKILL_POOL.length],
           );
       }
-      hSkills[_primary] = 2;
+      hSkills[_primary] = THE_NEUTRAL_HEROES.theLevelOfTheFirstSkill;
       hSkills[_secondary] = (hSkills[_secondary] ?? 0) + 1;
       // Druidic neutral heroes are guaranteed the Druid skill (needed to lead primal armies without
       // penalty); if the deal didn't already give it, fold it into the level-1 slot.
@@ -1762,7 +1836,7 @@ export function generateNewGame(
         race: hrace,
         alignment: wAlign,
         temper: _dealTemper(),
-        hp: 15,
+        hp: THE_NEUTRAL_HEROES.theHpOneIsMadeWith,
         maxHp: 0,
         skills: hSkills,
         aptitude: {},
@@ -1782,7 +1856,7 @@ export function generateNewGame(
       };
       h.maxHp = h.hp;
       ABILITIES_P.forEach((ab) => {
-        h.aptitude[ab] = rP(1, 4);
+        h.aptitude[ab] = rP(THE_NEUTRAL_HEROES.eachAptitude.theLeast, THE_NEUTRAL_HEROES.eachAptitude.theMost);
       });
       h.pay = theWageOfAHeroInService(KC_A_HEROS_WAGE_IN_SERVICE.theAllegianceOfAHeroNeverHired, h); // wandering default; the hire desk quotes alignment + skill premium
       allChars.push(h);

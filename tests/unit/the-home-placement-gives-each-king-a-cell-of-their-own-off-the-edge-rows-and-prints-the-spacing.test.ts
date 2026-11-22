@@ -19,6 +19,7 @@
 // its run count from the old runner's list (RUNS). Its checks and its printed table are here, as they were.
 import vm from 'node:vm';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { THE_CAPITALS } from '../../src/content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRngStream } from '../../src/engine/rng.ts';
 import { statementsBetween } from '../lib/source.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
@@ -64,8 +65,9 @@ const isThePlacement = (value: unknown): value is ThePlacement =>
   'cellDistRC' in value &&
   typeof value.cellDistRC === 'function';
 
-/** The stretch cut out of generateNewGame, as one function of the dice and the map's size (set up before the tests, so
- *  a fault in it fails the tests, not the file's collection). */
+/** The stretch cut out of generateNewGame, as one function of the capitals' numbers (content's THE_CAPITALS, which it
+ *  reads), the dice and the map's size (set up before the tests, so a fault in it fails the tests, not the file's
+ *  collection). */
 let placeTheHomes: (...args: unknown[]) => unknown = () => null;
 beforeAll(() => {
   const theGridsHelpers = statementsBetween('engine/world/generate.ts', 'generateNewGame', 'cellIdRC', 'cellDistRC');
@@ -75,9 +77,9 @@ beforeAll(() => {
 ${theGridsHelpers}
 ${thePlacement}
 return {homeCells,homeMin,cellDistRC};`,
-    ['kcRng', 'cols', 'rows', 'nPlayers'],
+    ['THE_CAPITALS', 'kcRng', 'cols', 'rows', 'nPlayers'],
   );
-  placeTheHomes = (...args) => Reflect.apply(compiled, undefined, args);
+  placeTheHomes = (...args) => Reflect.apply(compiled, undefined, [THE_CAPITALS, ...args]);
 });
 const kcRng = kcRngStream(SEED);
 

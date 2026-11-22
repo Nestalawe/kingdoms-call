@@ -32,6 +32,14 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/world/tables.ts', 'HUMANOID_FLEET_TYPES', 'B-06t'],
   ['src/engine/bots/setup.ts', 'BOT_SKILL_BUILD', 'B-06t'],
   ['src/engine/bots/setup.ts', 'BOT_KINGDOM_NAME_UNIT', 'B-06t'],
+  ['src/engine/world/generate.ts', 'SEA_PCT_MIN', 'B-06u'],
+  ['src/engine/world/generate.ts', 'SEA_PCT_MAX', 'B-06u'],
+  ['src/engine/world/generate.ts', 'SEA_PCT_DEFAULT', 'B-06u'],
+  ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P', 'B-06u'],
+  ['src/engine/world/tables.ts', 'provincePoolSize', 'B-06u'],
+  ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP', 'B-06u'],
+  ['src/engine/world/tables.ts', 'PRIMAL_LAND_CHANCE', 'B-06u'],
+  ['src/engine/world/tables.ts', 'COASTAL_NAVAL_CHANCE', 'B-06u'],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
