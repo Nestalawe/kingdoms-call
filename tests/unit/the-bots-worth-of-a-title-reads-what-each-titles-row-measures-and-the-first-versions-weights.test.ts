@@ -93,6 +93,8 @@ test('with none worth chasing: each title the bots train towards by its skills, 
     ['Sage 3, Naval 3, Spy 3, Explorer 3', { sage: 3, naval: 3, spy: 3, explorer: 3 }],
     ['Melee 1, White 3', { melee: 1, white: 3 }],
     ['Thief 4, Druid 4', { thief: 4, druid: 4 }],
+    ['Melee 1, Sage 2', { melee: 1, sage: 2 }],
+    ['Melee 1, Sage 3', { melee: 1, sage: 3 }],
   ];
   expect(Object.fromEntries(courts.map(([name, skills]) => [name, titles(skills)]))).toEqual({
     'no skill': ['marshal', 'monster'],
@@ -110,7 +112,12 @@ test('with none worth chasing: each title the bots train towards by its skills, 
     'Sage 3, Naval 3, Spy 3, Explorer 3': ['lore', 'sea', 'spy'],
     'Melee 1, White 3': ['marshal', 'arch', 'monster'],
     'Thief 4, Druid 4': ['marshal', 'monster'],
+    'Melee 1, Sage 2': ['marshal', 'lore', 'monster'],
+    'Melee 1, Sage 3': ['marshal', 'lore', 'monster'],
   });
+  // a fallen hero of the realm's levels count too
+  const theFallen = aHero(3, 0, { sage: 3 }, { alive: false });
+  expect(botTargetTitles(aWorld([aHero(1, 0, {}), theFallen, theRival]), 0)).toEqual(['lore', 'marshal', 'monster']);
 });
 
 test('with none worth chasing, the titles chased before are kept', () => {
