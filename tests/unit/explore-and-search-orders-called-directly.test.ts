@@ -228,6 +228,26 @@ describe('Explore, called directly', () => {
     expect(mapped(b.X)).toBe(90);
     expect(textOf(b, h)).toContain('Legend says it is guarded by a creature.');
   });
+
+  test("the Trailblazer maps 5% more, rounded down with the rest (B-06l: his row's ×1.05, through the minor titles' registry)", () => {
+    const share = (ground: string, explorer: number, holds: boolean) => {
+      const b = board(engine, world, 0);
+      withFeatures(b.X);
+      b.X.terrain = ground;
+      delete b.X['exploredBy'];
+      const h = at(b, { skills: skilled({ explorer }) });
+      if (holds) (b.G as unknown as Record<string, unknown>)['_minorHolders'] = { trailblazer: { charId: h.id } };
+      play(b, h, o('explore'));
+      return mapped(b.X);
+    };
+    // Forest at Explorer 3: 20 × 4 = 80, ×1.05 = 84; desert at Explorer 2: 25 × 3 = 75, ×1.05 = 78.75, so 78
+    expect([
+      share('forest', 3, false),
+      share('forest', 3, true),
+      share('desert', 2, false),
+      share('desert', 2, true),
+    ]).toEqual([80, 84, 75, 78]);
+  });
 });
 
 describe('Perform Rite, called directly', () => {

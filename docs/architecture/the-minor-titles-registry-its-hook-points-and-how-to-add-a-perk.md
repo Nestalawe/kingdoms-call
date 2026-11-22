@@ -52,8 +52,24 @@ battle is a stage of `strength`, beside the commander's items.
   (`rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts`),
   which the army card reads too; the stage's order is content's `THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN`,
   beside the rows, which both read (a title given the perk in its row joins it).
-- `movementCost`, `orderValidity` and `orderOutcome` (B-06l): the Swift and the Sea-Wolf's movement points; the
-  Shadow, the Loreseeker, the Trailblazer, the Colossus and the Warlock's orders.
+- `movementCost`, `orderValidity` and `orderOutcome`, a stage each perk
+  (`src/engine/rules/the-minor-titles/a-heros-titles-on-a-march-and-on-an-order.ts`). **A hero's titles add to his
+  move points** (movementCost): the Swift adds his levels to the land pool, the Sea-Wolf to the sea pool, each only
+  where the pool exists, from their rows of `SKILL_EXTRA_MINORS` of scope `'move'` (March, Naval)
+  (`computeMovePoolMax`, through `theMovePointsAHerosTitlesAddToHisPool`). **A hero's titles add to the casts he may
+  make in his best school** (orderValidity): the Warlock's row's
+  `theSpellsMoreItsHolderMayCastInHisBestSchoolEachTurn` (`resolveCastSpellOrder`, through
+  `theCastsAHerosTitlesAddInHisBestSchool`). Four of orderOutcome: **keep his spying unseen**, the Shadow (no roll to
+  catch him spying on a hero, a false face on a province: `resolveSpyOrder`, `aHerosTitlesKeepHisSpyingUnseen`);
+  **add to his Sage in research**, the Loreseeker's level from his rows of scope `'order'`, worth a Sage level's 5
+  (`resolveResearchOrder`); **add to a rest's heal**, the Colossus's row's
+  `theHitPointsItsHolderRecoversMoreWhenResting` (`resolveRestOrder`, before the discoveries'); **multiply the share
+  of a province he maps**, the Trailblazer's row's `theShareOfAProvinceItsHolderMapsIsMultipliedBy`, before the
+  discoveries' factor and the rounding down (`resolveExploreOrder`). The casting limit and the share mapped stay rules
+  on plain values: the order hands them what the registry gives
+  (`actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd`,
+  `theShareOfAProvinceAnExploreOrderMapsByHisTitlesFactor`); the bots and the order form still say whether he holds
+  the Warlock or the Trailblazer, and the rule reads the one row that names the number.
 - `turnEnd` (B-06m): the Host-Leader's cut of the wages. The Cutpurse's, the Champion of the People's and the
   Castellan's gold are the [economy's registry's](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md).
 

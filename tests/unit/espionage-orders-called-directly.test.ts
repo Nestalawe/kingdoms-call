@@ -327,6 +327,36 @@ describe('Spy, called directly: the dice, The Shadow and the odds', () => {
     expect(textOf(b, h)).not.toContain('Disguise Techniques');
   });
 
+  // B-06l: the Shadow is the minor titles' registry's ("orderOutcome: a hero's titles keep his spying unseen"). Every
+  // die at 0.99 (each d100 a 100: the read fails, and no catch can land), counted: on a hero, the Shadow's spying draws
+  // one die fewer than another spy's, the roll to catch him; on a province, the dice either draws, as before.
+  test('The Shadow draws no die to be caught, and every other die as another spy draws it', () => {
+    const draws = (onAHero: boolean, holds: boolean) => {
+      const b = fresh();
+      b.own(b.X, 1);
+      const m = rival(b);
+      const h = at(b, { spy: 1 });
+      if (holds) G_(b)['_minorHolders'] = { shadow: { charId: h.id } };
+      let n = 0;
+      const was = engine.kcRng.use(() => {
+        n++;
+        return 0.99;
+      });
+      try {
+        play(b, h, o('spy', onAHero ? `char:${String(m.id)}` : b.X.id));
+      } finally {
+        engine.kcRng.use(was);
+      }
+      return n;
+    };
+    const onAHero = { another: draws(true, false), theShadow: draws(true, true) };
+    const onAProvince = { another: draws(false, false), theShadow: draws(false, true) };
+    expect({ onAHero, onAProvince }).toEqual({
+      onAHero: { another: 3, theShadow: 2 },
+      onAProvince: { another: 2, theShadow: 2 },
+    });
+  });
+
   test('a disguise roll at the edge: 65 holds, 66 slips', () => {
     for (const [roll, holds] of [
       [65, true],
