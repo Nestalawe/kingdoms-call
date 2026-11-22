@@ -100,6 +100,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'encounterClearGold',
     "B-06g, a scout's and a clear's gold: the one roll (theGoldALairsHoardHoldsOnADie), content's bands and fallback",
   ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botLedger',
+    "B-06h, the bots' ledger: its reserves, shares and margins are the weights of the bots' first version, by kind",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botUpkeep',
+    "B-06h, the bots' upkeep: the wage rules, a company that draws no wage and its wage before its cuts",
+  ],
 ];
 
 const LISTED = [...THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE, ...THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS];
