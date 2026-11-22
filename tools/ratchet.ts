@@ -900,6 +900,14 @@ export const THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES: readonly (readonly [file: 
     'src/engine/world/the-worlds-making/s15-every-neutral-province-fields-the-strongest-mix-of-its-own-units.ts',
     'everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits',
   ],
+  [
+    'src/engine/world/the-worlds-making/s16-every-neutral-province-gets-its-guard-hero-and-garreth-his-province.ts',
+    'everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s17-the-world-named-its-realms-states-lairs-and-hit-points-set-and-handed-on.ts',
+    'theWorldNamedItsRealmsStatesLairsAndHitPointsSetAndHandedOn',
+  ],
   ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P'],
   ['src/engine/world/tables.ts', 'provincePoolSize'],
   ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP'],

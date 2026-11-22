@@ -125,11 +125,13 @@ export const THE_WORLDS_MAKINGS_STAGES: readonly AStageOfTheWorldsMaking[] = [
     stage: 'S16',
     what: "neutral heroes and Garreth's province",
     anchor: '// Neutral heroes — one per non-home land province',
+    fn: 'everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince',
   },
   {
     stage: 'S17',
     what: 'the naming pass, turn orders, the state, mithril, the lairs, HP',
     anchor: '// ── THEMATIC NAMING PASS',
+    fn: 'theWorldNamedItsRealmsStatesLairsAndHitPointsSetAndHandedOn',
   },
 ];
 
