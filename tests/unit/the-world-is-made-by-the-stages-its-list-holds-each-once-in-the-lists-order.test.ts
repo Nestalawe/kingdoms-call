@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { expect, test } from 'vitest';
+import '../lib/the-whole-engine.ts';
 import { THE_WORLDS_MAKINGS_STAGES_IN_THE_ORDER_THEY_RUN } from '../../src/engine/world/the-worlds-making/the-stages-in-the-order-they-run.ts';
 import { ROOT } from '../../tools/build.ts';
 import {
