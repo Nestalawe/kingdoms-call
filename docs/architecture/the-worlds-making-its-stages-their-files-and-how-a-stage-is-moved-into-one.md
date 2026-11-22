@@ -58,5 +58,6 @@ each makes, are the world proof's stage table
 3. **A test that cuts or reads `generateNewGame`'s statements by name** reads them in the stage's function instead
    (`statementsBetween(<the stage's file>, <its function>, …)`), with every assertion and its seed kept. Cut code that
    used a function from a file's top level gets it handed in (`sourceOf(<the file>, ['theOneMadeSure'])`), as it gets
-   the content rows it reads. Its line in [the list of tests](../../tests/every-test-its-level-and-what-it-checks.md)
+   the content rows it reads. A test that reads the moved code in the GM page's code (`compactPage`) reads the
+   stage's file instead (`compactOf`): the page's entry doesn't name the stages' files (KD-457). Its line in [the list of tests](../../tests/every-test-its-level-and-what-it-checks.md)
    follows.

@@ -43,7 +43,7 @@ import {
   THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA,
   THE_WILD_CREATURES_BY_TERRAIN,
 } from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
-import { compactPage } from '../lib/source.ts';
+import { compactOf } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import { COMING, isLand, LAND_TERRAINS, LIVE, RENAMED, ROSTER, type WildUnitAsDecided } from '../lib/primal-decided.ts';
 
@@ -227,21 +227,22 @@ describe("the engine's rules", () => {
 
 // The sea beasts and the new Creatures (2026-10-13, Creatures and Monsters III and IV). Until plan P1-14z these were the
 // plain-value checks of tests/shark-waters.test.js and tests/new-creatures.test.js, on the booted GM page; each is kept
-// as it was. The sea names' choice is read from the GM page's code by its syntax tree (tests/lib/source.ts), as the
-// scripts read it; the sea names' pools and the Creature bank are content's, imported (B-06t).
+// as it was. The sea names' choice is read by its syntax tree (tests/lib/source.ts) from the world's making's set-up
+// (S0, which makes the naming functions since B-06v), as the scripts read it from the GM page's code; the sea names'
+// pools and the Creature bank are content's, imported (B-06t).
 describe('the sea beasts and the new Creatures', () => {
   test('the Shark Shoals are a primal sea beast (they swim, carry nothing, and are raised only at sea) and no hull', () => {
     expect(KC_UNIT_CLASS.primalSea).toContain('Shark Shoals');
     expect(KC_UNIT_CLASS.sea).toContain('Shark Shoals');
     expect(KC_UNIT_CLASS.carrier).not.toContain('Shark Shoals');
   });
-  // compactPage reads every file of the GM page's code by its syntax tree: about 2 s alone on a laptop, 5.7 s once on
-  // a runner, so it gets that work's allowance
+  // compactOf reads the set-up's file by its syntax tree; the test keeps the allowance it had when it read every file
+  // of the GM page's code
   test(
     'shark waters are named from their own pool (THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA.shark, chosen for the race Primal:Shark)',
     timeLimitForTheWork({ everyFileReads: 1 }),
     () => {
-      const gm = compactPage('kingdoms-call-gm-portal.html');
+      const gm = compactOf('engine/world/the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts');
       expect(THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA.shark.pre.length).toBeGreaterThan(0);
       expect(gm).toMatch(/NAME_SEA_BY_TYPE=THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA;/);
       expect(gm).toMatch(/race==='Primal:Shark'\)\s*kind='shark'/);
