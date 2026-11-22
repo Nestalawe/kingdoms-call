@@ -35,7 +35,9 @@
 // the graveyard; a fallen hero of the realm and a hero standing nowhere giving no eyes; skills with no label, equal
 // skills in their order; Grave-sight past a gap and a missing province; every act the Spymaster's ledger holds (a king,
 // no name, no realm, its own agents, ground elsewhere, a province gone, the roll by hero most acts first, two heroes of
-// one name); a province no realm mapped and a missing one; the beast censuses past the fallen, gaps, other realms'
+// one name; an agent of no letters no name in its facts, B-06p); the Hierophant, the Deathpriest and the Spymaster
+// telling nothing of the realms the holder hasn't met, not even how many (B-06p); a province no realm mapped and a
+// missing one; the beast censuses past the fallen, gaps, other realms'
 // ground and a hero with no companies list; title changes for a hero the roll no longer has, a realm missing from the
 // list, a hero of no realm, a title a save records held by a realm and no hero, a hero who changes realms holding his
 // title, a realm with no living king taking or holding a realm's title; and the lines no matrix game reaches
@@ -133,6 +135,8 @@ const settle = (b: Board) => {
   return turn;
 };
 const outcome = (b: Board, turn: number): Outcome => ({ world: b.G, all: b.lines(), turn });
+/** The fact of each line the turn has filed so far, in the order filed. */
+const factsOf = (b: Board) => (tc(b)['turnLog'] as Raw[]).map((l) => l['fact'] as Raw);
 /** A board staged as every case is (`stageCase`): plain realms, each holding only its seat with a living king there. */
 const fresh = () => {
   const b = board(engine, world, 4);
@@ -635,6 +639,57 @@ describe('The titles at the turn’s end: what only a direct call can stage', ()
     expect(intel(after(b), 'The Spymaster').at(-1)?.[1]).toBe(
       `[The Spymaster] 1 intrusion into your lands this turn by 1 hero: Ash (${nameOf(b, 1)}).`,
     );
+  });
+
+  test('an agent the ledger names with no letters is no name in the Spymaster’s facts, on his act and on the roll', () => {
+    const b = fresh();
+    firstPublic(b);
+    deeds(titled(b, 0, seatOf(b, 0), { spy: 9 }), { spyActions: 5 });
+    G(b)['_espionageLedger'] = [
+      { byPi: 1, charId: 1, charName: '', isKing: false, provId: seatOf(b, 0).id, kind: 'pried' },
+    ];
+    after(b);
+    const facts = factsOf(b).filter((f) => String(f['kind']).startsWith('the Spymaster'));
+    expect(facts, 'the Spymaster’s facts').toEqual([
+      {
+        kind: "the Spymaster's holder learns of an act of espionage against his lands",
+        agentIsKing: false,
+        agentName: null,
+        agentsRealm: { realmName: nameOf(b, 1), seat: 1 },
+        whatTheAgentDid: 'pried',
+        provinceName: seatOf(b, 0).name,
+      },
+      {
+        kind: "the Spymaster's holder learns who intruded into his lands this turn",
+        intrusions: 1,
+        heroes: [{ heroName: null, realm: { realmName: nameOf(b, 1), seat: 1 }, times: 1 }],
+      },
+    ]);
+  });
+
+  test('the Hierophant, the Deathpriest and the Spymaster tell their holder nothing of the realms he hasn’t met, not even how many', () => {
+    const b = fresh();
+    firstPublic(b);
+    deeds(titled(b, 0, seatOf(b, 0), { white: 9, necromancy: 9, spy: 9 }), {
+      holyCasts: 5,
+      darkCasts: 5,
+      spyActions: 5,
+    });
+    meets(b, 0);
+    const o = after(b);
+    const unmet = factsOf(b).filter(
+      (f) => f['kind'] === "a title's holder learns how many realms his crown has not met",
+    );
+    expect(['The Hierophant', 'The Deathpriest', 'The Spymaster'].map((t) => intel(o, t).length > 0)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+    expect(unmet.length, 'the realms not met are counted for some title of the realm').toBeGreaterThan(0);
+    expect(
+      unmet.filter((f) => ['hiero', 'necro', 'spy'].includes(String(f['title']))),
+      'the titles that count no realm not met',
+    ).toEqual([]);
   });
 
   test('the Cartographer counts a province with no record of who mapped it as unmapped, and skips a missing one', () => {
