@@ -16,7 +16,7 @@
 // the same dice, then each die where it falls (a spy who misses and is caught, the 5 and 95 bounds on the catch and the
 // read, a disguise at 65/66, a thief's escape at Thief × 20 up to 95, which item a hand closes on by weight, which
 // company burns, which parcel is cut and which ride on, a blade at 79/80), the gold and merits exact, The Shadow
-// (titles start at turn 5), Watchmen at a capital only, a Grand Heist already spent, a Mithril suit kept, a beating
+// (titles start at turn 5; since B-06l, the dice he draws, counted: one fewer on a hero), Watchmen at a capital only, a Grand Heist already spent, a Mithril suit kept, a beating
 // floored at 1 HP; the two helpers that were nested in `processOrder` (`thiefCaughtScuffle`, with the duel stood in:
 // Vanish, a refusal, combat tactics only, either side cut down or escaping the end, a wanderer's HP; `liftRandomItem`).
 // The balance matrix never gives Sabotage, Assassinate or Vanish. Properties: Steal and the Grand Heist make and lose

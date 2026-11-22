@@ -180,8 +180,8 @@ export function resolveResearchOrder(
       isTheFieldStudiedItsOwnCreed: () =>
         (_rcat || '').trim().toLowerCase() === ((player.alignment || '') + ' Creed').toLowerCase(),
     }); // + Loreseeker (the minor titles' registry's since B-06l: "orderOutcome: a hero's titles add to his Sage in
-  // research", a level from his title's row); research discoveries (az10: own creed field only — the field actually studied; the discoveries'
-  // registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to research")
+  // research", a level from his title's row); research discoveries (az10: own creed field only — the field actually
+  // studied; the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to research")
   // 2026-10-13 (Toby, item 18): PERSEVERANCE, as Practice has it — every Research order of this
   // hero that has failed earlier this turn makes this one ×1.2 likelier, cumulatively. A
   // discovery (the hidden-field find included) resets it; each turn starts afresh.

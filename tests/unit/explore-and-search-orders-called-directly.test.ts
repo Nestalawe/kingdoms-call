@@ -15,7 +15,7 @@
 // `resolveDiscoverLostRuinOrder`, P1-08j2), called directly on the same cases one phase at a time, then on what the
 // dice decide (fixed) and what the balance matrix never reaches: the Explorer 8 survey of richer land (an even chance,
 // once a province, the tax base never above 10), Ancient Lore, the Philosopher's Lens (a site known or glamoured passed
-// over, its die's pick), an unlisted terrain and a nameless guardian; the Blood Offering's graves, borrowed and skeletal
+// over, its die's pick), an unlisted terrain and a nameless guardian, the Trailblazer's 5% (B-06l); the Blood Offering's graves, borrowed and skeletal
 // companies, the Wild Hunt unpaid or on ground not the hero's own (the empty province taken); rumours paid by grade until
 // the purse runs dry, a guardian of no grade or of one no price lists, an order naming no lair, a guardian with no
 // weakness, a hoard a thief has stripped; and what follows a fight at a lair, the fight stood in for (`fightEndsIn`): a
