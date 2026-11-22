@@ -819,9 +819,10 @@ export function titleChecksInEngine(codeFiles: readonly (readonly [file: string,
 }
 
 // The world's making's numbers and lists written in the engine's code (B-06, T7, the rules pulled out: its world
-// generation family, B-06s to B-06ab), as the conductor decided them on 2026-11-22 (Run 2a's scoping, section 1): in
-// the functions and tables THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES lists (generateNewGame and the sea share's limits,
-// the province pools and their chances, the bots' realms), counted by syntax tree. worldMakingNumbersInEngine counts
+// generation family, B-06s to B-06ab), as B-06s (#732) set them on 2026-11-22 (the stages:
+// docs/architecture/the-worlds-making-its-stages-their-files-and-how-a-stage-is-moved-into-one.md): in the functions
+// and tables THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES lists (generateNewGame and the sea share's limits, the province
+// pools and their chances, the bots' realms), counted by syntax tree. worldMakingNumbersInEngine counts
 // each number other than 0 and 1 (not a literal type, nor the index of an element read, `a[2]`); 1s are left out, as
 // most of generateNewGame's are its structure (`rows - 2`, `+ 1`, `length - 1`). worldMakingListsInEngine counts each
 // string that is an element of an array literal (`['plain', 'forest']`, the one inside `new Set([...])` too): the name
