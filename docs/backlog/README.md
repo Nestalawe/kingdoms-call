@@ -80,7 +80,7 @@ tranche's plan, its counts and its risks: #711.
 | B-06t | The making's lists to content, word for word and in order (the name pools, the sea features, the beast banks merged, the fleets, the skill pools, the bots' skill builds) | The maintainers: a name pool or a bank is a content change | The ground for the redesign | Medium | – | 🟦 | #734 | After B-06s |
 | B-06u | The making's numbers to parameter rows | The maintainers: a world's shape is a content change | The ground for the redesign | Medium | – | 🟦 | #735 | After B-06t |
 | B-06v | The world's making split by stage, 1 of 6: stages 0 to 2 | The maintainers: each stage of the making is a file of its own | The ground for the redesign | Medium | – | 🟦 | #736 | After B-06u |
-| B-06w | The making split, 2 of 6: stage 3 | The maintainers: as B-06v | The ground for the redesign | Medium | – | ⬜ | | After B-06v |
+| B-06w | The making split, 2 of 6: stage 3 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #737 | After B-06v |
 | B-06x | The making split, 3 of 6: stages 4 to 8 | The maintainers: as B-06v | The ground for the redesign | Medium | – | ⬜ | | After B-06w |
 | B-06y | The making split, 4 of 6: stage 9 | The maintainers: as B-06v | The ground for the redesign | Medium | – | ⬜ | | After B-06x |
 | B-06z | The making split, 5 of 6: stages 10 to 15 | The maintainers: as B-06v | The ground for the redesign | Medium | – | ⬜ | | After B-06y |
