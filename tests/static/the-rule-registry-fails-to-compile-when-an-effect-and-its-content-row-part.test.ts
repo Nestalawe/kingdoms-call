@@ -34,8 +34,11 @@
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/, src/engine/rules/ and (since P1-19m)
 // src/engine/rules-on-plain-values/ (the registries import nothing else: npm run lint:arch), so each compiles on its own
-// with tsconfig.json's settings. About 2 s (the data file is read
-// once a copy), so its limit is a TypeScript program's.
+// with tsconfig.json's settings. Each copy is whole: its program reads every file of it, the seven registries its roots.
+// A program's time grows by each copy it holds (the 15,000-line data file is checked once a copy: about 0.4 s a copy
+// on a laptop), so the copies are split by registry: "as they are" in a program of its own, and each
+// registry's planted copies in one program, one test each, so no test holds more than four copies and each one's
+// limit is one TypeScript program's.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -243,7 +246,9 @@ const KEY_NAMED = /Property '"?([^"']+)"?' is missing in type|and ''([^']+)'' do
 const NO_SIGNATURE = /is not assignable to type '(never|undefined)'\.$/;
 
 /** The compiler's errors in each planted copy, as `TS<code> in <the declaration it stands in>: <the slug it names, or
- *  the type with no signature>` (the declaration alone, for an error of another kind). */
+ *  the type with no signature>` (the declaration alone, for an error of another kind). One program holds the copies
+ *  given, each whole (its seven registries the program's roots): a copy's errors are its own, whatever copies are
+ *  beside it. */
 function errorsIn(copies: Record<string, Record<string, string>>): Record<string, string[]> {
   const dirOf = (name: string) => path.join(tmp, name.replace(/[^a-z]+/gi, '-'));
   for (const [name, planted] of Object.entries(copies)) {
@@ -296,20 +301,63 @@ function errorsIn(copies: Record<string, Record<string, string>>): Record<string
   );
 }
 
+/** Each registry's planted copies, by name from PLANTS: each copy in one registry's program, once. */
+const THE_COPIES_OF_EACH_REGISTRY = {
+  units: [
+    'a content row with no entry',
+    'an entry with no content row',
+    'an effect at a stage with no signature yet',
+    'an effect at a hook point with no signature yet',
+  ],
+  items: ["an item's effect row with no entry", "an item's effect entry with no row"],
+  spells: ["a spell's row with no entry", "a spell's entry with no row"],
+  discoveries: ["a discovery kind's row with no entry", "a discovery kind's entry with no row"],
+  perks: ["a guardian perk kind's row with no entry", "a guardian perk kind's entry with no row"],
+  abilities: ["an alignment ability's row with no entry", "an alignment ability's entry with no row"],
+  economy: ["an economy's rule's row with no entry", "an economy's rule's entry with no row"],
+} as const;
+{
+  const grouped: readonly string[] = Object.values(THE_COPIES_OF_EACH_REGISTRY).flat();
+  const notOnce = Object.keys(PLANTS).filter(
+    (name) => name !== 'as they are' && grouped.filter((it) => it === name).length !== 1,
+  );
+  if (notOnce.length > 0 || grouped.length + 1 !== Object.keys(PLANTS).length)
+    throw new Error(`each planted copy is in one registry's test, once: ${notOnce.join(', ')}`);
+}
+
+/** The planted copies named, from PLANTS. */
+const theCopies = (names: readonly string[]): Record<string, Record<string, string>> =>
+  Object.fromEntries(
+    names.map((name) => {
+      const planted = PLANTS[name];
+      if (!planted) throw new Error(`no planted copy is named "${name}"`);
+      return [name, planted];
+    }),
+  );
+
+// The registry's widened view (ENTRIES, which the runners read) fails too wherever its literal does.
+const at = (declaration: string) => `${path.basename(REGISTRY)}, ${declaration}`;
+const atTheItems = (declaration: string) => `${path.basename(ITEMS_REGISTRY)}, ${declaration}`;
+const atTheSpells = (declaration: string) => `${path.basename(SPELLS_REGISTRY)}, ${declaration}`;
+const atTheDiscoveries = (declaration: string) => `${path.basename(DISCOVERIES_REGISTRY)}, ${declaration}`;
+const atThePerks = (declaration: string) => `${path.basename(PERKS_REGISTRY)}, ${declaration}`;
+const atTheAbilities = (declaration: string) => `${path.basename(ABILITIES_REGISTRY)}, ${declaration}`;
+const atTheEconomy = (declaration: string) => `${path.basename(ECONOMY_REGISTRY)}, ${declaration}`;
+
 test(
-  'the registry and its content rows compile as they are, and each planted copy fails, naming the slug',
+  'the seven registries and their content rows compile as they are, every file of the copy in one program',
   timeLimitForTheWork({ typeScriptPrograms: 1 }),
   () => {
-    // The registry's widened view (ENTRIES, which the runners read) fails too wherever its literal does.
-    const at = (declaration: string) => `${path.basename(REGISTRY)}, ${declaration}`;
-    const atTheItems = (declaration: string) => `${path.basename(ITEMS_REGISTRY)}, ${declaration}`;
-    const atTheSpells = (declaration: string) => `${path.basename(SPELLS_REGISTRY)}, ${declaration}`;
-    const atTheDiscoveries = (declaration: string) => `${path.basename(DISCOVERIES_REGISTRY)}, ${declaration}`;
-    const atThePerks = (declaration: string) => `${path.basename(PERKS_REGISTRY)}, ${declaration}`;
-    const atTheAbilities = (declaration: string) => `${path.basename(ABILITIES_REGISTRY)}, ${declaration}`;
-    const atTheEconomy = (declaration: string) => `${path.basename(ECONOMY_REGISTRY)}, ${declaration}`;
-    expect(errorsIn(PLANTS)).toEqual({
-      'as they are': [],
+    expect(errorsIn(theCopies(['as they are']))).toEqual({ 'as they are': [] });
+  },
+);
+
+test(
+  "the units' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.units);
+    expect(errorsIn(copies)).toEqual({
       'a content row with no entry': [
         `TS1360 in ${at('THE_REGISTRY_OF_UNIT_ABILITIES')}: planted-ability`,
         `TS2741 in ${at('ENTRIES')}: planted-ability`,
@@ -323,6 +371,16 @@ test(
         `TS2322 in ${at('ENTRIES')}`,
         `TS2322 in ${at('THE_REGISTRY_OF_UNIT_ABILITIES')}: never`,
       ],
+    });
+  },
+);
+
+test(
+  "the items' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.items);
+    expect(errorsIn(copies)).toEqual({
       "an item's effect row with no entry": [
         `TS1360 in ${atTheItems('THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS')}: planted-effect`,
         `TS2741 in ${atTheItems('ENTRIES')}: planted-effect`,
@@ -330,11 +388,31 @@ test(
       "an item's effect entry with no row": [
         `TS2353 in ${atTheItems('THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS')}: planted-effect`,
       ],
+    });
+  },
+);
+
+test(
+  "the spells' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.spells);
+    expect(errorsIn(copies)).toEqual({
       "a spell's row with no entry": [
         `TS1360 in ${atTheSpells('THE_REGISTRY_OF_SPELL_EFFECTS')}: planted-spell`,
         `TS2741 in ${atTheSpells('ENTRIES')}: planted-spell`,
       ],
       "a spell's entry with no row": [`TS2353 in ${atTheSpells('THE_REGISTRY_OF_SPELL_EFFECTS')}: planted-spell`],
+    });
+  },
+);
+
+test(
+  "the discoveries' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.discoveries);
+    expect(errorsIn(copies)).toEqual({
       "a discovery kind's row with no entry": [
         `TS1360 in ${atTheDiscoveries('THE_REGISTRY_OF_DISCOVERY_EFFECTS')}: planted-kind`,
         `TS2741 in ${atTheDiscoveries('ENTRIES')}: planted-kind`,
@@ -342,6 +420,16 @@ test(
       "a discovery kind's entry with no row": [
         `TS2353 in ${atTheDiscoveries('THE_REGISTRY_OF_DISCOVERY_EFFECTS')}: planted-kind`,
       ],
+    });
+  },
+);
+
+test(
+  "the guardian perks' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.perks);
+    expect(errorsIn(copies)).toEqual({
       "a guardian perk kind's row with no entry": [
         `TS1360 in ${atThePerks('THE_REGISTRY_OF_GUARDIAN_PERKS')}: planted-perk`,
         `TS2741 in ${atThePerks('ENTRIES')}: planted-perk`,
@@ -349,6 +437,16 @@ test(
       "a guardian perk kind's entry with no row": [
         `TS2353 in ${atThePerks('THE_REGISTRY_OF_GUARDIAN_PERKS')}: planted-perk`,
       ],
+    });
+  },
+);
+
+test(
+  "the alignment abilities' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.abilities);
+    expect(errorsIn(copies)).toEqual({
       "an alignment ability's row with no entry": [
         `TS1360 in ${atTheAbilities('THE_REGISTRY_OF_ALIGNMENT_ABILITIES')}: planted-ability`,
         `TS2741 in ${atTheAbilities('ENTRIES')}: planted-ability`,
@@ -356,6 +454,16 @@ test(
       "an alignment ability's entry with no row": [
         `TS2353 in ${atTheAbilities('THE_REGISTRY_OF_ALIGNMENT_ABILITIES')}: planted-ability`,
       ],
+    });
+  },
+);
+
+test(
+  "the economy's registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.economy);
+    expect(errorsIn(copies)).toEqual({
       "an economy's rule's row with no entry": [
         `TS1360 in ${atTheEconomy('THE_REGISTRY_OF_THE_ECONOMYS_RULES')}: planted-rule`,
         `TS2741 in ${atTheEconomy('ENTRIES')}: planted-rule`,
