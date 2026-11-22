@@ -31,9 +31,15 @@ import {
 /** The top level of a file: what no function holds. */
 const TOP = '(top)';
 
-/** Each function (or a file's top level) the titles' rows have taken, by its file, from the row that took it. Empty
- *  until B-06i: each of the family's rows adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+/** Each function (or a file's top level) the titles' rows have taken, by its file, from the row that took it: each of
+ *  the family's rows adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  [
+    'src/engine/titles/reckoning.ts',
+    TOP,
+    "B-06i, the minor titles' rows and the skills they add to (MINOR_TITLES, SKILL_EXTRA_MINORS), to content",
+  ],
+];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
  *  finds a function). */
@@ -100,12 +106,17 @@ test("the vocabulary is every title's key and name in the two tables, less the s
   expect(TITLE_VOCABULARY.size).toBe(60);
 });
 
-test("the minor titles' reader reads a list behind `satisfies`, and refuses a file without one", () => {
+test("the minor titles' reader reads a list behind `satisfies` (and `as const`), and refuses a file without one", () => {
   const planted = `export const MINOR_TITLES = [
     { key: 'a', name: 'The A', perk: 'p', metric: (c) => c },
     { key: 'b', name: "The B's" },
   ] satisfies readonly unknown[];`;
   expect(theMinorTitlesKeysAndNames(planted)).toEqual(['a', 'The A', 'b', "The B's"]);
+  expect(
+    theMinorTitlesKeysAndNames(
+      `export const MINOR_TITLES = [{ key: 'a', name: 'The A', howTheHolderIsFound: { theMeasure: 'm' } }] as const satisfies readonly unknown[];`,
+    ),
+  ).toEqual(['a', 'The A']);
   expect(() => theMinorTitlesKeysAndNames('export const OTHER = [];')).toThrow(/no "const MINOR_TITLES/);
 });
 

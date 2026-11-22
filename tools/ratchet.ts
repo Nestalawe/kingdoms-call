@@ -729,7 +729,7 @@ export const economyNumbersInTheBots = (codeFiles: readonly (readonly [file: str
 
 // The engine's checks of a title by its key or its name (B-06, T7, the rules pulled out: its Reckoning and titles
 // family, B-06i to B-06r): a string naming an Imperial Title (TITLE_DEFS, in content) or a minor title (MINOR_TITLES,
-// in src/engine/titles/reckoning.ts, read from its syntax tree: importing it would load the engine), by its key
+// in content since B-06i, read from its syntax tree as it was in the engine), by its key
 // (`'duelist'`) or its name (`'The Duelist'`), anywhere but a literal type, counted by syntax tree in the files of
 // src/engine/ outside src/engine/rules/, the bots' included, as the scoping counted them (2026-11-22). Six Imperial keys
 // are left out of the words: `sea`, `spy`, `monster`, `beast`, `wild` and `arch` are also a terrain's, a skill's, a
@@ -747,16 +747,19 @@ export const THE_IMPERIAL_KEYS_THAT_ARE_OTHER_WORDS: ReadonlySet<string> = new S
   'wild',
   'arch',
 ]);
-/** The file that declares MINOR_TITLES. */
-export const THE_MINOR_TITLES_FILE = 'src/engine/titles/reckoning.ts';
-/** Each minor title's key and name, in the order written, read from the syntax tree of the array MINOR_TITLES. */
+/** The file that declares MINOR_TITLES (B-06i: content's rows; it was src/engine/titles/reckoning.ts's). */
+export const THE_MINOR_TITLES_FILE =
+  'src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+/** Each minor title's key and name, in the order written, read from the syntax tree of the array MINOR_TITLES (behind
+ *  a `satisfies`, and an `as const` within it). */
 export function theMinorTitlesKeysAndNames(text: string): string[] {
   const source = ts.createSourceFile(THE_MINOR_TITLES_FILE, text, ts.ScriptTarget.Latest, true);
   for (const statement of source.statements) {
     if (!ts.isVariableStatement(statement)) continue;
     for (const d of statement.declarationList.declarations) {
       if (!ts.isIdentifier(d.name) || d.name.text !== 'MINOR_TITLES' || !d.initializer) continue;
-      const list = ts.isSatisfiesExpression(d.initializer) ? d.initializer.expression : d.initializer;
+      const typed = ts.isSatisfiesExpression(d.initializer) ? d.initializer.expression : d.initializer;
+      const list = ts.isAsExpression(typed) ? typed.expression : typed;
       if (!ts.isArrayLiteralExpression(list)) break;
       return list.elements.flatMap((title) =>
         ts.isObjectLiteralExpression(title)

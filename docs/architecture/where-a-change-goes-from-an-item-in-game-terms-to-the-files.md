@@ -76,12 +76,14 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   effect in `src/engine/rules/<family>/`. Never an `if` on the content's name inside a resolver
   ([the guardrails](../ARCHITECTURE.md#the-codes-guardrails)).
 - **The detail:** [the rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry); a
-  spell's, a discovery's, a perk's, an alignment ability's or a rule of the economy's own "how to add" section in
+  spell's, a discovery's, a perk's, an alignment ability's, a rule of the economy's or a minor title's own "how to add"
+  section in
   [the spells' registry](the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md#how-to-add-a-spells-effect),
   [the discoveries'](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md#how-to-add-a-discoverys-effect),
   [the guardian perks'](the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md#how-to-add-a-perk)
   [the alignment abilities'](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#how-to-add-an-ability)
-  and [the economy's](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#how-to-add-a-rule-of-the-economy).
+  [the economy's](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#how-to-add-a-rule-of-the-economy)
+  and [the minor titles'](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#how-to-add-a-perk).
 - **The trap:** [An effect reads only what its hook hands it](../traps.md#an-effect-reads-only-what-its-hook-hands-it);
   for an alignment's rule, [A realm's alignment's rule is a row of its abilities](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities).
 

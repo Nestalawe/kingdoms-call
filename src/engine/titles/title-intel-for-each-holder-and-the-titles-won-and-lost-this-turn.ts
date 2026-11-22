@@ -5,7 +5,8 @@ import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-s
 import { noteGraveIntel } from '../graves.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { TITLES_PUBLIC_FROM_TURN, TITLE_CREATURE_ARMIES, TITLE_MONSTER_ARMIES } from './perks.ts';
-import { MINOR_TITLES, computeMinorTitles, computeStandings } from './reckoning.ts';
+import { MINOR_TITLES } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+import { computeMinorTitles, computeStandings } from './reckoning.ts';
 import {
   emit,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,

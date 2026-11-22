@@ -29,8 +29,8 @@ import { provinceConsecrated } from '../engine/world/the-marks-on-a-province-con
 import { activeItems } from '../engine/items/equipment.ts';
 import { monsterCatLabel } from '../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../engine/titles/perks.ts';
+import { MINOR_TITLES } from '../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import {
-  MINOR_TITLES,
   computeMinorTitles,
   computeStandings,
   extraSkillBonuses,

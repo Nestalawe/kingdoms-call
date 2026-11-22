@@ -57,6 +57,10 @@
 // each effect once in its stage's order (THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY), each order naming only entries with an
 // effect there, each content row with its entry and each entry with its row, no two rows' name, and every entry at a
 // stage (its runners' values: tests/unit/the-economys-registry-a-provinces-tax-and-a-realms-gold-beyond-it.test.ts).
+// Since B-06i the minor titles' registry (src/engine/rules/the-registry-of-the-minor-titles-perks.ts) is held to the
+// same: each effect once in its stage's order (THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES), each order naming only
+// entries with an effect there, each content row (a minor title, MINOR_TITLES) with its entry and each entry with its
+// row, and no two rows' key or name.
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -114,6 +118,11 @@ import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_ECONOMY,
   THE_REGISTRY_OF_THE_ECONOMYS_RULES,
 } from '../../src/engine/rules/the-registry-of-the-economys-rules.ts';
+import { MINOR_TITLES } from '../../src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES,
+  THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS,
+} from '../../src/engine/rules/the-registry-of-the-minor-titles-perks.ts';
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_ALIGNMENT_ABILITIES,
   theCheckAnAlignmentOrderRefusesAHeroOn,
@@ -1102,5 +1111,43 @@ test("planted in the economy's registry, an entry left out of its order, one nam
     "the-thief-network is in the order of turnEnd: a realm's gold beyond its tax from a hero's mastery 0 times",
     'a-planted-rule and enslave-cuts-a-provinces-tax-while-it-resents share the name Enslave',
     'a-planted-rule has a content row and no entry',
+  ]);
+});
+
+const MINOR_TITLES_ENTRIES: Entries = THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS;
+const MINOR_TITLES_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES;
+/** The minor titles' rows by their key (the list's own order kept), as the registry is keyed. */
+const theMinorTitlesRowsByKey = (rows: readonly { readonly key: string; readonly name: string }[]) =>
+  Object.fromEntries(rows.map((row) => [row.key, row]));
+const MINOR_TITLES_BREAK = (
+  entries: Entries,
+  orders: Orders,
+  rows: readonly { readonly key: string; readonly name: string }[],
+) => [
+  ...rows.flatMap((row, i) =>
+    rows.findIndex((other) => other.key === row.key) === i ? [] : [`${row.key} is the key of two rows`],
+  ),
+  ...whatTheRegistryBreaks(entries, orders, theMinorTitlesRowsByKey(rows), () => []),
+];
+
+test("the minor titles' registry holds each effect once, in the order of its stage, and each title's row with its entry", () => {
+  expect(MINOR_TITLES_BREAK(MINOR_TITLES_ENTRIES, MINOR_TITLES_ORDERS, MINOR_TITLES)).toEqual([]);
+  expect(Object.keys(MINOR_TITLES_ENTRIES), "the entries, in the rows' order").toEqual(MINOR_TITLES.map((t) => t.key));
+});
+
+test("planted in the minor titles' registry, an order naming an entry with no effect there, a row with no entry, two rows' key and two rows' name, are found", () => {
+  const orders: Orders = { turnEnd: { "a realm's tax": ['cutpurse'] } };
+  const rows = [
+    ...MINOR_TITLES,
+    { key: 'a-planted-title', name: 'The Planted' },
+    { key: 'duelist', name: 'The Second Duelist' },
+    { key: 'a-planted-namesake', name: 'The Warlock' },
+  ];
+  expect(MINOR_TITLES_BREAK(MINOR_TITLES_ENTRIES, orders, rows)).toEqual([
+    'duelist is the key of two rows',
+    "the order of turnEnd: a realm's tax names cutpurse, which has no effect there",
+    'a-planted-title has a content row and no entry',
+    'a-planted-namesake and warlock share the name The Warlock',
+    'a-planted-namesake has a content row and no entry',
   ]);
 });

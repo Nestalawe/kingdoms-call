@@ -31,10 +31,15 @@
 // Since B-06c the economy's registry (src/engine/rules/the-registry-of-the-economys-rules.ts) ends the same way,
 // `satisfies Record<TheEconomysRuleSlug, EconomysRuleEntry>`, on the keys of its content rows (the rules of a realm's
 // gold: src/content/the-economys-rules-their-keys-names-and-numbers.ts), and the copies plant the same two faults in it.
+// Since B-06i the minor titles' registry (src/engine/rules/the-registry-of-the-minor-titles-perks.ts) ends the same way,
+// `satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>`, on the keys of its content rows
+// (the minor titles, MINOR_TITLES: src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-
+// holder-is-found.ts), and the copies plant the same two faults in it: a title's row with no entry (TS1360) and an
+// entry with no row (TS2353), each naming the slug.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/, src/engine/rules/ and (since P1-19m)
 // src/engine/rules-on-plain-values/ (the registries import nothing else: npm run lint:arch), so each compiles on its own
-// with tsconfig.json's settings. Each copy is whole: its program reads every file of it, the seven registries its roots.
+// with tsconfig.json's settings. Each copy is whole: its program reads every file of it, the eight registries its roots.
 // A program's time grows by each copy it holds (the 15,000-line data file is checked once a copy: about 0.4 s a copy
 // on a laptop), so the copies are split by registry: "as they are" in a program of its own, and each
 // registry's planted copies in one program, one test each, so no test holds more than four copies and each one's
@@ -61,10 +66,13 @@ const ABILITIES_REGISTRY = 'src/engine/rules/the-registry-of-alignment-abilities
 const ABILITIES_ROWS = 'src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 const ECONOMY_REGISTRY = 'src/engine/rules/the-registry-of-the-economys-rules.ts';
 const ECONOMY_ROWS = 'src/content/the-economys-rules-their-keys-names-and-numbers.ts';
+const MINOR_TITLES_REGISTRY = 'src/engine/rules/the-registry-of-the-minor-titles-perks.ts';
+const MINOR_TITLES_ROWS =
+  'src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 /** The files a copy holds, whose errors it reads: the content and the registry's folder (since P1-19j, the rows of a
  *  unit no longer raised, which the content's rows read; since P1-19m, the items' rows; since P1-19u, the spells';
  *  since P1-19aa, the discoveries' kinds; since P1-19ai, the guardian perks' kinds; since P1-19at1, the alignment
- *  abilities; since B-06c, the economy's rules). */
+ *  abilities; since B-06c, the economy's rules; since B-06i, the minor titles). */
 const COPIED = [
   'src/content/kingdoms-call-data.ts',
   'src/content/the-abilities-of-a-unit-no-longer-raised.ts',
@@ -75,6 +83,7 @@ const COPIED = [
   PERKS_ROWS,
   ABILITIES_ROWS,
   ECONOMY_ROWS,
+  MINOR_TITLES_ROWS,
   ...filesUnder(path.join(ROOT, 'src', 'engine', 'rules')).map((f) => `src/engine/rules/${f}`),
 ];
 /** And, since P1-19m, the rules on plain values, which the items' effects read (they import only themselves and the
@@ -120,6 +129,7 @@ const THE_THIEF_NETWORK_ENTRY = `  'the-thief-network': {
     },
   },
 `;
+const WARLOCK_ENTRY = '  warlock: {}, // orders (B-06l)\n';
 const UNDEAD_BONUS_ENTRY =
   "  'undead-bonus': { strength: { \"the commander's items\": THE_COMMANDERS_ITEMS['undead-bonus'] } },\n";
 
@@ -238,6 +248,20 @@ const PLANTS: Record<string, Record<string, string>> = {
       THE_THIEF_NETWORK_ENTRY + "  'planted-rule': {},\n",
     ),
   },
+  "a minor title's row with no entry": {
+    [MINOR_TITLES_ROWS]: replacedOnce(
+      read(MINOR_TITLES_ROWS),
+      '] as const satisfies readonly AMinorTitleAsItsRowWritesIt[];',
+      "  { key: 'planted-title', name: 'The Planted', perk: 'p', req: 'r', howTheHolderIsFound: { theMeasure: 'the merits he has earned' } },\n] as const satisfies readonly AMinorTitleAsItsRowWritesIt[];",
+    ),
+  },
+  "a minor title's entry with no row": {
+    [MINOR_TITLES_REGISTRY]: replacedOnce(
+      read(MINOR_TITLES_REGISTRY),
+      WARLOCK_ENTRY,
+      WARLOCK_ENTRY + "  'planted-title': {},\n",
+    ),
+  },
 };
 
 /** The slug a compiler message is about: the key a `satisfies` found missing, or the key it doesn't know; else, for a
@@ -247,7 +271,7 @@ const NO_SIGNATURE = /is not assignable to type '(never|undefined)'\.$/;
 
 /** The compiler's errors in each planted copy, as `TS<code> in <the declaration it stands in>: <the slug it names, or
  *  the type with no signature>` (the declaration alone, for an error of another kind). One program holds the copies
- *  given, each whole (its seven registries the program's roots): a copy's errors are its own, whatever copies are
+ *  given, each whole (its eight registries the program's roots): a copy's errors are its own, whatever copies are
  *  beside it. */
 function errorsIn(copies: Record<string, Record<string, string>>): Record<string, string[]> {
   const dirOf = (name: string) => path.join(tmp, name.replace(/[^a-z]+/gi, '-'));
@@ -277,6 +301,7 @@ function errorsIn(copies: Record<string, Record<string, string>>): Record<string
       path.join(dirOf(name), PERKS_REGISTRY),
       path.join(dirOf(name), ABILITIES_REGISTRY),
       path.join(dirOf(name), ECONOMY_REGISTRY),
+      path.join(dirOf(name), MINOR_TITLES_REGISTRY),
     ]),
     config.options,
   );
@@ -315,6 +340,7 @@ const THE_COPIES_OF_EACH_REGISTRY = {
   perks: ["a guardian perk kind's row with no entry", "a guardian perk kind's entry with no row"],
   abilities: ["an alignment ability's row with no entry", "an alignment ability's entry with no row"],
   economy: ["an economy's rule's row with no entry", "an economy's rule's entry with no row"],
+  minorTitles: ["a minor title's row with no entry", "a minor title's entry with no row"],
 } as const;
 {
   const grouped: readonly string[] = Object.values(THE_COPIES_OF_EACH_REGISTRY).flat();
@@ -343,9 +369,10 @@ const atTheDiscoveries = (declaration: string) => `${path.basename(DISCOVERIES_R
 const atThePerks = (declaration: string) => `${path.basename(PERKS_REGISTRY)}, ${declaration}`;
 const atTheAbilities = (declaration: string) => `${path.basename(ABILITIES_REGISTRY)}, ${declaration}`;
 const atTheEconomy = (declaration: string) => `${path.basename(ECONOMY_REGISTRY)}, ${declaration}`;
+const atTheMinorTitles = (declaration: string) => `${path.basename(MINOR_TITLES_REGISTRY)}, ${declaration}`;
 
 test(
-  'the seven registries and their content rows compile as they are, every file of the copy in one program',
+  'the eight registries and their content rows compile as they are, every file of the copy in one program',
   timeLimitForTheWork({ typeScriptPrograms: 1 }),
   () => {
     expect(errorsIn(theCopies(['as they are']))).toEqual({ 'as they are': [] });
@@ -470,6 +497,22 @@ test(
       ],
       "an economy's rule's entry with no row": [
         `TS2353 in ${atTheEconomy('THE_REGISTRY_OF_THE_ECONOMYS_RULES')}: planted-rule`,
+      ],
+    });
+  },
+);
+
+test(
+  "the minor titles' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.minorTitles);
+    expect(errorsIn(copies)).toEqual({
+      "a minor title's row with no entry": [
+        `TS1360 in ${atTheMinorTitles('THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS')}: planted-title`,
+      ],
+      "a minor title's entry with no row": [
+        `TS2353 in ${atTheMinorTitles('THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS')}: planted-title`,
       ],
     });
   },

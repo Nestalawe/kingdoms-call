@@ -50,7 +50,7 @@ import {
 } from '../engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN, itemAcquiredThisTurn, perkTier } from '../engine/titles/perks.ts';
 import { MAGIC_L8_SCHOOLS, castChanceFor } from '../engine/chances-and-lair-grades.ts';
-import { MINOR_TITLES } from '../engine/titles/reckoning.ts';
+import { MINOR_TITLES } from '../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import { _TITLE_LABEL } from './prose/the-words-of-the-major-titles-names.ts';
 import {
   DISC_BY_ID,

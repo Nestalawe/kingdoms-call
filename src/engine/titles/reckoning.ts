@@ -1,13 +1,9 @@
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
-import { theHighestLevelAHeroHasTrainedInAMagicSchool } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
-  CREATURE_ARMIES,
-  MONSTER_ARMIES,
-} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import {
-  MINOR_CAV,
-  MINOR_HEAVY,
-} from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
+  MINOR_TITLES,
+  SKILL_EXTRA_MINORS,
+} from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+import { theMeasureAHeroIsHeldToForAMinorTitle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.ts';
 import { _skillItem, activeItems } from '../items/equipment.ts';
 import { botConceded } from '../bots/intel.ts';
@@ -20,7 +16,6 @@ import {
   reckoningAllyStepPct,
   reckoningDecayOf,
   reckoningThreshold,
-  skillLevel,
 } from './perks.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { ARealmAsTheDiscoveriesReadIt } from '../rules/the-registry-of-discovery-effects.ts';
@@ -466,163 +461,14 @@ export function runBotReckoning(
 
 // ── MINOR TITLES ── 20 honorary titles that do NOT count toward victory but each grant the holding
 // character a small perk. Each is awarded every turn to the single best living character by its
-// metric (ties → first found; a metric of 0 leaves the title vacant). See the design doc.
+// measure (ties → first found; a measure of 0 leaves the title vacant). Their rows, in their order, and how each
+// holder is found, are content's (MINOR_TITLES); the measure is the minor titles' registry's.
 /** The world as the minor titles read it: its heroes (a list, or a gap in it, may be missing) and its provinces' owners
  *  (the Castellan's count, which reads each province as there). */
 interface TheWorldAsTheMinorTitlesReadIt {
   readonly characters?: readonly (AHeroAsTheTitlesCountHim | null | undefined)[] | null | undefined;
   readonly world?: { readonly provinces?: readonly Pick<Province, 'owner'>[] | null | undefined } | null | undefined;
 }
-/** A minor title: its key, name, perk and requirement, and the measure its best hero is found by. */
-interface AMinorTitle {
-  readonly key: string;
-  readonly name: string;
-  readonly perk: string;
-  readonly req: string;
-  readonly metric: (c: AHeroOfARealmAsTheTitlesCountHim, st: TheWorldAsTheMinorTitlesReadIt) => number;
-}
-export const MINOR_TITLES = [
-  {
-    key: 'duelist',
-    name: 'The Duelist',
-    perk: '+1 melee in personal combat',
-    req: 'Highest Melee skill of any living character.',
-    metric: (c) => skillLevel(c, 'melee'),
-  },
-  {
-    key: 'marksman',
-    name: 'The Marksman',
-    perk: '+1 archery in personal combat',
-    req: 'Highest Archery skill.',
-    metric: (c) => skillLevel(c, 'archery'),
-  },
-  {
-    key: 'strategist',
-    name: 'The Strategist',
-    perk: '+1 Tactical command in battle',
-    req: 'Highest Tactical skill.',
-    metric: (c) => skillLevel(c, 'tactical'),
-  },
-  {
-    key: 'swift',
-    name: 'The Swift',
-    perk: '+1 land movement point',
-    req: 'Highest March skill.',
-    metric: (c) => skillLevel(c, 'march'),
-  },
-  {
-    key: 'seawolf',
-    name: 'The Sea-Wolf',
-    perk: '+1 sea movement point',
-    req: 'Highest Naval skill.',
-    metric: (c) => skillLevel(c, 'naval'),
-  },
-  {
-    key: 'shadow',
-    name: 'The Shadow',
-    perk: 'your spies are never detected',
-    req: 'Highest Spy skill.',
-    metric: (c) => skillLevel(c, 'spy'),
-  },
-  {
-    key: 'cutpurse',
-    name: 'The Cutpurse',
-    perk: '+2g personal stipend each turn',
-    req: 'Highest Thief skill.',
-    metric: (c) => skillLevel(c, 'thief'),
-  },
-  {
-    key: 'naturalist',
-    name: 'The Naturalist',
-    perk: 'Creature & Monster armies you lead +5%',
-    req: 'Highest Druid skill.',
-    metric: (c) => skillLevel(c, 'druid'),
-  },
-  {
-    key: 'loreseeker',
-    name: 'The Loreseeker',
-    perk: '+5% Sage discovery chance',
-    req: 'Highest Sage skill.',
-    metric: (c) => skillLevel(c, 'sage'),
-  },
-  {
-    key: 'trailblazer',
-    name: 'The Trailblazer',
-    perk: '+5% exploration',
-    req: 'Highest Explorer skill.',
-    metric: (c) => skillLevel(c, 'explorer'),
-  },
-  {
-    key: 'colossus',
-    name: 'The Colossus',
-    perk: '+2 HP recovered when resting',
-    req: 'Highest maximum HP.',
-    metric: (c) => c.maxHp || 20,
-  },
-  {
-    key: 'widowmaker',
-    name: 'The Widowmaker',
-    perk: '+1 melee & +1 archery in combat',
-    req: 'Most enemy characters slain in personal combat.',
-    metric: (c) => Number(c.tm?.duelKills) || 0,
-  },
-  {
-    key: 'champion',
-    name: 'Champion of the People',
-    perk: '+2g personal stipend each turn',
-    req: 'Most merits earned in play.',
-    metric: (c) => c.merits || 0,
-  },
-  {
-    key: 'hostleader',
-    name: 'The Host-Leader',
-    perk: 'army wages −1 per unit (min 1)',
-    req: 'Leads the largest number of army units.',
-    metric: (c) => (c.armies ?? []).length,
-  },
-  {
-    key: 'cavalier',
-    name: 'The Cavalier',
-    perk: 'cavalry you lead +5%',
-    req: 'Leads the most cavalry units.',
-    metric: (c) => (c.armies ?? []).filter((a) => MINOR_CAV.has(a.type)).length,
-  },
-  {
-    key: 'beastmaster',
-    name: 'The Beastmaster',
-    perk: 'Creature & Monster armies you lead +5%',
-    req: 'Leads the most Creature and Monster units.',
-    metric: (c) => (c.armies ?? []).filter((a) => CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)).length,
-  },
-  {
-    key: 'ironclad',
-    name: 'The Ironclad',
-    perk: 'heavy & fleet units you lead +5%',
-    req: 'Leads the most heavy and fleet units.',
-    metric: (c) => (c.armies ?? []).filter((a) => MINOR_HEAVY.has(a.type)).length,
-  },
-  {
-    key: 'relichunter',
-    name: 'The Relic-Hunter',
-    perk: '+1 melee & +1 archery in combat',
-    req: 'Carries the most magic items.',
-    metric: (c) => (c.items ?? []).length,
-  },
-  {
-    key: 'castellan',
-    name: 'The Castellan',
-    perk: '+1g per turn for every 5 provinces held',
-    req: 'The king holding the most provinces.',
-    metric: (c, st) => (c.isKing ? (st.world?.provinces ?? []).filter((pv) => pv.owner === c.player).length : 0),
-  },
-  {
-    key: 'warlock',
-    name: 'The Warlock',
-    perk: '+1 spell of your best school/turn',
-    req: 'Highest single magic-school level.',
-    metric: (c) => theHighestLevelAHeroHasTrainedInAMagicSchool(c),
-  },
-] satisfies readonly AMinorTitle[];
 export function computeMinorTitles(state: TheWorldAsTheMinorTitlesReadIt): Partial<Record<string, MinorTitleHolder>> {
   const chars = (state.characters ?? []).filter(aLivingHeroTheTitlesCount);
   const out: Partial<Record<string, MinorTitleHolder>> = {};
@@ -630,7 +476,7 @@ export function computeMinorTitles(state: TheWorldAsTheMinorTitlesReadIt): Parti
     let best = 0,
       bc: AHeroOfARealmAsTheTitlesCountHim | null = null;
     for (const c of chars) {
-      const v = t.metric(c, state) || 0;
+      const v = theMeasureAHeroIsHeldToForAMinorTitle(t.howTheHolderIsFound, c, state) || 0;
       if (v > best) {
         best = v;
         bc = c;
@@ -641,40 +487,9 @@ export function computeMinorTitles(state: TheWorldAsTheMinorTitlesReadIt): Parti
   return out;
 }
 
-// ── EXTRA SKILL BONUSES ────
-// skillBonusBreakdown covers everything that changes the skill ITSELF — equipped items, the Crown
-// of Command aura and the Curse spell. It does NOT cover the bonuses the engine adds at the point
-// of use: the minor titles and the Veteran Training discovery. Those were invisible on the
-// character card (only the four personal-combat ones were shipped, and nothing said where they came
-// from), so a player holding The Strategist saw no sign of the +1 Tactical every one of his battles
-// is fought with. This is the single module-level place those are enumerated; both the report card
-// and the orders column render from it, and every entry carries a `kind` (for colour) and a `scope`
-// (for when it applies), so the display can never claim a personal-combat bonus applies to a
-// battle.
-//
-// SCOPES: 'always' — folded into the skill itself (handled by skillBonusBreakdown)
-// 'combat' — personal combat only (duels, encounters, lair fights) — pcCharCombatant
-// 'battle' — army battles only — combatVsChar / combatVsNPC command bonus
-// 'move' — movement points only — computeMovePoolMax
-// 'order' — the order's own success roll only (e.g. Sage research)
-// Every entry here must correspond to a REAL engine site; the harness asserts each one.
-export const SKILL_EXTRA_MINORS: readonly (readonly [
-  key: string,
-  skills: readonly string[],
-  delta: number,
-  kind: string,
-  scope: string,
-])[] = [
-  // key skills delta kind scope
-  ['duelist', ['melee'], 1, 'title', 'combat'],
-  ['marksman', ['archery'], 1, 'title', 'combat'],
-  ['widowmaker', ['melee', 'archery'], 1, 'title', 'combat'],
-  ['relichunter', ['melee', 'archery'], 1, 'title', 'combat'],
-  ['strategist', ['tactical'], 1, 'title', 'battle'],
-  ['swift', ['march'], 1, 'title', 'move'],
-  ['seawolf', ['naval'], 1, 'title', 'move'],
-  ['loreseeker', ['sage'], 1, 'title', 'order'],
-];
+// ── EXTRA SKILL BONUSES ──── the skills a minor title adds to at their point of use, in the character card's order:
+// SKILL_EXTRA_MINORS, in content beside the minor titles' rows (src/content/the-minor-titles-their-keys-names-perks-
+// requirements-and-how-each-holder-is-found.ts), which says what it covers and when each applies.
 export const SKILL_EXTRA_SCOPE_NOTE = {
   combat: 'personal combat only',
   battle: 'army battles only',
