@@ -10,8 +10,9 @@ each outcome is in [the goal and the road](../the-goal-and-the-road.md). The lis
    with [the rulings to build](the-rulings-decided-not-built.md); then the rows that serve a later outcome, or wait.
 4. [**Not yet assessed**](#not-yet-assessed): rows whose impact no one has described yet.
 
-Finished items are a record, in three files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
-[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md) and [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md).
+Finished items are a record, in four files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
+[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md) and
+[the new items (B-NN)](finished-steps-the-new-items-b-nn.md).
 
 ## How to read a row
 
@@ -66,32 +67,15 @@ place" are done too: P1-11z, B-16, B-18 and B-19 are in the finished lists.
 B-06 is a group, not a row ([how to read a row](#how-to-read-a-row)): the rules pulled out. Each family of rules is
 counted by the ratchet and moved into content's rows, each with its bot valuation hook
 ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs)), so that a redesign item becomes a content
-change. Its order: first the foundations (the economy, B-06b to B-06h; the Reckoning and the titles, B-06i to B-06r;
-world generation, B-06s to B-06ab, which Run 2 scopes again once Run 1 merges), then the alignments (P1-19ba1 to
-P1-19bb9), then the rest (the races, the tempers, the hero orders, the battle pipeline, diplomacy, sight), scoped later.
+change. Its order: first the foundations, then the alignments (P1-19ba1 to P1-19bb9), then the rest (the races, the
+tempers, the hero orders, the battle pipeline, diplomacy, sight), scoped later. Of the foundations, the economy and the
+Reckoning and the titles are done (B-06a to B-06r, in [the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out));
+world generation, B-06s to B-06ab, comes next.
 Each row is one `refactor-only` pull request that keeps the game exactly the same, unless it says otherwise. The
 tranche's plan, its counts and its risks: #711.
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| B-06a | The ratchet's three counts of Run 1 (the economy's numbers in the engine and in the bots, the titles the engine names) and their static tests; these rows; the defects the scoping found; B-20; the bots' worth hook in the decisions | The maintainers: each row's progress is counted, and a number moved out of sight fails a test | The ground for the redesign | Small | – | 🟦 | #711 | First: the counts the other rows lower |
-| B-06b | The economy's prices in content: the price table, the fallback 2g, the skeleton's 1g; one price rule and one wage rule on plain values, which the report's forecast, the ledger and the bots read | The maintainers: a company's price or wage is one content change | The ground for the redesign | Medium | – | 🟦 | #712 | The prices first: the economy's other rows read them |
-| B-06c | The tax's stages in Early Winter: Bless, the earthquake, sabotage, Enslave, the Wonder, the titles' and the Thief's gold; the forecast asks the same runner | The maintainers: a change to a realm's tax is one row | The ground for the redesign | Medium | – | 🟦 | #714 | After B-06b |
-| B-06d | The wages' stages: a company's (the skeleton, war spoils, the Druid, the Host-Leader) and the hero's wage formula, its three copies | The maintainers: a wage rule is one row | The ground for the redesign | Medium | – | 🟦 | #715 | After B-06c |
-| B-06e | Not paying: the disband order, hulls at sea, desertion's 0.4, in a row (the dice untouched) | The maintainers: what an unpaid realm loses is one row | The ground for the redesign | Small | – | 🟦 | #716 | After B-06d, which it reads |
-| B-06f | The orders' prices: the mercenary floor, the Wild Hunt's 6, the Grand Heist's 7 (the Druid's half went with B-06d, #715) | The maintainers: an order's price is one content change | The ground for the redesign | Small | – | 🟦 | #717 | After B-06b's price rule |
-| B-06g | Gold found and taken: the lairs' bands, the Sage's +5, a raid's loot (the spies' gold stays with espionage) | The maintainers: a lair's or a raid's gold is one content change | The ground for the redesign | Small | – | 🟦 | #718 | The economy's last engine row |
-| B-06h | The bots' worth of gold, the hook's first family: the bot asks the rule what an effect does, and its version's weights file says what a gold is worth ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs)); the bots' upkeep and tax ask B-06c's and B-06d's runners where they agree today | The maintainers: the bots follow a change to the economy without new bot code | The ground for the redesign | Medium | – | 🟦 | #719 | After B-06c and B-06d, whose runners it asks |
-| B-06i | The minor titles' rows in content, and their registry | The maintainers: a minor title is one content row | The ground for the redesign | Medium | – | 🟦 | #721 | The titles' first row: the others read the registry |
-| B-06j | Personal combat: a hero's titles add to his skills, from their rows | The maintainers: a title's duel perk is one row | The ground for the redesign | Small | – | 🟦 | #722 | After B-06i |
-| B-06k | A host's strength: a hero's titles add to his Tactical; the commander's titles | The maintainers: a title's battle perk is one row | The ground for the redesign | Small | – | 🟦 | #723 | After B-06i |
-| B-06l | Movement and orders: the Swift, the Sea-Wolf, the Shadow, the Loreseeker, the Trailblazer, the Colossus, the Warlock | The maintainers: a title's order perk is one row | The ground for the redesign | Small | – | 🟦 | #724 | After B-06i |
-| B-06m | Early Winter: the titles' tax and wage cuts, and the report's copy (R-172 is not built here) | The maintainers: a title's gold is one row | The ground for the redesign | Small | – | 🟦 | #725 | After B-06c and B-06i |
-| B-06n | The Imperial Titles' measures as row fields (the metric, the skill, the deed, the divisor, the dead's ×0.75); a hook point for a standing | The maintainers: an Imperial Title's measure is one row | The ground for the redesign | Medium | – | 🟦 | #726 | After B-06i |
-| B-06o | The title intelligence as an effect a row, 1 of 2: the realms' boards, each block moved exactly as it is | The maintainers: a title's report is one row | The ground for the redesign | Medium | ✓ | 🟦 | #727 | After B-06n; what a realm can see |
-| B-06p | The title intelligence, 2 of 2: the heroes', the graves' and the ledger's, each block moved exactly as it is | The maintainers: a title's report is one row | The ground for the redesign | Medium | ✓ | 🟦 | #728 | After B-06o; what a realm can see |
-| B-06q | The Reckoning's numbers in a row, which the portal reads; a test holds the books' bar table to them | The maintainers: the Reckoning's bar is one row | The ground for the redesign | Small | – | 🟦 | #729 | After B-06n |
-| B-06r | The bots' worth of a title, the hook's second family; the bots' knobs no code reads go | The maintainers: the bots follow a change to a title without new bot code | The ground for the redesign | Small | – | 🟦 | #730 | Run 1's last row: after B-06h's hook |
 | B-06s | The world's making's proof: each seed in a fresh worker, a hash of the world and of the dice drawn by stage, over seeds, map sizes, sea shares and realm mixes; baselines from `main`. Run 2 scopes it again | The maintainers: a move in the world's making is proved to change no world | The ground for the redesign | Medium | – | ⬜ | | Run 2's first: the proof its rows give |
 | B-06t | The making's lists to content, word for word and in order (the name pools, the sea features, the beast banks merged, the fleets, the skill pools, the bots' skill builds) | The maintainers: a name pool or a bank is a content change | The ground for the redesign | Medium | – | ⬜ | | After B-06s |
 | B-06u | The making's numbers to parameter rows | The maintainers: a world's shape is a content change | The ground for the redesign | Medium | – | ⬜ | | After B-06t |
