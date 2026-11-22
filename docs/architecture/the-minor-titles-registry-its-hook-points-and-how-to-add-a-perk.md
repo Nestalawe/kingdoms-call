@@ -30,8 +30,8 @@ a tie; a measure of 0 leaves it vacant). It is one row in
 ## The hook points
 
 An entry acts only at the hook points `TheHookPointsAMinorTitlesPerkActsAt` names, each filled by a row of the
-family; a perk not yet at its stage is checked where it acts, by the holders worked out at the turn's start (`charMinor`
-and its kin). The runner of a stage asks its caller who holds a title (a function, asked only of a title that acts). The stages are
+family, every title's perk at its stage. The runner of a stage asks its caller who holds a title (a function, asked
+only of a title that acts), by the holders worked out at the turn's start (`charMinor` and its kin) or the report's own. The stages are
 the shared hook points' (`TheStagesOfEachHookPoint`), as the rule registry's guide has them: a title's strength in a
 battle is a stage of `strength`, beside the commander's items.
 

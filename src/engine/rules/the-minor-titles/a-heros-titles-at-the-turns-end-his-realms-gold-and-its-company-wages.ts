@@ -13,7 +13,8 @@ import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effect
 
 type TheTurnsEndsStages = TheStagesOfEachHookPoint['turnEnd'];
 
-/** "turnEnd: a hero's titles give his realm gold beyond its tax": the rule of the economy whose gold each title gives. */
+/** "turnEnd: a hero's titles give his realm gold beyond its tax": the rule of the economy whose gold each title
+ *  gives. */
 export const A_HEROS_TITLES_GIVE_HIS_REALM_GOLD_BEYOND_ITS_TAX = {
   cutpurse: () => 'the-cutpurses-gold',
   champion: () => 'the-champion-of-the-peoples-gold',

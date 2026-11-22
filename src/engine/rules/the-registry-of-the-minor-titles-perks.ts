@@ -6,12 +6,11 @@
 // THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES, and each stage's runner is here. The Duelist, the Marksman, the
 // Widowmaker and the Relic-Hunter act at personalCombat (B-06j); the Strategist, the Naturalist, the Cavalier, the
 // Beastmaster and the Ironclad at strength (B-06k); the Swift and the Sea-Wolf at movementCost, the Warlock at
-// orderValidity, the Shadow, the Loreseeker, the Colossus and the Trailblazer at orderOutcome (B-06l); the Cutpurse, the
-// Champion of the People, the Castellan and the Host-Leader at turnEnd, each naming the rule of the economy whose gold
-// or cut it gives (B-06m); every other entry is at no stage yet (its perk is still checked where it acts, by the holders worked out at the turn's start:
-// `charMinor` and its kin). Here too is the measure a hero is held to for a title, which the awarding
-// (computeMinorTitles) asks. The rows after B-06l give each other perk its effect, at the hook points
-// TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
+// orderValidity, the Shadow, the Loreseeker, the Colossus and the Trailblazer at orderOutcome (B-06l); the Cutpurse,
+// the Champion of the People, the Castellan and the Host-Leader at turnEnd, each naming the rule of the economy whose
+// gold or cut it gives (B-06m). Who holds a title is each runner's caller's to say, by the holders worked out at the
+// turn's start (`charMinor` and its kin). Here too is the measure a hero is held to for a title, which the awarding
+// (computeMinorTitles) asks. How to add one:
 // docs/architecture/the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md.
 import {
   THE_ORDER_THE_MINOR_TITLES_ARMY_PERKS_LIFT_A_UNIT_IN,
@@ -59,7 +58,7 @@ export type TheEffectsOfAMinorTitlesPerkAtEachHookPoint = {
 };
 
 /** One entry for each content row, and no other (a row with no entry fails to compile, TS1360, and at ENTRIES, TS2741;
- *  an entry with no row, TS2353). An entry at no stage yet: the row named beside it gives it its effect. */
+ *  an entry with no row, TS2353). */
 export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   duelist: {
     personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.duelist },
@@ -303,10 +302,10 @@ export function theFactorAHerosTitlesMultiplyTheShareOfAProvinceHeMapsBy(
   }, 1);
 }
 
-/** The runner of "turnEnd: a hero's titles give his realm gold beyond its tax" (Early Winter's collection, hero by hero,
- *  and the report's forecast, for each rule of the economy's stage of a minor title's gold, in its order): whether he
- *  holds a title that gives the rule's gold. Whether he holds a title is asked only of a title whose entry names the
- *  rule, in the stage's order, until one he holds is found. */
+/** The runner of "turnEnd: a hero's titles give his realm gold beyond its tax" (Early Winter's collection, hero by
+ *  hero, and the report's forecast, for each rule of the economy's stage of a minor title's gold, in its order):
+ *  whether he holds a title that gives the rule's gold. Whether he holds a title is asked only of a title whose entry
+ *  names the rule, in the stage's order, until one he holds is found. */
 export function heHoldsAMinorTitleThatGivesHisRealmTheGold(
   theGold: TheEconomysRuleSlug,
   heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
