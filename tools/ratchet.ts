@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { z } from 'zod';
+import { theStagesTheListHolds } from './the-worlds-makings-stages-read-from-their-list-in-src.ts';
 import {
   _ITEM_NAME_ALTS,
   ALL_MAGIC_ITEMS_P,
@@ -826,7 +827,8 @@ export function titleChecksInEngine(codeFiles: readonly (readonly [file: string,
 // string that is an element of an array literal (`['plain', 'forest']`, the one inside `new Set([...])` too): the name
 // pools, the terrains, the beasts, the fleets. Everything a top-level function or table holds counts for it, its nested
 // functions' too, named or not. The family's rows move the lists and the numbers into content's rows, so both counts
-// only fall; a listed function a row moves keeps its entry at its new home, and one a row empties stays at 0:
+// only fall; a listed function a row moves keeps its entry at its new home, and one a row empties stays at 0 (the
+// stages' functions are read from their list in src/, tools/the-worlds-makings-stages-read-from-their-list-in-src.ts):
 // tests/static/the-code-the-worlds-making-rows-have-taken-holds-no-number-nor-list-and-every-listed-function-is-there.test.ts
 // holds the functions the rows have taken, and fails on a listed function the code no longer declares.
 /** The world's making's functions and tables, by their file: what the counts above read. */
@@ -836,78 +838,8 @@ export const THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES: readonly (readonly [file: 
   ['src/engine/world/the-worlds-making/the-sea-share-the-gm-picks-from-the-least-to-the-most.ts', 'SEA_PCT_DEFAULT'],
   ['src/engine/world/the-worlds-making/the-sea-share-the-gm-picks-from-the-least-to-the-most.ts', 'normSeaPct'],
   ['src/engine/world/generate.ts', 'generateNewGame'],
-  [
-    'src/engine/world/the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts',
-    'theSetUpTheMapsGridAndTheProvincesNames',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s01-the-capitals-placed-as-far-apart-as-the-map-allows.ts',
-    'theCapitalsPlacedAsFarApartAsTheMapAllows',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s02-each-homes-ring-tailored-and-the-seas-fill-rates.ts',
-    'eachHomesRingTailoredAndTheSeasFillRates',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s03-every-province-made-its-terrain-tax-armies-and-lairs.ts',
-    'everyProvinceMadeItsTerrainTaxArmiesAndLairs',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s04-the-races-dealt-to-their-heartlands-in-equal-shares.ts',
-    'theRacesDealtToTheirHeartlandsInEqualShares',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s05-the-coastal-fleets-a-humanoid-shore-offers.ts',
-    'theCoastalFleetsAHumanoidShoreOffers',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s06-the-seas-by-kind-primal-poor-waters-and-open-water.ts',
-    'theSeasByKindPrimalPoorWatersAndOpenWater',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s07-the-sea-features-and-their-guardians-in-every-sea.ts',
-    'theSeaFeaturesAndTheirGuardiansInEverySea',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s08-a-coastal-home-borders-an-open-water-sea.ts',
-    'aCoastalHomeBordersAnOpenWaterSea',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts',
-    'eachHomeTailoredAndItsKingAndHeroesMade',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s10-the-two-crowns-given-wild-country-within-two-provinces-of-home.ts',
-    'theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s11-the-neutral-races-rebalanced-to-within-one-province.ts',
-    'theNeutralRacesRebalancedToWithinOneProvince',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s12-every-land-province-lifted-to-the-tax-floor.ts',
-    'everyLandProvinceLiftedToTheTaxFloor',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s13-every-coastal-humanoid-province-offers-its-races-fleet.ts',
-    'everyCoastalHumanoidProvinceOffersItsRacesFleet',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s14-every-neutral-provinces-defenders-brought-inside-its-taxs-band.ts',
-    'everyNeutralProvincesDefendersBroughtInsideItsTaxsBand',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s15-every-neutral-province-fields-the-strongest-mix-of-its-own-units.ts',
-    'everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s16-every-neutral-province-gets-its-guard-hero-and-garreth-his-province.ts',
-    'everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince',
-  ],
-  [
-    'src/engine/world/the-worlds-making/s17-the-world-named-its-realms-states-lairs-and-hit-points-set-and-handed-on.ts',
-    'theWorldNamedItsRealmsStatesLairsAndHitPointsSetAndHandedOn',
-  ],
+  // The stages' functions, S0 to S17, as their list in src/ holds them: a new stage's entry there is counted here.
+  ...theStagesTheListHolds().map((s): readonly [file: string, fn: string] => [s.file, s.fn]),
   ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P'],
   ['src/engine/world/tables.ts', 'provincePoolSize'],
   ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP'],

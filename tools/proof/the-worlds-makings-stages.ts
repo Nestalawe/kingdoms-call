@@ -4,12 +4,13 @@
 // into one), or else generateNewGame's frame, whose line falls between two stages' anchors. An anchor is a line that
 // opens its stage (a comment, mostly), found once in generateNewGame's file.
 //
-// The split rows (B-06v to B-06aa) update this table: a row that moves a stage into a function of its own adds the
-// function's name to the stage (`fn`), keeping its anchor while the row's base still has it there; the row after may
-// drop an anchor no side holds. A stage found on neither side by anchor nor function stops the proof, so a stale table
-// can't count a stage's dice as another's.
+// The stages, their names and their functions come from their list in src/ (B-06ab: the split rows, B-06v to B-06aa,
+// moved every stage into a function of its own); the anchors are kept here for a base from before the split. A stage
+// found on neither side by anchor nor function stops the proof, so a stale table can't count a stage's dice as
+// another's.
 import fs from 'node:fs';
 import path from 'node:path';
+import { theStagesTheListHolds } from '../the-worlds-makings-stages-read-from-their-list-in-src.ts';
 
 /** The function the anchors are in, and its file. */
 export const THE_ANCHORED_FUNCTION = { file: 'src/engine/world/generate.ts', fn: 'generateNewGame' } as const;
@@ -23,117 +24,35 @@ export interface AStageOfTheWorldsMaking {
   fn?: string;
 }
 
-/** The stages, in the order generateNewGame makes them (Run 2a's scoping, section 2). */
-export const THE_WORLDS_MAKINGS_STAGES: readonly AStageOfTheWorldsMaking[] = [
-  {
-    stage: 'S0',
-    what: 'the set-up, the naming pools and their functions',
-    anchor: 'export function generateNewGame(',
-    fn: 'theSetUpTheMapsGridAndTheProvincesNames',
-  },
-  {
-    stage: 'S1',
-    what: 'the capitals',
-    anchor: '// ── PHASE 1:',
-    fn: 'theCapitalsPlacedAsFarApartAsTheMapAllows',
-  },
-  {
-    stage: 'S2',
-    what: "each home's ring",
-    anchor: '// ── PHASE 2:',
-    fn: 'eachHomesRingTailoredAndTheSeasFillRates',
-  },
-  {
-    stage: 'S3',
-    what: 'the provinces: tax, primal, armies, features and lairs, ritual sites',
-    anchor: '// ── PHASE 3:',
-    fn: 'everyProvinceMadeItsTerrainTaxArmiesAndLairs',
-  },
-  {
-    stage: 'S4',
-    what: 'the races dealt to their heartlands',
-    anchor: '// Post-generation: add fleet types',
-    fn: 'theRacesDealtToTheirHeartlandsInEqualShares',
-  },
-  {
-    stage: 'S5',
-    what: 'the coastal fleets',
-    anchor: 'const FLEET_BY_RACE =',
-    fn: 'theCoastalFleetsAHumanoidShoreOffers',
-  },
-  {
-    stage: 'S6',
-    what: 'the seas by kind',
-    anchor: '// Sea provinces: only non-humanoid sea armies',
-    fn: 'theSeasByKindPrimalPoorWatersAndOpenWater',
-  },
-  {
-    stage: 'S7',
-    what: 'the sea features and their guardians',
-    anchor: '// ── UNIFIED SEA FEATURES',
-    fn: 'theSeaFeaturesAndTheirGuardiansInEverySea',
-  },
-  {
-    stage: 'S8',
-    what: "the home's open-water sea",
-    anchor: '// ── Home coastal guarantee',
-    fn: 'aCoastalHomeBordersAnOpenWaterSea',
-  },
-  {
-    stage: 'S9',
-    what: "the homes: the colours, each home's tailoring, its king and two heroes",
-    anchor: '// Player starts were already chosen up front',
-    fn: 'eachHomeTailoredAndItsKingAndHeroesMade',
-  },
-  {
-    stage: 'S10',
-    what: 'wild country near the two crowns',
-    anchor: '// ── WILD COUNTRY NEAR THE TWO CROWNS',
-    fn: 'theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome',
-  },
-  {
-    stage: 'S11',
-    what: 'the neutral races rebalanced',
-    anchor: '// ── NEUTRAL RACE REBALANCE',
-    fn: 'theNeutralRacesRebalancedToWithinOneProvince',
-  },
-  {
-    stage: 'S12',
-    what: 'the tax floor',
-    anchor: '// ── MINIMUM TAX FLOOR',
-    fn: 'everyLandProvinceLiftedToTheTaxFloor',
-  },
-  {
-    stage: 'S13',
-    what: 'the coastal shipyards',
-    anchor: '// ── COASTAL SHIPYARDS',
-    fn: 'everyCoastalHumanoidProvinceOffersItsRacesFleet',
-  },
-  {
-    stage: 'S14',
-    what: 'the defender band audit',
-    anchor: '// ── NEUTRAL DEFENDER BAND AUDIT',
-    fn: 'everyNeutralProvincesDefendersBroughtInsideItsTaxsBand',
-  },
-  {
-    stage: 'S15',
-    what: 'the strongest neutral mix',
-    anchor: '// ── THE STRONGEST NEUTRAL MIX',
-    fn: 'everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits',
-  },
-  {
-    stage: 'S16',
-    what: "neutral heroes and Garreth's province",
-    anchor: '// Neutral heroes — one per non-home land province',
-    fn: 'everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince',
-  },
-  {
-    stage: 'S17',
-    what: 'the naming pass, turn orders, the state, mithril, the lairs, HP',
-    anchor: '// ── THEMATIC NAMING PASS',
-    fn: 'theWorldNamedItsRealmsStatesLairsAndHitPointsSetAndHandedOn',
-  },
-];
+/** The line that opens each stage in generateNewGame's file on a base from before the split (B-06v to B-06aa moved
+ *  every stage into a function of its own), kept so the proof still compares a tree with an older base. */
+const THE_ANCHORS_AN_OLDER_BASE_HOLDS: Readonly<Record<string, string>> = {
+  S0: 'export function generateNewGame(',
+  S1: '// ── PHASE 1:',
+  S2: '// ── PHASE 2:',
+  S3: '// ── PHASE 3:',
+  S4: '// Post-generation: add fleet types',
+  S5: 'const FLEET_BY_RACE =',
+  S6: '// Sea provinces: only non-humanoid sea armies',
+  S7: '// ── UNIFIED SEA FEATURES',
+  S8: '// ── Home coastal guarantee',
+  S9: '// Player starts were already chosen up front',
+  S10: '// ── WILD COUNTRY NEAR THE TWO CROWNS',
+  S11: '// ── NEUTRAL RACE REBALANCE',
+  S12: '// ── MINIMUM TAX FLOOR',
+  S13: '// ── COASTAL SHIPYARDS',
+  S14: '// ── NEUTRAL DEFENDER BAND AUDIT',
+  S15: '// ── THE STRONGEST NEUTRAL MIX',
+  S16: '// Neutral heroes — one per non-home land province',
+  S17: '// ── THEMATIC NAMING PASS',
+};
+
+/** The stages, in the order generateNewGame makes them: their ids, their names in game terms and their functions read
+ *  from their list in src/ (tools/the-worlds-makings-stages-read-from-their-list-in-src.ts), each with its anchor. */
+export const THE_WORLDS_MAKINGS_STAGES: readonly AStageOfTheWorldsMaking[] = theStagesTheListHolds().map((s) => {
+  const anchor = THE_ANCHORS_AN_OLDER_BASE_HOLDS[s.stage];
+  return { stage: s.stage, what: s.inGameTerms, fn: s.fn, ...(anchor === undefined ? {} : { anchor }) };
+});
 
 /** The key a draw made while the bots' realms are drawn up (generateBotSetups, before the world) is counted under. */
 export const THE_BOTS_REALMS = 'bots';
