@@ -46,7 +46,8 @@ so every step keeps its place.
 - **A province's tax from the realm's Wonder**: the Free City Charter, 2 more on a province that keeps a garrison while
   Good's Wonder stands (the caller's `gdActive`, or the view's `wonderBlesses`, asked first).
 - **A realm's gold beyond its tax from a hero's minor title**: the Cutpurse's 2, the Champion of the People's 2, the
-  Castellan's gold for every 5 provinces, rounded down (none below 5). The runner gives each that pays, with its slug,
+  Castellan's gold for every 5 provinces, rounded down (none below 5), each asked only of a hero who holds the title
+  that gives it (which title: the minor titles' registry, B-06m). The runner gives each that pays, with its slug,
   in the stage's order: Early Winter asks it hero by hero and notes each on the tax line in that order
   (`THE_PERK_EACH_MINOR_TITLES_GOLD_IS_NOTED_BY`); the forecast asks it once for the realm's heroes, as one hero holds a
   title, and reads each title's gold by its slug.

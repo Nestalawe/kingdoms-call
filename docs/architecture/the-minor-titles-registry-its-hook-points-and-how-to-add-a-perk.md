@@ -70,8 +70,16 @@ battle is a stage of `strength`, beside the commander's items.
   (`actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd`,
   `theShareOfAProvinceAnExploreOrderMapsByHisTitlesFactor`); the bots and the order form still say whether he holds
   the Warlock or the Trailblazer, and the rule reads the one row that names the number.
-- `turnEnd` (B-06m): the Host-Leader's cut of the wages. The Cutpurse's, the Champion of the People's and the
-  Castellan's gold are the [economy's registry's](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md).
+- `turnEnd`, two stages, each entry naming the rule of the
+  [economy's registry](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md) whose gold or cut its
+  title gives; the numbers and the runs are that registry's
+  (`src/engine/rules/the-minor-titles/a-heros-titles-at-the-turns-end-his-realms-gold-and-its-company-wages.ts`).
+  **A hero's titles give his realm gold beyond its tax**: the Cutpurse, the Champion of the People and the Castellan,
+  each its own rule's gold; the economy's runner asks, for each of its rules, whether he holds the title that gives it
+  (`heHoldsAMinorTitleThatGivesHisRealmTheGold`). **A hero's titles cut his realm's company wages**: the Host-Leader,
+  the hero whose companies the economy's cut counts (`aHerosTitlesCutHisRealmsCompanyWages`). Early Winter asks both
+  with the turn-start holders, and the report's forecast with its own (the end-of-turn holders, once titles are
+  public).
 
 ## What checks it
 

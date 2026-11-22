@@ -23,7 +23,8 @@
 //   open with and whatever lines the realm can't read come before it: the pages draw a force's rows by it alone.
 // - One realm's report (buildTurnReport, src/views/turn-report.ts, P1-10b30) on its view (playerView) of a world
 //   staged for it, which no game of the matrix builds: a Good realm's Wonder's tax, Enslave's gold off the tax, the
-//   minor titles' gold and the Thief network (B-06c), a skeleton's wage, a Wonder's realm
+//   minor titles' gold and the Thief network (B-06c), the Host-Leader's cut, titles not yet public or another realm's
+//   hero holding them (B-06d, B-06m), a skeleton's wage, a Wonder's realm
 //   wherever the map shows it, and the hero it watches by Clairvoyance and the heroes beside a province it spied, each
 //   in a province it has never seen.
 // Level 1 (unit): each function is called on a world (and a turn's sight) made in the test; nothing else of the turn
@@ -666,6 +667,27 @@ describe("one realm's report on a world staged for it", () => {
     expect(theWages(three, true)).toEqual([without - 3, 3]);
     expect(theWages(three.slice(0, 1), true)).toEqual([without - 8 - 1, 1]);
     expect(theWages(three, false)).toEqual([without, 0]);
+  });
+  // B-06m: which title cuts the wages is the minor titles' registry's; the report keeps its own holders and its check
+  // of the titles being public
+  test("the Host-Leader in the forecast cuts nothing while titles aren't public, nor as another realm's hero", () => {
+    const theWages = (titlesPublic: boolean, theHolder: 'ours' | 'theirs') => {
+      const S = world();
+      delete realmOf(S, 0)._lastWages;
+      const king = kingOf(S, 0);
+      king.armies = [0, 1, 2].map(() => ({ type: 'Gilded Lances', quality: 'Average' }));
+      const theWorld = S as unknown as { turn: number };
+      theWorld.turn = titlesPublic ? Math.max(theWorld.turn, TITLES_PUBLIC_FROM_TURN) : TITLES_PUBLIC_FROM_TURN - 1;
+      const view = playerView(S, 0) as View & { titles: { minor: Record<string, { charId: number }> | null } };
+      const charId = theHolder === 'ours' ? king.id : kingOf(S, 1).id;
+      view.titles.minor = { hostleader: { charId } };
+      const k = buildTurnReport(view).kingdom as Report['kingdom'] & { hostLeaderG: number };
+      return [k.armyWages, k.hostLeaderG];
+    };
+    const [cut = 0, saved = 0] = theWages(true, 'ours');
+    expect(saved, 'our Host-Leader, titles public (staging)').toBe(3);
+    expect(theWages(false, 'ours')).toEqual([cut + 3, 0]);
+    expect(theWages(true, 'theirs')).toEqual([cut + 3, 0]);
   });
 
   test("the realm's heroes are in its own order, the ones it hasn't placed after them in the world's order", () => {
