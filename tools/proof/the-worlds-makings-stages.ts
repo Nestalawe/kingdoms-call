@@ -29,9 +29,20 @@ export const THE_WORLDS_MAKINGS_STAGES: readonly AStageOfTheWorldsMaking[] = [
     stage: 'S0',
     what: 'the set-up, the naming pools and their functions',
     anchor: 'export function generateNewGame(',
+    fn: 'theSetUpTheMapsGridAndTheProvincesNames',
   },
-  { stage: 'S1', what: 'the capitals', anchor: '// ── PHASE 1:' },
-  { stage: 'S2', what: "each home's ring", anchor: '// ── PHASE 2:' },
+  {
+    stage: 'S1',
+    what: 'the capitals',
+    anchor: '// ── PHASE 1:',
+    fn: 'theCapitalsPlacedAsFarApartAsTheMapAllows',
+  },
+  {
+    stage: 'S2',
+    what: "each home's ring",
+    anchor: '// ── PHASE 2:',
+    fn: 'eachHomesRingTailoredAndTheSeasFillRates',
+  },
   {
     stage: 'S3',
     what: 'the provinces: tax, primal, armies, features and lairs, ritual sites',

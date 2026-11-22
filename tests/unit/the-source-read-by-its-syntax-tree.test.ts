@@ -112,7 +112,16 @@ describe('each helper gives the same answer on both layouts', () => {
     ],
     [
       'statementsBetween',
-      (o) => compactCode(statementsBetween('engine/world/generate.ts', 'generateNewGame', 'cellIdRC', 'cellDistRC', o)),
+      (o) =>
+        compactCode(
+          statementsBetween(
+            'engine/world/the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts',
+            'theSetUpTheMapsGridAndTheProvincesNames',
+            'cellIdRC',
+            'cellDistRC',
+            o,
+          ),
+        ),
     ],
     ['statementsFollowing', (o) => statementsFollowing('kingdoms-call-gm-portal.html', /hauls out/, 4, o)],
     [

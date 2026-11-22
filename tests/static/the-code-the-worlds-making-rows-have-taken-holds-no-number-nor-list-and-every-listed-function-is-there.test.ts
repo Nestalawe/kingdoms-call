@@ -32,9 +32,21 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/world/tables.ts', 'HUMANOID_FLEET_TYPES', 'B-06t'],
   ['src/engine/bots/setup.ts', 'BOT_SKILL_BUILD', 'B-06t'],
   ['src/engine/bots/setup.ts', 'BOT_KINGDOM_NAME_UNIT', 'B-06t'],
-  ['src/engine/world/generate.ts', 'SEA_PCT_MIN', 'B-06u'],
-  ['src/engine/world/generate.ts', 'SEA_PCT_MAX', 'B-06u'],
-  ['src/engine/world/generate.ts', 'SEA_PCT_DEFAULT', 'B-06u'],
+  [
+    'src/engine/world/the-worlds-making/the-sea-share-the-gm-picks-from-the-least-to-the-most.ts',
+    'SEA_PCT_MIN',
+    'B-06u',
+  ],
+  [
+    'src/engine/world/the-worlds-making/the-sea-share-the-gm-picks-from-the-least-to-the-most.ts',
+    'SEA_PCT_MAX',
+    'B-06u',
+  ],
+  [
+    'src/engine/world/the-worlds-making/the-sea-share-the-gm-picks-from-the-least-to-the-most.ts',
+    'SEA_PCT_DEFAULT',
+    'B-06u',
+  ],
   ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P', 'B-06u'],
   ['src/engine/world/tables.ts', 'provincePoolSize', 'B-06u'],
   ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP', 'B-06u'],
@@ -97,7 +109,13 @@ test("the ratchet's helper counts each number other than 0 and 1, and each strin
 // its count by one, and the ratchet fails on it; one in a function the list doesn't name isn't counted (the check
 // above is what keeps a listed function from being emptied that way).
 test.for([
-  ['src/engine/world/generate.ts', 'normSeaPct', 'return 5;', 'worldMakingNumbersInEngine', 1],
+  [
+    'src/engine/world/the-worlds-making/the-sea-share-the-gm-picks-from-the-least-to-the-most.ts',
+    'normSeaPct',
+    'return 5;',
+    'worldMakingNumbersInEngine',
+    1,
+  ],
   ['src/engine/bots/setup.ts', 'generateBotSetups', "return ['Elven'];", 'worldMakingListsInEngine', 1],
   ['src/engine/world/generate.ts', 'aFunctionNoListNames', 'return 5;', 'worldMakingNumbersInEngine', 0],
 ] as const)('%s, in %s: %s raises %s by %i', ([file, fn, body, count, rise]) => {

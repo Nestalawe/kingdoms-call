@@ -5,35 +5,22 @@ import {
   KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
   KC_UNIT_CLASS,
   MONSTERS_P,
-  PRIMAL_ARMY_DEFS_P,
-  PRIMAL_UNIT_NAMES,
-  PROVINCE_ARMIES_P,
 } from '../../content/kingdoms-call-data.ts';
 import {
-  THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE,
-  THE_FIRST_HALVES_OF_A_WILD_PROVINCES_NAME,
   THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST,
-  THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA,
   THE_NEUTRAL_HEROES_SKILLS_IN_THEIR_TIE_BREAK_ORDER,
-  THE_NUMERALS_A_REPEATED_PROVINCES_NAME_TAKES,
   THE_SEA_BEASTS_A_HOMES_WEAK_LAIR_LEAVES_OUT,
   THE_SEA_FEATURES_NAMES,
-  THE_SECOND_HALVES_OF_A_PROVINCES_NAME_BY_ITS_TERRAIN,
-  THE_TERRAINS_A_LAND_PROVINCE_IS_DEALT_IN_THE_ORDER_THE_DIE_READS_THEM,
   THE_WILD_CREATURES_BY_TERRAIN,
   THE_WILD_MONSTERS_BY_TERRAIN,
 } from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 import {
   A_KING_AND_HIS_HEROES,
-  EACH_HOMES_RING_AND_THE_SEAS_FILL,
   EACH_PROVINCE,
-  THE_CAPITALS,
   THE_HOMES,
   THE_NEUTRAL_HEROES,
-  THE_PROVINCES_NAMES,
   THE_SEAS_BY_KIND,
   THE_SEA_FEATURES_AND_THEIR_GUARDIANS,
-  THE_SEA_SHARE_THE_GM_PICKS,
   THE_STRONGEST_NEUTRAL_MIX,
   THE_TAX_BANDS,
   THE_TAX_FLOOR,
@@ -46,7 +33,6 @@ import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from '../saves/the-saved-ga
 import {
   COASTAL_NAVAL_CHANCE,
   HUMANOID_FLEET_TYPES,
-  HUMANOID_RACES_GEN,
   PRIMAL_LAND_CHANCE,
   RACES_P,
   SEA_TYPES_GEN,
@@ -64,7 +50,6 @@ import {
 } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { THE_LADDER_OF_THE_ALIGNMENTS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
-  doTheRitualStonesStandWithARealmOf,
   doesACapitalOfTheAlignmentOpenBesideCreatures,
   doesACapitalOfTheAlignmentOpenBesideMonsters,
   doesACapitalOfTheAlignmentOpenBesideTheRitualStones,
@@ -74,14 +59,7 @@ import {
   theWanderingHeroesDeckOfAlignments,
 } from '../rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.ts';
-import {
-  SEA_GUARDIAN_NAMES,
-  _usedHeroEpithets,
-  _usedHeroFirsts,
-  _usedHeroNames,
-  nextHeroName,
-  renameLairsThematicP,
-} from '../names.ts';
+import { SEA_GUARDIAN_NAMES, nextHeroName, renameLairsThematicP } from '../names.ts';
 import {
   FEATURE_POOLS_P,
   ITEMS_BY_TIER,
@@ -97,48 +75,18 @@ import { armyUnitName } from '../dice-and-army-names.ts';
 import { REALM_COLOURS, REALM_COLOUR_FALLBACK } from '../bots/intel.ts';
 import { getNeighborsP } from './map-helpers.ts';
 import { LAIR_TIER_ROLL, assignLairGrades } from '../chances-and-lair-grades.ts';
-import type { Army, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
+import type { Army, Item, ProvinceFeature } from '../../schemas/saved-game-state.ts';
+import {
+  type AProvinceAsTheWorldIsMadeIt,
+  type ARealmAsTheSetUpHandsIt,
+  type ATerrainOfTheMaking,
+  theCardDealt,
+  theOneMadeSure,
+} from './the-worlds-making/what-every-stage-shares-the-shapes-it-hands-on-and-its-two-checks.ts';
+import { theSetUpTheMapsGridAndTheProvincesNames } from './the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts';
+import { theCapitalsPlacedAsFarApartAsTheMapAllows } from './the-worlds-making/s01-the-capitals-placed-as-far-apart-as-the-map-allows.ts';
+import { eachHomesRingTailoredAndTheSeasFillRates } from './the-worlds-making/s02-each-homes-ring-tailored-and-the-seas-fill-rates.ts';
 
-/** A realm as the setup hands it to the world's making (the GM's Turn 0, the bots' setup, the tests): its seat and its
- *  row's id (read by nothing here), its king's and its kingdom's names, its race, alignment and temper, a bot's mark, and the skills its king opens with by any name. */
-interface ARealmAsTheSetUpHandsIt {
-  readonly id?: number | undefined;
-  readonly gamePlayerId?: string | undefined;
-  readonly name?: string | undefined;
-  readonly kingName?: string | undefined;
-  readonly kingdomName?: string | undefined;
-  readonly race: string;
-  readonly alignment: string;
-  readonly temper?: string | undefined;
-  readonly isBot?: boolean | undefined;
-  readonly skills?: Readonly<Partial<Record<string, number>>> | null | undefined;
-}
-/** A cell of the map's grid: its row, its column and its id (`row * cols + col`). */
-interface ACellOfTheGrid {
-  readonly r: number;
-  readonly c: number;
-  readonly id: number;
-}
-/** A terrain the world's making deals a cell (the five lands and the sea). */
-type ATerrainOfTheMaking = 'plain' | 'forest' | 'mountain' | 'desert' | 'jungle' | 'sea';
-/** A home layout's score: the closest pair's distance, how many pairs sit at it (taken from 0), each home's distance
- *  to its nearest summed. */
-type ALayoutsScore = readonly [closest: number, pairsAtTheClosest: number, nearestSummed: number];
-/** What Phase 2 decides for a cell of a home's ring: its terrain, its band of tax, and whether it is the home. */
-interface ACellsTailoring {
-  readonly terrain: ATerrainOfTheMaking;
-  readonly taxBand: 'poor' | 'prosperous' | null;
-  readonly isHome?: boolean | undefined;
-}
-/** A province as the world's making builds it: the saved province, its id and owner plain numbers, its name `null`
- *  until the naming pass, and the
- *  alignment pass's mark of the primal neighbour it placed (taken off before the next home). */
-type AProvinceAsTheWorldIsMadeIt = Omit<Province, 'id' | 'name' | 'owner'> & {
-  readonly id: number;
-  name: string | null;
-  owner: number | null;
-  _alignPrimalId?: number | undefined;
-};
 /** A hero as the world's making builds him: a king's name and temper as the setup gave them (either may be
  *  missing), his wage set after his birth for the heroes but the king, his province's name `null` until the naming
  *  pass, his skills and aptitudes by any skill's name. */
@@ -168,383 +116,56 @@ interface AHeroAsTheWorldMakesHim {
   startingHero?: boolean | undefined;
   hpEarned?: number | undefined;
 }
-/** A deal from a deck the code has just filled (its cards are never none); for none, a TypeError. */
-function theCardDealt<Card>(card: Card | undefined): Card {
-  if (card === undefined) throw new TypeError('a deal from an empty deck');
-  return card;
-}
-// an element the code has made sure of (a cell or layout, a ring cell before its count; none: a TypeError, as its read threw)
-function theOneMadeSure<Placed>(placed: Placed | undefined): Placed {
-  if (placed === undefined) throw new TypeError('an element made sure of is missing');
-  return placed;
-}
-
-// ── SEA SHARE (2026-09-25, Toby) ── the GM picks what share of the world is water, 20–80%.
-// Before this the fill rolled sea at 28% (55% beside water) and the result was whatever came out:
-// measured over 20 worlds per rung it averaged ~33% and ranged 18–50% on the same settings. The
-// share is now EXACT (rounded to a province): the same clustered fill lays out coherent seas, then
-// coasts are grown or shrunk until the count matches. Home cells and their tailored rings are never
-// touched, so every home guarantee (≤2 sea neighbours, a poor and a prosperous land, a sea for a
-// naval king) holds at any share.
-export const SEA_PCT_MIN = THE_SEA_SHARE_THE_GM_PICKS.theLeast,
-  SEA_PCT_MAX = THE_SEA_SHARE_THE_GM_PICKS.theMost,
-  SEA_PCT_DEFAULT = THE_SEA_SHARE_THE_GM_PICKS.theDefault;
-export function normSeaPct(v: unknown) {
-  let pct = parseInt(String(v));
-  if (!Number.isFinite(pct)) pct = SEA_PCT_DEFAULT;
-  return Math.max(SEA_PCT_MIN, Math.min(SEA_PCT_MAX, pct));
-}
+export {
+  SEA_PCT_DEFAULT,
+  SEA_PCT_MAX,
+  SEA_PCT_MIN,
+  normSeaPct,
+} from './the-worlds-making/the-sea-share-the-gm-picks-from-the-least-to-the-most.ts';
 export function generateNewGame(
   setupPlayers: readonly ARealmAsTheSetUpHandsIt[],
   sz: { readonly cols: number; readonly rows: number },
   maxTurns: number,
   genOpts: { readonly seaPct?: unknown } | null | undefined,
 ) {
-  const { cols, rows } = sz;
-  const provinces: AProvinceAsTheWorldIsMadeIt[] = [];
-  const seaPct = normSeaPct(genOpts?.seaPct);
-  const seaTarget = seaPct / 100;
-  const nameSet = new Set<string>();
-  // Fresh world → fresh name pools (a GM generating a second game in one session must not inherit
-  // the first game's used given-names / descriptors).
-  _usedHeroNames.clear();
-  _usedHeroFirsts.clear();
-  _usedHeroEpithets.clear();
-  // SECRET Easter egg: reserve 'Garreth the Independent' BEFORE any hero is named, so no king or
-  // starting/neutral hero can grab that given name or descriptor (item: unique names). A neutral
-  // LAND province is chosen for him in the neutral-hero pass below.
-  _usedHeroFirsts.add('Garreth');
-  _usedHeroEpithets.add('the Independent');
-  _usedHeroNames.add('Garreth the Independent');
-
-  // Ritual sites (the old faith's standing stones) are only usable by a Pagan realm's Perform Rite.
-  // With no Pagan player in the game they are dead weight — nobody can ever use them — so we
-  // suppress them entirely at world gen. See the ritual-site block in the feature pass below.
-  // (the sites' table holds the alignment that must be in the game: P1-19ay1)
-  const hasPaganPlayer = setupPlayers.some((sp) => doTheRitualStonesStandWithARealmOf(sp.alignment));
-  // the content's tables by any name: the humanoid races, the primal units' rows, the land armies by terrain and race,
-  // the features by terrain, the units' names by type
-  const humanoidRaces: ReadonlySet<string | null | undefined> = HUMANOID_RACES_GEN;
-  const primalDefs: Readonly<Partial<Record<string, { readonly race?: string | undefined }>>> = PRIMAL_ARMY_DEFS_P;
-  const armiesByTerrainAndRace: Readonly<
-    Partial<Record<string, Readonly<Partial<Record<string, readonly string[]>>>>>
-  > = PROVINCE_ARMIES_P;
-  const featurePools: Readonly<Partial<Record<string, readonly string[]>>> = FEATURE_POOLS_P;
-  const unitNamesByType: Readonly<Partial<Record<string, readonly string[]>>> = PRIMAL_UNIT_NAMES;
-
-  // Hex neighbour offsets + helpers (defined up front — king placement below needs them).
-  const offEven: readonly (readonly [number, number])[] = [
-    [-1, -1],
-    [-1, 0],
-    [0, -1],
-    [0, 1],
-    [1, -1],
-    [1, 0],
-  ];
-  const offOdd: readonly (readonly [number, number])[] = [
-    [-1, 0],
-    [-1, 1],
-    [0, -1],
-    [0, 1],
-    [1, 0],
-    [1, 1],
-  ];
-  const cellIdRC = (r: number, c: number) => r * cols + c;
-  const neighbourCells = (r: number, c: number) => {
-    const offs = r % 2 === 0 ? offEven : offOdd;
-    return offs
-      .map(([dr, dc]) => {
-        const nr = r + dr;
-        if (nr < 0 || nr >= rows) return null;
-        const nc = (((c + dc) % cols) + cols) % cols;
-        return { r: nr, c: nc, id: cellIdRC(nr, nc) };
-      })
-      .filter((n): n is ACellOfTheGrid => Boolean(n));
-  };
-  const cellDistRC = (a: ACellOfTheGrid, b: ACellOfTheGrid) => {
-    let dc = Math.abs(a.c - b.c);
-    dc = Math.min(dc, cols - dc);
-    const dr = Math.abs(a.r - b.r);
-    return Math.max(dc, dr, (dc + dr) >> 1);
-  };
-  const navalLevelOf = (sp: ARealmAsTheSetUpHandsIt | undefined) => {
-    let lvl = 0;
-    if (sp?.skills)
-      Object.entries(sp.skills).forEach(([k, v]) => {
-        if (k.toLowerCase() === 'naval') lvl += Number(v);
-      });
-    return lvl;
-  };
-  const pickLand = () => {
-    const t = THE_TERRAINS_A_LAND_PROVINCE_IS_DEALT_IN_THE_ORDER_THE_DIE_READS_THEM;
-    return theCardDealt(t[Math.floor(kcRng() * t.length)]);
-  };
-
-  // ── THEMATIC PROVINCE NAMING ── Names are assigned in a dedicated pass AFTER the map is fully
-  // populated (terrain, race and recruitable armies all final, including king home provinces), so
-  // each province gets a name that fits both its people and its land — e.g. an Elven forest reads
-  // very differently from an Orcish desert or a kraken-haunted deep.
-  const NAME_PREFIX_BY_RACE = THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE;
-  const NAME_PREFIX_PRIMAL = THE_FIRST_HALVES_OF_A_WILD_PROVINCES_NAME;
-  const NAME_SUFFIX_BY_TERRAIN = THE_SECOND_HALVES_OF_A_PROVINCES_NAME_BY_ITS_TERRAIN;
-  const NAME_SEA_BY_TYPE = THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA;
-  const pickFrom = (arr: readonly string[]) => arr[Math.floor(kcRng() * arr.length)];
-  const toRoman = (n: number) => (THE_NUMERALS_A_REPEATED_PROVINCES_NAME_TAKES[n] ?? '') || String(n);
-  // the name pools by any race's and any terrain's name
-  const prefixesByRace: Readonly<Partial<Record<string, readonly string[]>>> = NAME_PREFIX_BY_RACE;
-  const suffixesByTerrain: Readonly<Partial<Record<string, readonly string[]>>> = NAME_SUFFIX_BY_TERRAIN;
-  const themedName = (p: AProvinceAsTheWorldIsMadeIt) => {
-    if (p.terrain === 'sea') {
-      let kind: keyof typeof NAME_SEA_BY_TYPE = 'open';
-      if (p.race === 'Primal:Whale') kind = 'whale';
-      else if (p.race === 'Primal:Shark') kind = 'shark';
-      else if (p.race?.startsWith('Primal:')) kind = 'primal';
-      const pool = NAME_SEA_BY_TYPE[kind];
-      return String(pickFrom(pool.pre)) + String(pickFrom(pool.suf));
-    }
-    // Land: prefix reflects the people (or wild primal beasts), suffix reflects the terrain.
-    const prePool = p.race?.startsWith('Primal:')
-      ? NAME_PREFIX_PRIMAL
-      : (prefixesByRace[String(p.race)] ?? NAME_PREFIX_BY_RACE.Human);
-    const sufPool = suffixesByTerrain[p.terrain] ?? NAME_SUFFIX_BY_TERRAIN.plain;
-    return String(pickFrom(prePool)) + String(pickFrom(sufPool));
-  };
-  const nameAllProvinces = () => {
-    provinces.forEach((p) => {
-      let name: string,
-        tries = 0;
-      do {
-        name = themedName(p);
-        tries++;
-      } while (nameSet.has(name) && tries < THE_PROVINCES_NAMES.theTriesForANameNotYetTaken);
-      if (nameSet.has(name)) {
-        let k = 2;
-        while (nameSet.has(name + ' ' + toRoman(k))) k++;
-        name = name + ' ' + toRoman(k);
-      }
-      nameSet.add(name);
-      p.name = name;
-    });
-  };
-
-  // ── PHASE 1: choose each king's HOME CELL first, as equidistant as possible ── Placing homes
-  // before any terrain is decided lets us control player spacing directly rather than leaving it to
-  // chance. Eligible cells exclude the top and bottom rows, so no king ever starts on the north or
-  // south edge of the world. We build several candidate layouts by farthest-point placement and
-  // keep the most spread-out one, so spacing is reliable (the player caps per map size assume this
-  // — see MAP_MAX_PLAYERS in the setup form).
-  const eligibleCells: ACellOfTheGrid[] = [];
-  for (let r = 1; r <= rows - 2; r++) for (let c = 0; c < cols; c++) eligibleCells.push({ r, c, id: cellIdRC(r, c) });
-  const buildLayout = () => {
-    const hc: (ACellOfTheGrid | undefined)[] = [eligibleCells[Math.floor(kcRng() * eligibleCells.length)]]; // first king: random
-    while (hc.length < setupPlayers.length) {
-      // Farthest-point: pick the eligible cell whose NEAREST chosen king is as far away as
-      // possible. Collect ALL cells that tie for the best distance and choose one at random.
-      // Without this the scan order (row-first) always breaks ties toward the same rows, which —
-      // combined with the horizontal map wrap — jams every king onto the top and bottom eligible
-      // rows.
-      let bestCells: ACellOfTheGrid[] = [],
-        bestMin = -1;
-      for (const cell of eligibleCells) {
-        if (hc.some((h) => theOneMadeSure(h).id === cell.id)) continue;
-        let minD = Infinity;
-        for (const h of hc) {
-          const d = cellDistRC(cell, theOneMadeSure(h));
-          if (d < minD) minD = d;
-        }
-        if (minD > bestMin) {
-          bestMin = minD;
-          bestCells = [cell];
-        } else if (minD === bestMin) {
-          bestCells.push(cell);
-        }
-      }
-      hc.push(
-        bestCells.length
-          ? bestCells[Math.floor(kcRng() * bestCells.length)]
-          : eligibleCells[Math.floor(kcRng() * eligibleCells.length)],
-      );
-    }
-    return hc;
-  };
-  const layoutMinDist = (hc: readonly (ACellOfTheGrid | undefined)[]) => {
-    let ms = Infinity;
-    for (let a = 0; a < hc.length; a++)
-      for (let b = a + 1; b < hc.length; b++) {
-        const d = cellDistRC(theOneMadeSure(hc[a]), theOneMadeSure(hc[b]));
-        if (d < ms) ms = d;
-      }
-    return hc.length < 2 ? Infinity : ms;
-  };
-  // HARD FLOOR: a minimum spacing of 4 hexes — i.e. at least 3 empty ("neutral") provinces between
-  // every pair of capitals. The map ladder (sizemap) is sized so this is reliably achievable at
-  // each player count.
-  const KING_MIN_SPACING = THE_CAPITALS.theLeastHexesBetweenTwoCapitals; // >=3 neutral hexes between capitals
-  // 2026-09-27 (Toby item 1): capitals are now placed as FAR APART AS THE MAP ALLOWS, not merely
-  // "far enough". The previous pass drew up to 1,200 farthest-point layouts, kept every one that
-  // reached the floor of 4, and then chose among them AT RANDOM — so a world that could have seated
-  // its kings 6 hexes apart routinely seated them at 4, and the spread was uneven because only the
-  // single tightest pair was ever looked at. Three changes:
-  //   1. SCORED, not merely floor-tested. `layoutScore` is a lexicographic triple —
-  //      [minimum pairwise distance, −(number of pairs sitting at that minimum), Σ each king's
-  //      nearest-neighbour distance]. The first term is the guarantee, the second breaks up
-  //      crowding, and the third rewards an even spread once the tight pairs are settled.
-  //   2. REFINED by hill-climbing (`refineLayout`): each king in turn is offered every free
-  //      eligible cell and moved wherever the score improves, sweeping until nothing improves.
-  //      Farthest-point placement is greedy and its random first seed routinely costs it a hex or
-  //      two; the climb recovers that, and it is what makes the result even rather than merely
-  //      spread. Sweeps are capped so world gen stays quick.
-  //   3. The BEST-scoring refined layout wins, with a random draw only among EXACT ties — row
-  //      variety is kept without paying for it in spacing.
-  // `cellDistRC` is a lower bound on the true hex distance (max(|dc|,|dr|,(|dc|+|dr|)/2) on the
-  // wrapped offset grid), so a layout accepted here is never closer than the floor in reality.
-  const layoutScore = (hc: readonly (ACellOfTheGrid | undefined)[]): ALayoutsScore => {
-    const n = hc.length;
-    if (n < 2) return [Infinity, 0, Infinity];
-    let mn = Infinity,
-      nAtMin = 0;
-    const near: number[] = new Array<number>(n).fill(Infinity);
-    for (let a = 0; a < n; a++)
-      for (let b = a + 1; b < n; b++) {
-        const d = cellDistRC(theOneMadeSure(hc[a]), theOneMadeSure(hc[b]));
-        if (d < Number(near[a])) near[a] = d;
-        if (d < Number(near[b])) near[b] = d;
-        if (d < mn) {
-          mn = d;
-          nAtMin = 1;
-        } else if (d === mn) nAtMin++;
-      }
-    let nnSum = 0;
-    for (let i = 0; i < n; i++) nnSum += Number(near[i]);
-    return [mn, -nAtMin, nnSum];
-  };
-  const scoreCmp = (x: ALayoutsScore, y: ALayoutsScore) => {
-    for (let i = 0; i < x.length; i++) {
-      const xi = Number(x[i]),
-        yi = Number(y[i]);
-      if (xi !== yi) return xi < yi ? -1 : 1;
-    }
-    return 0;
-  };
-  const HOME_REFINE_SWEEPS = THE_CAPITALS.theSweepsThatRefineALayout;
-  const refineLayout = (
-    hc: readonly (ACellOfTheGrid | undefined)[],
-  ): readonly [cells: (ACellOfTheGrid | undefined)[], score: ALayoutsScore] => {
-    const cur = hc.slice();
-    let curS = layoutScore(cur);
-    if (cur.length < 2) return [cur, curS];
-    for (let sweep = 0; sweep < HOME_REFINE_SWEEPS; sweep++) {
-      let moved = false;
-      for (let k = 0; k < cur.length; k++) {
-        const taken = new Set(cur.map((h) => theOneMadeSure(h).id));
-        let bestCell: ACellOfTheGrid | null = null,
-          bestS = curS;
-        for (const cell of eligibleCells) {
-          if (taken.has(cell.id)) continue;
-          const keep = cur[k];
-          cur[k] = cell;
-          const s = layoutScore(cur);
-          cur[k] = keep;
-          if (scoreCmp(s, bestS) > 0) {
-            bestS = s;
-            bestCell = cell;
-          }
-        }
-        if (bestCell) {
-          cur[k] = bestCell;
-          curS = bestS;
-          moved = true;
-        }
-      }
-      if (!moved) break;
-    }
-    return [cur, curS];
-  };
-  // Seeds: a handful of refined layouts is worth far more than a thousand raw ones, but on an
-  // undersized custom map keep drawing (raw, unrefined, which is cheap) until something reaches the
-  // floor before spending the refinement budget.
-  const HOME_SEEDS = THE_CAPITALS.theLayoutsRefined;
-  const _cands: (readonly [cells: (ACellOfTheGrid | undefined)[], score: ALayoutsScore])[] = [];
-  for (let att = 0; att < HOME_SEEDS; att++) _cands.push(refineLayout(buildLayout()));
-  if (!_cands.some((x) => isFinite(x[1][0]) && x[1][0] >= KING_MIN_SPACING)) {
-    for (let att = 0; att < THE_CAPITALS.theRawLayoutsTriedWhenNoneKeepsTheSpacing; att++) {
-      const raw = buildLayout();
-      if (layoutMinDist(raw) >= KING_MIN_SPACING) {
-        _cands.push(refineLayout(raw));
-        break;
-      }
-    }
-  }
-  const _best = _cands.reduce<ALayoutsScore | null>((b, x) => (b == null || scoreCmp(x[1], b) > 0 ? x[1] : b), null);
-  const _acceptable = _cands.filter((x) => _best !== null && scoreCmp(x[1], _best) === 0);
-  const _pick = theOneMadeSure(_acceptable.length ? _acceptable[Math.floor(kcRng() * _acceptable.length)] : _cands[0]);
-  const homeCells = _pick[0].map(theOneMadeSure),
-    homeMin = _pick[1][0];
-  if (!(homeMin >= KING_MIN_SPACING))
-    console.warn(
-      `World gen: no home layout on a ${String(cols)}x${String(rows)} map keeps ${String(KING_MIN_SPACING)} hexes between all ${String(setupPlayers.length)} capitals (best ${String(homeMin)}) — the map is too small for this many realms.`,
-    );
-  const homeIdSet = new Set(homeCells.map((h) => h.id));
-
-  // ── PHASE 2: tailor each king's home NEIGHBOURHOOD ── Pre-assign terrain (and a tax band) to
-  // specific ring cells so every home satisfies its rules:
-  // >=2 adjacent land, >=1 poor (tax 2-3) land, >=1 prosperous (tax 4-6) land, and >=1 adjacent
-  // sea IF that king started with Naval>=1. Everything else is filled by the general rule.
-  // constraint[id] = { terrain, taxBand:'poor'|'prosperous'|null, isHome:bool }
-  const constraint: Partial<Record<number, ACellsTailoring>> = {};
-  // Sea cap: a home never borders more than HOME_MAX_SEA sea provinces. Every free ring cell is
-  // decided HERE (sea at the general-fill base rate while under the cap, land otherwise) rather
-  // than left to the random fill, so the cap is exact. The open-water guarantee for coastal homes
-  // is applied after the sea post-pass below (see "home coastal guarantee").
-  // 2026-09-25: the cap rises with the sea share — 3 from 60%, 4 from 70% — or a drowned world could
-  // not be built: every home ring pinned at ≥4 land held the reachable share to ~70% (measured).
-  // The ring still always holds the poor AND the prosperous land the home rules demand, so ≥2 land
-  // neighbours survive at any share.
-  const _theMostSea = EACH_HOMES_RING_AND_THE_SEAS_FILL.theMostSeaAHomeBorders;
-  const HOME_MAX_SEA =
-    seaPct >= _theMostSea.fromTheHigherCut.theSeaShareFrom
-      ? _theMostSea.fromTheHigherCut.theSeas
-      : seaPct >= _theMostSea.fromTheLowerCut.theSeaShareFrom
-        ? _theMostSea.fromTheLowerCut.theSeas
-        : _theMostSea.belowBoth;
-  // The fill's two rates scale with the chosen share: 0.28 / 0.55 were the old fixed figures, which
-  // are exactly what a 40% target gives here (0.7× and 1.375× the share), so the shape of the seas is
-  // unchanged at the old rates and simply seeds more or less water at other shares.
-  const { theBaseRate, theClusterRate } = EACH_HOMES_RING_AND_THE_SEAS_FILL;
-  const SEA_BASE_RATE = Math.min(theBaseRate.theMost, seaTarget * theBaseRate.theShareOfTheSeaShare),
-    SEA_CLUSTER_RATE = Math.min(theClusterRate.theMost, seaTarget * theClusterRate.theShareOfTheSeaShare);
-  // Ring cells roll at the fill's base rate; from 60% (where the cap opens) at its cluster rate, so a
-  // drowned world's homes are island capitals rather than the one dry patch holding the share back.
-  const HOME_RING_SEA_CHANCE =
-    seaPct >= EACH_HOMES_RING_AND_THE_SEAS_FILL.theSeaShareFromWhichARingRollsAtTheClusterRate
-      ? SEA_CLUSTER_RATE
-      : SEA_BASE_RATE;
-  homeCells.forEach((home, ki) => {
-    constraint[home.id] = { terrain: pickLand(), taxBand: null, isHome: true }; // home is land (race/pool set later)
-    const ringAll = neighbourCells(home.r, home.c).filter((n) => !homeIdSet.has(n.id));
-    let seaCount = ringAll.filter((n) => constraint[n.id]?.terrain === 'sea').length; // pre-set by an overlapping ring
-    const ring = ringAll.filter((n) => !constraint[n.id]); // free cells only
-    const shuffled = shuffleP(ring);
-    let i = 0;
-    if (navalLevelOf(setupPlayers[ki]) >= 1 && i < shuffled.length && seaCount < HOME_MAX_SEA) {
-      constraint[theOneMadeSure(shuffled[i]).id] = { terrain: 'sea', taxBand: null };
-      i++;
-      seaCount++;
-    }
-    if (i < shuffled.length) {
-      constraint[theOneMadeSure(shuffled[i]).id] = { terrain: pickLand(), taxBand: 'poor' };
-      i++;
-    } // one poor land
-    if (i < shuffled.length) {
-      constraint[theOneMadeSure(shuffled[i]).id] = { terrain: pickLand(), taxBand: 'prosperous' };
-      i++;
-    } // one prosperous land
-    for (; i < shuffled.length; i++) {
-      if (seaCount < HOME_MAX_SEA && kcRng() < HOME_RING_SEA_CHANCE) {
-        constraint[theOneMadeSure(shuffled[i]).id] = { terrain: 'sea', taxBand: null };
-        seaCount++;
-      } else constraint[theOneMadeSure(shuffled[i]).id] = { terrain: pickLand(), taxBand: null };
-    }
+  // S0 to S2 (B-06v), each in its own file (src/engine/world/the-worlds-making/): the set-up, the capitals, each home's ring
+  const {
+    cols,
+    rows,
+    provinces,
+    seaPct,
+    seaTarget,
+    hasPaganPlayer,
+    humanoidRaces,
+    primalDefs,
+    armiesByTerrainAndRace,
+    featurePools,
+    unitNamesByType,
+    offEven,
+    offOdd,
+    cellIdRC,
+    neighbourCells,
+    cellDistRC,
+    navalLevelOf,
+    pickLand,
+    nameAllProvinces,
+  } = theSetUpTheMapsGridAndTheProvincesNames({ setupPlayers, sz, genOpts });
+  const { homeCells, homeIdSet } = theCapitalsPlacedAsFarApartAsTheMapAllows({
+    setupPlayers,
+    cols,
+    rows,
+    cellIdRC,
+    cellDistRC,
+  });
+  const { constraint, SEA_BASE_RATE, SEA_CLUSTER_RATE } = eachHomesRingTailoredAndTheSeasFillRates({
+    setupPlayers,
+    seaPct,
+    seaTarget,
+    homeCells,
+    homeIdSet,
+    neighbourCells,
+    navalLevelOf,
+    pickLand,
   });
 
   // ── PHASE 3: generate every province ── Primal land provinces split evenly Creature / Monster.

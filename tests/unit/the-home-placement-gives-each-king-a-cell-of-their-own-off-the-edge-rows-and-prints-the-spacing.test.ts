@@ -1,19 +1,20 @@
-// Home placement (the rulings R-018 and R-057): the stretch of generateNewGame (src/engine/world/generate.ts) that picks
-// each king's home cell, run on its own many times on each map size, from 2 realms to 10. On every layout each king has
-// a cell of their own, and no home is on the top or bottom row (both hold by construction: the eligible cells leave out
-// the edge rows, and a cell taken is never offered again). It prints, for each size, the closest pair of capitals
-// (least, mean and most over the runs), the pairs at that distance, the mean distance to a king's nearest neighbour,
-// and the layouts closer than 4 hexes, then "ALL OK" or "FAIL: n layouts below the floor".
+// Home placement (the rulings R-018 and R-057): the stretch of the world's making that picks each king's home cell (its
+// stage S1, src/engine/world/the-worlds-making/s01-the-capitals-placed-as-far-apart-as-the-map-allows.ts), run on its
+// own many times on each map size, from 2 realms to 10. On every layout each king has a cell of their own, and no home
+// is on the top or bottom row (both hold by construction: the eligible cells leave out the edge rows, and a cell taken
+// is never offered again). It prints, for each size, the closest pair of capitals (least, mean and most over the runs),
+// the pairs at that distance, the mean distance to a king's nearest neighbour, and the layouts closer than 4 hexes,
+// then "ALL OK" or "FAIL: n layouts below the floor".
 //
 // A layout closer than 4 hexes is printed, not failed, as the old script did (tests/README.md, "A running test that
 // can't fail on its own findings"; KD-268 and KD-276 are the change that makes it fail, each its own pull request).
 //
-// Level 1 (unit): the statements from the one declaring cellIdRC through the one declaring cellDistRC, and from
-// eligibleCells through homeCells, cut out of generateNewGame by their syntax tree (tests/lib/source.ts) and run as one
-// function. Not lower: the layouts are computed. Not on a whole world: generateNewGame makes the whole map after the
-// homes, and the runs (200 a size, or 1,000 under KC_FULL, in npm run test:full) would take minutes. The cut code
-// draws its dice from a kcRng stream of its own (src/engine/rng.ts's kcRngStream), seeded from KC_SEED, so a run
-// repeats from its seed.
+// Level 1 (unit): the statements from the one declaring cellIdRC through the one declaring cellDistRC (the set-up, S0),
+// and from eligibleCells through homeCells (S1), cut out of their stages' functions by their syntax tree
+// (tests/lib/source.ts), with theOneMadeSure the stages share, and run as one function. Not lower: the layouts are
+// computed. Not on a whole world: generateNewGame makes the whole map after the homes, and the runs (200 a size, or
+// 1,000 under KC_FULL, in npm run test:full) would take minutes. The cut code draws its dice from a kcRng stream of its
+// own (src/engine/rng.ts's kcRngStream), seeded from KC_SEED, so a run repeats from its seed.
 //
 // Until plan P1-14z this was tests/home-placement.test.js, which drew its dice from an unseeded Math.random and took
 // its run count from the old runner's list (RUNS). Its checks and its printed table are here, as they were.
@@ -70,10 +71,23 @@ const isThePlacement = (value: unknown): value is ThePlacement =>
  *  collection). */
 let placeTheHomes: (...args: unknown[]) => unknown = () => null;
 beforeAll(() => {
-  const theGridsHelpers = statementsBetween('engine/world/generate.ts', 'generateNewGame', 'cellIdRC', 'cellDistRC');
-  const thePlacement = statementsBetween('engine/world/generate.ts', 'generateNewGame', 'eligibleCells', 'homeCells');
-  // the placement's check of each cell and layout it has made sure of, a function of the file's own (B-06v)
-  const theOneMadeSure = sourceOf('engine/world/generate.ts', ['theOneMadeSure']);
+  const theGridsHelpers = statementsBetween(
+    'engine/world/the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts',
+    'theSetUpTheMapsGridAndTheProvincesNames',
+    'cellIdRC',
+    'cellDistRC',
+  );
+  const thePlacement = statementsBetween(
+    'engine/world/the-worlds-making/s01-the-capitals-placed-as-far-apart-as-the-map-allows.ts',
+    'theCapitalsPlacedAsFarApartAsTheMapAllows',
+    'eligibleCells',
+    'homeCells',
+  );
+  // the placement's check of each cell and layout it has made sure of, a function the stages share (B-06v)
+  const theOneMadeSure = sourceOf(
+    'engine/world/the-worlds-making/what-every-stage-shares-the-shapes-it-hands-on-and-its-two-checks.ts',
+    ['theOneMadeSure'],
+  );
   const compiled = vm.compileFunction(
     `const setupPlayers=new Array(nPlayers).fill(0).map((_,i)=>({id:i}));
 ${theOneMadeSure}
