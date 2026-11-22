@@ -21,7 +21,7 @@ import vm from 'node:vm';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { THE_CAPITALS } from '../../src/content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRngStream } from '../../src/engine/rng.ts';
-import { statementsBetween } from '../lib/source.ts';
+import { sourceOf, statementsBetween } from '../lib/source.ts';
 import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
@@ -72,8 +72,11 @@ let placeTheHomes: (...args: unknown[]) => unknown = () => null;
 beforeAll(() => {
   const theGridsHelpers = statementsBetween('engine/world/generate.ts', 'generateNewGame', 'cellIdRC', 'cellDistRC');
   const thePlacement = statementsBetween('engine/world/generate.ts', 'generateNewGame', 'eligibleCells', 'homeCells');
+  // the placement's check of each cell and layout it has made sure of, a function of the file's own (B-06v)
+  const theOneMadeSure = sourceOf('engine/world/generate.ts', ['theOneMadeSure']);
   const compiled = vm.compileFunction(
     `const setupPlayers=new Array(nPlayers).fill(0).map((_,i)=>({id:i}));
+${theOneMadeSure}
 ${theGridsHelpers}
 ${thePlacement}
 return {homeCells,homeMin,cellDistRC};`,

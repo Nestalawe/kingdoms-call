@@ -173,6 +173,11 @@ function theCardDealt<Card>(card: Card | undefined): Card {
   if (card === undefined) throw new TypeError('a deal from an empty deck');
   return card;
 }
+// an element the code has made sure of (a cell or layout, a ring cell before its count; none: a TypeError, as its read threw)
+function theOneMadeSure<Placed>(placed: Placed | undefined): Placed {
+  if (placed === undefined) throw new TypeError('an element made sure of is missing');
+  return placed;
+}
 
 // ── SEA SHARE (2026-09-25, Toby) ── the GM picks what share of the world is water, 20–80%.
 // Before this the fill rolled sea at 28% (55% beside water) and the result was whatever came out:
@@ -330,11 +335,6 @@ export function generateNewGame(
   // — see MAP_MAX_PLAYERS in the setup form).
   const eligibleCells: ACellOfTheGrid[] = [];
   for (let r = 1; r <= rows - 2; r++) for (let c = 0; c < cols; c++) eligibleCells.push({ r, c, id: cellIdRC(r, c) });
-  // an element the code has made sure of (a cell or layout, a ring cell before its count; none: a TypeError, as its read threw)
-  function theOneMadeSure<Placed>(placed: Placed | undefined): Placed {
-    if (placed === undefined) throw new TypeError('an element made sure of is missing');
-    return placed;
-  }
   const buildLayout = () => {
     const hc: (ACellOfTheGrid | undefined)[] = [eligibleCells[Math.floor(kcRng() * eligibleCells.length)]]; // first king: random
     while (hc.length < setupPlayers.length) {
