@@ -81,6 +81,28 @@ The engine reads them by its `RECKONING_*` names (`src/engine/titles/perks.ts`),
 the row. `tests/static/the-rulebooks-tables-of-the-reckonings-bar-give-the-figures-of-the-reckonings-row.test.ts` holds
 the rulebook's tables of the bar to it: change a number in the row and the book's tables with it.
 
+## The bots' worth of a title
+
+The rule says what, the bot says how much, as for
+[the bots' worth of gold](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#the-bots-worth-of-gold-a-bot-versions-weights-by-kind-of-result)
+(B-06r). The bots read the titles by their rows, never by name (`src/engine/bots/spellcraft.ts`):
+
+- **What the rows say:** what each Imperial Title measures (`howTheHolderIsFound`). The bots' first version reads it
+  through its **ways of training towards a title**, in the order it weighs them: a title won by battles on land
+  (`theBattlesItsDeedsCount: 'on land'`) and one won by slaying guardians (its deeds), each by the fighting skills; the
+  magic schools' title, by the schools; and a title of a skill it trains towards (Sage, Naval, Spy, Explorer), by that
+  skill. With no title worth chasing in the standings, a realm chases the worthiest of these by its court's levels
+  (`botTargetTitles`), and each hero trains the skill the first of its chosen titles gives him (`botTitleFocusSkill`).
+  A chased title wants one more specialist of the role whose work earns its row's deeds
+  (`THE_DEEDS_OF_A_TITLE_EACH_SPECIALISTS_WORK_EARNS`, `botSpecialistRoles`). The bots' cast limit asks this
+  registry's `orderValidity` runner for the Warlock's cast (`botCastLimit`).
+- **What the bot says:** the `title` kind of
+  `src/engine/bots/the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts`, each named
+  for what it weighs: a title the realm holds, the share of its holder's merit that makes a rival's worth chasing, the
+  most titles chased, each level of a fighting skill or of a title's own skills, the land battles' and the guardians'
+  titles before any level, the titles chased when none is worth a point, and the specialists a chased title wants. A
+  title no way reads is chased from the standings alone.
+
 ## The hook points
 
 An entry acts only at the hook points `TheHookPointsAMinorTitlesPerkActsAt` names, each filled by a row of the

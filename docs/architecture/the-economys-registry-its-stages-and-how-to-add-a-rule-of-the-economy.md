@@ -126,8 +126,10 @@ makes of that gold from its version's weights file.
   in `src/engine/bots/intel.ts`; the file ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind it gives no
   weights fails to compile. Content holds no bot number.
 - **A later bot version** is a weights file of its own beside this one, of the same kinds and names, for the bots
-  to read in its place (after T7, the old bot played against the new). A new kind (the titles', B-06r; the alignments', P1-19bb8) joins
-  the kinds, and every version's file gives it its weights.
+  to read in its place (after T7, the old bot played against the new). A new kind joins the kinds, and every version's
+  file gives it its weights: a title is the second kind
+  ([the bots' worth of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#the-bots-worth-of-a-title));
+  the alignments' (P1-19bb8) comes next.
 
 ## The tests
 
