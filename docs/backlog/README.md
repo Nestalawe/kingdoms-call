@@ -83,7 +83,7 @@ tranche's plan, its counts and its risks: #711.
 | B-06w | The making split, 2 of 6: stage 3 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #737 | After B-06v |
 | B-06x | The making split, 3 of 6: stages 4 to 8 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #738 | After B-06w |
 | B-06y | The making split, 4 of 6: stage 9 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #739 | After B-06x |
-| B-06z | The making split, 5 of 6: stages 10 to 15 | The maintainers: as B-06v | The ground for the redesign | Medium | – | ⬜ | | After B-06y |
+| B-06z | The making split, 5 of 6: stages 10 to 15 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #740 | After B-06y |
 | B-06aa | The making split, 6 of 6: stages 16 and 17 | The maintainers: as B-06v | The ground for the redesign | Medium | – | ⬜ | | After B-06z |
 | B-06ab | The making's stages as one list, in order, typed | The maintainers: a new stage is one entry | The ground for the redesign | Small | – | ⬜ | | The foundations' last row |
 | P1-19ba1 | The alignment orders' portal half: the order list's `ACTION_DISPLAY_ORDER` and the target field's "VETERAN" read from the alignment abilities' rows (the Wild Hunt's grade a row number), not written by hand ([traps.md](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities)). `refactor-only` | Maintainers: a new creed order shows in the form without editing these lists | Phase 1 | Small | – | ⬜ | | The alignments' first: before the new alignment abilities land |
