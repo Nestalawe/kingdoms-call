@@ -1367,6 +1367,25 @@ export const WILDWARDEN_CASES: TitleCase[] = [
       };
     },
   },
+  {
+    name: 'the Wildwarden with no creature left under arms, a monster is no creature, and no rival met',
+    stage(b) {
+      firstPublic(b);
+      rich(b, 0);
+      deeds(titled(b, 0, seatOf(b, 0), {}, companies(1, 'Cave Trolls')), { wildHost: 1 });
+      return nothing();
+    },
+    check(o) {
+      return {
+        got: intel(o, 'The Wildwarden'),
+        want: [
+          [[0], '[The Wildwarden] Your realm: the wild answers to no one here.'],
+          [[0], '[The Wildwarden] No rival realm remains to reckon.'],
+          [[0], unmetLine('The Wildwarden', 2)],
+        ],
+      };
+    },
+  },
 ];
 
 // ── The title changes ────────────────────────────────────────────────────────────────────────────────────────────
