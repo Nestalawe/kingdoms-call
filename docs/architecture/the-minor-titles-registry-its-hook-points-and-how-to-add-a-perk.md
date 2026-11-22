@@ -2,8 +2,8 @@
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
 This file is its part for the minor titles: the twenty honorary titles that count for no victory, each giving its
-holder a small perk (B-06, T7, the rules pulled out: its Reckoning and titles family, from B-06i), and the
-Imperial Titles' measures (B-06n).
+holder a small perk (B-06, T7, the rules pulled out: its Reckoning and titles family, from B-06i), the
+Imperial Titles' measures (B-06n) and [the Imperial Titles' effects](#the-imperial-titles-effects) (from B-06o).
 
 ## What a minor title is
 
@@ -43,6 +43,27 @@ title race (`titleRaceFor`) and `_charTitleMerit` read the rows on plain values
 (`rules-on-plain-values/the-merit-a-hero-or-the-figure-a-realm-holds-an-imperial-title-by-as-its-row-measures-it.ts`).
 The measures are no hook point: each is the row's data, read by one function, as a minor title's measure is; no title's
 measure is an effect of its own.
+
+## The Imperial Titles' effects
+
+An Imperial Title's effect is an entry in `src/engine/rules/the-registry-of-the-imperial-titles-effects.ts`, keyed by
+its row's key: `AnImperialTitlesSlug`, the type of each key of `TITLE_DEFS`, beside the rows. The registry ends
+`satisfies Record<AnImperialTitlesSlug, TheEffectsOfAnImperialTitleAtEachHookPoint>`, both ways (the compile test),
+and its order test holds the entries to the rows and each stage's order to the rows' order.
+
+- `turnEnd`, two stages, **an Imperial Title's board**: what the title intelligence tells the realm holding a title
+  each turn, once titles are public (`imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy`,
+  `src/engine/titles/`). **The board an Imperial Title of the realm shows its holder**: the Throne's and the
+  Vaultkeeper's, first. **The board a hero's Imperial Title shows his realm**: the Cartographer's, the Beastlord's and
+  the Wildwarden's, after the Spymaster's ledger. The boards are a turn's-end stage, not `visibility`'s: they are
+  written once a turn, after the final reconcile, where `visibility`'s stages say whether one thing is seen when it is
+  asked. Each effect is handed the holder's seat, the world as its board reads it, the standings and whether he has
+  met a realm, and returns its lines' facts, in its block's old order
+  (`src/engine/rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts`,
+  which declares those kinds). The runner (`theBoardsOfTheImperialTitlesAtAStage`) asks who holds each title of the
+  stage, in its order, and hands each held title's lines to the title intelligence, which writes each for the
+  holder's realm alone, then the line for the realms he hasn't met. The other titles' boards are the function's own
+  blocks.
 
 ## The hook points
 
