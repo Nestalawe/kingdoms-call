@@ -1,6 +1,6 @@
 # The proof tools
 
-Eight tools that show what a change to the engine (or to a page's code or its database calls) does, and what the balance
+Nine tools that show what a change to the engine (or to a page's code or its database calls) does, and what the balance
 matrix can't show. The matrix (`npm run balance`) compares its 120 games with their baselines. It is strong on the code those games reach, and
 blind to the rest. These tools tell which lines the games reach, plant a fault and show what catches it, and compare
 the base's words with the branch's where the games don't go.
@@ -19,6 +19,7 @@ trial on four planted faults (plan P1-16a).
 | `npm run proof:two-engines -- --cases <module> --base <ref>` | Whether the base's engine and the branch's write the same lines on staged cases | a few seconds, plus the cases' own time |
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the tests send a page's client, to compare base with branch | the tests' own time |
 | `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
+| `npm run proof:worlds -- --base <ref>` | Whether each seed makes the same world with the same dice, stage by stage, base against branch | about 8 minutes (2,560 cases) |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
@@ -205,6 +206,47 @@ line, where no tour meets the falsy value, shows nowhere (plant D's line is list
 forms that keep a value by construction carry such lines. The other browser specs and set B aren't run. The screens must be steady for the screens' check to mean anything: two runs of one
 site show the same screens (the tours hold the page's short timers and the watcher's clock).
 
+## 7. The world's making, world by world
+
+The proof of B-06's world generation rows (B-06s to B-06ab): `npm run proof:worlds -- --base <ref>`
+([the-worlds-making-compared.ts](the-worlds-making-compared.ts)). It makes each case's world twice, once from a copy of
+the base (`git archive`, `node_modules` linked) and once from this working tree, each world in a fresh process of its own
+([the-worlds-making-worker.ts](the-worlds-making-worker.ts)), so no world sees another's module state. The worker
+imports the side's `src/` as it is (Node strips the types, so a frame's line is the source's), lends the dice a counting
+stream from the case's seed (`kcRng.use`), draws up the bots' realms as the GM page's Turn 0 does (`generateBotSetups`),
+and calls `generateNewGame`. For each case it compares the sha256 of the world's JSON, the dice drawn in all, the dice
+drawn by stage, and what the making wrote on the console. It exits 1 when any case differs, and names each one with
+what differs (`S13's dice (31 → 32)`). Options: `--seeds N` (40 unless given), `--jobs N`.
+
+**The dice in all aren't a proof on their own:** a later loop that draws until a name is free can absorb an extra draw,
+so a world can total the same dice and still differ. The hash and the stages' counts are the proof.
+
+**The cases** (2,560): seeds 1 to 40, each on every map size the GM page offers (p2 to p10), at the sea shares 20, 35,
+60, 65, 70, 75 and 80 (the home sea cap's cuts are at 60 and 70), and on an undersized map (five realms on the
+three-realm map, which takes the 400 raw layouts' path and warns). Each seed has one of four mixes of players' realms,
+the rest bots: every realm a bot; Divine with a naval king and Pagan; Undead and Druidic with a naval king; Good with a
+naval king, Neutral and Evil. Together they hold every creed, Divine and Undead once a game.
+
+**A draw's stage** is read from its call stack, with no mark in `src/`
+([the-worlds-makings-stages.ts](the-worlds-makings-stages.ts)): the innermost frame that is a stage's own function, or
+else `generateNewGame`'s frame, whose line falls between two stages' anchors (the line that opens each stage, found
+once in `src/engine/world/generate.ts`). The bots' realms' draws count apart, as `bots`. **Each split row (B-06v to
+B-06aa) updates the stage table:** a stage moved into a function of its own gets that function's name (`fn`) beside its
+anchor, kept while the row's base still has the anchor there; the next row may drop an anchor neither side holds. A
+stage found on a side by neither stops the proof rather than count its dice as another's, and the unit test checks that
+every stage is found in the tree as it is.
+
+**Red on planted faults** (B-06s's trial, each in a planted copy, the tool's `--base` against the copy unplanted):
+
+| Planted fault | What the tool shows |
+|---|---|
+| One extra `kcRng()` at the end of the coastal shipyards (S13) | (running) |
+| A hero's starting gold 20 made 21, no draw | (running) |
+| The tax floor's 2 made 3; the starting HP 15 made 16 | the same worlds: no world keeps them (KD-454, KD-455) |
+
+**What it can't see:** a value no world keeps (the two above); a path no seed reaches; state beyond one world, which a
+fresh process hides by design. Those need unit cases.
+
 ## The tests
 
 - `tests/unit/the-matrixs-coverage-lists-the-changed-lines-no-game-reaches.test.ts`
@@ -213,3 +255,4 @@ site show the same screens (the tours hold the page's short timers and the watch
 - `tests/unit/the-gm-logs-compared-names-each-game-whose-log-differs-and-where.test.ts`
 - `tests/unit/the-two-engines-compared-runs-each-side-in-its-own-process.test.ts`
 - `tests/unit/the-database-call-recorder-writes-each-call-a-page-sends-with-its-steps.test.ts`
+- `tests/unit/the-worlds-making-compared-names-each-case-whose-world-or-dice-by-stage-differ.test.ts`

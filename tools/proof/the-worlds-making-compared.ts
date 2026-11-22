@@ -1,5 +1,5 @@
 // npm run proof:worlds -- --base <ref>: the world's making, the base against this branch (B-06s; tools/proof/README.md,
-// section 4): for each case, the same world (the sha256 of its JSON), the same dice drawn in all and by stage (S0 to
+// section 7): for each case, the same world (the sha256 of its JSON), the same dice drawn in all and by stage (S0 to
 // S17, the-worlds-makings-stages.ts; the bots' realms apart), and the same words on the console. Each world is made in
 // a fresh process (the-worlds-making-worker.ts), a pool of them over the cores: once from a copy of the base (git
 // archive of where this branch left it: git merge-base <ref> HEAD; node_modules linked) and once from this working

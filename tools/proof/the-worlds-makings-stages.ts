@@ -1,5 +1,5 @@
 // The stages of the world's making (generateNewGame, src/engine/world/generate.ts), as the world proof counts its dice
-// by stage (the-worlds-making-compared.ts; tools/proof/README.md, section 4). A draw's stage is read from its call
+// by stage (the-worlds-making-compared.ts; tools/proof/README.md, section 7). A draw's stage is read from its call
 // stack, with no mark in src/: the innermost frame that is a stage's own function (once a split row has moved the stage
 // into one), or else generateNewGame's frame, whose line falls between two stages' anchors. An anchor is a line that
 // opens its stage (a comment, mostly), found once in generateNewGame's file.
