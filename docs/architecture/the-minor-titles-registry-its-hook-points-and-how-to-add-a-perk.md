@@ -24,16 +24,21 @@ a tie; a measure of 0 leaves it vacant). It is one row in
   (`computeMinorTitles`, `src/engine/titles/reckoning.ts`) asks for each hero and title.
 - **The registry** ends `satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>`, both
   ways, as the other registries do: a title's row with no entry, or an entry with no row, fails to compile
-  (`tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`). Its orders are
-  its own list, `THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES`.
+  (`tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`), at its widened
+  view `ENTRIES` too, which its runners read. Its orders are its own list, `THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES`.
 
 ## The hook points
 
 An entry acts only at the hook points `TheHookPointsAMinorTitlesPerkActsAt` names, each filled by a row of the
-family; until then each perk is checked where it acts, by the holders worked out at the turn's start (`charMinor` and
-its kin):
+family; a perk not yet at its stage is checked where it acts, by the holders worked out at the turn's start (`charMinor`
+and its kin). The runner of a stage asks its caller who holds a title (a function, asked only of a title that acts).
 
-- `personalCombat` (B-06j): the Duelist, the Marksman, the Widowmaker and the Relic-Hunter add to a fighter's skills.
+- `personalCombat`, **a hero's titles add to his skills**: the Duelist (Melee), the Marksman (Archery), the
+  Widowmaker and the Relic-Hunter (both) add their levels to his Melee and his Archery in a personal combat, their raw
+  levels too, after his items and before his realm's discoveries, under the ceiling of 9 (`pcCharCombatant`, through
+  `theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat`). Each effect reads its levels from its title's rows of
+  `SKILL_EXTRA_MINORS` of scope `'combat'`, which the hero's card (`extraSkillBonuses`) reads too
+  (`src/engine/rules/the-minor-titles/a-heros-titles-add-to-his-skills-in-a-personal-combat.ts`).
 - `strength` (B-06k): the Strategist's Tactical in a battle; the Naturalist, the Cavalier, the Beastmaster and the
   Ironclad lift the units their holder leads.
 - `movementCost`, `orderValidity` and `orderOutcome` (B-06l): the Swift and the Sea-Wolf's movement points; the
@@ -51,8 +56,7 @@ name of `MINOR_TITLES` and `TITLE_DEFS`, read from content.
 
 ## How to add a perk
 
-At a stage already written: its effect in the family's folder under `src/engine/rules/` (the first perk's row makes
-it), reading its numbers from its row; its stage in the title's entry and its place in the stage's order; and the title's check where it acted
+At a stage already written: its effect in the family's folder, `src/engine/rules/the-minor-titles/`, reading its numbers from its row; its stage in the title's entry and its place in the stage's order; and the title's check where it acted
 (`charMinor(…, '<key>')`) replaced by the stage's runner. A new stage's signature goes into
 `TheStagesOfEachHookPoint`, with its runner in this registry's file. A new title is a row (appended), an entry, and
 its holders' key in the saved game's schema.
