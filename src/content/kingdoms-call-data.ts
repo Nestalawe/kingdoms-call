@@ -15364,6 +15364,26 @@ export const KC_GRAND_DESIGNS = {
     desc: 'Your monsters and creatures cost half their wages and muster as Veterans.',
   },
 };
+// The Reckoning's numbers (B-06q), in whole percentage points where they are shares of the world's tax base: the bar a
+// claim must clear by the number of realms, the points it wears away each turn from the first turn it may, its floor,
+// each ally's step (these points over the number of realms, rounded) and the ceiling no bloc's bar passes; the share of
+// the bar a claimant must hold himself; the turns of grace before a claim is judged; the turn the throne opens and the
+// turn the titles go public; the Legacy a Legendary relic is worth. The engine reads them by its RECKONING_* names
+// (engine/titles/perks.ts), the player portal's titles card here; a static test holds the rulebook's tables to them.
+export const KC_THE_RECKONINGS_NUMBERS = {
+  theBarByTheNumberOfRealms: { 2: 60, 3: 50, 4: 45, 5: 42 },
+  theBarWithSixRealmsOrMore: 40,
+  theFirstTurnAtWhoseEndTheBarMayWearAway: 15,
+  thePointsTheBarWearsAwayEachTurn: 5,
+  theFloorTheBarNeverFallsBelow: 25,
+  thePointsOverTheNumberOfRealmsThatMakeEachAllysStep: 50,
+  theCeilingNoBlocsBarPasses: 80,
+  theShareOfTheBarAClaimantMustHoldInHisOwnRight: 0.5,
+  theTurnsOfGraceBeforeAClaimIsJudged: 2,
+  theFirstTurnAClaimMayBeLodged: 10,
+  theFirstTurnTheTitlesArePublic: 5,
+  theLegacyEachLegendaryRelicIsWorth: 1,
+} as const;
 
 // MASTERY_UNLOCKS (declared above) is ALSO read by both portals now: the player portal's own copy,
 // MASTERY_EFFECTS, had drifted from the engine on ten entries and was deleted (DEV_LOG §276).
