@@ -224,8 +224,9 @@ describe('a crowded home with no prosperous neighbour (a planted copy of src/ in
   beforeAll(
     async () => {
       planted = plantedSrc({
-        'engine/world/generate.ts': (code, file) =>
-          replaceInitializer(code, file, 'generateNewGame', 'prospNbr', 'null'),
+        // the homes' stage (S9 of the world's making), in its own file since B-06y
+        'engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts': (code, file) =>
+          replaceInitializer(code, file, 'eachHomeTailoredAndItsKingAndHeroesMade', 'prospNbr', 'null'),
       });
       await importTheWholeEngineFrom(planted.dir);
       const from = async <M>(file: string) => (await import(path.join(planted?.dir ?? '', file))) as M;

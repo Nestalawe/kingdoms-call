@@ -210,17 +210,14 @@ describe('no free neighbour beside a home (a planted copy of src/), on the world
         ranked.push({ race, list: list.map((q) => ({ race: q.race ?? '', type: q.armyTypes?.[0] ?? '' })) });
       });
       empty = plantedSrc({
+        // the homes' stage (S9 of the world's making), in its own file since B-06y: no free neighbour
+        'engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts': (code, file) =>
+          replaceInitializer(code, file, 'eachHomeTailoredAndItsKingAndHeroesMade', '_freeNbrs', '[]'),
         'engine/world/generate.ts': (code, file) => {
           const [rank] = initializersOf('engine/world/generate.ts', 'rank');
           if (rank === undefined) throw new Error('the wild-country pass has no rank');
           const recorded = `((theRank) => (list) => { const out = theRank(list); Reflect.get(globalThis, '${THE_RECORDER}')(cr.pl.race, out); return out; })${rank}`;
-          return replaceInitializer(
-            replaceInitializer(code, file, 'generateNewGame', '_freeNbrs', '[]'),
-            file,
-            'generateNewGame',
-            'rank',
-            recorded,
-          );
+          return replaceInitializer(code, file, 'generateNewGame', 'rank', recorded);
         },
       });
       engine = await theEngineIn(empty.dir);

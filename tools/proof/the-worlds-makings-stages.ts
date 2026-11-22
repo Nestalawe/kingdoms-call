@@ -83,6 +83,7 @@ export const THE_WORLDS_MAKINGS_STAGES: readonly AStageOfTheWorldsMaking[] = [
     stage: 'S9',
     what: "the homes: the colours, each home's tailoring, its king and two heroes",
     anchor: '// Player starts were already chosen up front',
+    fn: 'eachHomeTailoredAndItsKingAndHeroesMade',
   },
   { stage: 'S10', what: 'wild country near the two crowns', anchor: '// ── WILD COUNTRY NEAR THE TWO CROWNS' },
   { stage: 'S11', what: 'the neutral races rebalanced', anchor: '// ── NEUTRAL RACE REBALANCE' },

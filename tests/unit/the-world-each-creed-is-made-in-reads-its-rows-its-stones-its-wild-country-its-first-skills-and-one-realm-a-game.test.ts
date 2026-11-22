@@ -165,18 +165,19 @@ describe('every capital given a free neighbour (a planted copy of src/), on KC_S
         raised.push({ alignment, armyTypes: armyTypes ?? [] });
       });
       planted = plantedSrc({
-        'engine/world/generate.ts': (code, file) =>
+        // the homes' stage (S9 of the world's making), in its own file since B-06y
+        'engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts': (code, file) =>
           plantBefore(
             // the free neighbours of a capital: its own when it has some, else every cell beside it (never none)
             replaceInitializer(
               code,
               file,
-              'generateNewGame',
+              'eachHomeTailoredAndItsKingAndHeroesMade',
               '_freeNbrs',
               '_allFreeNbrs.length > 0 ? _allFreeNbrs : getNeighborsP(best, cols, rows, provinces)',
             ),
             file,
-            'generateNewGame',
+            'eachHomeTailoredAndItsKingAndHeroesMade',
             '_ringPrimal',
             `Reflect.get(globalThis, '${THE_RECORDER}')(sp.alignment, provinces.find((q) => q.id === best._alignPrimalId)?.armyTypes);`,
           ),

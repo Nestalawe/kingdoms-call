@@ -219,8 +219,10 @@ describe('the planting helpers put the line in the same place in either layout',
     expect(planted(pretty).map((p) => p.map((i) => i > 0))).toEqual(planted({}).map((p) => p.map((i) => i > 0)));
   });
   test('replaceInitializer replaces the one value', () => {
-    const code = fs.readFileSync(path.join(SRC, 'engine/world/generate.ts'), 'utf8');
-    const out = replaceInitializer(code, 'engine/world/generate.ts', 'generateNewGame', '_freeNbrs', '[]');
+    // the homes' stage (S9 of the world's making), in its own file since B-06y
+    const file = 'engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts';
+    const code = fs.readFileSync(path.join(SRC, file), 'utf8');
+    const out = replaceInitializer(code, file, 'eachHomeTailoredAndItsKingAndHeroesMade', '_freeNbrs', '[]');
     fs.writeFileSync(path.join(copy, 'generate.ts'), out);
     expect(initializersOf(path.join(copy, 'generate.ts'), '_freeNbrs')).toEqual(['([])']);
   });

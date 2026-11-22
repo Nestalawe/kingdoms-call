@@ -872,6 +872,10 @@ export const THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES: readonly (readonly [file: 
     'src/engine/world/the-worlds-making/s08-a-coastal-home-borders-an-open-water-sea.ts',
     'aCoastalHomeBordersAnOpenWaterSea',
   ],
+  [
+    'src/engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts',
+    'eachHomeTailoredAndItsKingAndHeroesMade',
+  ],
   ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P'],
   ['src/engine/world/tables.ts', 'provincePoolSize'],
   ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP'],
