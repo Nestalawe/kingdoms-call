@@ -72,6 +72,15 @@ and its order test holds the entries to the rows and each stage's order to the r
   copy, the one die of the title intelligence, and adds it to his realm. Last, it writes the line for the realms the
   holder hasn't met, at every stage but the fallen's and the spies'.
 
+## The Reckoning's numbers
+
+The Reckoning's numbers are one content row, `KC_THE_RECKONINGS_NUMBERS` (the data file's shared tables, B-06q): the
+bar by the number of realms, each ally's step, the ceiling, the erosion from turn 15 and its floor, the claimant's own
+share of the bar, the turns of grace, the turn the throne opens, the turn the titles go public, and a relic's Legacy.
+The engine reads them by its `RECKONING_*` names (`src/engine/titles/perks.ts`), the player portal's titles card from
+the row. `tests/static/the-rulebooks-tables-of-the-reckonings-bar-give-the-figures-of-the-reckonings-row.test.ts` holds
+the rulebook's tables of the bar to it: change a number in the row and the book's tables with it.
+
 ## The hook points
 
 An entry acts only at the hook points `TheHookPointsAMinorTitlesPerkActsAt` names, each filled by a row of the
