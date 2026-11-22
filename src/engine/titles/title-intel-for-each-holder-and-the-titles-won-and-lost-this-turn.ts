@@ -3,8 +3,7 @@ import { kcRng } from '../rng.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { noteGraveIntel } from '../graves.ts';
-import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
-import { TITLES_PUBLIC_FROM_TURN, TITLE_CREATURE_ARMIES, TITLE_MONSTER_ARMIES } from './perks.ts';
+import { TITLES_PUBLIC_FROM_TURN } from './perks.ts';
 import { MINOR_TITLES } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import { computeMinorTitles, computeStandings } from './reckoning.ts';
 import {
@@ -17,10 +16,11 @@ import {
   asItsGuardReadsIt,
 } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
-import type {
-  ARealmATitlesLineNames,
-  ATitleThatCountsTheRealmsNotMet,
-} from './the-facts-the-title-intelligence-lines-record.ts';
+import type { ATitleThatCountsTheRealmsNotMet } from './the-facts-the-title-intelligence-lines-record.ts';
+import {
+  theBoardsOfTheImperialTitlesAtAStage,
+  type AStageOfAnImperialTitlesBoard,
+} from '../rules/the-registry-of-the-imperial-titles-effects.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type {
   Army,
@@ -117,68 +117,30 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
     }
     return best > 0 ? bc : null;
   };
-  // THE THRONE — each rival's share of the world tax base. Uses the SAME denominator as the
-  // Reckoning (STD.worldTax = every province, land AND sea), so these %s correlate across
-  // reports. 2026-09-09: every comparative title report now opens with the holder's OWN figure,
-  // so the rivals' numbers can be read against something.
-  {
-    const pi = holder('throne');
-    if (pi != null) {
-      const world = STD.worldTax || 1;
-      const own = dispFloor((100 * ((STD.taxByPlayer[pi] ?? 0) || 0)) / world);
-      emit(turnContext, {
-        type: 'system',
-        fact: { kind: "the Throne's holder learns his realm's share of the world tax base", percent: own },
-        audience: { actor: pi, realms: [pi] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      });
-      G.players.forEach((pl, i) => {
-        if (i === pi || !met(pi, i)) return;
-        const pct = Math.round((100 * ((STD.taxByPlayer[i] ?? 0) || 0)) / world);
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Throne's holder learns a rival's share of the world tax base",
-            realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-            percent: pct,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      });
-      unmetLine(pi, 'throne');
-    }
-  }
-  // THE VAULTKEEPER — each rival's treasury (own line).
-  {
-    const pi = holder('vault');
-    if (pi != null) {
-      emit(turnContext, {
-        type: 'system',
-        fact: { kind: "the Vaultkeeper's holder learns his realm's treasury", gold: (G.players[pi]?.gold ?? 0) || 0 },
-        audience: { actor: pi, realms: [pi] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      });
-      G.players.forEach((pl, i) => {
-        if (i === pi || !met(pi, i)) return;
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Vaultkeeper's holder learns a rival's treasury",
-            realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-            gold: pl.gold || 0,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      });
-      unmetLine(pi, 'vault');
-    }
-  }
+  // The boards of the titles that read each rival realm as a whole (B-06o): each title's effect, in the registry of the
+  // Imperial Titles' effects, gives its board's lines in the order its block wrote them; each is written for the
+  // holder's realm alone, then the line for the realms it hasn't met.
+  const tellTheBoardsAt = (theStage: AStageOfAnImperialTitlesBoard) => {
+    theBoardsOfTheImperialTitlesAtAStage(
+      theStage,
+      holder,
+      (pi) => ({ theHoldersSeat: pi, theWorld: G, theProvinces: provs, theStandings: STD, heHasMet: met }),
+      (theTitle, pi, theLines) => {
+        for (const fact of theLines)
+          emit(turnContext, {
+            type: 'system',
+            fact,
+            audience: { actor: pi, realms: [pi] },
+            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+          });
+        unmetLine(pi, theTitle);
+      },
+    );
+  };
+  // THE THRONE and THE VAULTKEEPER, the titles of the realm (their boards: the-imperial-titles/the-boards-of-the-titles-
+  // that-read-each-rival-realm-and-the-facts-their-lines-record.ts).
+  tellTheBoardsAt('the board an Imperial Title of the realm shows its holder');
   // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
   {
     const pi = holder('marshal');
@@ -661,222 +623,8 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
         });
     }
   }
-  // ── 2026-09-17: ALL THREE ARE NOW RIVAL-BY-RIVAL BOARDS ────
-  // These three shipped as WORLD-facing lines (the far horizon, the breeding grounds, battles on
-  // wild ground). Toby's ruling: each should say something about every OTHER player, the shape
-  // the Throne, Vaultkeeper, Grand Marshal and Sea Lord already use. One line per rival, opening
-  // with the holder's own figure so the rivals' numbers can be read against something.
-  //
-  // THE CARTOGRAPHER — the rival atlas. For each realm: how many provinces they have charted to
-  // 100%, and their mapped ground as a share of the whole world. `exploredBy` is already kept per
-  // realm per province, so this is a straight read — nothing new is tracked for it.
-  {
-    const pi = holder('carto');
-    if (pi != null) {
-      const land = provs.filter((pv): pv is Province => Boolean(pv));
-      const world = land.length || 1;
-      const atlas = (i: number) => {
-        let full = 0,
-          pts = 0;
-        land.forEach((pv) => {
-          const e = Number(pv.exploredBy?.[String(i)]) || 0;
-          pts += e;
-          if (e >= 100) full++;
-        });
-        return { full, pct: Math.round(pts / world) }; // pts is a sum of 0-100 figures, so /world is the mean = the share
-      };
-      const own = atlas(pi);
-      emit(turnContext, {
-        type: 'system',
-        fact: {
-          kind: "the Cartographer's holder learns his realm's atlas",
-          fullyCharted: own.full,
-          percentMapped: own.pct,
-        },
-        audience: { actor: pi, realms: [pi] },
-        hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-        phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-      });
-      let any = false;
-      for (const [i] of G.players.entries()) {
-        if (i === pi || !met(pi, i)) continue;
-        any = true;
-        const a = atlas(i);
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Cartographer's holder learns a rival's atlas",
-            realm: { realmName: (G.players[i]?.name ?? '') || null, seat: i },
-            fullyCharted: a.full,
-            percentMapped: a.pct,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      }
-      if (!any)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Cartographer's holder finds no rival realm to survey" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      unmetLine(pi, 'carto');
-    }
-  }
-  // THE BEASTLORD — the rival menagerie. For each realm: how many Monster-category units they
-  // field, and the province holding their largest monster host. Garrisoned beasts are counted in
-  // the TOTAL (a realm can muster straight into a garrison) but the named host is always a
-  // commander's, because a garrison cannot march at you.
-  {
-    const pi = holder('beast');
-    if (pi != null) {
-      const census = (i: number, set: ReadonlySet<string>) => {
-        let total = 0,
-          best: Character | null = null,
-          bn = 0;
-        for (const c of (asItsGuardReadsIt(G.characters) ?? []).filter(
-          (c: Character | null | undefined) => c?.alive && c.player === i,
-        )) {
-          const n = (asItsGuardReadsIt(c.armies) ?? []).filter(
-            (a: Army | null | undefined) => a && set.has(a.type),
-          ).length;
-          total += n;
-          if (n > bn) {
-            bn = n;
-            best = c;
-          }
-        }
-        provs.forEach((pv) => {
-          if (pv?.owner === i)
-            total += (asItsGuardReadsIt(pv.garrisonArmies) ?? []).filter(
-              (a: Army | null | undefined) => a && set.has(a.type),
-            ).length;
-        });
-        return { total, best, bn };
-      };
-      const line = (i: number, realm: ARealmATitlesLineNames | null) => {
-        const r = census(i, TITLE_MONSTER_ARMIES);
-        if (r.total === 0) {
-          emit(turnContext, {
-            type: 'system',
-            fact: { kind: "the Beastlord's holder learns a realm has no monsters under arms", realm },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-          return;
-        }
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Beastlord's holder learns a realm's monsters under arms",
-            realm,
-            units: r.total,
-            largestHost: r.best
-              ? { units: r.bn, heroName: r.best.name, provinceName: (provs[r.best.location]?.name ?? '') || null }
-              : null,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      };
-      line(pi, null);
-      let any = false;
-      for (const [i] of G.players.entries()) {
-        if (i === pi || !met(pi, i)) continue;
-        any = true;
-        line(i, { realmName: (G.players[i]?.name ?? '') || null, seat: i });
-      }
-      if (!any)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Beastlord's holder finds no rival realm to reckon" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      unmetLine(pi, 'beast');
-    }
-  }
-  // THE WILDWARDEN — the rival wild host. The same census, for the free beasts: thunderbirds, ents,
-  // bears, giants, unicorns, mammoths, rocs, whale cohorts and great turtles (KC_UNIT_CLASS.creature). Deliberately symmetrical with the Beastlord's board so
-  // a player holding both reads one format twice rather than two.
-  {
-    const pi = holder('wild');
-    if (pi != null) {
-      const census = (i: number, set: ReadonlySet<string>) => {
-        let total = 0,
-          best: Character | null = null,
-          bn = 0;
-        for (const c of (asItsGuardReadsIt(G.characters) ?? []).filter(
-          (c: Character | null | undefined) => c?.alive && c.player === i,
-        )) {
-          const n = (asItsGuardReadsIt(c.armies) ?? []).filter(
-            (a: Army | null | undefined) => a && set.has(a.type),
-          ).length;
-          total += n;
-          if (n > bn) {
-            bn = n;
-            best = c;
-          }
-        }
-        provs.forEach((pv) => {
-          if (pv?.owner === i)
-            total += (asItsGuardReadsIt(pv.garrisonArmies) ?? []).filter(
-              (a: Army | null | undefined) => a && set.has(a.type),
-            ).length;
-        });
-        return { total, best, bn };
-      };
-      const line = (i: number, realm: ARealmATitlesLineNames | null) => {
-        const r = census(i, TITLE_CREATURE_ARMIES);
-        if (r.total === 0) {
-          emit(turnContext, {
-            type: 'system',
-            fact: { kind: "the Wildwarden's holder learns the wild answers to no one in a realm", realm },
-            audience: { actor: pi, realms: [pi] },
-            hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-            phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-          });
-          return;
-        }
-        emit(turnContext, {
-          type: 'system',
-          fact: {
-            kind: "the Wildwarden's holder learns a realm's creatures in the field",
-            realm,
-            units: r.total,
-            largestHost: r.best
-              ? { units: r.bn, heroName: r.best.name, provinceName: (provs[r.best.location]?.name ?? '') || null }
-              : null,
-          },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      };
-      line(pi, null);
-      let any = false;
-      for (const [i] of G.players.entries()) {
-        if (i === pi || !met(pi, i)) continue;
-        any = true;
-        line(i, { realmName: (G.players[i]?.name ?? '') || null, seat: i });
-      }
-      if (!any)
-        emit(turnContext, {
-          type: 'system',
-          fact: { kind: "the Wildwarden's holder finds no rival realm to reckon" },
-          audience: { actor: pi, realms: [pi] },
-          hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-          phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-        });
-      unmetLine(pi, 'wild');
-    }
-  }
+  // THE CARTOGRAPHER, THE BEASTLORD and THE WILDWARDEN (their boards: the same file).
+  tellTheBoardsAt("the board a hero's Imperial Title shows his realm");
 }
 
 /** A title as its changes are told: its key and name, and whether a realm (not a hero) holds it. */

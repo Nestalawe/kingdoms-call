@@ -61,6 +61,9 @@
 // same: each effect once in its stage's order (THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES), each order naming only
 // entries with an effect there, each content row (a minor title, MINOR_TITLES) with its entry and each entry with its
 // row, and no two rows' key or name.
+// Since B-06o the Imperial Titles' registry (src/engine/rules/the-registry-of-the-imperial-titles-effects.ts) is held
+// to the same, on TITLE_DEFS' rows (no two rows' key or name, the entries in the rows' order), and each stage's order
+// is the rows' order of the titles in it (the title intelligence's: one board after another, as each block ran).
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -119,6 +122,11 @@ import {
   THE_REGISTRY_OF_THE_ECONOMYS_RULES,
 } from '../../src/engine/rules/the-registry-of-the-economys-rules.ts';
 import { MINOR_TITLES } from '../../src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+import { TITLE_DEFS } from '../../src/content/kingdoms-call-data.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_IMPERIAL_TITLES,
+  THE_REGISTRY_OF_THE_IMPERIAL_TITLES_EFFECTS,
+} from '../../src/engine/rules/the-registry-of-the-imperial-titles-effects.ts';
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES,
   THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS,
@@ -1152,5 +1160,53 @@ test("planted in the minor titles' registry, an order naming an entry with no ef
     'a-planted-title has a content row and no entry',
     'a-planted-namesake and warlock share the name The Warlock',
     'a-planted-namesake has a content row and no entry',
+  ]);
+});
+
+const IMPERIAL_TITLES_ENTRIES: Entries = THE_REGISTRY_OF_THE_IMPERIAL_TITLES_EFFECTS;
+const IMPERIAL_TITLES_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_IMPERIAL_TITLES;
+/** The minor titles' check, on a list of rows each with its key (TITLE_DEFS' too). */
+const IMPERIAL_TITLES_BREAK = MINOR_TITLES_BREAK;
+/** What an order of a stage breaks of the rows' order: each title of it after the titles before it in TITLE_DEFS. */
+const theOrdersOutOfTheRowsOrder = (orders: Orders, rows: readonly { readonly key: string }[]) =>
+  Object.entries(orders).flatMap(([hook, stages]) =>
+    Object.entries(stages).flatMap(([stage, order]) => {
+      const where = order.map((slug) => rows.findIndex((row) => row.key === slug));
+      return where.every((at, k) => k === 0 || at > (where[k - 1] ?? -1))
+        ? []
+        : [`the order of ${hook}: ${stage} is not the rows' order: ${order.join(', ')}`];
+    }),
+  );
+
+test("the Imperial Titles' registry holds each effect once, in the order of its stage and of the rows, and each title's row with its entry", () => {
+  expect(IMPERIAL_TITLES_BREAK(IMPERIAL_TITLES_ENTRIES, IMPERIAL_TITLES_ORDERS, TITLE_DEFS)).toEqual([]);
+  expect(theOrdersOutOfTheRowsOrder(IMPERIAL_TITLES_ORDERS, TITLE_DEFS)).toEqual([]);
+  expect(Object.keys(IMPERIAL_TITLES_ENTRIES), "the entries, in the rows' order").toEqual(TITLE_DEFS.map((t) => t.key));
+});
+
+test("planted in the Imperial Titles' registry, a stage's order out of the rows' order, an order naming an entry with no effect there, a row with no entry, two rows' key and two rows' name, are found", () => {
+  const orders: Orders = {
+    ...IMPERIAL_TITLES_ORDERS,
+    turnEnd: {
+      ...IMPERIAL_TITLES_ORDERS['turnEnd'],
+      "the board a hero's Imperial Title shows his realm": ['beast', 'carto', 'wild', 'marshal'],
+    },
+  };
+  const rows = [
+    ...TITLE_DEFS,
+    { key: 'a-planted-title', name: 'The Planted' },
+    { key: 'throne', name: 'The Second Throne' },
+    { key: 'a-planted-namesake', name: 'The Wildwarden' },
+  ];
+  expect([
+    ...IMPERIAL_TITLES_BREAK(IMPERIAL_TITLES_ENTRIES, orders, rows),
+    ...theOrdersOutOfTheRowsOrder(orders, rows),
+  ]).toEqual([
+    'throne is the key of two rows',
+    "the order of turnEnd: the board a hero's Imperial Title shows his realm names marshal, which has no effect there",
+    'a-planted-title has a content row and no entry',
+    'a-planted-namesake and wild share the name The Wildwarden',
+    'a-planted-namesake has a content row and no entry',
+    "the order of turnEnd: the board a hero's Imperial Title shows his realm is not the rows' order: beast, carto, wild, marshal",
   ]);
 });

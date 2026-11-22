@@ -79,6 +79,7 @@ import type {
 import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import type { TheEconomysRuleSlug } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
+import type { TheFactOfALineOfABoardOfRivalRealms } from './the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -1849,6 +1850,46 @@ export interface AHeroWhoseMaximumHpARealmsDiscoveriesMayRaise extends AHeroARea
   readonly theLevelsOfHisSkills: Readonly<Partial<Record<string, number>>>;
 }
 
+/** A company as an Imperial Title's board reads it: its type. */
+export interface ACompanyAsAnImperialTitlesBoardReadsIt {
+  readonly type: string;
+}
+
+/** A hero as an Imperial Title's board reads him: his name, his realm's seat (none: he serves no realm), where he
+ *  stands, whether he lives, and the companies he leads. */
+export interface AHeroAsAnImperialTitlesBoardReadsHim {
+  readonly name: string;
+  readonly player: number | null;
+  readonly location: number;
+  readonly alive: boolean;
+  readonly armies: readonly ACompanyAsAnImperialTitlesBoardReadsIt[];
+}
+
+/** A province as an Imperial Title's board reads it: its name, the realm holding it (none: no realm), its garrison's
+ *  companies and how far each realm has mapped it (by the realm's seat, 0 to 100). */
+export interface AProvinceAsAnImperialTitlesBoardReadsIt {
+  readonly name: string;
+  readonly owner: number | null;
+  readonly garrisonArmies: readonly ACompanyAsAnImperialTitlesBoardReadsIt[];
+  readonly exploredBy?: Readonly<Record<string, number>> | undefined;
+}
+
+/** What the stages of an Imperial Title's board hand an effect (the title intelligence, at the turn's end, once titles
+ *  are public, for a title a realm holds): the seat of the realm holding it, the world as the board reads it (each
+ *  realm's name and treasury, by its seat, and the heroes), the world's provinces (with the holes the world may
+ *  leave), the standings worked out at the turn's end (the world tax base and each realm's share of it), and whether
+ *  a realm has met another (itself included), as the title intelligence asks it. */
+export interface AnImperialTitlesHolderAndTheWorldHisBoardReads {
+  readonly theHoldersSeat: number;
+  readonly theWorld: {
+    readonly players: readonly { readonly name: string; readonly gold: number }[];
+    readonly characters: readonly AHeroAsAnImperialTitlesBoardReadsHim[];
+  };
+  readonly theProvinces: readonly (AProvinceAsAnImperialTitlesBoardReadsIt | null | undefined)[];
+  readonly theStandings: { readonly worldTax: number; readonly taxByPlayer: readonly number[] };
+  readonly heHasMet: (pi: number, i: number) => boolean;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -2327,6 +2368,22 @@ export interface TheStagesOfEachHookPoint {
     /** The chance a discovery a realm holds gives each company at its capital to train up a grade at the new turn; the
      *  runner gives the first effect's, or nothing if the realm holds none (the new turn's War Academy, which rolls). */
     readonly "a realm's discoveries promote the capital's armies": (theEffect: TheEffectOfADiscovery) => number;
+    /** The lines of the board an Imperial Title of the realm shows the realm holding it: what it learns of itself and
+     *  of each realm it has met, in the order the board tells them; the runner asks, in the stage's order, for each
+     *  title a realm holds (the title intelligence, at the turn's end, before the heroes' titles' boards: the Imperial
+     *  Titles' registry, B-06o). The turn writes each line for the holder's realm alone, then the line for the realms
+     *  it hasn't met. */
+    readonly 'the board an Imperial Title of the realm shows its holder': (
+      facts: AnImperialTitlesHolderAndTheWorldHisBoardReads,
+    ) => readonly TheFactOfALineOfABoardOfRivalRealms[];
+    /** The lines of the board a hero's Imperial Title shows the realm he serves: what it learns of itself and of each
+     *  realm it has met, in the order the board tells them; the runner asks, in the stage's order, for each title a
+     *  realm holds (the title intelligence, at the turn's end, after the Spymaster's ledger: the Imperial Titles'
+     *  registry, B-06o). The turn writes each line for the holder's realm alone, then the line for the realms it
+     *  hasn't met. */
+    readonly "the board a hero's Imperial Title shows his realm": (
+      facts: AnImperialTitlesHolderAndTheWorldHisBoardReads,
+    ) => readonly TheFactOfALineOfABoardOfRivalRealms[];
   };
   /** An order's outcome a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19o, typed it). */
   readonly orderOutcome: {

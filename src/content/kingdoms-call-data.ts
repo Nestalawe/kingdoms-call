@@ -11949,11 +11949,29 @@ export type HowAHerosMeritTowardsAnImperialTitleIsMeasured =
  *  its treasury. */
 export type TheFigureAnImperialTitleOfTheRealmIsHeldBy = 'its tax base' | 'its treasury';
 
+/** An Imperial Title's key, the slug its row, its saved holders (`_titleHolders`) and its entry in the registry of the
+ *  Imperial Titles' effects (src/engine/rules/the-registry-of-the-imperial-titles-effects.ts) share: one for each row
+ *  of TITLE_DEFS, in its order (a row's key must be one; the registry's test holds the rows to every one). */
+export type AnImperialTitlesSlug =
+  | 'throne'
+  | 'vault'
+  | 'marshal'
+  | 'sea'
+  | 'monster'
+  | 'lore'
+  | 'arch'
+  | 'hiero'
+  | 'necro'
+  | 'spy'
+  | 'carto'
+  | 'beast'
+  | 'wild';
+
 /** An Imperial Title's row: its key (the saved holders' key, `_titleHolders`), its name, its prize in the standings, its
  *  requirement and perk as players read them, and how its holder is found: a realm by its figure (a title of the
  *  realm, `kingdomLevel`), or a hero by his merit. */
 export type AnImperialTitleAsItsRowWritesIt = {
-  readonly key: string;
+  readonly key: AnImperialTitlesSlug;
   readonly name: string;
   readonly prize: number;
   readonly req: string;

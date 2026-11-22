@@ -15,6 +15,12 @@
 // lines by (src/views/prose/the-words-of-the-title-intelligence-lines.ts). Each is filed on its own, with the audience
 // its event names (its event's: the holder's realm alone): no audience changes.
 import type { TheAudienceOfAKindOfLine } from '../turn/events-and-their-audiences.ts';
+import type {
+  ARealmATitlesLineNames,
+  TheFactOfALineOfABoardOfRivalRealms,
+} from '../rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts';
+
+export type { ARealmATitlesLineNames };
 
 /** A title whose holder is told of the realms his crown has not met, by its key in the standings. */
 export type ATitleThatCountsTheRealmsNotMet =
@@ -22,13 +28,6 @@ export type ATitleThatCountsTheRealmsNotMet =
 
 /** A magic school the Archmage reads, by its slug. */
 export type ASchoolTheArchmageReads = 'white' | 'psychic' | 'illusory' | 'elemental' | 'necromancy';
-
-/** A realm as a title's line names it: its name as the world holds it (null: none, and the prose writes "Player N"
- *  from its seat, counted from 0). */
-export interface ARealmATitlesLineNames {
-  realmName: string | null;
-  seat: number;
-}
 
 /** A realm's strongest army or fleet: its commander, where he stands (null: nowhere the world names), its strength. */
 export interface AStrongestForceATitlesLineNames {
@@ -44,42 +43,16 @@ export interface AChampionATitlesLineNames {
   monsterBlood: number;
 }
 
-/** A realm's largest host of monsters or creatures: how many, whose, and where (null: nowhere the world names). */
-export interface ALargestHostATitlesLineNames {
-  units: number;
-  heroName: string;
-  provinceName: string | null;
-}
-
-/** A realm's beasts under arms: whose (null: the holder's own, "Your realm"), how many, and its largest host (null:
- *  all of them garrisoned). */
-interface ARealmsBeasts {
-  realm: ARealmATitlesLineNames | null;
-  units: number;
-  largestHost: ALargestHostATitlesLineNames | null;
-}
-
-/** A realm's atlas: its provinces fully charted and its share of the world mapped. */
-interface AnAtlas {
-  fullyCharted: number;
-  percentMapped: number;
-}
-
-/** What a line of the title intelligence records. */
+/** What a line of the title intelligence records (the boards of the titles that read each rival realm as a whole, the
+ *  Throne's, the Vaultkeeper's, the Cartographer's, the Beastlord's and the Wildwarden's, record the kinds their
+ *  effects' file declares: B-06o). */
 export type TheFactOfATitleIntelligenceLine =
+  | TheFactOfALineOfABoardOfRivalRealms
   | {
       kind: "a title's holder learns how many realms his crown has not met";
       title: ATitleThatCountsTheRealmsNotMet;
       count: number;
     }
-  | { kind: "the Throne's holder learns his realm's share of the world tax base"; percent: number }
-  | {
-      kind: "the Throne's holder learns a rival's share of the world tax base";
-      realm: ARealmATitlesLineNames;
-      percent: number;
-    }
-  | { kind: "the Vaultkeeper's holder learns his realm's treasury"; gold: number }
-  | { kind: "the Vaultkeeper's holder learns a rival's treasury"; realm: ARealmATitlesLineNames; gold: number }
   | {
       kind: "the Grand Marshal's holder learns his realm's strongest land army";
       /** Null: no land army in the field. */
@@ -166,24 +139,7 @@ export type TheFactOfATitleIntelligenceLine =
       /** Each hero who intruded, most acts first: his name (null: none the ledger names), his realm, how often. */
       heroes: readonly { heroName: string | null; realm: ARealmATitlesLineNames | null; times: number }[];
     }
-  | { kind: "the Spymaster's holder learns no hand was raised against his lands" }
-  | ({ kind: "the Cartographer's holder learns his realm's atlas" } & AnAtlas)
-  | ({ kind: "the Cartographer's holder learns a rival's atlas"; realm: ARealmATitlesLineNames } & AnAtlas)
-  | { kind: "the Cartographer's holder finds no rival realm to survey" }
-  | {
-      kind: "the Beastlord's holder learns a realm has no monsters under arms";
-      /** Null: the holder's own realm. */
-      realm: ARealmATitlesLineNames | null;
-    }
-  | ({ kind: "the Beastlord's holder learns a realm's monsters under arms" } & ARealmsBeasts)
-  | { kind: "the Beastlord's holder finds no rival realm to reckon" }
-  | {
-      kind: "the Wildwarden's holder learns the wild answers to no one in a realm";
-      /** Null: the holder's own realm. */
-      realm: ARealmATitlesLineNames | null;
-    }
-  | ({ kind: "the Wildwarden's holder learns a realm's creatures in the field" } & ARealmsBeasts)
-  | { kind: "the Wildwarden's holder finds no rival realm to reckon" };
+  | { kind: "the Spymaster's holder learns no hand was raised against his lands" };
 
 /** Each kind's audience: its event's (each is filed on its own, for the holder's realm). */
 export const THE_AUDIENCE_OF_EACH_KIND_OF_A_TITLE_INTELLIGENCE_LINE: Readonly<
