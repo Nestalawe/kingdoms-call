@@ -8,7 +8,7 @@
 //   fleet that is a Creature) and of none, at several strengths, the strength and the perks are the old rule's (written
 //   here as it was), both by the army card's rule and by armStr (its ladder's words too, in their order); the
 //   Naturalist and the Beastmaster on one hero lift a unit once; each step rounds before the next.
-// - The order: the registry's order of the stage is the army card's, read from the rows; each title's entry is its
+// - The order: the registry's order of the stage is the army card's (content's list); each title's entry is its
 //   effect, whose step is its row's on the units the old rule lifted, and nothing on any other.
 // - The Strategist: in each of the five places, a holder of Tactical 1 fights as a hero of Tactical 2 who holds none,
 //   and not as one of Tactical 1 (commandScore's figure; the Tactical each battle records on its lines).
@@ -173,7 +173,7 @@ describe("the commander's minor titles lift the units he leads", () => {
     });
   });
 
-  test("the registry's order of the stage is the army card's, read from the rows, and each title's entry steps as its row says", () => {
+  test("the registry's order of the stage is the army card's, content's list of the titles with the perk, and each title's entry steps as its row says", () => {
     expect([...THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.strength["the commander's minor titles"]]).toEqual([
       ...THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER,
     ]);
