@@ -141,7 +141,7 @@ type TheCensusOfARealmsBeasts = (
  *  Wildwarden's. */
 // ── 2026-09-17: ALL THREE ARE NOW RIVAL-BY-RIVAL BOARDS ────
 // These three shipped as WORLD-facing lines (the far horizon, the breeding grounds, battles on
-// wild ground). Toby's ruling: each should say something about every OTHER player, the shape
+// wild ground). A maintainer's ruling (R-003): each should say something about every OTHER player, the shape
 // the Throne, Vaultkeeper, Grand Marshal and Sea Lord already use. One line per rival, opening
 // with the holder's own figure so the rivals' numbers can be read against something.
 export const THE_BOARD_A_HEROS_IMPERIAL_TITLE_SHOWS_HIS_REALM = {

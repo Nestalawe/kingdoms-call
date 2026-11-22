@@ -138,8 +138,8 @@ export function imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremaster
       },
     );
   };
-  // THE THRONE and THE VAULTKEEPER, the titles of the realm (their boards: the-imperial-titles/the-boards-of-the-titles-
-  // that-read-each-rival-realm-and-the-facts-their-lines-record.ts).
+  // THE THRONE and THE VAULTKEEPER, the titles of the realm (their boards: rules/the-imperial-titles/the-boards-of-
+  // the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts).
   tellTheBoardsAt('the board an Imperial Title of the realm shows its holder');
   // THE GRAND MARSHAL — each rival's strongest land army: commander + province (own line).
   {
