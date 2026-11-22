@@ -107,9 +107,10 @@ first (`tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-d
 `PRIMAL_ARMY_DEFS_P` (the one place a beast's cost, strength, move, sub-race and pre-battle strike are written:
 the master tables and the player portal's speeds are built from it), `PRIMAL_UNIT_NAMES` (28 names),
 `KC_UNIT_CLASS` (`creature` or `monster`, plus `aerial` for a flyer, `cavalry` for a horse, `primalSea` for a
-swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and **both** copies of the wild pools
-(`CREATURE_BY_TERRAIN` / `MONSTER_BY_TERRAIN` in world generation and `CBT` / `MBT` in the alignment-neighbour
-pass: `tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts` holds the Creature pair together); the player portal's `PRIMAL_SUBRACE_CLASS`
+swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and the wild pools
+(`THE_WILD_CREATURES_BY_TERRAIN` / `THE_WILD_MONSTERS_BY_TERRAIN` in
+`src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts`, one
+list each, which the province pass, the creed's neighbour and the wild country all read); the player portal's `PRIMAL_SUBRACE_CLASS`
 (the `Primal:<sub-race>` string a wild province carries) and its alignment texts; the rulebook's Druid ladder
 and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
 (`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.

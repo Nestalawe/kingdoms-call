@@ -8,8 +8,8 @@
 // tests/scenario/call-from-the-pit-and-awaken-the-wild-given-in-a-turn-… checks they are gone.) The books' words of the
 // same roster are tests/static/the-rulebooks-and-the-player-portal-give-each-beast-as-the-wild-roster-table-decides.test.ts.
 // With them (until plan P1-14z the plain-value checks of the scripts shark-waters and new-creatures): the Shark Shoals
-// a primal sea beast and no hull, shark waters named from their own pool; the two copies of the Creature pool agreeing
-// and dealing the new land beasts by terrain, and the Great Turtles' and the Unicorn Herd's classes. The shortfall on
+// a primal sea beast and no hull, shark waters named from their own pool; the Creature bank (content's, one list since
+// B-06t) dealing the new land beasts by terrain, and the Great Turtles' and the Unicorn Herd's classes. The shortfall on
 // the shoals and Whale Lore stay on the booted GM page, in
 // tests/page/the-gm-page-gives-the-shark-shoals-their-druid-shortfall-and-whale-lore-its-turtles.test.ts, which says
 // why. Their worlds and turns are tests/scenario/shark-waters-are-half-the-poor-seas-and-a-realm-raises-its-shoals-there.test.ts and
@@ -27,7 +27,6 @@
 // druidNeedP, and each page booting) stay page checks, in
 // tests/page/the-gm-and-player-pages-type-druid-strike-and-home-roster-rules-answer-as-the-rosters-decide.test.ts, which says why.
 import '../lib/the-whole-engine.ts';
-import vm from 'node:vm';
 import { describe, expect, test } from 'vitest';
 import {
   KC_DRUID_LEVELS,
@@ -40,7 +39,11 @@ import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, type ArmyInABattle } from '../../s
 import { unitAbilityMult } from '../../src/engine/battle/strength.ts';
 import { TERRAIN_MODS } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { druIdPenaltyMult } from '../../src/engine/world/tables.ts';
-import { compactPage, initializersOf, pageScripts } from '../lib/source.ts';
+import {
+  THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA,
+  THE_WILD_CREATURES_BY_TERRAIN,
+} from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import { compactOf } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import { COMING, isLand, LAND_TERRAINS, LIVE, RENAMED, ROSTER, type WildUnitAsDecided } from '../lib/primal-decided.ts';
 
@@ -224,66 +227,50 @@ describe("the engine's rules", () => {
 
 // The sea beasts and the new Creatures (2026-10-13, Creatures and Monsters III and IV). Until plan P1-14z these were the
 // plain-value checks of tests/shark-waters.test.js and tests/new-creatures.test.js, on the booted GM page; each is kept
-// as it was. The pools and the sea names are read from the GM page's code by their syntax tree (tests/lib/source.ts),
-// as the scripts read them.
+// as it was. The sea names' choice is read by its syntax tree (tests/lib/source.ts) from the world's making's set-up
+// (S0, which makes the naming functions since B-06v), as the scripts read it from the GM page's code; the sea names'
+// pools and the Creature bank are content's, imported (B-06t).
 describe('the sea beasts and the new Creatures', () => {
   test('the Shark Shoals are a primal sea beast (they swim, carry nothing, and are raised only at sea) and no hull', () => {
     expect(KC_UNIT_CLASS.primalSea).toContain('Shark Shoals');
     expect(KC_UNIT_CLASS.sea).toContain('Shark Shoals');
     expect(KC_UNIT_CLASS.carrier).not.toContain('Shark Shoals');
   });
-  // compactPage reads every file of the GM page's code by its syntax tree: about 2 s alone on a laptop, 5.7 s once on
-  // a runner, so it gets that work's allowance
+  // compactOf reads the set-up's file by its syntax tree; the test keeps the allowance it had when it read every file
+  // of the GM page's code
   test(
-    'shark waters are named from their own pool (NAME_SEA_BY_TYPE.shark, chosen for the race Primal:Shark)',
+    'shark waters are named from their own pool (THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA.shark, chosen for the race Primal:Shark)',
     timeLimitForTheWork({ everyFileReads: 1 }),
     () => {
-      const gm = compactPage('kingdoms-call-gm-portal.html');
-      expect(gm).toMatch(/NAME_SEA_BY_TYPE=\{[\s\S]{0,900}?\bshark:\s*\{pre:\[/);
+      const gm = compactOf('engine/world/the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts');
+      expect(THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA.shark.pre.length).toBeGreaterThan(0);
+      expect(gm).toMatch(/NAME_SEA_BY_TYPE=THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA;/);
       expect(gm).toMatch(/race==='Primal:Shark'\)\s*kind='shark'/);
     },
   );
 
-  // each pool is the value it is declared with in the GM page's code, read by its syntax tree
-  const pool = (name: string): Record<string, string[]> | null => {
-    const vs = pageScripts('kingdoms-call-gm-portal.html').flatMap((f) => initializersOf(f, name));
-    if (vs.length !== 1) return null;
-    try {
-      // `as`: the pool as declared, each terrain's beasts
-      return vm.runInNewContext(vs[0] ?? '', {}) as Record<string, string[]>;
-    } catch {
-      return null;
-    }
-  };
-  const POOL = pool('CREATURE_BY_TERRAIN');
-  const CBT = pool('CBT');
+  // the Creature bank, by terrain (one list: the province pass, the creed's neighbour and the wild country read it)
+  const POOL: Readonly<Record<string, readonly string[] | undefined>> = THE_WILD_CREATURES_BY_TERRAIN;
   const NEW_LAND: Record<string, string[]> = {
     'Great Bears': ['forest', 'mountain'],
     'Unicorn Herd': ['plain', 'forest'],
     'Mammoth Host': ['plain', 'desert'],
   };
-  test('the GM page declares CREATURE_BY_TERRAIN and its alignment-pass copy CBT', () => {
-    expect(POOL).not.toBeNull();
-    expect(CBT).not.toBeNull();
-  });
-  test('the two copies of the Creature pool agree', () => {
-    expect(JSON.stringify(POOL)).toBe(JSON.stringify(CBT));
-  });
   const dealt = Object.entries(NEW_LAND).flatMap(([u, terrs]) =>
-    Object.keys(POOL ?? {}).map((t) => [u, t, terrs.includes(t)] as const),
+    Object.keys(POOL).map((t) => [u, t, terrs.includes(t)] as const),
   );
   test("the pool has each new beast's terrains", () => {
     for (const [u, terrs] of Object.entries(NEW_LAND))
-      for (const t of terrs) expect(Object.keys(POOL ?? {}), `${u}: ${t}`).toContain(t);
+      for (const t of terrs) expect(Object.keys(POOL), `${u}: ${t}`).toContain(t);
   });
   test.each(dealt)('%s: dealt to %s provinces, %s', (u, t, yes) => {
-    expect((POOL?.[t] ?? []).includes(u)).toBe(yes);
+    expect((POOL[t] ?? []).includes(u)).toBe(yes);
   });
   test('no land pool holds the Great Turtles', () => {
-    expect(Object.values(POOL ?? {}).some((l) => l.includes('Great Turtles'))).toBe(false);
+    expect(Object.values(POOL).some((l) => l?.includes('Great Turtles'))).toBe(false);
   });
   test('no land pool holds the Whale Cohort', () => {
-    expect(Object.values(POOL ?? {}).some((l) => l.includes('Whale Cohort'))).toBe(false);
+    expect(Object.values(POOL).some((l) => l?.includes('Whale Cohort'))).toBe(false);
   });
   test('the Great Turtles are a primal sea beast (they swim and are raised only at sea)', () => {
     expect(KC_UNIT_CLASS.primalSea).toContain('Great Turtles');

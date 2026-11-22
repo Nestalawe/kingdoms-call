@@ -5,7 +5,8 @@
 Each finished step of the plan, with the pull request that built it and that pull request's own title. A step
 built in lettered rows says "done in its rows", and its rows follow it. "Done" alone: the step needed no pull
 request (an account or a setting). Open steps are in [the backlog](README.md); the other finished steps:
-[Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md).
+[Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md),
+[the new items (B-NN)](finished-steps-the-new-items-b-nn.md).
 
 ## P1-11
 

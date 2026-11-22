@@ -8,6 +8,8 @@ import {
   PROVINCE_ARMIES_P,
   TEMPER_TRAITS,
 } from '../../content/kingdoms-call-data.ts';
+import { THE_HUMANOID_FLEET_TYPES } from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import { THE_PROVINCE_POOLS_AND_THEIR_CHANCES } from '../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../rng.ts';
 import { shuffleP } from '../battle/fortune.ts';
 import { rollMagicItem } from '../items/equipment.ts';
@@ -116,7 +118,7 @@ export const SIGNATURE_TERRAIN_P = { Human: 'plain', Elven: 'forest', Dwarven: '
 // How much more likely a race is to be placed in its signature terrain than in any other. 6 puts
 // roughly two thirds of a terrain's provinces with its signature race while leaving every race
 // genuinely possible everywhere.
-export const SIGNATURE_WEIGHT_P = 6;
+export const SIGNATURE_WEIGHT_P = THE_PROVINCE_POOLS_AND_THEIR_CHANCES.theWeightOfARacesHeartland;
 
 // Every humanoid province offers 2 or 3 recruitable land types PLUS its racial garrison (and, on a
 // coast, its race's fleet). 2026-10-14 (Toby, item 15): two three times in four, three one time in
@@ -128,10 +130,11 @@ export const SIGNATURE_WEIGHT_P = 6;
 // spare; where it has none, the flyer stays (since item 15 nothing is borrowed from another terrain).
 // The king's home province is untouched (fullRaceLandRoster always grants the complete racial roster).
 export function provincePoolSize(rnd: (() => number) | null | undefined) {
-  return (rnd ?? kcRng)() < 0.75 ? 2 : 3;
+  const theUnitTypes = THE_PROVINCE_POOLS_AND_THEIR_CHANCES.theUnitTypesAHumanoidProvinceOffers;
+  return (rnd ?? kcRng)() < theUnitTypes.theChanceOfTheFewer ? theUnitTypes.theFewer : theUnitTypes.theMore;
 }
 export const GEN_FLYER_TYPES = new Set(KC_UNIT_CLASS.flying);
-export const FLYER_PROVINCE_KEEP = 0.5; // share of would-be flyer offers that survive
+export const FLYER_PROVINCE_KEEP = THE_PROVINCE_POOLS_AND_THEIR_CHANCES.theShareOfFlyerOffersThatSurvive; // share of would-be flyer offers that survive
 export function buildHumanoidPool(terrain: string, race: string, count: number, rnd: () => number) {
   // the cells read by any terrain's and race's name
   const cells: Readonly<Partial<Record<string, Readonly<Partial<Record<string, readonly string[]>>>>>> =
@@ -206,10 +209,10 @@ export function backfillHomeRosters(gs: TheStateAsTheBackfillReadsIt | null | un
 }
 // ── WORLD-GEN TUNING ── Share of LAND provinces that are Primal (wild Creature / Monster country).
 // The remainder is split exactly equally between the four humanoid races.
-export const PRIMAL_LAND_CHANCE = 0.3;
+export const PRIMAL_LAND_CHANCE = THE_PROVINCE_POOLS_AND_THEIR_CHANCES.theShareOfLandThatIsWild;
 // Share of coastal HUMANOID provinces that also offer their race's naval unit, on top of their 2-3
 // land types and their garrison. Primal and raceless coasts never offer one.
-export const COASTAL_NAVAL_CHANCE = 0.8;
+export const COASTAL_NAVAL_CHANCE = THE_PROVINCE_POOLS_AND_THEIR_CHANCES.theShareOfCoastsThatOfferAFleet;
 // Recruitable naval/fleet unit types (used during map generation, e.g. to keep them out of a king's
 // starting land armies). Mirrors SEA_TYPES used in the resolution engine. 2026-09-17: a humanoid
 // shipyard province turns out TWO hulls a season, not one. Every province offering one of these
@@ -217,13 +220,7 @@ export const COASTAL_NAVAL_CHANCE = 0.8;
 // garrisons have had. Fleets are the slowest thing in the game to accumulate (one race, one hull
 // type, only on a coast) and a navy was taking twice as long to build as an army. Read through
 // twoATurn below.
-export const HUMANOID_FLEET_TYPES = new Set([
-  'Galleon Fleet',
-  'Corsair Fleet',
-  'Elven Galleys',
-  'Dwarf Ironclads',
-  'Orcish Longships',
-]);
+export const HUMANOID_FLEET_TYPES = new Set(THE_HUMANOID_FLEET_TYPES);
 // The types a province raises TWO of in a turn: garrison units, the humanoid fleets, and — 2026-10-11
 // (Toby, the army roster, decision 9) — the Goblin Horde wherever it is offered (the horde's numbers are
 // its point: content's KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS).

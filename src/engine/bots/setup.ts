@@ -1,4 +1,9 @@
 import { ARMY_UNIT_NAMES } from '../../content/kingdoms-call-data.ts';
+import {
+  THE_BOTS_STARTING_SKILLS_BY_ALIGNMENT,
+  THE_UNIT_WHOSE_COMPANIES_NAMES_NAME_A_BOTS_REALM_BY_ITS_RACE,
+} from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import { THE_BOTS_REALMS } from '../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../rng.ts';
 import { RACES_P, TEMPERS_P } from '../world/tables.ts';
 import { ALIGNMENTS_P, alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -98,31 +103,12 @@ export function gameVisibility(game: AGamesRowAsItsSetUpIsRead) {
   const invited = fieldAsJavaScriptReadsIt(cfg, 'invited');
   return { private: isPrivate, invited: isPrivate && Array.isArray(invited) ? invited : [] };
 }
-// Alignment → four starting skill points, drawn from each alignment's Title signature lane
-// (see KC-design-victory-and-titles.md §5). Real engine skills only (SKILL_LABELS). Each totals 4.
-export const BOT_SKILL_BUILD = {
-  // Sept 2026 (bot strategy batch): every build now carries Tactical >=1 so the bot king can drill
-  // his host from turn 1 — Divine swaps druid->tactical, Neutral drops a Sage point, Pagan drops an
-  // Explorer point.
-  Divine: { white: 2, tactical: 1, melee: 1 },
-  Good: { melee: 1, tactical: 1, march: 1, white: 1 },
-  Druidic: { druid: 2, tactical: 1, archery: 1 },
-  Neutral: { sage: 1, tactical: 1, spy: 1, thief: 1 },
-  Pagan: { explorer: 1, elemental: 1, tactical: 1, melee: 1 },
-  Evil: { melee: 2, tactical: 1, necromancy: 1 },
-  Undead: { necromancy: 2, melee: 1, tactical: 1 },
-};
+// Alignment → four starting skill points (content's row says how they are chosen).
+export const BOT_SKILL_BUILD = THE_BOTS_STARTING_SKILLS_BY_ALIGNMENT;
 // Divine & Undead are one-per-game — the human join rule's rows (player portal UNIQUE_ALIGNS_CHECK: P1-19ay1).
 export const BOT_UNIQUE_ALIGNS = theAlignmentsOnlyOneRealmAGameMayHold();
-// Race → a signature unit whose faction-name pool (ARMY_UNIT_NAMES) we borrow for realm names.
-// This reuses existing themed pools rather than inventing new name content (the engine has no
-// realm-name generator: human players type theirs).
-export const BOT_KINGDOM_NAME_UNIT = {
-  Human: 'Free Lances',
-  Elven: 'Elven Bowmen',
-  Dwarven: 'Dwarven Guard',
-  Orcish: 'Orc Berserkers',
-};
+// Race → a signature unit whose faction-name pool (ARMY_UNIT_NAMES) we borrow for realm names (content's row).
+export const BOT_KINGDOM_NAME_UNIT = THE_UNIT_WHOSE_COMPANIES_NAMES_NAME_A_BOTS_REALM_BY_ITS_RACE;
 export const _usedBotKingdomNames = new Set<string>();
 export function _capRealm(s: string) {
   return s.replace(/^the\b/, 'The');
@@ -133,7 +119,7 @@ export function botKingdomName(race: string) {
   const namesOfUnit: Readonly<Partial<Record<string, readonly string[]>>> = ARMY_UNIT_NAMES;
   const unit = unitOfRace[race] ?? 'Free Lances';
   const pool = (typeof ARMY_UNIT_NAMES !== 'undefined' ? namesOfUnit[unit] : undefined) ?? ['the Free Company'];
-  for (let att = 0; att < 400; att++) {
+  for (let att = 0; att < THE_BOTS_REALMS.theTriesForANameNotYetTaken; att++) {
     const nm = theOneThePickFell(pool[Math.floor(kcRng() * pool.length)]);
     if (!_usedBotKingdomNames.has(nm)) {
       _usedBotKingdomNames.add(nm);
@@ -199,7 +185,7 @@ export function pickBotAlignmentBalanced(
       const friendly = alignDistP(a, ha) <= BOT_ALLY_ALIGN_DIST;
       cost += friendly ? (friends[h] ?? 0) : (foes[h] ?? 0);
     });
-    cost += (takenCounts[a] ?? 0) * 0.25; // mild preference for an alignment not yet in play
+    cost += (takenCounts[a] ?? 0) * THE_BOTS_REALMS.theCostOfEachRealmOfAnAlignmentInPlay; // mild preference for an alignment not yet in play
     if (!best || cost < best.cost) best = { cost, ties: [a] };
     else if (Math.abs(cost - best.cost) < 1e-9) best.ties.push(a);
   }

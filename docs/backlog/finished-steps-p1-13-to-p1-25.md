@@ -5,7 +5,8 @@
 Each finished step of the plan, with the pull request that built it and that pull request's own title. A step
 built in lettered rows says "done in its rows", and its rows follow it. "Done" alone: the step needed no pull
 request (an account or a setting). Open steps are in [the backlog](README.md); the other finished steps:
-[Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md), [P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md).
+[Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md), [P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md),
+[the new items (B-NN)](finished-steps-the-new-items-b-nn.md).
 
 ## P1-13
 
@@ -274,12 +275,3 @@ re-planned in B-09.
 - P1-25d: #508 The description's save paragraph; the save's topic file checked against the code
 - P1-25e: #572 One skill for making a change
 - P1-25f: #573 The skill finds, plans and builds a tranche
-
-## The new items (B-NN)
-
-- B-13: #638 A runner for planted faults, several at a time
-- B-14: #639 The Stop hook skips a session that changed no file
-- B-15: #640 Tier 0 leaves the matrix to CI
-- B-16: #700, #701 The three CI scripts in TypeScript; the workflows run them, and the JavaScript goes
-- B-18: #702, #703, #705, #706, #707, #708, #709 The audience gate: one place decides which lines each realm reads; the reports and the leak check ask it
-- B-19: #710 The kind decides its audience: a line for one realm alone compiles only told to that realm
