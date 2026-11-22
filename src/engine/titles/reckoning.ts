@@ -5,6 +5,11 @@ import {
 } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import { theMeasureAHeroIsHeldToForAMinorTitle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { ITEMS_BY_TIER } from '../items/tiers-and-hoards.ts';
+import {
+  theFiguresAnImperialTitleOfTheRealmIsHeldBy,
+  theMeritAHeroHasTowardsAnImperialTitle,
+  type AHeroAsTheImperialTitlesMeasureHim,
+} from '../rules-on-plain-values/the-merit-a-hero-or-the-figure-a-realm-holds-an-imperial-title-by-as-its-row-measures-it.ts';
 import { _skillItem, activeItems } from '../items/equipment.ts';
 import { botConceded } from '../bots/intel.ts';
 import { theLevelsARealmsDiscoveriesAddToAFightersSkills } from '../rules/the-registry-of-discovery-effects.ts';
@@ -105,54 +110,23 @@ export interface ASkillBonusAtItsPointOfUse {
 export function _legendaryNames() {
   return new Set((asItsGuardReadsIt(ITEMS_BY_TIER[4]) ?? []).map((it) => it.name));
 }
-// THE SEA LORD NO LONGER COUNTS THE WAVES. `SEA_LORD_PROVINCE_PTS` gave one merit point per sea
-// province the character's REALM held, folded into every one of that realm's characters. It was the
-// only territorial component in any character title, and it meant a realm that ruled the deep could
-// hold the Sea Lord's baton on geography alone with a mediocre admiral. Withdrawn: the title is now
-// the admiral's own Naval skill and the battles they have actually won at sea.
-export function _charTitleMerit(c: AHeroAsTheTitlesCountHim) {
-  const tm: Partial<NonNullable<Character['tm']>> = c.tm ?? {};
-  const magic = _MAGIC_SCHOOLS.reduce((s, sc) => s + _skillItem(c, sc), 0);
+/** A hero's merit towards each Imperial Title a hero holds, by its key, in the rows' order: each as its row measures it
+ *  (TITLE_DEFS' `howTheHolderIsFound`, B-06n), his skills raised by the items he uses and his deeds a count of his
+ *  `tm` (none if not yet written). */
+export function _charTitleMerit(c: AHeroAsTheTitlesCountHim): AHerosMeritTowardsEachTitle {
   const schools: readonly (string | undefined)[] = _MAGIC_SCHOOLS;
-  const spellItems = activeItems(c).filter((it) => schools.includes(asItsGuardReadsIt(it.effect)?.stat)).length;
-  return {
-    // 2026-09-16 \u2014 ROOT CAUSE of "The Grand Marshal shows as vacant even though it is
-    // awarded". It was not a display fault: the title really WAS vacant. `marshal` was the only one
-    // of the nine titles whose metric was PURE battle merit with no standing component, and
-    // computeStandings requires merit > 0 to hand a title out. tm.marshal only ever moves in a
-    // player-vs-player land battle (creditBattle), and it moves DOWN for the loser \u2014 so in any
-    // game where the realms have not yet fought each other on land, or where the wins and losses
-    // have cancelled, every character sat at 0 and the title fell vacant while all eight others
-    // were held. The Sea Lord has always carried `_skillItem(c,'naval')` as its standing component
-    // for exactly this reason; the Grand Marshal now carries Tactical the same way. A realm's best
-    // general holds the marshal's baton from turn one, and battle merit decides it the moment
-    // anyone fights.
-    marshal: (Number(tm.marshal) || 0) + _skillItem(c, 'tactical'),
-    sea: (Number(tm.sea) || 0) + _skillItem(c, 'naval'),
-    monster: Number(tm.monster) || 0,
-    // the Loremaster was a THREE-SKILL BUNDLE (Explorer + Spy + Sage) that also counted every map
-    // feature stumbled across at double weight. It swallowed the whole espionage and exploration
-    // space, so no Spy or Explorer character could ever be honoured for what they actually did.
-    // Explorer now belongs to the Cartographer and Spy to the Spymaster; the Loremaster keeps the
-    // scholar's own skill and the discoveries their research has produced, at one point apiece.
-    lore: _skillItem(c, 'sage') + (Number(tm.discoveries) || 0),
-    arch: magic + spellItems,
-    // Druid withdrawn \u2014 the Hierophant is a title of the White faith, and folding in a second
-    // skill let a druid with no holy casts at all out-score a working priest.
-    hiero: _skillItem(c, 'white') + (Number(tm.holyCasts) || 0),
-    necro: _skillItem(c, 'necromancy') + (Number(tm.darkCasts) || 0),
-    // ── 2026-09-17: the four new titles ────
-    // `tm.spyActions` counts SUCCESSES only (see the spy/sabotage/assassination sites); a failed
-    // infiltration earns nothing. `tm.explored` banks raw percentage POINTS of ground mapped and is
-    // divided down here, so the accumulator keeps its precision and only the score is coarse.
-    spy: _skillItem(c, 'spy') + (Number(tm.spyActions) || 0),
-    carto: _skillItem(c, 'explorer') + Math.floor((Number(tm.explored) || 0) / 10),
-    // Pure deed titles, like the Monster-Bane: no standing skill floor, so they sit vacant until
-    // somebody actually musters beasts. That is intended \u2014 there is no "beast skill" to stand
-    // on.
-    beast: Number(tm.monsterHost) || 0,
-    wild: Number(tm.wildHost) || 0,
+  const him: AHeroAsTheImperialTitlesMeasureHim = {
+    hisLevelOf: (theSkill) => _skillItem(c, theSkill),
+    hisDeeds: c.tm ?? {},
+    theItemsHeUsesThatRaiseAMagicSchool: () =>
+      activeItems(c).filter((it) => schools.includes(asItsGuardReadsIt(it.effect)?.stat)).length,
   };
+  const merit: Partial<Record<string, number>> = {};
+  TITLE_DEFS.forEach((t) => {
+    const how = t.howTheHolderIsFound;
+    if (how.theHolder === 'a hero') merit[t.key] = theMeritAHeroHasTowardsAnImperialTitle(how, him);
+  });
+  return merit;
 }
 // A realm's Reckoning bloc = THAT REALM AND ITS OWN DIRECT ALLIES. Nobody else.
 //
@@ -213,8 +187,12 @@ export function computeStandings(state: TheWorldAsTheStandingsReadIt): {
   });
   const titles: Partial<Record<string, MajorTitleHolder>> = {};
   TITLE_DEFS.forEach((t) => {
-    if (t.key === 'throne' || t.key === 'vault') {
-      const metric = t.key === 'throne' ? taxByPlayer : goldByPlayer;
+    const how = t.howTheHolderIsFound;
+    if (how.theHolder === 'a realm') {
+      const metric = theFiguresAnImperialTitleOfTheRealmIsHeldBy(how.theFigure, {
+        theTaxBases: taxByPlayer,
+        theTreasuries: goldByPlayer,
+      });
       let best = -1,
         bi = -1;
       metric.forEach((v, pi) => {
@@ -338,8 +316,13 @@ export function titleRaceFor(
     let myBest: number,
       myChar: AHeroOfARealmAsTheTitlesCountHim | null = null,
       rivalBest = 0;
-    if (t.key === 'throne' || t.key === 'vault') {
-      const metric = (t.key === 'throne' ? st.taxByPlayer : st.goldByPlayer) ?? [];
+    const how = t.howTheHolderIsFound;
+    if (how.theHolder === 'a realm') {
+      const metric =
+        theFiguresAnImperialTitleOfTheRealmIsHeldBy(how.theFigure, {
+          theTaxBases: st.taxByPlayer,
+          theTreasuries: st.goldByPlayer,
+        }) ?? [];
       myBest = (metric[pi] ?? 0) || 0;
       const k = chars.find((c) => c.isKing && c.player === pi);
       myChar = k ?? null;

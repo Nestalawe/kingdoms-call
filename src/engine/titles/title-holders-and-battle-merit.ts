@@ -1,5 +1,6 @@
 import { noteRealmBattle } from '../bots/war.ts';
 import { TM, creditBeastUnit } from './perks.ts';
+import { theDeedsABattlesMeritIsCreditedTo } from '../rules-on-plain-values/the-merit-a-hero-or-the-figure-a-realm-holds-an-imperial-title-by-as-its-row-measures-it.ts';
 import type { Character, MajorTitleKey, MinorTitleKey, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
 
@@ -12,7 +13,8 @@ import type { TurnContext } from '../turn/context.ts';
 // which still carry _died flags at the call site. 2026-09-16: credited for EVERY battle — a rival
 // realm, a neutral province's chieftain and his guard, a leaderless neutral guard, or an enemy
 // realm's bare garrison alike. The bucket is chosen off the province's terrain, so one helper
-// pays the Grand Marshal ashore and the Sea Lord at sea. 2026-09-12: reads
+// pays the Grand Marshal ashore and the Sea Lord at sea: the count of deeds whose title's row counts the battles
+// fought there (B-06n). 2026-09-12: reads
 // combatVsChar/combatVsNPC's OWN casualty counts. A leaderless defence
 // (an enemy realm's garrison) has no commander to debit, so only the attacker's merit moves; the
 // attacker is still debited for their own dead when a garrison throws them back.
@@ -35,7 +37,7 @@ export function creditBattle(
   // handleHeroDeath docks 25% of accumulated Title merit AT the moment of death, so anything
   // credited afterwards escapes that penalty entirely and can swing a Title race.
   if (atkChar.alive === false) return;
-  const bucket = prov && prov.terrain === 'sea' ? 'sea' : 'marshal';
+  const bucket = theDeedsABattlesMeritIsCreditedTo(prov && prov.terrain === 'sea' ? 'at sea' : 'on land');
   const atkLost = battle.atkLost || 0,
     defLost = battle.defLost || 0;
   const defCmdr = defChar && defChar.player != null ? defChar : null;

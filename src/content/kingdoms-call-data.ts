@@ -11910,7 +11910,75 @@ export const ARMY_UNIT_NAMES = {
   ],
 } satisfies Record<Exclude<UnitType, keyof typeof PRIMAL_UNIT_NAMES>, string[]>;
 
-export const TITLE_DEFS = [
+/** A count of a hero's deeds an Imperial Title reads (his `tm`, saved by these keys): his land and sea battles' merit,
+ *  the guardians' hit points he has slain, his discoveries, his holy and dark casts, his acts of espionage, the points
+ *  of ground he has mapped, and the Monsters and Creatures he has mustered and won with. */
+export type AHerosDeedsAnImperialTitleCounts =
+  | 'marshal'
+  | 'sea'
+  | 'monster'
+  | 'discoveries'
+  | 'holyCasts'
+  | 'darkCasts'
+  | 'spyActions'
+  | 'explored'
+  | 'monsterHost'
+  | 'wildHost';
+
+/** How a hero's merit towards an Imperial Title is measured (the living hero of a realm highest by it holds the title,
+ *  the first found on a tie; a merit of 0 or less leaves it vacant). */
+export type HowAHerosMeritTowardsAnImperialTitleIsMeasured =
+  /** his level of a skill (trained and raised by the items he uses, 0 to 9) and one merit for each of his deeds, or,
+   *  with `theDeedsAreDividedBy`, one for each that many (rounded down); `theBattlesItsDeedsCount` names the battles
+   *  whose merit his deeds count (the winner gains the loser's losses, the loser is docked his own) */
+  | {
+      readonly theMeasure: 'his level of a skill and his deeds';
+      readonly theSkill: string;
+      readonly theDeeds: AHerosDeedsAnImperialTitleCounts;
+      readonly theDeedsAreDividedBy?: number;
+      readonly theBattlesItsDeedsCount?: 'on land' | 'at sea';
+    }
+  /** one merit for each of his deeds, and no skill */
+  | { readonly theMeasure: 'his deeds'; readonly theDeeds: AHerosDeedsAnImperialTitleCounts }
+  /** his levels in the five magic schools (each trained and raised by the items he uses, 0 to 9), and one merit for
+   *  each item he uses that raises a magic school, of any tier */
+  | { readonly theMeasure: 'his levels in the magic schools and the items he uses that raise one' };
+
+/** A realm's figure an Imperial Title of the realm is held by (the realm highest by it holds the title, the lowest seat
+ *  on a tie, its king named; a figure of 0 leaves it vacant): its tax base (every province it holds, land and sea) or
+ *  its treasury. */
+export type TheFigureAnImperialTitleOfTheRealmIsHeldBy = 'its tax base' | 'its treasury';
+
+/** An Imperial Title's row: its key (the saved holders' key, `_titleHolders`), its name, its prize in the standings, its
+ *  requirement and perk as players read them, and how its holder is found: a realm by its figure (a title of the
+ *  realm, `kingdomLevel`), or a hero by his merit. */
+export type AnImperialTitleAsItsRowWritesIt = {
+  readonly key: string;
+  readonly name: string;
+  readonly prize: number;
+  readonly req: string;
+  readonly perk: string;
+} & (
+  | {
+      readonly kingdomLevel: true;
+      readonly howTheHolderIsFound: {
+        readonly theHolder: 'a realm';
+        readonly theFigure: TheFigureAnImperialTitleOfTheRealmIsHeldBy;
+      };
+    }
+  | {
+      readonly kingdomLevel?: undefined;
+      readonly howTheHolderIsFound: { readonly theHolder: 'a hero' } & HowAHerosMeritTowardsAnImperialTitleIsMeasured;
+    }
+);
+
+/** The share of each of his title merits a hero keeps when he falls (each count of his deeds, the Widowmaker's kills
+ *  too, multiplied by it and rounded), so that killing a rival's champion can knock him out of a title's race. */
+export const KC_THE_SHARE_OF_HIS_TITLE_MERIT_A_FALLEN_HERO_KEEPS = 0.75;
+
+/** The Imperial Titles, in the order the standings, the report and the title intelligence go through them (append;
+ *  never re-sort). */
+export const TITLE_DEFS: AnImperialTitleAsItsRowWritesIt[] = [
   {
     key: 'throne',
     name: 'The Throne',
@@ -11918,6 +11986,7 @@ export const TITLE_DEFS = [
     kingdomLevel: true,
     req: 'Hold the largest tax base (total province tax income) in the world.',
     perk: "Each turn you are shown every rival realm's share of the world tax base.",
+    howTheHolderIsFound: { theHolder: 'a realm', theFigure: 'its tax base' },
   },
   {
     key: 'vault',
@@ -11926,6 +11995,7 @@ export const TITLE_DEFS = [
     kingdomLevel: true,
     req: 'Hold the largest treasury (most gold) in the world.',
     perk: "Each turn you are shown every rival realm's treasury.",
+    howTheHolderIsFound: { theHolder: 'a realm', theFigure: 'its treasury' },
   },
   {
     key: 'marshal',
@@ -11933,6 +12003,16 @@ export const TITLE_DEFS = [
     prize: 10,
     req: "Hold the highest Tactical skill, plus land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost). Battles against a neutral province's chieftain and his guard count the same as a war with a rival realm.",
     perk: "Each turn you are told the province holding each rival's strongest land army.",
+    // 2026-09-16: the Grand Marshal carries Tactical as its standing, as the Sea Lord carries Naval, so the title is held
+    // from turn one: with battle merit alone, every hero sat at 0 until the realms fought on land (the merit moves down
+    // for the loser), and a merit of 0 leaves a title vacant.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'tactical',
+      theDeeds: 'marshal',
+      theBattlesItsDeedsCount: 'on land',
+    },
   },
   {
     key: 'sea',
@@ -11940,6 +12020,16 @@ export const TITLE_DEFS = [
     prize: 10,
     req: "Hold the highest Naval skill, plus sea-battle merit on the same terms as the Grand Marshal \u2014 battles with a neutral sea province's guardian count too.",
     perk: "Each turn you are told the province holding each rival's strongest fleet.",
+    // The Sea Lord no longer counts the waves: one merit for each sea province the realm held, folded into every hero of
+    // it, let a realm that ruled the deep hold the title with a mediocre admiral. Withdrawn: the admiral's own Naval and
+    // the battles he has won at sea.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'naval',
+      theDeeds: 'sea',
+      theBattlesItsDeedsCount: 'at sea',
+    },
   },
   {
     key: 'monster',
@@ -11947,6 +12037,7 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Slay the greatest total HP of lair guardians (a pacified guardian counts half).',
     perk: 'Each turn you are named the foremost monster-slayer of every rival realm, with their province and tally.',
+    howTheHolderIsFound: { theHolder: 'a hero', theMeasure: 'his deeds', theDeeds: 'monster' },
   },
   {
     key: 'lore',
@@ -11954,6 +12045,15 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Sage skill, plus one point per Sage discovery made.',
     perk: 'Each turn you are shown every discovery each rival realm holds \u2014 and copy one you lack, for free.',
+    // The Loremaster was Explorer, Spy and Sage, with every map feature found at double weight: it swallowed espionage
+    // and exploration. Explorer is the Cartographer's now and Spy the Spymaster's; the Loremaster is the scholar's own
+    // skill and his discoveries, one merit each.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'sage',
+      theDeeds: 'discoveries',
+    },
   },
   {
     key: 'arch',
@@ -11961,6 +12061,10 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.',
     perk: 'Each turn you are told the strongest mage of each magic school outside your own realm.',
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his levels in the magic schools and the items he uses that raise one',
+    },
   },
   {
     key: 'hiero',
@@ -11968,6 +12072,14 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest White skill, plus Bless Province, Holy Symbol and Resurrect casts.',
     perk: 'Each turn the dead give up their secrets: every fallen hero your realm can see is read out with the skills they carried in life.',
+    // Druid withdrawn: the Hierophant is a title of the White faith, and a second skill let a druid with no holy casts
+    // out-score a working priest.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'white',
+      theDeeds: 'holyCasts',
+    },
   },
   {
     key: 'necro',
@@ -11975,6 +12087,12 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).',
     perk: 'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead \u2014 and files each one under Graveyards Known in your report.',
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'necromancy',
+      theDeeds: 'darkCasts',
+    },
   },
   // ── 2026-09-17: FOUR NEW TITLES ────
   // Espionage, cartography and the two beast-leading traditions had no prize of their own; the Spy
@@ -11987,6 +12105,14 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Spy skill, plus one point per successful act of espionage \u2014 spying out a province, reading a rival character, sabotage, and an assassination that finds its mark.',
     perk: 'Each turn you are handed the counter-intelligence ledger: every HERO who spied on, sabotaged or robbed your lands this turn, what they did, whose crown they serve and the province they did it in.',
+    // `tm.spyActions` counts successes only (the spy, sabotage and assassination sites): a failed infiltration earns
+    // nothing.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'spy',
+      theDeeds: 'spyActions',
+    },
   },
   {
     key: 'carto',
@@ -11994,6 +12120,15 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Explorer skill, plus one point per 10% of a province mapped by your own marching and exploring (every province counts separately, and the survey spilling onto neighbouring ground counts too).',
     perk: 'Each turn your surveyors lay out the rival atlas: for every realm, how many provinces they have charted in full and what share of the world they have mapped.',
+    // `tm.explored` banks raw points of ground mapped, divided down here, so the count keeps its precision and only the
+    // merit is coarse.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'explorer',
+      theDeeds: 'explored',
+      theDeedsAreDividedBy: 10,
+    },
   },
   {
     key: 'beast',
@@ -12001,6 +12136,8 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Muster and win with monsters \u2014 one point per Monster-category unit you recruit, and one per Monster-category unit still under your banner when you win a battle.',
     perk: 'Each turn the beast-tongues take the rival menagerie: for every realm, how many Monster units they have under arms and the province holding their largest monster host.',
+    // Deeds alone, like the Monster-Bane: no skill to stand on, so the title sits vacant until somebody musters beasts.
+    howTheHolderIsFound: { theHolder: 'a hero', theMeasure: 'his deeds', theDeeds: 'monsterHost' },
   },
   {
     key: 'wild',
@@ -12008,6 +12145,7 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Muster and win with the free beasts \u2014 one point per Creature-category unit you recruit (thunderbirds, ents, stone giants, rocs, whales, bears and the other wild Creatures), and one per Creature-category unit still under your banner when you win a battle.',
     perk: 'Each turn the wild reports its own: for every realm, how many Creature units they field and the province holding their greatest wild host.',
+    howTheHolderIsFound: { theHolder: 'a hero', theMeasure: 'his deeds', theDeeds: 'wildHost' },
   },
 ];
 

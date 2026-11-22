@@ -104,6 +104,26 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
     "B-06m, the titles' gold and the Host-Leader's cut, to the minor titles' registry (turnEnd)",
   ],
+  [
+    'src/engine/titles/reckoning.ts',
+    '_charTitleMerit',
+    "B-06n, each Imperial Title's measure of a hero, from its row (TITLE_DEFS' howTheHolderIsFound)",
+  ],
+  [
+    'src/engine/titles/reckoning.ts',
+    'computeStandings',
+    "B-06n, the Throne's and the Vaultkeeper's figures, from their rows (TITLE_DEFS' howTheHolderIsFound)",
+  ],
+  [
+    'src/engine/titles/reckoning.ts',
+    'titleRaceFor',
+    "B-06n, the Throne's and the Vaultkeeper's figures, from their rows (TITLE_DEFS' howTheHolderIsFound)",
+  ],
+  [
+    'src/engine/titles/title-holders-and-battle-merit.ts',
+    'creditBattle',
+    "B-06n, the Grand Marshal's and the Sea Lord's battle merit, from their rows (theBattlesItsDeedsCount)",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
