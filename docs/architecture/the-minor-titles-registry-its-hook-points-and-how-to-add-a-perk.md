@@ -2,7 +2,8 @@
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
 This file is its part for the minor titles: the twenty honorary titles that count for no victory, each giving its
-holder a small perk (B-06, T7, the rules pulled out: its Reckoning and titles family, from B-06i).
+holder a small perk (B-06, T7, the rules pulled out: its Reckoning and titles family, from B-06i), and the
+Imperial Titles' measures (B-06n).
 
 ## What a minor title is
 
@@ -26,6 +27,22 @@ a tie; a measure of 0 leaves it vacant). It is one row in
   ways, as the other registries do: a title's row with no entry, or an entry with no row, fails to compile
   (`tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`), at its widened
   view `ENTRIES` too, which its runners read. Its orders are its own list, `THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES`.
+
+## The Imperial Titles' measures
+
+The thirteen Imperial Titles count for victory; each is a row of `TITLE_DEFS` (`src/content/kingdoms-call-data.ts`,
+its key `_titleHolders`' saved key), whose `howTheHolderIsFound` says who holds it. **A title of the realm**
+(`kingdomLevel`) goes to the realm highest by its figure, its tax base or its treasury (the lowest seat on a tie, its
+king named). **A hero's title** goes to the living hero of a realm highest by his merit (the first found on a tie):
+his level of a skill (raised by his items, to 9) plus a count of his deeds (`tm`), the Cartographer's in tens (rounded
+down); his deeds alone; or the Archmage's levels in the five schools plus each item he uses that raises one. A figure
+or a merit of 0 leaves it vacant. The Grand Marshal's and the Sea Lord's rows name the battles their deeds count, on
+land or at sea, which `creditBattle` credits; a fallen hero keeps content's
+`KC_THE_SHARE_OF_HIS_TITLE_MERIT_A_FALLEN_HERO_KEEPS` of each count, rounded. The standings (`computeStandings`), the
+title race (`titleRaceFor`) and `_charTitleMerit` read the rows on plain values
+(`rules-on-plain-values/the-merit-a-hero-or-the-figure-a-realm-holds-an-imperial-title-by-as-its-row-measures-it.ts`).
+The measures are no hook point: each is the row's data, read by one function, as a minor title's measure is; no title's
+measure is an effect of its own.
 
 ## The hook points
 
