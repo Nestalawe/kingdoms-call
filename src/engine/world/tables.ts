@@ -352,9 +352,8 @@ export const ENCOUNTER_CLEAR_GOLD_BANDS = KC_THE_GOLD_A_LAIRS_HOARD_HOLDS_BY_ITS
 export function encounterClearGold(feat: ALairAsItsHoardIsStocked | null | undefined): number {
   if (!feat) return 0;
   if (feat._hoardV2) return featureTreasure(feat); // the one hoard figure
-  if (feat._clearGold == null) {
-    feat._clearGold = theGoldALairsHoardHoldsOnADie((feat.monster?.power ?? '') || 'Weak', kcRng());
-  }
+  // rolled once, the first time it is asked (a scout or a clear)
+  feat._clearGold ??= theGoldALairsHoardHoldsOnADie((feat.monster?.power ?? '') || 'Weak', kcRng());
   return feat._clearGold;
 }
 export function ensureLairHoard(
