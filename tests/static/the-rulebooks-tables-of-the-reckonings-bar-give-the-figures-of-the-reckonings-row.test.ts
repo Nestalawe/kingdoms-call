@@ -18,11 +18,15 @@ import { ROOT } from '../../tools/build.ts';
 
 const ROW = KC_THE_RECKONINGS_NUMBERS;
 const BOOK = fs.readFileSync(path.join(ROOT, 'src', 'kingdoms-call-rules.html'), 'utf8');
-const stripTags = (s: string) =>
-  s
-    .replace(/<[^>]*>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+/** A cell's or a step's words: its tags taken off until none is left (a tag a removal leaves whole goes too). */
+const stripTags = (s: string) => {
+  let t = s;
+  for (;;) {
+    const u = t.replace(/<[^>]*>/g, '');
+    if (u === t) return u.replace(/\s+/g, ' ').trim();
+    t = u;
+  }
+};
 /** The rows of the first table after `anchor` in the book, each a list of its cells' words. */
 const theRowsOfTheTableAfter = (anchor: string): string[][] => {
   const from = BOOK.indexOf(anchor);
