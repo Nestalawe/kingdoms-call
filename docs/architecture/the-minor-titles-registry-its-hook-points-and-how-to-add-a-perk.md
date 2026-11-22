@@ -51,19 +51,26 @@ its row's key: `AnImperialTitlesSlug`, the type of each key of `TITLE_DEFS`, bes
 `satisfies Record<AnImperialTitlesSlug, TheEffectsOfAnImperialTitleAtEachHookPoint>`, both ways (the compile test),
 and its order test holds the entries to the rows and each stage's order to the rows' order.
 
-- `turnEnd`, two stages, **an Imperial Title's board**: what the title intelligence tells the realm holding a title
+- `turnEnd`, four stages, **an Imperial Title's board**: what the title intelligence tells the realm holding a title
   each turn, once titles are public (`imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy`,
-  `src/engine/titles/`). **The board an Imperial Title of the realm shows its holder**: the Throne's and the
-  Vaultkeeper's, first. **The board a hero's Imperial Title shows his realm**: the Cartographer's, the Beastlord's and
-  the Wildwarden's, after the Spymaster's ledger. The boards are a turn's-end stage, not `visibility`'s: they are
+  `src/engine/titles/`). Every title is in one stage, and the stages run in this order, each in TITLE_DEFS' order:
+  **the board an Imperial Title of the realm shows its holder** (the Throne, the Vaultkeeper); **the board a hero's
+  Imperial Title shows of each realm's heroes and lore** (the Grand Marshal, the Sea Lord, the Monster-Bane, the
+  Loremaster, the Archmage); **the board a hero's Imperial Title shows of the fallen and of the spies in his lands**
+  (the Hierophant, the Deathpriest, the Spymaster); **the board a hero's Imperial Title shows his realm** (the
+  Cartographer, the Beastlord, the Wildwarden). The boards are a turn's-end stage, not `visibility`'s: they are
   written once a turn, after the final reconcile, where `visibility`'s stages say whether one thing is seen when it is
-  asked. Each effect is handed the holder's seat, the world as its board reads it, the standings and whether he has
-  met a realm, and returns its lines' facts, in its block's old order
-  (`src/engine/rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts`,
-  which declares those kinds). The runner (`theBoardsOfTheImperialTitlesAtAStage`) asks who holds each title of the
-  stage, in its order, and hands each held title's lines to the title intelligence, which writes each for the
-  holder's realm alone, then the line for the realms he hasn't met. The other titles' boards are the function's own
-  blocks.
+  asked.
+- **An effect** is handed the holder's seat, the world as its board reads it, the standings and whether he has met a
+  realm. It returns its board (`TheBoardOfAnImperialTitle`): its lines' facts, in its block's old order; for the
+  Loremaster, the fresh discoveries his scholars may copy; for the Deathpriest, what his Grave-sight files before each
+  line. It draws no die and writes nothing. Each file of effects declares its lines' kinds
+  (`src/engine/rules/the-imperial-titles/`).
+- **The runner** (`theBoardsOfTheImperialTitlesAtAStage`) asks who holds each title of the stage, in its order, and
+  hands each held title's board to the title intelligence before it asks the next. The title intelligence writes each
+  line for the holder's realm alone, filing each Grave-sight find just before its line. Then it draws the Loremaster's
+  copy, the one die of the title intelligence, and adds it to his realm. Last, it writes the line for the realms the
+  holder hasn't met, at every stage but the fallen's and the spies'.
 
 ## The hook points
 
