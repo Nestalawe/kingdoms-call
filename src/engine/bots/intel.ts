@@ -75,7 +75,9 @@ export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 interface ABotDifficultysWeights {
   readonly attackMarginMult: number;
   readonly assaultMarginMult: number;
+  /** The target-score bonus for pressing an at-war rival's province over neutral expansion. */
   readonly rivalBias: number;
+  /** Recruitment never lets total upkeep exceed this fraction of tax income (solvency guard). */
   readonly upkeepCapFrac: number;
 }
 /** The bots' weights for a game, as botTuning works them out. */
@@ -83,13 +85,11 @@ interface TheBotsWeights {
   kingAttackMargin: number;
   heroAttackMargin: number;
   assaultMargin: number;
-  valuableTax: number;
   rivalBias: number;
   taxScoreWeight: number;
   upkeepCapFrac: number;
   goldReserve: number;
   chestShare: number;
-  coalitionTriggerFrac: number;
 }
 /** A bot realm's roles this turn (botRoles, bots/strategy.ts): its field leaders and defenders (heroes' ids), its best
  *  general, his reach and the number of field armies it wants. */
@@ -281,13 +281,10 @@ export const BOT_TUNING = {
   kingAttackMargin: 1.35, // battle-model force ratio a bot KING needs before attacking (≈63% on the fortune curve; kings play safer — a king's death is costly)
   heroAttackMargin: 1.2, // battle-model force ratio a bot HERO needs before attacking (≈58%)
   assaultMargin: 1.4, // combined force ratio needed to launch a concentrated assault (buffers the contingent-unify roll)
-  valuableTax: 7, // tax at/above which a province is "valuable" to hold/reinforce (home capital always is)
-  rivalBias: 8, // target-score bonus for pressing an at-war rival's province over neutral expansion
+  valuableTax: 7, // tax at/above which a province is "valuable" to hold/reinforce (home capital always is); read here, as no difficulty or realm changes it
   taxScoreWeight: 10, // how strongly a target province's tax pulls target selection
-  upkeepCapFrac: 0.9, // recruitment never lets total upkeep exceed this fraction of tax income (solvency guard)
   goldReserve: 3, // gold kept in hand before any recruiting
   chestShare: 0.35, // share of the free treasury the upkeep cap may lean on (a chest carries a wage deficit until conquests pay it back)
-  coalitionTriggerFrac: 0.8, // a front-runner at ≥ this fraction of the Reckoning threshold triggers an anti-leader coalition
 };
 // ── BOT STRENGTH ── 2026-09-26 (Toby item 9): the Easy / Normal / Hard tiers are retired. Every bot realm
 // plays at what was the Hard setting — bolder attack margins, the strongest rival bias, and 97% of income
@@ -310,13 +307,11 @@ export function botTuning(
     kingAttackMargin: BOT_TUNING.kingAttackMargin * d.attackMarginMult,
     heroAttackMargin: BOT_TUNING.heroAttackMargin * d.attackMarginMult,
     assaultMargin: BOT_TUNING.assaultMargin * d.assaultMarginMult,
-    valuableTax: BOT_TUNING.valuableTax,
     rivalBias: d.rivalBias,
     taxScoreWeight: BOT_TUNING.taxScoreWeight,
     upkeepCapFrac: d.upkeepCapFrac,
     goldReserve: BOT_TUNING.goldReserve,
     chestShare: BOT_TUNING.chestShare,
-    coalitionTriggerFrac: BOT_TUNING.coalitionTriggerFrac,
   };
   // Sept 2026 (bot strategy review §2–3): per-realm overlays from the alignment and race the realm was
   // dealt. Each reads a rulebook number, nothing hidden.
