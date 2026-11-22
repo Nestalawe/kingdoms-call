@@ -2,7 +2,7 @@
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
 This file is its part for the economy: the rules of a realm's gold (B-06, T7, the rules pulled out: its economy
-family, from B-06c). The family's other row (the bots' worth of gold) is in [the backlog](../backlog/README.md).
+family, from B-06c), and the bots' worth of gold (B-06h, [below](#the-bots-worth-of-gold-a-bot-versions-weights-by-kind-of-result)).
 
 ## What a rule of the economy is
 
@@ -105,6 +105,29 @@ loot has no number of its own: a coastal raid takes the province's whole tax, an
 alignment abilities' and the discoveries' registries' shares. The spies' gold and the duel purse stay with espionage
 and the duels.
 
+## The bots' worth of gold: a bot version's weights, by kind of result
+
+The rule says what, the bot says how much ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs)).
+The bots' ledger (`botLedger`, `src/engine/bots/strategy.ts`) asks the rules what its gold comes to, and reads what it
+makes of that gold from its version's weights file.
+
+- **What the rules say:** the bots' upkeep (`botUpkeep`) asks `aCompanyDrawsNoWage` and `theWageOfACompany` (a
+  skeletal company's 1g, else its type's price or 2g), as the ledger's own column wages do, and adds each hero's pay.
+  It leaves out what Early Winter's wages add (the Druid's half, the war spoils, the upkeep discoveries, the
+  Host-Leader's cut: KD-432), and the bots' tax income (`botTaxIncome`) is the provinces' bare tax (KD-433): no
+  stage agrees with either, so each keeps its own code until its fix.
+- **What the bot says:** `THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION`
+  (`src/engine/bots/the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts`), keyed by
+  the kind of result, never by the effect. Its `gold` holds the ledger's numbers: the enemy host that puts a realm on a
+  war footing, the share of the income its wages may take then, the chest it keeps then (15% of the wages, 2g to 8g),
+  a small realm (under 15 provinces) and its share of the free treasury (0.6), and the defenders' full strength (3
+  units each) and their share of the wage ceiling (20%). The kinds (`AKindOfResultABotWeighs`) and a kind's shape are
+  in `src/engine/bots/intel.ts`; the file ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind it gives no
+  weights fails to compile. Content holds no bot number.
+- **A later bot version** is a weights file of its own beside this one, of the same kinds and names, for the bots
+  to read in its place (after T7, the old bot played against the new). A new kind (the titles', B-06r; the alignments', P1-19bb8) joins
+  the kinds, and every version's file gives it its weights.
+
 ## The tests
 
 - `tests/static/the-rule-registry-fails-to-compile-when-an-effect-and-its-content-row-part.test.ts`: a row with no
@@ -118,8 +141,11 @@ and the duels.
   (`tests/unit/realm-reports.test.ts`) hold the callers.
 - `tests/unit/a-heros-wage-in-service-is-one-formula-the-turn-the-worlds-making-and-the-release-read.test.ts`: the
   formula against each copy it replaced.
-- The ratchet's `economyNumbersInEngine`, which only falls, and the economy's static test of the functions its rows
-  have taken
+- `tests/unit/the-bots-first-versions-weights-weigh-every-kind-of-result-and-hold-the-numbers-the-ledger-wrote.test.ts`:
+  the weights file weighs every kind and no other (a kind with no weight fails to compile), and holds botLedger's
+  numbers; `tests/unit/the-bots-plan-called-directly.test.ts` holds the ledger and the upkeep on what no game hands them.
+- The ratchet's `economyNumbersInEngine` and `economyNumbersInTheBots`, which only fall, and the economy's static test
+  of the functions its rows have taken
   (`tests/static/the-code-the-economys-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts`).
 
 ## How to add a rule of the economy
