@@ -50,8 +50,8 @@ export function theSpellsMoreAMinorTitlesRowLetsItsHolderCastInHisBestSchool(the
 /** Action spells of one school a hero may cast in a turn (R-123): actionSpellsAllowedPerSchoolEachTurn at his
  *  effective level in it, and the casts his minor titles add if it is his best school (his trained level in it is his
  *  highest in any school: each school tied for it counts). The Cast Spell order hands the casts the minor titles'
- *  registry gives (the Warlock's row: one); the bots and the order form say whether he holds the Warlock
- *  (actionSpellsAHeroMayCastInASchoolEachTurn). */
+ *  registry gives (the Warlock's row: one), and the bots' order check too (botCastLimit, since B-06r); the order form
+ *  says whether he holds the Warlock (actionSpellsAHeroMayCastInASchoolEachTurn). */
 export function actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd(
   hero: AHeroAsTheWarlocksRuleReadsHim | null | undefined,
   school: string,
@@ -65,7 +65,7 @@ export function actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAd
   );
 }
 
-/** Action spells of one school a hero may cast in a turn, as the bots and the order form ask it, saying whether he
+/** Action spells of one school a hero may cast in a turn, as the order form asks it, saying whether he
  *  holds the Warlock's minor title: the casts added are then the Warlock's row's (the one title whose row names them: a
  *  unit case), else none. */
 export function actionSpellsAHeroMayCastInASchoolEachTurn(

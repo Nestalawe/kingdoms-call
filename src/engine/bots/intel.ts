@@ -64,10 +64,11 @@ interface AHeroWhoseSkillsAreKnown {
 // (docs/decisions/README.md): the bot asks a rule what an effect does (a company's wage: 3 gold a turn), and its
 // version's weights file (the-weights-of-the-bots-first-version-…ts) says what it makes of a unit of each kind of
 // result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
-// it gives no weights fails to compile. The economy's is the first kind; the titles' and the alignments' join it
-// (B-06r, P1-19bb8). The weights are the bots', never content's: content holds the rules only.
-/** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs. */
-export type AKindOfResultABotWeighs = 'gold';
+// it gives no weights fails to compile. The economy's (a gold) is the first kind, the titles' (a title, B-06r) the
+// second; the alignments' joins them (P1-19bb8). The weights are the bots', never content's: content holds the rules only.
+/** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, and an
+ *  Imperial Title (held, or chased by what its row measures). */
+export type AKindOfResultABotWeighs = 'gold' | 'title';
 /** A kind of result's weights in a bot version: each a number, named for what it weighs. */
 export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 /** The bots' weights at a difficulty. */

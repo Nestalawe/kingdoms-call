@@ -122,8 +122,9 @@ battle is a stage of `strength`, beside the commander's items.
   discoveries' factor and the rounding down (`resolveExploreOrder`). The casting limit and the share mapped stay rules
   on plain values: the order hands them what the registry gives
   (`actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd`,
-  `theShareOfAProvinceAnExploreOrderMapsByHisTitlesFactor`); the bots and the order form still say whether he holds
-  the Warlock or the Trailblazer, and the rule reads the one row that names the number.
+  `theShareOfAProvinceAnExploreOrderMapsByHisTitlesFactor`), and the bots' order check the casts too (`botCastLimit`);
+  the order form still says whether he holds the Warlock or the Trailblazer, and the rule reads the one row that names
+  the number.
 - `turnEnd`, two stages, each entry naming the rule of the
   [economy's registry](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md) whose gold or cut its
   title gives; the numbers and the runs are that registry's

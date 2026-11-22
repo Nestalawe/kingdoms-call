@@ -1,4 +1,8 @@
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
+import type {
+  AHerosDeedsAnImperialTitleCounts,
+  AnImperialTitleAsItsRowWritesIt,
+} from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS } from '../army-tables.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -19,6 +23,7 @@ import {
   botBelievedOwner,
 } from './intel.ts';
 import { BOT_SCHOOLS } from './schools.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import { botPins } from './phase-one.ts';
 import { _charTitleMerit, computeStandings } from '../titles/reckoning.ts';
 import {
@@ -595,6 +600,118 @@ export function botCrossTrainSkill(G: GameState, c: Character, pi: number) {
   }
   return bestSkill;
 }
+// ── The bots' reading of an Imperial Title's row (B-06r, T7: the rules pulled out, the bots' worth of a title) ──
+// The rule says what, the bot says how much (docs/decisions/README.md): each title's row says what its holder is
+// measured by (`howTheHolderIsFound`), and the bots' first version says which of its court's skills it trains towards
+// the title by that measure, and what a level of them and the title are worth to it (its weights' `title`). A title
+// none of these ways reads is chased from the standings alone.
+/** How an Imperial Title's holder is found, as its row writes it. */
+type HowAnImperialTitlesHolderIsFound = AnImperialTitleAsItsRowWritesIt['howTheHolderIsFound'];
+/** The name of one of the bots' first version's weights of a title. */
+type AWeightOfATitle = keyof (typeof THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION)['title'];
+/** A way the bots train their court towards an Imperial Title, by what the title's row measures. */
+interface AWayTheBotsTrainTowardsAnImperialTitle {
+  /** Whether a title's row measures its holder in the way this one trains towards. */
+  readonly itTrainsTowards: (how: HowAnImperialTitlesHolderIsFound) => boolean;
+  /** The skills it trains, in the order a tie between two of a hero's levels goes (to the first). */
+  readonly theSkills: readonly string[];
+  /** What each level of them its court holds is worth, and what the title is worth before any level (none: nothing). */
+  readonly eachLevelIsWorth: AWeightOfATitle;
+  readonly theTitleIsWorthBeforeAnyLevel: AWeightOfATitle | null;
+}
+/** The fighting skills the bots train towards a title won by fighting, in the order a tie goes. */
+const THE_FIGHTING_SKILLS_THE_BOTS_TRAIN_TOWARDS_A_TITLE: readonly string[] = ['melee', 'tactical', 'march', 'archery'];
+/** The magic schools the bots train towards a title of the schools, in the order a tie goes (deliberately not
+ *  KC_MAGIC_SCHOOLS). */
+const THE_MAGIC_SCHOOLS_THE_BOTS_TRAIN_TOWARDS_A_TITLE: readonly string[] = [
+  'elemental',
+  'necromancy',
+  'psychic',
+  'white',
+  'illusory',
+];
+/** The skills a title may measure with its holder's deeds that the bots train towards it, in the order they weigh
+ *  those titles. */
+const THE_SKILLS_A_TITLE_MEASURES_THAT_THE_BOTS_TRAIN_TOWARDS_IT: readonly string[] = [
+  'sage',
+  'naval',
+  'spy',
+  'explorer',
+];
+/** The deeds of an Imperial Title (its row's `theDeeds`) each specialist's work earns: the slayer's the guardians' hit
+ *  points he slays, the scholar's his discoveries, the spy's his acts of espionage, the scout's the ground he maps. */
+export const THE_DEEDS_OF_A_TITLE_EACH_SPECIALISTS_WORK_EARNS = {
+  slayer: 'monster',
+  scholar: 'discoveries',
+  spy: 'spyActions',
+  scout: 'explored',
+} satisfies Readonly<Record<string, AHerosDeedsAnImperialTitleCounts>>;
+/** A specialist's role whose work earns an Imperial Title's deeds. */
+type ARoleWhoseWorkEarnsATitlesDeeds = keyof typeof THE_DEEDS_OF_A_TITLE_EACH_SPECIALISTS_WORK_EARNS;
+/** The ways the bots' first version trains its court towards an Imperial Title, in the order it weighs the titles (a
+ *  tie to the first): a title won by battles on land and one won by slaying guardians, each by the fighting skills; a
+ *  title of the magic schools, by the schools; and a title of each skill it trains towards, by that skill. */
+const THE_WAYS_THE_BOTS_TRAIN_TOWARDS_AN_IMPERIAL_TITLE: readonly AWayTheBotsTrainTowardsAnImperialTitle[] = [
+  {
+    itTrainsTowards: (how) =>
+      how.theHolder === 'a hero' &&
+      how.theMeasure === 'his level of a skill and his deeds' &&
+      how.theBattlesItsDeedsCount === 'on land',
+    theSkills: THE_FIGHTING_SKILLS_THE_BOTS_TRAIN_TOWARDS_A_TITLE,
+    eachLevelIsWorth: 'theWorthOfEachLevelOfAFightingSkillTowardsATitleWonByFighting',
+    theTitleIsWorthBeforeAnyLevel: 'theWorthOfATitleWonByBattlesOnLandBeforeAnyLevel',
+  },
+  {
+    itTrainsTowards: (how) =>
+      how.theHolder === 'a hero' &&
+      how.theMeasure === 'his deeds' &&
+      how.theDeeds === THE_DEEDS_OF_A_TITLE_EACH_SPECIALISTS_WORK_EARNS.slayer,
+    theSkills: THE_FIGHTING_SKILLS_THE_BOTS_TRAIN_TOWARDS_A_TITLE,
+    eachLevelIsWorth: 'theWorthOfEachLevelOfAFightingSkillTowardsATitleWonByFighting',
+    theTitleIsWorthBeforeAnyLevel: 'theWorthOfATitleWonBySlayingGuardiansBeforeAnyLevel',
+  },
+  {
+    itTrainsTowards: (how) =>
+      how.theHolder === 'a hero' &&
+      how.theMeasure === 'his levels in the magic schools and the items he uses that raise one',
+    theSkills: THE_MAGIC_SCHOOLS_THE_BOTS_TRAIN_TOWARDS_A_TITLE,
+    eachLevelIsWorth: 'theWorthOfEachLevelOfTheSkillsATitleMeasures',
+    theTitleIsWorthBeforeAnyLevel: null,
+  },
+  ...THE_SKILLS_A_TITLE_MEASURES_THAT_THE_BOTS_TRAIN_TOWARDS_IT.map(
+    (theSkill): AWayTheBotsTrainTowardsAnImperialTitle => ({
+      itTrainsTowards: (how) =>
+        how.theHolder === 'a hero' &&
+        how.theMeasure === 'his level of a skill and his deeds' &&
+        how.theSkill === theSkill,
+      theSkills: [theSkill],
+      eachLevelIsWorth: 'theWorthOfEachLevelOfTheSkillsATitleMeasures',
+      theTitleIsWorthBeforeAnyLevel: null,
+    }),
+  ),
+];
+/** How the title of the key given measures its holder, as its row writes it (none for a key with no row: a saved
+ *  choice can hold one). */
+function howTheHolderOfTheTitleIsFound(theKey: string): HowAnImperialTitlesHolderIsFound | undefined {
+  return TITLE_DEFS.find((t) => t.key === theKey)?.howTheHolderIsFound;
+}
+/** The way the bots train towards the title of the key given, if they train towards it. */
+function theWayTheBotsTrainTowardsTheTitle(theKey: string): AWayTheBotsTrainTowardsAnImperialTitle | undefined {
+  const how = howTheHolderOfTheTitleIsFound(theKey);
+  return how && THE_WAYS_THE_BOTS_TRAIN_TOWARDS_AN_IMPERIAL_TITLE.find((way) => way.itTrainsTowards(how));
+}
+/** Whether a title the realm chases counts the deeds the work of the role given earns (botSpecialistRoles: it wants one
+ *  more of the role). */
+export function aTitleTheRealmChasesCountsTheDeedsOfTheRole(
+  titles: readonly string[],
+  theRole: ARoleWhoseWorkEarnsATitlesDeeds,
+): boolean {
+  const theDeeds = THE_DEEDS_OF_A_TITLE_EACH_SPECIALISTS_WORK_EARNS[theRole];
+  return titles.some((theKey) => {
+    const how = howTheHolderOfTheTitleIsFound(theKey);
+    return how?.theHolder === 'a hero' && 'theDeeds' in how && how.theDeeds === theDeeds;
+  });
+}
 // TITLE STRATEGY. The throne (winning) is pursued by runBotReckoning; on top of that each bot picks
 // 2-3 MAIN titles to chase, drawn from its roster's aptitudes, and biases which skills it drills
 // toward them. Most of the merit already flows from the aggressive play elsewhere (fighting → Grand
@@ -607,6 +724,7 @@ export function botTargetTitles(G: GameState, pi: number): string[] {
   // Sept 2026 (review II A6): recomputed every turn from the standings the reports publish — a title we hold is
   // defended, a title whose holder's merit our best character already reaches 60% of is chased; only the
   // skill-based fallback below remains for a realm with no standings yet. Roles read the picks (botSpecialistRoles).
+  const W = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.title;
   const cache = botTurnCache(G);
   cache.titles ??= {};
   const held = cache.titles[pi];
@@ -620,7 +738,7 @@ export function botTargetTitles(G: GameState, pi: number): string[] {
       const h = st[t.key];
       if (!h) return;
       if (h.playerIndex === pi) {
-        picks.push([t.key, 3]);
+        picks.push([t.key, W.theWorthOfATitleTheRealmHolds]);
         return;
       }
       let best = 0;
@@ -634,12 +752,12 @@ export function botTargetTitles(G: GameState, pi: number): string[] {
         }
       });
       const ratio = h.merit > 0 ? best / h.merit : best > 0 ? 1 : 0;
-      if (ratio >= 0.6) picks.push([t.key, ratio]);
+      if (ratio >= W.theShareOfItsHoldersMeritThatMakesATitleWorthChasing) picks.push([t.key, ratio]);
     });
     if (picks.length) {
       const out = picks
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
+        .slice(0, W.theMostTitlesARealmChases)
         .map((x) => x[0]);
       cache.titles[pi] = out;
       p._botTitles = out;
@@ -652,47 +770,29 @@ export function botTargetTitles(G: GameState, pi: number): string[] {
     cache.titles[pi] = p._botTitles;
     return p._botTitles;
   }
-  let magic = 0,
-    combat = 0,
-    naval = 0,
-    sage = 0,
-    spy = 0,
-    expl = 0;
-  theCharactersOf(G)
-    .filter((c): c is Character => c?.player === pi)
-    .forEach((c) => {
-      const s = asItsGuardReadsIt(c.skills) ?? {};
-      magic +=
-        (Number(s.white) || 0) +
-        (Number(s.psychic) || 0) +
-        (Number(s.illusory) || 0) +
-        (Number(s.elemental) || 0) +
-        (Number(s.necromancy) || 0);
-      combat += (Number(s.melee) || 0) + (Number(s.tactical) || 0) + (Number(s.march) || 0) + (Number(s.archery) || 0);
-      naval += Number(s.naval) || 0;
-      sage += Number(s.sage) || 0;
-      spy += Number(s.spy) || 0;
-      expl += Number(s.explorer) || 0;
-    });
-  // the four new titles join the bot's candidate list. `explore` no longer stands for the
-  // Loremaster alone \u2014 Sage and Explorer are now separate prizes \u2014 so each is weighed on
-  // its own skill. The beast titles are deed-only and are not chased by training, so they are
-  // absent here.
-  const cand: [string, number][] = [
-    ['marshal', combat + 5],
-    ['monster', combat + 2],
-    ['arch', magic * 2],
-    ['lore', sage * 2],
-    ['sea', naval * 2],
-    ['spy', spy * 2],
-    ['carto', expl * 2],
-  ];
+  // With none worth chasing in the standings: each title the bots train towards, in their order, worth its court's
+  // levels in the skills they train towards it (every hero of the realm's, the fallen too) and what it is worth before
+  // any level. The titles of the beasts' deeds are not chased by training, so no way reads them.
+  const theCourt = theCharactersOf(G).filter((c): c is Character => c?.player === pi);
+  const theCourtsLevelsIn = (skills: readonly string[]) =>
+    theCourt.reduce((n, c) => {
+      const s: Readonly<Partial<Record<string, number>>> = asItsGuardReadsIt(c.skills) ?? {};
+      return n + skills.reduce((m, k) => m + (Number(s[k]) || 0), 0);
+    }, 0);
+  const cand: [string, number][] = THE_WAYS_THE_BOTS_TRAIN_TOWARDS_AN_IMPERIAL_TITLE.flatMap((way) =>
+    TITLE_DEFS.filter((t) => way.itTrainsTowards(t.howTheHolderIsFound)).map((t): [string, number] => [
+      t.key,
+      theCourtsLevelsIn(way.theSkills) * W[way.eachLevelIsWorth] +
+        (way.theTitleIsWorthBeforeAnyLevel === null ? 0 : W[way.theTitleIsWorthBeforeAnyLevel]),
+    ]),
+  );
+  const theFirstInTheBotsOrder = cand.slice(0, W.theTitlesARealmChasesWhenNoneIsWorthAPoint).map((x) => x[0]);
   cand.sort((a, b) => b[1] - a[1]);
   const picks = cand
     .filter((x) => x[1] > 0)
-    .slice(0, 3)
+    .slice(0, W.theMostTitlesARealmChases)
     .map((x) => x[0]);
-  p._botTitles = picks.length ? picks : ['marshal', 'monster'];
+  p._botTitles = picks.length ? picks : theFirstInTheBotsOrder;
   return p._botTitles;
 }
 export function botTitleFocusSkill(c: Character, titles: readonly string[] | null | undefined) {
@@ -713,29 +813,11 @@ export function botTitleFocusSkill(c: Character, titles: readonly string[] | nul
     }
     return best;
   };
+  // the skills the bots train towards each title, by what its row measures (none for a title they don't train towards)
   for (const t of titles ?? []) {
-    if (t === 'arch') {
-      const m = pickHighest(['elemental', 'necromancy', 'psychic', 'white', 'illusory']);
-      if (m) return m;
-    } // tie-break ORDER — deliberately not KC_MAGIC_SCHOOLS
-    if (t === 'marshal' || t === 'monster') {
-      const m = pickHighest(['melee', 'tactical', 'march', 'archery']);
-      if (m) return m;
-    }
-    if (t === 'lore') {
-      const m = pickHighest(['sage']);
-      if (m) return m;
-    }
-    if (t === 'sea') {
-      const m = pickHighest(['naval']);
-      if (m) return m;
-    }
-    if (t === 'spy') {
-      const m = pickHighest(['spy']);
-      if (m) return m;
-    }
-    if (t === 'carto') {
-      const m = pickHighest(['explorer']);
+    const way = theWayTheBotsTrainTowardsTheTitle(t);
+    if (way) {
+      const m = pickHighest(way.theSkills);
       if (m) return m;
     }
   }

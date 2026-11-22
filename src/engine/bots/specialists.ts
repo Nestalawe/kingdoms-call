@@ -24,6 +24,7 @@ import {
 } from './intel.ts';
 import { botIsLoadedFleet, botSeaCap } from './war.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import {
   BOT_NAVAL_TYPES,
   BOT_SLAYER_FIGHTERS_ONLY,
@@ -77,6 +78,7 @@ import {
   botPathLenAny,
   botPlannedAttackTarget,
   botSpyTarget,
+  aTitleTheRealmChasesCountsTheDeedsOfTheRole,
   botTargetTitles,
 } from './spellcraft.ts';
 import { botPins } from './phase-one.ts';
@@ -230,18 +232,22 @@ export function botSpecialistRoles(
     0,
   );
   const titles = botTargetTitles(G, pi); // review II A6: a chased title buys a second specialist
+  // of the role whose work earns the title's deeds (its row's), as many more as the bots' weights of a title say
+  const theMoreAChasedTitleWants = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.title.theSpecialistsMoreAChasedTitleWants;
+  const aChasedTitleWantsMore = (theRole: Parameters<typeof aTitleTheRealmChasesCountsTheDeedsOfTheRole>[1]) =>
+    aTitleTheRealmChasesCountsTheDeedsOfTheRole(titles, theRole) ? theMoreAChasedTitleWants : 0;
   const want = {
-    slayer: 1 + (lairs >= 6 ? 1 : 0) + (titles.includes('monster') ? 1 : 0), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once six lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
+    slayer: 1 + (lairs >= 6 ? 1 : 0) + aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once six lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
     scout: unmapped > 0 ? Math.min(3, 1 + Math.floor(unmapped / 6)) : 0,
-    scholar: (land >= 10 ? 2 : 1) + (p?.alignment === 'Neutral' ? 1 : 0) + (titles.includes('lore') ? 1 : 0), // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only at 10+ land — gold and armies come first (12 in the first cut cost a third of the discoveries)
-    spy: (met || turn >= 3 ? (war ? 2 : 1) : 0) + (titles.includes('spy') ? 1 : 0),
+    scholar: (land >= 10 ? 2 : 1) + (p?.alignment === 'Neutral' ? 1 : 0) + aChasedTitleWantsMore('scholar'), // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only at 10+ land — gold and armies come first (12 in the first cut cost a third of the discoveries)
+    spy: (met || turn >= 3 ? (war ? 2 : 1) : 0) + aChasedTitleWantsMore('spy'),
     thief: met || turn >= 4 ? 1 : 0,
     mage:
       heroes.some((c) => BOT_SCHOOLS.some((k) => (Number(theSkillsOf(c)[k]) || 0) >= 1)) || turn >= 3
         ? 1 + (land >= 10 ? 1 : 0)
         : 0, // 2026-09-26 (Toby): a mage from the first hero who knows a school
   };
-  if (titles.includes('carto')) want.scout += 1;
+  if (aTitleTheRealmChasesCountsTheDeedsOfTheRole(titles, 'scout')) want.scout += theMoreAChasedTitleWants;
   // keep one hero free to muster / carry troops once there is a realm to feed
   const slots = Math.max(Math.min(2, heroes.length), heroes.length - (land >= 3 ? 1 : 0)); // the slayer and the scholar are never squeezed out by the feeder reserve
   const order: readonly ASpecialistsRole[] = [

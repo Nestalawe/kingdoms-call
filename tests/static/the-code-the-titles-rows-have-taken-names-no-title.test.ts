@@ -1,5 +1,5 @@
 // The code the titles' rows have taken names no title (B-06, T7, the rules pulled out: its Reckoning and titles
-// family, B-06i to B-06r): each function (or file's top level) the family's rows have taken holds no string naming an
+// family, B-06i to B-06r, the bots' reading of the titles included): each function (or file's top level) the family's rows have taken holds no string naming an
 // Imperial Title or a minor title by its key or its name (`'duelist'`, `'The Duelist'`), whatever the code does with it
 // (compared, a `case`, a lookup, a list, a map's key or value, a literal type, or in a function nested inside). It
 // reads the title's row instead. Each row adds what it takes to TAKEN, which is empty until the first of them
@@ -128,6 +128,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/titles/title-intel-for-each-holder-and-the-titles-won-and-lost-this-turn.ts',
     'imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy',
     "B-06o and B-06p, each title's board, to the Imperial Titles' registry (turnEnd)",
+  ],
+  [
+    'src/engine/bots/spellcraft.ts',
+    'botTargetTitles',
+    "B-06r, the titles a bot realm chases by training, by what each row measures, and their worth, to the bots' weights",
+  ],
+  [
+    'src/engine/bots/spellcraft.ts',
+    'botTitleFocusSkill',
+    'B-06r, the skills the bots train towards each title, by what its row measures',
+  ],
+  [
+    'src/engine/bots/spellcraft.ts',
+    TOP,
+    "B-06r, the bots' ways of training towards a title and the deeds each specialist's work earns, by the rows' measures",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botSpecialistRoles',
+    "B-06r, a chased title's specialist, the role whose work earns its row's deeds",
+  ],
+  [
+    'src/engine/bots/economy.ts',
+    'botCastLimit',
+    "B-06r, the Warlock's cast (read by his holders' key before), to the minor titles' registry (orderValidity)",
   ],
 ];
 

@@ -4,7 +4,8 @@
 // compile. Here, as types the compiler checks: the file weighs every kind and no other, it meets the Record of the
 // kinds, and it fails the Record of the kinds with one more (a kind with no weight), each a constant whose type holds
 // only while that is so (no comment that waives an error). Then the gold's weights, each the number botLedger wrote
-// before T7, in its place: a change of one is a change of the bots' play (the balance matrix), never a refactor.
+// before T7, and a title's (B-06r), each the number botTargetTitles and botSpecialistRoles wrote, in its place: a
+// change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module is imported and its numbers read; its types are the compiler's (`npm run check`),
 // which a lower level can't run.
@@ -46,5 +47,19 @@ test("a gold's weights are the numbers botLedger wrote before T7, each in its pl
     theShareOfTheFreeTreasuryASmallRealmsWagesMayLeanOn: 0.6,
     theUnitsEachDefenderLeadsAtFullStrength: 3,
     theShareOfTheWageCeilingHeldBackForTheDefenders: 0.2,
+  });
+});
+
+test("a title's weights are the numbers botTargetTitles and botSpecialistRoles wrote before T7, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.title).toEqual({
+    theWorthOfATitleTheRealmHolds: 3,
+    theShareOfItsHoldersMeritThatMakesATitleWorthChasing: 0.6,
+    theMostTitlesARealmChases: 3,
+    theWorthOfEachLevelOfAFightingSkillTowardsATitleWonByFighting: 1,
+    theWorthOfEachLevelOfTheSkillsATitleMeasures: 2,
+    theWorthOfATitleWonByBattlesOnLandBeforeAnyLevel: 5,
+    theWorthOfATitleWonBySlayingGuardiansBeforeAnyLevel: 2,
+    theTitlesARealmChasesWhenNoneIsWorthAPoint: 2,
+    theSpecialistsMoreAChasedTitleWants: 1,
   });
 });

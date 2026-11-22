@@ -17,7 +17,7 @@
     "alignmentChecksInEngine": 70,
     "economyNumbersInEngine": 20,
     "economyNumbersInTheBots": 0,
-    "titleChecksInEngine": 9,
+    "titleChecksInEngine": 0,
     "eslintSuppressions": 216,
     "knownArchitectureViolations": 0,
     "unusedCode": 9
