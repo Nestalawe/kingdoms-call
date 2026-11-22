@@ -31,7 +31,9 @@ a tie; a measure of 0 leaves it vacant). It is one row in
 
 An entry acts only at the hook points `TheHookPointsAMinorTitlesPerkActsAt` names, each filled by a row of the
 family; a perk not yet at its stage is checked where it acts, by the holders worked out at the turn's start (`charMinor`
-and its kin). The runner of a stage asks its caller who holds a title (a function, asked only of a title that acts).
+and its kin). The runner of a stage asks its caller who holds a title (a function, asked only of a title that acts). The stages are
+the shared hook points' (`TheStagesOfEachHookPoint`), as the rule registry's guide has them: a title's strength in a
+battle is a stage of `strength`, beside the commander's items.
 
 - `personalCombat`, **a hero's titles add to his skills**: the Duelist (Melee), the Marksman (Archery), the
   Widowmaker and the Relic-Hunter (both) add their levels to his Melee and his Archery in a personal combat, their raw
@@ -39,8 +41,16 @@ and its kin). The runner of a stage asks its caller who holds a title (a functio
   `theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat`). Each effect reads its levels from its title's rows of
   `SKILL_EXTRA_MINORS` of scope `'combat'`, which the hero's card (`extraSkillBonuses`) reads too
   (`src/engine/rules/the-minor-titles/a-heros-titles-add-to-his-skills-in-a-personal-combat.ts`).
-- `strength` (B-06k): the Strategist's Tactical in a battle; the Naturalist, the Cavalier, the Beastmaster and the
-  Ironclad lift the units their holder leads.
+- `strength`, two stages (`src/engine/rules/the-minor-titles/a-heros-titles-add-to-his-tactical-and-lift-the-units-he-leads-in-a-battle.ts`).
+  **A hero's titles add to his Tactical**: the Strategist adds his levels from his title's rows of `SKILL_EXTRA_MINORS`
+  of scope `'battle'`, wherever a battle reads a commander's Tactical (`commandScore`, both sides of both battles),
+  before a curse halves it (`theLevelsAHerosTitlesAddToHisTacticalInABattle`). **The commander's minor titles**: the
+  Naturalist, the Beastmaster, the Cavalier and the Ironclad lift the companies of their kind he leads, each by its
+  row's `theCompaniesItsHolderLeadsFightStronger` (the kind, ×1.05, the perk), each step rounded before the next, a
+  perk two titles give (the Naturalist's and the Beastmaster's) once (armStr, after his Druid mastery, through
+  `theStrengthOfAUnitOnceItsCommandersMinorTitlesLiftIt`). The step and its product are on plain values
+  (`rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts`),
+  which the army card reads too, in the order its rows give; a unit case holds that order to the stage's.
 - `movementCost`, `orderValidity` and `orderOutcome` (B-06l): the Swift and the Sea-Wolf's movement points; the
   Shadow, the Loreseeker, the Trailblazer, the Colossus and the Warlock's orders.
 - `turnEnd` (B-06m): the Host-Leader's cut of the wages. The Cutpurse's, the Champion of the People's and the
