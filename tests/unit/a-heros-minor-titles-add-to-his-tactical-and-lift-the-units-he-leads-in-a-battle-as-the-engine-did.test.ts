@@ -8,7 +8,8 @@
 //   fleet that is a Creature) and of none, at several strengths, the strength and the perks are the old rule's (written
 //   here as it was), both by the army card's rule and by armStr (its ladder's words too, in their order); the
 //   Naturalist and the Beastmaster on one hero lift a unit once; each step rounds before the next.
-// - The order: the registry's order of the stage is the army card's, read from the rows; each effect reads its row.
+// - The order: the registry's order of the stage is the army card's, read from the rows; each title's entry is its
+//   effect, whose step is its row's on the units the old rule lifted, and nothing on any other.
 // - The Strategist: in each of the five places, a holder of Tactical 1 fights as a hero of Tactical 2 who holds none,
 //   and not as one of Tactical 1 (commandScore's figure; the Tactical each battle records on its lines).
 // Level 1 (unit): armStr and commandScore are functions of the turn's context; the battles are called directly
@@ -34,6 +35,7 @@ import {
 import { THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS } from '../../src/engine/rules/the-minor-titles/a-heros-titles-add-to-his-tactical-and-lift-the-units-he-leads-in-a-battle.ts';
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES,
+  THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS,
   theLevelsAHerosTitlesAddToHisTacticalInABattle,
 } from '../../src/engine/rules/the-registry-of-the-minor-titles-perks.ts';
 import type { AModifierOfAUnitInTheLadder } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
@@ -171,25 +173,30 @@ describe("the commander's minor titles lift the units he leads", () => {
     });
   });
 
-  test("the registry's order of the stage is the army card's, read from the rows, and each effect reads its row", () => {
+  test("the registry's order of the stage is the army card's, read from the rows, and each title's entry steps as its row says", () => {
     expect([...THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.strength["the commander's minor titles"]]).toEqual([
       ...THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER,
     ]);
     expect([...THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER]).toEqual(THE_TITLES);
+    /** The units each title lifts, as the old rule wrote them. */
+    const theOldKind: Readonly<Record<AMinorTitleWithAnArmyPerk, (type: string) => boolean>> = {
+      naturalist: (type) => CREATURE_ARMIES.has(type) || MONSTER_ARMIES.has(type),
+      beastmaster: (type) => CREATURE_ARMIES.has(type) || MONSTER_ARMIES.has(type),
+      cavalier: (type) => MINOR_CAV.has(type),
+      ironclad: (type) => MINOR_HEAVY.has(type),
+    };
     for (const title of THE_TITLES) {
       const row = MINOR_TITLES.find((t) => t.key === title);
       const perk =
         row && 'theCompaniesItsHolderLeadsFightStronger' in row ? row.theCompaniesItsHolderLeadsFightStronger : null;
       expect(perk?.by, `${title}'s row`).toBe(1.05);
-      const lifted = THE_UNITS.filter((type) =>
-        THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS[title]({ unitType: type }),
-      );
-      expect(
-        THE_UNITS.map((type) => THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS[title]({ unitType: type })).filter(
-          (step) => step !== null,
-        ),
-        `${title}'s steps`,
-      ).toEqual(lifted.map(() => ({ multipliesBy: perk?.by, thePerk: perk?.thePerk })));
+      const theEntrysEffect = THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS[title].strength["the commander's minor titles"];
+      expect(theEntrysEffect, `${title}'s entry`).toBe(THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS[title]);
+      for (const type of [...THE_UNITS, ...MINOR_CAV, ...MINOR_HEAVY, ...CREATURE_ARMIES, ...MONSTER_ARMIES]) {
+        expect(theEntrysEffect({ unitType: type }), `${title}'s step on ${type}`).toEqual(
+          theOldKind[title](type) ? { multipliesBy: perk?.by, thePerk: perk?.thePerk } : null,
+        );
+      }
     }
   });
 });
