@@ -1,30 +1,6 @@
 import { type ARealmAsTheSetUpHandsIt } from './the-worlds-making/what-every-stage-shares-the-shapes-it-hands-on-and-its-two-checks.ts';
 import { THE_WORLDS_MAKINGS_STAGES_IN_THE_ORDER_THEY_RUN } from './the-worlds-making/the-stages-in-the-order-they-run.ts';
 
-// The stages' functions, S0 to S17, from their list (the one home of their order and their names): each name must be
-// its entry's function's, in the list's order, and generateNewGame calls each once in that order
-// (tests/unit/the-world-is-made-by-the-stages-its-list-holds-each-once-in-the-lists-order.test.ts).
-const [
-  { run: theSetUpTheMapsGridAndTheProvincesNames },
-  { run: theCapitalsPlacedAsFarApartAsTheMapAllows },
-  { run: eachHomesRingTailoredAndTheSeasFillRates },
-  { run: everyProvinceMadeItsTerrainTaxArmiesAndLairs },
-  { run: theRacesDealtToTheirHeartlandsInEqualShares },
-  { run: theCoastalFleetsAHumanoidShoreOffers },
-  { run: theSeasByKindPrimalPoorWatersAndOpenWater },
-  { run: theSeaFeaturesAndTheirGuardiansInEverySea },
-  { run: aCoastalHomeBordersAnOpenWaterSea },
-  { run: eachHomeTailoredAndItsKingAndHeroesMade },
-  { run: theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome },
-  { run: theNeutralRacesRebalancedToWithinOneProvince },
-  { run: everyLandProvinceLiftedToTheTaxFloor },
-  { run: everyCoastalHumanoidProvinceOffersItsRacesFleet },
-  { run: everyNeutralProvincesDefendersBroughtInsideItsTaxsBand },
-  { run: everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits },
-  { run: everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince },
-  { run: theWorldNamedItsRealmsStatesLairsAndHitPointsSetAndHandedOn },
-] = THE_WORLDS_MAKINGS_STAGES_IN_THE_ORDER_THEY_RUN;
-
 export {
   SEA_PCT_DEFAULT,
   SEA_PCT_MAX,
@@ -37,6 +13,30 @@ export function generateNewGame(
   maxTurns: number,
   genOpts: { readonly seaPct?: unknown } | null | undefined,
 ) {
+  // The stages' functions, S0 to S17, from their list (the one home of their order and their names), read as the world
+  // is made, not as the module loads (the list's file imports every stage's): each name must be its entry's function's,
+  // in the list's order, and each is called once in that order
+  // (tests/unit/the-world-is-made-by-the-stages-its-list-holds-each-once-in-the-lists-order.test.ts).
+  const [
+    { run: theSetUpTheMapsGridAndTheProvincesNames },
+    { run: theCapitalsPlacedAsFarApartAsTheMapAllows },
+    { run: eachHomesRingTailoredAndTheSeasFillRates },
+    { run: everyProvinceMadeItsTerrainTaxArmiesAndLairs },
+    { run: theRacesDealtToTheirHeartlandsInEqualShares },
+    { run: theCoastalFleetsAHumanoidShoreOffers },
+    { run: theSeasByKindPrimalPoorWatersAndOpenWater },
+    { run: theSeaFeaturesAndTheirGuardiansInEverySea },
+    { run: aCoastalHomeBordersAnOpenWaterSea },
+    { run: eachHomeTailoredAndItsKingAndHeroesMade },
+    { run: theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome },
+    { run: theNeutralRacesRebalancedToWithinOneProvince },
+    { run: everyLandProvinceLiftedToTheTaxFloor },
+    { run: everyCoastalHumanoidProvinceOffersItsRacesFleet },
+    { run: everyNeutralProvincesDefendersBroughtInsideItsTaxsBand },
+    { run: everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits },
+    { run: everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince },
+    { run: theWorldNamedItsRealmsStatesLairsAndHitPointsSetAndHandedOn },
+  ] = THE_WORLDS_MAKINGS_STAGES_IN_THE_ORDER_THEY_RUN;
   // S0 to S2 (B-06v), each in its own file (src/engine/world/the-worlds-making/): the set-up, the capitals, each home's ring
   const {
     cols,

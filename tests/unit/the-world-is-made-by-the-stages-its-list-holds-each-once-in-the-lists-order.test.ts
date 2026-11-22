@@ -1,7 +1,7 @@
 // The world is made by the stages its list holds (src/engine/world/the-worlds-making/the-stages-in-the-order-they-run.ts,
 // B-06ab), each once, in the list's order:
-// - generate.ts takes the stages' functions from the list, one name an entry, each its entry's function's own name, in
-//   the list's order, and imports none from a stage's file;
+// - generateNewGame takes the stages' functions from the list as it starts (not as its module loads), one name an
+//   entry, each its entry's function's own name, in the list's order, and generate.ts imports none from a stage's file;
 // - generateNewGame calls each of them once, in the list's order (a stage dropped, added or moved fails it);
 // - the list's ids are S0, S1, … in order, and each names a function of its own;
 // - what the tools read from the list's syntax tree (tools/the-worlds-makings-stages-read-from-their-list-in-src.ts:
@@ -34,6 +34,10 @@ function theStagesIn(text: string): { bound: string[]; called: string[]; importe
     if (ts.isImportDeclaration(s) && ts.isStringLiteral(s.moduleSpecifier))
       if (/\/s\d\d-/.test(s.moduleSpecifier.text)) importedFromAStagesFile.push(s.moduleSpecifier.text);
     if (ts.isFunctionDeclaration(s) && s.name?.text === 'generateNewGame') body = s.body;
+  }
+  if (!body) throw new Error(`${GENERATE} declares no generateNewGame`);
+  // The binding from the list: a statement of generateNewGame's own body (not the module's top level, read as it loads).
+  for (const s of body.statements) {
     if (ts.isVariableStatement(s))
       for (const d of s.declarationList.declarations) {
         if (!d.initializer || !ts.isIdentifier(d.initializer) || d.initializer.text !== THE_STAGES_LIST.name) continue;
@@ -49,7 +53,6 @@ function theStagesIn(text: string): { bound: string[]; called: string[]; importe
         }
       }
   }
-  if (!body) throw new Error(`${GENERATE} declares no generateNewGame`);
   const names = new Set(bound);
   const called: string[] = [];
   const visit = (n: ts.Node): void => {
@@ -64,7 +67,7 @@ function theStagesIn(text: string): { bound: string[]; called: string[]; importe
 const theListsFunctions = THE_WORLDS_MAKINGS_STAGES_IN_THE_ORDER_THEY_RUN.map((s) => s.run.name);
 const here = theStagesIn(generateText);
 
-test("generate.ts binds each stage's function from the list under its own name, in the list's order", () => {
+test("generateNewGame binds each stage's function from the list under its own name, in the list's order", () => {
   expect(here.bound, "the names generate.ts binds from the list, against the list's functions").toEqual(
     theListsFunctions,
   );
@@ -103,7 +106,7 @@ const S15s = '{ run: everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits },';
 test.for([
   { plant: "S14's and S15's calls swapped", old: `${S14}\n  ${S15}`, new: `${S15}\n  ${S14}` },
   { plant: "S12's call dropped", old: `${S12}\n  `, new: '' },
-  { plant: "S14's and S15's names bound swapped", old: `${S14s}\n  ${S15s}`, new: `${S15s}\n  ${S14s}` },
+  { plant: "S14's and S15's names bound swapped", old: `${S14s}\n    ${S15s}`, new: `${S15s}\n    ${S14s}` },
 ])('the checks are red on a planted generate.ts: $plant', ({ old, new: planted }) => {
   expect(generateText.includes(old), `${GENERATE} holds the plant's text`).toBe(true);
   const there = theStagesIn(generateText.replace(old, planted));

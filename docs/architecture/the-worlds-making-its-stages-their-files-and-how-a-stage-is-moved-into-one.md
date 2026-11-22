@@ -4,8 +4,8 @@
 set-up, the capitals, each home's ring, the provinces, and so on to the naming pass. Each stage is a function in a file
 of its own in `src/engine/world/the-worlds-making/` (B-06v to B-06aa moved them there). **The stages' list**,
 `the-stages-in-the-order-they-run.ts` beside them, is the one home of their order, their ids and their names in game
-terms: each entry is a stage's id, what it makes, and its function, in a typed `as const` list. `generate.ts` takes the
-stages' functions from the list, each under its own name, and `generateNewGame` calls them in the list's order,
+terms: each entry is a stage's id, what it makes, and its function, in a typed `as const` list. `generateNewGame` takes
+the stages' functions from the list as it starts, each under its own name, and calls them in the list's order,
 threading each stage's results to the next. The world proof's stage table
 ([tools/proof/the-worlds-makings-stages.ts](../../tools/proof/the-worlds-makings-stages.ts)) and the world-making
 counts' list read their stages from the list's text. This file is the shape every stage takes.
@@ -53,7 +53,8 @@ counts' list read their stages from the list's text. This file is the shape ever
 1. **Its file and its function**, in the shape above.
 2. **One entry in the stages' list**, at its place in the order: `{ stage: 'S<n>', inGameTerms: '…', run: <its
    function> }`, and the ids after it renumbered (they run S0, S1, … in order).
-3. **Its name in `generate.ts`'s binding from the list**, at the same place, and **its call in `generateNewGame`**,
+3. **Its name in the binding from the list at the start of `generateNewGame`** (as the world is made, not as
+   `generate.ts` loads), at the same place, and **its call in `generateNewGame`**,
    with what it reads. The unit test
    `tests/unit/the-world-is-made-by-the-stages-its-list-holds-each-once-in-the-lists-order.test.ts` fails until the
    list, the binding and the calls agree, each stage once, in order.
