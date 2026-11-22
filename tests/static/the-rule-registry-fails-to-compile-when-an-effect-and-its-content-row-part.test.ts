@@ -510,6 +510,7 @@ test(
     expect(errorsIn(copies)).toEqual({
       "a minor title's row with no entry": [
         `TS1360 in ${atTheMinorTitles('THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS')}: planted-title`,
+        `TS2741 in ${atTheMinorTitles('ENTRIES')}: planted-title`,
       ],
       "a minor title's entry with no row": [
         `TS2353 in ${atTheMinorTitles('THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS')}: planted-title`,

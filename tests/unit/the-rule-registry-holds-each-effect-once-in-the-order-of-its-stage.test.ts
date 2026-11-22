@@ -1136,7 +1136,7 @@ test("the minor titles' registry holds each effect once, in the order of its sta
 });
 
 test("planted in the minor titles' registry, an order naming an entry with no effect there, a row with no entry, two rows' key and two rows' name, are found", () => {
-  const orders: Orders = { turnEnd: { "a realm's tax": ['cutpurse'] } };
+  const orders: Orders = { ...MINOR_TITLES_ORDERS, turnEnd: { "a realm's tax": ['cutpurse'] } };
   const rows = [
     ...MINOR_TITLES,
     { key: 'a-planted-title', name: 'The Planted' },

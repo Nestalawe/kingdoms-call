@@ -39,6 +39,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     TOP,
     "B-06i, the minor titles' rows and the skills they add to (MINOR_TITLES, SKILL_EXTRA_MINORS), to content",
   ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcCharCombatant',
+    "B-06j, a hero's titles add to his skills in a fight, to the minor titles' registry (personalCombat)",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

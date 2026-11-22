@@ -2578,6 +2578,11 @@ export interface TheStagesOfEachHookPoint {
     /** The levels a discovery a hero's realm holds adds to his Melee and his Archery in a personal combat; the runner
      *  gives the first effect's, or 0 if the realm holds none (pcCharCombatant, and extraSkillBonuses for his card). */
     readonly "a realm's discoveries add to a fighter's skills": (theEffect: TheEffectOfADiscovery) => number;
+    /** The levels a minor title adds to its holder's Melee or his Archery in a personal combat, from its row, or 0 (it
+     *  adds to the other); the runner adds those of each title he holds, in the stage's order, asking whether he holds
+     *  one only where it adds to the skill (pcCharCombatant, after his items, before his realm's discoveries: the
+     *  minor titles' registry, B-06j). */
+    readonly "a hero's titles add to his skills": (theSkill: 'melee' | 'archery') => number;
     /** The damage a discovery a hero's realm holds adds to what his Mithril turns aside of a melee blow; the runner
      *  adds them (pcCharCombatant, after the suit's own). */
     readonly "a realm's discoveries strengthen his Mithril": (theEffect: TheEffectOfADiscovery) => number;

@@ -3,10 +3,11 @@
 // how its holder is found: the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts) and
 // one entry here, keyed by the same slug, naming its perk's effect at each stage of a hook point. The hook points and
 // their stages are the content effects' (one union, in the-registry-of-content-effects.ts); each stage's order is
-// THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES. B-06i writes the skeleton: an entry for each title, at no stage yet (each
-// perk is still checked where it acts, by the holders worked out at the turn's start: `charMinor` and its kin), and
-// the measure a hero is held to for a title, which the awarding (computeMinorTitles) asks. The rows after it give each
-// perk its effect, at the hook points TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
+// THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES, and each stage's runner is here. The Duelist, the Marksman, the
+// Widowmaker and the Relic-Hunter act at personalCombat (B-06j); every other entry is at no stage yet (its perk is still
+// checked where it acts, by the holders worked out at the turn's start: `charMinor` and its kin). Here too is the
+// measure a hero is held to for a title, which the awarding (computeMinorTitles) asks. The rows after B-06j give each
+// other perk its effect, at the hook points TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
 // docs/architecture/the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md.
 import type {
   AMinorTitlesSlug,
@@ -23,6 +24,7 @@ import {
   MONSTER_ARMIES,
 } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import type { TheStagesOfEachHookPoint } from './the-registry-of-content-effects.ts';
+import { A_HEROS_TITLES_ADD_TO_HIS_SKILLS } from './the-minor-titles/a-heros-titles-add-to-his-skills-in-a-personal-combat.ts';
 
 /** The hook points a minor title's perk acts at, each filled by a row of the family: `personalCombat` (B-06j: a hero's
  *  titles add to his skills in a fight), `strength` (B-06k: to his Tactical in a battle, and the units the commander's
@@ -36,11 +38,15 @@ export type TheEffectsOfAMinorTitlesPerkAtEachHookPoint = {
   readonly [H in TheHookPointsAMinorTitlesPerkActsAt]?: Partial<TheStagesOfEachHookPoint[H]>;
 };
 
-/** One entry for each content row, and no other (a row with no entry fails to compile, TS1360; an entry with no row,
- *  TS2353). Each is at no stage yet: the row named beside it gives it its effect. */
+/** One entry for each content row, and no other (a row with no entry fails to compile, TS1360, and at ENTRIES, TS2741;
+ *  an entry with no row, TS2353). An entry at no stage yet: the row named beside it gives it its effect. */
 export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
-  duelist: {}, // personalCombat (B-06j)
-  marksman: {}, // personalCombat (B-06j)
+  duelist: {
+    personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.duelist },
+  },
+  marksman: {
+    personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.marksman },
+  },
   strategist: {}, // strength (B-06k)
   swift: {}, // movement (B-06l)
   seawolf: {}, // movement (B-06l)
@@ -50,23 +56,50 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   loreseeker: {}, // orders (B-06l)
   trailblazer: {}, // orders (B-06l)
   colossus: {}, // orders (B-06l)
-  widowmaker: {}, // personalCombat (B-06j)
+  widowmaker: {
+    personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.widowmaker },
+  },
   champion: {}, // turnEnd (B-06m; its gold is the economy's registry's)
   hostleader: {}, // turnEnd (B-06m)
   cavalier: {}, // strength (B-06k)
   beastmaster: {}, // strength (B-06k)
   ironclad: {}, // strength (B-06k)
-  relichunter: {}, // personalCombat (B-06j)
+  relichunter: {
+    personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.relichunter },
+  },
   castellan: {}, // turnEnd (B-06m; its gold is the economy's registry's)
   warlock: {}, // orders (B-06l)
 } satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>;
 
-/** Each stage's effects, in the order the turn runs them (none yet). */
-export const THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES = {} as const satisfies {
+/** Each stage's effects, in the order the turn runs them (a hero's skills: the character card's, SKILL_EXTRA_MINORS'). */
+export const THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES = {
+  personalCombat: {
+    "a hero's titles add to his skills": ['duelist', 'marksman', 'widowmaker', 'relichunter'],
+  },
+} as const satisfies {
   readonly [H in TheHookPointsAMinorTitlesPerkActsAt]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly AMinorTitlesSlug[];
   };
 };
+
+const ENTRIES: Readonly<Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>> =
+  THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS;
+const PERSONAL_COMBAT = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.personalCombat;
+
+/** The runner of "personalCombat: a hero's titles add to his skills" (pcCharCombatant, for his Melee and his Archery
+ *  and their raw levels, after his items and before his realm's discoveries): the levels each title of the stage adds
+ *  to the skill, in the stage's order, added for each he holds. Whether he holds a title is asked only of a title that
+ *  adds to the skill, in that order (as `charMinor` was asked before). */
+export function theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat(
+  theSkill: 'melee' | 'archery',
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): number {
+  const theStage = "a hero's titles add to his skills";
+  return PERSONAL_COMBAT[theStage].reduce((theLevels, slug) => {
+    const added = ENTRIES[slug].personalCombat?.[theStage]?.(theSkill) ?? 0;
+    return added !== 0 && heHoldsTheTitle(slug) ? theLevels + added : theLevels;
+  }, 0);
+}
 
 /** A hero as the minor titles measure him: his skills, his hit points, his kills of another realm's heroes, his merits,
  *  his companies and items (a list a guard may find missing), and whether he is his realm's king. */
