@@ -19,7 +19,7 @@ trial on four planted faults (plan P1-16a).
 | `npm run proof:two-engines -- --cases <module> --base <ref>` | Whether the base's engine and the branch's write the same lines on staged cases | a few seconds, plus the cases' own time |
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the tests send a page's client, to compare base with branch | the tests' own time |
 | `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
-| `npm run proof:worlds -- --base <ref>` | Whether each seed makes the same world with the same dice, stage by stage, base against branch | about 8 minutes (2,560 cases) |
+| `npm run proof:worlds -- --base <ref>` | Whether each seed makes the same world with the same dice, stage by stage, base against branch | about 8 minutes (2,560 cases; `--seeds 8`, 100 s) |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
@@ -236,12 +236,12 @@ anchor, kept while the row's base still has the anchor there; the next row may d
 stage found on a side by neither stops the proof rather than count its dice as another's, and the unit test checks that
 every stage is found in the tree as it is.
 
-**Red on planted faults** (B-06s's trial, each in a planted copy, the tool's `--base` against the copy unplanted):
+**Red on planted faults** (B-06s, each in a planted copy of the tree, the tool's `--base` against the copy unplanted):
 
 | Planted fault | What the tool shows |
 |---|---|
-| One extra `kcRng()` at the end of the coastal shipyards (S13) | (running) |
-| A hero's starting gold 20 made 21, no draw | (running) |
+| One extra `kcRng()` at the end of the coastal shipyards (S13) | 512 of 512 cases red (8 seeds), S13's dice 0 → 1 in each; some, such as seed 1, p2, sea 35%, keep the same world and the same dice in all |
+| A realm's starting gold 20 made 21, no draw | 512 of 512 cases red on the world's hash, the dice the same |
 | The tax floor's 2 made 3; the starting HP 15 made 16 | the same worlds: no world keeps them (KD-454, KD-455) |
 
 **What it can't see:** a value no world keeps (the two above); a path no seed reaches; state beyond one world, which a
