@@ -440,8 +440,8 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     holdersInRecruit: 0,
   }; // Sept 2026 (§99 diagnosis; read by the study through window.__botDiag)
   L.diag = diag;
-  // Sept 2026 (Toby: bot defence): while the realm's DEFENDERS stand under-strength (fewer than three
-  // units each), a share of the wage ceiling is held back from the field hosts' muster so the posts get
+  // Sept 2026 (Toby: bot defence): while the realm's DEFENDERS stand under-strength (fewer units each
+  // than the weights' full strength), a share of the wage ceiling is held back from the field hosts' muster so the posts get
   // troops too — otherwise the leaders, who muster first, spent every coin every year.
   const _defs = botRoles(G, pi)
     .defenders.map((id) => (asItsGuardReadsIt(G.characters) ?? []).find((c) => asItsGuardReadsIt(c) && c.id === id))

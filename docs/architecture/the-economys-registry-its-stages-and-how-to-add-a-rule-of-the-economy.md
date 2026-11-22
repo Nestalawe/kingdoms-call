@@ -118,10 +118,10 @@ makes of that gold from its version's weights file.
   stage agrees with either, so each keeps its own code until its fix.
 - **What the bot says:** `THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION`
   (`src/engine/bots/the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts`), keyed by
-  the kind of result, never by the effect. Its `gold` holds the ledger's numbers: the enemy host that puts a realm on a
-  war footing, the share of the income its wages may take then, the chest it keeps then (15% of the wages, 2g to 8g),
-  a small realm (under 15 provinces) and its share of the free treasury (0.6), and the defenders' full strength (3
-  units each) and their share of the wage ceiling (20%). The kinds (`AKindOfResultABotWeighs`) and a kind's shape are
+  the kind of result, never by the effect. Its `gold` holds the ledger's numbers, each named for what it weighs: the
+  enemy host that puts a realm on a war footing, the share of the income its wages may take then and the chest it
+  keeps then, the size of a small realm and the share of its free treasury its wages may lean on, and the defenders'
+  full strength and the share of the wage ceiling held back for them. The kinds (`AKindOfResultABotWeighs`) and a kind's shape are
   in `src/engine/bots/intel.ts`; the file ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind it gives no
   weights fails to compile. Content holds no bot number.
 - **A later bot version** is a weights file of its own beside this one, of the same kinds and names, for the bots
