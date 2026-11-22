@@ -213,11 +213,21 @@ describe('no free neighbour beside a home (a planted copy of src/), on the world
         // the homes' stage (S9 of the world's making), in its own file since B-06y: no free neighbour
         'engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts': (code, file) =>
           replaceInitializer(code, file, 'eachHomeTailoredAndItsKingAndHeroesMade', '_freeNbrs', '[]'),
-        'engine/world/generate.ts': (code, file) => {
-          const [rank] = initializersOf('engine/world/generate.ts', 'rank');
+        // the wild country near the two crowns (S10), in its own file since B-06z: its ranking recorded
+        'engine/world/the-worlds-making/s10-the-two-crowns-given-wild-country-within-two-provinces-of-home.ts': (
+          code,
+          file,
+        ) => {
+          const [rank] = initializersOf(file, 'rank');
           if (rank === undefined) throw new Error('the wild-country pass has no rank');
           const recorded = `((theRank) => (list) => { const out = theRank(list); Reflect.get(globalThis, '${THE_RECORDER}')(cr.pl.race, out); return out; })${rank}`;
-          return replaceInitializer(code, file, 'generateNewGame', 'rank', recorded);
+          return replaceInitializer(
+            code,
+            file,
+            'theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome',
+            'rank',
+            recorded,
+          );
         },
       });
       engine = await theEngineIn(empty.dir);

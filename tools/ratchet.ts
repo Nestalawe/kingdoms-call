@@ -876,6 +876,30 @@ export const THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES: readonly (readonly [file: 
     'src/engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts',
     'eachHomeTailoredAndItsKingAndHeroesMade',
   ],
+  [
+    'src/engine/world/the-worlds-making/s10-the-two-crowns-given-wild-country-within-two-provinces-of-home.ts',
+    'theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s11-the-neutral-races-rebalanced-to-within-one-province.ts',
+    'theNeutralRacesRebalancedToWithinOneProvince',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s12-every-land-province-lifted-to-the-tax-floor.ts',
+    'everyLandProvinceLiftedToTheTaxFloor',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s13-every-coastal-humanoid-province-offers-its-races-fleet.ts',
+    'everyCoastalHumanoidProvinceOffersItsRacesFleet',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s14-every-neutral-provinces-defenders-brought-inside-its-taxs-band.ts',
+    'everyNeutralProvincesDefendersBroughtInsideItsTaxsBand',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s15-every-neutral-province-fields-the-strongest-mix-of-its-own-units.ts',
+    'everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits',
+  ],
   ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P'],
   ['src/engine/world/tables.ts', 'provincePoolSize'],
   ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP'],
