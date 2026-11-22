@@ -80,6 +80,7 @@ import {
   recordBattleCmdrs,
 } from '../turn/mercenary-ids-and-battle-records.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import {
   REIGN_OF_FEAR_MULT,
@@ -274,11 +275,13 @@ export function combatVsChar(
   };
   let atkTact = atk._tacticalNegated
     ? 0
-    : effStat(turnContext, atk, 'tactical') + (charMinor(turnContext, atk, 'strategist') ? 1 : 0);
+    : effStat(turnContext, atk, 'tactical') +
+      theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, atk, title));
   if (atk._curseHalveStat === 'tactical') atkTact = Math.floor(atkTact / 2); // LEVEL 6+ PERK — Grand Tactician
   let defTact = def._tacticalNegated
     ? 0
-    : effStat(turnContext, def, 'tactical') + (charMinor(turnContext, def, 'strategist') ? 1 : 0);
+    : effStat(turnContext, def, 'tactical') +
+      theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, def, title));
   if (def._curseHalveStat === 'tactical') defTact = Math.floor(defTact / 2); // LEVEL 6+ PERK — Grand Tactician
   // Tactical bonus only applies in land provinces
   const isPvPSea = prov.terrain === 'sea';

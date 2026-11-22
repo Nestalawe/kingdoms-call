@@ -44,6 +44,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'pcCharCombatant',
     "B-06j, a hero's titles add to his skills in a fight, to the minor titles' registry (personalCombat)",
   ],
+  [
+    'src/engine/battle/best-commander.ts',
+    'commandScore',
+    "B-06k, the Strategist's Tactical, to the minor titles' registry (strength: a hero's titles add to his Tactical)",
+  ],
+  [
+    'src/engine/battle/battles-between-heroes.ts',
+    'combatVsChar',
+    "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength)",
+  ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'combatVsNPC',
+    "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'armStr',
+    "B-06k, the ladder's words for the commander's minor titles' army perks, by the perk his title's row names",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts',
+    'theStrengthAUnitsCommandersMinorTitlesLiftItTo',
+    "B-06k, the army perks, to their rows and the minor titles' registry (strength: the commander's minor titles)",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

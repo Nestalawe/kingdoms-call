@@ -72,6 +72,10 @@ import type {
   AStepOfTheCommandersItems,
   AUnitLedByACommander,
 } from '../rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
+import type {
+  AStepOfAMinorTitlesArmyPerk,
+  AUnitLedByAHolderOfAMinorTitle,
+} from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 
@@ -1862,6 +1866,17 @@ export interface TheStagesOfEachHookPoint {
     /** The step an item the commander carries makes on the strength of a unit he leads, or nothing; the runner applies
      *  the steps in the stage's order, each rounded as it goes (armStr; the items' registry). */
     readonly "the commander's items": (facts: AUnitLedByACommander) => AStepOfTheCommandersItems | null;
+    /** The step a minor title the commander holds makes on the strength of a unit he leads, from its row, or nothing;
+     *  the runner applies the steps in the stage's order, each rounded as it goes, a perk two titles give once,
+     *  asking whether he holds a title only where its step would lift the unit (armStr, after his Druid mastery; and
+     *  the army card, on plain values: the minor titles' registry, B-06k). */
+    readonly "the commander's minor titles": (
+      unit: AUnitLedByAHolderOfAMinorTitle,
+    ) => AStepOfAMinorTitlesArmyPerk | null;
+    /** The levels a minor title adds to its holder's Tactical in a battle, from its row; the runner adds those of each
+     *  title he holds, in the stage's order, asking whether he holds one only where it adds (commandScore, and both
+     *  sides of both battles, before a curse halves it: the minor titles' registry, B-06k). */
+    readonly "a hero's titles add to his Tactical": () => number;
     /** The defenders' fortifications after an item a commander of the battle carries, from the bonus so far, or nothing
      *  (both battles, after the realm's own bonuses; the items' registry). */
     readonly "the defenders' fortifications": (

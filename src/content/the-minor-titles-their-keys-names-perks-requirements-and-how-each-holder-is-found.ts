@@ -7,6 +7,14 @@
 // entry for each row and no other: a row with no entry, or an entry with no row, fails to compile. How to add one:
 // docs/architecture/the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md.
 
+/** A kind of company a minor title counts (its holder is found by them) or lifts (its holder's companies of it fight
+ *  stronger): any, cavalry, Creatures and Monsters, or heavy units and fleets. */
+export type AKindOfCompanyAMinorTitleCounts = 'any' | 'cavalry' | 'creatures and monsters' | 'heavy units and fleets';
+
+/** A minor title's army perk, as the battle's ladder names it: two titles that give one perk (the Naturalist and the
+ *  Beastmaster) lift a company once, however many of them its commander holds. */
+export type AMinorTitlesArmyPerk = 'naturalist or beastmaster' | 'cavalier' | 'ironclad';
+
 /** How the holder of a minor title is found: the measure each living hero of a realm is held to (the highest holds it). */
 export type HowTheHolderOfAMinorTitleIsFound =
   /** his trained level of the skill (0 to 9) */
@@ -18,10 +26,7 @@ export type HowTheHolderOfAMinorTitleIsFound =
   /** the merits he has earned in play */
   | { readonly theMeasure: 'the merits he has earned' }
   /** the companies he leads, of any kind or of one */
-  | {
-      readonly theMeasure: 'the companies he leads';
-      readonly ofWhichKind: 'any' | 'cavalry' | 'creatures and monsters' | 'heavy units and fleets';
-    }
+  | { readonly theMeasure: 'the companies he leads'; readonly ofWhichKind: AKindOfCompanyAMinorTitleCounts }
   /** the magic items he carries */
   | { readonly theMeasure: 'the magic items he carries' }
   /** the provinces his realm holds, if he is its king (else nothing) */
@@ -36,6 +41,14 @@ export interface AMinorTitleAsItsRowWritesIt {
   readonly perk: string;
   readonly req: string;
   readonly howTheHolderIsFound: HowTheHolderOfAMinorTitleIsFound;
+  /** For a title whose holder's companies fight stronger in a battle (the minor titles' registry, strength: the
+   *  commander's minor titles): the kind of company, the factor its strength is multiplied by (rounded after each
+   *  title's step, in the stage's order), and the perk. */
+  readonly theCompaniesItsHolderLeadsFightStronger?: {
+    readonly ofWhichKind: Exclude<AKindOfCompanyAMinorTitleCounts, 'any'>;
+    readonly by: number;
+    readonly thePerk: AMinorTitlesArmyPerk;
+  };
 }
 
 /** The minor titles, in the order their holders are found (it decides a tie, and the order their lines print). */
@@ -95,6 +108,11 @@ export const MINOR_TITLES = [
     perk: 'Creature & Monster armies you lead +5%',
     req: 'Highest Druid skill.',
     howTheHolderIsFound: { theMeasure: 'his level of a skill', theSkill: 'druid' },
+    theCompaniesItsHolderLeadsFightStronger: {
+      ofWhichKind: 'creatures and monsters',
+      by: 1.05,
+      thePerk: 'naturalist or beastmaster',
+    },
   },
   {
     key: 'loreseeker',
@@ -144,6 +162,7 @@ export const MINOR_TITLES = [
     perk: 'cavalry you lead +5%',
     req: 'Leads the most cavalry units.',
     howTheHolderIsFound: { theMeasure: 'the companies he leads', ofWhichKind: 'cavalry' },
+    theCompaniesItsHolderLeadsFightStronger: { ofWhichKind: 'cavalry', by: 1.05, thePerk: 'cavalier' },
   },
   {
     key: 'beastmaster',
@@ -151,6 +170,11 @@ export const MINOR_TITLES = [
     perk: 'Creature & Monster armies you lead +5%',
     req: 'Leads the most Creature and Monster units.',
     howTheHolderIsFound: { theMeasure: 'the companies he leads', ofWhichKind: 'creatures and monsters' },
+    theCompaniesItsHolderLeadsFightStronger: {
+      ofWhichKind: 'creatures and monsters',
+      by: 1.05,
+      thePerk: 'naturalist or beastmaster',
+    },
   },
   {
     key: 'ironclad',
@@ -158,6 +182,7 @@ export const MINOR_TITLES = [
     perk: 'heavy & fleet units you lead +5%',
     req: 'Leads the most heavy and fleet units.',
     howTheHolderIsFound: { theMeasure: 'the companies he leads', ofWhichKind: 'heavy units and fleets' },
+    theCompaniesItsHolderLeadsFightStronger: { ofWhichKind: 'heavy units and fleets', by: 1.05, thePerk: 'ironclad' },
   },
   {
     key: 'relichunter',

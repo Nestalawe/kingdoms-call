@@ -4,9 +4,10 @@
 // one entry here, keyed by the same slug, naming its perk's effect at each stage of a hook point. The hook points and
 // their stages are the content effects' (one union, in the-registry-of-content-effects.ts); each stage's order is
 // THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES, and each stage's runner is here. The Duelist, the Marksman, the
-// Widowmaker and the Relic-Hunter act at personalCombat (B-06j); every other entry is at no stage yet (its perk is still
-// checked where it acts, by the holders worked out at the turn's start: `charMinor` and its kin). Here too is the
-// measure a hero is held to for a title, which the awarding (computeMinorTitles) asks. The rows after B-06j give each
+// Widowmaker and the Relic-Hunter act at personalCombat (B-06j); the Strategist, the Naturalist, the Cavalier, the
+// Beastmaster and the Ironclad at strength (B-06k); every other entry is at no stage yet (its perk is still checked
+// where it acts, by the holders worked out at the turn's start: `charMinor` and its kin). Here too is the
+// measure a hero is held to for a title, which the awarding (computeMinorTitles) asks. The rows after B-06k give each
 // other perk its effect, at the hook points TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
 // docs/architecture/the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md.
 import type {
@@ -15,16 +16,18 @@ import type {
 } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import { theHighestLevelAHeroHasTrainedInAMagicSchool } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
-  MINOR_CAV,
-  MINOR_HEAVY,
+  aCompanyIsOfTheKindAMinorTitleCounts,
+  theStrengthAUnitHasAfterTheStepsOfItsCommandersMinorTitles,
   theTrainedLevelOfASkill,
+  type AMinorTitleWithAnArmyPerk,
+  type AMinorTitlesArmyPerk,
 } from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
-import {
-  CREATURE_ARMIES,
-  MONSTER_ARMIES,
-} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import type { TheStagesOfEachHookPoint } from './the-registry-of-content-effects.ts';
 import { A_HEROS_TITLES_ADD_TO_HIS_SKILLS } from './the-minor-titles/a-heros-titles-add-to-his-skills-in-a-personal-combat.ts';
+import {
+  A_HEROS_TITLES_ADD_TO_HIS_TACTICAL,
+  THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS,
+} from './the-minor-titles/a-heros-titles-add-to-his-tactical-and-lift-the-units-he-leads-in-a-battle.ts';
 
 /** The hook points a minor title's perk acts at, each filled by a row of the family: `personalCombat` (B-06j: a hero's
  *  titles add to his skills in a fight), `strength` (B-06k: to his Tactical in a battle, and the units the commander's
@@ -47,12 +50,16 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   marksman: {
     personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.marksman },
   },
-  strategist: {}, // strength (B-06k)
+  strategist: {
+    strength: { "a hero's titles add to his Tactical": A_HEROS_TITLES_ADD_TO_HIS_TACTICAL.strategist },
+  },
   swift: {}, // movement (B-06l)
   seawolf: {}, // movement (B-06l)
   shadow: {}, // orders (B-06l)
   cutpurse: {}, // turnEnd (B-06m; its gold is the economy's registry's)
-  naturalist: {}, // strength (B-06k)
+  naturalist: {
+    strength: { "the commander's minor titles": THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS.naturalist },
+  },
   loreseeker: {}, // orders (B-06l)
   trailblazer: {}, // orders (B-06l)
   colossus: {}, // orders (B-06l)
@@ -61,9 +68,15 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   },
   champion: {}, // turnEnd (B-06m; its gold is the economy's registry's)
   hostleader: {}, // turnEnd (B-06m)
-  cavalier: {}, // strength (B-06k)
-  beastmaster: {}, // strength (B-06k)
-  ironclad: {}, // strength (B-06k)
+  cavalier: {
+    strength: { "the commander's minor titles": THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS.cavalier },
+  },
+  beastmaster: {
+    strength: { "the commander's minor titles": THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS.beastmaster },
+  },
+  ironclad: {
+    strength: { "the commander's minor titles": THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS.ironclad },
+  },
   relichunter: {
     personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.relichunter },
   },
@@ -71,10 +84,16 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   warlock: {}, // orders (B-06l)
 } satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>;
 
-/** Each stage's effects, in the order the turn runs them (a hero's skills: the character card's, SKILL_EXTRA_MINORS'). */
+/** Each stage's effects, in the order the turn runs them (a hero's skills: the character card's, SKILL_EXTRA_MINORS';
+ *  the commander's minor titles: armStr's, which the army card's THE_MINOR_TITLES_WITH_AN_ARMY_PERK_IN_THEIR_ORDER
+ *  reads from the rows, a unit case pinning the two together). */
 export const THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES = {
   personalCombat: {
     "a hero's titles add to his skills": ['duelist', 'marksman', 'widowmaker', 'relichunter'],
+  },
+  strength: {
+    "the commander's minor titles": ['naturalist', 'beastmaster', 'cavalier', 'ironclad'],
+    "a hero's titles add to his Tactical": ['strategist'],
   },
 } as const satisfies {
   readonly [H in TheHookPointsAMinorTitlesPerkActsAt]?: {
@@ -85,6 +104,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES = {
 const ENTRIES: Readonly<Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>> =
   THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS;
 const PERSONAL_COMBAT = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.personalCombat;
+const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.strength;
 
 /** The runner of "personalCombat: a hero's titles add to his skills" (pcCharCombatant, for his Melee and his Archery
  *  and their raw levels, after his items and before his realm's discoveries): the levels each title of the stage adds
@@ -99,6 +119,35 @@ export function theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat(
     const added = ENTRIES[slug].personalCombat?.[theStage]?.(theSkill) ?? 0;
     return added !== 0 && heHoldsTheTitle(slug) ? theLevels + added : theLevels;
   }, 0);
+}
+
+/** The runner of "strength: a hero's titles add to his Tactical" (commandScore, and each side of both battles, after
+ *  his Tactical and before a curse halves it): the levels each title of the stage adds, in the stage's order, added
+ *  for each he holds. Whether he holds a title is asked only of a title that adds (as `charMinor` was asked before). */
+export function theLevelsAHerosTitlesAddToHisTacticalInABattle(
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): number {
+  const theStage = "a hero's titles add to his Tactical";
+  return STRENGTH[theStage].reduce((theLevels, slug) => {
+    const added = ENTRIES[slug].strength?.[theStage]?.() ?? 0;
+    return added !== 0 && heHoldsTheTitle(slug) ? theLevels + added : theLevels;
+  }, 0);
+}
+
+/** The runner of "strength: the commander's minor titles" (armStr, after his Druid mastery): a unit's strength once the
+ *  titles its commander holds have lifted it, and their perks, in the stage's order, each step rounded as it goes (on
+ *  plain values, as the army card reads it: each entry of the stage is that product's step of its title). */
+export function theStrengthOfAUnitOnceItsCommandersMinorTitlesLiftIt(
+  theStrengthSoFar: number,
+  unitType: string,
+  heHoldsTheTitle: (theTitle: AMinorTitleWithAnArmyPerk) => boolean,
+): { strength: number; liftedBy: AMinorTitlesArmyPerk[] } {
+  return theStrengthAUnitHasAfterTheStepsOfItsCommandersMinorTitles(
+    STRENGTH["the commander's minor titles"],
+    { unitType },
+    theStrengthSoFar,
+    heHoldsTheTitle,
+  );
 }
 
 /** A hero as the minor titles measure him: his skills, his hit points, his kills of another realm's heroes, his merits,
@@ -124,16 +173,7 @@ function theCompaniesAHeroLeadsOfAKind(
   c: AHeroAsTheMinorTitlesMeasureHim,
   ofWhichKind: Extract<HowTheHolderOfAMinorTitleIsFound, { theMeasure: 'the companies he leads' }>['ofWhichKind'],
 ): number {
-  switch (ofWhichKind) {
-    case 'any':
-      return (c.armies ?? []).length;
-    case 'cavalry':
-      return (c.armies ?? []).filter((a) => MINOR_CAV.has(a.type)).length;
-    case 'creatures and monsters':
-      return (c.armies ?? []).filter((a) => CREATURE_ARMIES.has(a.type) || MONSTER_ARMIES.has(a.type)).length;
-    case 'heavy units and fleets':
-      return (c.armies ?? []).filter((a) => MINOR_HEAVY.has(a.type)).length;
-  }
+  return (c.armies ?? []).filter((a) => aCompanyIsOfTheKindAMinorTitleCounts(ofWhichKind, a.type)).length;
 }
 
 /** The measure a living hero of a realm is held to for a minor title, by how its row says its holder is found (the

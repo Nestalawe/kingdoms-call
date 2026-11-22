@@ -85,6 +85,7 @@ import {
 import { telSpell } from '../turn/log-line-helpers.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import {
   MISSILE_CAP_FRACTION,
@@ -450,7 +451,8 @@ export function combatVsNPC(
   let tactSkill =
     atkCmdrSlain || c._tacticalNegated
       ? 0
-      : effStat(turnContext, c, 'tactical') + (charMinor(turnContext, c, 'strategist') ? 1 : 0);
+      : effStat(turnContext, c, 'tactical') +
+        theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, c, title));
   if (c._curseHalveStat === 'tactical') tactSkill = Math.floor(tactSkill / 2); // LEVEL 6+ PERK — Grand Tactician
   const tactBonus = Math.min(2.0, 1 + tactSkill * 0.2); // Tactical battle bonus hard-capped at ×2.0 (incl. titles)
   // Tactical only applies to land armies (not flying or naval) per AK 4.1.1 Tactical only applies
@@ -816,7 +818,8 @@ export function combatVsNPC(
   let defTactLvl = defHero
     ? defHero._tacticalNegated
       ? 0
-      : effStat(turnContext, defHero, 'tactical') + (charMinor(turnContext, defHero, 'strategist') ? 1 : 0)
+      : effStat(turnContext, defHero, 'tactical') +
+        theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, defHero, title))
     : 0;
   if (defHero?._curseHalveStat === 'tactical') defTactLvl = Math.floor(defTactLvl / 2); // LEVEL 6+ PERK — Grand Tactician
   const defTactBonus = defTactLvl > 0 ? Math.min(2.0, 1 + defTactLvl * 0.2) : 1; // cap ×2.0
