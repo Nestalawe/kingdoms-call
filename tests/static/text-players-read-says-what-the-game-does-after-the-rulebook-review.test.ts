@@ -28,6 +28,7 @@ import {
   SAGE_DISCOVERIES_P,
   TITLE_DEFS,
 } from '../../src/content/kingdoms-call-data.ts';
+import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
 import { readPage, sitePath } from '../lib/boot.ts';
 import { compactOf, compactPage, initializersOf, pageScripts, pageStrings, pageText } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
@@ -164,10 +165,8 @@ describe('the rulebooks after the review: each sentence says what the game does'
     'standings from turn 5, claims from turn 10: five full turns between',
     timeLimitForTheWork({ everyFileReads: 2 }),
     () => {
-      expect(
-        num('RECKONING_MIN_TURN') - num('TITLES_PUBLIC_FROM_TURN'),
-        'turns between public standings and a claim',
-      ).toBe(5);
+      // the engine's two turns, as it reads them from the Reckoning's content row (B-06q)
+      expect(RECKONING_MIN_TURN - TITLES_PUBLIC_FROM_TURN, 'turns between public standings and a claim').toBe(5);
       expect(RW).toContain('five full turns before the throne itself can be claimed');
       expect(RW).not.toContain('four full turns before');
     },

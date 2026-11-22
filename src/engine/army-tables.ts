@@ -1,4 +1,10 @@
-import { KC_QUALITY_TIERS, KC_SKILL_LABELS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../content/kingdoms-call-data.ts';
+import {
+  KC_EACH_UNIT_TYPES_PRICE_AND_WAGE,
+  KC_QUALITY_TIERS,
+  KC_SKILL_LABELS,
+  KC_UNIT_CLASS,
+  PRIMAL_ARMY_DEFS_P,
+} from '../content/kingdoms-call-data.ts';
 import type { HumanoidUnitType } from '../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../content/mastery-orders-their-keys-names-skills-and-levels.ts';
@@ -87,57 +93,12 @@ export type ProvinceInABattle = Province & {
 // ════
 // MASTER UNIT TABLES — single source of truth
 // ════
-// They were identical by luck, not by construction: editing recruitment price without editing the
-// wage table would silently make a unit cost one amount to raise and another to keep. Every one of
-// those names is now an alias of the master below. DO NOT re-inline a local copy — add entries here
-// instead.
-//
-// Cost is BOTH the recruitment price and the per-turn wage: a unit costs its price again every turn
-// it exists. 2026-10-11 (Toby, the army roster): Forest Wardens 3→2, Shadow Archers 3→4, Ironwood
-// Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR).
-// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds both.
-export const ARMY_COST_MASTER: Record<string, number> = {
-  // ── Human ──
-  'Shieldwall Levies': 2,
-  'Free Lances': 3,
-  'Yeoman Longbows': 2,
-  'Gilded Lances': 4,
-  'Human Garrison': 1,
-  'Noble Griffons': 4,
-  'Galleon Fleet': 3,
-  'Corsair Fleet': 3,
-  'Men-at-Arms': 3,
-  // ── Elven ──
-  'Elven Bowmen': 3,
-  'Forest Wardens': 2,
-  'Shadow Archers': 4,
-  'Elven Garrison': 1,
-  'Eagle Riders': 4,
-  'Elven Galleys': 3,
-  'Whale Cohort': 3,
-  'Stag Riders': 3,
-  // ── Dwarven ──
-  'Dwarven Guard': 3,
-  'Ironwood Crossbows': 2,
-  'Mountain Guns': 4,
-  'Dwarf Garrison': 1,
-  'Gnomish Gyrocopters': 3,
-  'Dwarf Ironclads': 4,
-  'Ironhoof Rams': 3,
-  // ── Orcish ──
-  'Warg Riders': 3,
-  'Orc Berserkers': 3,
-  'Goblin Horde': 2,
-  'Orc Garrison': 1,
-  'Wyvern Riders': 4,
-  'Orcish Longships': 3,
-  'Black Arrows': 2,
-  // Primal units: their cost is written ONCE, in PRIMAL_ARMY_DEFS_P (kingdoms-call-data.ts), and
-  // added below — 2026-09-27, it used to be re-typed here and kept "in step" by hand.
-} satisfies Record<HumanoidUnitType, number>;
-Object.entries(PRIMAL_ARMY_DEFS_P).forEach(([t, d]) => {
-  ARMY_COST_MASTER[t] = d.cost;
-});
+// Cost is BOTH the recruitment price and the per-turn wage: a unit costs its price again every turn it exists. The
+// table is content's (KC_EACH_UNIT_TYPES_PRICE_AND_WAGE, B-06b: the humanoid units' and the primal units' in one
+// place); ARMY_COST_MASTER is the same object, not a copy, so the engine's readers and the price rule on plain values
+// (thePriceOfACompanyOfAType) read one table. DO NOT re-inline a local copy.
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds it to the roster.
+export const ARMY_COST_MASTER: Record<string, number> = KC_EACH_UNIT_TYPES_PRICE_AND_WAGE;
 // 2026-10-11 (Toby, the army roster): land move rates by kind — garrisons 1; line foot, archers and
 // guns 2; heavy horse and the special foot (Wardens, Berserkers, Shadow Archers) 3; light horse 4;
 // the winged riders 5 (Gyrocopters 4).

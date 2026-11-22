@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -22,6 +22,7 @@ import {
   MONSTERS_P,
   SAGE_DISCOVERIES_P,
   SPELL_DEFS_P,
+  TITLE_DEFS,
 } from '../src/content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
@@ -587,6 +588,235 @@ export function alignmentChecksInEngine(codeFiles: readonly (readonly [file: str
   return n;
 }
 
+// The economy's numbers written in the engine's code (B-06, T7, the rules pulled out: its economy family, B-06b to
+// B-06h): a number other than 0 (not a literal type, nor the index of an element read, `a[1]`) in one of the functions
+// and tables THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE lists (the taxes and wages of Early Winter, the price
+// table, the lairs' gold, the caps, the orders' prices, the wage rules), counted by syntax tree, as the scoping counted
+// them (2026-11-22). economyNumbersInTheBots counts the same in the bots' copies of the ledger and the wages
+// (THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS). A function nested inside a listed one, named or not, counts for it, and a
+// table is a top-level `const`. The family's rows move the numbers into content's rows, so both counts only fall. A
+// listed function a row empties stays in its list at 0, so a number moved to an engine function outside the lists
+// can't hide:
+// tests/static/the-code-the-economys-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts
+// holds the functions the rows have taken at 0 each, and fails on a listed function the code no longer declares (it
+// leaves its list in its row's pull request).
+/** The economy's functions and tables in the engine, outside src/engine/rules/ and the bots, by their file. */
+export const THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE: readonly (readonly [file: string, fn: string])[] = [
+  [
+    'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
+    'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
+  ],
+  ['src/engine/army-tables.ts', 'ARMY_COST_MASTER'],
+  ['src/engine/world/tables.ts', 'ENCOUNTER_CLEAR_GOLD_BANDS'],
+  ['src/engine/world/tables.ts', 'encounterClearGold'],
+  ['src/engine/world/tables.ts', 'ensureLairHoard'],
+  ['src/engine/discoveries.ts', 'TAX_BONUS_CAP_PCT'],
+  ['src/engine/discoveries.ts', 'taxBonusCap'],
+  ['src/engine/discoveries.ts', 'capItemTaxGold'],
+  ['src/engine/items/tiers-and-hoards.ts', 'WILD_HUNT_COST'],
+  ['src/engine/items/tiers-and-hoards.ts', 'wildHuntPrice'],
+  ['src/engine/items/tiers-and-hoards.ts', 'GRAND_HEIST_RICH_TAX'],
+  [
+    'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
+    'thePriceADruidPaysForABeast',
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
+    'theWageABeastPaysUnderADruid',
+  ],
+  ['src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts', 'heroSkillWage'],
+  ['src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts', 'theWageOfAHeroInService'],
+  [
+    'src/engine/rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts',
+    'theHostLeadersCut',
+  ],
+  [
+    'src/engine/rules-on-plain-values/a-wage-after-each-cut-and-ceiling-a-realms-discoveries-make.ts',
+    'aWageAfterEachCut',
+  ],
+  [
+    'src/engine/rules-on-plain-values/a-wage-after-each-cut-and-ceiling-a-realms-discoveries-make.ts',
+    'aWageUnderEachCeiling',
+  ],
+  [
+    'src/engine/rules-on-plain-values/a-wage-after-each-cut-and-ceiling-a-realms-discoveries-make.ts',
+    'aHerosWageAfterTheCutsAndTheCeilings',
+  ],
+  ['src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts', 'resolveRecruitArmiesOrder'],
+  ['src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts', 'resolveHireHeroOrder'],
+  ['src/engine/heroes/effective-skills-and-hidden-heroes.ts', 'recalcHeroPay'],
+  [
+    'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
+    'thePriceOfACompanyOfAType',
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
+    'theWageOfACompany',
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts',
+    'thePriceOfAMercenaryBand',
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-gold-a-lairs-hoard-holds-drawn-from-its-guardians-band.ts',
+    'theGoldALairsHoardHoldsOnADie',
+  ],
+];
+/** The bots' copies of the economy: their ledger, their wages, their tax and what they can afford. */
+export const THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS: readonly (readonly [file: string, fn: string])[] = [
+  ['src/engine/bots/strategy.ts', 'botLedger'],
+  ['src/engine/bots/strategy.ts', 'botUpkeep'],
+  ['src/engine/bots/strategy.ts', 'botTaxIncome'],
+  ['src/engine/bots/strategy.ts', 'botCanAfford'],
+];
+/** The name a function or a table is declared by, as the economy's count reads it: a function or a method, or a
+ *  top-level `const` (a table, or an arrow or a function given to it). */
+function nameOfAnEconomysFunctionOrTable(node: ts.Node): string | null {
+  if ((ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) && node.name) return node.name.getText();
+  if (
+    ts.isVariableDeclaration(node) &&
+    ts.isIdentifier(node.name) &&
+    ts.isVariableDeclarationList(node.parent) &&
+    ts.isVariableStatement(node.parent.parent) &&
+    ts.isSourceFile(node.parent.parent.parent)
+  )
+    return node.name.text;
+  return null;
+}
+/** Each function and top-level table of a file, by its name, with the numbers other than 0 written in it (0 for one
+ *  with none), a literal type's and an element's index aside; a number inside a nested function counts for the
+ *  function or table around it, and one outside any for '(top)'. */
+export function economyNumbersByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAnEconomysFunctionOrTable(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if (
+      ts.isNumericLiteral(node) &&
+      Number(node.text) !== 0 &&
+      !ts.isLiteralTypeNode(node.parent) &&
+      !(ts.isElementAccessExpression(node.parent) && node.parent.argumentExpression === node)
+    )
+      counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** The numbers in the functions and tables listed, for the files given as [path from the repository's root, text]. */
+function economyNumbersIn(
+  listed: readonly (readonly [file: string, fn: string])[],
+  codeFiles: readonly (readonly [file: string, text: string])[],
+): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    const theFunctions = listed.filter(([f]) => f === file).map(([, fn]) => fn);
+    if (theFunctions.length === 0) continue;
+    const counts = economyNumbersByFunction(file, text);
+    for (const fn of theFunctions) n += counts.get(fn) ?? 0;
+  }
+  return n;
+}
+/** The economy's numbers in the engine's functions and tables listed (above). */
+export const economyNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  economyNumbersIn(THE_ECONOMYS_FUNCTIONS_AND_TABLES_IN_THE_ENGINE, codeFiles);
+/** The economy's numbers in the bots' functions listed (above). */
+export const economyNumbersInTheBots = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  economyNumbersIn(THE_ECONOMYS_FUNCTIONS_IN_THE_BOTS, codeFiles);
+
+// The engine's checks of a title by its key or its name (B-06, T7, the rules pulled out: its Reckoning and titles
+// family, B-06i to B-06r): a string naming an Imperial Title (TITLE_DEFS, in content) or a minor title (MINOR_TITLES,
+// in content since B-06i, read from its syntax tree as it was in the engine), by its key
+// (`'duelist'`) or its name (`'The Duelist'`), anywhere but a literal type, counted by syntax tree in the files of
+// src/engine/ outside src/engine/rules/, the bots' included, as the scoping counted them (2026-11-22). Six Imperial keys
+// are left out of the words: `sea`, `spy`, `monster`, `beast`, `wild` and `arch` are also a terrain's, a skill's, a
+// category's, a rite's or a ladder's words, so a string of theirs is mostly not a title. The count can't see a title
+// read as a property's key (`G._minorHolders?.warlock`), nor one of the six keys. The family's rows move the titles'
+// rules into content's rows, so the count only falls.
+// tests/static/the-code-the-titles-rows-have-taken-names-no-title.test.ts holds the functions the rows have taken at
+// 0 each, with titleChecksByFunction.
+/** The six Imperial keys that are another rule's words too (above). */
+export const THE_IMPERIAL_KEYS_THAT_ARE_OTHER_WORDS: ReadonlySet<string> = new Set([
+  'sea',
+  'spy',
+  'monster',
+  'beast',
+  'wild',
+  'arch',
+]);
+/** The file that declares MINOR_TITLES (B-06i: content's rows; it was src/engine/titles/reckoning.ts's). */
+export const THE_MINOR_TITLES_FILE =
+  'src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+/** Each minor title's key and name, in the order written, read from the syntax tree of the array MINOR_TITLES (behind
+ *  a `satisfies`, and an `as const` within it). */
+export function theMinorTitlesKeysAndNames(text: string): string[] {
+  const source = ts.createSourceFile(THE_MINOR_TITLES_FILE, text, ts.ScriptTarget.Latest, true);
+  for (const statement of source.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const d of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(d.name) || d.name.text !== 'MINOR_TITLES' || !d.initializer) continue;
+      const typed = ts.isSatisfiesExpression(d.initializer) ? d.initializer.expression : d.initializer;
+      const list = ts.isAsExpression(typed) ? typed.expression : typed;
+      if (!ts.isArrayLiteralExpression(list)) break;
+      return list.elements.flatMap((title) =>
+        ts.isObjectLiteralExpression(title)
+          ? title.properties.flatMap((p) =>
+              ts.isPropertyAssignment(p) &&
+              ts.isIdentifier(p.name) &&
+              (p.name.text === 'key' || p.name.text === 'name') &&
+              ts.isStringLiteral(p.initializer)
+                ? [p.initializer.text]
+                : [],
+            )
+          : [],
+      );
+    }
+  }
+  throw new Error(`${THE_MINOR_TITLES_FILE}: no "const MINOR_TITLES = [...]" found. The ratchet reads its titles.`);
+}
+/** Every string naming a title by its key or its name (above). */
+export const TITLE_VOCABULARY: ReadonlySet<string> = new Set(
+  [
+    ...TITLE_DEFS.flatMap((title): string[] => [title.key, title.name]),
+    ...theMinorTitlesKeysAndNames(fs.readFileSync(path.join(ROOT, THE_MINOR_TITLES_FILE), 'utf8')),
+  ].filter((word) => !THE_IMPERIAL_KEYS_THAT_ARE_OTHER_WORDS.has(word)),
+);
+/** Each function of a file, by its name, with the titles' keys and names in it (0 for a function with none); one
+ *  inside a nested function that has no name counts for the named one around it, and one outside any function for
+ *  '(top)'. */
+export function titleChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      TITLE_VOCABULARY.has(node.text) &&
+      !ts.isLiteralTypeNode(node.parent)
+    )
+      counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), '(top)');
+  return counts;
+}
+/** The titles' keys and names in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine
+ *  counts), for the files given as [path from the repository's root, text]. */
+export function titleChecksInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!countsUnitNameChecks(file)) continue;
+    for (const count of titleChecksByFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -677,6 +907,9 @@ export function measure(): Counts {
     guardianPerkChecksInEngine: guardianPerkChecksInEngine(codeFiles),
     alignmentOrderChecksInEngine: alignmentOrderChecksInEngine(codeFiles),
     alignmentChecksInEngine: alignmentChecksInEngine(codeFiles),
+    economyNumbersInEngine: economyNumbersInEngine(codeFiles),
+    economyNumbersInTheBots: economyNumbersInTheBots(codeFiles),
+    titleChecksInEngine: titleChecksInEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),

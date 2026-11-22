@@ -735,6 +735,27 @@ export const TAX_CASES: EarlyWinterCase[] = [
     },
   },
   {
+    name: 'the Champion of the People alone is paid his 2 and told; the Cutpurse, held by no hero, pays nothing (B-06m)',
+    stage(b) {
+      titlesHeld(b);
+      holdsOnly(b, 0, [b.X, 0]);
+      king(b);
+      const champ = paid(b, 1);
+      champ['merits'] = 4;
+      return { hero: champ, orders: [] };
+    },
+    check(o) {
+      const n = realmOf(o).name;
+      return {
+        got: { accounts: accounts(o), gold: goldOf(o) },
+        want: {
+          accounts: [has(n, 20), collects(n, 2, ' (+2g Champion of the People)'), owes(n, 1, 0, 1), pays(n, 1, 21)],
+          gold: 21,
+        },
+      };
+    },
+  },
+  {
     name: 'a realm with land but no hero and an empty treasury is told its treasury',
     stage(b) {
       holdsOnly(b, 0, [b.X, 0]);
@@ -912,6 +933,23 @@ export const WAGE_CASES: EarlyWinterCase[] = [
       return {
         got: { accounts: accounts(o), led: (realmOf(o)['_lastWages'] as { hostLeaderG?: number }).hostLeaderG },
         want: { accounts: [has(n, 20), owes(n, 10, 9, 1, ['−3g the Host-Leader']), pays(n, 10, 10)], led: 3 },
+      };
+    },
+  },
+  {
+    name: "the Host-Leader's company of 1g (a skeleton) pays nothing: his cut holds no company to a least wage (R-172 not built, B-06m)",
+    stage(b) {
+      titlesHeld(b);
+      holdsOnly(b, 0, [b.X, 0]);
+      const h = king(b, [skeletal(), ...companies(1, 'Men-at-Arms', 'Average', 'Host')]);
+      paid(b, 1);
+      return { hero: h, orders: [] };
+    },
+    check(o) {
+      const n = realmOf(o).name;
+      return {
+        got: { accounts: accounts(o), led: (realmOf(o)['_lastWages'] as { hostLeaderG?: number }).hostLeaderG },
+        want: { accounts: [has(n, 20), owes(n, 3, 2, 1, ['−2g the Host-Leader']), pays(n, 3, 17)], led: 2 },
       };
     },
   },

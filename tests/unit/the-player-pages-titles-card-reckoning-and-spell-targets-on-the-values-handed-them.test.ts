@@ -213,6 +213,19 @@ describe('titles.ts: the race line and the Titles card', () => {
     }
   });
 
+  test("the grace a claim stands before it is judged: the card's three phrases of it", () => {
+    g['reckoningCall'] = false;
+    renderTitles({ titles: { public: true, threshold: 0.4 } });
+    expect(text('report-titles')).toContain('begins a 2-turn grace period. The bar is fixed');
+    g['reckoningCall'] = true;
+    renderTitles({ titles: { public: true, threshold: 0.4, canCallReckoning: true } });
+    expect(text('report-titles')).toContain('the endgame begins (a 2-turn grace, then the world is judged).');
+    g['currentReport'] = { titles: { canCallReckoning: true, threshold: 0.4 } };
+    renderReckoningOrders();
+    expect(text('reckoning-wrap')).toContain('the endgame begins (a 2-turn grace, then the world is judged).');
+    g['reckoningCall'] = false;
+  });
+
   test('the minor titles: none, none held, held', () => {
     expect(renderMinorTitles(null)).toBe('');
     expect(words(renderMinorTitles({ minor: {} }))).toContain('Your characters hold no minor titles yet.');

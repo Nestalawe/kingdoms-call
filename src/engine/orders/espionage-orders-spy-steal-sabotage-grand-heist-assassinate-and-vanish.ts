@@ -26,6 +26,7 @@ import {
 } from '../turn/events-and-their-audiences.ts';
 import { areEnemies } from '../realms/relations-and-captures.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { aHerosTitlesKeepHisSpyingUnseen } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import {
   effStat,
   isHiddenByInvisibilityFrom,
@@ -447,8 +448,9 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
       });
       trySkillGain(turnContext, c, 'spy', SKILLGAIN_COMMON); // batch item 11: a failed attempt is a small chance to learn
     }
-    // Caught?
-    if (!charMinor(turnContext, c, 'shadow')) {
+    // Caught? Not the Shadow (the minor titles' registry's since B-06l: "orderOutcome: a hero's titles keep his
+    // spying unseen"): no roll is made to catch him
+    if (!aHerosTitlesKeepHisSpyingUnseen((theTitle) => charMinor(turnContext, c, theTitle))) {
       let _catch = 20 + 10 * _tgSpy - 10 * _mySpy;
       const _tgRealmLand = _tgt.player != null && prov.owner === _tgt.player,
         _myLand = prov.owner === c.player;
@@ -509,7 +511,7 @@ export function resolveSpyOrder(turnContext: TurnContext, c: Character, target: 
   // and persists in the save, so leaving it set once made a spy invisible for the rest of the
   // game.
   c._spyDisguised = false;
-  if (charMinor(turnContext, c, 'shadow')) c._spyDisguised = true; // MINOR TITLE — The Shadow: spies never detected
+  if (aHerosTitlesKeepHisSpyingUnseen((theTitle) => charMinor(turnContext, c, theTitle))) c._spyDisguised = true; // MINOR TITLE — The Shadow: spies never detected (the minor titles' registry's since B-06l)
   // show the spy's success chance and the actual roll (previously neither was reported).
   const _spyChance = dispFloor((0.2 + effStat(turnContext, c, 'spy') * 0.2 + spyBonus - cipherPenalty) * 100);
   const _autoSpy = hasCrystalOrb || masterSpy;

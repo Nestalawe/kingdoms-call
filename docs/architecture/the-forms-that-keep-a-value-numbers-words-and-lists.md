@@ -137,10 +137,10 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **A literal table keyed by a closed set** gains `satisfies Record<…>` (`TERRAIN_MODS` by unit type: a misspelt unit
   fails `tsc`; `PC_SPELL_SCHOOL_MAP` by school, so its values keep their literal types and index a fighter's schools).
   A table of pairs takes a tuple (`readonly [utility: number, combat: number]`), and so does a table of rows (the
-  minor titles' bonuses, `readonly [key: string, skills: readonly string[], …]`). A list of rows whose callbacks read
-  a hero (the minor titles' measures) takes `satisfies readonly AMinorTitle[]`: each callback's parameters typed, the
-  list's own type kept for its readers. A test that reads such a table by its
-  syntax tree (`entriesOf`, `tests/lib/source.ts`) must look through the `satisfies`.
+  minor titles' bonuses, `readonly [key: AMinorTitlesSlug, skills: readonly string[], …]`). A list of rows whose order
+  is the game's and whose keys a registry is keyed by (the minor titles) takes `as const satisfies readonly
+  AMinorTitleAsItsRowWritesIt[]`: each row checked, its keys' union kept for the registry. A test that reads such a
+  table by its syntax tree (`entriesOf`, `tests/lib/source.ts`) must look through the `satisfies` and the `as const`.
 - **An interface read by any name** (a fighter's schools) is copied into a local `Readonly<Partial<Record<string,
   number>>>` by a spread: an interface has no index signature, a spread's object type has one.
 - **A list the code tests for a gap or a missing field** is read through a local typed with its element as wide as the

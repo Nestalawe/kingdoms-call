@@ -60,7 +60,13 @@ A maintainer answered D-01 to D-07 on 2026-09-29, and D-08 to D-13 on 2026-10-11
 - **Every rule into the registry, with a bot valuation hook** (2026-11-08): every rule that can live in the
   [rule registry](../architecture/the-rule-registry-and-the-one-source-for-shared-rules.md) moves there, its numbers in
   data and its effects named in rows. Each kind of effect gets a hook that tells the bots what it is worth, so that
-  the bots follow a content change without new bot code. The hook is not yet built.
+  the bots follow a content change without new bot code.
+- **The rule says what, the bot says how much** (2026-11-22): the bot asks the rule what an effect does, in a what-if
+  (Bless Province: +6 gold this turn). A weights file for each bot version says what one unit of each kind of result is
+  worth (a gold, a point of a host's strength, a skill point), keyed by the kind of result, not by the effect, and
+  checked by the compiler (`satisfies Record<…>`), so a kind with no weight doesn't compile. Content holds rules only.
+  T7 copies today's numbers exactly, the spells' fixed order included; weights by kind come after T7, the old bot
+  played against the new. B-06h builds it for the economy, B-06r for the titles, P1-19bb8 for the alignments.
 - **The regression matrix stays** (2026-11-08): the [balance matrix](../architecture/the-balance-matrix.md) stays as
   it is. It proves that a refactor changed nothing.
 - **A separate design matrix** (2026-11-08): large and statistical, outside CI, it plays the engine alone for each

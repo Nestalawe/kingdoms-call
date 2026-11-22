@@ -59,7 +59,7 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 - **Where:** the tables of `src/content/kingdoms-call-data.ts`, the one source both portals read (each table's name
   says what it holds: `SPELL_DEFS_P`, `ALL_MAGIC_ITEMS_P`, `SAGE_DISCOVERIES_P`, `MONSTERS_P`, `TITLE_DEFS` and the
   `KC_` tables), or an effect's row in its family's file in `src/content/`, whose names end in `numbers-and-words.ts`.
-  A unit's cost and speed are in `src/engine/army-tables.ts`.
+  A unit's cost is in `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE`; its speed in `src/engine/army-tables.ts`.
 - **The words:** a row's own text, and the tables of both rulebooks (below).
 - **What a game already running holds:** whether a realm that holds the thing, or a save that copied it, gets the new
   number: [Live saves keep copies](../traps.md#live-saves-keep-copies).
@@ -76,11 +76,14 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   effect in `src/engine/rules/<family>/`. Never an `if` on the content's name inside a resolver
   ([the guardrails](../ARCHITECTURE.md#the-codes-guardrails)).
 - **The detail:** [the rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md#the-rule-registry); a
-  spell's, a discovery's, a perk's or an alignment ability's own "how to add" section in
+  spell's, a discovery's, a perk's, an alignment ability's, a rule of the economy's or a minor title's own "how to add"
+  section in
   [the spells' registry](the-spells-registry-its-stages-and-how-to-add-a-spells-effect.md#how-to-add-a-spells-effect),
   [the discoveries'](the-discoveries-registry-its-stages-and-how-to-add-a-discoverys-effect.md#how-to-add-a-discoverys-effect),
   [the guardian perks'](the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md#how-to-add-a-perk)
-  and [the alignment abilities'](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#how-to-add-an-ability).
+  [the alignment abilities'](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#how-to-add-an-ability)
+  [the economy's](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#how-to-add-a-rule-of-the-economy)
+  and [the minor titles'](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#how-to-add-a-perk).
 - **The trap:** [An effect reads only what its hook hands it](../traps.md#an-effect-reads-only-what-its-hook-hands-it);
   for an alignment's rule, [A realm's alignment's rule is a row of its abilities](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities).
 

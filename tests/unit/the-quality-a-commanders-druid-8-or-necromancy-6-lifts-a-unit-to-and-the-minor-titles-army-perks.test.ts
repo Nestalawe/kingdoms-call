@@ -178,16 +178,24 @@ describe("the minor titles' army perks", () => {
       theStrengthAUnitsCommandersMinorTitlesLiftItTo(30, 'Great Turtles', holding(['naturalist', 'ironclad'])),
     ).toEqual({ strength: 34, liftedBy: ['naturalist or beastmaster', 'ironclad'] });
   });
-  test("the titles are asked in the turn's order, and only where the unit's kind leaves it a question", () => {
+  // (since B-06k a title is asked only where its perk would lift the unit: the Cavalier and the Ironclad were asked of
+  // every unit before; who holds a title is a pure read of the turn-start holders, so no value changes)
+  test("the titles are asked in the turn's order, and only where the title's perk would lift the unit", () => {
     const asked: AMinorTitleWithAnArmyPerk[] = [];
     theStrengthAUnitsCommandersMinorTitlesLiftItTo(30, 'Men-at-Arms', holding([], asked));
-    expect(asked).toEqual(['cavalier', 'ironclad']);
+    expect(asked).toEqual([]);
     asked.length = 0;
     theStrengthAUnitsCommandersMinorTitlesLiftItTo(30, 'Thunderbirds', holding([], asked));
-    expect(asked).toEqual(['naturalist', 'beastmaster', 'cavalier', 'ironclad']);
+    expect(asked).toEqual(['naturalist', 'beastmaster']);
     asked.length = 0;
     theStrengthAUnitsCommandersMinorTitlesLiftItTo(30, 'Thunderbirds', holding(['naturalist'], asked));
-    expect(asked).toEqual(['naturalist', 'cavalier', 'ironclad']);
+    expect(asked).toEqual(['naturalist']);
+    asked.length = 0;
+    theStrengthAUnitsCommandersMinorTitlesLiftItTo(30, 'Unicorn Herd', holding(['beastmaster'], asked));
+    expect(asked).toEqual(['naturalist', 'beastmaster', 'cavalier']);
+    asked.length = 0;
+    theStrengthAUnitsCommandersMinorTitlesLiftItTo(30, 'Galleon Fleet', holding([], asked));
+    expect(asked).toEqual(['ironclad']);
   });
 });
 

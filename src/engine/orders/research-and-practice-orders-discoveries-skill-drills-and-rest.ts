@@ -1,4 +1,4 @@
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -35,6 +35,10 @@ import {
   whatARealmsAlignmentAddsToResearch,
 } from '../rules/the-registry-of-alignment-abilities.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import {
+  theHitPointsAHerosTitlesAddToARestsHeal,
+  theLevelsAHerosTitlesAddToHisSageInResearch,
+} from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat, recalcHeroPay, theSkillInPlayAsALineTellsIt } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import {
@@ -171,12 +175,13 @@ export function resolveResearchOrder(
   const _discBase =
     sageLevel * perLevel +
     neutralSageBonus +
-    (charMinor(turnContext, c, 'loreseeker') ? perLevel : 0) +
+    theLevelsAHerosTitlesAddToHisSageInResearch((theTitle) => charMinor(turnContext, c, theTitle)) * perLevel +
     whatARealmsDiscoveriesAddToResearch(G.players[c.player], {
       isTheFieldStudiedItsOwnCreed: () =>
         (_rcat || '').trim().toLowerCase() === ((player.alignment || '') + ' Creed').toLowerCase(),
-    }); // + Loreseeker; research discoveries (az10: own creed field only — the field actually studied; the discoveries'
-  // registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to research")
+    }); // + Loreseeker (the minor titles' registry's since B-06l: "orderOutcome: a hero's titles add to his Sage in
+  // research", a level from his title's row); research discoveries (az10: own creed field only — the field actually
+  // studied; the discoveries' registry's since plan P1-19ad: "orderOutcome: a realm's discoveries add to research")
   // 2026-10-13 (Toby, item 18): PERSEVERANCE, as Practice has it — every Research order of this
   // hero that has failed earlier this turn makes this one ×1.2 likelier, cumulatively. A
   // discovery (the hidden-field find included) resets it; each turn starts afresh.
@@ -218,7 +223,7 @@ export function resolveResearchOrder(
         });
         TM(c).discoveries += 1;
         if (perkTier(c, 'sage') > 0) {
-          player.gold = (player.gold || 0) + 5;
+          player.gold = (player.gold || 0) + KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS;
         }
         if (perkTier(c, 'sage') >= 3) {
           const _sp = provOf(turnContext, c);
@@ -287,7 +292,7 @@ export function resolveResearchOrder(
       });
       TM(c).discoveries += 1; // TITLE MERIT: Loremaster — the deed is the research, whichever is kept
       if (perkTier(c, 'sage') > 0) {
-        player.gold = (player.gold || 0) + 5;
+        player.gold = (player.gold || 0) + KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS;
       } // SAGE L6: +5g per new discovery
       if (perkTier(c, 'sage') >= 3) {
         const _sp = provOf(turnContext, c);
@@ -322,7 +327,7 @@ export function resolveResearchOrder(
       });
       TM(c).discoveries += 1; // TITLE MERIT: Loremaster
       if (perkTier(c, 'sage') > 0) {
-        player.gold = (player.gold || 0) + 5;
+        player.gold = (player.gold || 0) + KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS;
       } // SAGE L6: +5g per new discovery
       if (perkTier(c, 'sage') >= 3) {
         const _sp = provOf(turnContext, c);
@@ -657,7 +662,7 @@ export function resolveRestOrder(turnContext: TurnContext, c: Character, prov: P
     : theFactorHisRealmsAlignmentRaisesItBy !== null
       ? Math.ceil(baseHeal * theFactorHisRealmsAlignmentRaisesItBy)
       : baseHeal;
-  if (charMinor(turnContext, c, 'colossus')) heal += 2; // MINOR TITLE — The Colossus
+  heal += theHitPointsAHerosTitlesAddToARestsHeal((theTitle) => charMinor(turnContext, c, theTitle)); // MINOR TITLE — The Colossus (the minor titles' registry's since B-06l: "orderOutcome: a hero's titles add to a rest's heal")
   theProvinceIsHanded(prov);
   heal += whatARealmsDiscoveriesAddToARestsHeal(hisRealm, {
     isItHisRealmsGround: prov.owner === c.player,

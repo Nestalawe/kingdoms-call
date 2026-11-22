@@ -7,21 +7,22 @@ import type { UnitOfAType } from './units-that-fly-sail-or-can-be-carried-throug
 // (computeMovePoolMax and refreshMovePool in src/engine/units/movement-pools.ts) and the Move order's own function
 // (src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts) ask these. Plan P1-11e5 moved them here,
 // with what the caller reads of the world handed in (the speed table, his March and Naval bonuses from his skills as
-// they count, his realm's discoveries, his minor titles), so the order form's march forecast can ask the same rules.
+// they count, his realm's discoveries, the move points his minor titles add: since B-06l, T7, the minor titles'
+// registry's), so the order form's march forecast can ask the same rules.
 
 /** What a column's move pools are worked out from, each read by the caller: the companies that set its pace (the
  *  illusions left out), the speed table, the move points his March adds to a land company that doesn't fly (one rate
  *  for every company, item 14), those his Naval adds to a ship of a base speed, the move points his realm's
- *  discoveries add to a land company of Speed 1–2 (null for a hero of no realm), and whether he holds the Swift and
- *  the Seawolf minor titles. */
+ *  discoveries add to a land company of Speed 1–2 (null for a hero of no realm), and the move points his minor titles
+ *  add to a pool on land and at sea (the Swift's and the Sea-Wolf's rows: the minor titles' registry). */
 export interface WhatAColumnsMovePoolsAreWorkedOutFrom<U extends UnitOfAType> {
   readonly companies: readonly U[];
   readonly theSpeedOfEachType: Readonly<Partial<Record<string, number>>>;
   readonly whatHisMarchAddsOnLand: number;
   readonly whatHisNavalAddsToAShipOfTheSpeed: (base: number) => number;
   readonly whatHisRealmsDiscoveriesAddTo: ((company: U) => number) | null;
-  readonly heHoldsSwift: boolean;
-  readonly heHoldsSeawolf: boolean;
+  readonly theMovePointsHisTitlesAddOnLand: number;
+  readonly theMovePointsHisTitlesAddAtSea: number;
 }
 
 /** A column's move pools for a turn: its land pace, its sea pace, and whether it may move at sea at all. */
@@ -91,9 +92,9 @@ export function theMovePoolsOfAColumn<U extends UnitOfAType>(
       }
     }
   }
-  // Swift / Seawolf minor titles keep their +1 (only when a pool actually exists).
-  if (theColumn.heHoldsSwift && land > 0) land += 1;
-  if (theColumn.heHoldsSeawolf && sea > 0) sea += 1;
+  // the move points his minor titles add (the Swift's on land, the Sea-Wolf's at sea), only when a pool actually exists
+  if (land > 0) land += theColumn.theMovePointsHisTitlesAddOnLand;
+  if (sea > 0) sea += theColumn.theMovePointsHisTitlesAddAtSea;
   return { land, sea, seaActive };
 }
 

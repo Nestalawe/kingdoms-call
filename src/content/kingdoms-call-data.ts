@@ -11910,7 +11910,93 @@ export const ARMY_UNIT_NAMES = {
   ],
 } satisfies Record<Exclude<UnitType, keyof typeof PRIMAL_UNIT_NAMES>, string[]>;
 
-export const TITLE_DEFS = [
+/** A count of a hero's deeds an Imperial Title reads (his `tm`, saved by these keys): his land and sea battles' merit,
+ *  the guardians' hit points he has slain, his discoveries, his holy and dark casts, his acts of espionage, the points
+ *  of ground he has mapped, and the Monsters and Creatures he has mustered and won with. */
+export type AHerosDeedsAnImperialTitleCounts =
+  | 'marshal'
+  | 'sea'
+  | 'monster'
+  | 'discoveries'
+  | 'holyCasts'
+  | 'darkCasts'
+  | 'spyActions'
+  | 'explored'
+  | 'monsterHost'
+  | 'wildHost';
+
+/** How a hero's merit towards an Imperial Title is measured (the living hero of a realm highest by it holds the title,
+ *  the first found on a tie; a merit of 0 or less leaves it vacant). */
+export type HowAHerosMeritTowardsAnImperialTitleIsMeasured =
+  /** his level of a skill (trained and raised by the items he uses, 0 to 9) and one merit for each of his deeds, or,
+   *  with `theDeedsAreDividedBy`, one for each that many (rounded down); `theBattlesItsDeedsCount` names the battles
+   *  whose merit his deeds count (the winner gains the loser's losses, the loser is docked his own) */
+  | {
+      readonly theMeasure: 'his level of a skill and his deeds';
+      readonly theSkill: string;
+      readonly theDeeds: AHerosDeedsAnImperialTitleCounts;
+      readonly theDeedsAreDividedBy?: number;
+      readonly theBattlesItsDeedsCount?: 'on land' | 'at sea';
+    }
+  /** one merit for each of his deeds, and no skill */
+  | { readonly theMeasure: 'his deeds'; readonly theDeeds: AHerosDeedsAnImperialTitleCounts }
+  /** his levels in the five magic schools (each trained and raised by the items he uses, 0 to 9), and one merit for
+   *  each item he uses that raises a magic school, of any tier */
+  | { readonly theMeasure: 'his levels in the magic schools and the items he uses that raise one' };
+
+/** A realm's figure an Imperial Title of the realm is held by (the realm highest by it holds the title, the lowest seat
+ *  on a tie, its king named; a figure of 0 leaves it vacant): its tax base (every province it holds, land and sea) or
+ *  its treasury. */
+export type TheFigureAnImperialTitleOfTheRealmIsHeldBy = 'its tax base' | 'its treasury';
+
+/** An Imperial Title's key, the slug its row, its saved holders (`_titleHolders`) and its entry in the registry of the
+ *  Imperial Titles' effects (src/engine/rules/the-registry-of-the-imperial-titles-effects.ts) share: one for each row
+ *  of TITLE_DEFS, in its order (a row's key must be one; the registry's test holds the rows to every one). */
+export type AnImperialTitlesSlug =
+  | 'throne'
+  | 'vault'
+  | 'marshal'
+  | 'sea'
+  | 'monster'
+  | 'lore'
+  | 'arch'
+  | 'hiero'
+  | 'necro'
+  | 'spy'
+  | 'carto'
+  | 'beast'
+  | 'wild';
+
+/** An Imperial Title's row: its key (the saved holders' key, `_titleHolders`), its name, its prize in the standings, its
+ *  requirement and perk as players read them, and how its holder is found: a realm by its figure (a title of the
+ *  realm, `kingdomLevel`), or a hero by his merit. */
+export type AnImperialTitleAsItsRowWritesIt = {
+  readonly key: AnImperialTitlesSlug;
+  readonly name: string;
+  readonly prize: number;
+  readonly req: string;
+  readonly perk: string;
+} & (
+  | {
+      readonly kingdomLevel: true;
+      readonly howTheHolderIsFound: {
+        readonly theHolder: 'a realm';
+        readonly theFigure: TheFigureAnImperialTitleOfTheRealmIsHeldBy;
+      };
+    }
+  | {
+      readonly kingdomLevel?: undefined;
+      readonly howTheHolderIsFound: { readonly theHolder: 'a hero' } & HowAHerosMeritTowardsAnImperialTitleIsMeasured;
+    }
+);
+
+/** The share of each of his title merits a hero keeps when he falls (each count of his deeds, the Widowmaker's kills
+ *  too, multiplied by it and rounded), so that killing a rival's champion can knock him out of a title's race. */
+export const KC_THE_SHARE_OF_HIS_TITLE_MERIT_A_FALLEN_HERO_KEEPS = 0.75;
+
+/** The Imperial Titles, in the order the standings, the report and the title intelligence go through them (append;
+ *  never re-sort). */
+export const TITLE_DEFS: AnImperialTitleAsItsRowWritesIt[] = [
   {
     key: 'throne',
     name: 'The Throne',
@@ -11918,6 +12004,7 @@ export const TITLE_DEFS = [
     kingdomLevel: true,
     req: 'Hold the largest tax base (total province tax income) in the world.',
     perk: "Each turn you are shown every rival realm's share of the world tax base.",
+    howTheHolderIsFound: { theHolder: 'a realm', theFigure: 'its tax base' },
   },
   {
     key: 'vault',
@@ -11926,6 +12013,7 @@ export const TITLE_DEFS = [
     kingdomLevel: true,
     req: 'Hold the largest treasury (most gold) in the world.',
     perk: "Each turn you are shown every rival realm's treasury.",
+    howTheHolderIsFound: { theHolder: 'a realm', theFigure: 'its treasury' },
   },
   {
     key: 'marshal',
@@ -11933,6 +12021,16 @@ export const TITLE_DEFS = [
     prize: 10,
     req: "Hold the highest Tactical skill, plus land-battle merit \u2014 winning (+1 per enemy unit destroyed) more than losing (\u22121 per own unit lost). Battles against a neutral province's chieftain and his guard count the same as a war with a rival realm.",
     perk: "Each turn you are told the province holding each rival's strongest land army.",
+    // 2026-09-16: the Grand Marshal carries Tactical as its standing, as the Sea Lord carries Naval, so the title is held
+    // from turn one: with battle merit alone, every hero sat at 0 until the realms fought on land (the merit moves down
+    // for the loser), and a merit of 0 leaves a title vacant.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'tactical',
+      theDeeds: 'marshal',
+      theBattlesItsDeedsCount: 'on land',
+    },
   },
   {
     key: 'sea',
@@ -11940,6 +12038,16 @@ export const TITLE_DEFS = [
     prize: 10,
     req: "Hold the highest Naval skill, plus sea-battle merit on the same terms as the Grand Marshal \u2014 battles with a neutral sea province's guardian count too.",
     perk: "Each turn you are told the province holding each rival's strongest fleet.",
+    // The Sea Lord no longer counts the waves: one merit for each sea province the realm held, folded into every hero of
+    // it, let a realm that ruled the deep hold the title with a mediocre admiral. Withdrawn: the admiral's own Naval and
+    // the battles he has won at sea.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'naval',
+      theDeeds: 'sea',
+      theBattlesItsDeedsCount: 'at sea',
+    },
   },
   {
     key: 'monster',
@@ -11947,6 +12055,7 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Slay the greatest total HP of lair guardians (a pacified guardian counts half).',
     perk: 'Each turn you are named the foremost monster-slayer of every rival realm, with their province and tally.',
+    howTheHolderIsFound: { theHolder: 'a hero', theMeasure: 'his deeds', theDeeds: 'monster' },
   },
   {
     key: 'lore',
@@ -11954,6 +12063,15 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Sage skill, plus one point per Sage discovery made.',
     perk: 'Each turn you are shown every discovery each rival realm holds \u2014 and copy one you lack, for free.',
+    // The Loremaster was Explorer, Spy and Sage, with every map feature found at double weight: it swallowed espionage
+    // and exploration. Explorer is the Cartographer's now and Spy the Spymaster's; the Loremaster is the scholar's own
+    // skill and his discoveries, one merit each.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'sage',
+      theDeeds: 'discoveries',
+    },
   },
   {
     key: 'arch',
@@ -11961,6 +12079,10 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the most total magic-school levels (all five schools) plus legendary spell-casting items.',
     perk: 'Each turn you are told the strongest mage of each magic school outside your own realm.',
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his levels in the magic schools and the items he uses that raise one',
+    },
   },
   {
     key: 'hiero',
@@ -11968,6 +12090,14 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest White skill, plus Bless Province, Holy Symbol and Resurrect casts.',
     perk: 'Each turn the dead give up their secrets: every fallen hero your realm can see is read out with the skills they carried in life.',
+    // Druid withdrawn: the Hierophant is a title of the White faith, and a second skill let a druid with no holy casts
+    // out-score a working priest.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'white',
+      theDeeds: 'holyCasts',
+    },
   },
   {
     key: 'necro',
@@ -11975,6 +12105,12 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Necromancy skill, plus every dark rite worked (each Curse, Plague, undead raised and other Necromancy spell cast).',
     perk: 'Each turn, Grave-sight reveals every province whose battlefield graves hold crack or elite dead \u2014 and files each one under Graveyards Known in your report.',
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'necromancy',
+      theDeeds: 'darkCasts',
+    },
   },
   // ── 2026-09-17: FOUR NEW TITLES ────
   // Espionage, cartography and the two beast-leading traditions had no prize of their own; the Spy
@@ -11987,6 +12123,14 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Spy skill, plus one point per successful act of espionage \u2014 spying out a province, reading a rival character, sabotage, and an assassination that finds its mark.',
     perk: 'Each turn you are handed the counter-intelligence ledger: every HERO who spied on, sabotaged or robbed your lands this turn, what they did, whose crown they serve and the province they did it in.',
+    // `tm.spyActions` counts successes only (the spy, sabotage and assassination sites): a failed infiltration earns
+    // nothing.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'spy',
+      theDeeds: 'spyActions',
+    },
   },
   {
     key: 'carto',
@@ -11994,6 +12138,15 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Hold the highest Explorer skill, plus one point per 10% of a province mapped by your own marching and exploring (every province counts separately, and the survey spilling onto neighbouring ground counts too).',
     perk: 'Each turn your surveyors lay out the rival atlas: for every realm, how many provinces they have charted in full and what share of the world they have mapped.',
+    // `tm.explored` banks raw points of ground mapped, divided down here, so the count keeps its precision and only the
+    // merit is coarse.
+    howTheHolderIsFound: {
+      theHolder: 'a hero',
+      theMeasure: 'his level of a skill and his deeds',
+      theSkill: 'explorer',
+      theDeeds: 'explored',
+      theDeedsAreDividedBy: 10,
+    },
   },
   {
     key: 'beast',
@@ -12001,6 +12154,8 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Muster and win with monsters \u2014 one point per Monster-category unit you recruit, and one per Monster-category unit still under your banner when you win a battle.',
     perk: 'Each turn the beast-tongues take the rival menagerie: for every realm, how many Monster units they have under arms and the province holding their largest monster host.',
+    // Deeds alone, like the Monster-Bane: no skill to stand on, so the title sits vacant until somebody musters beasts.
+    howTheHolderIsFound: { theHolder: 'a hero', theMeasure: 'his deeds', theDeeds: 'monsterHost' },
   },
   {
     key: 'wild',
@@ -12008,6 +12163,7 @@ export const TITLE_DEFS = [
     prize: 10,
     req: 'Muster and win with the free beasts \u2014 one point per Creature-category unit you recruit (thunderbirds, ents, stone giants, rocs, whales, bears and the other wild Creatures), and one per Creature-category unit still under your banner when you win a battle.',
     perk: 'Each turn the wild reports its own: for every realm, how many Creature units they field and the province holding their greatest wild host.',
+    howTheHolderIsFound: { theHolder: 'a hero', theMeasure: 'his deeds', theDeeds: 'wildHost' },
   },
 ];
 
@@ -14906,12 +15062,13 @@ export const KC_UNIT_TYPE = {
 // A table here keyed by unit type ends in `satisfies` on the part it covers, so that a unit left out of it, or a name
 // that is no unit type, fails to compile (docs/traps.md, "A new army unit is a dozen tables"):
 //   KC_UNIT_BASE_STR     every humanoid unit and every elemental (the primal units' strength is PRIMAL_ARMY_DEFS_P's)
+//   KC_EACH_UNIT_TYPES_PRICE_AND_WAGE   every humanoid unit (the primal units' cost is PRIMAL_ARMY_DEFS_P's)
 //   ARMY_UNIT_NAMES      every unit type PRIMAL_UNIT_NAMES doesn't name, and no other
 //   PRIMAL_UNIT_NAMES    primal units only
 //   PRIMAL_ARMY_DEFS_P, KC_CARRIER_BERTHS   unit types only (so KC_UNIT_TYPE must list every primal unit)
 // tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts compiles copies of this file, each with a
 // unit left out.
-// The engine's own tables keyed by unit type (UNIT_SHORT, ARMY_COST_MASTER, TERRAIN_MODS, ARMY_RACE_OF_TYPE) get theirs
+// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS, ARMY_RACE_OF_TYPE) get theirs
 // when their files lose their ts-nocheck line: a `satisfies` checks nothing in a file with it (plan P1-10, Decision 6).
 export type UnitType = keyof typeof KC_UNIT_TYPE;
 /** The wild's units, a Druid's or a monster's: PRIMAL_ARMY_DEFS_P's. */
@@ -14981,7 +15138,7 @@ export const KC_DRUID_LEVELS = {
 // primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place primal stats are written),
 // then the five summoned elementals. 2026-10-11 (Toby, the army roster): Free Lances 5→6, Gilded
 // Lances 6→7, Forest Wardens 5→4, Shadow Archers 6→7, Ironwood Crossbows 5→4, Warg Riders 5→6; the
-// costs moved with them in ARMY_COST_MASTER (GM portal).
+// costs moved with them in KC_EACH_UNIT_TYPES_PRICE_AND_WAGE (below).
 // tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds both to the decided table.
 export const KC_UNIT_BASE_STR = Object.assign(
   {
@@ -15026,6 +15183,93 @@ export const KC_UNIT_BASE_STR = Object.assign(
     'Darkness Elemental': 11,
   } satisfies Record<ElementalUnitType, number>,
 );
+// Each unit type's price, which is BOTH the price to raise a company of it and the wage it draws each turn it exists
+// (B-06b: one table, here; the engine reads it as ARMY_COST_MASTER, the same object). The humanoid units and fleets,
+// then every primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place a primal unit's cost is written),
+// in that order: the report and the GM page walk its keys. 2026-10-11 (Toby, the army roster): Forest Wardens 3→2,
+// Shadow Archers 3→4, Ironwood Crossbows 3→2; their base strengths moved with them (KC_UNIT_BASE_STR).
+// tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds both to the decided table.
+export const KC_EACH_UNIT_TYPES_PRICE_AND_WAGE = Object.assign(
+  {
+    // ── Human ──
+    'Shieldwall Levies': 2,
+    'Free Lances': 3,
+    'Yeoman Longbows': 2,
+    'Gilded Lances': 4,
+    'Human Garrison': 1,
+    'Noble Griffons': 4,
+    'Galleon Fleet': 3,
+    'Corsair Fleet': 3,
+    'Men-at-Arms': 3,
+    // ── Elven ──
+    'Elven Bowmen': 3,
+    'Forest Wardens': 2,
+    'Shadow Archers': 4,
+    'Elven Garrison': 1,
+    'Eagle Riders': 4,
+    'Elven Galleys': 3,
+    'Whale Cohort': 3,
+    'Stag Riders': 3,
+    // ── Dwarven ──
+    'Dwarven Guard': 3,
+    'Ironwood Crossbows': 2,
+    'Mountain Guns': 4,
+    'Dwarf Garrison': 1,
+    'Gnomish Gyrocopters': 3,
+    'Dwarf Ironclads': 4,
+    'Ironhoof Rams': 3,
+    // ── Orcish ──
+    'Warg Riders': 3,
+    'Orc Berserkers': 3,
+    'Goblin Horde': 2,
+    'Orc Garrison': 1,
+    'Wyvern Riders': 4,
+    'Orcish Longships': 3,
+    'Black Arrows': 2,
+  } satisfies Record<HumanoidUnitType, number>,
+  Object.fromEntries(Object.entries(PRIMAL_ARMY_DEFS_P).map(([t, d]) => [t, d.cost])),
+);
+// The price of a company of a type the table above prices at nothing or not at all (the turn, the report, the ledger
+// and the bots charge it, by thePriceOfACompanyOfAType).
+export const KC_THE_PRICE_OF_A_COMPANY_THE_TABLE_PRICES_AT_NOTHING = 2;
+// A skeletal company's wage, whatever its type: a flat 1g (by theWageOfACompany).
+export const KC_THE_WAGE_OF_A_SKELETAL_COMPANY = 1;
+// The least a mercenary band costs to hire, after the realm's alignment's cut and its discoveries' (B-06f: the
+// Recruit Armies order and the report's price read it, by thePriceOfAMercenaryBand).
+export const KC_THE_LEAST_PRICE_OF_A_MERCENARY_BAND = 1;
+// The price of a Wild Hunt whose beast the table prices at nothing or not at all (B-06f: the rite, the report and the
+// bots read it, by wildHuntPrice).
+export const KC_THE_PRICE_OF_A_WILD_HUNT_WHOSE_BEAST_THE_TABLE_DOES_NOT_PRICE = 6;
+// The tax base at or above which a province is rich enough to stage a Grand Heist in (a realm's home capital always
+// is): B-06f, the order and the bots read it (as GRAND_HEIST_RICH_TAX).
+export const KC_THE_TAX_THAT_MAKES_A_PROVINCE_RICH_ENOUGH_FOR_A_GRAND_HEIST = 7;
+// The gold a lair's hoard holds, by its guardian's power: a roll between the band's least and most, both counted
+// (B-06g: a scout's figure and a clear's, and the hoard stocked when the world is made or a lair first read, by
+// theGoldALairsHoardHoldsOnADie). The engine names it ENCOUNTER_CLEAR_GOLD_BANDS.
+export const KC_THE_GOLD_A_LAIRS_HOARD_HOLDS_BY_ITS_GUARDIANS_POWER = {
+  Weak: [5, 8],
+  Moderate: [12, 18],
+  Powerful: [20, 30],
+  Legendary: [40, 60],
+} satisfies Record<string, readonly [min: number, max: number]>; // was 5–12 / 14–28 / 30–50 / 55–90
+// The band of a lair whose guardian's power the table above doesn't list (B-06g).
+export const KC_THE_GOLD_A_LAIRS_HOARD_HOLDS_WHOSE_GUARDIANS_POWER_THE_TABLE_DOES_NOT_LIST: readonly [
+  min: number,
+  max: number,
+] = [1, 5];
+// The gold a hero's realm wins for each new discovery he makes from Sage 6 (the Sage's first mastery perk): B-06g, the
+// Research order's three finds read it (the unlooked-for find, the choice of two, the field's last).
+export const KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS = 5;
+// A hero's wage in service (by theWageOfAHeroInService, B-06d): what his allegiance was bargained at (a hero never
+// hired, a founding or a wandering one: 1g), plus his skill premium (a gold for every 4 skill points, rounded up, less
+// the 1g a starting hero's skills already earn, never below nothing), never below 1g. The hire desk quotes the same
+// premium on top of the alignment's price (heroHireWage).
+export const KC_A_HEROS_WAGE_IN_SERVICE = {
+  theAllegianceOfAHeroNeverHired: 1,
+  theSkillPointsForEachGold: 4,
+  theGoldTheSkillPremiumTakesOff: 1,
+  theLeastWage: 1,
+} as const;
 export const KC_UNIT_Q_MULT = { Green: 1, Average: 2, Veteran: 3, Crack: 4, Elite: 5 };
 export const KC_QUALITY_TIERS = ['Green', 'Average', 'Veteran', 'Crack', 'Elite'] as const;
 export const KC_QUALITY_UP = { Green: 'Average', Average: 'Veteran', Veteran: 'Crack', Crack: 'Elite', Elite: 'Elite' };
@@ -15120,6 +15364,26 @@ export const KC_GRAND_DESIGNS = {
     desc: 'Your monsters and creatures cost half their wages and muster as Veterans.',
   },
 };
+// The Reckoning's numbers (B-06q), in whole percentage points where they are shares of the world's tax base: the bar a
+// claim must clear by the number of realms, the points it wears away each turn from the first turn it may, its floor,
+// each ally's step (these points over the number of realms, rounded) and the ceiling no bloc's bar passes; the share of
+// the bar a claimant must hold himself; the turns of grace before a claim is judged; the turn the throne opens and the
+// turn the titles go public; the Legacy a Legendary relic is worth. The engine reads them by its RECKONING_* names
+// (engine/titles/perks.ts), the player portal's titles card here; a static test holds the rulebook's tables to them.
+export const KC_THE_RECKONINGS_NUMBERS = {
+  theBarByTheNumberOfRealms: { 2: 60, 3: 50, 4: 45, 5: 42 },
+  theBarWithSixRealmsOrMore: 40,
+  theFirstTurnAtWhoseEndTheBarMayWearAway: 15,
+  thePointsTheBarWearsAwayEachTurn: 5,
+  theFloorTheBarNeverFallsBelow: 25,
+  thePointsOverTheNumberOfRealmsThatMakeEachAllysStep: 50,
+  theCeilingNoBlocsBarPasses: 80,
+  theShareOfTheBarAClaimantMustHoldInHisOwnRight: 0.5,
+  theTurnsOfGraceBeforeAClaimIsJudged: 2,
+  theFirstTurnAClaimMayBeLodged: 10,
+  theFirstTurnTheTitlesArePublic: 5,
+  theLegacyEachLegendaryRelicIsWorth: 1,
+} as const;
 
 // MASTERY_UNLOCKS (declared above) is ALSO read by both portals now: the player portal's own copy,
 // MASTERY_EFFECTS, had drifted from the engine on ten entries and was deleted (DEV_LOG §276).

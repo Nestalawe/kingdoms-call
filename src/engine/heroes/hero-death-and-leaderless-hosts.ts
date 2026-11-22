@@ -1,4 +1,7 @@
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_THE_SHARE_OF_HIS_TITLE_MERIT_A_FALLEN_HERO_KEEPS,
+  KC_UNIT_CLASS,
+} from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { monarchRestProvId } from '../grand-design.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
@@ -516,12 +519,13 @@ export function handleHeroDeath(
     const _tm = TM(killerChar);
     _tm.duelKills = (Number(_tm.duelKills) || 0) + 1;
   } // MINOR TITLE — The Widowmaker
-  // VICTORY (#3): a fallen character loses 25% of accumulated Title merit — killing a rival's
-  // champion late can knock them out of a Title race. (Applies to Kings and Heroes alike.)
+  // VICTORY (#3): a fallen character keeps a share of each count of his Title merit (content's
+  // KC_THE_SHARE_OF_HIS_TITLE_MERIT_A_FALLEN_HERO_KEEPS, B-06n), rounded: killing a rival's champion late can knock
+  // them out of a Title race. (Applies to Kings and Heroes alike.)
   if (deadChar.tm) {
     const merit = theMeritByAnyName(deadChar.tm);
     for (const k in merit) {
-      merit[k] = Math.round((Number(merit[k]) || 0) * 0.75);
+      merit[k] = Math.round((Number(merit[k]) || 0) * KC_THE_SHARE_OF_HIS_TITLE_MERIT_A_FALLEN_HERO_KEEPS);
     }
   }
   const prov = G.world.provinces[deadChar.location];

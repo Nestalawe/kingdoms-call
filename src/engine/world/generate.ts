@@ -1,4 +1,5 @@
 import {
+  KC_A_HEROS_WAGE_IN_SERVICE,
   KC_HUMANOID_RACES,
   KC_RIVAL_RACE,
   KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
@@ -27,7 +28,10 @@ import {
   provincePoolSize,
 } from './tables.ts';
 import { getDruidLevel } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
-import { ALIGNMENTS_P } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import {
+  ALIGNMENTS_P,
+  theWageOfAHeroInService,
+} from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { THE_LADDER_OF_THE_ALIGNMENTS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   doTheRitualStonesStandWithARealmOf,
@@ -1628,8 +1632,8 @@ export function generateNewGame(
       ABILITIES_P.forEach((ab) => {
         hero.aptitude[ab] = rP(1, 4);
       });
-      // Same wage formula as every other hero: 3 starting skill points → ceil(3/4) = 1g.
-      hero.pay = Math.max(1, Math.ceil(Object.values(hSkills).reduce((s: number, v) => s + Number(v), 0) / 4));
+      // Same wage formula as every other hero (theWageOfAHeroInService, B-06d): 3 starting skill points → 1g.
+      hero.pay = theWageOfAHeroInService(KC_A_HEROS_WAGE_IN_SERVICE.theAllegianceOfAHeroNeverHired, hero);
       allChars.push(hero);
       best.characters.push(hid);
       heroIds.push(hid);
@@ -2017,10 +2021,7 @@ export function generateNewGame(
       ABILITIES_P.forEach((ab) => {
         h.aptitude[ab] = rP(1, 4);
       });
-      h.pay = Math.max(
-        1,
-        1 + Math.max(0, Math.ceil(Object.values(hSkills).reduce((s: number, v) => s + Number(v), 0) / 4) - 1),
-      ); // wandering default; the hire desk quotes alignment + skill premium
+      h.pay = theWageOfAHeroInService(KC_A_HEROS_WAGE_IN_SERVICE.theAllegianceOfAHeroNeverHired, h); // wandering default; the hire desk quotes alignment + skill premium
       allChars.push(h);
       lp.characters.push(hid);
       // Province still keeps neutralDefenders for backward-compat intel display, but armies actually

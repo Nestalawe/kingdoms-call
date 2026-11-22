@@ -13,6 +13,8 @@ import {
 } from '../rules-on-plain-values/the-move-pools-a-column-marches-and-sails-by-and-the-pool-a-step-spends.ts';
 import { whatARealmsDiscoveriesAddToAMarch } from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { theMovePointsAHerosTitlesAddToHisPool } from '../rules/the-registry-of-the-minor-titles-perks.ts';
+import type { AMinorTitlesSlug } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { perkTier } from '../titles/perks.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
@@ -116,6 +118,7 @@ export function computeMovePoolMax(turnContext: TurnContext, c: AHeroAsHisPoolsA
   const marchLevel = effStat(turnContext, c, 'march');
   const navalLevel = effStat(turnContext, c, 'naval');
   const hisRealm = c.player;
+  const heHoldsTheTitle = (theTitle: AMinorTitlesSlug) => charMinor(turnContext, c, theTitle);
   const { land, sea, seaActive } = theMovePoolsOfAColumn({
     companies: armies,
     theSpeedOfEachType: ARMY_SPEED_R,
@@ -125,8 +128,10 @@ export function computeMovePoolMax(turnContext: TurnContext, c: AHeroAsHisPoolsA
       hisRealm != null
         ? (a) => whatARealmsDiscoveriesAddToAMarch(turnContext.G.players[hisRealm], { theUnit: a })
         : null,
-    heHoldsSwift: charMinor(turnContext, c, 'swift'),
-    heHoldsSeawolf: charMinor(turnContext, c, 'seawolf'),
+    // the Swift's and the Sea-Wolf's move points (the minor titles' registry's since B-06l: "movementCost: a hero's
+    // titles add to his move points"), from their rows
+    theMovePointsHisTitlesAddOnLand: theMovePointsAHerosTitlesAddToHisPool('land', heHoldsTheTitle),
+    theMovePointsHisTitlesAddAtSea: theMovePointsAHerosTitlesAddToHisPool('sea', heHoldsTheTitle),
   });
   return { land, sea, seaActive, cap: getSeaCapability(armies, c) };
 }

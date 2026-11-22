@@ -1,5 +1,9 @@
 import { kcRng } from '../rng.ts';
-import { ARMY_COST_MASTER, QUALITY_TIERS } from '../army-tables.ts';
+import { QUALITY_TIERS } from '../army-tables.ts';
+import {
+  thePriceOfACompanyOfAType,
+  theWageOfACompany,
+} from '../rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
 import { CARRIER_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
@@ -7,8 +11,6 @@ import {
   aCompanyIsABeastADruidHalves,
   aLeadersBeastsPayHalfWages,
   theCompaniesTheHostLeaderSavesOn,
-  theHostLeadersCut,
-  theWageABeastPaysUnderADruid,
 } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { neutralTradeGold } from '../grand-design.ts';
 import {
@@ -41,10 +43,29 @@ import {
 import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
 import { theTaxTheHeroesItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
+  aHerosTitlesCutHisRealmsCompanyWages,
+  heHoldsAMinorTitleThatGivesHisRealmTheGold,
+} from '../rules/the-registry-of-the-minor-titles-perks.ts';
+import {
   doARealmsDiscoveriesAddToTheRealmsTax,
   whatARealmsDiscoveriesEarnInInterest,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { theTaxOfAProvinceOnConsecratedGround } from '../rules/the-registry-of-alignment-abilities.ts';
+import {
+  aCompanyIsSparedDisbandingUnpaid,
+  anUnpaidHeroDeserts,
+  theCompanyWagesUnderTheHostLeader,
+  theGoldAHerosMasteriesAddBeyondTheTax,
+  theGoldAHerosMinorTitlesAddBeyondTheTax,
+  theTaxOfAProvinceFromTheRealmsWonder,
+  theTaxOfAProvinceThisTurn,
+  theTaxOfAProvinceWhileAMarkLasts,
+  theOrderOfTwoCompaniesInTheLineToDisbandUnpaid,
+  theRanksOfACompanyInTheLineToDisbandUnpaid,
+  theWageOfACompanyThisTurn,
+  theWageOfACompanyUnderItsLeader,
+  type AMinorTitlesGoldBeyondTheTax,
+} from '../rules/the-registry-of-the-economys-rules.ts';
 import type { TurnContext } from './context.ts';
 import type { AGarrisonCompanyDrilledAGrade, ATitlesPerkOfGold } from './the-facts-early-winters-lines-record.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
@@ -90,6 +111,13 @@ type AProvinceAsEarlyWinterReadsItsGarrison = Omit<ProvinceInABattle, 'garrisonA
   garrisonArmies?: ArmyInABattle[] | null;
 };
 
+/** The perk each minor title's gold is noted by on the tax line, from the gold it gave. */
+const THE_PERK_EACH_MINOR_TITLES_GOLD_IS_NOTED_BY = {
+  'the-cutpurses-gold': () => ({ kind: "the Cutpurse's two gold" }),
+  'the-champion-of-the-peoples-gold': () => ({ kind: "the Champion of the People's two gold" }),
+  'the-castellans-gold': (gold) => ({ kind: "the Castellan's gold for every five provinces", gold }),
+} satisfies Record<AMinorTitlesGoldBeyondTheTax, (gold: number) => ATitlesPerkOfGold>;
+
 export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(turnContext: TurnContext) {
   const { G }: { readonly G: TheStateAsEarlyWinterReadsIt } = turnContext;
   // The world's provinces where the body guards the list (`|| []`); where it reads them unguarded (by a province's id
@@ -124,8 +152,6 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         });
     }
   });
-  const ARMY_COST = ARMY_COST_MASTER; // alias → master table at top of script
-  // Army cost lookup (matches ARMY_TYPES cost values in game.js)
 
   // ── SAGE DISCOVERIES ────
   // 40 discoveries organised by category. effect: {type,...params} — applied at turn resolution time
@@ -164,22 +190,31 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       const pv: AProvinceAsEarlyWinterReadsItsGarrison | undefined = G.world.provinces[id];
       if (!pv) return s;
       let t = pv.tax || 0;
-      if (pv._earthquakeNoTax === G.turn) t = 0; // Earthquake: no revenue this turn
-      if (pv._sabotagedForTurn === G.turn) t = 0; // SPY L7 Sabotage: wrecked province yields no tax this turn
-      if (pv._blessedTurn === G.turn) t = Math.round(t * (Number(pv._blessedMult) || 1.6)); // Bless Province: +60% (or +100% from a Divine king)
+      // this turn's marks: an Earthquake's or a SPY L7 Sabotage's nothing, Bless Province's +60% (or +100% from a
+      // Divine king) (the economy's registry's since B-06c: "turnEnd: a province's tax this turn")
+      t = theTaxOfAProvinceThisTurn({ theTax: t, theTurn: G.turn, theProvince: pv });
       if (isConsecrated(p, pv.id)) {
         const _cb = t;
         t = theTaxOfAProvinceOnConsecratedGround({ theTax: t });
         _consecBonus += t - _cb;
       } // DIVINE — Consecrate: hallowed ground prospers (+50%)
-      if (theEnslavedProvinceStillPaysLess(pv, G.turn)) t = Math.max(0, t - 1); // EVIL — Enslave: resentment (−1 tax while it lasts)
+      // EVIL — Enslave: resentment (−1 tax while it lasts) (the economy's registry's since B-06c: "turnEnd: a province's
+      // tax while a mark lasts")
+      t = theTaxOfAProvinceWhileAMarkLasts({
+        theTax: t,
+        itStillResentsItsEnslavement: theEnslavedProvinceStillPaysLess(pv, G.turn),
+      });
       if (pv._earthquakeTax) t = Math.max(0, t - (pv._earthquakeTax || 0));
       // every province-tax discovery (sd11 / sd15 / sd18 and the heritage & creed ones), capped
       // per discovery — see discTaxAdd. Keep in step with buildTurnReport.
       t += discTaxAdd(p, pv, G, pi, _taxAcc, _taxCap);
       // GRAND DESIGN — Good (Free City Charter): +2 tax on every province you hold with a
-      // garrison.
-      if (gdActive(turnContext, pi, 'Good') && (pv.garrisonArmies ?? []).length > 0) t += 2;
+      // garrison. (the economy's registry's since B-06c: "turnEnd: a province's tax from the realm's Wonder")
+      t = theTaxOfAProvinceFromTheRealmsWonder({
+        theTax: t,
+        itKeepsAGarrison: (pv.garrisonArmies ?? []).length > 0,
+        theFreeCityCharterStands: () => gdActive(turnContext, pi, 'Good'),
+      });
       return s + t;
     }, 0);
     const pChars = (G.characters ?? []).filter((c) => c.player === p.id && c.alive);
@@ -213,27 +248,27 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // per 5 provinces.
     // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
     // (each perk that adds gold is noted on the tax line: its fact holds them, in the order the heroes hold them)
+    // (how much each gives: the economy's registry's since B-06c, "turnEnd: a realm's gold beyond its tax from a hero's
+    // minor title"; which title gives it: the minor titles' registry's since B-06m, "turnEnd: a hero's titles give his
+    // realm gold beyond its tax"; whether he holds it, as before)
     let titlePerkGold = 0;
     const titlePerks: ATitlesPerkOfGold[] = [];
     pChars.forEach((pc) => {
-      if (charMinor(turnContext, pc, 'cutpurse')) {
-        titlePerkGold += 2;
-        titlePerks.push({ kind: "the Cutpurse's two gold" });
-      }
-      if (charMinor(turnContext, pc, 'champion')) {
-        titlePerkGold += 2;
-        titlePerks.push({ kind: "the Champion of the People's two gold" });
-      }
-      if (charMinor(turnContext, pc, 'castellan')) {
-        const cg = Math.floor(provincesOrNone().filter((pv) => pv.owner === pi).length / 5);
-        if (cg > 0) {
-          titlePerkGold += cg;
-          titlePerks.push({ kind: "the Castellan's gold for every five provinces", gold: cg });
-        }
-      }
+      theGoldAHerosMinorTitlesAddBeyondTheTax({
+        heHoldsATitleThatGivesIt: (theGold) =>
+          heHoldsAMinorTitleThatGivesHisRealmTheGold(theGold, (theTitle) => charMinor(turnContext, pc, theTitle)),
+        theProvincesHisRealmHolds: () => provincesOrNone().filter((pv) => pv.owner === pi).length,
+      }).forEach(([theTitlesGold, theGold]) => {
+        titlePerkGold += theGold;
+        titlePerks.push(THE_PERK_EACH_MINOR_TITLES_GOLD_IS_NOTED_BY[theTitlesGold](theGold));
+      });
     });
-    // THIEF L6: +5g income per Thief-6 character. Pay it here.
-    const thiefStipend = pChars.reduce((sm, ch) => sm + (perkTier(ch, 'thief') > 0 ? 5 : 0), 0);
+    // THIEF L6: +5g income per Thief-6 character. Pay it here. (the economy's registry's since B-06c: "turnEnd: a
+    // realm's gold beyond its tax from a hero's mastery")
+    const thiefStipend = pChars.reduce(
+      (sm, ch) => sm + theGoldAHerosMasteriesAddBeyondTheTax({ heHoldsTheThiefNetwork: perkTier(ch, 'thief') > 0 }),
+      0,
+    );
     p.gold =
       (p.gold || 0) +
       income +
@@ -321,34 +356,28 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // as soon as a whole gold has built up. Across the qualifying units the total is exactly half
     // (or half rounded to the nearest gold), which is what "half upkeep" has always meant.
     // The 1g floor still applies per unit, so a 1g unit is never free.
+    // The halving is the economy's registry's since B-06d ("turnEnd: a company's wage this turn"): the realm's carry
+    // is handed to each company in turn, the heroes' companies first, then the garrisons, and back.
     let _orcFrac = 0;
     let armyWages = allKingdomArmies.reduce((s, a: ArmyInABattle) => {
       // Wild Hunt: the bound beasts answer the old gods, not a paymaster. They draw NO wage for
       // the two turns they serve, and are never disbanded for non-payment (see the loop below).
       // (A summons draws none either: both are aCompanyDrawsNoWage.)
       if (aCompanyDrawsNoWage(a)) return s;
-      if (a._isSkeletal) return s + 1;
-      let w = Number(ARMY_COST[a.type]) || 2;
-      if (_orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn) {
-        const _w0 = w,
-          _half = _w0 * 0.5;
-        let _wHalf = Math.floor(_half);
-        if (_wHalf < 1) {
-          // The 1g floor bites: this unit already pays MORE than half, so it neither banks a
-          // remainder nor spends one. (Letting a 1g unit both claim the floor and consume the
-          // carry undercharged the rest of the host by a gold every time.)
-          _wHalf = 1;
-        } else {
-          _orcFrac += _half - _wHalf;
-          if (_orcFrac >= 1 - 1e-9) {
-            _wHalf += 1;
-            _orcFrac -= 1;
-          }
-        }
-        w = _wHalf;
+      if (a._isSkeletal) return s + theWageOfACompany(a);
+      let w = thePriceOfACompanyOfAType(a.type);
+      {
+        const _w0 = w;
+        const theWageThisTurn = theWageOfACompanyThisTurn({
+          theWage: w,
+          itTookTheWarSpoilsThisTurn: _orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn,
+          theHalfGoldsCarried: _orcFrac,
+        });
+        w = theWageThisTurn.theWage;
+        _orcFrac = theWageThisTurn.theHalfGoldsCarried;
         _orcSpoilsG += _w0 - w;
-      }
-      if (_druidHalfWage.has(a)) w = theWageABeastPaysUnderADruid(w); // DRUID L6
+      } // ORC WAR-SPOILS
+      w = theWageOfACompanyUnderItsLeader({ theWage: w, itIsABeastADruidHalves: _druidHalfWage.has(a) }); // DRUID L6
       {
         const _w0 = w;
         w = discUpkeepWage(p, a, w, _upkAcc, _taxCap);
@@ -358,14 +387,16 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     }, 0);
     // MINOR TITLE — The Host-Leader: this realm's greatest general pays 1g less per unit he
     // leads (min 1/unit).
+    // (which title cuts them: the minor titles' registry's since B-06m, "turnEnd: a hero's titles cut his realm's company
+    // wages"; whether he holds it, as before)
     let _hostLeaderG = 0;
     {
       const hl: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find((c) =>
-        charMinor(turnContext, c, 'hostleader'),
+        aHerosTitlesCutHisRealmsCompanyWages((theTitle) => charMinor(turnContext, c, theTitle)),
       );
       if (hl) {
         const led = theCompaniesTheHostLeaderSavesOn(hl.armies ?? []);
-        const theCut = theHostLeadersCut(armyWages, led);
+        const theCut = theCompanyWagesUnderTheHostLeader({ theCompanyWages: armyWages, theCompaniesHeSavesOn: led });
         _hostLeaderG = theCut.theGoldSaved;
         armyWages = theCut.theWagesLeft;
       }
@@ -459,13 +490,19 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       // 3. Within one experience tier the choice is RANDOM ACROSS THE WHOLE EMPIRE — no more
       // "garrisons always, field armies never". A random key is decorated onto each unit up
       // front so the comparator stays a valid (consistent) ordering.
-      const _qRank = (a: ArmyInABattle) => {
-        const i = QUALITY_TIERS.indexOf(a.quality);
-        return i < 0 ? 1 : i;
-      }; // unknown quality ≈ Average
+      // The ranks are the economy's registry's since B-06e ("turnEnd: a company's rank in the line to disband unpaid":
+      // the dead last, then the grades, a company of no known grade as Average). Every company of the realm draws its
+      // die here, in the realm's order, before any is passed over below.
       const sortedArmies = [...allKingdomArmies]
-        .map((a) => ({ a, skel: a._isSkeletal ? 1 : 0, q: _qRank(a), r: kcRng() }))
-        .sort((x, y) => x.skel - y.skel || x.q - y.q || x.r - y.r)
+        .map((a) => ({
+          a,
+          theRanks: theRanksOfACompanyInTheLineToDisbandUnpaid({
+            itIsOfTheDead: Boolean(a._isSkeletal),
+            itsGrade: a.quality,
+          }),
+          theDie: kcRng(),
+        }))
+        .sort(theOrderOfTwoCompaniesInTheLineToDisbandUnpaid)
         .map((x) => x.a);
       const _sparedHulls: ArmyInABattle[] = []; // 2026-09-23c: ships carrying troops at sea are never disbanded from under them
       // A hull spared earlier in this pass is looked at again every time a unit disbands: once the
@@ -482,16 +519,20 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           }
           const theHeroAsGuarded: AHeroAsEarlyWinterReadsHisArmies = _oc;
           if (
-            isOpenSea(G.world.provinces[_oc.location]) &&
-            seaLiftShortfall(
-              (theHeroAsGuarded.armies ?? []).filter((a) => a !== _h),
-              _oc,
-            ) > 0
+            aCompanyIsSparedDisbandingUnpaid({
+              itIsAShip: CARRIER_TYPES.has(_h.type),
+              itCarriesTroopsAtOpenSea: () =>
+                isOpenSea(G.world.provinces[_oc.location]) &&
+                seaLiftShortfall(
+                  (theHeroAsGuarded.armies ?? []).filter((a) => a !== _h),
+                  _oc,
+                ) > 0,
+            })
           )
             continue; // still carrying
           _oc.armies.splice(_oc.armies.indexOf(_h), 1);
           _sparedHulls.splice(_i--, 1);
-          deficit -= _h._isSkeletal ? 1 : Number(ARMY_COST[_h.type]) || 2;
+          deficit -= theWageOfACompany(_h);
           emit(turnContext, {
             type: 'hire',
             fact: {
@@ -516,26 +557,32 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         if (army._isSkeletal && gdActive(turnContext, p.id, 'Undead')) return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
         // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons)
         // still free
-        const cost = army._isSkeletal ? 1 : Number(ARMY_COST[army.type]) || 2;
+        const cost = theWageOfACompany(army);
         if (cost === 0) return; // other free armies never disband for non-payment
         // 2026-09-23c (Toby): a hull that is carrying land troops at sea is protected — disbanding it
         // would strand the men aboard. Judged live, so a hull made spare by a unit already gone
-        // this pass can still go.
-        if (CARRIER_TYPES.has(army.type)) {
-          const _oc: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find(
-            (ch: AHeroAsEarlyWinterReadsHisArmies) => (ch.armies ?? []).includes(army),
-          );
-          if (
-            _oc &&
-            isOpenSea(G.world.provinces[_oc.location]) &&
-            seaLiftShortfall(
-              (_oc.armies ?? []).filter((a) => a !== army),
-              _oc,
-            ) > 0
-          ) {
-            _sparedHulls.push(army);
-            return;
-          }
+        // this pass can still go. The sparing is the economy's registry's since B-06e ("turnEnd: a company is spared
+        // disbanding unpaid"); its column is looked for only for a ship, as before.
+        if (
+          aCompanyIsSparedDisbandingUnpaid({
+            itIsAShip: CARRIER_TYPES.has(army.type),
+            itCarriesTroopsAtOpenSea: () => {
+              const _oc: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find(
+                (ch: AHeroAsEarlyWinterReadsHisArmies) => (ch.armies ?? []).includes(army),
+              );
+              return (
+                _oc !== undefined &&
+                isOpenSea(G.world.provinces[_oc.location]) &&
+                seaLiftShortfall(
+                  (_oc.armies ?? []).filter((a) => a !== army),
+                  _oc,
+                ) > 0
+              );
+            },
+          })
+        ) {
+          _sparedHulls.push(army);
+          return;
         }
         // Find and remove this army from its owner character or garrison match the EXACT army
         // object (identity), never a same-type stand-in — the old `a.type===army.type`
@@ -590,13 +637,15 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
           phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         });
-      // If still in deficit, heroes desert
+      // If still in deficit, heroes desert: the best paid first (a stable sort), each on a die drawn for him only while
+      // the deficit lasts; whether he deserts on it is the economy's registry's since B-06e ("turnEnd: an unpaid hero
+      // deserts"). A deficit left after the last hero is forgiven.
       if (deficit > 0) {
         heroes
           .sort((a, b) => (b.pay || 0) - (a.pay || 0))
           .forEach((h) => {
             if (deficit <= 0) return;
-            if (kcRng() > 0.4) {
+            if (anUnpaidHeroDeserts({ theDie: kcRng() })) {
               noteServedRealm(h, h.player);
               h.player = null;
               h.name = h.name.replace(' (wandering)', '') + ' (wandering)';

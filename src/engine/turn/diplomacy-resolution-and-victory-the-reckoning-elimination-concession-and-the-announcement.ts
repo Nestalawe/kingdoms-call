@@ -3,6 +3,7 @@ import {
   RECKONING_DECAY_FROM_TURN,
   RECKONING_DECAY_STEP_PCT,
   RECKONING_FLOOR_PCT,
+  RECKONING_GRACE_TURNS,
   RECKONING_MIN_TURN,
   reckoningAllyStepPct,
   reckoningDecayOf,
@@ -373,7 +374,7 @@ export function victoryTheReckoningEliminationConcessionAndTheAnnouncement(turnC
             by: pi,
             bloc,
             calledTurn: G.turn,
-            resolveAtTurn: G.turn + 2,
+            resolveAtTurn: G.turn + RECKONING_GRACE_TURNS,
             thrPct: reckoningThresholdPct(G.players.length, reckoningDecayOf(G), bloc.length),
           };
           const allies = bloc

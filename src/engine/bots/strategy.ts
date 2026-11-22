@@ -2,6 +2,11 @@ import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.t
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import {
+  thePriceOfACompanyOfAType,
+  theWageOfACompany,
+} from '../rules-on-plain-values/the-price-of-a-company-of-a-type-and-the-wage-a-company-draws-before-its-cuts.ts';
+import { aCompanyDrawsNoWage } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { aRealmsDiscoveriesLetABeastFollowWithoutItsDruid } from '../rules/the-registry-of-discovery-effects.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
@@ -34,6 +39,7 @@ import {
   BOT_ASSUMED_SKILLS,
 } from './intel.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import type { ABotRealmsLedger, ABotRealmsRoles, ABotRealmsSpending, TheBotLedgersTally } from './intel.ts';
 import type {
   Army,
@@ -367,9 +373,19 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
   // WAR FOOTING: at war (or facing a big enemy host) the bot spends its treasury down and lifts its
   // sustainable army ceiling toward 100% of income; in peacetime it keeps the tuned cap + a small
   // chest.
-  const warFooting = botAtWar(G, pi) || botMaxEnemyStack(G, pi) > 5;
-  const effCapFrac = warFooting ? 1.0 : T.upkeepCapFrac; // Sept 2026 (review II A1): at war the whole income is wages
-  const reserve = warFooting ? Math.min(8, Math.max(2, Math.floor(botUpkeep(G, pi) * 0.15))) : T.goldReserve; // Sept 2026 (R9): at war, one quarter-turn of wages stays in the chest so a lost battle does not disband the army
+  // What a gold is worth to this bot version: its weights file's (B-06h), the numbers as they were.
+  const W = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold;
+  const warFooting = botAtWar(G, pi) || botMaxEnemyStack(G, pi) > W.theMostUnitsOfAnEnemyHostThatLeaveTheRealmAtPeace;
+  const effCapFrac = warFooting ? W.theShareOfTheIncomeTheWagesMayTakeOnAWarFooting : T.upkeepCapFrac; // Sept 2026 (review II A1): at war the whole income is wages
+  const reserve = warFooting
+    ? Math.min(
+        W.theMostGoldTheChestKeepsOnAWarFooting,
+        Math.max(
+          W.theLeastGoldTheChestKeepsOnAWarFooting,
+          Math.floor(botUpkeep(G, pi) * W.theShareOfTheWagesTheChestKeepsOnAWarFooting),
+        ),
+      )
+    : T.goldReserve; // Sept 2026 (R9): at war, a share of the wages stays in the chest so a lost battle does not disband the army
   const budget = (Number(playersGold) || 0) - reserve;
   // "As much as they can afford": wages are paid from the treasury, not just income, so a chest can
   // carry a deficit. The cap is the income share PLUS a third of the free treasury — a host the
@@ -377,7 +393,13 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
   const L: ABotRealmsLedger = {
     income,
     warFooting,
-    upkeepCap: Math.floor(income * effCapFrac + Math.max(0, budget) * (botLandCount(G, pi) < 15 ? 0.6 : T.chestShare)),
+    upkeepCap: Math.floor(
+      income * effCapFrac +
+        Math.max(0, budget) *
+          (botLandCount(G, pi) < W.theProvincesBelowWhichARealmIsSmall
+            ? W.theShareOfTheFreeTreasuryASmallRealmsWagesMayLeanOn
+            : T.chestShare),
+    ),
     upkeep: botUpkeep(G, pi),
     budget,
     recruitedByProv: {},
@@ -418,14 +440,17 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     holdersInRecruit: 0,
   }; // Sept 2026 (§99 diagnosis; read by the study through window.__botDiag)
   L.diag = diag;
-  // Sept 2026 (Toby: bot defence): while the realm's DEFENDERS stand under-strength (fewer than three
-  // units each), 30% of the wage ceiling is held back from the field hosts' muster so the posts get
+  // Sept 2026 (Toby: bot defence): while the realm's DEFENDERS stand under-strength (fewer units each
+  // than the weights' full strength), a share of the wage ceiling is held back from the field hosts' muster so the posts get
   // troops too — otherwise the leaders, who muster first, spent every coin every year.
   const _defs = botRoles(G, pi)
     .defenders.map((id) => (asItsGuardReadsIt(G.characters) ?? []).find((c) => asItsGuardReadsIt(c) && c.id === id))
     .filter((c) => c !== undefined);
   const _defUnits = _defs.reduce((n, c) => n + (asItsGuardReadsIt(c.armies) ?? []).length, 0);
-  L.defReserve = _defs.length && _defUnits < 3 * _defs.length ? Math.floor(L.upkeepCap * 0.2) : 0;
+  L.defReserve =
+    _defs.length && _defUnits < W.theUnitsEachDefenderLeadsAtFullStrength * _defs.length
+      ? Math.floor(L.upkeepCap * W.theShareOfTheWageCeilingHeldBackForTheDefenders)
+      : 0;
   // 2026-09-26 (Toby items 1 / 6 / 8): the same for the NAVY and the AIR — while the admiral has fewer than
   // three hulls, or the flying general fewer than two flyers, a share of the ceiling is held back from every
   // other muster (the land general musters first and was spending every coin before the fleet got a hull).
@@ -447,12 +472,7 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     const _wage = (x: Character) =>
       (asItsGuardReadsIt(x.armies) ?? []).reduce(
         (w, a: AUnitAsTheWagesReadIt | null | undefined) =>
-          w +
-          (!a || a._temporary || a._wildHuntUntilTurn != null
-            ? 0
-            : a._isSkeletal
-              ? 1
-              : (ARMY_COST_MASTER[a.type] ?? 0) || 2),
+          w + (!a || aCompanyDrawsNoWage(a) ? 0 : theWageOfACompany(a)),
         0,
       );
     const full = L.upkeepCap;
@@ -465,7 +485,7 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     const { nav, air } = L;
     L.upkeepCap = Math.max(0, full - (nav ? nav.cap : 0) - (air ? air.cap : 0));
     L.upkeep = L.upkeep - (nav ? nav.upkeep : 0) - (air ? air.upkeep : 0);
-    if (L.defReserve) L.defReserve = Math.floor(L.upkeepCap * 0.2); // the defenders' 20% is of the LAND ceiling now
+    if (L.defReserve) L.defReserve = Math.floor(L.upkeepCap * W.theShareOfTheWageCeilingHeldBackForTheDefenders); // the defenders' share is of the LAND ceiling now
     diag.navCap = nav ? nav.cap : 0;
     diag.airCap = air ? air.cap : 0;
   }
@@ -689,7 +709,7 @@ export function botFieldRecruitTokensCore(
       if (done[t] || BOT_FLYING_TYPES.has(t) || !botLiftable(t) || BOT_SEA_ALL.has(t)) continue;
       if (foot >= flyers) break;
       if (!canAff(1)) break;
-      const cost = (ARMY_COST_MASTER[t] ?? 0) || 2;
+      const cost = thePriceOfACompanyOfAType(t);
       let q = 0;
       while (q < perTypeLimit && foot < flyers && canAff(cost)) {
         q++;
@@ -712,7 +732,7 @@ export function botFieldRecruitTokensCore(
       break;
     }
     if (adm && (!botLiftable(t) || berths <= 0)) continue;
-    const cost = (ARMY_COST_MASTER[t] ?? 0) || 2;
+    const cost = thePriceOfACompanyOfAType(t);
     let q = 0;
     while (q < perTypeLimit && canAff(cost) && (!adm || berths > 0)) {
       q++;
@@ -1029,13 +1049,17 @@ export function botRecruitableTypes(
   const mobile = all.filter((t) => ((ARMY_SPEED_MASTER[t] ?? 0) || 3) >= 2);
   return mobile.length ? mobile : all;
 }
+// The bots' upkeep asks the wage rules where they agree with it (B-06h): a company that draws no wage, and a company's
+// wage before its cuts (a skeletal company's flat 1g, else its type's price, or 2g for a type priced at nothing). It
+// leaves out what the turn's wages add (the Druid's half, the war spoils, the upkeep discoveries, the Host-Leader's
+// cut), as it did before T7 (KD-432); its heroes' wages are their pay as it stands.
 export function botUpkeep(G: GameState, pi: number) {
   let w = 0;
   (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
     if (asItsGuardReadsIt(c) && c.alive && c.player === pi)
       (asItsGuardReadsIt(c.armies) ?? []).forEach((a: AUnitAsTheWagesReadIt) => {
-        if (a._temporary || a._wildHuntUntilTurn != null) return;
-        w += a._isSkeletal ? 1 : (ARMY_COST_MASTER[a.type] ?? 0) || 2;
+        if (aCompanyDrawsNoWage(a)) return;
+        w += theWageOfACompany(a);
       });
   });
   // Sept 2026: garrison units draw wages too (the engine bills them alongside field armies) — the
@@ -1043,8 +1067,8 @@ export function botUpkeep(G: GameState, pi: number) {
   (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p) => {
     if (asItsGuardReadsIt(p) && p.owner === pi)
       (asItsGuardReadsIt(p.garrisonArmies) ?? []).forEach((a: AUnitAsTheWagesReadIt) => {
-        if (a._temporary || a._wildHuntUntilTurn != null) return;
-        w += a._isSkeletal ? 1 : (ARMY_COST_MASTER[a.type] ?? 0) || 2;
+        if (aCompanyDrawsNoWage(a)) return;
+        w += theWageOfACompany(a);
       });
   });
   (asItsGuardReadsIt(G.characters) ?? []).forEach((c) => {
@@ -1053,7 +1077,8 @@ export function botUpkeep(G: GameState, pi: number) {
   return w;
 }
 // Its return type written for a typed caller (plan P1-10b36: what-a-spy-learns.ts' tax income of a king's home): every
-// path returns a number.
+// path returns a number. The bare tax of the realm's provinces, as before T7 (KD-433): no rule of the turn's tax agrees
+// with it.
 export function botTaxIncome(G: GameState, pi: number): number {
   let inc = 0;
   (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p) => {

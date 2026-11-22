@@ -136,6 +136,8 @@ async function theModulesThatDefineWhatACaseReads() {
   const botEconomy = await import('../../src/engine/bots/economy.ts');
   const botSpellcraft = await import('../../src/engine/bots/spellcraft.ts');
   const reckoning = await import('../../src/engine/titles/reckoning.ts');
+  const minorTitles =
+    await import('../../src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts');
   const personalCombat = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
   const terrain = await import('../../src/engine/battle/terrain-and-unit-strength.ts');
   const baseStrength = await import('../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts');
@@ -189,7 +191,7 @@ async function theModulesThatDefineWhatACaseReads() {
     SEA_TYPES: flyOrSail,
     AERIAL_TYPES: flyOrSail,
     TITLE_DEFS: data,
-    MINOR_TITLES: reckoning,
+    MINOR_TITLES: minorTitles,
     SKILL_LABELS: armyTables,
   } satisfies { [Name in AFunctionOrTableOfTheEngines]: Record<Name, unknown> };
 }

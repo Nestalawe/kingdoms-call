@@ -6,6 +6,7 @@ import {
   THE_LADDER_OF_THE_ALIGNMENTS,
   type ARungOfTheLadder,
 } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { KC_A_HEROS_WAGE_IN_SERVICE } from '../../content/kingdoms-call-data.ts';
 
 /** A hero as heroSkillTotal reads him: his skills, by name. */
 export interface HeroOfSkills {
@@ -36,7 +37,15 @@ export function heroSkillTotal(ch: HeroOfSkills | null | undefined): number {
   return Object.values((ch && ch.skills) || {}).reduce((s: number, v: number | undefined) => s + (v || 0), 0);
 }
 export function heroSkillWage(ch: HeroOfSkills | null | undefined): number {
-  return Math.max(0, Math.ceil(heroSkillTotal(ch) / 4) - 1);
+  const { theSkillPointsForEachGold, theGoldTheSkillPremiumTakesOff } = KC_A_HEROS_WAGE_IN_SERVICE;
+  return Math.max(0, Math.ceil(heroSkillTotal(ch) / theSkillPointsForEachGold) - theGoldTheSkillPremiumTakesOff);
+}
+/** A hero's wage in service (B-06d: the one formula; its numbers are content's, KC_A_HEROS_WAGE_IN_SERVICE): what his
+ *  allegiance was bargained at, plus his skill premium as it stands now, never below the least wage (1g). The turn
+ *  asks it when his skills change (recalcHeroPay), world generation for the founding and the wandering heroes, and the
+ *  release for a hero set free; a hero never hired is bargained at its theAllegianceOfAHeroNeverHired. */
+export function theWageOfAHeroInService(theAllegianceHeWasBargainedAt: number, hero: HeroOfSkills): number {
+  return Math.max(KC_A_HEROS_WAGE_IN_SERVICE.theLeastWage, theAllegianceHeWasBargainedAt + heroSkillWage(hero));
 }
 export function heroHireWage(
   kingdomAlign: string,

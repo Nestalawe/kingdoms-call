@@ -9,6 +9,7 @@ import { syncMaxHp } from '../heroes/skills-and-hp.ts';
 import { _KC_LOOT_GAINED } from '../personal-combat/helpers.ts';
 import { doARealmsDiscoveriesWeightTheLinesBehindTheFront } from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { armStr, provIsCoastal } from './terrain-and-unit-strength.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
@@ -53,7 +54,8 @@ export function commandScore(
   const terrain = (prov?.terrain ?? '') || 'plain';
   let tact = cand._tacticalNegated
     ? 0
-    : effStat(turnContext, cand, 'tactical') + (charMinor(turnContext, cand, 'strategist') ? 1 : 0);
+    : effStat(turnContext, cand, 'tactical') +
+      theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, cand, title));
   if (cand._curseHalveStat === 'tactical') tact = Math.floor(tact / 2);
   const tacB = terrain === 'sea' ? 1 : tacMulted(Math.min(2.0, 1 + tact * 0.2), cand);
   let nav = effStat(turnContext, cand, 'naval');

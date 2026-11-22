@@ -1,5 +1,5 @@
 import { kcArg, kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
-import { MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
+import { KC_THE_RECKONINGS_NUMBERS, MASTERY_UNLOCKS } from '../../content/kingdoms-call-data.ts';
 import {
   dispFloor,
   theActionSpellsAimedAtAHero,
@@ -289,7 +289,7 @@ export function renderTitles(report: TheReportAsTheTitlesReadIt | null | undefin
   }
   if (!t.public) {
     el.innerHTML = String(
-      kcHtml`<em style="color:#3a3224;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${Number(t.publicFromTurn) || 5}. Standings appear then.</em>`,
+      kcHtml`<em style="color:#3a3224;font-size:.85rem">The Imperial Titles are contested in secret until Turn ${Number(t.publicFromTurn) || KC_THE_RECKONINGS_NUMBERS.theFirstTurnTheTitlesArePublic}. Standings appear then.</em>`,
     );
     return;
   }
@@ -431,7 +431,7 @@ export function renderTitles(report: TheReportAsTheTitlesReadIt | null | undefin
   });
 
   // ── how to Call the Reckoning (always shown while titles are public) ──
-  const _minTurn = Number(t.reckoningMinTurn) || 10;
+  const _minTurn = Number(t.reckoningMinTurn) || KC_THE_RECKONINGS_NUMBERS.theFirstTurnAClaimMayBeLodged;
   const _solo = Math.ceil(dispFloor((t.soloThreshold ?? (Number(t.threshold) || 0)) * 100 * 1e6) / 1e6);
   const _step = Math.round((Number(t.allyStep) || 0) * 100);
   const _nAllies = Math.max(0, (Number(t.blocSize) || 1) - 1);
@@ -446,18 +446,18 @@ export function renderTitles(report: TheReportAsTheTitlesReadIt | null | undefin
       <li><strong>Your bloc is yours alone.</strong> It is you and the realms YOU are allied to. An ally's other alliances are their business and count for nothing here — so if you are allied to B and B is allied to D, D is not in your bloc.</li>
       <li>if the bar is carried by an alliance, <strong>you must personally hold at least ${minPct}%</strong> — half your bloc's bar — in your own right. The throne is claimed by a realm, not by a passenger in someone else's bloc, so it is the bloc's greatest realm that lodges the claim. (If the claimant is later cut below ${minPct}% the claim collapses, even if the bloc still clears ${thr}%.)</li>
     </ul>
-    Calling it announces the claim to every realm and begins a <strong>2-turn grace period</strong>. The bar is fixed at the moment you lodge the claim, so breaking off an alliance afterwards costs you your ally's lands without lowering what you must hold. If rivals drive your bloc back below ${thr}% before it resolves, the claim lapses and play continues. If you still hold the threshold at the end of the second turn, Legacy is scored and the highest total wins. Allies end the game together but still compete for every Title — an alliance is a route to the endgame, not a shared victory.
+    Calling it announces the claim to every realm and begins a <strong>${KC_THE_RECKONINGS_NUMBERS.theTurnsOfGraceBeforeAClaimIsJudged}-turn grace period</strong>. The bar is fixed at the moment you lodge the claim, so breaking off an alliance afterwards costs you your ally's lands without lowering what you must hold. If rivals drive your bloc back below ${thr}% before it resolves, the claim lapses and play continues. If you still hold the threshold at the end of the second turn, Legacy is scored and the highest total wins. Allies end the game together but still compete for every Title — an alliance is a route to the endgame, not a shared victory.
   </div>`;
 
   // ── Call the Reckoning control ──
   let callCtrl: KcSafeHtml | string = '';
   if (t.canCallReckoning) {
     callCtrl = reckoningCall
-      ? kcHtml`<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
+      ? kcHtml`<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:8px 10px;margin-top:10px;font-size:.85rem">👑 <strong>You will Call the Reckoning this turn.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a ${KC_THE_RECKONINGS_NUMBERS.theTurnsOfGraceBeforeAClaimIsJudged}-turn grace, then the world is judged). <button onclick="setReckoningCall(false)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer;margin-left:6px">cancel</button></div>`
       : kcHtml`<div style="margin-top:10px"><button onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:7px 14px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
         <div style="font-size:.72rem;color:#2f281c;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`;
   } else if (!t.reckoning && t.callBlockedReason === 'tooEarly') {
-    callCtrl = kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:10px">The throne cannot be claimed before <strong>Turn ${Number(t.reckoningMinTurn) || 10}</strong>. Your bloc commands ${pct}% of the world; ${thr}% will be needed when the claim opens.</div>`;
+    callCtrl = kcHtml`<div style="font-size:.72rem;color:#3a3224;margin-top:10px">The throne cannot be claimed before <strong>Turn ${Number(t.reckoningMinTurn) || KC_THE_RECKONINGS_NUMBERS.theFirstTurnAClaimMayBeLodged}</strong>. Your bloc commands ${pct}% of the world; ${thr}% will be needed when the claim opens.</div>`;
   } else if (!t.reckoning) {
     callCtrl =
       t.callBlockedReason === 'callerShort'
@@ -528,7 +528,7 @@ export function renderReckoningOrders(): void {
   if (t.canCallReckoning) {
     w.innerHTML = String(
       reckoningCall
-        ? kcHtml`<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px;font-size:.78rem">👑 <strong>You will Call the Reckoning with these orders.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a 2-turn grace, then the world is judged). <button type="button" onclick="setReckoningCall(false)" style="margin-left:6px;font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`
+        ? kcHtml`<div style="background:#fdeaea;border:1px solid var(--crimson);border-radius:3px;padding:6px 8px;font-size:.78rem">👑 <strong>You will Call the Reckoning with these orders.</strong> If your bloc still holds ${thr}%+ when orders resolve, the endgame begins (a ${KC_THE_RECKONINGS_NUMBERS.theTurnsOfGraceBeforeAClaimIsJudged}-turn grace, then the world is judged). <button type="button" onclick="setReckoningCall(false)" style="margin-left:6px;font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`
         : kcHtml`<div><button type="button" onclick="setReckoningCall(true)" style="font-family:'Cinzel',serif;font-size:.72rem;padding:6px 12px;border:1px solid #5a1010;background:var(--crimson);color:#fff;border-radius:2px;cursor:pointer">👑 Call the Reckoning</button>
           <div style="color:#2f281c;margin-top:4px">Your bloc commands <strong>${pct}%</strong> of the world's tax base (need ${thr}%). Calling it forces a final scoring in two turns — submit orders to lodge the claim.</div></div>`,
     );
@@ -537,9 +537,9 @@ export function renderReckoningOrders(): void {
   // Not available — say why, and where the button will appear.
   let why: KcSafeHtml | string;
   if (t.callBlockedReason === 'tooEarly')
-    why = kcHtml`The throne cannot be claimed before <strong>Turn ${Number(t.reckoningMinTurn) || 10}</strong> — the realms are still settling and the world will not yet be judged.`;
+    why = kcHtml`The throne cannot be claimed before <strong>Turn ${Number(t.reckoningMinTurn) || KC_THE_RECKONINGS_NUMBERS.theFirstTurnAClaimMayBeLodged}</strong> — the realms are still settling and the world will not yet be judged.`;
   else if (t.public === false)
-    why = `The Imperial Titles are contested in secret until Turn ${String(Number(t.publicFromTurn) || 5)} — the Reckoning cannot be called before then.`;
+    why = `The Imperial Titles are contested in secret until Turn ${String(Number(t.publicFromTurn) || KC_THE_RECKONINGS_NUMBERS.theFirstTurnTheTitlesArePublic)} — the Reckoning cannot be called before then.`;
   else if (t.kingAlive === false)
     why = kcHtml`Only a living <strong>King</strong> may call it — your king is dead, so the call must wait for the heir.`;
   else if (t.callBlockedReason === 'callerShort')

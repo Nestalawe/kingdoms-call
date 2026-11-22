@@ -78,8 +78,8 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
 - `src/content/kingdoms-call-data.ts`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
   starting companies are the first two non-garrison types of his home's cell), `ARMY_UNIT_NAMES` (40
   names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
-  `KC_UNIT_BASE_STR`.
-- GM portal: `ARMY_COST_MASTER`, `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
+  `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage).
+- GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
   `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
   `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.ts`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - `src/content/unit-abilities-their-names-numbers-and-words.ts`: the unit's blurb in `UNIT_ABILITIES` (the player
@@ -91,13 +91,12 @@ then list every table and sentence that is still missing it. Running games' capi
 turn (`backfillHomeRosters`); other provinces keep the pool they were generated with.
 
 **The compiler now catches part of it**. The data file's unit type is `UnitType`, the keys of `KC_UNIT_TYPE`.
-`KC_UNIT_BASE_STR` (every humanoid unit and elemental) and `ARMY_UNIT_NAMES` with `PRIMAL_UNIT_NAMES` (every unit type)
+`KC_UNIT_BASE_STR` (every humanoid unit and elemental), `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (every humanoid unit) and `ARMY_UNIT_NAMES` with `PRIMAL_UNIT_NAMES` (every unit type)
 end in `satisfies`, so a unit in `KC_UNIT_TYPE` that is missing from one fails `npm run typecheck` (TS1360). A unit
 that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `KC_UNIT_TYPE` doesn't fails too
 (TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it.
-The engine's `ARMY_COST_MASTER` and `ARMY_SPEED_MASTER` (`engine/army-tables.ts`) end in `satisfies
-Record<HumanoidUnitType, number>` too: a humanoid unit missing from either fails (a primal unit's cost and speed come
-from `PRIMAL_ARMY_DEFS_P`). The engine's other tables are keyed by any string (`UNIT_SHORT`, `ARMY_RACE_OF_TYPE`,
+The engine's `ARMY_SPEED_MASTER` (`engine/army-tables.ts`) ends in `satisfies Record<HumanoidUnitType, number>` too
+(a primal unit's cost and speed come from `PRIMAL_ARMY_DEFS_P`; the engine reads the price table as `ARMY_COST_MASTER`). The engine's other tables are keyed by any string (`UNIT_SHORT`, `ARMY_RACE_OF_TYPE`,
 …), so a unit missing from one still compiles, and `TERRAIN_MODS` refuses a misspelt unit but not a missing one. The
 lists above are still the whole job. `tests/static/every-unit-order-and-effect-the-content-names-is-in-every-table-that-must-list-it.test.ts` finds
 what the compiler can't: a name in a class list, a Druid level, a province's cell, a discovery or the wild pools that is no

@@ -15,7 +15,7 @@
 // `resolveDiscoverLostRuinOrder`, P1-08j2), called directly on the same cases one phase at a time, then on what the
 // dice decide (fixed) and what the balance matrix never reaches: the Explorer 8 survey of richer land (an even chance,
 // once a province, the tax base never above 10), Ancient Lore, the Philosopher's Lens (a site known or glamoured passed
-// over, its die's pick), an unlisted terrain and a nameless guardian; the Blood Offering's graves, borrowed and skeletal
+// over, its die's pick), an unlisted terrain and a nameless guardian, the Trailblazer's 5% (B-06l); the Blood Offering's graves, borrowed and skeletal
 // companies, the Wild Hunt unpaid or on ground not the hero's own (the empty province taken); rumours paid by grade until
 // the purse runs dry, a guardian of no grade or of one no price lists, an order naming no lair, a guardian with no
 // weakness, a hoard a thief has stripped; and what follows a fight at a lair, the fight stood in for (`fightEndsIn`): a
@@ -227,6 +227,26 @@ describe('Explore, called directly', () => {
     play(b, h, o('explore'));
     expect(mapped(b.X)).toBe(90);
     expect(textOf(b, h)).toContain('Legend says it is guarded by a creature.');
+  });
+
+  test("the Trailblazer maps 5% more, rounded down with the rest (B-06l: his row's ×1.05, through the minor titles' registry)", () => {
+    const share = (ground: string, explorer: number, holds: boolean) => {
+      const b = board(engine, world, 0);
+      withFeatures(b.X);
+      b.X.terrain = ground;
+      delete b.X['exploredBy'];
+      const h = at(b, { skills: skilled({ explorer }) });
+      if (holds) (b.G as unknown as Record<string, unknown>)['_minorHolders'] = { trailblazer: { charId: h.id } };
+      play(b, h, o('explore'));
+      return mapped(b.X);
+    };
+    // Forest at Explorer 3: 20 × 4 = 80, ×1.05 = 84; desert at Explorer 2: 25 × 3 = 75, ×1.05 = 78.75, so 78
+    expect([
+      share('forest', 3, false),
+      share('forest', 3, true),
+      share('desert', 2, false),
+      share('desert', 2, true),
+    ]).toEqual([80, 84, 75, 78]);
   });
 });
 
@@ -624,6 +644,33 @@ describe("an older save's lair, stocked when it is first read (encounterClearGol
     const { gold, f } = goldOf({ power: 'Moderate' }, 0.5);
     expect(gold).toBe(15);
     expect(withDice(engine, [0.99], () => encounterClearGold(f))).toBe(15);
+  });
+
+  // B-06g: both call sites read the one roll (theGoldALairsHoardHoldsOnADie): each band's ends, and a power no band has.
+  test("a scout's or a clear's gold, and a hoard stocked when it is first read, at each band's ends and 1 to 5 for a power no band has", () => {
+    const highest = 1 - 2 ** -32;
+    const powers = ['Weak', 'Moderate', 'Powerful', 'Legendary', 'Mythic'];
+    const theClearsGold = (power: string, die: number) => goldOf({ power }, die).gold;
+    const theHoardsGold = (power: string, die: number) => {
+      const f: Record<string, unknown> = { name: 'Old Barrow', monster: { power }, treasure: 0, cleared: false };
+      withDice(engine, [die], () => ensureLairHoard(f, null));
+      return [f['treasure'], f['_hoardGoldOrig']];
+    };
+    const ends = (gold: (power: string, die: number) => unknown) =>
+      Object.fromEntries(powers.map((p) => [p, [gold(p, 0), gold(p, highest)]]));
+    const theBands = { Weak: [5, 8], Moderate: [12, 18], Powerful: [20, 30], Legendary: [40, 60], Mythic: [1, 5] };
+    expect(ends(theClearsGold)).toEqual(theBands);
+    expect(ends(theHoardsGold)).toEqual(
+      Object.fromEntries(
+        Object.entries(theBands).map(([p, [a, z]]) => [
+          p,
+          [
+            [a, a],
+            [z, z],
+          ],
+        ]),
+      ),
+    );
   });
 
   test("its hoard takes the items it held before hoards (version 2's step moves them), then rolls one item no other lair holds, with the next id", () => {

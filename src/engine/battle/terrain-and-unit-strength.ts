@@ -35,8 +35,9 @@ import { getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import {
   theQualityACommandersDruid8AndNecromancy6LiftAUnitTo,
-  theStrengthAUnitsCommandersMinorTitlesLiftItTo,
+  type AMinorTitlesArmyPerk,
 } from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
+import { theStrengthOfAUnitOnceItsCommandersMinorTitlesLiftIt } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { discUnitMult, dragonTamed, gdActive } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
@@ -49,11 +50,18 @@ import type {
   ACommandMultiplierInTheLadder,
   AModifierOfAUnitInTheLadder,
   ASideAsABattlesReportLinesNameIt,
+  AUnitsModifierInTheLadder,
   TheFactOfOneOfABattlesSentences,
   WhatLiftsAUnitsQuality,
 } from './the-facts-a-battles-lines-record.ts';
 /** A unit of a force as the battle code hands it. */
 type ForceUnit = ArmyInABattle | null | undefined;
+/** How the ladder names each minor title's army perk that lifted a unit (armStr). */
+const THE_LADDERS_NAME_OF_EACH_MINOR_TITLES_ARMY_PERK = {
+  'naturalist or beastmaster': { kind: "a naturalist's or beastmaster's title" },
+  cavalier: { kind: "a cavalier's title" },
+  ironclad: { kind: "an ironclad's title" },
+} as const satisfies Record<AMinorTitlesArmyPerk, AUnitsModifierInTheLadder>;
 /** The state as provIsCoastal reads it: its guard on a missing world stays. */
 interface TheStateAsProvIsCoastalReadsIt {
   readonly world?: GameState['world'] | null;
@@ -794,18 +802,16 @@ export function armStr(
   }
   // ── MINOR TITLE army perks ── Naturalist/Beastmaster: primal +5%; Cavalier: cavalry +5%;
   // Ironclad: heavy & fleet +5%.
-  // (one rule on plain values, plan P1-11e35, which the army card can ask too)
+  // (the minor titles' registry's stage "strength: the commander's minor titles", B-06k: each title's row, on plain
+  // values, which the army card asks too)
   if (heroChar) {
-    const _titles = theStrengthAUnitsCommandersMinorTitlesLiftItTo(str, army.type, (title) =>
+    const _titles = theStrengthOfAUnitOnceItsCommandersMinorTitlesLiftIt(str, army.type, (title) =>
       charMinor(turnContext, heroChar, title),
     );
     str = _titles.strength;
     if (_tr)
       _titles.liftedBy.forEach((perk) => {
-        if (perk === 'naturalist or beastmaster')
-          _tr.push({ reason: { kind: "a naturalist's or beastmaster's title" } });
-        else if (perk === 'cavalier') _tr.push({ reason: { kind: "a cavalier's title" } });
-        else _tr.push({ reason: { kind: "an ironclad's title" } });
+        _tr.push({ reason: { ...THE_LADDERS_NAME_OF_EACH_MINOR_TITLES_ARMY_PERK[perk] } });
       });
   }
   // Evil Terror: province was terrorised last turn — defending armies -10%

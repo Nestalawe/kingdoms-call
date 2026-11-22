@@ -28,11 +28,26 @@
 // same way, `satisfies Record<AlignmentAbilitySlug, AlignmentAbilityEntry>`, on the keys of its content rows (the
 // abilities: src/content/alignment-abilities-their-keys-names-numbers-and-words.ts), and the copies plant the same two
 // faults in it.
+// Since B-06c the economy's registry (src/engine/rules/the-registry-of-the-economys-rules.ts) ends the same way,
+// `satisfies Record<TheEconomysRuleSlug, EconomysRuleEntry>`, on the keys of its content rows (the rules of a realm's
+// gold: src/content/the-economys-rules-their-keys-names-and-numbers.ts), and the copies plant the same two faults in it.
+// Since B-06i the minor titles' registry (src/engine/rules/the-registry-of-the-minor-titles-perks.ts) ends the same way,
+// `satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>`, on the keys of its content rows
+// (the minor titles, MINOR_TITLES: src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-
+// holder-is-found.ts), and the copies plant the same two faults in it: a title's row with no entry (TS1360) and an
+// entry with no row (TS2353), each naming the slug.
+// Since B-06o the Imperial Titles' registry (src/engine/rules/the-registry-of-the-imperial-titles-effects.ts) ends the
+// same way, `satisfies Record<AnImperialTitlesSlug, TheEffectsOfAnImperialTitleAtEachHookPoint>`, on the slugs of
+// TITLE_DEFS' rows (src/content/kingdoms-call-data.ts: a row's key must be one), and the copies plant the same two
+// faults in it: a slug with no entry (TS1360) and an entry with no slug (TS2353), each naming the slug.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/, src/engine/rules/ and (since P1-19m)
 // src/engine/rules-on-plain-values/ (the registries import nothing else: npm run lint:arch), so each compiles on its own
-// with tsconfig.json's settings. About 2 s (the data file is read
-// once a copy), so its limit is a TypeScript program's.
+// with tsconfig.json's settings. Each copy is whole: its program reads every file of it, the nine registries its roots.
+// A program's time grows by each copy it holds (the 15,000-line data file is checked once a copy: about 0.4 s a copy
+// on a laptop), so the copies are split by registry: "as they are" in a program of its own, and each
+// registry's planted copies in one program, one test each, so no test holds more than four copies and each one's
+// limit is one TypeScript program's.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -53,10 +68,18 @@ const PERKS_REGISTRY = 'src/engine/rules/the-registry-of-guardian-perks.ts';
 const PERKS_ROWS = 'src/content/guardian-perks-their-kinds-numbers-and-words.ts';
 const ABILITIES_REGISTRY = 'src/engine/rules/the-registry-of-alignment-abilities.ts';
 const ABILITIES_ROWS = 'src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+const ECONOMY_REGISTRY = 'src/engine/rules/the-registry-of-the-economys-rules.ts';
+const ECONOMY_ROWS = 'src/content/the-economys-rules-their-keys-names-and-numbers.ts';
+const MINOR_TITLES_REGISTRY = 'src/engine/rules/the-registry-of-the-minor-titles-perks.ts';
+const MINOR_TITLES_ROWS =
+  'src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+const IMPERIAL_TITLES_REGISTRY = 'src/engine/rules/the-registry-of-the-imperial-titles-effects.ts';
+/** The Imperial Titles' rows are TITLE_DEFS, in the data file, whose slugs are its type AnImperialTitlesSlug. */
+const IMPERIAL_TITLES_ROWS = 'src/content/kingdoms-call-data.ts';
 /** The files a copy holds, whose errors it reads: the content and the registry's folder (since P1-19j, the rows of a
  *  unit no longer raised, which the content's rows read; since P1-19m, the items' rows; since P1-19u, the spells';
  *  since P1-19aa, the discoveries' kinds; since P1-19ai, the guardian perks' kinds; since P1-19at1, the alignment
- *  abilities). */
+ *  abilities; since B-06c, the economy's rules; since B-06i, the minor titles). */
 const COPIED = [
   'src/content/kingdoms-call-data.ts',
   'src/content/the-abilities-of-a-unit-no-longer-raised.ts',
@@ -66,6 +89,8 @@ const COPIED = [
   DISCOVERIES_ROWS,
   PERKS_ROWS,
   ABILITIES_ROWS,
+  ECONOMY_ROWS,
+  MINOR_TITLES_ROWS,
   ...filesUnder(path.join(ROOT, 'src', 'engine', 'rules')).map((f) => `src/engine/rules/${f}`),
 ];
 /** And, since P1-19m, the rules on plain values, which the items' effects read (they import only themselves and the
@@ -104,6 +129,19 @@ const NEUTRAL_TRADE_ENTRY = `  'neutral-trade': {
     turnEnd: { "a realm's alignment adds to its tax": A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX['neutral-trade'] },
   },
 `;
+const THE_THIEF_NETWORK_ENTRY = `  'the-thief-network': {
+    turnEnd: {
+      "a realm's gold beyond its tax from a hero's mastery":
+        A_REALMS_GOLD_BEYOND_ITS_TAX_FROM_A_HEROS_MASTERY['the-thief-network'],
+    },
+  },
+`;
+/** The Imperial Titles' registry's last line, which no row fills (a planted entry goes before it). */
+const THE_IMPERIAL_TITLES_REGISTRYS_END =
+  '} satisfies Record<AnImperialTitlesSlug, TheEffectsOfAnImperialTitleAtEachHookPoint>;';
+/** The minor titles' registry's last line, which no row fills (a planted entry goes before it). */
+const THE_MINOR_TITLES_REGISTRYS_END =
+  '} satisfies Record<AMinorTitlesSlug, TheEffectsOfAMinorTitlesPerkAtEachHookPoint>;';
 const UNDEAD_BONUS_ENTRY =
   "  'undead-bonus': { strength: { \"the commander's items\": THE_COMMANDERS_ITEMS['undead-bonus'] } },\n";
 
@@ -208,6 +246,48 @@ const PLANTS: Record<string, Record<string, string>> = {
       NEUTRAL_TRADE_ENTRY + "  'planted-ability': {},\n",
     ),
   },
+  "an economy's rule's row with no entry": {
+    [ECONOMY_ROWS]: replacedOnce(
+      read(ECONOMY_ROWS),
+      '} as const satisfies Readonly<Record<string, ARuleOfTheEconomy>>;',
+      "  'planted-rule': { name: 'Planted Rule', theNumbers: {} },\n} as const satisfies Readonly<Record<string, ARuleOfTheEconomy>>;",
+    ),
+  },
+  "an economy's rule's entry with no row": {
+    [ECONOMY_REGISTRY]: replacedOnce(
+      read(ECONOMY_REGISTRY),
+      THE_THIEF_NETWORK_ENTRY,
+      THE_THIEF_NETWORK_ENTRY + "  'planted-rule': {},\n",
+    ),
+  },
+  "a minor title's row with no entry": {
+    [MINOR_TITLES_ROWS]: replacedOnce(
+      read(MINOR_TITLES_ROWS),
+      '] as const satisfies readonly AMinorTitleAsItsRowWritesIt[];',
+      "  { key: 'planted-title', name: 'The Planted', perk: 'p', req: 'r', howTheHolderIsFound: { theMeasure: 'the merits he has earned' } },\n] as const satisfies readonly AMinorTitleAsItsRowWritesIt[];",
+    ),
+  },
+  "a minor title's entry with no row": {
+    [MINOR_TITLES_REGISTRY]: replacedOnce(
+      read(MINOR_TITLES_REGISTRY),
+      THE_MINOR_TITLES_REGISTRYS_END,
+      "  'planted-title': {},\n" + THE_MINOR_TITLES_REGISTRYS_END,
+    ),
+  },
+  "an Imperial Title's slug with no entry": {
+    [IMPERIAL_TITLES_ROWS]: replacedOnce(
+      read(IMPERIAL_TITLES_ROWS),
+      "  | 'wild';\n",
+      "  | 'wild'\n  | 'planted-title';\n",
+    ),
+  },
+  "an Imperial Title's entry with no slug": {
+    [IMPERIAL_TITLES_REGISTRY]: replacedOnce(
+      read(IMPERIAL_TITLES_REGISTRY),
+      THE_IMPERIAL_TITLES_REGISTRYS_END,
+      "  'planted-title': {},\n" + THE_IMPERIAL_TITLES_REGISTRYS_END,
+    ),
+  },
 };
 
 /** The slug a compiler message is about: the key a `satisfies` found missing, or the key it doesn't know; else, for a
@@ -216,7 +296,9 @@ const KEY_NAMED = /Property '"?([^"']+)"?' is missing in type|and ''([^']+)'' do
 const NO_SIGNATURE = /is not assignable to type '(never|undefined)'\.$/;
 
 /** The compiler's errors in each planted copy, as `TS<code> in <the declaration it stands in>: <the slug it names, or
- *  the type with no signature>` (the declaration alone, for an error of another kind). */
+ *  the type with no signature>` (the declaration alone, for an error of another kind). One program holds the copies
+ *  given, each whole (its nine registries the program's roots): a copy's errors are its own, whatever copies are
+ *  beside it. */
 function errorsIn(copies: Record<string, Record<string, string>>): Record<string, string[]> {
   const dirOf = (name: string) => path.join(tmp, name.replace(/[^a-z]+/gi, '-'));
   for (const [name, planted] of Object.entries(copies)) {
@@ -244,6 +326,9 @@ function errorsIn(copies: Record<string, Record<string, string>>): Record<string
       path.join(dirOf(name), DISCOVERIES_REGISTRY),
       path.join(dirOf(name), PERKS_REGISTRY),
       path.join(dirOf(name), ABILITIES_REGISTRY),
+      path.join(dirOf(name), ECONOMY_REGISTRY),
+      path.join(dirOf(name), MINOR_TITLES_REGISTRY),
+      path.join(dirOf(name), IMPERIAL_TITLES_REGISTRY),
     ]),
     config.options,
   );
@@ -268,19 +353,67 @@ function errorsIn(copies: Record<string, Record<string, string>>): Record<string
   );
 }
 
+/** Each registry's planted copies, by name from PLANTS: each copy in one registry's program, once. */
+const THE_COPIES_OF_EACH_REGISTRY = {
+  units: [
+    'a content row with no entry',
+    'an entry with no content row',
+    'an effect at a stage with no signature yet',
+    'an effect at a hook point with no signature yet',
+  ],
+  items: ["an item's effect row with no entry", "an item's effect entry with no row"],
+  spells: ["a spell's row with no entry", "a spell's entry with no row"],
+  discoveries: ["a discovery kind's row with no entry", "a discovery kind's entry with no row"],
+  perks: ["a guardian perk kind's row with no entry", "a guardian perk kind's entry with no row"],
+  abilities: ["an alignment ability's row with no entry", "an alignment ability's entry with no row"],
+  economy: ["an economy's rule's row with no entry", "an economy's rule's entry with no row"],
+  minorTitles: ["a minor title's row with no entry", "a minor title's entry with no row"],
+  imperialTitles: ["an Imperial Title's slug with no entry", "an Imperial Title's entry with no slug"],
+} as const;
+{
+  const grouped: readonly string[] = Object.values(THE_COPIES_OF_EACH_REGISTRY).flat();
+  const notOnce = Object.keys(PLANTS).filter(
+    (name) => name !== 'as they are' && grouped.filter((it) => it === name).length !== 1,
+  );
+  if (notOnce.length > 0 || grouped.length + 1 !== Object.keys(PLANTS).length)
+    throw new Error(`each planted copy is in one registry's test, once: ${notOnce.join(', ')}`);
+}
+
+/** The planted copies named, from PLANTS. */
+const theCopies = (names: readonly string[]): Record<string, Record<string, string>> =>
+  Object.fromEntries(
+    names.map((name) => {
+      const planted = PLANTS[name];
+      if (!planted) throw new Error(`no planted copy is named "${name}"`);
+      return [name, planted];
+    }),
+  );
+
+// The registry's widened view (ENTRIES, which the runners read) fails too wherever its literal does.
+const at = (declaration: string) => `${path.basename(REGISTRY)}, ${declaration}`;
+const atTheItems = (declaration: string) => `${path.basename(ITEMS_REGISTRY)}, ${declaration}`;
+const atTheSpells = (declaration: string) => `${path.basename(SPELLS_REGISTRY)}, ${declaration}`;
+const atTheDiscoveries = (declaration: string) => `${path.basename(DISCOVERIES_REGISTRY)}, ${declaration}`;
+const atThePerks = (declaration: string) => `${path.basename(PERKS_REGISTRY)}, ${declaration}`;
+const atTheAbilities = (declaration: string) => `${path.basename(ABILITIES_REGISTRY)}, ${declaration}`;
+const atTheEconomy = (declaration: string) => `${path.basename(ECONOMY_REGISTRY)}, ${declaration}`;
+const atTheMinorTitles = (declaration: string) => `${path.basename(MINOR_TITLES_REGISTRY)}, ${declaration}`;
+const atTheImperialTitles = (declaration: string) => `${path.basename(IMPERIAL_TITLES_REGISTRY)}, ${declaration}`;
+
 test(
-  'the registry and its content rows compile as they are, and each planted copy fails, naming the slug',
+  'the nine registries and their content rows compile as they are, every file of the copy in one program',
   timeLimitForTheWork({ typeScriptPrograms: 1 }),
   () => {
-    // The registry's widened view (ENTRIES, which the runners read) fails too wherever its literal does.
-    const at = (declaration: string) => `${path.basename(REGISTRY)}, ${declaration}`;
-    const atTheItems = (declaration: string) => `${path.basename(ITEMS_REGISTRY)}, ${declaration}`;
-    const atTheSpells = (declaration: string) => `${path.basename(SPELLS_REGISTRY)}, ${declaration}`;
-    const atTheDiscoveries = (declaration: string) => `${path.basename(DISCOVERIES_REGISTRY)}, ${declaration}`;
-    const atThePerks = (declaration: string) => `${path.basename(PERKS_REGISTRY)}, ${declaration}`;
-    const atTheAbilities = (declaration: string) => `${path.basename(ABILITIES_REGISTRY)}, ${declaration}`;
-    expect(errorsIn(PLANTS)).toEqual({
-      'as they are': [],
+    expect(errorsIn(theCopies(['as they are']))).toEqual({ 'as they are': [] });
+  },
+);
+
+test(
+  "the units' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.units);
+    expect(errorsIn(copies)).toEqual({
       'a content row with no entry': [
         `TS1360 in ${at('THE_REGISTRY_OF_UNIT_ABILITIES')}: planted-ability`,
         `TS2741 in ${at('ENTRIES')}: planted-ability`,
@@ -294,6 +427,16 @@ test(
         `TS2322 in ${at('ENTRIES')}`,
         `TS2322 in ${at('THE_REGISTRY_OF_UNIT_ABILITIES')}: never`,
       ],
+    });
+  },
+);
+
+test(
+  "the items' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.items);
+    expect(errorsIn(copies)).toEqual({
       "an item's effect row with no entry": [
         `TS1360 in ${atTheItems('THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS')}: planted-effect`,
         `TS2741 in ${atTheItems('ENTRIES')}: planted-effect`,
@@ -301,11 +444,31 @@ test(
       "an item's effect entry with no row": [
         `TS2353 in ${atTheItems('THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS')}: planted-effect`,
       ],
+    });
+  },
+);
+
+test(
+  "the spells' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.spells);
+    expect(errorsIn(copies)).toEqual({
       "a spell's row with no entry": [
         `TS1360 in ${atTheSpells('THE_REGISTRY_OF_SPELL_EFFECTS')}: planted-spell`,
         `TS2741 in ${atTheSpells('ENTRIES')}: planted-spell`,
       ],
       "a spell's entry with no row": [`TS2353 in ${atTheSpells('THE_REGISTRY_OF_SPELL_EFFECTS')}: planted-spell`],
+    });
+  },
+);
+
+test(
+  "the discoveries' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.discoveries);
+    expect(errorsIn(copies)).toEqual({
       "a discovery kind's row with no entry": [
         `TS1360 in ${atTheDiscoveries('THE_REGISTRY_OF_DISCOVERY_EFFECTS')}: planted-kind`,
         `TS2741 in ${atTheDiscoveries('ENTRIES')}: planted-kind`,
@@ -313,6 +476,16 @@ test(
       "a discovery kind's entry with no row": [
         `TS2353 in ${atTheDiscoveries('THE_REGISTRY_OF_DISCOVERY_EFFECTS')}: planted-kind`,
       ],
+    });
+  },
+);
+
+test(
+  "the guardian perks' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.perks);
+    expect(errorsIn(copies)).toEqual({
       "a guardian perk kind's row with no entry": [
         `TS1360 in ${atThePerks('THE_REGISTRY_OF_GUARDIAN_PERKS')}: planted-perk`,
         `TS2741 in ${atThePerks('ENTRIES')}: planted-perk`,
@@ -320,12 +493,73 @@ test(
       "a guardian perk kind's entry with no row": [
         `TS2353 in ${atThePerks('THE_REGISTRY_OF_GUARDIAN_PERKS')}: planted-perk`,
       ],
+    });
+  },
+);
+
+test(
+  "the alignment abilities' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.abilities);
+    expect(errorsIn(copies)).toEqual({
       "an alignment ability's row with no entry": [
         `TS1360 in ${atTheAbilities('THE_REGISTRY_OF_ALIGNMENT_ABILITIES')}: planted-ability`,
         `TS2741 in ${atTheAbilities('ENTRIES')}: planted-ability`,
       ],
       "an alignment ability's entry with no row": [
         `TS2353 in ${atTheAbilities('THE_REGISTRY_OF_ALIGNMENT_ABILITIES')}: planted-ability`,
+      ],
+    });
+  },
+);
+
+test(
+  "the economy's registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.economy);
+    expect(errorsIn(copies)).toEqual({
+      "an economy's rule's row with no entry": [
+        `TS1360 in ${atTheEconomy('THE_REGISTRY_OF_THE_ECONOMYS_RULES')}: planted-rule`,
+        `TS2741 in ${atTheEconomy('ENTRIES')}: planted-rule`,
+      ],
+      "an economy's rule's entry with no row": [
+        `TS2353 in ${atTheEconomy('THE_REGISTRY_OF_THE_ECONOMYS_RULES')}: planted-rule`,
+      ],
+    });
+  },
+);
+
+test(
+  "the minor titles' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.minorTitles);
+    expect(errorsIn(copies)).toEqual({
+      "a minor title's row with no entry": [
+        `TS1360 in ${atTheMinorTitles('THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS')}: planted-title`,
+        `TS2741 in ${atTheMinorTitles('ENTRIES')}: planted-title`,
+      ],
+      "a minor title's entry with no row": [
+        `TS2353 in ${atTheMinorTitles('THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS')}: planted-title`,
+      ],
+    });
+  },
+);
+
+test(
+  "the Imperial Titles' registry: each planted copy fails, naming the slug",
+  timeLimitForTheWork({ typeScriptPrograms: 1 }),
+  () => {
+    const copies = theCopies(THE_COPIES_OF_EACH_REGISTRY.imperialTitles);
+    expect(errorsIn(copies)).toEqual({
+      "an Imperial Title's slug with no entry": [
+        `TS1360 in ${atTheImperialTitles('THE_REGISTRY_OF_THE_IMPERIAL_TITLES_EFFECTS')}: planted-title`,
+        `TS2741 in ${atTheImperialTitles('ENTRIES')}: planted-title`,
+      ],
+      "an Imperial Title's entry with no slug": [
+        `TS2353 in ${atTheImperialTitles('THE_REGISTRY_OF_THE_IMPERIAL_TITLES_EFFECTS')}: planted-title`,
       ],
     });
   },

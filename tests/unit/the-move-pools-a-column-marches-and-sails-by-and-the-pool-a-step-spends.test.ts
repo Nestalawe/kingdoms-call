@@ -2,8 +2,8 @@
 // the order form's march forecast can ask the same rules): a column marches at its slowest land company's pace (March
 // adds to every land company that doesn't fly, the realm's discoveries to those of Speed 1–2) and sails at its slowest
 // ship's (Naval adds to each); a lone hero has 5 of each and takes passage; an all-flying column, or one whose flyers
-// lift every foot soldier, flies at its slowest flyer's pace over land and sea; the Swift and Seawolf titles add 1 to a
-// pool there is. A pool whose maximum changes mid-turn keeps the points spent, and gains only the rise. A step spends
+// lift every foot soldier, flies at its slowest flyer's pace over land and sea; the move points his titles add (the
+// Swift's and the Sea-Wolf's 1, the minor titles' registry's since B-06l) go to a pool there is. A pool whose maximum changes mid-turn keeps the points spent, and gains only the rise. A step spends
 // the sea pool to enter the sea or land from it, else the land pool.
 //
 // Level 1 (unit): theMovePoolsOfAColumn, theMovePointsAPoolHasLeftOnceItsMaximumChanges and theMovePoolAStepSpends
@@ -45,8 +45,8 @@ function aColumnOf(
     whatHisMarchAddsOnLand: 1,
     whatHisNavalAddsToAShipOfTheSpeed: (base) => 1 + base / 10,
     whatHisRealmsDiscoveriesAddTo: (a) => a.road ?? 0,
-    heHoldsSwift: false,
-    heHoldsSeawolf: false,
+    theMovePointsHisTitlesAddOnLand: 0,
+    theMovePointsHisTitlesAddAtSea: 0,
     ...more,
   };
 }
@@ -54,7 +54,9 @@ function aColumnOf(
 test('a lone hero has 5 of each pool and takes passage at sea; the Swift and Seawolf titles add 1 to each', () => {
   expect({
     alone: theMovePoolsOfAColumn(aColumnOf([])),
-    aloneSwiftAndSeawolf: theMovePoolsOfAColumn(aColumnOf([], { heHoldsSwift: true, heHoldsSeawolf: true })),
+    aloneSwiftAndSeawolf: theMovePoolsOfAColumn(
+      aColumnOf([], { theMovePointsHisTitlesAddOnLand: 1, theMovePointsHisTitlesAddAtSea: 1 }),
+    ),
   }).toEqual({
     alone: { land: 5, sea: 5, seaActive: true },
     aloneSwiftAndSeawolf: { land: 6, sea: 6, seaActive: true },
@@ -78,9 +80,9 @@ test("a column marches at its slowest land company's pace: March adds to each, t
     ),
     // The slowest sets the pace: Levies 2 + 1 + 1 against Lances 4 + 1.
     leviesAndLances: theMovePoolsOfAColumn(aColumnOf([lances, levies])),
-    leviesAndLancesSwift: theMovePoolsOfAColumn(aColumnOf([lances, levies], { heHoldsSwift: true })),
+    leviesAndLancesSwift: theMovePoolsOfAColumn(aColumnOf([lances, levies], { theMovePointsHisTitlesAddOnLand: 1 })),
     // A Seawolf adds nothing to a sea pool there isn't.
-    leviesSeawolf: theMovePoolsOfAColumn(aColumnOf([levies], { heHoldsSeawolf: true })),
+    leviesSeawolf: theMovePoolsOfAColumn(aColumnOf([levies], { theMovePointsHisTitlesAddAtSea: 1 })),
     // A type the table prices at nothing, or doesn't price, marches at 3 (and is past the roads' band).
     bowmenPricedAtNothing: theMovePoolsOfAColumn(aColumnOf([{ type: 'Elven Bowmen', road: 5 }])),
     aTypeTheTableLacks: theMovePoolsOfAColumn(aColumnOf([{ type: 'Men-at-Arms', road: 5 }])),
@@ -102,7 +104,10 @@ test("a column sails at its slowest ship's pace, Naval added to each by its base
   expect({
     twoFleets: theMovePoolsOfAColumn(aColumnOf([{ type: 'Corsair Fleet' }, { type: 'Galleon Fleet' }])),
     twoFleetsSwiftAndSeawolf: theMovePoolsOfAColumn(
-      aColumnOf([{ type: 'Corsair Fleet' }, { type: 'Galleon Fleet' }], { heHoldsSwift: true, heHoldsSeawolf: true }),
+      aColumnOf([{ type: 'Corsair Fleet' }, { type: 'Galleon Fleet' }], {
+        theMovePointsHisTitlesAddOnLand: 1,
+        theMovePointsHisTitlesAddAtSea: 1,
+      }),
     ),
     leviesAboardAGalleon: theMovePoolsOfAColumn(aColumnOf([{ type: 'Shieldwall Levies' }, { type: 'Galleon Fleet' }])),
     // Naval is handed each ship's own base speed.
@@ -144,7 +149,7 @@ test("an all-flying column, or one whose flyers lift every foot soldier, flies a
       aColumnOf([{ type: 'Shieldwall Levies' }, { type: 'Eagle Riders' }]),
     ),
     griffonsLiftingLeviesSeawolf: theMovePoolsOfAColumn(
-      aColumnOf([{ type: 'Shieldwall Levies' }, { type: 'Noble Griffons' }], { heHoldsSeawolf: true }),
+      aColumnOf([{ type: 'Shieldwall Levies' }, { type: 'Noble Griffons' }], { theMovePointsHisTitlesAddAtSea: 1 }),
     ),
   }).toEqual({
     griffons: { land: 5, sea: 5, seaActive: true },

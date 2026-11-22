@@ -4,9 +4,15 @@
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a). These are the two casting limits, by the hero's effective level in the school, and the one rule
 // of a school's action spells a turn with the Warlock's extra cast (R-123), which the Cast Spell order, the bots' order
-// check and the order form ask (the form through src/shared/); and whether a spell costs its caster no slot at all
+// check and the order form ask (the form through src/shared/; since B-06l, T7, the extra cast is the Warlock's row's,
+// and the Cast Spell order asks the minor titles' registry for it); and whether a spell costs its caster no slot at all
 // (R-124), which the spells' registry and the order form ask.
 import { KC_MAGIC_SCHOOLS } from '../../content/kingdoms-call-data.ts';
+import {
+  MINOR_TITLES,
+  type AMinorTitleAsItsRowWritesIt,
+  type AMinorTitlesSlug,
+} from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import {
   SPELL_EFFECTS_THE_REGISTRY_HOLDS,
   type ASpellAsItsTextsWriteIt,
@@ -35,19 +41,49 @@ export function theHighestLevelAHeroHasTrainedInAMagicSchool(
   return Math.max(0, ...KC_MAGIC_SCHOOLS.map((school) => hisTrainedLevel(hero, school)));
 }
 
+/** The spells more of his best school a minor title's row lets its holder cast each turn (0 where its row names none). */
+export function theSpellsMoreAMinorTitlesRowLetsItsHolderCastInHisBestSchool(theTitle: AMinorTitlesSlug): number {
+  const theRow: AMinorTitleAsItsRowWritesIt | undefined = MINOR_TITLES.find((row) => row.key === theTitle);
+  return theRow?.theSpellsMoreItsHolderMayCastInHisBestSchoolEachTurn ?? 0;
+}
+
 /** Action spells of one school a hero may cast in a turn (R-123): actionSpellsAllowedPerSchoolEachTurn at his
- *  effective level in it, and one more if he holds the Warlock's minor title and it is his best school (his trained
- *  level in it is his highest in any school: each school tied for it counts). */
+ *  effective level in it, and the casts his minor titles add if it is his best school (his trained level in it is his
+ *  highest in any school: each school tied for it counts). The Cast Spell order hands the casts the minor titles'
+ *  registry gives (the Warlock's row: one), and the bots' order check too (botCastLimit, since B-06r); the order form
+ *  says whether he holds the Warlock (actionSpellsAHeroMayCastInASchoolEachTurn). */
+export function actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd(
+  hero: AHeroAsTheWarlocksRuleReadsHim | null | undefined,
+  school: string,
+  hisEffectiveLevelInTheSchool: number,
+  theCastsHisTitlesAddInHisBestSchool: number,
+): number {
+  const hisBestSchool = hisTrainedLevel(hero, school) === theHighestLevelAHeroHasTrainedInAMagicSchool(hero);
+  return (
+    actionSpellsAllowedPerSchoolEachTurn(hisEffectiveLevelInTheSchool) +
+    (hisBestSchool ? theCastsHisTitlesAddInHisBestSchool : 0)
+  );
+}
+
+/** Action spells of one school a hero may cast in a turn, as the order form asks it, saying whether he
+ *  holds the Warlock's minor title: the casts added are then the Warlock's row's (the one title whose row names them: a
+ *  unit case), else none. */
 export function actionSpellsAHeroMayCastInASchoolEachTurn(
   hero: AHeroAsTheWarlocksRuleReadsHim | null | undefined,
   school: string,
   hisEffectiveLevelInTheSchool: number,
   heHoldsTheWarlocksTitle: boolean,
 ): number {
-  const hisBestSchool = hisTrainedLevel(hero, school) === theHighestLevelAHeroHasTrainedInAMagicSchool(hero);
-  return (
-    actionSpellsAllowedPerSchoolEachTurn(hisEffectiveLevelInTheSchool) +
-    (heHoldsTheWarlocksTitle && hisBestSchool ? 1 : 0)
+  return actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd(
+    hero,
+    school,
+    hisEffectiveLevelInTheSchool,
+    heHoldsTheWarlocksTitle
+      ? MINOR_TITLES.reduce(
+          (theCasts, row) => theCasts + theSpellsMoreAMinorTitlesRowLetsItsHolderCastInHisBestSchool(row.key),
+          0,
+        )
+      : 0,
   );
 }
 

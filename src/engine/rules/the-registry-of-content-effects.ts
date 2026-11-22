@@ -72,7 +72,15 @@ import type {
   AStepOfTheCommandersItems,
   AUnitLedByACommander,
 } from '../rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-commanders-items.ts';
+import type {
+  AStepOfAMinorTitlesArmyPerk,
+  AUnitLedByAHolderOfAMinorTitle,
+} from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
+import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
+import type { TheEconomysRuleSlug } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
+import type { TheFactOfALineOfABoardOfRivalRealms } from './the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts';
+import type { TheFactOfALineOfABoardOfEachRealmsHeroesLoreTheFallenAndTheSpies } from './the-imperial-titles/the-boards-of-the-titles-that-read-each-realms-heroes-lore-the-fallen-and-the-spies-and-the-facts-their-lines-record.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -1657,6 +1665,118 @@ export interface TheTaxOfAProvinceOnConsecratedGround {
   readonly theTax: number;
 }
 
+/** A province's tax so far and the marks this turn's spells and spies leave on it, as Early Winter's collection hands
+ *  them (the economy's registry, B-06c: the report's forecast leaves this turn's marks out, as it always has). */
+export interface AProvincesTaxAndItsMarksOfThisTurn {
+  readonly theTax: number;
+  /** The turn being collected. */
+  readonly theTurn: number;
+  /** The province's own marks: the turn an Earthquake or a Sabotage wrecked it, the turn it was blessed and the
+   *  blessing's own measure (none: the rule's). */
+  readonly theProvince: {
+    readonly _earthquakeNoTax?: number | undefined;
+    readonly _sabotagedForTurn?: number | undefined;
+    readonly _blessedTurn?: number | undefined;
+    readonly _blessedMult?: number | undefined;
+  };
+}
+
+/** A province's tax so far (after its consecrated ground), and whether a mark that lasts lies on it, as Early Winter's
+ *  collection and the report's forecast hand them (the economy's registry, B-06c). */
+export interface AProvincesTaxUnderAMarkThatLasts {
+  readonly theTax: number;
+  /** Whether it was enslaved and still resents it (theEnslavedProvinceStillPaysLess). */
+  readonly itStillResentsItsEnslavement: boolean;
+}
+
+/** A province's tax so far (after the discoveries'), whether it keeps a garrison, and whether the realm's Wonder that
+ *  adds to it stands (asked only when an effect needs it), as Early Winter's collection and the report's forecast hand
+ *  them (the economy's registry, B-06c). */
+export interface AProvincesTaxAndTheRealmsWonder {
+  readonly theTax: number;
+  readonly itKeepsAGarrison: boolean;
+  /** Whether the realm's Free City Charter (Good's Grand Design) stands. */
+  readonly theFreeCityCharterStands: () => boolean;
+}
+
+/** A hero of the realm, as the gold his minor titles add beyond the tax reads him: whether he holds a title that gives
+ *  a rule's gold and the provinces his realm holds (each asked only when the stage needs it), as Early Winter's
+ *  collection and the report's forecast hand them (the economy's registry, B-06c). */
+export interface AHeroAsTheGoldOfHisMinorTitlesReadsHim {
+  /** Whether he holds a title that gives the rule's gold (the minor titles' registry says which, B-06m; the caller
+   *  asks who holds it, as before), asked of each rule of the stage, in its order, before its effect. */
+  readonly heHoldsATitleThatGivesIt: (theGold: TheEconomysRuleSlug) => boolean;
+  readonly theProvincesHisRealmHolds: () => number;
+}
+
+/** A hero of the realm, as the gold his masteries add beyond the tax reads him, as Early Winter's collection and the
+ *  report's forecast hand it (the economy's registry, B-06c). */
+export interface AHeroAsTheGoldOfHisMasteriesReadsHim {
+  /** Whether he holds the Thief's sixth mastery (perkTier). */
+  readonly heHoldsTheThiefNetwork: boolean;
+}
+
+/** A company's wage so far (its type's price), whether it took the Orcish war-spoils this turn, and the half golds the
+ *  war-spoils carry from company to company of the realm's host (Early Winter's `_orcFrac`), as Early Winter's wages
+ *  hand them, each company in its order: the heroes' companies in their order, then the garrisons in the provinces'
+ *  (the economy's registry, B-06d: the report's forecast leaves this turn's war-spoils out, as the stamped wages cover
+ *  it). */
+export interface ACompanysWageAndTheWarSpoilsItTookThisTurn {
+  readonly theWage: number;
+  /** Whether it is an Orcish company of an Orcish realm that won attacking this turn (the caller asks, as before). */
+  readonly itTookTheWarSpoilsThisTurn: boolean;
+  readonly theHalfGoldsCarried: number;
+}
+
+/** A company's wage this turn, and the half golds the war-spoils carry on to the next company. */
+export interface ACompanysWageThisTurnAndTheHalfGoldsCarried {
+  readonly theWage: number;
+  readonly theHalfGoldsCarried: number;
+}
+
+/** A company's wage so far (after this turn's war-spoils) and whether a leader's mastery or the realm's Wonder halves
+ *  it, as Early Winter's wages and the report's forecast hand them (the economy's registry, B-06d). */
+export interface ACompanysWageAndTheLeaderItMarchesUnder {
+  readonly theWage: number;
+  /** Whether it is a beast its leader's Druid 6 or the realm's Druidic Wonder halves (the caller asks, as before). */
+  readonly itIsABeastADruidHalves: boolean;
+}
+
+/** A realm's company wages (after each company's cuts) and how many of the companies its Host-Leader leads he saves
+ *  on, as Early Winter's wages and the report's forecast hand them, only when the realm has a Host-Leader (the
+ *  economy's registry, B-06d). */
+export interface TheCompanyWagesUnderTheHostLeader {
+  readonly theCompanyWages: number;
+  readonly theCompaniesHeSavesOn: number;
+}
+
+/** A company of a realm that can't pay its wages, as its place in the line to disband reads it, as Early Winter hands
+ *  it, each company of the realm in its order (the heroes' companies, then the garrisons), before any is passed over
+ *  (the economy's registry, B-06e). */
+export interface ACompanyAsTheLineToDisbandUnpaidReadsIt {
+  /** Whether it is a company of the dead (`_isSkeletal`). */
+  readonly itIsOfTheDead: boolean;
+  /** Its grade (`quality`). */
+  readonly itsGrade: string;
+}
+
+/** A company of a realm that can't pay its wages, as the sparing of a company reads it, as Early Winter hands it when
+ *  its turn in the line comes, and again for a ship it spared each time a company goes (the economy's registry,
+ *  B-06e). */
+export interface ACompanyAsTheSparingOfAnUnpaidCompanyReadsIt {
+  /** Whether it is a ship (CARRIER_TYPES). */
+  readonly itIsAShip: boolean;
+  /** Whether the column it sails in is at open sea and still needs it to carry its troops (the caller asks, only of a
+   *  ship, as before: isOpenSea and seaLiftShortfall). */
+  readonly itCarriesTroopsAtOpenSea: () => boolean;
+}
+
+/** An unpaid hero's roll of loyalty, as Early Winter hands it: a die drawn for him, only while the shortfall lasts
+ *  (the economy's registry, B-06e). */
+export interface AnUnpaidHerosRollOfLoyalty {
+  readonly theDie: number;
+}
+
 /** The provinces' tax income a realm's alignment adds to, as Early Winter's collection and the report's forecast hand
  *  it (after the provinces' own tax, the discoveries' and the Wonder's). */
 export interface TheIncomeARealmsAlignmentAddsTo {
@@ -1731,6 +1851,125 @@ export interface AHeroWhoseMaximumHpARealmsDiscoveriesMayRaise extends AHeroARea
   readonly theLevelsOfHisSkills: Readonly<Partial<Record<string, number>>>;
 }
 
+/** A company as an Imperial Title's board reads it: its type and its grade. */
+export interface ACompanyAsAnImperialTitlesBoardReadsIt {
+  readonly type: string;
+  readonly quality: string;
+}
+
+/** A hero as an Imperial Title's board reads him: his name, his realm's seat (none: he serves no realm), where he
+ *  stands, whether he lives, the companies he leads, his skills' levels and his deeds' tally of monster-blood. */
+export interface AHeroAsAnImperialTitlesBoardReadsHim {
+  readonly name: string;
+  readonly player: number | null;
+  readonly location: number;
+  readonly alive: boolean;
+  readonly armies: readonly ACompanyAsAnImperialTitlesBoardReadsIt[];
+  readonly skills: Readonly<Partial<Record<string, number>>>;
+  readonly tm?: { readonly monster: number } | undefined;
+}
+
+/** A province as an Imperial Title's board reads it: its id, its name, the realm holding it (none: no realm), its
+ *  garrison's companies, the companies buried on its battlefield, and how far each realm has mapped it (by the realm's
+ *  seat, 0 to 100). */
+export interface AProvinceAsAnImperialTitlesBoardReadsIt {
+  readonly id: number;
+  readonly name: string;
+  readonly owner: number | null;
+  readonly garrisonArmies: readonly ACompanyAsAnImperialTitlesBoardReadsIt[];
+  readonly battleGraves?: readonly ACompanyAsAnImperialTitlesBoardReadsIt[] | undefined;
+  readonly exploredBy?: Readonly<Record<string, number>> | undefined;
+}
+
+/** A discovery as the Loremaster's board reads it: what the realm holds of it, and the turn it was made. */
+export interface ADiscoveryAsTheLoremastersBoardReadsIt {
+  readonly id: string;
+  readonly name: string;
+  readonly category: string;
+  readonly desc: string;
+  readonly turnDiscovered: number;
+}
+
+/** A realm as an Imperial Title's board reads it: its name, its treasury, its discoveries and the fallen heroes it saw
+ *  fall. */
+export interface ARealmAsAnImperialTitlesBoardReadsIt {
+  readonly name: string;
+  readonly gold: number;
+  readonly discoveries?: readonly ADiscoveryAsTheLoremastersBoardReadsIt[] | undefined;
+  readonly seenDeadHeroIds?: readonly unknown[] | undefined;
+}
+
+/** A fallen hero as the Hierophant's board reads his grave: who he was, whose (none: he served no realm), whether he
+ *  was a king, where he lies and the skills he carried. */
+export interface AFallenHeroAsTheHierophantsBoardReadsHim {
+  readonly id: number;
+  readonly name: string;
+  readonly player: number | null;
+  readonly isKing: boolean;
+  readonly location: number;
+  readonly skills: Readonly<Partial<Record<string, number>>>;
+}
+
+/** An act of espionage as the Spymaster's board reads the turn's ledger: the realm and the hero who worked it, where,
+ *  and what he did (the saved game's words). */
+export interface AnActOfEspionageAsTheSpymastersBoardReadsIt {
+  readonly byPi: number;
+  readonly charId: number;
+  readonly charName: string;
+  readonly isKing: boolean;
+  readonly provId: number;
+  readonly kind: string;
+}
+
+/** What the stages of an Imperial Title's board hand an effect (the title intelligence, at the turn's end, once titles
+ *  are public, for a title a realm holds): the seat of the realm holding it, the world as the board reads it (the
+ *  turn, each realm by its seat, the heroes, the graveyard of the fallen, the world's provinces and the turn's ledger
+ *  of espionage), the world's provinces (with the holes the world may leave), the standings worked out at the turn's
+ *  end (the world tax base and each realm's share of it), and whether a realm has met another (itself included), as
+ *  the title intelligence asks it. */
+export interface AnImperialTitlesHolderAndTheWorldHisBoardReads {
+  readonly theHoldersSeat: number;
+  readonly theWorld: {
+    readonly turn: number;
+    readonly players: readonly ARealmAsAnImperialTitlesBoardReadsIt[];
+    readonly characters: readonly AHeroAsAnImperialTitlesBoardReadsHim[];
+    readonly heroGraveyard: readonly AFallenHeroAsTheHierophantsBoardReadsHim[];
+    readonly world: { readonly provinces: readonly (AProvinceAsAnImperialTitlesBoardReadsIt | null | undefined)[] };
+    readonly _espionageLedger?: readonly AnActOfEspionageAsTheSpymastersBoardReadsIt[] | undefined;
+  };
+  readonly theProvinces: readonly (AProvinceAsAnImperialTitlesBoardReadsIt | null | undefined)[];
+  readonly theStandings: { readonly worldTax: number; readonly taxByPlayer: readonly number[] };
+  readonly heHasMet: (pi: number, i: number) => boolean;
+}
+
+/** A fresh discovery a realm the Loremaster's holder has met made this turn, which his realm lacks: the discovery, and
+ *  the seat of the realm that made it. */
+export interface AFreshDiscoveryTheLoremastersScholarsMayCopy {
+  readonly d: ADiscoveryAsTheLoremastersBoardReadsIt;
+  readonly i: number;
+}
+
+/** What the Deathpriest's Grave-sight files under the holder's Graveyards Known for a province: the province, and its
+ *  crack and elite dead. */
+export interface WhatAGraveSightFilesOfAProvince {
+  readonly theProvinceId: number;
+  readonly theDead: ACompanyAsAnImperialTitlesBoardReadsIt[];
+}
+
+/** What a line of an Imperial Title's board records. */
+export type TheFactOfALineOfAnImperialTitlesBoard =
+  TheFactOfALineOfABoardOfRivalRealms | TheFactOfALineOfABoardOfEachRealmsHeroesLoreTheFallenAndTheSpies;
+
+/** An Imperial Title's board, as its effect gives it: its lines' facts, in the order the board tells them; for the
+ *  Loremaster's, the fresh discoveries his scholars may copy (the turn draws the one they copy, after the board's lines);
+ *  for the Deathpriest's, what its Grave-sight files before each of the board's lines (the k-th before the k-th line:
+ *  the turn files it, then writes the line). */
+export interface TheBoardOfAnImperialTitle {
+  readonly theLines: readonly TheFactOfALineOfAnImperialTitlesBoard[];
+  readonly theFreshDiscoveriesHisScholarsMayCopy?: readonly AFreshDiscoveryTheLoremastersScholarsMayCopy[] | undefined;
+  readonly theGraveSightItFilesBeforeEachLine?: readonly WhatAGraveSightFilesOfAProvince[] | undefined;
+}
+
 /** The hook points, each a set of named stages in the order the engine runs them, and the effect type of each stage.
  *  A stage or a hook point typed `never` has no signature yet: its family's first row writes it (plan P1-19's Choice
  *  1), so an entry on it fails to compile meanwhile. */
@@ -1749,6 +1988,17 @@ export interface TheStagesOfEachHookPoint {
     /** The step an item the commander carries makes on the strength of a unit he leads, or nothing; the runner applies
      *  the steps in the stage's order, each rounded as it goes (armStr; the items' registry). */
     readonly "the commander's items": (facts: AUnitLedByACommander) => AStepOfTheCommandersItems | null;
+    /** The step a minor title the commander holds makes on the strength of a unit he leads, from its row, or nothing;
+     *  the runner applies the steps in the stage's order, each rounded as it goes, a perk two titles give once,
+     *  asking whether he holds a title only where its step would lift the unit (armStr, after his Druid mastery; and
+     *  the army card, on plain values: the minor titles' registry, B-06k). */
+    readonly "the commander's minor titles": (
+      unit: AUnitLedByAHolderOfAMinorTitle,
+    ) => AStepOfAMinorTitlesArmyPerk | null;
+    /** The levels a minor title adds to its holder's Tactical in a battle, from its row; the runner adds those of each
+     *  title he holds, in the stage's order, asking whether he holds one only where it adds (commandScore, and both
+     *  sides of both battles, before a curse halves it: the minor titles' registry, B-06k). */
+    readonly "a hero's titles add to his Tactical": () => number;
     /** The defenders' fortifications after an item a commander of the battle carries, from the bonus so far, or nothing
      *  (both battles, after the realm's own bonuses; the items' registry). */
     readonly "the defenders' fortifications": (
@@ -1976,6 +2226,10 @@ export interface TheStagesOfEachHookPoint {
     /** The points a realm's alignment adds to the chance a column converging on a hero's battle unites with his force
      *  (resolveMoveOrder, both its rolls; the alignment abilities' registry, P1-19au2). */
     readonly "a realm's alignment helps converging columns unite": () => number;
+    /** The move points a minor title adds to its holder's pool on land or at sea, from its title's rows; the runner
+     *  adds those of each title he holds, in the stage's order, asking whether he holds one only where it adds
+     *  (computeMovePoolMax, each pool only where it exists: the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to his move points": (thePool: 'land' | 'sea') => number;
   };
   /** The checks the Cast Spell order makes of the spell named, before it is worked and as it is (plan P1-19's spells
    *  family: its row P1-19y typed them; the spells' registry, one spell an order, found by its name). In the order the
@@ -2007,6 +2261,10 @@ export interface TheStagesOfEachHookPoint {
     readonly 'who may give an alignment order': (
       facts: AHeroAsTheChecksOfAnAlignmentOrderReadHim,
     ) => TheCheckAnAlignmentOrderRefusesAHeroOn | null;
+    /** The spells more of his best school a minor title lets its holder cast each turn, from its row; the runner adds
+     *  those of each title he holds, in the stage's order, asking whether he holds one only where it adds
+     *  (resolveCastSpellOrder's casting limit, his best school only: the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to the casts he may make in his best school": () => number;
   };
   /** A hero's experience (plan P1-19's discoveries family: its row P1-19ac typed it). */
   readonly experience: {
@@ -2082,6 +2340,67 @@ export interface TheStagesOfEachHookPoint {
      *  the abilities its alignment holds, in the stage's order (neutralTradeGold, which Early Winter's collection and the
      *  report's forecast ask: the alignment abilities' registry, plan P1-19at1). */
     readonly "a realm's alignment adds to its tax": (facts: TheIncomeARealmsAlignmentAddsTo) => number;
+    /** A province's tax this turn, from its own tax, after this turn's marks (an Earthquake's or a Sabotage's nothing,
+     *  a Bless's yield); the runner hands each effect, in the stage's order, the tax the one before gave (Early
+     *  Winter's collection, first of a province's tax: the economy's registry, B-06c). */
+    readonly "a province's tax this turn": (facts: AProvincesTaxAndItsMarksOfThisTurn) => number;
+    /** A province's tax while a mark lasts on it (Enslave's resentment), from its tax after its consecrated ground; the
+     *  runner hands each effect, in the stage's order, the tax the one before gave (Early Winter's collection and the
+     *  report's forecast, before the earthquake's lasting damage: the economy's registry, B-06c). */
+    readonly "a province's tax while a mark lasts": (facts: AProvincesTaxUnderAMarkThatLasts) => number;
+    /** A province's tax with what the realm's Wonder adds (the Free City Charter), from its tax after the discoveries';
+     *  the runner hands each effect, in the stage's order, the tax the one before gave (Early Winter's collection and
+     *  the report's forecast, last of a province's tax: the economy's registry, B-06c). */
+    readonly "a province's tax from the realm's Wonder": (facts: AProvincesTaxAndTheRealmsWonder) => number;
+    /** The gold a minor title a hero holds adds to his realm's beyond the tax, or nothing; the runner gives each the
+     *  stage's order gives gold, in it (Early Winter's collection, hero by hero, which notes each on the tax line, and
+     *  the report's forecast: the economy's registry, B-06c). */
+    readonly "a realm's gold beyond its tax from a hero's minor title": (
+      facts: AHeroAsTheGoldOfHisMinorTitlesReadsHim,
+    ) => number | null;
+    /** The gold a mastery a hero holds adds to his realm's beyond the tax (the Thief network); the runner adds them
+     *  (Early Winter's collection and the report's forecast, hero by hero: the economy's registry, B-06c). */
+    readonly "a realm's gold beyond its tax from a hero's mastery": (
+      facts: AHeroAsTheGoldOfHisMasteriesReadsHim,
+    ) => number;
+    /** A company's wage this turn, from its type's price, after this turn's war-spoils (the Orcish half), and the half
+     *  golds carried on; the runner hands each effect, in the stage's order, the wage and the carry the one before gave
+     *  (Early Winter's wages alone, before the Druid's half: the economy's registry, B-06d). */
+    readonly "a company's wage this turn": (
+      facts: ACompanysWageAndTheWarSpoilsItTookThisTurn,
+    ) => ACompanysWageThisTurnAndTheHalfGoldsCarried;
+    /** A company's wage under its leader (the Druid's half), from its wage after this turn's; the runner hands each
+     *  effect, in the stage's order, the wage the one before gave (Early Winter's wages and the report's forecast,
+     *  before the upkeep discoveries: the economy's registry, B-06d). */
+    readonly "a company's wage under its leader": (facts: ACompanysWageAndTheLeaderItMarchesUnder) => number;
+    /** A realm's company wages under its Host-Leader: the gold he saves and the wages left; the runner hands each
+     *  effect, in the stage's order, the wages the one before left, and adds the gold saved (Early Winter's wages and
+     *  the report's forecast, after every company's wage and before the heroes': the economy's registry, B-06d). */
+    readonly "a realm's company wages under its Host-Leader": (
+      facts: TheCompanyWagesUnderTheHostLeader,
+    ) => TheHostLeadersCut;
+    /** The rule of the economy whose gold a minor title gives its holder's realm beyond its tax (its gold is that
+     *  rule's, in the economy's registry); the runner asks, of each title of the stage whose entry names the rule, in
+     *  the stage's order, whether he holds it (Early Winter's collection, hero by hero, and the report's forecast: the
+     *  minor titles' registry, B-06m). */
+    readonly "a hero's titles give his realm gold beyond its tax": () => TheEconomysRuleSlug;
+    /** The rule of the economy by which a minor title's holder cuts his realm's company wages (its cut is that rule's,
+     *  in the economy's registry); the runner asks whether he holds a title of the stage, in its order (Early Winter's
+     *  wages and the report's forecast, to find the realm's hero who cuts them: the minor titles' registry, B-06m). */
+    readonly "a hero's titles cut his realm's company wages": () => TheEconomysRuleSlug;
+    /** A company's rank in the line a realm that can't pay its wages disbands its companies in, the lowest first; the
+     *  runner gives each effect's rank, in the stage's order, and the line compares them rank by rank, a die each
+     *  company drew breaking a tie (Early Winter, once the realm can't pay: the economy's registry, B-06e). */
+    readonly "a company's rank in the line to disband unpaid": (
+      facts: ACompanyAsTheLineToDisbandUnpaidReadsIt,
+    ) => number;
+    /** Whether a company is passed over when its turn in the line to disband unpaid comes (a ship carrying troops at
+     *  sea); the runner asks whether any effect spares it (Early Winter, in the line, and again for each ship spared
+     *  each time a company goes: the economy's registry, B-06e). */
+    readonly 'a company is spared disbanding unpaid': (facts: ACompanyAsTheSparingOfAnUnpaidCompanyReadsIt) => boolean;
+    /** Whether an unpaid hero deserts on his die; the runner asks whether any effect has him desert (Early Winter, hero
+     *  by hero, the best paid first, while the shortfall lasts: the economy's registry, B-06e). */
+    readonly 'an unpaid hero deserts': (facts: AnUnpaidHerosRollOfLoyalty) => boolean;
     /** The tax of a province on a realm's consecrated ground, from its tax so far (after Bless, an earthquake and
      *  Sabotage; before Enslave and the discoveries); the runner hands each effect, in the stage's order, the tax the
      *  one before gave. The caller asks whether the realm's consecration list holds the province, as before (Early
@@ -2129,6 +2448,38 @@ export interface TheStagesOfEachHookPoint {
     /** The chance a discovery a realm holds gives each company at its capital to train up a grade at the new turn; the
      *  runner gives the first effect's, or nothing if the realm holds none (the new turn's War Academy, which rolls). */
     readonly "a realm's discoveries promote the capital's armies": (theEffect: TheEffectOfADiscovery) => number;
+    /** The board an Imperial Title of the realm shows the realm holding it: what it learns of itself and of each realm
+     *  it has met, in the order the board tells them; the runner asks, in the stage's order, for each title a realm
+     *  holds (the title intelligence, at the turn's end, first: the Imperial Titles' registry, B-06o). The turn writes
+     *  each line for the holder's realm alone, then the line for the realms it hasn't met. */
+    readonly 'the board an Imperial Title of the realm shows its holder': (
+      facts: AnImperialTitlesHolderAndTheWorldHisBoardReads,
+    ) => TheBoardOfAnImperialTitle;
+    /** The board a hero's Imperial Title shows the realm he serves of each realm's heroes and lore: its strongest army
+     *  and fleet, its champion of monster-blood, its discoveries (and the fresh ones the Loremaster's scholars may
+     *  copy), its foremost mages, in the order the board tells them; the runner asks, in the stage's order, for each
+     *  title a realm holds (the title intelligence, at the turn's end, after the titles of the realm: B-06p). The turn
+     *  writes each line for the holder's realm alone, draws the Loremaster's copy, then writes the line for the realms
+     *  it hasn't met. */
+    readonly "the board a hero's Imperial Title shows of each realm's heroes and lore": (
+      facts: AnImperialTitlesHolderAndTheWorldHisBoardReads,
+    ) => TheBoardOfAnImperialTitle;
+    /** The board a hero's Imperial Title shows the realm he serves of the fallen and of the spies in its lands: what the
+     *  dead it can see knew, the crack and elite dead in each province, the turn's espionage against its lands, in the
+     *  order the board tells them; the runner asks, in the stage's order, for each title a realm holds (the title
+     *  intelligence, at the turn's end, after the boards of heroes and lore: B-06p). The turn files what the
+     *  Grave-sight finds and writes each line for the holder's realm alone, and no line for the realms it hasn't met. */
+    readonly "the board a hero's Imperial Title shows of the fallen and of the spies in his lands": (
+      facts: AnImperialTitlesHolderAndTheWorldHisBoardReads,
+    ) => TheBoardOfAnImperialTitle;
+    /** The board a hero's Imperial Title shows the realm he serves of each realm as a whole: what it learns of itself
+     *  and of each realm it has met, in the order the board tells them; the runner asks, in the stage's order, for each
+     *  title a realm holds (the title intelligence, at the turn's end, after the Spymaster's ledger: the Imperial
+     *  Titles' registry, B-06o). The turn writes each line for the holder's realm alone, then the line for the realms
+     *  it hasn't met. */
+    readonly "the board a hero's Imperial Title shows his realm": (
+      facts: AnImperialTitlesHolderAndTheWorldHisBoardReads,
+    ) => TheBoardOfAnImperialTitle;
   };
   /** An order's outcome a hero's item changes (plan P1-19's items family, Choice 1: its first row, P1-19o, typed it). */
   readonly orderOutcome: {
@@ -2150,6 +2501,23 @@ export interface TheStagesOfEachHookPoint {
     /** Whether an item the caster carries makes the cast of a spell sure (resolveCastSpellOrder, before the cast chance:
      *  plan P1-19y; the items' registry: any of his items, in the stage's order). */
     readonly "a spell's cast cannot fail": (facts: ASpellAboutToBeCast) => boolean;
+    /** Whether a minor title keeps its holder's spying unseen: no roll to catch him spying on a hero, and a false face
+     *  when he spies out a province; the runner says whether any title he holds does, in the stage's order, asking
+     *  whether he holds one only where it does (resolveSpyOrder, both places: the minor titles' registry, B-06l). */
+    readonly "a hero's titles keep his spying unseen": () => boolean;
+    /** The levels a minor title adds to its holder's Sage for his chance of a discovery, from its title's rows; the
+     *  runner adds those of each title he holds, in the stage's order, asking whether he holds one only where it adds
+     *  (resolveResearchOrder, each level worth what a Sage level is: the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to his Sage in research": () => number;
+    /** The hit points a minor title adds to its holder's heal when he rests, from its row; the runner adds those of
+     *  each title he holds, in the stage's order, asking whether he holds one only where it adds (resolveRestOrder,
+     *  before the discoveries' and the items': the minor titles' registry, B-06l). */
+    readonly "a hero's titles add to a rest's heal": () => number;
+    /** The factor a minor title multiplies the share of a province its holder maps by, from its row; the runner
+     *  multiplies those of each title he holds, in the stage's order, asking whether he holds one only where it
+     *  multiplies (resolveExploreOrder, before the discoveries' factor and the rounding down: the minor titles'
+     *  registry, B-06l). */
+    readonly "a hero's titles multiply the share of a province he maps": () => number;
     /** The share a discovery a spy's realm holds adds to his chance, or nothing (it names other ground); the runner
      *  adds them (resolveSpyOrder, both his rolls; the report's odds, where no province is named: plan P1-19ad). */
     readonly "a realm's discoveries add to a spy's chance": (
@@ -2413,6 +2781,11 @@ export interface TheStagesOfEachHookPoint {
     /** The levels a discovery a hero's realm holds adds to his Melee and his Archery in a personal combat; the runner
      *  gives the first effect's, or 0 if the realm holds none (pcCharCombatant, and extraSkillBonuses for his card). */
     readonly "a realm's discoveries add to a fighter's skills": (theEffect: TheEffectOfADiscovery) => number;
+    /** The levels a minor title adds to its holder's Melee or his Archery in a personal combat, from its row, or 0 (it
+     *  adds to the other); the runner adds those of each title he holds, in the stage's order, asking whether he holds
+     *  one only where it adds to the skill (pcCharCombatant, after his items, before his realm's discoveries: the
+     *  minor titles' registry, B-06j). */
+    readonly "a hero's titles add to his skills": (theSkill: 'melee' | 'archery') => number;
     /** The damage a discovery a hero's realm holds adds to what his Mithril turns aside of a melee blow; the runner
      *  adds them (pcCharCombatant, after the suit's own). */
     readonly "a realm's discoveries strengthen his Mithril": (theEffect: TheEffectOfADiscovery) => number;

@@ -7,8 +7,6 @@ defects placed so far come after the rebuild, in [Later](the-later-group-what-se
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| P1-19ba | The alignment orders' portal half: the GM page's labels "Harvest Field" and "Rite", the order list's `ACTION_DISPLAY_ORDER` and the target field's "VETERAN" read from the alignment abilities' rows, not written by hand ([traps.md](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities)). `refactor-only` | Maintainers: a new creed order shows in the form without editing these lists; before the new alignment abilities land | Phase 1 | Small | – | ⬜ | | |
-| P1-19bb | The alignments' checks by name that are left, the bots' and the words', through the alignment abilities' registry (the ratchet counts them) | Maintainers: an alignment's rule lives in one place before its new abilities land | Phase 1 | Large | – | ⬜ | | |
 | P1-21 | Mutation sessions: faults made on purpose, scored by a script, after each big series. Recurring | Maintainers: finds what the tests miss after each series | Phase 1 | Medium | ✓ | 🟦 | #192–#649, its rows | |
 | P1-22 | What the balance matrix reaches. Its code coverage and the proof tools are built (`tools/proof/`); its content coverage is still to plan | Maintainers: shows which content no matrix game plays | Phase 1 | Medium | ✓ | 🟦 | #287 | |
 | P2-16 | A running game and its logs are read only by its GM, its players and the Overlord (D-10). Live since 16 October; waiting for a maintainer's check on the live site: a running game opened as its GM and as a player, and the Hall of Fame, each reads as before | The maintainers: one check on the live site closes it | Phase 2 | Small | ✓ 🔑 | 🟦 | #106 | |
@@ -21,5 +19,6 @@ defects placed so far come after the rebuild, in [Later](the-later-group-what-se
 ### P1-19: the rule registry for content effects
 
 A group, not a row ([how to read a row](README.md#how-to-read-a-row)): one content family at a time, and every family
-is in it (#229–#587). Its rows left are P1-19ba and P1-19bb in the table above; its finished rows are in
+is in it (#229–#587). Its rows left, P1-19ba1 to P1-19bb9, are B-06's alignments, in
+[the top](README.md#1-t7-the-rules-pulled-out); its finished rows are in
 [the finished list](finished-steps-p1-13-to-p1-25.md#p1-19).

@@ -21,6 +21,8 @@ import {
   whatARealmsDiscoveriesAddToAFightersMithril,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
+import { theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat } from '../rules/the-registry-of-the-minor-titles-perks.ts';
+import type { AMinorTitlesSlug } from '../../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -283,6 +285,8 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakes
   // Rage (AK §2.4): a Berserker shrugs off pain.
   const rg = temperOf(effTemper(ch)).rageHp;
   const rageHp = rg ? rng(rg[0], rg[1]) : 0;
+  /** Whether he holds a minor title (the holders worked out at the turn's start). */
+  const heHoldsTheTitle = (theTitle: AMinorTitlesSlug) => charMinor(turnContext, ch, theTitle);
   const cbt: AFighterInAPersonalCombat = {
     kind: 'character',
     ref: ch,
@@ -302,18 +306,15 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakes
     // Melee 4 hero with +5 of items and two of those bonuses fought at "Melee 11 (4 +7 bonus)".
     // Every one of those figures now goes through pcSkillCap, so nothing a character carries or
     // holds can put Melee or Archery above 9 in a duel — for the hit chance OR for the damage.
+    // The titles: the minor titles' registry's since B-06j (the Duelist, the Marksman, the Widowmaker, the Relic-Hunter).
     melee: pcSkillCap(
       effStat(turnContext, ch, 'melee') +
-        (charMinor(turnContext, ch, 'duelist') ? 1 : 0) +
-        (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
-        (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
+        theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat('melee', heHoldsTheTitle) +
         (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
     ), // Veteran Training (the discoveries' registry's since plan P1-19ac)
     archery: pcSkillCap(
       effStat(turnContext, ch, 'archery') +
-        (charMinor(turnContext, ch, 'marksman') ? 1 : 0) +
-        (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
-        (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
+        theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat('archery', heHoldsTheTitle) +
         (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
     ), // Veteran Training (the discoveries' registry's since plan P1-19ac)
     // Damage scales on the raw 1–9 level (levels 6–9 exist above the effStat cap of 5) — but an
@@ -323,9 +324,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakes
       Math.max(
         skillLevel(ch, 'melee'),
         effStat(turnContext, ch, 'melee') +
-          (charMinor(turnContext, ch, 'duelist') ? 1 : 0) +
-          (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
-          (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
+          theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat('melee', heHoldsTheTitle) +
           (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
       ),
     ),
@@ -333,9 +332,7 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakes
       Math.max(
         skillLevel(ch, 'archery'),
         effStat(turnContext, ch, 'archery') +
-          (charMinor(turnContext, ch, 'marksman') ? 1 : 0) +
-          (charMinor(turnContext, ch, 'widowmaker') ? 1 : 0) +
-          (charMinor(turnContext, ch, 'relichunter') ? 1 : 0) +
+          theLevelsAHerosTitlesAddToHisSkillInAPersonalCombat('archery', heHoldsTheTitle) +
           (ch.player != null ? theLevelsARealmsDiscoveriesAddToAFightersSkills(turnContext.G.players[ch.player]) : 0),
       ),
     ),

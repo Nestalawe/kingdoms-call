@@ -1,4 +1,4 @@
-import { KC_MAGIC_SCHOOLS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_MAGIC_SCHOOLS, KC_THE_RECKONINGS_NUMBERS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { SKILL_MAX } from '../army-tables.ts';
 import {
   theMasteryTierATrainedLevelGives,
@@ -107,11 +107,11 @@ export function creditBeastUnit(
   if (TITLE_MONSTER_ARMIES.has(t)) tmRec.monsterHost = (tmRec.monsterHost || 0) + (n || 1);
   else if (TITLE_CREATURE_ARMIES.has(t)) tmRec.wildHost = (tmRec.wildHost || 0) + (n || 1);
 }
-export const RELIC_PRIZE_EACH = 1; // 1 point per LEGENDARY relic held. 2026-09-11: the legendary
+export const RELIC_PRIZE_EACH = KC_THE_RECKONINGS_NUMBERS.theLegacyEachLegendaryRelicIsWorth; // 1 point per LEGENDARY relic held. 2026-09-11: the legendary
 // tier is now two relics of each kind, so the relic pool
 // is worth ~22 points against 100 points of Titles (was
 // 10) - DEV_LOG 87.3.
-export const TITLES_PUBLIC_FROM_TURN = 5; // standings hidden turns 1–4 (clarification #10)
+export const TITLES_PUBLIC_FROM_TURN = KC_THE_RECKONINGS_NUMBERS.theFirstTurnTheTitlesArePublic; // standings hidden turns 1–4 (clarification #10)
 export const TITLE_PERKS_ENABLED = true; // live perks while a Title is held (from turn 5)
 
 // Dominance threshold (share of world tax base) to Call the Reckoning — scales with player count
@@ -123,17 +123,20 @@ export const TITLE_PERKS_ENABLED = true; // live perks while a Title is held (fr
 // same point rather than jumping to catch up with the turn. All of it in INTEGER percentage points
 // — 0.40 - 0.05 in floats is 0.35000000000000003, and that class of drift has caused live bugs in
 // this engine before.
-export const RECKONING_BASE_PCT: Readonly<Record<number, number | undefined>> = { 2: 60, 3: 50, 4: 45, 5: 42 };
-export const RECKONING_DEFAULT_PCT = 40; // 6 or more realms
-export const RECKONING_DECAY_FROM_TURN = 15; // the first END-of-turn at which the bar may erode
-export const RECKONING_DECAY_STEP_PCT = 5; // percentage points shed per eroding turn
-export const RECKONING_FLOOR_PCT = 25; // and it never falls below this
+// The numbers are the Reckoning's content row (KC_THE_RECKONINGS_NUMBERS, B-06q), read here by the engine's names.
+export const RECKONING_BASE_PCT: Readonly<Record<number, number | undefined>> =
+  KC_THE_RECKONINGS_NUMBERS.theBarByTheNumberOfRealms;
+export const RECKONING_DEFAULT_PCT = KC_THE_RECKONINGS_NUMBERS.theBarWithSixRealmsOrMore; // 6 or more realms
+// the first END-of-turn at which the bar may erode
+export const RECKONING_DECAY_FROM_TURN = KC_THE_RECKONINGS_NUMBERS.theFirstTurnAtWhoseEndTheBarMayWearAway;
+export const RECKONING_DECAY_STEP_PCT = KC_THE_RECKONINGS_NUMBERS.thePointsTheBarWearsAwayEachTurn; // percentage points shed per eroding turn
+export const RECKONING_FLOOR_PCT = KC_THE_RECKONINGS_NUMBERS.theFloorTheBarNeverFallsBelow; // and it never falls below this
 // NO PASSENGERS AT THE THRONE. An allied bloc can still push a realm over the Reckoning bar, but
 // the realm that LODGES the claim must be a real contributor to it: its OWN tax base must be at
 // least this fraction of the threshold. Without this, every member of a bloc that cleared the bar
 // could Call the Reckoning — including an ally holding 3% of the world, who would then be the named
 // claimant. Solo claimants are unaffected (their own share IS the bloc share).
-export const RECKONING_CALLER_MIN_FRAC = 0.5;
+export const RECKONING_CALLER_MIN_FRAC = KC_THE_RECKONINGS_NUMBERS.theShareOfTheBarAClaimantMustHoldInHisOwnRight;
 // AN ALLY RAISES THE BAR. A flat threshold made an alliance the cheapest route to the throne:
 // measured over 30,000 random mature worlds, the realm that could call it on an alliance's strength
 // held on average only 0.71–0.82 of the share a SOLO claimant would have needed, and the discount
@@ -143,14 +146,18 @@ export const RECKONING_CALLER_MIN_FRAC = 0.5;
 // 0.98–1.03 of the solo bar at every player count, so joining a bloc buys a route to the endgame
 // but never a cheaper one. Ceiling at RECKONING_CAP_PCT so a large bloc is not locked out forever —
 // and the war-weariness decay still erodes the base underneath it.
-export const RECKONING_CAP_PCT = 80; // no bloc ever needs more than this
+export const RECKONING_CAP_PCT = KC_THE_RECKONINGS_NUMBERS.theCeilingNoBlocsBarPasses; // no bloc ever needs more than this
 export function reckoningAllyStepPct(nPlayers: number) {
-  return Math.round(50 / Math.max(2, nPlayers | 0));
+  return Math.round(
+    KC_THE_RECKONINGS_NUMBERS.thePointsOverTheNumberOfRealmsThatMakeEachAllysStep / Math.max(2, nPlayers | 0),
+  );
 }
 // no claim before this turn, whatever anyone's share. Titles go public at turn 5; the throne cannot
 // be claimed for another five turns after that, so an early runaway start cannot end the game
 // before the other realms have had a chance to build.
-export const RECKONING_MIN_TURN = 10;
+export const RECKONING_MIN_TURN = KC_THE_RECKONINGS_NUMBERS.theFirstTurnAClaimMayBeLodged;
+// the turns of grace a lodged claim stands before it is judged: called on turn T, judged at the end of turn T + 2.
+export const RECKONING_GRACE_TURNS = KC_THE_RECKONINGS_NUMBERS.theTurnsOfGraceBeforeAClaimIsJudged;
 export function reckoningBasePct(nPlayers: number) {
   return RECKONING_BASE_PCT[nPlayers] ?? RECKONING_DEFAULT_PCT;
 }

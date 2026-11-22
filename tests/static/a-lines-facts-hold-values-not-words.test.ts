@@ -78,11 +78,12 @@
 // dispatch, the item orders, the Research and Practice orders, the Recruit and Hire orders; P1-12d7: the army orders,
 // the realm works orders, the war mastery orders; P1-12d8: the espionage orders, the explore and search orders;
 // P1-12d9: the Cast Spell order; P1-12d10: the move order; P1-12d12: a chase, a hero's experience and hit points;
-// P1-12d13: the title intelligence; P1-12d14: the Defend watch, a stranding at sea, the war-spoils; P1-12d15: the lines
-// before the first phase, the new turn, a phase's stages and intents, the intrusion warnings, a Defend watch met in
-// battle, a silent hero's season; P1-12d16: the lines after the phases, diplomacy's and victory's, Early Winter's;
-// P1-12d17: what a spy learns, relations and captures, the Plague and the Bless ward, a rallied garrison and Wraith's
-// Touch, a bot's concession, the Spy stealth's line) holds
+// P1-12d13: the title intelligence (since B-06o and B-06p, each board's kinds in its effects' file); P1-12d14: the
+// Defend watch, a stranding at sea, the war-spoils; P1-12d15: the lines before the first phase, the new turn, a
+// phase's stages and intents, the intrusion warnings, a Defend watch met in battle, a silent hero's season;
+// P1-12d16: the lines after the phases, diplomacy's and victory's, Early Winter's; P1-12d17: what a spy learns,
+// relations and captures, the Plague and the Bless ward, a rallied garrison and Wraith's Touch, a bot's concession,
+// the Spy stealth's line) holds
 // no field whose value is, or holds, words: a string or
 // a template with text reached as the value (through a conditional's branches, `+`, `||`, `??`, `&&`, a placeholder,
 // `String()`, an array or a record), a word helper's call (by its name, `aAn` and `n0` since P1-12d3, or `join` and
@@ -153,6 +154,16 @@ const AREAS: readonly (readonly [area: string, factsModule: string, row: string]
   ['a chase', 'src/engine/heroes/the-facts-a-chases-lines-record.ts', 'P1-12d12'],
   ["a hero's experience and hit points", 'src/engine/heroes/the-facts-a-heros-experience-lines-record.ts', 'P1-12d12'],
   ['the title intelligence', 'src/engine/titles/the-facts-the-title-intelligence-lines-record.ts', 'P1-12d13'],
+  [
+    'the boards of the titles that read each rival realm',
+    'src/engine/rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts',
+    'B-06o',
+  ],
+  [
+    "the boards of the titles that read each realm's heroes and lore, the fallen and the spies",
+    'src/engine/rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-realms-heroes-lore-the-fallen-and-the-spies-and-the-facts-their-lines-record.ts',
+    'B-06p',
+  ],
   ['the Defend watch', 'src/engine/units/the-facts-the-defend-watchs-lines-record.ts', 'P1-12d14'],
   ['a stranding at sea', 'src/engine/units/the-facts-a-stranding-at-seas-lines-record.ts', 'P1-12d14'],
   ['the war-spoils', 'src/engine/units/the-facts-the-war-spoils-line-records.ts', 'P1-12d14'],
@@ -207,6 +218,8 @@ const FACTS_MODULES: readonly string[] = [
   'src/engine/heroes/the-facts-a-chases-lines-record.ts',
   'src/engine/heroes/the-facts-a-heros-experience-lines-record.ts',
   'src/engine/titles/the-facts-the-title-intelligence-lines-record.ts',
+  'src/engine/rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts',
+  'src/engine/rules/the-imperial-titles/the-boards-of-the-titles-that-read-each-realms-heroes-lore-the-fallen-and-the-spies-and-the-facts-their-lines-record.ts',
   'src/engine/units/the-facts-the-defend-watchs-lines-record.ts',
   'src/engine/units/the-facts-a-stranding-at-seas-lines-record.ts',
   'src/engine/units/the-facts-the-war-spoils-line-records.ts',

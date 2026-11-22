@@ -8,8 +8,15 @@
 // registry (src/engine/turn/early-winter-…ts, and the report's forecast of them in src/views/turn-report.ts): the
 // companies that draw none, a beast's half wage under a Druid 6 leader or a Druidic Wonder, and the Host-Leader's 1g a
 // company he leads. The upkeep discoveries' cut reads the discoveries' registry, so it stays engine side
-// (discUpkeepWage).
+// (discUpkeepWage). Since B-06d the Druid's and the Host-Leader's numbers are their rows in the economy's rules
+// (src/content/the-economys-rules-their-keys-names-and-numbers.ts), and Early Winter and the forecast ask these through
+// the economy's registry; the order form's ledger and the army card ask them here.
+import { THE_ECONOMYS_RULES } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
 import { CREATURE_ARMIES, MONSTER_ARMIES } from './units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+
+/** The Druid's half and the Host-Leader's cut: their numbers, from their rows in the economy's rules (B-06d). */
+const THE_DRUIDS_HALF = THE_ECONOMYS_RULES['a-druid-halves-a-beasts-price-and-wage'].theNumbers;
+const THE_HOST_LEADERS_CUT = THE_ECONOMYS_RULES['the-host-leaders-cut-of-his-companies-wages'].theNumbers;
 
 /** The chance, in percent, a practice alone raises a skill from each level below mastery: 25% at level 0 down to 5%
  *  at level 4 (the report's table of chances shows these). */
@@ -58,9 +65,9 @@ export function aCompanyIsABeastADruidHalves(theType: string): boolean {
   return CREATURE_ARMIES.has(theType) || MONSTER_ARMIES.has(theType);
 }
 
-/** The price a Druid 6 recruiter pays for a beast: half, rounded down. */
+/** The price a Druid 6 recruiter pays for a beast: half (his row's share), rounded down. */
 export function thePriceADruidPaysForABeast(thePrice: number): number {
-  return Math.floor(thePrice * 0.5);
+  return Math.floor(thePrice * THE_DRUIDS_HALF.theShareOfThePriceAndTheWage);
 }
 
 /** Whether a leader's beasts pay half wages: he holds Druid 6, or his realm has built the Druidic Wonder (asked only
@@ -72,9 +79,9 @@ export function aLeadersBeastsPayHalfWages(
   return heHoldsDruidSix || hisRealmHasBuiltTheDruidicWonder();
 }
 
-/** The wage a beast pays under a Druid: half, rounded down, at least 1g. */
+/** The wage a beast pays under a Druid: half (his row's share), rounded down, at least his row's least wage (1g). */
 export function theWageABeastPaysUnderADruid(theWage: number): number {
-  return Math.max(1, Math.floor(theWage * 0.5));
+  return Math.max(THE_DRUIDS_HALF.theLeastWage, Math.floor(theWage * THE_DRUIDS_HALF.theShareOfThePriceAndTheWage));
 }
 
 /** A company as the wages read it: one borrowed for a while (summoned), and a Wild Hunt beast's last turn. */
@@ -93,15 +100,17 @@ export function theCompaniesTheHostLeaderSavesOn(theCompaniesHeLeads: readonly A
   return theCompaniesHeLeads.filter((a) => !aCompanyDrawsNoWage(a)).length;
 }
 
-/** The Host-Leader's cut of a realm's company wages: 1g a company he saves on, the wages never below 0. */
+/** The Host-Leader's cut of a realm's company wages: his row's 1g a company he saves on, the wages never below 0. */
 export interface TheHostLeadersCut {
   readonly theGoldSaved: number;
   readonly theWagesLeft: number;
 }
-/** The Host-Leader's cut: the gold saved (no more than the wages) and the wages left. */
+/** The Host-Leader's cut: the gold saved (his row's gold on each company, no more than the wages) and the wages
+ *  left. */
 export function theHostLeadersCut(theCompanyWages: number, theCompaniesHeSavesOn: number): TheHostLeadersCut {
+  const theGoldHeCuts = theCompaniesHeSavesOn * THE_HOST_LEADERS_CUT.theGoldOnEachCompany;
   return {
-    theGoldSaved: Math.min(theCompanyWages, theCompaniesHeSavesOn),
-    theWagesLeft: Math.max(0, theCompanyWages - theCompaniesHeSavesOn),
+    theGoldSaved: Math.min(theCompanyWages, theGoldHeCuts),
+    theWagesLeft: Math.max(0, theCompanyWages - theGoldHeCuts),
   };
 }

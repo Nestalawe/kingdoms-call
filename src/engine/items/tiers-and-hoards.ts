@@ -1,4 +1,9 @@
-import { ALL_MAGIC_ITEMS_P, _ITEM_NAME_ALTS } from '../../content/kingdoms-call-data.ts';
+import {
+  ALL_MAGIC_ITEMS_P,
+  KC_THE_PRICE_OF_A_WILD_HUNT_WHOSE_BEAST_THE_TABLE_DOES_NOT_PRICE,
+  KC_THE_TAX_THAT_MAKES_A_PROVINCE_RICH_ENOUGH_FOR_A_GRAND_HEIST,
+  _ITEM_NAME_ALTS,
+} from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ARMY_COST_MASTER } from '../army-tables.ts';
 import { MONSTER_CAT_ITEM_USE, _TRINKET_SLOTS } from '../names.ts';
@@ -39,7 +44,7 @@ export function guardianCanUseItem(m: Parameters<typeof monsterCat>[0], it: Item
 // ── PAGAN TUNING ──
 export const RITUAL_SITE_NAMES = ['Standing Stones', 'Blood Altar', 'Circle of the Old Gods'];
 export const RITUAL_SITE_CHANCE_HUMANOID = 0.25; // share of humanoid land provinces with one (Blood Offering only there)
-export const WILD_HUNT_COST = 6; // fallback price if a bound type is missing from ARMY_COST_MASTER
+export const WILD_HUNT_COST = KC_THE_PRICE_OF_A_WILD_HUNT_WHOSE_BEAST_THE_TABLE_DOES_NOT_PRICE; // fallback price if a bound type is missing from ARMY_COST_MASTER (content's, B-06f)
 export const WILD_HUNT_UNITS = THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theWildHuntsBeasts.value; // units bound per rite (its row's)
 // the rite is priced at the cost of ONE of the beasts bound, however many answer the horn — bind
 // two Stone Giants (5g each) and the offering is 5g, not 6g and not 10g. Declared as a
@@ -48,7 +53,7 @@ export const WILD_HUNT_UNITS = THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.t
 export function wildHuntPrice(type: string) {
   return Number(ARMY_COST_MASTER[type]) || WILD_HUNT_COST;
 }
-export const GRAND_HEIST_RICH_TAX = 7; // tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
+export const GRAND_HEIST_RICH_TAX = KC_THE_TAX_THAT_MAKES_A_PROVINCE_RICH_ENOUGH_FOR_A_GRAND_HEIST; // content's (B-06f): tax base at/above which a province is rich enough to stage a Grand Heist in (a realm's home capital always qualifies)
 export const WILD_HUNT_TURNS = THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theWildHuntsTurnsMore.value; // extra full turns the bound creatures serve beyond this one (its row's)
 /** The turns the beasts a Wild Hunt binds serve beyond this one (plan P1-11e22, moved as it was; here since P1-11e24, where the views may ask it): WILD_HUNT_TURNS,
  *  and what the hero's realm's discoveries add (ap08 The Long Hunt; the discoveries' registry's since plan P1-19ad:

@@ -582,16 +582,6 @@ export function botResearchPick(G: GameState, pi: number, options: Iterable<stri
 // normaliseEquipment dons whatever came first), send combat kit from the court's scholars and scouts to
 // the general who fights, and crack the Philosopher's Stone once the realm has an army worth promoting.
 // One item pre-order per character per turn. Reads only the bot's own items.
-export const BOT_FIGHT_STATS = new Set([
-  'melee',
-  'archery',
-  'tactical',
-  'armour',
-  'mithrilArmour',
-  'maxHp',
-  'combatUse',
-  'druid',
-]);
 export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRealmsRoles | null | undefined) {
   const carried: readonly (Item | null | undefined)[] = theItemsWithGapsOf(c);
   const items = carried.filter((it): it is Item => Boolean(it));

@@ -22,7 +22,9 @@
 // - A force drawn up for battle carries its kind into the realm's chronicle, and no other line does, whatever its words
 //   open with and whatever lines the realm can't read come before it: the pages draw a force's rows by it alone.
 // - One realm's report (buildTurnReport, src/views/turn-report.ts, P1-10b30) on its view (playerView) of a world
-//   staged for it, which no game of the matrix builds: a Good realm's Wonder's tax, a skeleton's wage, a Wonder's realm
+//   staged for it, which no game of the matrix builds: a Good realm's Wonder's tax, Enslave's gold off the tax, the
+//   minor titles' gold and the Thief network (B-06c), the Host-Leader's cut, titles not yet public or another realm's
+//   hero holding them (B-06d, B-06m), a skeleton's wage, a Wonder's realm
 //   wherever the map shows it, and the hero it watches by Clairvoyance and the heroes beside a province it spied, each
 //   in a province it has never seen.
 // Level 1 (unit): each function is called on a world (and a turn's sight) made in the test; nothing else of the turn
@@ -51,6 +53,7 @@ const { playerEvents: playerEventsAsItsModuleExportsIt } =
 const { playerView: playerViewAsItsModuleExportsIt } =
   await import('../../src/views/what-each-realm-may-see-of-the-world.ts');
 const { buildTurnReport: buildTurnReportAsItsModuleExportsIt } = await import('../../src/views/turn-report.ts');
+const { TITLES_PUBLIC_FROM_TURN } = await import('../../src/engine/titles/perks.ts');
 const REALMS = 3;
 const freshPlayers = Array.from({ length: REALMS }, (_, i) => ({
   id: `gp${String(i)}`,
@@ -568,6 +571,123 @@ describe("one realm's report on a world staged for it", () => {
     ];
     const withIt = buildTurnReport(playerView(S, 0)).kingdom;
     expect([withIt.sdGrand - without.sdGrand, withIt.baseTaxIncome - without.baseTaxIncome]).toEqual([2, 2]);
+  });
+
+  // B-06c: the forecast asks the collector's runners for Enslave, the minor titles' gold and the Thief network, lines
+  // no matrix game may reach (the Wonder's is the case above)
+  test("an enslaved province's resentment comes off the forecast, a gold while it lasts, never below nothing", () => {
+    const S = world();
+    const me = realmOf(S, 0);
+    delete me._lastWages;
+    const theTurn = (S as unknown as { turn: number }).turn;
+    const theirs = S.world.provinces.filter((p) => p.owner === null).slice(0, 3);
+    for (const p of theirs) {
+      p.owner = 0;
+      me.provinces.push(p.id);
+    }
+    const [resents, atNothing, spent] = theirs.map((p) => p as Province & { _enslavedUntil?: number });
+    if (!resents || !atNothing || !spent) throw new Error('too few free provinces (staging)');
+    resents.tax = 5;
+    atNothing.tax = 0;
+    spent.tax = 4;
+    const without = buildTurnReport(playerView(S, 0)).kingdom as Report['kingdom'] & { enslaveReduction: number };
+    resents._enslavedUntil = theTurn;
+    atNothing._enslavedUntil = theTurn + 2;
+    spent._enslavedUntil = theTurn - 1;
+    const withIt = buildTurnReport(playerView(S, 0)).kingdom as Report['kingdom'] & { enslaveReduction: number };
+    expect([withIt.enslaveReduction - without.enslaveReduction, withIt.baseTaxIncome - without.baseTaxIncome]).toEqual([
+      1, -1,
+    ]);
+  });
+
+  /** The forecast's minor titles' gold and its Thief network, on a report whose titles are public and held as given. */
+  const theGoldBeyondTheTax = (
+    held: Readonly<Record<string, number>>,
+    provinces: number,
+    titlesPublic = true,
+    stage: (S: World) => void = () => undefined,
+  ) => {
+    const S = world();
+    stage(S);
+    const theWorld = S as unknown as { turn: number };
+    theWorld.turn = titlesPublic ? Math.max(theWorld.turn, TITLES_PUBLIC_FROM_TURN) : TITLES_PUBLIC_FROM_TURN - 1;
+    const view = playerView(S, 0) as View & {
+      titles: { public: boolean; minor: Record<string, { charId: number }> | null };
+      books: { provincesItHoldsByTheirRecord: number };
+    };
+    expect(view.titles.public, 'the titles are public (staging)').toBe(titlesPublic);
+    if (titlesPublic)
+      view.titles.minor = Object.fromEntries(Object.entries(held).map(([key, charId]) => [key, { charId }]));
+    view.books.provincesItHoldsByTheirRecord = provinces;
+    const k = buildTurnReport(view).kingdom as Report['kingdom'] & Record<string, number>;
+    return [k['cutpurseG'], k['championG'], k['castellanG'], k['thiefStipend']];
+  };
+  test("the minor titles' gold in the forecast: the Cutpurse's 2, the Champion of the People's 2, the Castellan's 1 for every 5 provinces (rounded down), for a title its hero holds once titles are public", () => {
+    const S = world();
+    const mine = kingOf(S, 0).id;
+    const theirs = kingOf(S, 1).id;
+    expect(theGoldBeyondTheTax({ cutpurse: mine, champion: mine, castellan: mine }, 14)).toEqual([2, 2, 2, 0]);
+    expect(theGoldBeyondTheTax({ cutpurse: mine }, 14)).toEqual([2, 0, 0, 0]);
+    expect(theGoldBeyondTheTax({ champion: mine }, 14)).toEqual([0, 2, 0, 0]);
+    expect(theGoldBeyondTheTax({ castellan: mine }, 4)).toEqual([0, 0, 0, 0]);
+    expect(theGoldBeyondTheTax({ castellan: mine }, 5)).toEqual([0, 0, 1, 0]);
+    expect(theGoldBeyondTheTax({ cutpurse: theirs, champion: theirs, castellan: theirs }, 14)).toEqual([0, 0, 0, 0]);
+    expect(theGoldBeyondTheTax({ cutpurse: mine, champion: mine, castellan: mine }, 14, false)).toEqual([0, 0, 0, 0]);
+  });
+  test('the Thief network in the forecast: 5 gold for each hero of the realm at Thief 6 or above, none below', () => {
+    const atThief = (levels: readonly number[]) => (S: World) => {
+      const ours = S.characters.filter((c) => c.player === 0 && c.alive);
+      if (ours.length < levels.length) throw new Error('realm 0 has too few heroes (staging)');
+      ours.forEach((c, i) => {
+        const h = c as Hero & { skills: Record<string, number> };
+        h.skills = { ...h.skills, thief: levels[i] ?? 0 };
+      });
+    };
+    expect(theGoldBeyondTheTax({}, 0, true, atThief([6]))[3]).toBe(5);
+    expect(theGoldBeyondTheTax({}, 0, true, atThief([5]))[3]).toBe(0);
+    expect(theGoldBeyondTheTax({}, 0, false, atThief([9]))[3]).toBe(5);
+  });
+
+  // B-06d: the forecast asks the collector's runner for the Host-Leader's cut, a line no matrix game may reach
+  test('the Host-Leader in the forecast: a gold less for each company he leads that draws a wage, once titles are public', () => {
+    const theWages = (heLeads: Hero['armies'], heHoldsIt: boolean) => {
+      const S = world();
+      delete realmOf(S, 0)._lastWages;
+      const king = kingOf(S, 0);
+      king.armies = heLeads;
+      const theWorld = S as unknown as { turn: number };
+      theWorld.turn = Math.max(theWorld.turn, TITLES_PUBLIC_FROM_TURN);
+      const view = playerView(S, 0) as View & { titles: { minor: Record<string, { charId: number }> | null } };
+      view.titles.minor = heHoldsIt ? { hostleader: { charId: king.id } } : {};
+      const k = buildTurnReport(view).kingdom as Report['kingdom'] & { hostLeaderG: number };
+      return [k.armyWages, k.hostLeaderG];
+    };
+    const three = [0, 1, 2].map(() => ({ type: 'Gilded Lances', quality: 'Average' }));
+    const [without = 0] = theWages(three, false);
+    expect(theWages(three, true)).toEqual([without - 3, 3]);
+    expect(theWages(three.slice(0, 1), true)).toEqual([without - 8 - 1, 1]);
+    expect(theWages(three, false)).toEqual([without, 0]);
+  });
+  // B-06m: which title cuts the wages is the minor titles' registry's; the report keeps its own holders and its check
+  // of the titles being public
+  test("the Host-Leader in the forecast cuts nothing while titles aren't public, nor as another realm's hero", () => {
+    const theWages = (titlesPublic: boolean, theHolder: 'ours' | 'theirs') => {
+      const S = world();
+      delete realmOf(S, 0)._lastWages;
+      const king = kingOf(S, 0);
+      king.armies = [0, 1, 2].map(() => ({ type: 'Gilded Lances', quality: 'Average' }));
+      const theWorld = S as unknown as { turn: number };
+      theWorld.turn = titlesPublic ? Math.max(theWorld.turn, TITLES_PUBLIC_FROM_TURN) : TITLES_PUBLIC_FROM_TURN - 1;
+      const view = playerView(S, 0) as View & { titles: { minor: Record<string, { charId: number }> | null } };
+      const charId = theHolder === 'ours' ? king.id : kingOf(S, 1).id;
+      view.titles.minor = { hostleader: { charId } };
+      const k = buildTurnReport(view).kingdom as Report['kingdom'] & { hostLeaderG: number };
+      return [k.armyWages, k.hostLeaderG];
+    };
+    const [cut = 0, saved = 0] = theWages(true, 'ours');
+    expect(saved, 'our Host-Leader, titles public (staging)').toBe(3);
+    expect(theWages(false, 'ours')).toEqual([cut + 3, 0]);
+    expect(theWages(true, 'theirs')).toEqual([cut + 3, 0]);
   });
 
   test("the realm's heroes are in its own order, the ones it hasn't placed after them in the world's order", () => {

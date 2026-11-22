@@ -20,7 +20,8 @@ import {
 import { BOT_SCHOOLS } from './schools.ts';
 import { botOrderLocs, botPickupOrder } from './missions.ts';
 import { skillLevel } from '../titles/perks.ts';
-import { actionSpellsAHeroMayCastInASchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
+import { actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
+import { theCastsAHerosTitlesAddInHisBestSchool } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { botPracticeFallback } from './spellcraft.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
@@ -445,9 +446,14 @@ export function botCastLimit(G: GameState, c: Character, school: string, practis
       asItsGuardReadsIt(G.characters) ?? [],
     ),
   ); // a hero's figure, a number (effSkillOf gives none only for no hero)
-  // the Warlock's extra cast in his best school as he stands before the practice: the Cast Spell order's rule (R-123)
-  const warlock = G._minorHolders?.warlock?.charId === c.id;
-  return actionSpellsAHeroMayCastInASchoolEachTurn(c, school, l, warlock);
+  // the casts his minor titles add in his best school as he stands before the practice (the Warlock's): the Cast Spell
+  // order's rule (R-123), its casts the minor titles' registry's, by the holders worked out at the turn's start
+  return actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd(
+    c,
+    school,
+    l,
+    theCastsAHerosTitlesAddInHisBestSchool((theTitle) => G._minorHolders?.[theTitle]?.charId === c.id),
+  );
 }
 export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>) {
   const tally = typeof window !== 'undefined' && window.__botHyg ? window.__botHyg : null;
