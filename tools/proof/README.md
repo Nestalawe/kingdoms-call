@@ -230,9 +230,10 @@ naval king, Neutral and Evil. Together they hold every creed, Divine and Undead 
 **A draw's stage** is read from its call stack, with no mark in `src/`
 ([the-worlds-makings-stages.ts](the-worlds-makings-stages.ts)): the innermost frame that is a stage's own function, or
 else `generateNewGame`'s frame, whose line falls between two stages' anchors (the line that opens each stage, found
-once in `src/engine/world/generate.ts`). The bots' realms' draws count apart, as `bots`. **Each split row (B-06v to
-B-06aa) updates the stage table:** a stage moved into a function of its own gets that function's name (`fn`) beside its
-anchor, kept while the row's base still has the anchor there; the next row may drop an anchor neither side holds. A
+once in `src/engine/world/generate.ts`). The bots' realms' draws count apart, as `bots`. **The stages and their functions are read from their list in `src/`**
+(`src/engine/world/the-worlds-making/the-stages-in-the-order-they-run.ts`, by its syntax tree:
+[the-worlds-makings-stages-read-from-their-list-in-src.ts](../the-worlds-makings-stages-read-from-their-list-in-src.ts)),
+so a new stage needs no edit here; the anchors stay in the table for a base from before the split (B-06v to B-06aa). A
 stage found on a side by neither stops the proof rather than count its dice as another's, and the unit test checks that
 every stage is found in the tree as it is.
 

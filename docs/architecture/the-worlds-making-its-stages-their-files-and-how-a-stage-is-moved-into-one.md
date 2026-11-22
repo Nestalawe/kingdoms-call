@@ -1,13 +1,14 @@
 # The world's making: its stages, their files, and how a stage is moved into one
 
 `generateNewGame` (`src/engine/world/generate.ts`) makes a new world at Turn 0 in eighteen stages, S0 to S17: the
-set-up, the capitals, each home's ring, the provinces, and so on to the naming pass. The stages, in order, with what
-each makes, are the world proof's stage table
-([tools/proof/the-worlds-makings-stages.ts](../../tools/proof/the-worlds-makings-stages.ts)). The split is finished:
-every stage is a function in a file of its own in `src/engine/world/the-worlds-making/` (B-06v to B-06aa), each
-with `fn` in the stage table, and `generateNewGame` is the set-up's call and the seventeen stages' calls after it, in
-order, threading each stage's results to the next. B-06ab makes the stages one typed list, in order, that
-`generateNewGame` runs. This file is the shape every stage takes.
+set-up, the capitals, each home's ring, the provinces, and so on to the naming pass. Each stage is a function in a file
+of its own in `src/engine/world/the-worlds-making/` (B-06v to B-06aa moved them there). **The stages' list**,
+`the-stages-in-the-order-they-run.ts` beside them, is the one home of their order, their ids and their names in game
+terms: each entry is a stage's id, what it makes, and its function, in a typed `as const` list. `generate.ts` takes the
+stages' functions from the list, each under its own name, and `generateNewGame` calls them in the list's order,
+threading each stage's results to the next. The world proof's stage table
+([tools/proof/the-worlds-makings-stages.ts](../../tools/proof/the-worlds-makings-stages.ts)) and the world-making
+counts' list read their stages from the list's text. This file is the shape every stage takes.
 
 ## Where a stage lives
 
@@ -43,17 +44,31 @@ order, threading each stage's results to the next. B-06ab makes the stages one t
   is made after them, with the same values.
 - **A value a later stage fills** stays a `let` in `generateNewGame` and is handed in, or is returned by the stage that
   fills it. Never `as` or `!`.
-- **`generateNewGame` calls the stages in order** and threads their results from one to the next.
+- **`generateNewGame` calls the stages in the list's order** and threads their results from one to the next. Each call
+  names what its stage reads: the stages read and make different things, so one loop over the list would need one
+  state object with every field optional, read with `!` or a cast.
+
+## Adding a stage
+
+1. **Its file and its function**, in the shape above.
+2. **One entry in the stages' list**, at its place in the order: `{ stage: 'S<n>', inGameTerms: '…', run: <its
+   function> }`, and the ids after it renumbered (they run S0, S1, … in order).
+3. **Its name in `generate.ts`'s binding from the list**, at the same place, and **its call in `generateNewGame`**,
+   with what it reads. The unit test
+   `tests/unit/the-world-is-made-by-the-stages-its-list-holds-each-once-in-the-lists-order.test.ts` fails until the
+   list, the binding and the calls agree, each stage once, in order.
+
+The world proof's stage table and the counts' list read the new entry by themselves: neither needs an edit.
 
 ## What a row updates when it moves a stage
 
-1. **The world proof's stage table**: the moved stage gets `fn: '<its function's name>'`. Its anchor stays while the
-   row's base still holds the anchor in `generate.ts`; the anchor's comment moves with the stage's code. The proof,
-   `npm run proof:worlds -- --base <base branch>`, must show every case identical, stage by stage
-   ([tools/proof/README.md](../../tools/proof/README.md#7-the-worlds-making-world-by-world)).
-2. **The world-making counts' list** (`THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES` in `tools/ratchet.ts`): each new stage
-   function is added, and a listed function or table that moves keeps its entry at its new file, so no count falls by
-   the move. The static test
+1. **The world proof** (`npm run proof:worlds -- --base <base branch>`) must show every case identical, stage by stage
+   ([tools/proof/README.md](../../tools/proof/README.md#7-the-worlds-making-world-by-world)). Its stage table reads
+   each stage's function from the list, and keeps the anchors (the line that opened each stage in `generate.ts` before
+   the split) for a base from before it.
+2. **The world-making counts' list** (`THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES` in `tools/ratchet.ts`) reads the stages'
+   functions from the list; a listed function or table outside it that moves keeps its entry at its new file, so no
+   count falls by the move. The static test
    (`tests/static/the-code-the-worlds-making-rows-have-taken-holds-no-number-nor-list-and-every-listed-function-is-there.test.ts`)
    names the new file wherever its lists name the old one.
 3. **A test that cuts or reads `generateNewGame`'s statements by name** reads them in the stage's function instead
