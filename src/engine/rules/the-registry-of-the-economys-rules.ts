@@ -211,12 +211,14 @@ export type AMinorTitlesGoldBeyondTheTax = TheEconomysRuleSlug &
 
 /** The runner of "turnEnd: a realm's gold beyond its tax from a hero's minor title" (Early Winter's collection, hero by
  *  hero, which notes each on the tax line, and the report's forecast): each effect of the stage that gives gold, with
- *  its slug and the gold, in the stage's order. */
+ *  its slug and the gold, in the stage's order, asked only where he holds a title that gives it (which title: the
+ *  minor titles' registry, B-06m). */
 export function theGoldAHerosMinorTitlesAddBeyondTheTax(
   facts: AHeroAsTheGoldOfHisMinorTitlesReadsHim,
 ): readonly (readonly [AMinorTitlesGoldBeyondTheTax, number])[] {
   const theStage = "a realm's gold beyond its tax from a hero's minor title";
   return TURN_END[theStage].flatMap((slug) => {
+    if (!facts.heHoldsATitleThatGivesIt(slug)) return [];
     const theGold = ENTRIES[slug].turnEnd?.[theStage]?.(facts) ?? null;
     return theGold === null ? [] : [[slug, theGold] as const];
   });

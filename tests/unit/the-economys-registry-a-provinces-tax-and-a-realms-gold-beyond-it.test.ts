@@ -5,8 +5,8 @@
 // for nothing; while a mark lasts: an enslaved province that still resents it a gold less, never below nothing; from the
 // realm's Wonder: 2 more on a province that keeps a garrison while the Free City Charter stands (asked once a province);
 // a hero's minor titles: the Cutpurse's 2, the Champion of the People's 2, the Castellan's gold for every 5 provinces
-// rounded down (none below 5, the provinces asked only of the Castellan), in that order; a hero's mastery: the Thief
-// network's 5. Each old line is written here as it was, and the runner is compared with it.
+// rounded down (none below 5, the provinces asked only of the Castellan), in that order, which title gives each asked of
+// the minor titles' registry (B-06m) as the turn asks it; a hero's mastery: the Thief network's 5. Each old line is written here as it was, and the runner is compared with it.
 // Level 1 (unit): the runners are functions on plain values; a static test can't run them, and Early Winter's cases
 // (tests/lib/early-winter-cases.ts) and the report's (tests/unit/realm-reports.test.ts) hold the callers.
 import { expect, test } from 'vitest';
@@ -17,6 +17,7 @@ import {
   theTaxOfAProvinceThisTurn,
   theTaxOfAProvinceWhileAMarkLasts,
 } from '../../src/engine/rules/the-registry-of-the-economys-rules.ts';
+import { heHoldsAMinorTitleThatGivesHisRealmTheGold } from '../../src/engine/rules/the-registry-of-the-minor-titles-perks.ts';
 
 const TAXES = Array.from({ length: 41 }, (_, i) => i);
 const THE_TURN = 7;
@@ -87,12 +88,16 @@ test("a hero's minor titles: the Cutpurse's 2, the Champion of the People's 2 an
             const cg = Math.floor(provinces / 5);
             if (cg > 0) was.push(['the-castellans-gold', cg]);
           }
+          const held: Readonly<Record<string, boolean>> = {
+            cutpurse: heHoldsTheCutpurse,
+            champion: heHoldsTheChampionOfThePeople,
+            castellan: heHoldsTheCastellan,
+          };
           const why = `${String(heHoldsTheCutpurse)}, ${String(heHoldsTheChampionOfThePeople)}, ${String(heHoldsTheCastellan)}, ${String(provinces)}`;
           expect(
             theGoldAHerosMinorTitlesAddBeyondTheTax({
-              heHoldsTheCutpurse,
-              heHoldsTheChampionOfThePeople,
-              heHoldsTheCastellan,
+              heHoldsATitleThatGivesIt: (theGold) =>
+                heHoldsAMinorTitleThatGivesHisRealmTheGold(theGold, (theTitle) => held[theTitle] ?? false),
               theProvincesHisRealmHolds,
             }),
             why,

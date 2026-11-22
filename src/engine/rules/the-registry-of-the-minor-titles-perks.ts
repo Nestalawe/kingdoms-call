@@ -6,8 +6,9 @@
 // THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES, and each stage's runner is here. The Duelist, the Marksman, the
 // Widowmaker and the Relic-Hunter act at personalCombat (B-06j); the Strategist, the Naturalist, the Cavalier, the
 // Beastmaster and the Ironclad at strength (B-06k); the Swift and the Sea-Wolf at movementCost, the Warlock at
-// orderValidity, the Shadow, the Loreseeker, the Colossus and the Trailblazer at orderOutcome (B-06l); every other entry
-// is at no stage yet (its perk is still checked where it acts, by the holders worked out at the turn's start:
+// orderValidity, the Shadow, the Loreseeker, the Colossus and the Trailblazer at orderOutcome (B-06l); the Cutpurse, the
+// Champion of the People, the Castellan and the Host-Leader at turnEnd, each naming the rule of the economy whose gold
+// or cut it gives (B-06m); every other entry is at no stage yet (its perk is still checked where it acts, by the holders worked out at the turn's start:
 // `charMinor` and its kin). Here too is the measure a hero is held to for a title, which the awarding
 // (computeMinorTitles) asks. The rows after B-06l give each other perk its effect, at the hook points
 // TheHookPointsAMinorTitlesPerkActsAt names. How to add one:
@@ -25,6 +26,7 @@ import {
   type AMinorTitleWithAnArmyPerk,
   type AMinorTitlesArmyPerk,
 } from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
+import type { TheEconomysRuleSlug } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
 import type { TheStagesOfEachHookPoint } from './the-registry-of-content-effects.ts';
 import { A_HEROS_TITLES_ADD_TO_HIS_SKILLS } from './the-minor-titles/a-heros-titles-add-to-his-skills-in-a-personal-combat.ts';
 import {
@@ -39,6 +41,10 @@ import {
   A_HEROS_TITLES_KEEP_HIS_SPYING_UNSEEN,
   A_HEROS_TITLES_MULTIPLY_THE_SHARE_OF_A_PROVINCE_HE_MAPS,
 } from './the-minor-titles/a-heros-titles-on-a-march-and-on-an-order.ts';
+import {
+  A_HEROS_TITLES_CUT_HIS_REALMS_COMPANY_WAGES,
+  A_HEROS_TITLES_GIVE_HIS_REALM_GOLD_BEYOND_ITS_TAX,
+} from './the-minor-titles/a-heros-titles-at-the-turns-end-his-realms-gold-and-its-company-wages.ts';
 
 /** The hook points a minor title's perk acts at, each filled by a row of the family: `personalCombat` (B-06j: a hero's
  *  titles add to his skills in a fight), `strength` (B-06k: to his Tactical in a battle, and the units the commander's
@@ -73,7 +79,11 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   shadow: {
     orderOutcome: { "a hero's titles keep his spying unseen": A_HEROS_TITLES_KEEP_HIS_SPYING_UNSEEN.shadow },
   },
-  cutpurse: {}, // turnEnd (B-06m; its gold is the economy's registry's)
+  cutpurse: {
+    turnEnd: {
+      "a hero's titles give his realm gold beyond its tax": A_HEROS_TITLES_GIVE_HIS_REALM_GOLD_BEYOND_ITS_TAX.cutpurse,
+    },
+  },
   naturalist: {
     strength: { "the commander's minor titles": THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS.naturalist },
   },
@@ -94,8 +104,16 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   widowmaker: {
     personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.widowmaker },
   },
-  champion: {}, // turnEnd (B-06m; its gold is the economy's registry's)
-  hostleader: {}, // turnEnd (B-06m)
+  champion: {
+    turnEnd: {
+      "a hero's titles give his realm gold beyond its tax": A_HEROS_TITLES_GIVE_HIS_REALM_GOLD_BEYOND_ITS_TAX.champion,
+    },
+  },
+  hostleader: {
+    turnEnd: {
+      "a hero's titles cut his realm's company wages": A_HEROS_TITLES_CUT_HIS_REALMS_COMPANY_WAGES.hostleader,
+    },
+  },
   cavalier: {
     strength: { "the commander's minor titles": THE_COMMANDERS_MINOR_TITLES_LIFT_THE_UNITS_HE_LEADS.cavalier },
   },
@@ -108,7 +126,11 @@ export const THE_REGISTRY_OF_THE_MINOR_TITLES_PERKS = {
   relichunter: {
     personalCombat: { "a hero's titles add to his skills": A_HEROS_TITLES_ADD_TO_HIS_SKILLS.relichunter },
   },
-  castellan: {}, // turnEnd (B-06m; its gold is the economy's registry's)
+  castellan: {
+    turnEnd: {
+      "a hero's titles give his realm gold beyond its tax": A_HEROS_TITLES_GIVE_HIS_REALM_GOLD_BEYOND_ITS_TAX.castellan,
+    },
+  },
   warlock: {
     orderValidity: {
       "a hero's titles add to the casts he may make in his best school":
@@ -139,6 +161,10 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES = {
     "a hero's titles add to a rest's heal": ['colossus'],
     "a hero's titles multiply the share of a province he maps": ['trailblazer'],
   },
+  turnEnd: {
+    "a hero's titles give his realm gold beyond its tax": ['cutpurse', 'champion', 'castellan'],
+    "a hero's titles cut his realm's company wages": ['hostleader'],
+  },
 } as const satisfies {
   readonly [H in TheHookPointsAMinorTitlesPerkActsAt]?: {
     readonly [S in keyof TheStagesOfEachHookPoint[H]]?: readonly AMinorTitlesSlug[];
@@ -152,6 +178,7 @@ const STRENGTH = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.strength;
 const MOVEMENT_COST = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.movementCost;
 const ORDER_VALIDITY = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.orderValidity;
 const ORDER_OUTCOME = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.orderOutcome;
+const TURN_END = THE_ORDER_OF_EACH_STAGE_OF_THE_MINOR_TITLES.turnEnd;
 
 /** The runner of "personalCombat: a hero's titles add to his skills" (pcCharCombatant, for his Melee and his Archery
  *  and their raw levels, after his items and before his realm's discoveries): the levels each title of the stage adds
@@ -274,6 +301,29 @@ export function theFactorAHerosTitlesMultiplyTheShareOfAProvinceHeMapsBy(
     const by = ENTRIES[slug].orderOutcome?.[theStage]?.() ?? 1;
     return by !== 1 && heHoldsTheTitle(slug) ? theFactor * by : theFactor;
   }, 1);
+}
+
+/** The runner of "turnEnd: a hero's titles give his realm gold beyond its tax" (Early Winter's collection, hero by hero,
+ *  and the report's forecast, for each rule of the economy's stage of a minor title's gold, in its order): whether he
+ *  holds a title that gives the rule's gold. Whether he holds a title is asked only of a title whose entry names the
+ *  rule, in the stage's order, until one he holds is found. */
+export function heHoldsAMinorTitleThatGivesHisRealmTheGold(
+  theGold: TheEconomysRuleSlug,
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): boolean {
+  const theStage = "a hero's titles give his realm gold beyond its tax";
+  return TURN_END[theStage].some((slug) => ENTRIES[slug].turnEnd?.[theStage]?.() === theGold && heHoldsTheTitle(slug));
+}
+
+/** The runner of "turnEnd: a hero's titles cut his realm's company wages" (Early Winter's wages and the report's
+ *  forecast, to find the realm's hero who cuts them; the cut is the economy's registry's): whether he holds a title of
+ *  the stage. Whether he holds a title is asked only of a title that cuts them, in the stage's order, until one he
+ *  holds is found. */
+export function aHerosTitlesCutHisRealmsCompanyWages(
+  heHoldsTheTitle: (theTitle: AMinorTitlesSlug) => boolean,
+): boolean {
+  const theStage = "a hero's titles cut his realm's company wages";
+  return TURN_END[theStage].some((slug) => ENTRIES[slug].turnEnd?.[theStage] !== undefined && heHoldsTheTitle(slug));
 }
 
 /** A hero as the minor titles measure him: his skills, his hit points, his kills of another realm's heroes, his merits,

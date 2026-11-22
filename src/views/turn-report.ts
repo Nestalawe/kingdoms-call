@@ -93,6 +93,10 @@ import {
   theWageOfACompanyUnderItsLeader,
 } from '../engine/rules/the-registry-of-the-economys-rules.ts';
 import {
+  aHerosTitlesCutHisRealmsCompanyWages,
+  heHoldsAMinorTitleThatGivesHisRealmTheGold,
+} from '../engine/rules/the-registry-of-the-minor-titles-perks.ts';
+import {
   THE_REPORTS_ODDS_NAME_NO_PROVINCE,
   THE_REPORTS_PRACTICE_NAMES_NO_SKILL,
   THE_REPORTS_RESEARCH_NAMES_NO_FIELD,
@@ -1120,19 +1124,20 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
       return !!(h && _pChars.some((c) => c.id === h.charId));
     };
     // (how much each gives: the collector's runner since B-06c, "turnEnd: a realm's gold beyond its tax from a hero's
-    // minor title", handed the realm's heroes as one, since one hero holds a title; whether one holds it, as before)
+    // minor title", handed the realm's heroes as one, since one hero holds a title; which title gives it: the minor
+    // titles' registry's since B-06m, the collector's runner; whether one holds it, as before)
     const _titlesGold = new Map(
       theGoldAHerosMinorTitlesAddBeyondTheTax({
-        heHoldsTheCutpurse: _charHasMinor('cutpurse'),
-        heHoldsTheChampionOfThePeople: _charHasMinor('champion'),
-        heHoldsTheCastellan: _charHasMinor('castellan'),
+        heHoldsATitleThatGivesIt: (theGold) => heHoldsAMinorTitleThatGivesHisRealmTheGold(theGold, _charHasMinor),
         theProvincesHisRealmHolds: () => view.books.provincesItHoldsByTheirRecord,
       }),
     );
     cutpurseG = _titlesGold.get('the-cutpurses-gold') ?? 0;
     championG = _titlesGold.get('the-champion-of-the-peoples-gold') ?? 0;
     castellanG = _titlesGold.get('the-castellans-gold') ?? 0;
-    if (_charHasMinor('hostleader')) _hostLeaderChar = _pChars.find((c) => c.id === _min['hostleader']?.charId) ?? null; // wage forecast mirror
+    // wage forecast mirror (which title cuts the wages: the minor titles' registry's since B-06m, the collector's runner)
+    _hostLeaderChar =
+      _pChars.find((c) => aHerosTitlesCutHisRealmsCompanyWages((theTitle) => _min[theTitle]?.charId === c.id)) ?? null;
   } catch {}
   const titlePerkGold = cutpurseG + championG + castellanG;
   const baseTaxIncome = provTaxIncome; // province tax after persistent modifiers (before the flat bonuses)

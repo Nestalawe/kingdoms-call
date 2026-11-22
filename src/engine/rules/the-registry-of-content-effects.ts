@@ -78,6 +78,7 @@ import type {
 } from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
+import type { TheEconomysRuleSlug } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
 
 /** A unit of a force as an effect reads it: its type. */
 export interface AUnitOfAForce {
@@ -1696,13 +1697,13 @@ export interface AProvincesTaxAndTheRealmsWonder {
   readonly theFreeCityCharterStands: () => boolean;
 }
 
-/** A hero of the realm, as the gold his minor titles add beyond the tax reads him: the titles he holds (the caller
- *  asks, as before) and the provinces his realm holds (asked only when an effect needs it), as Early Winter's
+/** A hero of the realm, as the gold his minor titles add beyond the tax reads him: whether he holds a title that gives
+ *  a rule's gold and the provinces his realm holds (each asked only when the stage needs it), as Early Winter's
  *  collection and the report's forecast hand them (the economy's registry, B-06c). */
 export interface AHeroAsTheGoldOfHisMinorTitlesReadsHim {
-  readonly heHoldsTheCutpurse: boolean;
-  readonly heHoldsTheChampionOfThePeople: boolean;
-  readonly heHoldsTheCastellan: boolean;
+  /** Whether he holds a title that gives the rule's gold (the minor titles' registry says which, B-06m; the caller
+   *  asks who holds it, as before), asked of each rule of the stage, in its order, before its effect. */
+  readonly heHoldsATitleThatGivesIt: (theGold: TheEconomysRuleSlug) => boolean;
   readonly theProvincesHisRealmHolds: () => number;
 }
 
@@ -2257,6 +2258,15 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's company wages under its Host-Leader": (
       facts: TheCompanyWagesUnderTheHostLeader,
     ) => TheHostLeadersCut;
+    /** The rule of the economy whose gold a minor title gives its holder's realm beyond its tax (its gold is that
+     *  rule's, in the economy's registry); the runner asks, of each title of the stage whose entry names the rule, in
+     *  the stage's order, whether he holds it (Early Winter's collection, hero by hero, and the report's forecast: the
+     *  minor titles' registry, B-06m). */
+    readonly "a hero's titles give his realm gold beyond its tax": () => TheEconomysRuleSlug;
+    /** The rule of the economy by which a minor title's holder cuts his realm's company wages (its cut is that rule's,
+     *  in the economy's registry); the runner asks whether he holds a title of the stage, in its order (Early Winter's
+     *  wages and the report's forecast, to find the realm's hero who cuts them: the minor titles' registry, B-06m). */
+    readonly "a hero's titles cut his realm's company wages": () => TheEconomysRuleSlug;
     /** A company's rank in the line a realm that can't pay its wages disbands its companies in, the lowest first; the
      *  runner gives each effect's rank, in the stage's order, and the line compares them rank by rank, a die each
      *  company drew breaking a tie (Early Winter, once the realm can't pay: the economy's registry, B-06e). */

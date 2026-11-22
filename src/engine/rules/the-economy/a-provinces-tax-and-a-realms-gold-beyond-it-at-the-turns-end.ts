@@ -57,16 +57,11 @@ export const A_PROVINCES_TAX_FROM_THE_REALMS_WONDER = {
 
 /** "turnEnd: a realm's gold beyond its tax from a hero's minor title": the Cutpurse's and the Champion of the People's
  *  gold to their holder's realm; the Castellan's, a gold for every so many provinces his realm holds, rounded down, or
- *  nothing below them (the line notes none). */
+ *  nothing below them (the line notes none). The runner asks each only of a hero who holds a title that gives it. */
 export const A_REALMS_GOLD_BEYOND_ITS_TAX_FROM_A_HEROS_MINOR_TITLE = {
-  'the-cutpurses-gold': (facts) =>
-    facts.heHoldsTheCutpurse ? THE_ECONOMYS_RULES['the-cutpurses-gold'].theNumbers.theGold : null,
-  'the-champion-of-the-peoples-gold': (facts) =>
-    facts.heHoldsTheChampionOfThePeople
-      ? THE_ECONOMYS_RULES['the-champion-of-the-peoples-gold'].theNumbers.theGold
-      : null,
+  'the-cutpurses-gold': () => THE_ECONOMYS_RULES['the-cutpurses-gold'].theNumbers.theGold,
+  'the-champion-of-the-peoples-gold': () => THE_ECONOMYS_RULES['the-champion-of-the-peoples-gold'].theNumbers.theGold,
   'the-castellans-gold': (facts) => {
-    if (!facts.heHoldsTheCastellan) return null;
     const theGold = Math.floor(
       facts.theProvincesHisRealmHolds() / THE_ECONOMYS_RULES['the-castellans-gold'].theNumbers.theProvincesForEachGold,
     );

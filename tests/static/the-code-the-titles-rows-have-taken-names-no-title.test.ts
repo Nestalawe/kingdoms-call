@@ -99,6 +99,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'resolveCastSpellOrder',
     "B-06l, the Warlock's cast, to the minor titles' registry (orderValidity)",
   ],
+  [
+    'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
+    'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
+    "B-06m, the titles' gold and the Host-Leader's cut, to the minor titles' registry (turnEnd)",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

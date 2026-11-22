@@ -43,6 +43,10 @@ import {
 import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
 import { theTaxTheHeroesItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
+  aHerosTitlesCutHisRealmsCompanyWages,
+  heHoldsAMinorTitleThatGivesHisRealmTheGold,
+} from '../rules/the-registry-of-the-minor-titles-perks.ts';
+import {
   doARealmsDiscoveriesAddToTheRealmsTax,
   whatARealmsDiscoveriesEarnInInterest,
 } from '../rules/the-registry-of-discovery-effects.ts';
@@ -245,14 +249,14 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // (The nine Imperial Titles carry NO economic perk — their per-turn benefit is an intel line at end of turn.)
     // (each perk that adds gold is noted on the tax line: its fact holds them, in the order the heroes hold them)
     // (how much each gives: the economy's registry's since B-06c, "turnEnd: a realm's gold beyond its tax from a hero's
-    // minor title"; whether he holds it, as before)
+    // minor title"; which title gives it: the minor titles' registry's since B-06m, "turnEnd: a hero's titles give his
+    // realm gold beyond its tax"; whether he holds it, as before)
     let titlePerkGold = 0;
     const titlePerks: ATitlesPerkOfGold[] = [];
     pChars.forEach((pc) => {
       theGoldAHerosMinorTitlesAddBeyondTheTax({
-        heHoldsTheCutpurse: charMinor(turnContext, pc, 'cutpurse'),
-        heHoldsTheChampionOfThePeople: charMinor(turnContext, pc, 'champion'),
-        heHoldsTheCastellan: charMinor(turnContext, pc, 'castellan'),
+        heHoldsATitleThatGivesIt: (theGold) =>
+          heHoldsAMinorTitleThatGivesHisRealmTheGold(theGold, (theTitle) => charMinor(turnContext, pc, theTitle)),
         theProvincesHisRealmHolds: () => provincesOrNone().filter((pv) => pv.owner === pi).length,
       }).forEach(([theTitlesGold, theGold]) => {
         titlePerkGold += theGold;
@@ -383,10 +387,12 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     }, 0);
     // MINOR TITLE — The Host-Leader: this realm's greatest general pays 1g less per unit he
     // leads (min 1/unit).
+    // (which title cuts them: the minor titles' registry's since B-06m, "turnEnd: a hero's titles cut his realm's company
+    // wages"; whether he holds it, as before)
     let _hostLeaderG = 0;
     {
       const hl: AHeroAsEarlyWinterReadsHisArmies | undefined = playerChars.find((c) =>
-        charMinor(turnContext, c, 'hostleader'),
+        aHerosTitlesCutHisRealmsCompanyWages((theTitle) => charMinor(turnContext, c, theTitle)),
       );
       if (hl) {
         const led = theCompaniesTheHostLeaderSavesOn(hl.armies ?? []);
