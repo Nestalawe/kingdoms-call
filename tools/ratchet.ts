@@ -852,6 +852,26 @@ export const THE_WORLDS_MAKINGS_FUNCTIONS_AND_TABLES: readonly (readonly [file: 
     'src/engine/world/the-worlds-making/s03-every-province-made-its-terrain-tax-armies-and-lairs.ts',
     'everyProvinceMadeItsTerrainTaxArmiesAndLairs',
   ],
+  [
+    'src/engine/world/the-worlds-making/s04-the-races-dealt-to-their-heartlands-in-equal-shares.ts',
+    'theRacesDealtToTheirHeartlandsInEqualShares',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s05-the-coastal-fleets-a-humanoid-shore-offers.ts',
+    'theCoastalFleetsAHumanoidShoreOffers',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s06-the-seas-by-kind-primal-poor-waters-and-open-water.ts',
+    'theSeasByKindPrimalPoorWatersAndOpenWater',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s07-the-sea-features-and-their-guardians-in-every-sea.ts',
+    'theSeaFeaturesAndTheirGuardiansInEverySea',
+  ],
+  [
+    'src/engine/world/the-worlds-making/s08-a-coastal-home-borders-an-open-water-sea.ts',
+    'aCoastalHomeBordersAnOpenWaterSea',
+  ],
   ['src/engine/world/tables.ts', 'SIGNATURE_WEIGHT_P'],
   ['src/engine/world/tables.ts', 'provincePoolSize'],
   ['src/engine/world/tables.ts', 'FLYER_PROVINCE_KEEP'],

@@ -2,7 +2,6 @@ import {
   KC_A_HEROS_WAGE_IN_SERVICE,
   KC_HUMANOID_RACES,
   KC_RIVAL_RACE,
-  KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
   KC_UNIT_CLASS,
   MONSTERS_P,
 } from '../../content/kingdoms-call-data.ts';
@@ -10,7 +9,6 @@ import {
   THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST,
   THE_NEUTRAL_HEROES_SKILLS_IN_THEIR_TIE_BREAK_ORDER,
   THE_SEA_BEASTS_A_HOMES_WEAK_LAIR_LEAVES_OUT,
-  THE_SEA_FEATURES_NAMES,
   THE_WILD_CREATURES_BY_TERRAIN,
   THE_WILD_MONSTERS_BY_TERRAIN,
 } from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
@@ -18,8 +16,6 @@ import {
   A_KING_AND_HIS_HEROES,
   THE_HOMES,
   THE_NEUTRAL_HEROES,
-  THE_SEAS_BY_KIND,
-  THE_SEA_FEATURES_AND_THEIR_GUARDIANS,
   THE_STRONGEST_NEUTRAL_MIX,
   THE_TAX_BANDS,
   THE_TAX_FLOOR,
@@ -31,11 +27,9 @@ import { HOME_FLEET_BY_RACE } from '../grand-design.ts';
 import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from '../saves/the-saved-games-version-this-build-writes.ts';
 import {
   COASTAL_NAVAL_CHANCE,
-  HUMANOID_FLEET_TYPES,
   RACES_P,
   SEA_TYPES_GEN,
   SIGNATURE_TERRAIN_P,
-  SIGNATURE_WEIGHT_P,
   TEMPERS_P,
   buildHumanoidPool,
   fullRaceLandRoster,
@@ -57,7 +51,7 @@ import {
   theWanderingHeroesDeckOfAlignments,
 } from '../rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 import { ABILITIES_P, shuffleP } from '../battle/fortune.ts';
-import { SEA_GUARDIAN_NAMES, nextHeroName, renameLairsThematicP } from '../names.ts';
+import { nextHeroName, renameLairsThematicP } from '../names.ts';
 import { FEATURE_POOLS_P, ITEMS_BY_TIER, RITUAL_SITE_NAMES } from '../items/tiers-and-hoards.ts';
 import { ensureAllLairHoards } from '../items/lair-items.ts';
 import { discoverFeat } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -79,6 +73,11 @@ import { theSetUpTheMapsGridAndTheProvincesNames } from './the-worlds-making/s00
 import { theCapitalsPlacedAsFarApartAsTheMapAllows } from './the-worlds-making/s01-the-capitals-placed-as-far-apart-as-the-map-allows.ts';
 import { eachHomesRingTailoredAndTheSeasFillRates } from './the-worlds-making/s02-each-homes-ring-tailored-and-the-seas-fill-rates.ts';
 import { everyProvinceMadeItsTerrainTaxArmiesAndLairs } from './the-worlds-making/s03-every-province-made-its-terrain-tax-armies-and-lairs.ts';
+import { theRacesDealtToTheirHeartlandsInEqualShares } from './the-worlds-making/s04-the-races-dealt-to-their-heartlands-in-equal-shares.ts';
+import { theCoastalFleetsAHumanoidShoreOffers } from './the-worlds-making/s05-the-coastal-fleets-a-humanoid-shore-offers.ts';
+import { theSeasByKindPrimalPoorWatersAndOpenWater } from './the-worlds-making/s06-the-seas-by-kind-primal-poor-waters-and-open-water.ts';
+import { theSeaFeaturesAndTheirGuardiansInEverySea } from './the-worlds-making/s07-the-sea-features-and-their-guardians-in-every-sea.ts';
+import { aCoastalHomeBordersAnOpenWaterSea } from './the-worlds-making/s08-a-coastal-home-borders-an-open-water-sea.ts';
 
 /** A hero as the world's making builds him: a king's name and temper as the setup gave them (either may be
  *  missing), his wage set after his birth for the heroes but the king, his province's name `null` until the naming
@@ -180,220 +179,20 @@ export function generateNewGame(
     SEA_CLUSTER_RATE,
   });
 
-  // Post-generation: add fleet types to coastal provinces (land adjacent to sea) Whale Cohorts are
-  // NOT an Elven unit — they are wild primal sea-beasts, raised only in the whale waters that
-  // generate them, by any realm with the Druid skill to command them. ── Race allocation: weighted
-  // towards each race's heartland, balanced to equal totals ── Two requirements pull against each
-  // other. Races should cluster in their signature terrain
-  // (Humans on plains, Elves in forest, Dwarves in mountains, Orcs in desert), but the four races
-  // must also hold equal numbers of provinces — and terrain is NOT evenly distributed, so a plain
-  // weighted draw would hand whichever race owns the commonest terrain a permanent advantage.
-  //
-  // Resolved by giving each race a hard quota of floor(n/4) provinces (the remainder spread at
-  // random) and then, for each province in random order, drawing among the races that still have
-  // quota left, weighted by SIGNATURE_WEIGHT_P for a terrain match and by each race's REMAINING
-  // quota. The quota term is what keeps it balanced: a race that has been getting its way falls
-  // back automatically as its allowance runs down. Totals are exact to within one province.
-  {
-    const humanoidProvs = provinces.filter((p) => p.terrain !== 'sea' && humanoidRaces.has(p.race));
-    const n = humanoidProvs.length;
-    const quota: Partial<Record<string, number>> = {};
-    RACES_P.forEach((r) => {
-      quota[r] = Math.floor(n / 4);
-    });
-    shuffleP(RACES_P)
-      .slice(0, n - Math.floor(n / 4) * 4)
-      .forEach((r) => {
-        quota[r] = Number(quota[r]) + 1;
-      });
-    for (const p of shuffleP(humanoidProvs)) {
-      const pool = RACES_P.filter((r) => Number(quota[r]) > 0);
-      const cands = pool.length ? pool : [...RACES_P];
-      const weights = cands.map(
-        (r) => (SIGNATURE_TERRAIN_P[r] === p.terrain ? SIGNATURE_WEIGHT_P : 1) * Math.max(1, Number(quota[r])),
-      );
-      let roll = kcRng() * weights.reduce((a, b) => a + b, 0),
-        pick = theOneMadeSure(cands[cands.length - 1]);
-      for (let i = 0; i < cands.length; i++) {
-        roll -= Number(weights[i]);
-        if (roll <= 0) {
-          pick = theOneMadeSure(cands[i]);
-          break;
-        }
-      }
-      quota[pick] = Number(quota[pick]) - 1;
-      p.race = pick;
-      // Rebuild everything downstream of race: the recruitable pool and the neutral garrison that
-      // was rolled from it. Province count, wealth, terrain and features are untouched.
-      const hp = buildHumanoidPool(p.terrain, pick, provincePoolSize(kcRng), kcRng); // item 15: 2 (75%) or 3 (25%)
-      p.armyTypes = [...hp.types, ...hp.garrison];
-      const drawPool = hp.types.length ? hp.types : p.armyTypes;
-      p.neutralDefenders.forEach((d) => {
-        d.type = theOneMadeSure(drawPool[Math.floor(kcRng() * drawPool.length)]);
-        d.race = pick;
-        d.unitName = theOneMadeSure(armyUnitName(d.type));
-      });
-    }
-  }
-
-  const FLEET_BY_RACE = THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST; // Corsair Fleet retired (was Human alt); coastal Humans now build Galleon Fleet only
-  const fleetsByRace: Readonly<Partial<Record<string, readonly string[]>>> = FLEET_BY_RACE; // by any race's name
-  const fleetTypes: ReadonlySet<string> = HUMANOID_FLEET_TYPES; // looked up by any unit's type
-  provinces.forEach((p) => {
-    if (p.terrain === 'sea') return; // sea handled separately below
-    // Naval units are a HUMANOID shipbuilding tradition.
-    if (!humanoidRaces.has(p.race)) return;
-    // Check if any neighbour is sea
-    const offsets = p.row % 2 === 0 ? offEven : offOdd;
-    const adjSea = offsets.some(([dr, dc]) => {
-      const nr = p.row + dr;
-      if (nr < 0 || nr >= rows) return false;
-      const nc = (((p.col + dc) % cols) + cols) % cols;
-      const nb = provinces[nr * cols + nc];
-      return nb?.terrain === 'sea';
-    });
-    if (adjSea && kcRng() < COASTAL_NAVAL_CHANCE) {
-      // share of coastal humanoid provinces with a fleet option
-      const fleets = fleetsByRace[(p.race ?? '') || 'Human'] ?? ['Galleon Fleet'];
-      const fleet = theOneMadeSure(fleets[Math.floor(kcRng() * fleets.length)]);
-      if (!p.armyTypes.includes(fleet)) p.armyTypes.push(fleet);
-    }
+  // S4 to S8 (B-06x), each in its own file: the races dealt to their heartlands, the coastal fleets, the seas by kind,
+  // the sea features and their guardians, and the home's open-water sea
+  theRacesDealtToTheirHeartlandsInEqualShares({ provinces, humanoidRaces });
+  const { fleetsByRace, fleetTypes } = theCoastalFleetsAHumanoidShoreOffers({
+    cols,
+    rows,
+    provinces,
+    humanoidRaces,
+    offEven,
+    offOdd,
   });
-  // Sea provinces: only non-humanoid sea armies — no Fleet/Corsair/Galleys/Longships Sea provinces
-  // get non-humanoid sea armies only (no player fleets). Their army pool and tax are decided purely
-  // by type: 20% Primal (Prosperous, tax 4-6), 20% poor waters (tax 2-3; dealt half whale waters and
-  // half shark waters, turn about, so every world gets an even share — 2026-10-13, Toby: the Shark
-  // Shoals are the Monsters' weak sea-beast as the Whale Cohort is the Creatures'), 60% open water
-  // (no armies, tax 1).
-  const POOR_SEAS = KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS;
-  const PRIMAL_SEA_TYPES = KC_UNIT_CLASS.primalSea.filter((t) => !POOR_SEAS.some((sea) => sea.type === t)); // the prosperous seas' beasts; the Shark Shoals are the poor seas' (below)
-  let _poorSeasDealt = 0;
-  provinces
-    .filter((p) => p.terrain === 'sea')
-    .forEach((p) => {
-      const r = kcRng();
-      if (r < THE_SEAS_BY_KIND.theDieUnderWhichASeaIsPrimal) {
-        const chosen = theOneMadeSure(PRIMAL_SEA_TYPES[Math.floor(kcRng() * PRIMAL_SEA_TYPES.length)]);
-        p.armyTypes = [chosen];
-        p.race = 'Primal:' + chosen.replace(/s$/, '').replace('Eldritch Kraken', 'Kraken'); // 'Primal:Sea Giant' / 'Primal:Kraken'
-        // Primal seas are Prosperous waters — tax 4-6, same band as prosperous land. (Capped at 6:
-        // tax 7 displays as "Rich", so the old rP(4,7) was quietly minting rich sea provinces.)
-        p.tax = rP(THE_SEAS_BY_KIND.thePrimalSeasTax.theLeast, THE_SEAS_BY_KIND.thePrimalSeasTax.theMost);
-        // Defender count and quality (2026-10-13: both primal sea beasts are Druid 4; the Druid-5 Leviathans
-        // are gone, so no sea is guarded by Veterans alone any more).
-        const defCount = neutralDefCount(p.tax); // p.tax set to 4-6 above -> Prosperous 2-3
-        const defQuality = kcRng() < THE_SEAS_BY_KIND.theChanceAPrimalSeasDefendersAreVeterans ? 'Veteran' : 'Average';
-        // a name once drawn here and read by nothing: its die is still drawn, for a beast with names
-        if (unitNamesByType[chosen] != null) kcRng();
-        p.neutralDefenders = Array.from({ length: defCount }, () => ({
-          type: chosen,
-          quality: defQuality,
-          race: 'Primal',
-          unitName: theOneMadeSure(armyUnitName(chosen)),
-        }));
-        p.npcArmies = defCount;
-        p.explored = 0;
-      } else if (r < THE_SEAS_BY_KIND.theDieUnderWhichASeaIsPoorWaters) {
-        // Poor waters: whale waters and shark waters, turn about.
-        const poorSea = theOneMadeSure(POOR_SEAS[_poorSeasDealt % POOR_SEAS.length]);
-        _poorSeasDealt++;
-        const beast = poorSea.type;
-        p.armyTypes = [beast];
-        p.race = poorSea.raceTag;
-        p.tax = rP(THE_SEAS_BY_KIND.thePoorWatersTax.theLeast, THE_SEAS_BY_KIND.thePoorWatersTax.theMost); // Poor waters — 2-3, matching the poor land band (2026-09-21: no 1-tax band province)
-        const defCount = neutralDefCount(p.tax);
-        p.neutralDefenders = Array.from({ length: defCount }, () => ({
-          type: beast,
-          quality: 'Average',
-          race: 'Primal',
-          unitName: theOneMadeSure(armyUnitName(beast)),
-        }));
-        p.npcArmies = defCount;
-      } else {
-        // Open water — no armies, no defenders, tax exactly 1.
-        p.armyTypes = [];
-        p.neutralDefenders = [];
-        p.npcArmies = 0;
-        p.tax = 1;
-      }
-    });
-
-  // ── UNIFIED SEA FEATURES & GUARDIANS (item: every sea province gets 1-2 sea-themed features,
-  // each guarded by a sea creature; wide pools keep even the largest maps varied). Applies to ALL
-  // sea provinces — primal, whale AND open water — so open ocean is now worth exploring too.
-  // Tougher guardians lurk in richer waters. This is the single source of sea features (the old
-  // primal-only one-feature block above was removed).
-  {
-    const SEA_FEATURE_NAMES = THE_SEA_FEATURES_NAMES;
-    const _seaMons = MONSTERS_P.filter((m) => SEA_GUARDIAN_NAMES.has(m.name)); // shared module-level set
-    const _byTier = {
-      Weak: _seaMons.filter((m) => m.power === 'Weak'),
-      Moderate: _seaMons.filter((m) => m.power === 'Moderate'),
-      Powerful: _seaMons.filter((m) => m.power === 'Powerful'),
-    };
-    const _pickTier = (tax: number) => {
-      const rr = kcRng();
-      // 2026-09-10 item 6: softened alongside land lairs (was 50/50 P/M · 25/60/15 W/M/P · 70/30
-      // W/M).
-      const { theRichSeas, theMiddlingSeas, theOtherSeas } = THE_SEA_FEATURES_AND_THEIR_GUARDIANS;
-      if (tax >= theRichSeas.theTaxFrom)
-        return rr < theRichSeas.theDieUnderWhichPowerful
-          ? 'Powerful'
-          : rr < theRichSeas.theDieUnderWhichModerate
-            ? 'Moderate'
-            : 'Weak'; // rich/primal seas: nastier
-      if (tax >= theMiddlingSeas.theTaxFrom)
-        return rr < theMiddlingSeas.theDieUnderWhichWeak
-          ? 'Weak'
-          : rr < theMiddlingSeas.theDieUnderWhichModerate
-            ? 'Moderate'
-            : 'Powerful';
-      return rr < theOtherSeas.theDieUnderWhichWeak ? 'Weak' : 'Moderate'; // poor / open water: mostly weak
-    };
-    provinces
-      .filter((p) => p.terrain === 'sea')
-      .forEach((p) => {
-        const fcount = 1 + (kcRng() < THE_SEA_FEATURES_AND_THEIR_GUARDIANS.theChanceOfASecondFeature ? 1 : 0); // 1-2 features
-        const used = new Set<string>();
-        p.features = []; // unified source — replace anything set earlier
-        for (let fi = 0; fi < fcount; fi++) {
-          let fname: string,
-            tries = 0;
-          do {
-            fname = theOneMadeSure(SEA_FEATURE_NAMES[Math.floor(kcRng() * SEA_FEATURE_NAMES.length)]);
-            tries++;
-          } while (used.has(fname) && tries < THE_SEA_FEATURES_AND_THEIR_GUARDIANS.theTriesForAFeaturesNameNotYetTaken);
-          used.add(fname);
-          const tier = _pickTier(p.tax || 1);
-          const pool = _byTier[tier].length ? _byTier[tier] : _seaMons;
-          const m = { ...theOneMadeSure(pool[Math.floor(kcRng() * pool.length)]) };
-          p.features.push({
-            name: fname,
-            tier: m.power || '',
-            discovered: false,
-            cleared: false,
-            monster: { ...m },
-            treasure: Math.max(1, rP(m.minG, m.maxG)),
-          });
-        }
-      });
-  }
-
-  // ── Home coastal guarantee: a home that borders any sea borders at least one OPEN-WATER sea (no
-  // neutral defenders), so a king's first fleet always has somewhere to sail without a fight. Sea
-  // features/guardians (lairs) are untouched - they never block movement.
-  homeCells.forEach((home) => {
-    const seas = neighbourCells(home.r, home.c)
-      .map((n) => provinces[n.id])
-      .filter((p): p is AProvinceAsTheWorldIsMadeIt => p?.terrain === 'sea');
-    if (!seas.length || seas.some((p) => !p.neutralDefenders.length)) return;
-    const p = theOneMadeSure(seas[Math.floor(kcRng() * seas.length)]);
-    p.armyTypes = [];
-    p.neutralDefenders = [];
-    p.npcArmies = 0;
-    p.tax = 1;
-    p.race = null;
-  });
+  theSeasByKindPrimalPoorWatersAndOpenWater({ provinces, unitNamesByType });
+  theSeaFeaturesAndTheirGuardiansInEverySea({ provinces });
+  aCoastalHomeBordersAnOpenWaterSea({ homeCells, neighbourCells, provinces });
 
   // Player starts were already chosen up front (Phase 1) and their neighbourhoods tailored
   // (Phase 2). Here we simply take each king's pre-selected home province in order.

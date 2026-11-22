@@ -12,7 +12,8 @@
 //   on the Leviathans, and a Kraken sea is still the race "Primal:Kraken".
 //
 // Level 1 (unit): the content's and the engine's tables imported (tests/lib/the-whole-engine.ts first), the land pools
-// too; the sea pass read in the GM page's source's one layout (tests/lib/source.ts). Not lower: the tables' agreement
+// too; the sea pass read in the GM page's source's one layout (tests/lib/source.ts), with the seas by kind's stage
+// (S6 of the world's making, its own file since B-06x). Not lower: the tables' agreement
 // with the decided roster is a property of the data, and the pools are values. Nothing here reads the dice.
 //
 // Until plan P1-14z these were the table checks of tests/primal-renames.test.js, which ran the data file in a vm of its
@@ -39,10 +40,14 @@ import {
   THE_WILD_CREATURES_BY_TERRAIN,
   THE_WILD_MONSTERS_BY_TERRAIN,
 } from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
-import { compactPage } from '../lib/source.ts';
+import { compactOf, compactPage } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const GM = 'kingdoms-call-gm-portal.html';
+/** The seas by kind (S6 of the world's making), in a file of its own since B-06x: the GM page's list of its files doesn't
+ *  name the stages' files (KD-457), so the sea pass is read from it beside the page's code. */
+const THE_SEAS_BY_KIND_STAGE =
+  'engine/world/the-worlds-making/s06-the-seas-by-kind-primal-poor-waters-and-open-water.ts';
 const OLD = Object.keys(RENAMED);
 const NEW = [...new Set(Object.values(RENAMED))];
 
@@ -194,10 +199,10 @@ describe("the world's land pools and the sea pass", () => {
     THE_WILD_MONSTERS_BY_TERRAIN,
   };
   let theGmPagesCode = '';
-  // Every script of the GM page read by its syntax tree (the one layout).
+  // Every script of the GM page read by its syntax tree (the one layout), and the seas by kind's stage (S6).
   beforeAll(
     () => {
-      theGmPagesCode = compactPage(GM);
+      theGmPagesCode = compactPage(GM) + '\n' + compactOf(THE_SEAS_BY_KIND_STAGE);
     },
     timeLimitForTheWork({ everyFileReads: 1 }).timeout,
   );
