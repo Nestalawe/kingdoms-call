@@ -31,6 +31,7 @@
     "proof:plants": "tsx tools/proof/many-planted-faults-on-their-tests.ts",
     "proof:gm-logs": "tsx tools/proof/the-gm-logs-compared.ts",
     "proof:two-engines": "tsx tools/proof/the-two-engines-compared.ts",
+    "proof:worlds": "tsx tools/proof/the-worlds-making-compared.ts",
     "proof:tours": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/proof/the-changed-lines-no-tour-reaches.ts"
   },
   "devDependencies": {
