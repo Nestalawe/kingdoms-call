@@ -136,7 +136,7 @@ const settle = (b: Board) => {
 };
 const outcome = (b: Board, turn: number): Outcome => ({ world: b.G, all: b.lines(), turn });
 /** The fact of each line the turn has filed so far, in the order filed. */
-const factsOf = (b: Board) => (tc(b)['turnLog'] as Raw[]).map((l) => l['fact'] as Raw);
+const factsOf = (b: Board) => (tc(b).turnLog as unknown as Raw[]).map((l) => l['fact'] as Raw);
 /** A board staged as every case is (`stageCase`): plain realms, each holding only its seat with a living king there. */
 const fresh = () => {
   const b = board(engine, world, 4);
