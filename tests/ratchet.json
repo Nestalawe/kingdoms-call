@@ -18,8 +18,8 @@
     "economyNumbersInEngine": 20,
     "economyNumbersInTheBots": 0,
     "titleChecksInEngine": 0,
-    "worldMakingNumbersInEngine": 133,
-    "worldMakingListsInEngine": 393,
+    "worldMakingNumbersInEngine": 129,
+    "worldMakingListsInEngine": 18,
     "eslintSuppressions": 216,
     "knownArchitectureViolations": 0,
     "unusedCode": 8

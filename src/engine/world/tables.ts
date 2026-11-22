@@ -8,6 +8,7 @@ import {
   PROVINCE_ARMIES_P,
   TEMPER_TRAITS,
 } from '../../content/kingdoms-call-data.ts';
+import { THE_HUMANOID_FLEET_TYPES } from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 import { kcRng } from '../rng.ts';
 import { shuffleP } from '../battle/fortune.ts';
 import { rollMagicItem } from '../items/equipment.ts';
@@ -217,13 +218,7 @@ export const COASTAL_NAVAL_CHANCE = 0.8;
 // garrisons have had. Fleets are the slowest thing in the game to accumulate (one race, one hull
 // type, only on a coast) and a navy was taking twice as long to build as an army. Read through
 // twoATurn below.
-export const HUMANOID_FLEET_TYPES = new Set([
-  'Galleon Fleet',
-  'Corsair Fleet',
-  'Elven Galleys',
-  'Dwarf Ironclads',
-  'Orcish Longships',
-]);
+export const HUMANOID_FLEET_TYPES = new Set(THE_HUMANOID_FLEET_TYPES);
 // The types a province raises TWO of in a turn: garrison units, the humanoid fleets, and — 2026-10-11
 // (Toby, the army roster, decision 9) — the Goblin Horde wherever it is offered (the horde's numbers are
 // its point: content's KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS).

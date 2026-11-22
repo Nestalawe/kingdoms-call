@@ -9,6 +9,20 @@ import {
   PRIMAL_UNIT_NAMES,
   PROVINCE_ARMIES_P,
 } from '../../content/kingdoms-call-data.ts';
+import {
+  THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE,
+  THE_FIRST_HALVES_OF_A_WILD_PROVINCES_NAME,
+  THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST,
+  THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA,
+  THE_NEUTRAL_HEROES_SKILLS_IN_THEIR_TIE_BREAK_ORDER,
+  THE_NUMERALS_A_REPEATED_PROVINCES_NAME_TAKES,
+  THE_SEA_BEASTS_A_HOMES_WEAK_LAIR_LEAVES_OUT,
+  THE_SEA_FEATURES_NAMES,
+  THE_SECOND_HALVES_OF_A_PROVINCES_NAME_BY_ITS_TERRAIN,
+  THE_TERRAINS_A_LAND_PROVINCE_IS_DEALT_IN_THE_ORDER_THE_DIE_READS_THEM,
+  THE_WILD_CREATURES_BY_TERRAIN,
+  THE_WILD_MONSTERS_BY_TERRAIN,
+} from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 import { kcRng } from '../rng.ts';
 import { UNIT_Q_MULT } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { HOME_FLEET_BY_RACE } from '../grand-design.ts';
@@ -241,7 +255,7 @@ export function generateNewGame(
     return lvl;
   };
   const pickLand = () => {
-    const t = ['plain', 'forest', 'mountain', 'desert', 'jungle'] as const;
+    const t = THE_TERRAINS_A_LAND_PROVINCE_IS_DEALT_IN_THE_ORDER_THE_DIE_READS_THEM;
     return theCardDealt(t[Math.floor(kcRng() * t.length)]);
   };
 
@@ -249,170 +263,12 @@ export function generateNewGame(
   // populated (terrain, race and recruitable armies all final, including king home provinces), so
   // each province gets a name that fits both its people and its land — e.g. an Elven forest reads
   // very differently from an Orcish desert or a kraken-haunted deep.
-  const NAME_PREFIX_BY_RACE = {
-    Human: [
-      'Iron',
-      'Stone',
-      'High',
-      'Old',
-      'Gold',
-      'Silver',
-      'Storm',
-      'Red',
-      'Ash',
-      'East',
-      'West',
-      'Grey',
-      'Fair',
-      'Duns',
-      'Wold',
-      'Marl',
-      'Bram',
-      'Wend',
-      'Ald',
-      'Hart',
-    ],
-    Elven: [
-      'Silver',
-      'Moon',
-      'Star',
-      'Leaf',
-      'Dawn',
-      'Sil',
-      'Aer',
-      'Elu',
-      'Lorn',
-      'Cael',
-      'Fae',
-      'Gil',
-      'Lith',
-      'Myr',
-      'Thal',
-      'Nym',
-      'Elen',
-      'Yll',
-      'Wist',
-      'Aely',
-    ],
-    Dwarven: [
-      'Iron',
-      'Stone',
-      'Deep',
-      'Gold',
-      'Grim',
-      'Kaz',
-      'Dur',
-      'Bar',
-      'Khaz',
-      'Grom',
-      'Thur',
-      'Kron',
-      'Bal',
-      'Dun',
-      'Forge',
-      'Anvil',
-      'Coal',
-      'Rune',
-      'Brom',
-      'Hald',
-    ],
-    Orcish: [
-      'Blood',
-      'Skull',
-      'Bone',
-      'Gor',
-      'Grash',
-      'Mor',
-      'Uruk',
-      'Kra',
-      'Zog',
-      'Gna',
-      'Rot',
-      'Dread',
-      'Gash',
-      'Mag',
-      'Grish',
-      'Nar',
-      'Vak',
-      'Ur',
-      'Krul',
-      'Rok',
-    ],
-  };
-  const NAME_PREFIX_PRIMAL = [
-    'Wyrm',
-    'Beast',
-    'Wild',
-    'Titan',
-    'Dread',
-    'Ancient',
-    'Grim',
-    'Feral',
-    'Elder',
-    'Savage',
-    'Broken',
-    'Fang',
-    'Talon',
-    'Scale',
-    'Horn',
-    'Ruin',
-    'Storm',
-    'Blight',
-  ];
-  const NAME_SUFFIX_BY_TERRAIN = {
-    plain: ['field', 'meadow', 'march', 'moor', 'hold', 'reach', 'down', 'wold', 'stead', 'heath', 'vale', 'ridge'],
-    forest: ['wood', 'grove', 'thicket', 'hollow', 'glade', 'shaw', 'copse', 'weald', 'briar', 'root', 'leaf', 'fen'],
-    mountain: ['peak', 'crag', 'spire', 'fell', 'cairn', 'tor', 'height', 'ridge', 'deep', 'delve', 'pass', 'stone'],
-    desert: [
-      'dune',
-      'waste',
-      'sands',
-      'drift',
-      'mesa',
-      'scar',
-      'barrens',
-      'reach',
-      'flats',
-      'scree',
-      'wells',
-      'expanse',
-    ],
-    jungle: ['tangle', 'vale', 'verge', 'canopy', 'mire', 'delve', 'green', 'deep', 'vines', 'hollow', 'rot', 'fen'],
-  };
-  const NAME_SEA_BY_TYPE = {
-    primal: {
-      pre: [
-        'Kraken',
-        'Wyrm',
-        'Serpent',
-        'Abyssal',
-        'Drowned',
-        'Sunken',
-        'Titan',
-        'Leviathan',
-        'Dread',
-        'Deep',
-        'Black',
-        'Storm',
-      ],
-      suf: [' Deep', ' Abyss', ' Maw', ' Trench', ' Reach', ' Fathoms', ' Gulf', ' Dark'],
-    },
-    whale: {
-      pre: ['Whale', 'Grey', 'Cold', 'Deep', 'Wander', 'Song', 'Tide', 'Mist', 'Roam', 'Bower'],
-      suf: [' Sound', ' Waters', ' Bay', ' Reach', ' Passage', ' Run', ' Sea', ' Shoals'],
-    },
-    shark: {
-      pre: ['Shark', 'Red', 'Fin', 'Hunger', 'Blood', 'Teeth', 'Reef', 'Sandbar', 'Wreck', 'Carrion'],
-      suf: [' Shallows', ' Bank', ' Reef', ' Shoals', ' Bar', ' Flats', ' Sound', ' Run'],
-    }, // 2026-10-13: shark waters
-    open: {
-      pre: ['Storm', 'Grey', 'Salt', 'Foam', 'Pale', 'Azure', 'Wild', 'Bitter', 'Calm', 'Wide', 'Open', 'Far'],
-      suf: [' Sea', ' Straits', ' Channel', ' Gulf', ' Waters', ' Expanse', ' Reach', ' Ocean', ' Bight'],
-    },
-  };
+  const NAME_PREFIX_BY_RACE = THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE;
+  const NAME_PREFIX_PRIMAL = THE_FIRST_HALVES_OF_A_WILD_PROVINCES_NAME;
+  const NAME_SUFFIX_BY_TERRAIN = THE_SECOND_HALVES_OF_A_PROVINCES_NAME_BY_ITS_TERRAIN;
+  const NAME_SEA_BY_TYPE = THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA;
   const pickFrom = (arr: readonly string[]) => arr[Math.floor(kcRng() * arr.length)];
-  const toRoman = (n: number) =>
-    (['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][n] ?? '') || String(n);
+  const toRoman = (n: number) => (THE_NUMERALS_A_REPEATED_PROVINCES_NAME_TAKES[n] ?? '') || String(n);
   // the name pools by any race's and any terrain's name
   const prefixesByRace: Readonly<Partial<Record<string, readonly string[]>>> = NAME_PREFIX_BY_RACE;
   const suffixesByTerrain: Readonly<Partial<Record<string, readonly string[]>>> = NAME_SUFFIX_BY_TERRAIN;
@@ -770,25 +626,11 @@ export function generateNewGame(
         // One terrain-appropriate unit per class. Every unit here is classified by the engine's
         // CREATURE_ARMIES / MONSTER_ARMIES sets (Druidic favours Creatures, Evil favours Monsters).
         // 2026-10-13 (Creatures and Monsters IV): Great Bears in forest and mountain, Unicorn Herd on the plain
-        // and in the forest, Mammoth Host on the plain and in the desert. (CBT, the alignment pass's copy, must match.)
-        const CREATURE_BY_TERRAIN = {
-          plain: ['Thunderbirds', 'Stone Giants', 'Unicorn Herd', 'Mammoth Host'],
-          desert: ['Stone Giants', 'Thunderbirds', 'Mammoth Host'],
-          forest: ['Forest Ents', 'Thunderbirds', 'Great Bears', 'Unicorn Herd'],
-          jungle: ['Forest Ents'],
-          mountain: ['Stone Giants', 'Crimson Rocs', 'Thunderbirds', 'Great Bears'],
-        };
-        const MONSTER_BY_TERRAIN = {
-          plain: ['Titan Warbeasts', 'Manticore Pride'],
-          desert: ['Manticore Pride', 'Basilisk Brood'],
-          forest: ['Cave Trolls', 'Basilisk Brood', 'Dread Hydras'],
-          jungle: ['Basilisk Brood', 'Cave Trolls', 'Manticore Pride', 'Dread Hydras'],
-          mountain: ['Cave Trolls', 'Elder Dragons'],
-        };
+        // and in the forest, Mammoth Host on the plain and in the desert.
         // the bank by any terrain's name
         const bankByTerrain: Readonly<Partial<Record<string, readonly string[]>>> = wantCreature
-          ? CREATURE_BY_TERRAIN
-          : MONSTER_BY_TERRAIN;
+          ? THE_WILD_CREATURES_BY_TERRAIN
+          : THE_WILD_MONSTERS_BY_TERRAIN;
         const pool = bankByTerrain[terrain] ?? (wantCreature ? ['Stone Giants'] : ['Cave Trolls']);
         primalUnit = theOneMadeSure(pool[Math.floor(kcRng() * pool.length)]);
         // Province race carries the singular sub-race noun (e.g. 'Primal:Stone Giant'); the player
@@ -989,12 +831,7 @@ export function generateNewGame(
     }
   }
 
-  const FLEET_BY_RACE = {
-    Human: ['Galleon Fleet'],
-    Elven: ['Elven Galleys'],
-    Dwarven: ['Dwarf Ironclads'],
-    Orcish: ['Orcish Longships'],
-  }; // Corsair Fleet retired (was Human alt); coastal Humans now build Galleon Fleet only
+  const FLEET_BY_RACE = THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST; // Corsair Fleet retired (was Human alt); coastal Humans now build Galleon Fleet only
   const fleetsByRace: Readonly<Partial<Record<string, readonly string[]>>> = FLEET_BY_RACE; // by any race's name
   const fleetTypes: ReadonlySet<string> = HUMANOID_FLEET_TYPES; // looked up by any unit's type
   provinces.forEach((p) => {
@@ -1082,32 +919,7 @@ export function generateNewGame(
   // Tougher guardians lurk in richer waters. This is the single source of sea features (the old
   // primal-only one-feature block above was removed).
   {
-    const SEA_FEATURE_NAMES = [
-      'Sunken Ship',
-      'Sea Cave',
-      'Kraken Lair',
-      'Mermaid Grotto',
-      'Ghost Galleon',
-      'Coral Fortress',
-      'Pirate Cove',
-      'Lighthouse Ruin',
-      'Drowned Temple',
-      'Barnacle Reef',
-      'Whalebone Graveyard',
-      'Tide Pools',
-      'Sea-Witch\u2019s Cove',
-      'Wreckers\u2019 Shoal',
-      'Abyssal Trench',
-      'Siren Rocks',
-      'Salt Marsh Delta',
-      'Smugglers\u2019 Grotto',
-      'Sunken City',
-      'Reef of Bones',
-      'Storm-Wrack',
-      'Glasswater Shallows',
-      'Drowned Lighthouse',
-      'Coral Labyrinth',
-    ];
+    const SEA_FEATURE_NAMES = THE_SEA_FEATURES_NAMES;
     const _seaMons = MONSTERS_P.filter((m) => SEA_GUARDIAN_NAMES.has(m.name)); // shared module-level set
     const _byTier = {
       Weak: _seaMons.filter((m) => m.power === 'Weak'),
@@ -1179,26 +991,10 @@ export function generateNewGame(
   // properties of the set, not of the seat, so any order keeps them.
   const _realmColourDeal = shuffleP(REALM_COLOURS);
   // The wild pools the home passes deal from: the alignment neighbour pass below and the
-  // wild-country pass after the homes (item 12). Copies of CREATURE_BY_TERRAIN / MONSTER_BY_TERRAIN,
-  // which are local to the province loop; tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts
-  // and tests/unit/the-three-renamed-wild-units-carry-their-new-names-in-every-table-and-none-of-the-old.test.ts hold them together.
-  const CBT = {
-    plain: ['Thunderbirds', 'Stone Giants', 'Unicorn Herd', 'Mammoth Host'],
-    desert: ['Stone Giants', 'Thunderbirds', 'Mammoth Host'],
-    forest: ['Forest Ents', 'Thunderbirds', 'Great Bears', 'Unicorn Herd'],
-    jungle: ['Forest Ents'],
-    mountain: ['Stone Giants', 'Crimson Rocs', 'Thunderbirds', 'Great Bears'],
-  }; // = CREATURE_BY_TERRAIN (tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts holds the two together)
-  const MBT = {
-    plain: ['Titan Warbeasts', 'Manticore Pride'],
-    desert: ['Manticore Pride', 'Basilisk Brood'],
-    forest: ['Cave Trolls', 'Basilisk Brood', 'Dread Hydras'],
-    jungle: ['Basilisk Brood', 'Cave Trolls', 'Manticore Pride', 'Dread Hydras'],
-    mountain: ['Cave Trolls', 'Elder Dragons'],
-  };
+  // wild-country pass after the homes (item 12), the same banks as the province pass's.
   // the two banks by any terrain's name
-  const creaturesByTerrain: Readonly<Partial<Record<string, readonly string[]>>> = CBT;
-  const monstersByTerrain: Readonly<Partial<Record<string, readonly string[]>>> = MBT;
+  const creaturesByTerrain: Readonly<Partial<Record<string, readonly string[]>>> = THE_WILD_CREATURES_BY_TERRAIN;
+  const monstersByTerrain: Readonly<Partial<Record<string, readonly string[]>>> = THE_WILD_MONSTERS_BY_TERRAIN;
   const players = setupPlayers.map((sp, pi) => {
     const best = theOneMadeSure(provinces[theOneMadeSure(homeCells[pi]).id]);
     // Home province race always matches the king's race, and army pool updates accordingly
@@ -1228,12 +1024,8 @@ export function generateNewGame(
       // 2026-09-25 (Toby): a coastal capital ALWAYS offers its race's fleet, at every sea share (was an
       // 80% roll). backfillHomeRosters applies the same rule to games already running.
       if (homeCoastal) {
-        const homeFleets: Readonly<Partial<Record<string, readonly string[]>>> = {
-          Human: ['Galleon Fleet'],
-          Elven: ['Elven Galleys'],
-          Dwarven: ['Dwarf Ironclads'],
-          Orcish: ['Orcish Longships'],
-        }; // by any race's name
+        const homeFleets: Readonly<Partial<Record<string, readonly string[]>>> =
+          THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST; // by any race's name
         const hf = homeFleets[sp.race] ?? []; // Corsair Fleet retired
         const pickH = hf[Math.floor(kcRng() * hf.length)];
         if (pickH && !best.armyTypes.includes(pickH)) best.armyTypes.push(pickH);
@@ -1264,12 +1056,8 @@ export function generateNewGame(
           return nb?.terrain === 'sea';
         });
         if (convCoastal && kcRng() < COASTAL_NAVAL_CHANCE) {
-          const convFleets: Readonly<Partial<Record<string, readonly string[]>>> = {
-            Human: ['Galleon Fleet'],
-            Elven: ['Elven Galleys'],
-            Dwarven: ['Dwarf Ironclads'],
-            Orcish: ['Orcish Longships'],
-          }; // by any race's name
+          const convFleets: Readonly<Partial<Record<string, readonly string[]>>> =
+            THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST; // by any race's name
           const cf = convFleets[_race] ?? []; // Corsair Fleet retired
           const pickF = cf[Math.floor(kcRng() * cf.length)];
           if (pickF && !conv.armyTypes.includes(pickF)) conv.armyTypes.push(pickF);
@@ -1442,16 +1230,7 @@ export function generateNewGame(
 
     // ── Guarantee: at least one WEAK feature in every player's home province ──
     {
-      const SEA_MONS = new Set([
-        'Sea Serpent',
-        'Kraken Spawn',
-        'Leviathan',
-        'Leviathan Young',
-        'Pirate Captain',
-        'Ghost Galleon Crew',
-        'Shark Pack',
-        'Giant Crab',
-      ]);
+      const SEA_MONS = new Set(THE_SEA_BEASTS_A_HOMES_WEAK_LAIR_LEAVES_OUT);
       const weakMons = MONSTERS_P.filter((mm) => mm.power === 'Weak' && !SEA_MONS.has(mm.name));
       if (weakMons.length > 0) {
         if (best.features.length === 0) {
@@ -1908,24 +1687,8 @@ export function generateNewGame(
   // heroes now start with a spread of skills (INCLUDING magic schools) so they are more useful —
   // one skill at level 2 and one at level 1, dealt round-robin from NEUTRAL_SKILL_POOL so the
   // skills are spread evenly across the whole neutral-hero population rather than clustered.
-  // NOT a copy of KC_MAGIC_SCHOOLS/KC_SKILLS: this ORDER is the tie-break priority. Leave it hand-kept (2026-09-27).
-  const NEUTRAL_SKILL_POOL = [
-    'melee',
-    'archery',
-    'tactical',
-    'march',
-    'explorer',
-    'naval',
-    'sage',
-    'spy',
-    'thief',
-    'druid',
-    'white',
-    'psychic',
-    'illusory',
-    'elemental',
-    'necromancy',
-  ];
+  // the order is the tie-break (content's row says why)
+  const NEUTRAL_SKILL_POOL = THE_NEUTRAL_HEROES_SKILLS_IN_THEIR_TIE_BREAK_ORDER;
   // neutral-hero traits are DEALT FROM RESHUFFLED DECKS rather than rolled. The old round-robin
   // cursor spread skills evenly but in province-id order, so the same skill recurred in a fixed
   // stride down the map; alignment/race/temper were independent rolls, which on a normal map easily

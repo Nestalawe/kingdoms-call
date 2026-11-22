@@ -38,7 +38,7 @@ export const THE_WORLDS_MAKINGS_STAGES: readonly AStageOfTheWorldsMaking[] = [
     anchor: '// ── PHASE 3:',
   },
   { stage: 'S4', what: 'the races dealt to their heartlands', anchor: '// Post-generation: add fleet types' },
-  { stage: 'S5', what: 'the coastal fleets', anchor: 'const FLEET_BY_RACE = {' },
+  { stage: 'S5', what: 'the coastal fleets', anchor: 'const FLEET_BY_RACE =' },
   { stage: 'S6', what: 'the seas by kind', anchor: '// Sea provinces: only non-humanoid sea armies' },
   { stage: 'S7', what: 'the sea features and their guardians', anchor: '// ── UNIFIED SEA FEATURES' },
   { stage: 'S8', what: "the home's open-water sea", anchor: '// ── Home coastal guarantee' },

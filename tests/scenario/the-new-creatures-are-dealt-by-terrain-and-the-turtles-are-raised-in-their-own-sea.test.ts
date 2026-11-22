@@ -9,7 +9,7 @@
 // turn-….) The pools as written, the classes and Whale Lore are
 // tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-decides.test.ts.
 //
-// Level 2 (scenario): the wild pools and the sea pass live inside generateNewGame, and the recruit path inside
+// Level 2 (scenario): the wild pools' deal and the sea pass live inside generateNewGame, and the recruit path inside
 // resolveTurn, so only worlds and a turn reach them. Played on the engine's modules
 // (tests/lib/a-staged-turn-on-the-engines-modules.ts) on worlds made from KC_SEED; the turn's scene is staged whatever
 // the world. Two checks count what three worlds dealt, as the old script did: that the turtles appear in the prosperous
@@ -19,10 +19,9 @@
 // Until plan P1-14z this was tests/new-creatures.test.js, on the GM page (lib/scenario.ts); each check is kept as it
 // was, the three worlds' checks each one test over the three, and its page-errors check went with the page. The values
 // its turn staged and never checked (two companies' costs) went.
-import vm from 'node:vm';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { aStagedTurnOnTheEnginesModules, order, plan } from '../lib/a-staged-turn-on-the-engines-modules.ts';
-import { initializersOf, pageScripts } from '../lib/source.ts';
+import { THE_WILD_CREATURES_BY_TERRAIN } from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
 const RICH = new Set(['Sea Giants', 'Eldritch Kraken', 'Great Turtles']);
@@ -61,21 +60,13 @@ interface World {
   world: { cols: number; rows: number; provinces: (Province | null)[] };
 }
 
-/** The Creature pool as the GM page's code declares it, read by its syntax tree (tests/lib/source.ts). */
-const thePool = (): Record<string, string[]> => {
-  const vs = pageScripts('kingdoms-call-gm-portal.html').flatMap((f) => initializersOf(f, 'CREATURE_BY_TERRAIN'));
-  if (vs.length !== 1) throw new Error(`CREATURE_BY_TERRAIN is declared ${String(vs.length)} times`);
-  // `as`: the pool as declared, each terrain's beasts
-  return vm.runInNewContext(vs[0] ?? '', {}) as Record<string, string[]>;
-};
-
 const worlds: { land: Province[]; seas: Province[]; seaWithALandBeast: boolean; seasRaceIsTheirBeasts: boolean }[] = [];
-let POOL: Record<string, string[]> = {};
+/** The Creature pool, by terrain (content's). */
+const POOL: Readonly<Record<string, readonly string[] | undefined>> = THE_WILD_CREATURES_BY_TERRAIN;
 let turtles: Unit[] = [];
 let kingsLines = '';
 
 beforeAll(async () => {
-  POOL = thePool();
   const sc = await aStagedTurnOnTheEnginesModules({ seed: SEED });
   const { getNeighborsP } = await import('../../src/engine/world/map-helpers.ts');
   const { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } = await import('../../src/content/kingdoms-call-data.ts');

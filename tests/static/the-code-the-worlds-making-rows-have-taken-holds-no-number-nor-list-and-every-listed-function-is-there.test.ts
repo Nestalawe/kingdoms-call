@@ -2,7 +2,7 @@
 // counts list is there (B-06, T7, the rules pulled out: its world generation family, B-06s to B-06ab). Each function or
 // table the family's rows have taken holds no number other than 0 and 1 and no string in an array literal (the name
 // pools, the beasts, the fleets, the chances and the bands are read from content's rows instead). Each row adds what
-// it takes to TAKEN, which is empty until the first of them (B-06t). With them, the ratchet's two counts of the world's
+// it takes to TAKEN (the first, B-06t). With them, the ratchet's two counts of the world's
 // making (tools/ratchet.ts's worldMakingNumbersInEngine and worldMakingListsInEngine, by their helper
 // worldMakingCountsByFunction), which only fall. A count of listed functions can be lowered by moving a number or a
 // list out of the list, so every function the list names must still be declared: one a row moves keeps its entry at its
@@ -28,7 +28,11 @@ const TOP = '(top)';
 
 /** Each function or table (or a file's top level) the world's making's rows have taken, by its file, from the row that
  *  took it: each of the family's rows adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  ['src/engine/world/tables.ts', 'HUMANOID_FLEET_TYPES', 'B-06t'],
+  ['src/engine/bots/setup.ts', 'BOT_SKILL_BUILD', 'B-06t'],
+  ['src/engine/bots/setup.ts', 'BOT_KINGDOM_NAME_UNIT', 'B-06t'],
+];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
 

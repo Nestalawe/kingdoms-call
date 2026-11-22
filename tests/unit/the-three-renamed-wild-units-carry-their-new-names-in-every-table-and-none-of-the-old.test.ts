@@ -7,14 +7,13 @@
 // - the discoveries that named them (Angelic Hosts, Sky Kin, Whale Lore, Dragon Taming) are reworded and re-keyed, and
 //   no discovery names an old one;
 // - the engine's: a grid code for each new name and none for the old (UNIT_SHORT); no terrain row for an old name
-//   (TERRAIN_MODS); both copies of the world's land pools (CREATURE_BY_TERRAIN and its copy CBT, MONSTER_BY_TERRAIN and
-//   MBT) put the Thunderbirds where the Giant Eagles were and the Hydras in jungle and forest; the sea pass keys nothing
+//   (TERRAIN_MODS); the world's land pools (content's THE_WILD_CREATURES_BY_TERRAIN and THE_WILD_MONSTERS_BY_TERRAIN,
+//   one list each since B-06t) put the Thunderbirds where the Giant Eagles were and the Hydras in jungle and forest; the sea pass keys nothing
 //   on the Leviathans, and a Kraken sea is still the race "Primal:Kraken".
 //
-// Level 1 (unit): the content's and the engine's tables imported (tests/lib/the-whole-engine.ts first); the land pools,
-// which are local to generateNewGame, read from the GM page's source by their syntax tree (tests/lib/source.ts) and
-// evaluated on their own; the sea pass read in the source's one layout. Not lower: the tables' agreement with the
-// decided roster is a property of the data, and the pools are values. Nothing here reads the dice.
+// Level 1 (unit): the content's and the engine's tables imported (tests/lib/the-whole-engine.ts first), the land pools
+// too; the sea pass read in the GM page's source's one layout (tests/lib/source.ts). Not lower: the tables' agreement
+// with the decided roster is a property of the data, and the pools are values. Nothing here reads the dice.
 //
 // Until plan P1-14z these were the table checks of tests/primal-renames.test.js, which ran the data file in a vm of its
 // own. Each is here, or in its twin: each new name's type, Druid level, family and terrain row are checked for every
@@ -23,7 +22,6 @@
 // tests/page/the-gm-page-renames-a-running-games-wild-units-and-holds-their-abilities-and-prices.test.ts, which says why
 // they stay there.
 import '../lib/the-whole-engine.ts';
-import vm from 'node:vm';
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
   KC_DRUID_LEVELS,
@@ -37,7 +35,11 @@ import {
 import { TERRAIN_MODS } from '../../src/engine/battle/terrain-and-unit-strength.ts';
 import { UNIT_SHORT } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
 import { LAND_TERRAINS, RENAMED, ROSTER, type WildUnitAsDecided } from '../lib/primal-decided.ts';
-import { compactPage, pageInitializer } from '../lib/source.ts';
+import {
+  THE_WILD_CREATURES_BY_TERRAIN,
+  THE_WILD_MONSTERS_BY_TERRAIN,
+} from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import { compactPage } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 const GM = 'kingdoms-call-gm-portal.html';
@@ -185,44 +187,35 @@ describe("the engine's tables", () => {
   });
 });
 
-describe("the world's land pools, both copies, and the sea pass", () => {
+describe("the world's land pools and the sea pass", () => {
   type APool = Readonly<Record<string, readonly string[] | undefined>>;
-  const isAPool = (value: unknown): value is APool =>
-    typeof value === 'object' &&
-    value !== null &&
-    Object.values(value).every((units) => Array.isArray(units) && units.every((u) => typeof u === 'string'));
-  /** The value the GM page's code first declares `name` with, evaluated on its own, or null if it doesn't. */
-  const thePool = (name: string): APool | null => {
-    const source = pageInitializer(GM, name);
-    if (source === null) return null;
-    const value: unknown = vm.runInNewContext(source);
-    return isAPool(value) ? value : null;
+  const pools: Readonly<Record<string, APool | undefined>> = {
+    THE_WILD_CREATURES_BY_TERRAIN,
+    THE_WILD_MONSTERS_BY_TERRAIN,
   };
-  const pools = new Map<string, APool | null>();
   let theGmPagesCode = '';
-  // Every script of the GM page read by its syntax tree, twice (the initializers, and the one layout).
+  // Every script of the GM page read by its syntax tree (the one layout).
   beforeAll(
     () => {
-      for (const name of ['CREATURE_BY_TERRAIN', 'CBT', 'MONSTER_BY_TERRAIN', 'MBT']) pools.set(name, thePool(name));
       theGmPagesCode = compactPage(GM);
     },
-    timeLimitForTheWork({ everyFileReads: 2 }).timeout,
+    timeLimitForTheWork({ everyFileReads: 1 }).timeout,
   );
 
-  test.each(['CREATURE_BY_TERRAIN', 'CBT'])(
+  test.each(['THE_WILD_CREATURES_BY_TERRAIN'])(
     '%s: Thunderbirds where the Giant Eagles were (plain, desert, forest, mountain), Giant Eagles nowhere',
     (name) => {
-      const pool = pools.get(name);
-      expect(pool, `${name} evaluates`).toBeTruthy();
+      const pool = pools[name];
+      expect(pool, `${name} is there`).toBeTruthy();
       expect(Object.values(pool ?? {}).flat()).not.toContain('Giant Eagles');
       for (const terrain of ['plain', 'desert', 'forest', 'mountain'])
         expect(pool?.[terrain] ?? [], terrain).toContain('Thunderbirds');
     },
   );
 
-  test.each(['MONSTER_BY_TERRAIN', 'MBT'])('%s: Dread Hydras in jungle and forest', (name) => {
-    const pool = pools.get(name);
-    expect(pool, `${name} evaluates`).toBeTruthy();
+  test.each(['THE_WILD_MONSTERS_BY_TERRAIN'])('%s: Dread Hydras in jungle and forest', (name) => {
+    const pool = pools[name];
+    expect(pool, `${name} is there`).toBeTruthy();
     expect(pool?.['jungle'] ?? []).toContain('Dread Hydras');
     expect(pool?.['forest'] ?? []).toContain('Dread Hydras');
     expect(Object.values(pool ?? {}).flat()).not.toContain('Leviathan Pods');

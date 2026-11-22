@@ -17,7 +17,7 @@
 //      cheaper.
 //   6. The engine's ARMY_RACE_OF_TYPE and DISC_CLS_SETS: the race and the classes a discovery reaches a unit by.
 //   7. LEGACY_UNIT_RENAMES' new names: what an old save's company becomes at the top of a turn.
-//   8. World generation's wild pools (CREATURE_BY_TERRAIN and MONSTER_BY_TERRAIN, and their copies CBT and MBT): each
+//   8. World generation's wild pools (content's THE_WILD_CREATURES_BY_TERRAIN and THE_WILD_MONSTERS_BY_TERRAIN): each
 //      creature pool's names are Creatures, each monster pool's Monsters (Druidic realms favour the first, Evil the
 //      second).
 // Units: every unit that needs it is listed:
@@ -90,7 +90,8 @@ import { compactDeclaration, entriesOf, initializersOf } from '../lib/source.ts'
 
 const THE_ORDER_FORMS_LISTS =
   'ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
-const WORLD_GENERATION = 'engine/world/generate.ts';
+const THE_WORLDS_MAKINGS_LISTS =
+  'content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 const THE_DISCOVERIES_CLASSES =
   'engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts';
 
@@ -194,13 +195,13 @@ const ACTIONS = stringsIn(
 );
 const ACTION_DISPLAY_ORDER = stringsIn(theLiteralDeclared(THE_ORDER_FORMS_LISTS, 'ACTION_DISPLAY_ORDER'));
 const THE_WILD_POOLS = {
-  creatures: ['CREATURE_BY_TERRAIN', 'CBT'],
-  monsters: ['MONSTER_BY_TERRAIN', 'MBT'],
+  creatures: ['THE_WILD_CREATURES_BY_TERRAIN'],
+  monsters: ['THE_WILD_MONSTERS_BY_TERRAIN'],
 };
 /** The names each of world generation's pools of one kind holds, each with its pool and ground. */
 const theWildPoolsNames = (pools: readonly string[]) =>
   pools.flatMap((pool) =>
-    theEntriesOf(theLiteralDeclared(WORLD_GENERATION, pool)).flatMap(([ground, names]) =>
+    theEntriesOf(theLiteralDeclared(THE_WORLDS_MAKINGS_LISTS, pool)).flatMap(([ground, names]) =>
       stringsIn(names).map((name) => [`${pool}.${ground}`, name] as const),
     ),
   );
