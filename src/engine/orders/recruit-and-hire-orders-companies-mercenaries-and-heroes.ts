@@ -21,6 +21,7 @@ import {
 } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
   alignDistP,
+  doesAnAlignmentStandAtTheHolyEndOfTheGulf,
   heroHireWage,
   heroSkillWage,
 } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -610,7 +611,7 @@ export function resolveHireHeroOrder(
         heroName: h.name,
         alignment: h.alignment,
         hirerName: c.name,
-        realmIsDivine: kingdomAlign === 'Divine',
+        realmIsDivine: doesAnAlignmentStandAtTheHolyEndOfTheGulf(kingdomAlign), // the ladder's first rung (P1-19bb5)
       },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,

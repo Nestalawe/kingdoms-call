@@ -203,6 +203,26 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns',
     "P1-19bb1 and bb4, the new turn: a realm of none's alignment, from the content's constant, and the Grand Library by its row",
   ],
+  [
+    'src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts',
+    'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages',
+    "P1-19bb5, war without warning's words: the dead's, from the Undead's row",
+  ],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveHireHeroOrder',
+    "P1-19bb1 and bb5, Hire Hero: a realm of none's alignment, from the content's constant, and the gulf's words, from the ladder's first rung",
+  ],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolveSearchLairOrder',
+    "P1-19bb5, a ritual site walked: the words for Perform Rite's creed, from its row",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s16-every-neutral-province-gets-its-guard-hero-and-garreth-his-province.ts',
+    'everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince',
+    "P1-19bb5, Garreth the Independent: his creed, from the content's constant",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

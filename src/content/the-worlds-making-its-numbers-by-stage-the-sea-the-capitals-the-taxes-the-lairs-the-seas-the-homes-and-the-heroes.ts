@@ -132,6 +132,10 @@ export const THE_NEUTRAL_HEROES = {
   eachAptitude: { theLeast: 1, theMost: 4 },
 } as const;
 
+/** S16. Garreth the Independent, the GM's secret neutral guard: the creed he is made of, whatever creed the deck deals
+ *  him (P1-19bb5). His name parts are the Neutral pool's, which S0 keeps back from every other hero. */
+export const GARRETH_THE_INDEPENDENT = { theCreedHeIsMadeOf: 'Neutral' } as const;
+
 /** The province pools and their chances (src/engine/world/tables.ts): the share of land provinces that are wild; how
  *  much more likely a race is to be placed in its heartland; a humanoid province's unit types (the chance of the
  *  fewer, else the more); the share of would-be flyer offers that survive; the share of coastal humanoid provinces that

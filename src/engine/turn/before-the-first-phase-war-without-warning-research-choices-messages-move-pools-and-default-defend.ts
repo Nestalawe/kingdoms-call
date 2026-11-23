@@ -18,7 +18,10 @@ import {
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from './events-and-their-audiences.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
-import { doesAnAlignmentDeclareWarWithoutWarning } from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
+import {
+  doesAnAlignmentDeclareWarWithoutWarning,
+  doesAnAlignmentDeclareWarWithoutWarningAsTheDead,
+} from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
 import type { TurnContext } from './context.ts';
 import type { Dispatch } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Realm } from '../../schemas/saved-game-state.ts';
@@ -172,7 +175,7 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
             kind: 'an Evil or Undead realm declares war without warning',
             declarer: { realmName: pa.name || null, seat: a },
             foe: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
-            undead: pa.alignment === 'Undead',
+            undead: doesAnAlignmentDeclareWarWithoutWarningAsTheDead(pa.alignment), // its row (P1-19bb5)
           },
           audience: { actor: null, realms: [a, b] },
           hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,

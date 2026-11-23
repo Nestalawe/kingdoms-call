@@ -4,7 +4,10 @@
 // hero dealt from the decks (his skills, creed, race and temper) to lead its defenders, added to the heroes' list.
 import { KC_A_HEROS_WAGE_IN_SERVICE } from '../../../content/kingdoms-call-data.ts';
 import { THE_NEUTRAL_HEROES_SKILLS_IN_THEIR_TIE_BREAK_ORDER } from '../../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
-import { THE_NEUTRAL_HEROES } from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
+import {
+  GARRETH_THE_INDEPENDENT,
+  THE_NEUTRAL_HEROES,
+} from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../../rng.ts';
 import { RACES_P, TEMPERS_P } from '../tables.ts';
 import { theWageOfAHeroInService } from '../../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -104,7 +107,8 @@ export function everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince({
       const _wanderersSkill = theSkillAWandererOfTheAlignmentIsSureOf(wAlign);
       if (_wanderersSkill !== undefined && !hSkills[_wanderersSkill]) hSkills[_wanderersSkill] = 1;
       const _isGarreth = lp.id === _garrethProvId;
-      if (_isGarreth) wAlign = 'Neutral'; // Garreth/the Independent are Neutral-pool names — keep it consistent
+      // Garreth/the Independent are Neutral-pool names — keep it consistent (his creed: the content's, P1-19bb5)
+      if (_isGarreth) wAlign = GARRETH_THE_INDEPENDENT.theCreedHeIsMadeOf;
       const baseName = _isGarreth ? 'Garreth the Independent' : nextHeroName(wAlign);
       const h: AHeroAsTheWorldMakesHim = {
         id: hid,
