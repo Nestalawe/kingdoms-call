@@ -386,6 +386,16 @@ describe('the cards', () => {
     expect(theBody()).toMatch(/title="Elven Bowmen">Elven Bowmen<\/div>\s*<div[^>]*><div style="width:0%/);
     expect(words.indexOf('Men-at-Arms 3')).toBeLessThan(words.indexOf('Elven Bowmen 0'));
   });
+  test("orders: Harvest the Field and Perform Rite are labelled by their rows' names, their hover text the same (R-189)", () => {
+    expect(st.STATS_ACTION_LABEL.harvest_field).toBe('Harvest the Field');
+    expect(st.STATS_ACTION_LABEL.rite).toBe('Perform Rite');
+    const ph = (...a: string[]) => ({ chars: { c1: { ph: a.map((x) => ({ a: x })) } } });
+    theTabHolding([aTurn('g-1', 1, 0, { orders: ph('harvest_field', 'rite') })]);
+    st.renderStats();
+    expect(theWordsOfTheBody()).toContain('Humans (2 character-phases) Harvest the Field 50% Perform Rite 50%');
+    expect(theBody()).toContain('title="Harvest the Field">Harvest the Field</div>');
+    expect(theBody()).toContain('title="Perform Rite">Perform Rite</div>');
+  });
   test('battles: one battle once, a defender of no strength in no band of the ratio, words read as numbers', () => {
     const battle = (extra: Record<string, unknown>) => ({
       ph: 1,
