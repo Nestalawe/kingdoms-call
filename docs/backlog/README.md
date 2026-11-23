@@ -68,24 +68,14 @@ B-06 is a group, not a row ([how to read a row](#how-to-read-a-row)): the rules 
 counted by the ratchet and moved into content's rows, each with its bot valuation hook
 ([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs)), so that a redesign item becomes a content
 change. Its order: first the foundations, then the alignments (P1-19ba1 to P1-19bb9), then the rest (the races, the
-tempers, the hero orders, the battle pipeline, diplomacy, sight), scoped later. Of the foundations, the economy and the
-Reckoning and the titles are done (B-06a to B-06r, in [the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out));
-world generation, B-06s to B-06ab, comes next.
+tempers, the hero orders, the battle pipeline, diplomacy, sight), scoped later. The foundations are done: the economy,
+the Reckoning and the titles, and world generation (B-06a to B-06ab, in [the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out)).
+The alignments come next, then the rest.
 Each row is one `refactor-only` pull request that keeps the game exactly the same, unless it says otherwise. The
 tranche's plan, its counts and its risks: #711.
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| B-06s | The world's making's proof: each seed in a fresh worker, a hash of the world and of the dice drawn by stage, over seeds, map sizes, sea shares and realm mixes; baselines from `main` | The maintainers: a move in the world's making is proved to change no world | The ground for the redesign | Medium | – | 🟦 | #732 | Run 2's first: the proof its rows give |
-| B-06t | The making's lists to content, word for word and in order (the name pools, the sea features, the beast banks merged, the fleets, the skill pools, the bots' skill builds) | The maintainers: a name pool or a bank is a content change | The ground for the redesign | Medium | – | 🟦 | #734 | After B-06s |
-| B-06u | The making's numbers to parameter rows | The maintainers: a world's shape is a content change | The ground for the redesign | Medium | – | 🟦 | #735 | After B-06t |
-| B-06v | The world's making split by stage, 1 of 6: stages 0 to 2 | The maintainers: each stage of the making is a file of its own | The ground for the redesign | Medium | – | 🟦 | #736 | After B-06u |
-| B-06w | The making split, 2 of 6: stage 3 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #737 | After B-06v |
-| B-06x | The making split, 3 of 6: stages 4 to 8 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #738 | After B-06w |
-| B-06y | The making split, 4 of 6: stage 9 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #739 | After B-06x |
-| B-06z | The making split, 5 of 6: stages 10 to 15 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #740 | After B-06y |
-| B-06aa | The making split, 6 of 6: stages 16 and 17 | The maintainers: as B-06v | The ground for the redesign | Medium | – | 🟦 | #741 | After B-06z |
-| B-06ab | The making's stages as one list, in order, typed | The maintainers: a new stage is one entry | The ground for the redesign | Small | – | 🟦 | #742 | The foundations' last row |
 | P1-19ba1 | The alignment orders' portal half: the order list's `ACTION_DISPLAY_ORDER` and the target field's "VETERAN" read from the alignment abilities' rows (the Wild Hunt's grade a row number), not written by hand ([traps.md](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities)). `refactor-only` | Maintainers: a new creed order shows in the form without editing these lists | Phase 1 | Small | – | ⬜ | | The alignments' first: before the new alignment abilities land |
 | P1-19ba2 | The GM page reads the creed orders' names from their rows ("Harvest the Field", "Perform Rite", where it writes "Harvest Field" and "Rite"; answer 93, its ruling in this row's pull request). A change the GM sees | The GM: the creed orders' labels match their names | Phase 1 | Small | – | ⬜ | | After P1-19ba1 |
 | P1-19bb1 | The engine's "a realm of none reads as Neutral": one content constant | Maintainers: an alignment's rule lives in one place before its new abilities land | Phase 1 | Small | – | ⬜ | | The alignments' checks by name that are left, the ratchet counting them |
