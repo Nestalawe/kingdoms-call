@@ -697,8 +697,8 @@ export const THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS = 'Neutral' satisfies (typeo
 
 /** The race the risen dead are made as (P1-19bb2): each unit raised from the fallen (Harvest the Field, Skeletal
  *  Armies, Raise Wraiths, Death's Dominion, the Iron Throne's rises) and an Undead king's skeletal company is of this
- *  race, and Control Undead finds the dead among a hero's forces by it. A unit's race, not an alignment: the word is
- *  the Undead creed's name, but no rule reads one for the other. */
+ *  race, and Control Undead finds the dead by it, among a hero's forces and in a battle. A unit's race, not an
+ *  alignment: the word is the Undead creed's name, but no rule reads one for the other. */
 export const THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS = 'Undead';
 
 // The alignments' ladder (P1-19av2): a table beside the rows, not abilities. The rungs run down the moral spectrum from

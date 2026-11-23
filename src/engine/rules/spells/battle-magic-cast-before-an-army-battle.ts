@@ -12,6 +12,7 @@ import {
   SPELL_EFFECTS_THE_REGISTRY_HOLDS as ROWS,
   type SpellSlug,
 } from '../../../content/spell-effects-their-names-numbers-and-words.ts';
+import { THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import type {
   ABattleSpellCastBeforeTheBattle,
   ACopyOfBattleMagic,
@@ -30,7 +31,8 @@ type TheLinesOfEachCopy = Readonly<Record<ACopyOfBattleMagic, TheLineOfABattleSp
 /** A line each copy writes (every copy writes one). */
 type TheLineOfEachCopy = Readonly<Record<ACopyOfBattleMagic, TheLineOfABattleSpell>>;
 
-/** The undead as Control Undead reads them: risen dead, of the Undead race, or of a type that names the dead. */
+/** The undead as Control Undead reads them: risen dead, of the risen dead's race (the content's
+ *  THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS), or of a type that names the dead. */
 const AN_UNDEAD_TYPE_CONTROL_UNDEAD_TURNS = /Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i;
 /** The undead as Holy Symbol and the choice of a spell read them: risen dead, or of a type that names the dead. */
 const AN_UNDEAD_TYPE_A_HOLY_SYMBOL_SEARS = /Skelet|Bone|Wraith|Zombie|Ghoul|Lich|Undead/i;
@@ -194,7 +196,11 @@ export const A_BATTLE_SPELL_CAST_BEFORE_THE_BATTLE = {
   // One enemy undead unit, drawn at random by the resolver among those given, defects to the caster's side.
   'control-undead': (facts) => {
     const theUndead = facts.theEnemysUnits.flatMap((unit, i) =>
-      unit.isSkeletal || unit.race === 'Undead' || AN_UNDEAD_TYPE_CONTROL_UNDEAD_TURNS.test(unit.type) ? [i] : [],
+      unit.isSkeletal ||
+      unit.race === THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS ||
+      AN_UNDEAD_TYPE_CONTROL_UNDEAD_TURNS.test(unit.type)
+        ? [i]
+        : [],
     );
     if (theUndead.length === 0) return nothingToStrike(CONTROL_UNDEAD_FINDS_NONE, facts);
     return {
