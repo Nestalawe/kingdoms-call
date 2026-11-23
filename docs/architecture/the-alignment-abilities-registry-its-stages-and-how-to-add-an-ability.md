@@ -96,7 +96,9 @@ P1-19's Decision 2 (no registry entry for an order).
 |---|---|---|
 | **who may give an alignment order** | the five orders | each order's resolver, before it reads the province or the target; the first check that refuses the hero, in the order's own order (Consecrate the king, then the creed; Call to Arms and Broker the creed, then the king; Harvest the Field and Perform Rite the creed alone), or null. The resolver writes its own line for it. The rest of each order's refusals (its province, its gold, once a turn) stay in its resolver |
 
-The runner is handed the order's row (`THE_ALIGNMENT_ORDERS.consecrate`), so the resolvers name no order's key.
+The runner is handed the order's row (`THE_ALIGNMENT_ORDERS.consecrate`), so the resolvers name no order's key. A hero
+who walks a ritual site is told "a Pagan may Perform Rites here" when his realm is of Perform Rite's creed
+(`aRealmOfThisCreedMayGiveTheAlignmentOrder` on its row, P1-19bb5).
 
 **The fallen, the Rest, the harvest and the conquests** (P1-19ax1,
 `alignment-abilities/the-fallen-the-rest-the-harvest-and-the-conquests-of-a-realms-alignment.ts`): new stages on
@@ -119,7 +121,8 @@ today's hooks (Decision C: no "hero's fate" hook). Each runner gives the first a
 War without warning, a broken alliance into war (two rows each: Evil, Undead) and the risen dead's hand-over are read in
 `src/engine/rules-on-plain-values/` (the player portal shares them through `src/shared/`: the march's forecast, the
 diplomacy card, the forecasts' replay), with empty entries; so is whether a creed sets a doctrine (the order form).
-The line "declares war without warning" keeps its own `'Undead'` (its words, not the rule).
+The line "declares war without warning" chooses its words ("the dead keep no truce") by the Undead's row
+(`doesAnAlignmentDeclareWarWithoutWarningAsTheDead`, P1-19bb5).
 
 The capture of consecrated land (Undead 100%, Evil 50%: R-045) stays in `fame-and-consecration.ts`: the books state
 50% for every conqueror (KD-125), so no row's words would be true until they are mended. A unit case pins its rise.
@@ -155,7 +158,11 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   `THE_LADDER_OF_THE_ALIGNMENTS` in the content file (P1-19av2), with no registry entry. Its rungs' order is data (the
   heroes' deal draws by it). `alignments-and-a-wandering-heros-hire-wage.ts` reads it (`heroHireWage`, mercy's
   chance and laughter: the foe's own alignment), and the player portal shares that file. Its rungs also give the
-  wanderers' deck of alignments (P1-19ay1: 1, 2, 4, 6, 4, 2, 1 cards, dealt in the rungs' order).
+  wanderers' deck of alignments (P1-19ay1: 1, 2, 4, 6, 4, 2, 1 cards, dealt in the rungs' order). A hero who recoils
+  across the gulf tells a realm on its first rung "no creature of the grave will serve a Divine crown", and any other
+  "the faithful will never serve an Undead throne" (`doesAnAlignmentStandAtTheHolyEndOfTheGulf`, P1-19bb5).
+- **Garreth the Independent's creed** is `GARRETH_THE_INDEPENDENT` beside the neutral heroes' numbers (S16 of the
+  world's making, P1-19bb5): Neutral, whatever creed the deck deals him; his name parts are that creed's pool's.
 - **A realm of none** (its alignment empty, or not given) reads as `THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS` (Neutral),
   a constant beside the rows (P1-19bb1). The engine asks it through `theAlignmentARealmReadsAs` in
   `rules-on-plain-values/` (the battles, a commander's score, a hero's hire, the Broker's and the Charm's wage, the
