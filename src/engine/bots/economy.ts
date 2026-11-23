@@ -29,6 +29,7 @@ import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, TheBotLedgersTally } from './intel.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
+import { theRisenDeadFollowAHandOverTo } from '../rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
 
 // Its types (plan P1-10b48): each parameter typed as wide as the body's guards, so each guard stays.
 declare global {
@@ -571,8 +572,12 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
         if (!(x?.action === 'leave_army' && x.extra)) continue;
         const r = theCharactersOf(G).find((z) => z?.id === parseInt(x.extra));
         if (!r) continue;
-        const undead =
-          r.alignment === 'Undead' || (r.player != null && theRealmsOf(G)[r.player]?.alignment === 'Undead');
+        // whether the risen dead follow him: the Undead's row (the-risen-dead-follow-only-the-undead), his own
+        // alignment or his realm's, as the hand-over reads it (P1-19bb7)
+        const undead = theRisenDeadFollowAHandOverTo({
+          alignment: r.alignment,
+          hisRealmsAlignment: r.player != null ? theRealmsOf(G)[r.player]?.alignment : null,
+        });
         if (undead) continue;
         const skel = theUnitsWithGapsOf(c).filter((a) => a?._isSkeletal);
         if (!skel.length) continue;

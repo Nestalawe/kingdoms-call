@@ -263,6 +263,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'botHireOrder',
     "P1-19bb6, the bots' Hire Hero: a realm of none's alignment, from the content's constant",
   ],
+  [
+    'src/engine/bots/economy.ts',
+    'runBotOrderHygiene',
+    "P1-19bb7, the bots' hand-overs: whether the risen dead follow, from the Undead's row (and bb6's wage)",
+  ],
+  [
+    'src/engine/bots/missions.ts',
+    'botConsecrateOK',
+    "P1-19bb7, the bots' Consecrate: the realm of its creed, from its row",
+  ],
+  [
+    'src/engine/bots/missions.ts',
+    'botSignaturePre',
+    "P1-19bb7, the bots' creed orders: Consecrate, Call to Arms, Harvest the Field and Broker, each by its row",
+  ],
+  [
+    'src/engine/bots/missions.ts',
+    'botRitePre',
+    "P1-19bb7, the bots' Perform Rite: the realm of its creed, from its row",
+  ],
+  [
+    'src/engine/bots/spellcraft.ts',
+    'botCastPlan',
+    "P1-19bb7, the bots' Bless: a hero leaves it to his king where the Divine blessing raises it, from its row",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
