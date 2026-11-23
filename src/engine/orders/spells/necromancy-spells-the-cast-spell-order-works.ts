@@ -4,6 +4,7 @@
 // cast ends here": no skill gain) and its end `return true;` ("the spell is worked"). The table in the-action-
 // spells-the-cast-spell-order-works-by-slug.ts finds each by its slug.
 import { KC_QUALITY_UP } from '../../../content/kingdoms-call-data.ts';
+import { THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from '../../rng.ts';
 import { unitBaseStrength } from '../../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { noteGraveIntel, skeletalRaiseCount, takeBestGrave } from '../../graves.ts';
@@ -154,7 +155,7 @@ export function workControlUndead({
     .filter(
       (x) =>
         (x.a._isSkeletal ?? false) ||
-        x.a.race === 'Undead' ||
+        x.a.race === THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS ||
         /Skelet|Bone|Wraith|Zombie|Ghoul|Lich/i.test(x.a.type || ''),
     );
   if (undeadIdxs.length === 0) {
@@ -250,7 +251,7 @@ export function workSkeletalArmies({ turnContext, c, ph, prov }: TheNamesAnActio
     const skel = {
       type: grave.type,
       quality: _uTier ? (qualityUp[grave.quality] ?? '') || grave.quality : grave.quality,
-      race: 'Undead',
+      race: THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
       _isSkeletal: true,
       unitName: `${String(grave.unitName || armyUnitName(grave.type))} (Skeletal)`,
     };
@@ -455,7 +456,7 @@ export function workRaiseWraiths({ turnContext, G, c, ph, prov }: TheNamesAnActi
   const wraith = {
     type: g.type,
     quality: 'Elite',
-    race: 'Undead',
+    race: THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
     _isSkeletal: true,
     _isWraith: true,
     unitName: `Wraiths (${String(armyUnitName(g.type))})`,
@@ -522,7 +523,7 @@ export function workDeathsDominion({
     c.armies.push({
       type: g.type,
       quality: _ddUp(g.quality),
-      race: 'Undead',
+      race: THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
       _isSkeletal: true,
       unitName: `${String(g.unitName || armyUnitName(g.type))} (Skeletal)`,
     });

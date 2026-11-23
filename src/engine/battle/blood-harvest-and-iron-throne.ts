@@ -1,3 +1,4 @@
+import { THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from '../rng.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { gdActive } from '../discoveries.ts';
@@ -72,7 +73,7 @@ export function ironThroneRaise(
         unit: {
           type: u.type,
           quality: u.quality,
-          race: 'Undead',
+          race: THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
           _isSkeletal: true,
           unitName: `${String(u.unitName || armyUnitName(u.type))} (Skeletal)`,
         },

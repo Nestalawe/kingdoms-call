@@ -137,6 +137,26 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'workCharm',
     "P1-19bb1, a realm of none: the charming realm's alignment in the wage, from the content's constant",
   ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workControlUndead',
+    "P1-19bb2, the risen dead's race: the dead Control Undead finds, by the content's race",
+  ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workRaiseWraiths',
+    "P1-19bb2, the risen dead's race: the wraiths raised, of the content's race",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts',
+    'eachHomeTailoredAndItsKingAndHeroesMade',
+    "P1-19bb2, the risen dead's race: an Undead king's skeletal company, of the content's race",
+  ],
+  [
+    'src/engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts',
+    TOP,
+    "P1-19bb2, a guardian's kind: the labels a player reads, moved to the content",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

@@ -3,7 +3,10 @@
 // alignment abilities' registry's, at "orderValidity: who may give an alignment order"; the rest is the order's own, as
 // the realm's works' file held it until P1-19aw2. Its one die in its place: a name for a grave that has none.
 import { KC_QUALITY_UP } from '../../../content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  THE_ALIGNMENT_ORDERS,
+  THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
+} from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { takeBestGrave } from '../../graves.ts';
 import { armyUnitName } from '../../dice-and-army-names.ts';
 import { gdActive } from '../../discoveries.ts';
@@ -81,7 +84,7 @@ export function resolveHarvestTheFieldOrder(
   const hSkel = {
     type: hGrave.type,
     quality: _uTierH ? (qualityUp[hGrave.quality] ?? '') || hGrave.quality : hGrave.quality,
-    race: 'Undead',
+    race: THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
     _isSkeletal: true,
     unitName: `${String(hGrave.unitName || armyUnitName(hGrave.type))} (Skeletal)`,
   };
