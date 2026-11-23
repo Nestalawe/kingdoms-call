@@ -4237,6 +4237,7 @@ export const DEATHS_DOMINION_CASES: CastSpellOrderCase[] = [
             `💀 ${s.hero.name} unleashes Death's Dominion over ${b0(s).name} — 3 skeletal units claw up from the graves to serve!`,
           ),
           after: ranks(char(o, s.hero).armies),
+          races: char(o, s.hero).armies.map((u) => u.race),
         },
         want: {
           told: true,
@@ -4245,6 +4246,7 @@ export const DEATHS_DOMINION_CASES: CastSpellOrderCase[] = [
             'Fallen Foot c0 (Skeletal) (Veteran)',
             'Fallen Foot c1 (Skeletal) (Veteran)',
           ],
+          races: ['Undead', 'Undead', 'Undead'],
         },
       };
     },

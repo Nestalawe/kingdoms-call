@@ -125,6 +125,13 @@ test('a seeded world of every creed: the kings start with their creed’s skill 
   expect(
     KC_ALIGNMENTS.filter((a) => kingOf(w, a).king.armies.some((u) => (u as { _isSkeletal?: unknown })._isSkeletal)),
   ).toEqual(['Undead']);
+  // and it is of the risen dead's race (P1-19bb2: the content's THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS)
+  expect(
+    kingOf(w, 'Undead')
+      .king.armies.filter((u) => (u as { _isSkeletal?: unknown })._isSkeletal)
+      .map((u) => u.race),
+    "the Undead king's skeletal company's race",
+  ).toEqual(['Undead']);
   // every Druidic wanderer (a neutral province's guard) is dealt the Druid's craft; there are some
   const druidicWanderers = w.characters.filter((c) => c.player === null && c.alignment === 'Druidic');
   expect(druidicWanderers.length).toBeGreaterThan(0);
