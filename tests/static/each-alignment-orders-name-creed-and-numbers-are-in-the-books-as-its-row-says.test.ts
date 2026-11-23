@@ -277,7 +277,12 @@ test("the rows' numbers are the ones the books state today", () => {
     'Call to Arms': { theGradeMustered: 'Green' },
     Broker: { thePriceOfWordFromAProvince: 2 },
     'Harvest the Field': { thePrice: 2 },
-    'Perform Rite': { theWildHuntsBeasts: 2, theWildHuntsTurnsMore: 1, theBloodOfferingsGrades: 2 },
+    'Perform Rite': {
+      theWildHuntsBeasts: 2,
+      theWildHuntsGrade: 'Veteran',
+      theWildHuntsTurnsMore: 1,
+      theBloodOfferingsGrades: 2,
+    },
   });
 });
 

@@ -138,11 +138,11 @@ export function resolvePerformRiteOrder(
     c.armies = asItsGuardReadsIt(c.armies) ?? [];
     const _bound: ABeastBoundAsTheLineNamesIt[] = [];
     for (let wi = 0; wi < WILD_HUNT_UNITS; wi++) {
-      // the bound beasts are VETERAN. _wildHuntUntilTurn is the LAST turn they serve
+      // the bound beasts are of its row's grade (Veteran). _wildHuntUntilTurn is the LAST turn they serve
       // (released by the end-of-turn sweep once G.turn has advanced PAST it).
       const _u: Army = {
         type: _wildType,
-        quality: 'Veteran',
+        quality: THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theWildHuntsGrade.value,
         race: (prov.race ?? '') || 'Primal',
         unitName: theNameDrawn(armyUnitName(_wildType)),
         _wildHuntUntilTurn: G.turn + theTurnsAWildHuntServesBeyondThisOne(G.players[c.player]),

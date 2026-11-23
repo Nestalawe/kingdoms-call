@@ -204,13 +204,15 @@ function theColumnTheReplayGivesHim(
 }
 /** The numbers the form reads of an alignment order's row (`order`, ALIGN_ACTIONS' or theAlignmentOrdersByTheNameTheFormWrites'
  *  by its name), each read as it is asked: no row throws the TypeError reading its numbers threw, and a number the row
- *  doesn't state, or states as words, throws a TypeError (every row the form reads states it as a number). */
+ *  doesn't state, or states as words, throws a TypeError (every row the form reads states it as a number); the Wild
+ *  Hunt's grade, which the row states as words, throws one where the row states it as a number (P1-19ba1). */
 export function theNumbersOfTheRow(
   order: ReturnType<typeof theAlignmentOrdersByTheNameTheFormWrites>[string] | undefined,
 ): {
   readonly theWildHuntsBeasts: { readonly value: number };
   readonly thePriceOfWordFromAProvince: { readonly value: number };
   readonly thePrice: { readonly value: number };
+  readonly theWildHuntsGrade: { readonly value: string };
 } {
   if (order === undefined) throw new TypeError('the form reads the numbers of an alignment order it has no row of');
   const theNumber = (what: string): { readonly value: number } => {
@@ -227,6 +229,11 @@ export function theNumbersOfTheRow(
     },
     get thePrice() {
       return theNumber('thePrice');
+    },
+    get theWildHuntsGrade() {
+      const stated = order.theNumbers['theWildHuntsGrade']?.value;
+      if (typeof stated !== 'string') throw new TypeError(`the row of ${order.name} states no grade theWildHuntsGrade`);
+      return { value: stated };
     },
   };
 }
@@ -694,7 +701,7 @@ export function poSeaAnalysis(
 // Pick Up, Leave/Transfer and Disband, AND other characters' Recruit "mustered to" this hero and
 // Leave/Transfer handed to this hero, each resolved at the phase it fires. On top of that, the
 // orders below CREATE units, and are added here:
-//   · Perform Rite/Wild Hunt — two Veteran beasts of the province's own wild type
+//   · Perform Rite/Wild Hunt — its row's beasts (two) of its row's grade (Veteran), of the province's own wild type
 //   · Elemental Summon       — one elemental (it walks; the engine does not count it as winged)
 //   · Skeletal Armies        — one to three raised graves (by the caster's Necromancy)
 //   · Harvest the Field      — one raised grave
@@ -811,10 +818,11 @@ export function theColumnAHeroMarchesWithInAPhase(
         const loc = whereAHeroStandsAfterTheOrdersBefore(report, orders, charId, p);
         const wt = loc ? pod[String(loc.id)]?.wildHuntType : null;
         if (wt) {
-          const theBeasts = theNumbersOfTheRow(theAlignmentOrdersByTheNameTheFormWrites()['Perform Rite'])
-            .theWildHuntsBeasts.value; // its row's
+          const theRitesNumbers = theNumbersOfTheRow(theAlignmentOrdersByTheNameTheFormWrites()['Perform Rite']);
+          const theBeasts = theRitesNumbers.theWildHuntsBeasts.value; // its row's
+          const theGrade = theRitesNumbers.theWildHuntsGrade.value; // its row's
           for (let bound = 0; bound < theBeasts; bound++)
-            add({ type: wt, quality: 'Veteran', unitName: `${wt} (bound by the Wild Hunt)`, _projected: true });
+            add({ type: wt, quality: theGrade, unitName: `${wt} (bound by the Wild Hunt)`, _projected: true });
         } else out.uncounted.push('the Wild Hunt');
       } else {
         // Blood Offering — the sacrificed units are gone by the time the column marches: those the turn gives (its own

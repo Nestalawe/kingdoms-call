@@ -140,10 +140,10 @@ const THE_WIDGETS_CREED_ORDERS = 5;
 const THE_WIDGETS_KINGS_ORDERS = 3;
 /** The words the portal wrote a number of an alignment order in (P1-11d8): each is the order's row's now, so none of
  *  these may be written again: Call to Arms' grade (twice), the Broker's price (twice, and the ledger's fallback), the
- *  Wild Hunt's beasts, the Blood Offering's tiers (four), and since P1-11e26 the carters' price (the note's and the
- *  ledger's fallback: the report's, else the row's), in the files that read them (the report's and the join form's
- *  texts of the same orders are the words test's, each-alignment-orders-…-as-its-row-says.test.ts: P1-11d9). The
- *  literal that stays ("VETERAN") is not here. */
+ *  Wild Hunt's beasts, the Blood Offering's tiers (four), since P1-11e26 the carters' price (the note's and the
+ *  ledger's fallback: the report's, else the row's), and since P1-19ba1 the Wild Hunt's grade (the field's and the
+ *  forecast's), in the files that read them (the report's and the join form's texts of the same orders are the words
+ *  test's, each-alignment-orders-…-as-its-row-says.test.ts: P1-11d9). */
 const THE_FILES_THAT_READ_THE_ROWS_NUMBERS = [
   'ui/player/order-targets.ts',
   'ui/player/pre-orders.ts',
@@ -167,6 +167,8 @@ const THE_ROWS_NUMBERS_WRITTEN_OUT = [
   '(+2 tiers each)',
   '(+2 quality tiers each',
   'by +2 tiers',
+  'VETERAN',
+  "quality: 'Veteran', unitName: `${wt} (bound by the Wild Hunt)`",
 ];
 /** The mastery orders' table (P1-11d10): the content's rows, which the form's table (L79_ORDERS) is built from, and the
  *  form's own fields of each order (its target and hint), by the row's key. */
@@ -474,6 +476,8 @@ describe('the player portal reaches the engine only through src/shared/', () => 
       [widget, 'buildTargetField', 'theGradeMustered'],
       [widget, 'buildTargetField', 'thePriceOfWordFromAProvince'],
       [widget, 'buildTargetField', 'theWildHuntsBeasts'],
+      // (since P1-19ba1 the Wild Hunt's grade: the field's, upper-cased, and the forecast's)
+      [widget, 'buildTargetField', 'theWildHuntsGrade'],
       [widget, 'buildTargetField', 'theBloodOfferingsGrades'],
       // (since P1-11e27 the Blood Offering's hint is one function, which updateBloodOffering and the field call)
       [widget, 'theBloodOfferingsHint', 'theBloodOfferingsGrades'],
@@ -495,6 +499,11 @@ describe('the player portal reaches the engine only through src/shared/', () => 
         'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
         'theColumnAHeroMarchesWithInAPhase',
         'theWildHuntsBeasts',
+      ],
+      [
+        'ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts',
+        'theColumnAHeroMarchesWithInAPhase',
+        'theWildHuntsGrade',
       ],
     ] as const;
     expect(

@@ -647,6 +647,13 @@ export const ALIGNMENT_ABILITIES = {
         inTheReportsSummary: 'the Wild Hunt binds {N} of',
         inTheJoinForm: 'the Wild Hunt binds {N} of',
       },
+      // the grade the bound beasts have (P1-19ba1: the order form's field, its forecast and the turn read it)
+      theWildHuntsGrade: {
+        value: 'Veteran',
+        writtenAs: 'as it is',
+        inItsCreedsSection: 'to your host as {N}s',
+        inTheReportsSummary: 'to your host as {N}s',
+      },
       // the turns the bound beasts serve beyond this one, more with the realm's discoveries
       theWildHuntsTurnsMore: {
         value: 1,

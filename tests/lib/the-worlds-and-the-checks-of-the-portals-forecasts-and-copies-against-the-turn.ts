@@ -4370,9 +4370,10 @@ export function theCreedFieldsAgainstTheRowsAndTheTurn(c: Copies): ACreedFieldCo
         price: performed['price'],
         'turns beyond this one': Math.max(...bound.map((a) => Number(a['_wildHuntUntilTurn']))) - turn,
       },
-      // (with The Long Hunt the term is the row's and the discovery's: the report's)
+      // (with The Long Hunt the term is the row's and the discovery's: the report's; since P1-19ba1 the grade the row's)
       {
         beasts: theRowsNumber('perform-rite', 'theWildHuntsBeasts'),
+        grade: theRowsNumber('perform-rite', 'theWildHuntsGrade'),
         ...(discoveries.length
           ? {}
           : { 'turns beyond this one': theRowsNumber('perform-rite', 'theWildHuntsTurnsMore') }),
