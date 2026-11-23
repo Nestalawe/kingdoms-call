@@ -25,6 +25,7 @@ import {
 import { botIsLoadedFleet, botSeaCap } from './war.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
+import { whatARealmsAlignmentAddsToResearch } from '../rules/the-registry-of-alignment-abilities.ts';
 import {
   BOT_NAVAL_TYPES,
   BOT_SLAYER_FIGHTERS_ONLY,
@@ -239,7 +240,12 @@ export function botSpecialistRoles(
   const want = {
     slayer: 1 + (lairs >= 6 ? 1 : 0) + aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once six lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
     scout: unmapped > 0 ? Math.min(3, 1 + Math.floor(unmapped / 6)) : 0,
-    scholar: (land >= 10 ? 2 : 1) + (p?.alignment === 'Neutral' ? 1 : 0) + aChasedTitleWantsMore('scholar'), // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only at 10+ land — gold and armies come first (12 in the first cut cost a third of the discoveries)
+    scholar:
+      (land >= 10 ? 2 : 1) +
+      (doesARealmOfThisAlignmentAddToResearch(p?.alignment)
+        ? THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.alignmentAbility.theScholarsMoreARealmWhoseAlignmentAddsToResearchWants
+        : 0) +
+      aChasedTitleWantsMore('scholar'), // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only at 10+ land — gold and armies come first (12 in the first cut cost a third of the discoveries)
     spy: (met || turn >= 3 ? (war ? 2 : 1) : 0) + aChasedTitleWantsMore('spy'),
     thief: met || turn >= 4 ? 1 : 0,
     mage:
@@ -428,11 +434,24 @@ export function botTrainOrders(
   while (out.length < 5) out.push({ ...pr });
   return out.slice(0, 5);
 }
+/** Whether a realm of this alignment adds to a Research's chance with each Sage level: the rule (its alignment's
+ *  research, asked of a Sage 1 scholar) gives more than nothing (the Neutral scholars' row; P1-19bb8). The alignment as
+ *  the realm holds it: a realm of none's empty one adds nothing. */
+function doesARealmOfThisAlignmentAddToResearch(alignment: string | null | undefined): boolean {
+  return whatARealmsAlignmentAddsToResearch(alignment, { theSageLevel: 1 }) > 0;
+}
+/** The Sage level from which a realm's scholar researches, and below which he trains Sage: the bots' choice, by their
+ *  weights (P1-19bb8), the lower for a realm whose alignment adds to a Research with each Sage level. */
+function theSageLevelFromWhichTheRealmsScholarResearches(G: GameState, pi: number): number {
+  const theWeights = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.alignmentAbility;
+  return doesARealmOfThisAlignmentAddToResearch(theRealmsOf(G)[pi]?.alignment)
+    ? theWeights.theSageLevelFromWhichSuchARealmsScholarResearches
+    : theWeights.theSageLevelFromWhichAnyOtherRealmsScholarResearches;
+}
 // SCHOLAR — Research at Sage 2+ (Neutral: 1+; every Sage level is 5%, 10% for Neutral), else train Sage.
 export function botScholarOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const sg = Number(theSkillsOf(c).sage) || 0;
-  const neutral = theRealmsOf(G)[pi]?.alignment === 'Neutral';
-  const working = neutral ? sg >= 1 : sg >= 2;
+  const working = sg >= theSageLevelFromWhichTheRealmsScholarResearches(G, pi);
   if (!working) {
     // Sept 2026 (Toby): the scholar studies WITH THE KING (every king starts at Sage 1) — if the king's plan this
     // year keeps him in one province within three hops, the scholar goes there; otherwise the capital.
@@ -834,8 +853,7 @@ export function botRoleWork(
     }
     case 'scholar': {
       const sg = Number(theSkillsOf(c).sage) || 0;
-      const neutral = theRealmsOf(G)[pi]?.alignment === 'Neutral';
-      if (!(neutral ? sg >= 1 : sg >= 2)) return null;
+      if (!(sg >= theSageLevelFromWhichTheRealmsScholarResearches(G, pi))) return null;
       return botScholarOrders(G, pi, c, pre);
     }
     case 'scout': {
@@ -1155,12 +1173,11 @@ export function botRoleTrain(
 // the secondary role waits (the first cut let secondaries starve slayers of Melee: 1.8 average at game end).
 export function botRoleReady(G: GameState, pi: number, c: AHeroOfSkills, role: string | null | undefined) {
   const s = theSkillsOf(c);
-  const neutral = theRealmsOf(G)[pi]?.alignment === 'Neutral';
   switch (role) {
     case 'slayer':
       return (Number(s.melee) || 0) >= 3 || (Number(s.archery) || 0) >= 3;
     case 'scholar':
-      return neutral ? (Number(s.sage) || 0) >= 1 : (Number(s.sage) || 0) >= 2;
+      return (Number(s.sage) || 0) >= theSageLevelFromWhichTheRealmsScholarResearches(G, pi);
     case 'spy':
       return (Number(s.spy) || 0) >= 2;
     case 'thief':

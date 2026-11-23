@@ -18,6 +18,10 @@ import type { Character, GameState, Province } from '../../schemas/saved-game-st
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { AUnitAnEstimateWeighs } from '../battle/lines.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
+import {
+  theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
+  theFervourOfASide,
+} from '../rules/the-registry-of-alignment-abilities.ts';
 
 // Its types (plan P1-10b40): each parameter typed as wide as the body's guards, so each guard stays. The estimates
 // (botEffForce, botBattleForce, botDruidShortfall and the skills they read) are handed staged worlds and units (the
@@ -66,10 +70,11 @@ interface AHeroWhoseSkillsAreKnown {
 // version's weights file (the-weights-of-the-bots-first-version-…ts) says what it makes of a unit of each kind of
 // result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
 // it gives no weights fails to compile. The economy's (a gold) is the first kind, the titles' (a title, B-06r) the
-// second; the alignments' joins them (P1-19bb8). The weights are the bots', never content's: content holds the rules only.
-/** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, and an
- *  Imperial Title (held, or chased by what its row measures). */
-export type AKindOfResultABotWeighs = 'gold' | 'title';
+// second, the alignments' (an alignment ability, P1-19bb8) the third. The weights are the bots', never content's: content
+// holds the rules only.
+/** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
+ *  Imperial Title (held, or chased by what its row measures), and what an ability of a realm's alignment gives it. */
+export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility';
 /** A kind of result's weights in a bot version: each a number, named for what it weighs. */
 export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 /** The bots' weights at a difficulty. */
@@ -704,7 +709,11 @@ export function botRaceTerrainMult(
 }
 // Whole-force multipliers the rulebook promises without a roll: Evil ×1.25 with any Monster (the Druidic
 // mirror, Wild Ferocity, was retired 2026-10-13), Undead skeletal fanaticism ×1.5 under the king / ×1.3 under
-// a hero, Good +10% defending its own land. Zeal itself is a roll and is left out, as before.
+// a hero, Good +10% defending its own land. Zeal itself is a roll and is left out, as before. Each factor is the
+// rule's, asked of the realm's alignment (P1-19bb8): the fervour that needs no roll, as the battles weigh it (savage
+// fury's and skeletal fervour's rows, the strongest counting), and Righteous Defence's (its row). The bot's own
+// conditions stay: no commander, no factor (a Good garrison's, KD-462); Righteous Defence on any defence, not only of
+// a province the realm owns (KD-434).
 export function botFervourMult(
   G: TheStateAsTheEstimatesReadIt,
   c: ACommanderAsTheEstimatesReadHim | null | undefined,
@@ -714,9 +723,15 @@ export function botFervourMult(
   if (c?.player == null) return 1;
   const align = theAlignmentARealmReadsAs((G.players ?? [])[c.player]?.alignment);
   let m = 1;
-  if (align === 'Evil' && armies.some((a) => a && BOT_MONSTER_ARMIES.has(a.type))) m = Math.max(m, 1.25);
-  if (align === 'Undead' && armies.some((a) => a?._isSkeletal)) m = Math.max(m, c.isKing ? 1.5 : 1.3);
-  if (align === 'Good' && defending) m *= 1.1;
+  m = Math.max(
+    m,
+    theFervourOfASide(align, {
+      isItSeizedByZeal: false,
+      isItLedByTheKing: Boolean(c.isKing),
+      theForce: armies.flatMap((a) => (a ? [a] : [])),
+    }).theFactor,
+  );
+  if (defending) m *= theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy(align) ?? 1;
   return m;
 }
 // Its return type written for a typed caller (plan P1-10b32: drill-and-spoils.ts' bestNeutralMix): every path returns

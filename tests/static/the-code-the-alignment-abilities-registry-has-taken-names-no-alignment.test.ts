@@ -288,6 +288,41 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'botCastPlan',
     "P1-19bb7, the bots' Bless: a hero leaves it to his king where the Divine blessing raises it, from its row",
   ],
+  [
+    'src/engine/bots/intel.ts',
+    'botFervourMult',
+    "P1-19bb8, the bots' fervour: savage fury's, skeletal fervour's and Righteous Defence's factors, from their rows (and bb6's realm of none)",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'effOf',
+    "P1-19bb8, the bots' worth of a recruit: savage fury's factor, from its row (and bb6's realm of none)",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botHeroCap',
+    "P1-19bb8, the bots' court: the realm whose dearest wanderer asks the least, by the hire wage, wants the weights' heroes more",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botSpecialistRoles',
+    "P1-19bb8, the bots' scholars: a realm whose alignment adds to research, by its row, wants the weights' scholars more",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botScholarOrders',
+    "P1-19bb8, the bots' scholar: researches from the weights' Sage level for a realm whose alignment adds to research",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botRoleWork',
+    "P1-19bb8, the bots' scholar's work: from the weights' Sage level for a realm whose alignment adds to research",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botRoleReady',
+    "P1-19bb8, the bots' scholar is ready: at the weights' Sage level for a realm whose alignment adds to research",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
