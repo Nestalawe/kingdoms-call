@@ -173,8 +173,10 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   What a Wonder does stays in the rule that asks for it. A rule asks by the Wonder's slug,
   `theWonderServesTheRealm(turnContext, realm, 'standing-stones')` (`src/engine/discoveries.ts`): the realm is of
   the row's alignment, has raised its Grand Design and holds the Wonder's province, as `gdActive` by that alignment.
-  The battles' and the orders' Wonders ask it (the Standing Stones, the Iron Throne, the Grand Cathedral's Bless, the
-  World-Tree Grove's Veterans, the Deathless Legion's raisings); the turn's still ask `gdActive` by the creed's name.
+  Every Wonder's rule asks it (P1-19bb3 and bb4): the battles' and the orders' (the Standing Stones, the Iron Throne,
+  the Grand Cathedral's Bless, the World-Tree Grove's Veterans, the Deathless Legion's raisings) and the turn's (the
+  Grand Cathedral's ward, the Free City Charter's tax, the World-Tree Grove's half wages, the Deathless Legion never
+  disbanded unpaid, the Grand Library's discovery). No rule asks `gdActive` by a creed's name.
 - **The creed discoveries, the alignment-only items and guardians' Anathema** keep their own registries. A row names
   one by its key when it reads it.
 - **The bots** read the rows' numbers; their own alignment checks wait for the bots' step.
