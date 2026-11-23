@@ -166,8 +166,10 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
 - **A realm of none** (its alignment empty, or not given) reads as `THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS` (Neutral),
   a constant beside the rows (P1-19bb1). The engine asks it through `theAlignmentARealmReadsAs` in
   `rules-on-plain-values/` (the battles, a commander's score, a hero's hire, the Broker's and the Charm's wage, the
-  Wonder, the heir); a hero's name of an alignment with no name pools is drawn from its pools. The bots' own copies
-  wait for the bots' step. No game holds a realm of none: a unit case holds the constant.
+  Wonder, the heir); a hero's name of an alignment with no name pools is drawn from its pools. The bots ask it too
+  (P1-19bb6: their estimates, their hires and `botAlignOf`); a bot with no alignment left to take is dealt the
+  constant, and an alignment with no first skills of its own takes the constant's. No game holds a realm of none:
+  unit cases hold the constant and the bots' reads.
 - **The risen dead's race** is `THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS` ('Undead'), a constant beside the rows
   (P1-19bb2): every raising (Harvest the Field, the Necromancy spells, the Iron Throne, an Undead king's skeletal
   company) makes its units of it, and Control Undead finds the dead by it. It is a unit's race, not an alignment. The
@@ -186,7 +188,8 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   disbanded unpaid, the Grand Library's discovery). No rule asks `gdActive` by a creed's name.
 - **The creed discoveries, the alignment-only items and guardians' Anathema** keep their own registries. A row names
   one by its key when it reads it.
-- **The bots** read the rows' numbers; their own alignment checks wait for the bots' step.
+- **The bots** read the rows' numbers and a realm of none's constant; their other alignment checks wait for the bots'
+  step.
 - **The order form** keeps a hand-written widget for each alignment order: a new order's row does not appear on it by
   itself.
 
