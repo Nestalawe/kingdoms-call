@@ -188,8 +188,12 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   disbanded unpaid, the Grand Library's discovery). No rule asks `gdActive` by a creed's name.
 - **The creed discoveries, the alignment-only items and guardians' Anathema** keep their own registries. A row names
   one by its key when it reads it.
-- **The bots** read the rows' numbers and a realm of none's constant; their other alignment checks wait for the bots'
-  step.
+- **The bots** read the rows' numbers and a realm of none's constant. Their creed orders ask each order's row for the
+  realm's creed (`aRealmOfThisCreedMayGiveTheAlignmentOrder`: the signature order, Consecrate's and Perform Rite's
+  checks), their hand-overs ask `theRisenDeadFollowAHandOverTo`, and a hero leaves the Bless to his king where
+  `theYieldOfABlessARealmsAlignmentGives` raises the king's (P1-19bb7), each with the bot's own conditions and numbers;
+  where a bot's copy differs from the rule it keeps the bot's figure, with a `KD-` row. Their other alignment checks
+  wait for the bots' step.
 - **The order form** keeps a hand-written widget for each alignment order: a new order's row does not appear on it by
   itself.
 
