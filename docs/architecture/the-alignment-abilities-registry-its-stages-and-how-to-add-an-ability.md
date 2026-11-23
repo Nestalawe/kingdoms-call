@@ -156,6 +156,11 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   heroes' deal draws by it). `alignments-and-a-wandering-heros-hire-wage.ts` reads it (`heroHireWage`, mercy's
   chance and laughter: the foe's own alignment), and the player portal shares that file. Its rungs also give the
   wanderers' deck of alignments (P1-19ay1: 1, 2, 4, 6, 4, 2, 1 cards, dealt in the rungs' order).
+- **A realm of none** (its alignment empty, or not given) reads as `THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS` (Neutral),
+  a constant beside the rows (P1-19bb1). The engine asks it through `theAlignmentARealmReadsAs` in
+  `rules-on-plain-values/` (the battles, a commander's score, a hero's hire, the Broker's and the Charm's wage, the
+  Wonder, the heir); a hero's name of an alignment with no name pools is drawn from its pools. The bots' own copies
+  wait for the bots' step. No game holds a realm of none: a unit case holds the constant.
 - **Skeletal upkeep** and its disband order are a unit's rule: any realm with skeletons pays it (Necromancy, the Iron
   Throne), not Undead's alone.
 - **The creed discoveries, the alignment-only items, guardians' Anathema and the Grand Designs** keep their own
