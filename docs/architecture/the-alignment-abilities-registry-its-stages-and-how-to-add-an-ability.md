@@ -168,8 +168,15 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   `MONSTER_CAT_LABELS`, which `monsterCatLabel` reads.
 - **Skeletal upkeep** and its disband order are a unit's rule: any realm with skeletons pays it (Necromancy, the Iron
   Throne), not Undead's alone.
-- **The creed discoveries, the alignment-only items, guardians' Anathema and the Grand Designs** keep their own
-  registries. A row names one by its key when it reads it.
+- **The Wonders (the Grand Designs)** are `THE_WONDERS`, a table beside the rows (P1-19bb3): each Wonder by its slug
+  (`'standing-stones'`) and the alignment it serves; its name and text are `KC_GRAND_DESIGNS`'s, by that alignment.
+  What a Wonder does stays in the rule that asks for it. A rule asks by the Wonder's slug,
+  `theWonderServesTheRealm(turnContext, realm, 'standing-stones')` (`src/engine/discoveries.ts`): the realm is of
+  the row's alignment, has raised its Grand Design and holds the Wonder's province, as `gdActive` by that alignment.
+  The battles' and the orders' Wonders ask it (the Standing Stones, the Iron Throne, the Grand Cathedral's Bless, the
+  World-Tree Grove's Veterans, the Deathless Legion's raisings); the turn's still ask `gdActive` by the creed's name.
+- **The creed discoveries, the alignment-only items and guardians' Anathema** keep their own registries. A row names
+  one by its key when it reads it.
 - **The bots** read the rows' numbers; their own alignment checks wait for the bots' step.
 - **The order form** keeps a hand-written widget for each alignment order: a new order's row does not appear on it by
   itself.
@@ -201,6 +208,8 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   the count stays above 0.
 - `tests/unit/the-marks-on-a-province-each-read-laid-lifted-and-faded.test.ts`: each mark read, laid and lifted
   through the turn's own callers (with the cases its header names, each read, lay, lift and fade).
+- `tests/unit/the-wonders-each-by-its-row-and-the-realm-it-serves.test.ts`: each Wonder's slug and alignment, one row
+  for each Grand Design's text; `theWonderServesTheRealm` answers as `gdActive` by the row's alignment.
 
 ## How to add an ability
 
