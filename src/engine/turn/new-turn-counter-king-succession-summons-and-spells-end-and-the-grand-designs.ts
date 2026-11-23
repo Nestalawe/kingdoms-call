@@ -1,3 +1,4 @@
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_SKILLS, SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { TEMPERS_P } from '../world/tables.ts';
@@ -208,7 +209,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     // (a test stands in an engine with no name-giver: tests/unit/new-turn-succession-and-summons-called-directly.test.ts)
     const heirName =
       typeof asItsGuardReadsIt(nextHeroName) === 'function'
-        ? nextHeroName(p.alignment || 'Neutral')
+        ? nextHeroName(theAlignmentARealmReadsAs(p.alignment))
         : deadKing
           ? 'Heir of ' + deadKing.name
           : 'The New Monarch';
@@ -218,7 +219,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       isKing: true,
       player: pi,
       race: p.race || 'Human',
-      alignment: p.alignment || 'Neutral',
+      alignment: theAlignmentARealmReadsAs(p.alignment),
       temper: theOneThePickFell(TEMPERS_P[Math.floor(kcRng() * TEMPERS_P.length)]), // provisional — the player may rename and re-temper their heir
       hp: 15,
       maxHp: 15,

@@ -107,6 +107,36 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     TOP,
     'P1-19ax2, war without warning, a broken alliance and the doctrine for the portal: their rows',
   ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'combatVsNPC',
+    "P1-19bb1, a realm of none: the attacker's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/battle/battles-between-heroes.ts',
+    'combatVsChar',
+    "P1-19bb1, a realm of none: each side's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/battle/best-commander.ts',
+    'commandScore',
+    "P1-19bb1, a realm of none: the candidate's realm's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts',
+    'resolveBrokerOrder',
+    "P1-19bb1, a realm of none: the hiring realm's alignment in the wage, from the content's constant",
+  ],
+  [
+    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'resolveGrandDesignOrder',
+    "P1-19bb1, a realm of none: the Wonder's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts',
+    'workCharm',
+    "P1-19bb1, a realm of none: the charming realm's alignment in the wage, from the content's constant",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

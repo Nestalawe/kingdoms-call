@@ -689,6 +689,12 @@ export const THE_ALIGNMENT_ORDERS = {
   'perform-rite': ALIGNMENT_ABILITIES['perform-rite'],
 } satisfies { readonly [S in AlignmentOrderSlug]: (typeof ALIGNMENT_ABILITIES)[S] };
 
+/** The alignment a realm of none reads as (P1-19bb1): a realm whose alignment is empty or not given fights, commands,
+ *  hires, charms, raises its Wonder and crowns its heir as this one, and a hero's name of an alignment with no name
+ *  pools is drawn from this one's. The engine reads it through src/engine/rules-on-plain-values/the-alignment-a-realm-
+ *  reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts. No game today holds a realm of none. */
+export const THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS = 'Neutral' satisfies (typeof KC_ALIGNMENTS)[number];
+
 // The alignments' ladder (P1-19av2): a table beside the rows, not abilities. The rungs run down the moral spectrum from
 // holiest to unholiest, and their order is data: a wandering hero's wage is set by the steps between two rungs, Divine
 // and Undead (the full gulf) never serve each other, a king's starting heroes are dealt within a step of his rung (a die

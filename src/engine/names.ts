@@ -5,6 +5,7 @@ import {
   LAIR_POOLS_MONSTER_P,
 } from '../content/kingdoms-call-data.ts';
 import { THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS } from '../content/guardian-perks-their-kinds-numbers-and-words.ts';
+import { THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from './rng.ts';
 import { shuffleP } from './battle/fortune.ts';
 import type { Character } from '../schemas/saved-game-state.ts';
@@ -182,7 +183,7 @@ export function _toRoman(n: number) {
 }
 export function nextHeroName(alignment: string) {
   const namePartsOf: NamePartsOfEachAlignment = HERO_NAME_PARTS;
-  const parts = namePartsOf[alignment] ?? HERO_NAME_PARTS.Neutral;
+  const parts = namePartsOf[alignment] ?? HERO_NAME_PARTS[THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS];
   // Unique GIVEN name and unique DESCRIPTOR, tracked globally across the whole game (item: no two
   // characters share a name or a descriptor). Prefer the alignment's flavoured pools, then the
   // shared master lists (all alignments + overflow). Pools are sized well past any hero count.

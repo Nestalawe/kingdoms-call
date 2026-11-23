@@ -1,3 +1,4 @@
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   KC_HUMANOID_RACES,
   KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM,
@@ -597,7 +598,7 @@ export function resolveHireHeroOrder(
   // per 2 steps between the hero's alignment and the hiring KINGDOM's alignment on the
   // Divine…Undead spectrum. Divine realms cannot hire Undead heroes and vice versa (distance
   // 6) — unless sd31 Diplomatic Protocols waives the ban (at 5g).
-  const kingdomAlign = (G.players[c.player]?.alignment ?? '') || 'Neutral';
+  const kingdomAlign = theAlignmentARealmReadsAs(G.players[c.player]?.alignment);
   // (the discoveries' registry's since plan P1-19ae: "orderValidity: a realm's discoveries waive the hiring ban")
   const _waiveBan = doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]);
   const hireWage = heroHireWage(kingdomAlign, h.alignment, _waiveBan, h); // (a wanderer's, the check above made sure)

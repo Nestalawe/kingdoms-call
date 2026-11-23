@@ -1,3 +1,4 @@
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
@@ -671,8 +672,8 @@ export function combatVsChar(
   let defNav = defCmdrSlain ? 0 : effStat(turnContext, def, 'naval');
   if (def._curseHalveStat === 'naval') defNav = Math.floor(defNav / 2);
   const defNavBonus = 1 + defNav * 0.2;
-  const atkAlign2 = (theAttackersRealm?.alignment ?? '') || 'Neutral';
-  const defAlign2 = (theDefendersRealm?.alignment ?? '') || 'Neutral';
+  const atkAlign2 = theAlignmentARealmReadsAs(theAttackersRealm?.alignment);
+  const defAlign2 = theAlignmentARealmReadsAs(theDefendersRealm?.alignment);
 
   const pvpTerrain = prov.terrain;
   const pvpIsLand = pvpTerrain !== 'sea';

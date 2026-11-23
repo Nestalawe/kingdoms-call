@@ -1,3 +1,4 @@
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
@@ -552,7 +553,7 @@ export function combatVsNPC(
   if (c._curseHalveStat === 'naval') navalSkillAtk = Math.floor(navalSkillAtk / 2); // Curse (battle magic) can wither Naval command
   const navalFleetBonus = 1 + navalSkillAtk * 0.2;
   const _provCoastal = provIsCoastal(G, prov); // Sea Giants' Tidal Might
-  const playerAlign = (theAttackersRealm?.alignment ?? '') || 'Neutral';
+  const playerAlign = theAlignmentARealmReadsAs(theAttackersRealm?.alignment);
   // ════
   // PRE-BATTLE PHASE 1: MAGIC Hero casts first CA: spell from their encounter plan that is
   // relevant to army combat (hits provinces/armies)
