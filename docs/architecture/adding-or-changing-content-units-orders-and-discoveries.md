@@ -173,8 +173,8 @@ the order switch's `case`s read their row's key. Who may give one is two checks 
 `src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
 the row's creed; the king, where the row marks it his alone): each resolver asks them through the registry's
 runner (`src/engine/rules/alignment-abilities/who-may-give-an-alignment-order.ts`), in the order's own order, and so does the player portal's
-order list (`actionsFor`), whose `ACTIONS` and `ALIGN_ACTIONS` read the names and rows from that file too, and so does its target widget (`buildTargetField`: the same two checks). The numbers the books state come from the row (the price of word, the muster's grade, the carters'
-price, the Wild Hunt's beasts and turns, the Blood Offering's tiers); the target widget's words, the Move note's bound beasts, the Blood Offering's hint and the gold ledger's prices read them there, each the report's figure first where the turn's differs (the carters' price, the Wild Hunt's term, Consecrate's home and limit: questions 36 and 41); Call to Arms' company and the companies a Blood Offering may take, gives and raises (its rows and hint) are the turn's own rules, through `src/shared/`. The turn and the report price the carters with one
+order list (`actionsFor`), whose `ACTIONS`, `ACTION_DISPLAY_ORDER` and `ALIGN_ACTIONS` read the names and rows from that file too, and so does its target widget (`buildTargetField`: the same two checks). The numbers the books state come from the row (the price of word, the muster's grade, the carters'
+price, the Wild Hunt's beasts, grade and turns, the Blood Offering's tiers); the target widget's words, the Move note's bound beasts (their grade too), the Blood Offering's hint and the gold ledger's prices read them there, each the report's figure first where the turn's differs (the carters' price, the Wild Hunt's term, Consecrate's home and limit: questions 36 and 41); Call to Arms' company and the companies a Blood Offering may take, gives and raises (its rows and hint) are the turn's own rules, through `src/shared/`. The turn and the report price the carters with one
 function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. The bots write each key from
 its row and read the two prices they budget (word, the carters) from it: the engine names no key outside
 `src/engine/rules/`. A new row's order still needs its own `case` and resolver.
@@ -187,7 +187,7 @@ states it. The GM's statistics label Consecrate, Call to Arms and the Broker by 
 Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's `case` in the order switch, the order-name map
 (`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS`, the short label map, the
 bots' `botSignaturePre` case and their two lists of muster-like orders; the player portal's `ACTIONS`,
-`ALIGN_ACTIONS` (both the rows' since P1-11d7), `ACTION_DISPLAY_ORDER`, the target widget `case`, the army projection and the gold ledger; the
+`ALIGN_ACTIONS` (both the rows' since P1-11d7), `ACTION_DISPLAY_ORDER` (the rows' names since P1-19ba1), the target widget `case`, the army projection and the gold ledger; the
 rulebook's orders table and alignment section, the intro's table and the player portal's three alignment
 texts. Nothing
 throws when one is missed: the order is simply refused, hidden or priced wrong. The content test above finds part of it: a name
