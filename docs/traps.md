@@ -265,7 +265,7 @@ entry of `src/engine/rules/the-registry-of-alignment-abilities.ts`: the resolver
 `alignment === '…'`. A mark it leaves on a province (consecrated ground, Terror, Enslave) is laid and wiped only by
 `src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts`. An order's row also needs its
 `case`, its resolver in `src/engine/orders/alignment/`, its widget on the form and its place in `ACTION_DISPLAY_ORDER`
-(a call by its slug); still written by hand: the GM's labels "Harvest Field" and "Rite" (grep `harvest_field`). A removed
+(a call by its slug); the GM's Statistics labels read its name from its row too (`STATS_ACTION_LABEL`, R-189). A removed
 order keeps its `case` as a refusal, for saves. Checks: the ratchet's `alignmentChecksInEngine` (it only falls); the
 words test (each row's numbers in the books); the registry's unit test and compile check; the static test of the
 functions it has taken. [The guide](architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md);
