@@ -734,6 +734,34 @@ export const HIRE_ORDER_CASES: RecruitHireAndWorksOrderCase[] = [
     },
   },
   {
+    name: 'Hire Hero: across the gulf, a hero of the grave tells a Divine crown no creature of the grave will serve it',
+    stage(b) {
+      creed(b, 'Divine');
+      const other = wanderer(b, b.X, { alignment: 'Undead' });
+      return { hero: at(b), other, here: b.X, orders: plan(order('hire', other.id)) };
+    },
+    check(o) {
+      return {
+        got: { told: says(o, 'recoils from'), why: says(o, 'no creature of the grave will serve a Divine crown') },
+        want: { told: true, why: true },
+      };
+    },
+  },
+  {
+    name: 'Hire Hero: across the gulf, a Divine hero tells an Undead throne the faithful will never serve it',
+    stage(b) {
+      creed(b, 'Undead');
+      const other = wanderer(b, b.X, { alignment: 'Divine' });
+      return { hero: at(b), other, here: b.X, orders: plan(order('hire', other.id)) };
+    },
+    check(o) {
+      return {
+        got: { told: says(o, 'recoils from'), why: says(o, 'the faithful will never serve an Undead throne') },
+        want: { told: true, why: true },
+      };
+    },
+  },
+  {
     name: 'Hire Hero: Diplomatic Protocols bridge the gulf between Divine and Undead, at 5g',
     stage(b) {
       realm(b)['discoveries'] = [{ id: 'sd31' }];

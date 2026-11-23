@@ -6,7 +6,8 @@
 // king's skeletal company, the wanderers' deck of alignments and a Druidic wanderer's Druid, and the alignments one
 // realm a game may hold (the join form and the bots' setup). Each reader is pinned to the literals the engine wrote
 // before the row; then a seeded world of seven realms, one of each creed, and the same world with its Pagan made Good,
-// read what world creation made of them with no die (so on any seed); and the bots' setup (GM turn zero with bots, which
+// read what world creation made of them with no die (so on any seed); Garreth the Independent is of the content's creed
+// (P1-19bb5), with the wanderers' deck stood in to deal another; and the bots' setup (GM turn zero with bots, which
 // the balance matrix doesn't play) never deals a second Divine or Undead realm. The wild country a capital opens beside
 // needs a free neighbour, which a world may not have: so (P1-21t) a planted copy of src/ gives every capital one, and
 // records each wild host the pass raises there: a Druidic capital's is a Creature, an Evil one's a Monster, on any seed.
@@ -16,7 +17,8 @@
 // answers are the rows' as code reads them.
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
-import { KC_ALIGNMENTS, KC_UNIT_CLASS } from '../../src/content/kingdoms-call-data.ts';
+import { HERO_NAME_PARTS, KC_ALIGNMENTS, KC_UNIT_CLASS } from '../../src/content/kingdoms-call-data.ts';
+import { GARRETH_THE_INDEPENDENT } from '../../src/content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../../src/engine/rng.ts';
 import { BOT_UNIQUE_ALIGNS, generateBotSetups } from '../../src/engine/bots/setup.ts';
 import { generateNewGame } from '../../src/engine/world/generate.ts';
@@ -36,6 +38,13 @@ import { importTheWholeEngineFrom } from '../lib/the-whole-engine.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 
 type TheSetUps = Parameters<typeof generateNewGame>[0];
+
+// (S16 calls the deck from its own file, so a stand-in on this module reaches it; every reader runs as it is unless a
+// case stands one in)
+vi.mock(
+  '../../src/engine/rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts',
+  { spy: true },
+);
 
 beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -140,6 +149,29 @@ test('a seeded world of every creed: the kings start with their creed’s skill 
   const stones = (world: typeof w) => world.world.provinces.filter((p) => p.features.some((f) => f.ritualSite)).length;
   expect(stones(w)).toBeGreaterThan(1);
   expect(stones(noPagan)).toBe(0);
+});
+
+test("Garreth the Independent is of the content's creed, whatever the deck deals him; every other neutral guard is the deck's", () => {
+  // the wanderers' deck stood in: Divine alone, so the creed the deck deals Garreth is never his own (P1-19bb5)
+  const theDeck = vi.mocked(theWanderingHeroesDeckOfAlignments);
+  theDeck.mockClear();
+  theDeck.mockReturnValueOnce(['Divine']);
+  kcRng.seed(11);
+  const w = generateNewGame(sevenRealms('Pagan'), { cols: 18, rows: 12 }, 0, { seaPct: 30 });
+  expect(theDeck, 'the stand-in deck is the one S16 deals from').toHaveBeenCalledTimes(1);
+  const guards = w.characters.filter((c) => c.player === null);
+  const garreth = guards.filter((c) => c.name === 'Garreth the Independent');
+  expect(
+    garreth.map((c) => c.alignment),
+    "Garreth's creed",
+  ).toEqual([GARRETH_THE_INDEPENDENT.theCreedHeIsMadeOf]);
+  expect(
+    [...new Set(guards.filter((c) => !garreth.includes(c)).map((c) => c.alignment))],
+    "the other guards' creeds",
+  ).toEqual(['Divine']);
+  // the constant is the creed whose name pool holds his name parts (S0 keeps them back from every other hero)
+  expect(HERO_NAME_PARTS[GARRETH_THE_INDEPENDENT.theCreedHeIsMadeOf].firsts).toContain('Garreth');
+  expect(HERO_NAME_PARTS[GARRETH_THE_INDEPENDENT.theCreedHeIsMadeOf].epithets).toContain('the Independent');
 });
 
 test("the bots' setup deals no second Divine or Undead realm: none beside a human's, and one of each in a game of bots", () => {
