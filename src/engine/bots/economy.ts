@@ -28,6 +28,7 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, TheBotLedgersTally } from './intel.ts';
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 
 // Its types (plan P1-10b48): each parameter typed as wide as the body's guards, so each guard stays.
 declare global {
@@ -552,7 +553,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
           bump('hireElsewhere');
           return;
         }
-        const w = heroHireWage(P.alignment || 'Neutral', h.alignment, false, h);
+        const w = heroHireWage(theAlignmentARealmReadsAs(P.alignment), h.alignment, false, h);
         if (w == null || gold < w) {
           dead.push([c, p]);
           bump('hireUnaffordable');

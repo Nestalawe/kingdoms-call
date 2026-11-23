@@ -223,6 +223,46 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince',
     "P1-19bb5, Garreth the Independent: his creed, from the content's constant",
   ],
+  [
+    'src/engine/bots/intel.ts',
+    'botEffForce',
+    "P1-19bb6, the bots' force estimate: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botBattleForce',
+    "P1-19bb6, the bots' battle estimate: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botDruidShortfall',
+    "P1-19bb6, the bots' Druid shortfall: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botAlignOf',
+    "P1-19bb6, the bots' read of a realm's alignment: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/movement.ts',
+    'theAlignmentOf',
+    "P1-19bb6, the bots' marches: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/setup.ts',
+    'pickBotAlignment',
+    "P1-19bb6, a bot's alignment: the one a bot takes with none left, from the content's constant",
+  ],
+  [
+    'src/engine/bots/setup.ts',
+    'pickBotAlignmentBalanced',
+    "P1-19bb6, a bot's balanced alignment: the one a bot takes with none left, from the content's constant",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botHireOrder',
+    "P1-19bb6, the bots' Hire Hero: a realm of none's alignment, from the content's constant",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

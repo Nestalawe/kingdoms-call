@@ -17,6 +17,7 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { AUnitAnEstimateWeighs } from '../battle/lines.ts';
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 
 // Its types (plan P1-10b40): each parameter typed as wide as the body's guards, so each guard stays. The estimates
 // (botEffForce, botBattleForce, botDruidShortfall and the skills they read) are handed staged worlds and units (the
@@ -636,7 +637,7 @@ export function botEffForce(
   armies: TheUnitsAsTheEstimatesWeighThem,
 ) {
   if (!c) return botForceStrength(armies);
-  const align = (c.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs(c.player != null ? (G.players ?? [])[c.player]?.alignment : undefined);
   const theRealm = c.player != null ? (G.players ?? [])[c.player] : null;
   return (armies ?? c.armies ?? []).reduce((s, a) => {
     if (!a) return s;
@@ -711,7 +712,7 @@ export function botFervourMult(
   defending: boolean | null | undefined,
 ) {
   if (c?.player == null) return 1;
-  const align = ((G.players ?? [])[c.player]?.alignment ?? '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs((G.players ?? [])[c.player]?.alignment);
   let m = 1;
   if (align === 'Evil' && armies.some((a) => a && BOT_MONSTER_ARMIES.has(a.type))) m = Math.max(m, 1.25);
   if (align === 'Undead' && armies.some((a) => a?._isSkeletal)) m = Math.max(m, c.isKing ? 1.5 : 1.3);
@@ -738,7 +739,7 @@ export function botBattleForce(
   const defending = !!opts.defending;
   armies = armies ?? c?.armies ?? [];
   if (!armies.length) return 0;
-  const align = (c?.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs(c?.player != null ? (G.players ?? [])[c.player]?.alignment : undefined);
   const theRealm = c?.player != null ? (G.players ?? [])[c.player] : null;
   const flank = doARealmsDiscoveriesWeightTheLinesBehindTheFront(theRealm);
   const width = battleFrontWidth(terrain);
@@ -813,7 +814,7 @@ export function botDruidShortfall(
   armies: TheUnitsAsTheEstimatesWeighThem,
 ): number {
   if (!c) return 0;
-  const align = (c.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs(c.player != null ? (G.players ?? [])[c.player]?.alignment : undefined);
   const theRealm = c.player != null ? (G.players ?? [])[c.player] : null;
   let worst = 0;
   (armies ?? c.armies ?? []).forEach((a) => {
@@ -906,7 +907,7 @@ export function markProvinceCombat(
 // botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim, src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts).
 export const BOT_ALLY_ALIGN_DIST = 1;
 export function botAlignOf(G: Pick<GameState, 'players'>, pi: number) {
-  return ((asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment ?? '') || 'Neutral';
+  return theAlignmentARealmReadsAs((asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment);
 }
 export function botAlignFriendly(G: Pick<GameState, 'players'>, a: number, b: number) {
   return alignDistP(botAlignOf(G, a), botAlignOf(G, b)) <= BOT_ALLY_ALIGN_DIST;

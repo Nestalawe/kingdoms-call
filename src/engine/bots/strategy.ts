@@ -77,6 +77,7 @@ function theSkillsOfTheGrave(g: Grave): Grave['skills'] {
   return asItsGuardReadsIt(g.skills) ?? {};
 }
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════
 // Design (BOT_PLAYERS_DESIGN §8, v2.4): ONE big field army under the bot's BEST GENERAL is both its
@@ -798,7 +799,7 @@ export function botHireOrder(G: GameState, pi: number, c: Character, L: ABotReal
       !h._justDefeated &&
       !hired.has(h.id) &&
       botSeesChar(G, pi, h) &&
-      heroHireWage((G.players[pi]?.alignment ?? '') || 'Neutral', h.alignment, false, h) != null,
+      heroHireWage(theAlignmentARealmReadsAs(G.players[pi]?.alignment), h.alignment, false, h) != null,
   );
   if (!hh) return null;
   // Self-play finding: an uncapped court (15 heroes, no army) ate the whole wage budget. Cap heroes
@@ -807,7 +808,7 @@ export function botHireOrder(G: GameState, pi: number, c: Character, L: ABotReal
     (x) => asItsGuardReadsIt(x) && x.alive && x.player === pi && !x.isKing && !x._isHeir,
   ).length;
   if (heroes >= botHeroCap(G, pi)) return null;
-  const wage = heroHireWage((G.players[pi]?.alignment ?? '') || 'Neutral', hh.alignment, false, hh);
+  const wage = heroHireWage(theAlignmentARealmReadsAs(G.players[pi]?.alignment), hh.alignment, false, hh);
   // a hero's wage (1–3g) is paid from the chest and no longer competes with troops for the upkeep
   // cap — bots try to hire at least one wanderer every turn they can reach one.
   if (wage == null || L.budget < wage) return null;
@@ -994,8 +995,9 @@ export function botRecruitableTypes(
   const effOf = (t: string) => {
     const base = (UNIT_BASE_STR[t] ?? 0) || 4;
     if (!G || !cmdr) return base;
-    const align =
-      (cmdr.player != null ? ((asItsGuardReadsIt(G.players) ?? [])[cmdr.player]?.alignment ?? '') : '') || 'Neutral';
+    const align = theAlignmentARealmReadsAs(
+      cmdr.player != null ? (asItsGuardReadsIt(G.players) ?? [])[cmdr.player]?.alignment : undefined,
+    );
     const theRealm = cmdr.player != null ? (asItsGuardReadsIt(G.players) ?? [])[cmdr.player] : null;
     let m: number;
     try {
