@@ -1203,13 +1203,17 @@ describe('What the stages’ typed reads keep (P1-10b50: each a value the old re
       delete realm(bb, 2)['gdProvinceId'];
       return {};
     });
-    standIn(
+    const calls = standIn(
       ['theWonderServesTheRealm', 'homeProvinceIdFor'],
       () => {
         run(tc, [POOLS_AND_SWEEPS]);
       },
       { theWonderServesTheRealm: (_t: unknown, pi: unknown) => pi === 2, homeProvinceIdFor: () => null },
     );
+    expect(
+      calls.map((c) => [c.fn, c.args[0] === tc, c.args[1], c.args[2]]),
+      'realm 2 is asked whether its Grand Cathedral stands',
+    ).toContainEqual(['theWonderServesTheRealm', true, 2, 'grand-cathedral']);
     expect(b.G.world.provinces.filter((p) => (p as unknown as Raw)['_blessWardBy'] === 2)).toEqual([]);
   });
 
