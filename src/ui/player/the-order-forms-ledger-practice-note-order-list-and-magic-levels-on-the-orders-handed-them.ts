@@ -259,12 +259,12 @@ export const skillsUnseenP = (c: AHeroAsTheOrderListReadsHim | null | undefined)
 // Adjust freely — this array is the single source of the ordering.
 export const ACTION_DISPLAY_ORDER = [
   // ── SPECIAL actions the character can take — pinned to the very top ── Alignment-signature
-  // orders (each shown only to its own realm)…
-  'Broker',
-  'Consecrate',
-  'Call to Arms',
-  'Perform Rite',
-  'Harvest the Field',
+  // orders (each shown only to its own realm), by the names their rows give (plan P1-19ba1), in this order…
+  theNameTheFormWritesOfTheAlignmentOrder('broker'),
+  theNameTheFormWritesOfTheAlignmentOrder('consecrate'),
+  theNameTheFormWritesOfTheAlignmentOrder('call-to-arms'),
+  theNameTheFormWritesOfTheAlignmentOrder('perform-rite'),
+  theNameTheFormWritesOfTheAlignmentOrder('harvest-the-field'),
   // …and MASTERY (L7/L9) orders, which surface only when the hero's skill is high enough.
   // actionsFor() already filters both groups down to what THIS character actually qualifies for, so
   // only the specials available to them appear here.
