@@ -235,7 +235,8 @@ const THE_FUNCTIONS_STOOD_IN = {
     standInFor(theCombatHelpers.grantMithrilToDwarves, vi.spyOn(theCombatHelpers, 'grantMithrilToDwarves'), make),
   renameLairsThematicP: (make: AStandIn) =>
     standInFor(theNames.renameLairsThematicP, vi.spyOn(theNames, 'renameLairsThematicP'), make),
-  gdActive: (make: AStandIn) => standInFor(theDiscoveries.gdActive, vi.spyOn(theDiscoveries, 'gdActive'), make),
+  theWonderServesTheRealm: (make: AStandIn) =>
+    standInFor(theDiscoveries.theWonderServesTheRealm, vi.spyOn(theDiscoveries, 'theWonderServesTheRealm'), make),
   homeProvinceIdFor: (make: AStandIn) =>
     standInFor(theGrandDesign.homeProvinceIdFor, vi.spyOn(theGrandDesign, 'homeProvinceIdFor'), make),
   telOrdersFor: (make: AStandIn) =>
@@ -701,20 +702,22 @@ describe('The move pools, the trackers and the sweeps: what the third stage call
       return {};
     });
     const calls = standIn(
-      ['gdActive', 'homeProvinceIdFor'],
+      ['theWonderServesTheRealm', 'homeProvinceIdFor'],
       () => {
         run(tc, [POOLS_AND_SWEEPS]);
       },
       {
-        gdActive: (_t: unknown, pi: unknown) => pi !== 0,
+        theWonderServesTheRealm: (_t: unknown, pi: unknown) => pi !== 0,
       },
     );
     expect(
-      calls.map((c) => (c.fn === 'gdActive' ? [c.fn, c.args[0] === tc, c.args[1], c.args[2]] : [c.fn, c.args[1]])),
+      calls.map((c) =>
+        c.fn === 'theWonderServesTheRealm' ? [c.fn, c.args[0] === tc, c.args[1], c.args[2]] : [c.fn, c.args[1]],
+      ),
     ).toEqual([
-      ['gdActive', true, 0, 'Divine'],
-      ['gdActive', true, 1, 'Divine'],
-      ['gdActive', true, 2, 'Divine'],
+      ['theWonderServesTheRealm', true, 0, 'grand-cathedral'],
+      ['theWonderServesTheRealm', true, 1, 'grand-cathedral'],
+      ['theWonderServesTheRealm', true, 2, 'grand-cathedral'],
       ['homeProvinceIdFor', 2],
     ]);
     expect([seatOf(b, 1), seatOf(b, 2)].map((p) => p['_blessWardBy'])).toEqual([1, 2]);
@@ -728,11 +731,11 @@ describe('The move pools, the trackers and the sweeps: what the third stage call
       return {};
     });
     standIn(
-      ['gdActive'],
+      ['theWonderServesTheRealm'],
       () => {
         run(tc, [POOLS_AND_SWEEPS]);
       },
-      { gdActive: (_t: unknown, pi: unknown) => pi !== 2 },
+      { theWonderServesTheRealm: (_t: unknown, pi: unknown) => pi !== 2 },
     );
     expect([seatOf(b, 0)['_blessWardTurn'], seatOf(b, 0)['_blessWardPct']]).toEqual([7, 100]);
     expect(seatOf(b, 1)['_blessWardBy']).toBeUndefined();
@@ -1201,11 +1204,11 @@ describe('What the stages’ typed reads keep (P1-10b50: each a value the old re
       return {};
     });
     standIn(
-      ['gdActive', 'homeProvinceIdFor'],
+      ['theWonderServesTheRealm', 'homeProvinceIdFor'],
       () => {
         run(tc, [POOLS_AND_SWEEPS]);
       },
-      { gdActive: (_t: unknown, pi: unknown) => pi === 2, homeProvinceIdFor: () => null },
+      { theWonderServesTheRealm: (_t: unknown, pi: unknown) => pi === 2, homeProvinceIdFor: () => null },
     );
     expect(b.G.world.provinces.filter((p) => (p as unknown as Raw)['_blessWardBy'] === 2)).toEqual([]);
   });
