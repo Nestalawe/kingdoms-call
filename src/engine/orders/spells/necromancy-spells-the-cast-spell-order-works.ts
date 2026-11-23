@@ -10,7 +10,7 @@ import { unitBaseStrength } from '../../rules-on-plain-values/unit-types-and-bas
 import { noteGraveIntel, skeletalRaiseCount, takeBestGrave } from '../../graves.ts';
 import { armyUnitName } from '../../dice-and-army-names.ts';
 import { getNeighborsP } from '../../world/map-helpers.ts';
-import { gdActive } from '../../discoveries.ts';
+import { theWonderServesTheRealm } from '../../discoveries.ts';
 import {
   emit,
   logSplit,
@@ -242,7 +242,7 @@ export function workSkeletalArmies({ turnContext, c, ph, prov }: TheNamesAnActio
   // 1 at level 1-2, 2 at level 3-4, 3 at level 5+ — never more than the graves hold. An
   // item-cast by a non-necromancer (Reaper's Bell, Ossuary Key) raises one.
   const _skN = skeletalRaiseCount(effStat(turnContext, c, 'necromancy'));
-  const _uTier = gdActive(turnContext, c.player, 'Undead'); // GRAND DESIGN — Undead: +1 tier when raised
+  const _uTier = theWonderServesTheRealm(turnContext, c.player, 'deathless-legion'); // GRAND DESIGN — Undead: +1 tier when raised
   // the tier above each quality, by any quality
   const qualityUp: Readonly<Partial<Record<string, string>>> = KC_QUALITY_UP;
   for (let _sk = 0; _sk < _skN && (prov.battleGraves ?? []).length > 0; _sk++) {
@@ -511,7 +511,7 @@ export function workDeathsDominion({
   // Death's Dominion already raises the dead one tier stronger than they fell. The
   // Deathless Legion adds ITS tier on top, so an Undead realm holding its Wonder pulls them
   // up TWO tiers — Average dead rise Crack. Elite is still the ceiling.
-  const _ddUp = gdActive(turnContext, c.player, 'Undead')
+  const _ddUp = theWonderServesTheRealm(turnContext, c.player, 'deathless-legion')
     ? (q: string) => QUALITY_UP[QUALITY_UP[q] ?? q] ?? QUALITY_UP[q] ?? q
     : (q: string) => QUALITY_UP[q] ?? q;
   const n = Math.min(graves.length, spellLevelEff);

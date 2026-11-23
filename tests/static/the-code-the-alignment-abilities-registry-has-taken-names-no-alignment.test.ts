@@ -157,6 +157,37 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     TOP,
     "P1-19bb2, a guardian's kind: the labels a player reads, moved to the content",
   ],
+  [
+    'src/engine/battle/blood-harvest-and-iron-throne.ts',
+    'ironThroneRaise',
+    "P1-19bb2 and bb3, the Iron Throne's rises: their race, and the Wonder by its row",
+  ],
+  ['src/engine/battle/terrain-and-unit-strength.ts', 'armStr', 'P1-19bb3, the Standing Stones: the Wonder by its row'],
+  [
+    'src/engine/orders/alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts',
+    'resolveHarvestTheFieldOrder',
+    "P1-19bb2 and bb3, Harvest the Field: the risen's race, and the Deathless Legion by its row",
+  ],
+  [
+    'src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts',
+    'resolveCastSpellOrder',
+    "P1-19bb3, the Grand Cathedral's Bless: the Wonder by its row",
+  ],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveRecruitArmiesOrder',
+    "P1-19bb3, the World-Tree Grove's Veterans: the Wonder by its row",
+  ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workSkeletalArmies',
+    "P1-19bb2 and bb3, Skeletal Armies: the risen's race, and the Deathless Legion by its row",
+  ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workDeathsDominion',
+    "P1-19bb2 and bb3, Death's Dominion: the risen's race, and the Deathless Legion by its row",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

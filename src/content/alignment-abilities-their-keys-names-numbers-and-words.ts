@@ -14,7 +14,7 @@
 // reads each row's numbers against the rulebook's creed section, gold paragraph and orders table, the intro's table, and the player
 // page's two texts of its creed (the turn report's summary, the join form's description), and each order's name, creed
 // and king's mark too. How to add an ability: docs/architecture/the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md.
-import type { KC_ALIGNMENTS, KC_QUALITY_TIERS, KC_SKILLS } from './kingdoms-call-data.ts';
+import type { KC_ALIGNMENTS, KC_GRAND_DESIGNS, KC_QUALITY_TIERS, KC_SKILLS } from './kingdoms-call-data.ts';
 
 /** How the books write a number of an ability: as it is (2 as `2`), as a word (2 as `two`), the turns something lasts
  *  beyond this one as the turn it lasts until (1 as `the following turn`), a share as a percentage (20 as `20%`), a
@@ -700,6 +700,29 @@ export const THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS = 'Neutral' satisfies (typeo
  *  race, and Control Undead finds the dead by it, among a hero's forces and in a battle. A unit's race, not an
  *  alignment: the word is the Undead creed's name, but no rule reads one for the other. */
 export const THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS = 'Undead';
+
+/** A Wonder (a Grand Design, P1-19bb3): the alignment whose realms raise it and whom alone it serves. Its name and its
+ *  text are KC_GRAND_DESIGNS's, by that alignment. */
+export interface AWonder {
+  readonly alignment: keyof typeof KC_GRAND_DESIGNS;
+}
+
+/** The seven Wonders, by slug, one for each alignment (a table beside the rows, not abilities: what each does is the
+ *  rule that asks for it). The engine asks whether a Wonder serves a realm by its slug (`theWonderServesTheRealm`,
+ *  src/engine/discoveries.ts): the realm is of the row's alignment, has raised its Grand Design, and holds the Wonder's
+ *  province. */
+export const THE_WONDERS = {
+  'grand-cathedral': { alignment: 'Divine' },
+  'free-city-charter': { alignment: 'Good' },
+  'grand-library': { alignment: 'Neutral' },
+  'standing-stones': { alignment: 'Pagan' },
+  'iron-throne-of-skulls': { alignment: 'Evil' },
+  'deathless-legion': { alignment: 'Undead' },
+  'world-tree-grove': { alignment: 'Druidic' },
+} as const satisfies Readonly<Record<string, AWonder>>;
+
+/** A Wonder's slug: a key of THE_WONDERS. */
+export type AWondersSlug = keyof typeof THE_WONDERS;
 
 // The alignments' ladder (P1-19av2): a table beside the rows, not abilities. The rungs run down the moral spectrum from
 // holiest to unholiest, and their order is data: a wandering hero's wage is set by the steps between two rungs, Divine

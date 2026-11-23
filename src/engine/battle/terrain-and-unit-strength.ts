@@ -38,7 +38,7 @@ import {
   type AMinorTitlesArmyPerk,
 } from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
 import { theStrengthOfAUnitOnceItsCommandersMinorTitlesLiftIt } from '../rules/the-registry-of-the-minor-titles-perks.ts';
-import { discUnitMult, dragonTamed, gdActive } from '../discoveries.ts';
+import { discUnitMult, dragonTamed, theWonderServesTheRealm } from '../discoveries.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
@@ -689,7 +689,7 @@ export function armStr(
     const _pagPi = heroChar?.player ?? ctx?.ownerPi ?? null;
     if (
       _pagPi != null &&
-      gdActive(turnContext, _pagPi, 'Pagan') &&
+      theWonderServesTheRealm(turnContext, _pagPi, 'standing-stones') &&
       ctx?.isAttacker === false &&
       (terrain === 'forest' || terrain === 'jungle' || terrain === 'mountain')
     ) {

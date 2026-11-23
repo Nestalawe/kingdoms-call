@@ -12,7 +12,7 @@ import { d100 } from '../dice-and-army-names.ts';
 import { TM, skillLevel } from '../titles/perks.ts';
 import { isPreOrderRef, orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import { castChanceFor } from '../chances-and-lair-grades.ts';
-import { gdActive } from '../discoveries.ts';
+import { theWonderServesTheRealm } from '../discoveries.ts';
 import {
   emit,
   recordForTheStatistics,
@@ -131,7 +131,7 @@ export function resolveCastSpellOrder(
       _lvl,
       theCastsAHerosTitlesAddInHisBestSchool((theTitle) => charMinor(turnContext, c, theTitle)),
     );
-    const _divCath = gdActive(turnContext, c.player, 'Divine'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot (the spells' registry, plan P1-19y)
+    const _divCath = theWonderServesTheRealm(turnContext, c.player, 'grand-cathedral'); // GRAND DESIGN — Divine (Grand Cathedral): Bless uses no casting slot (the spells' registry, plan P1-19y)
     // NORMALISE the saved action: the player portal writes "Cast Spell", the bots write
     // "cast_spell". Comparing the raw string counted only the bots' casts, so a human caster
     // had NO per-turn limit at all (a Psychic 1 hero could work five action spells a season).

@@ -1,7 +1,7 @@
 import { THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from '../rng.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
-import { gdActive } from '../discoveries.ts';
+import { theWonderServesTheRealm } from '../discoveries.ts';
 import { whatARealmsDiscoveriesAddToABloodHarvest } from '../rules/the-registry-of-discovery-effects.ts';
 import { theGoldARealmsAlignmentClaimsForEachFoeDestroyed } from '../rules/the-registry-of-alignment-abilities.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
@@ -60,7 +60,7 @@ export function ironThroneRaise(
   const { G } = turnContext;
   if (winnerChar?.player == null || winnerChar.id == null || !Array.isArray(deadUnits)) return;
   const _pl = G.players[winnerChar.player];
-  if (!gdActive(turnContext, winnerChar.player, 'Evil')) return;
+  if (!theWonderServesTheRealm(turnContext, winnerChar.player, 'iron-throne-of-skulls')) return;
   // Combat runs on shallow COPIES whose sync-back keeps only armies already on the real
   // character, so a freshly-raised skeleton pushed to the copy is dropped. Queue by the winner's
   // real id; flush at turn end.

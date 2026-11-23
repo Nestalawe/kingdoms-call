@@ -9,7 +9,7 @@ import {
 } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { takeBestGrave } from '../../graves.ts';
 import { armyUnitName } from '../../dice-and-army-names.ts';
-import { gdActive } from '../../discoveries.ts';
+import { theWonderServesTheRealm } from '../../discoveries.ts';
 import {
   emit,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -80,7 +80,7 @@ export function resolveHarvestTheFieldOrder(
   if (!hGrave) throw new TypeError("Cannot read properties of null (reading 'type')");
   // the qualities a tier up, by any quality's name
   const qualityUp: Readonly<Partial<Record<string, string>>> = KC_QUALITY_UP;
-  const _uTierH = gdActive(turnContext, c.player, 'Undead'); // GRAND DESIGN — Undead
+  const _uTierH = theWonderServesTheRealm(turnContext, c.player, 'deathless-legion'); // GRAND DESIGN — Undead
   const hSkel = {
     type: hGrave.type,
     quality: _uTierH ? (qualityUp[hGrave.quality] ?? '') || hGrave.quality : hGrave.quality,

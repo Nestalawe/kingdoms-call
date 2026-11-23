@@ -35,7 +35,7 @@ import { orderCharRef } from '../heroes/charms-and-neutrals.ts';
 import {
   applyPendingSynthPlan,
   discRecruitQChance,
-  gdActive,
+  theWonderServesTheRealm,
   isGarrisonUnitType,
   realmRecruitCost,
 } from '../discoveries.ts';
@@ -450,7 +450,7 @@ export function resolveRecruitArmiesOrder(
     for (let q = 0; q < actualQty; q++) {
       // sd01 Superior Forging: recruited armies start at Veteran
       const startQuality =
-        (gdActive(turnContext, c.player, 'Druidic') &&
+        (theWonderServesTheRealm(turnContext, c.player, 'world-tree-grove') &&
           (CREATURE_ARMIES.has(armyType) || MONSTER_ARMIES.has(armyType))) ||
         kcRng() < discRecruitQChance(G.players[c.player], armyType)
           ? 'Veteran'
