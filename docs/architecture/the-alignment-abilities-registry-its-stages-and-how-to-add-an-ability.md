@@ -161,6 +161,11 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   `rules-on-plain-values/` (the battles, a commander's score, a hero's hire, the Broker's and the Charm's wage, the
   Wonder, the heir); a hero's name of an alignment with no name pools is drawn from its pools. The bots' own copies
   wait for the bots' step. No game holds a realm of none: a unit case holds the constant.
+- **The risen dead's race** is `THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS` ('Undead'), a constant beside the rows
+  (P1-19bb2): every raising (Harvest the Field, the Necromancy spells, the Iron Throne, an Undead king's skeletal
+  company) makes its units of it, and Control Undead finds the dead by it. It is a unit's race, not an alignment. The
+  label a player reads a guardian's kind by ('Undead' too) is a word for players, its own fact: the content's
+  `MONSTER_CAT_LABELS`, which `monsterCatLabel` reads.
 - **Skeletal upkeep** and its disband order are a unit's rule: any realm with skeletons pays it (Necromancy, the Iron
   Throne), not Undead's alone.
 - **The creed discoveries, the alignment-only items, guardians' Anathema and the Grand Designs** keep their own
