@@ -8,7 +8,7 @@ import { botResearchPick } from '../bots/missions.ts';
 import { TITLES_PUBLIC_FROM_TURN, TITLE_PERKS_ENABLED } from '../titles/perks.ts';
 import { computeMinorTitles, computeStandings } from '../titles/reckoning.ts';
 import { telOrdersFor } from './log-line-helpers.ts';
-import { DISC_BY_ID, gdActive } from '../discoveries.ts';
+import { DISC_BY_ID, theWonderServesTheRealm } from '../discoveries.ts';
 import { relKeyOf } from '../realms/relations-and-captures.ts';
 import { setMovePool } from '../units/movement-pools.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
@@ -459,7 +459,7 @@ export function movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeThe
   // the realm to still hold that ground, which also fixes the old bug where a Divine realm that
   // lost its capital kept warding it for its conqueror.
   (asItsGuardReadsIt(G.players) ?? []).forEach((pl, pi) => {
-    if (gdActive(turnContext, pi, 'Divine')) {
+    if (theWonderServesTheRealm(turnContext, pi, 'grand-cathedral')) {
       const capitalsId = pl.gdProvinceId ?? homeProvinceIdFor(G, pi);
       const _cap = G.world.provinces[capitalsId ?? -1];
       if (_cap) {

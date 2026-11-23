@@ -4,7 +4,7 @@ import { kcRng } from '../rng.ts';
 import { TEMPERS_P } from '../world/tables.ts';
 import { nextHeroName } from '../names.ts';
 import { ownedConsecratedProvs } from '../heroes/fame-and-consecration.ts';
-import { discBlockedIds, discEligible, gdActive } from '../discoveries.ts';
+import { discBlockedIds, discEligible, theWonderServesTheRealm } from '../discoveries.ts';
 import {
   emit,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -437,7 +437,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
 
   // GRAND DESIGN — Neutral (Grand Library): one guaranteed Sage discovery each turn, reported.
   (asItsGuardReadsIt(G.players) ?? []).forEach((pl, pi) => {
-    if (!gdActive(turnContext, pi, 'Neutral')) return;
+    if (!theWonderServesTheRealm(turnContext, pi, 'grand-library')) return;
     pl.discoveries = asItsGuardReadsIt(pl.discoveries) ?? [];
     const _known = new Set(pl.discoveries.map((d) => d.id));
     const _blkGL = discBlockedIds(pl);

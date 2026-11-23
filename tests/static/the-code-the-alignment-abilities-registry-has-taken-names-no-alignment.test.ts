@@ -188,6 +188,21 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'workDeathsDominion',
     "P1-19bb2 and bb3, Death's Dominion: the risen's race, and the Deathless Legion by its row",
   ],
+  [
+    'src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts',
+    'movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan',
+    "P1-19bb4, the Grand Cathedral's ward: the Wonder by its row",
+  ],
+  [
+    'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
+    'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
+    "P1-19bb4, the Free City Charter's tax, the World-Tree Grove's wages and the Deathless Legion's unpaid: their Wonders by their rows",
+  ],
+  [
+    'src/engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts',
+    'newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns',
+    "P1-19bb1 and bb4, the new turn: a realm of none's alignment, from the content's constant, and the Grand Library by its row",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
