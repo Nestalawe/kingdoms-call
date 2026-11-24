@@ -110,10 +110,11 @@ the master tables and the player portal's speeds are built from it), `PRIMAL_UNI
 swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and the wild pools
 (`THE_WILD_CREATURES_BY_TERRAIN` / `THE_WILD_MONSTERS_BY_TERRAIN` in
 `src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts`, one
-list each, which the province pass, the creed's neighbour and the wild country all read); the player portal's `PRIMAL_SUBRACE_CLASS`
-(the `Primal:<sub-race>` string a wild province carries) and its alignment texts; the rulebook's Druid ladder
-and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
-(`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.
+list each, which the province pass, the creed's neighbour and the wild country all read); the player portal's alignment
+texts (its `PRIMAL_SUBRACE_CLASS`, a sub-race's Creature or Monster, reads the beast's sub-race and class); the
+rulebook's Druid ladder and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and
+`LEGACY_RACE_RENAMES` (`migrateLegacyUnitNames` runs at the top of every turn), the old sub-race's name in
+`PRIMAL_SUBRACE_CLASS` (an older report holds it) and the discoveries whose `effect.types` name it.
 
 **The wild's race and the race of none** are content constants beside `KC_HUMANOID_RACES` (B-06ac):
 `THE_RACE_OF_THE_WILD` (`Primal`; a wild province's `Primal:<sub-race>` starts with it) and
@@ -125,7 +126,9 @@ save's upgrade mends (`AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED`, 
 beasts' classes a neutral hero of an old save may wear as his race). Each
 humanoid race's heartland is content's `THE_HEARTLAND_OF_EACH_HUMANOID_RACE`, and the one fleet a home of a race offers
 is the first of its `THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST` (`theFleetAHomeOfItsRaceOffers`, world/tables.ts).
-The bots and the player portal still write the words themselves (their rows: B-06ah, B-06ak).
+The player portal asks them through `src/shared/` (B-06ak): Call to Arms' field asks
+`isTheRaceTheWildsOrOneOfItsSubRaces`, and the practice note `isAHeroAQuickLearnerByHisRaceAndHisRealms` (Quick
+learners' row, the answer of the race gifts' runner).
 
 **A temper's rules are its row of `TEMPER_TRAITS`** (B-06ai): beside its fight figures, whether a hero's auto plan
 (a neutral's or a bot's) keeps an exit and five actions (`anAutoPlanKeepsAnExit`: Cautious, Cowardly) or charges,
@@ -133,7 +136,9 @@ firing once (`anAutoPlanChargesFiringOnce`: Berserk), how a commander with no or
 (`theDuelStanceOfAHeroWithNoOrders`; `''` accepts) and its shift of terror's courage test (`terrorsCourageMod`). A
 hero of no temper fights as `THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH` (Brave: `effTemper`), and `temperOf` reads a
 name no row has as that row; the stance and the terror ask `theRowOfATemperByItsName`, so such a name accepts and
-shifts nothing, as before.
+shifts nothing, as before. The GM's turn zero gives a king whose setup names no temper that temper, and the player
+portal shows a hero of none with it (B-06ak). The join form's temper descriptions restate the rows' figures:
+`tests/static/the-join-forms-temper-descriptions-state-each-figure-as-the-tempers-rows-give-it.test.ts` holds them.
 
 ## The bots' worth of a temper
 
