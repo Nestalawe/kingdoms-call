@@ -84,12 +84,12 @@ interface AHeroWhoseSkillsAreKnown {
 // version's weights file (the-weights-of-the-bots-first-version-…ts) says what it makes of a unit of each kind of
 // result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
 // it gives no weights fails to compile. The economy's (a gold) is the first kind, the titles' (a title, B-06r) the
-// second, the alignments' (an alignment ability, P1-19bb8) the third, the races' (a race's gift, B-06ah) the fourth.
-// The weights are the bots', never content's: content holds the rules only.
+// second, the alignments' (an alignment ability, P1-19bb8) the third, the races' (a race's gift, B-06ah) the fourth,
+// the tempers' (a temper, B-06aj) the fifth. The weights are the bots', never content's: content holds the rules only.
 /** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
- *  Imperial Title (held, or chased by what its row measures), what an ability of a realm's alignment gives it, and
- *  what a gift of its race gives it. */
-export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility' | 'raceGift';
+ *  Imperial Title (held, or chased by what its row measures), what an ability of a realm's alignment gives it, what a
+ *  gift of its race gives it, and what a temper gives a hero or a king. */
+export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility' | 'raceGift' | 'temper';
 /** A kind of result's weights in a bot version: each a number, named for what it weighs. */
 export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 /** The bots' weights at a difficulty. */

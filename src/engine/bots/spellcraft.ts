@@ -366,13 +366,24 @@ export function botOffensiveMagic(c: Character) {
   const s = asItsGuardReadsIt(c.skills) ?? {};
   return (Number(s.elemental) || 0) + (Number(s.necromancy) || 0) + (Number(s.psychic) || 0);
 }
+/** A hero's worth in a duel by his temper, as the bots' first version weighs it (its weights' `temper`), by the
+ *  temper's name: a temper none of these names, or none, adds nothing. */
+const THE_DUEL_WORTH_OF_A_HERO_BY_HIS_TEMPER: Readonly<Partial<Record<string, number>>> = {
+  Berserk: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.theDuelWorthOfABerserkHero,
+  Brave: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.theDuelWorthOfABraveHero,
+  Cautious: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.theDuelWorthOfACautiousHero,
+  Cowardly: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.theDuelWorthOfACowardlyHero,
+};
 // Personal-combat rating for hunter/quarry comparisons (mirror of botCanBeatGuardian's character
 // side).
 export function botDuelRating(c: Character) {
   const s = asItsGuardReadsIt(c.skills) ?? {};
   const bm = (Number(s.elemental) || 0) + (Number(s.necromancy) || 0) + (Number(s.psychic) || 0);
+  // the hero's own temper, not the one his items give him (effTemper): the bot's figure, kept in T7 (KD-467)
   const t = asItsGuardReadsIt(c.temper) ?? '';
-  const tb = t === 'Berserk' ? 6 : t === 'Brave' ? 4 : t === 'Cautious' ? 5 : 0;
+  const tb = Object.hasOwn(THE_DUEL_WORTH_OF_A_HERO_BY_HIS_TEMPER, t)
+    ? (THE_DUEL_WORTH_OF_A_HERO_BY_HIS_TEMPER[t] ?? 0)
+    : 0;
   const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20);
   return (
     hp +

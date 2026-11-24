@@ -29,6 +29,8 @@ import { everyStringIn, TOP } from '../lib/the-strings-a-function-of-the-code-ho
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/items/equipment.ts', 'effTemper', 'B-06ai'],
   ['src/engine/personal-combat/speed-encounter-plans-and-combatants.ts', 'autoEncounterPlan', 'B-06ai'],
+  ['src/engine/bots/spellcraft.ts', 'botDuelRating', 'B-06aj'],
+  ['src/engine/bots/war.ts', 'botWarAssess', 'B-06aj'],
 ];
 
 test.for(TAKEN)('%s: %s names no temper (%s)', ([file, fn]) => {

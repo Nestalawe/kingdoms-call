@@ -6,8 +6,9 @@
 // only while that is so (no comment that waives an error). Then the gold's weights, each the number botLedger wrote
 // before T7, a title's (B-06r), each the number botTargetTitles and botSpecialistRoles wrote, and an alignment
 // ability's (P1-19bb8), each the number botHeroCap, botSpecialistRoles and the scholar's orders wrote, and a race
-// gift's (B-06ah), each the number botTuning's race overlays wrote, in its place: a change of one is a change of the
-// bots' play (the balance matrix), never a refactor.
+// gift's (B-06ah), each the number botTuning's race overlays wrote, and a temper's (B-06aj), each the number
+// botDuelRating and the war bar's table (BOT_WAR.temper) wrote, in its place: a change of one is a change of the bots'
+// play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module is imported and its numbers read; its types are the compiler's (`npm run check`),
 // which a lower level can't run.
@@ -82,5 +83,18 @@ test("a race gift's weights are the numbers botTuning's race overlays wrote befo
     theKingsAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
     theHerosAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
     theShareOfTheIncomeTheWagesMayTakeMoreInARealmThatTakesTheSpoilsOfABattleWonAttacking: 0.05,
+  });
+});
+
+test("a temper's weights are the numbers botDuelRating and the war bar's table wrote before T7, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper).toEqual({
+    theDuelWorthOfABerserkHero: 6,
+    theDuelWorthOfABraveHero: 4,
+    theDuelWorthOfACautiousHero: 5,
+    theDuelWorthOfACowardlyHero: 0,
+    whatABerserkKingAddsToTheBarForWar: -0.25,
+    whatABraveKingAddsToTheBarForWar: -0.1,
+    whatACautiousKingAddsToTheBarForWar: 0.15,
+    whatACowardlyKingAddsToTheBarForWar: 0.3,
   });
 });
