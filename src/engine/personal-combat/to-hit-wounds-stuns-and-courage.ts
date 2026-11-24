@@ -296,6 +296,8 @@ export function pcCourageChance(
     stature -
     PC_TERROR_PER_LVL * nerve -
     faith +
+    // (a name like an object's own key, `constructor`, shifts nothing, where before B-06ai it gave NaN: no temper is
+    // named so)
     (theRowOfATemperByItsName(foe.temper)?.terrorsCourageMod ?? 0);
   return Math.max(PC_TERROR_MIN, Math.min(PC_TERROR_MAX, Math.round(c)));
 }

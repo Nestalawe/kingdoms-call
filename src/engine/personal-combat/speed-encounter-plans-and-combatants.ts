@@ -212,6 +212,7 @@ export const DUEL_STANCES_P = ['challenge', 'accept', 'refuse'];
 /** How a commander with no orders answers single combat by the temper he fights with (his temper's row); a temper of no
  *  stance of its own, or a name no row has, accepts. */
 function theDuelStanceOfAHeroWithNoOrdersByHisTemper(ch: AHeroAsAFightTakesHim) {
+  // (a name like an object's own key, `constructor`, also accepts, where before B-06ai it gave NaN: no temper is named so)
   return (theRowOfATemperByItsName(effTemper(ch))?.theDuelStanceOfAHeroWithNoOrders ?? '') || 'accept';
 }
 export function duelStanceOf(ch: Character | null | undefined) {
