@@ -127,6 +127,14 @@ humanoid race's heartland is content's `THE_HEARTLAND_OF_EACH_HUMANOID_RACE`, an
 is the first of its `THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST` (`theFleetAHomeOfItsRaceOffers`, world/tables.ts).
 The bots and the player portal still write the words themselves (their rows: B-06ah, B-06ak).
 
+**A temper's rules are its row of `TEMPER_TRAITS`** (B-06ai): beside its fight figures, whether a hero's auto plan
+(a neutral's or a bot's) keeps an exit and five actions (`anAutoPlanKeepsAnExit`: Cautious, Cowardly) or charges,
+firing once (`anAutoPlanChargesFiringOnce`: Berserk), how a commander with no orders answers single combat
+(`theDuelStanceOfAHeroWithNoOrders`; `''` accepts) and its shift of terror's courage test (`terrorsCourageMod`). A
+hero of no temper fights as `THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH` (Brave: `effTemper`), and `temperOf` reads a
+name no row has as that row; the stance and the terror ask `theRowOfATemperByItsName`, so such a name accepts and
+shifts nothing, as before.
+
 ## A sea unit must be a carrier or a primal sea beast
 
 The engine's "crosses the sea under its own power" set (`SEA_TYPES`, and the bots' `BOT_SEA_ALL`) is built from
