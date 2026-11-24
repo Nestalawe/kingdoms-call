@@ -1,7 +1,11 @@
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
-import { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS, SKILL_LABELS } from '../army-tables.ts';
+import {
+  THE_HERO_ORDERS,
+  THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS,
+} from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
+import { SKILL_LABELS } from '../army-tables.ts';
 import { botDrillUseful } from '../bots/economy.ts';
 import { provOf } from '../world/map-helpers.ts';
 import { skillLevel } from '../titles/perks.ts';
@@ -11,6 +15,7 @@ import { theLevelEachMasterySpellNeeds } from '../rules-on-plain-values/spells-t
 import {
   PHASE_ACTION_MAP,
   normaliseAction,
+  theHeroOrdersRowOfAKind,
   type OrderKind,
 } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
 import { resolveMoveOrder } from './move-order-marches-voyages-and-battles-on-arrival.ts';
@@ -166,11 +171,11 @@ export function processOrder(
     return;
   }
   turnContext._logCtx = { charId: c.id, phase: ph }; // every line emitted inside here inherits this
-  const rawAction = (o.action || 'defend').toLowerCase().trim();
+  const rawAction = (o.action || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS).toLowerCase().trim();
   // the kind of order each name gives (a name it doesn't hold gives none, read as a Defend; P1-10z: a kind of
   // order, so a kind the switch below has no case for fails to compile)
   const actionsByName: Readonly<Partial<Record<string, OrderKind>>> = PHASE_ACTION_MAP;
-  let action: OrderKind = (actionsByName[rawAction] ?? '') || 'defend';
+  let action: OrderKind = (actionsByName[rawAction] ?? '') || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS;
   let _fmSlip = false; // MARCH L7 Forced March: set below when a forced-march move should try to slip past battle
   // 2026-09-28: a BOT slayer's second / third lair of the year carries _botMinHp — if an earlier fight left him
   // below that share of his HP, he rests instead of walking into another guardian half-dead. (Never set on
@@ -178,7 +183,12 @@ export function processOrder(
   // 2026-09-29 (Toby): a BOT's Practice on a skill that has reached 5 SINCE its orders were written (an earlier
   // phase's practice or experience in the field this turn) switches to its next skill below 5 — unless it is
   // teaching a comrade practising that skill beside it this phase, or drilling troops that can still improve.
-  if (action === 'practice' && c.player != null && asItsGuardReadsIt(_botPlayerIdx)?.has(c.player) && o.target) {
+  if (
+    action === THE_HERO_ORDERS.practice.key &&
+    c.player != null &&
+    asItsGuardReadsIt(_botPlayerIdx)?.has(c.player) &&
+    o.target
+  ) {
     const _S = aTargetInWords(o.target);
     const _sn = G._phaseSkillSnapshot?.[c.id] ?? asItsGuardReadsIt(c.skills) ?? {};
     const _myL = aLevelByAnyName(_sn, _S);
@@ -194,7 +204,7 @@ export function processOrder(
             const k = (turnOrders[t.id] ?? [])[ph];
             return (
               k &&
-              normaliseAction(k) === 'practice' &&
+              normaliseAction(k) === THE_HERO_ORDERS.practice.key &&
               aTargetInWords(k.target) === _S &&
               aLevelByAnyName(G._phaseSkillSnapshot?.[t.id] ?? asItsGuardReadsIt(t.skills) ?? {}, _S) < _myL
             );
@@ -207,13 +217,13 @@ export function processOrder(
           const skillLabels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
           o = { ...o, target: _nx, desc: 'Practice ' + ((skillLabels[_nx] ?? '') || _nx) };
         } else {
-          action = 'defend';
+          action = THE_HERO_ORDERS.defend.key;
         }
       }
     }
   }
   if (
-    action === 'search' &&
+    action === THE_HERO_ORDERS.search.key &&
     o._botMinHp &&
     c.player != null &&
     (asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20)) < (c.maxHp || 20) * o._botMinHp
@@ -226,11 +236,11 @@ export function processOrder(
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: c.location,
     });
-    action = 'rest';
+    action = THE_HERO_ORDERS.rest.key;
   }
   // 2026-09-28 (option 2): a bot's "search if the talk is good" — only on a rumour THIS hero heard THIS turn about
   // this lair, at the band the order names (or the lower band for a Weak lair when he is at full health).
-  if (action === 'search' && o._botIfRumour && c.player != null) {
+  if (action === THE_HERO_ORDERS.search.key && o._botIfRumour && c.player != null) {
     const _pv = G.world.provinces[c.location];
     const _f = _pv && (asItsGuardReadsIt(_pv.features) ?? [])[parseInt(o.target)];
     const _r = _f?._rumourOdds?.[c.player];
@@ -254,7 +264,7 @@ export function processOrder(
         phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
         province: c.location,
       });
-      action = 'rest';
+      action = THE_HERO_ORDERS.rest.key;
     }
   }
   // 2026-09-29 (Toby, lair study): a Search names its lair by INDEX within a province. When the move
@@ -265,7 +275,7 @@ export function processOrder(
   // written for; standing anywhere else, the searcher does not go in.
   const theOrderAsItsProvinceIsGuarded: AnOrdersProvinceAsTheDispatchGuardsIt = o;
   if (
-    action === 'search' &&
+    action === THE_HERO_ORDERS.search.key &&
     theOrderAsItsProvinceIsGuarded.prov != null &&
     theOrderAsItsProvinceIsGuarded.prov !== '' &&
     String(theOrderAsItsProvinceIsGuarded.prov) !== String(c.location)
@@ -283,12 +293,14 @@ export function processOrder(
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
       province: c.location,
     });
-    action = 'rest';
+    action = THE_HERO_ORDERS.rest.key;
   }
   const target = o.target || '';
   const extra = o.extra || '';
   const prov = provOf(turnContext, c);
   const player = c.player === null ? undefined : G.players[c.player]; // a wanderer's: none
+  // the order's row: the checks below read its fields (its kind stays as it is until the Forced March below)
+  const theOrdersRow = theHeroOrdersRowOfAKind(action);
 
   // ── BATTLE LOCK, RE-CHECKED AT THE MOMENT OF MARCHING ────
   // STAGE 1b already pins army-leaders standing in a contested province, but it is computed ONCE,
@@ -305,9 +317,10 @@ export function processOrder(
   // Re-checking here, at the instant the relocating order executes, closes that window: a live
   // contest pins BOTH sides until resolveStalledBattles settles it at the top of the next phase.
   // The pin only bites while an armed hostile force is actually standing here — a stale flag left
-  // by an enemy who died or withdrew never traps anyone. (A Pursue is an Encounter by its kind: no kind is 'pursue'.)
+  // by an enemy who died or withdrew never traps anyone. (A Pursue is an Encounter by its kind: no kind is Pursue's.)
+  // The orders it pins are their rows' (pinnedByTheBattleLock): a Move and an Encounter.
   if (
-    (action === 'move' || action === 'encounter') &&
+    theOrdersRow.pinnedByTheBattleLock === true &&
     prov &&
     prov._battleUnresolved &&
     (asItsGuardReadsIt(c.armies) ?? []).length > 0
@@ -349,13 +362,15 @@ export function processOrder(
   // they have genuinely joined the realm and act as any other hero of it. This sits ABOVE the
   // once-per-turn charge below so a refused mastery order is not also spent.
   // a mastery order, or a Cast Spell of a mastery spell (the list the order form leaves off a hero whose levels his realm
-  // can't see: rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts)
+  // can't see: rules-on-plain-values/spells-the-order-form-offers-each-school-aim-and-mastery-level.ts), by its row
   const aMastery =
-    MASTERY_ORDER_KEYS.has(action) ||
-    (action === 'cast_spell' && Object.hasOwn(theLevelEachMasterySpellNeeds(), aTargetInWords(target)));
+    theOrdersRow.aMasteryOrder === true ||
+    (theOrdersRow.aCastOfAMasterySpellIsAMastery === true &&
+      Object.hasOwn(theLevelEachMasterySpellNeeds(), aTargetInWords(target)));
   if (c._charmTempControl) {
-    // disbanding companies, an alignment's rite, or a mastery: what he will not do (the prose says it, by the action)
-    const _refused = action === 'disband_army' || ALIGNMENT_ORDER_KEYS.has(action) || aMastery;
+    // disbanding companies, an alignment's rite, or a mastery: what he will not do (the prose says it, by the action);
+    // the rows' aSeizedHeroRefusesIt
+    const _refused = theOrdersRow.aSeizedHeroRefusesIt === true || aMastery;
     if (_refused) {
       emit(turnContext, {
         type: 'system',
@@ -385,8 +400,8 @@ export function processOrder(
     return;
   }
 
-  // ── ONCE PER TURN ── a mastery order may be attempted only once per turn per character.
-  if (MASTERY_ORDER_KEYS.has(action)) {
+  // ── ONCE PER TURN ── a mastery order (its row's aMasteryOrder) may be attempted only once per turn per character.
+  if (theOrdersRow.aMasteryOrder === true) {
     c._masteryOrderUsed = c._masteryOrderUsed ?? {};
     // the turn each mastery was last used, by any order's name
     const theMasteriesUsed: Partial<Record<string, number>> = c._masteryOrderUsed;
@@ -407,7 +422,7 @@ export function processOrder(
   // ── MARCH L7 — Forced March ── is now a MOVE with a 50% chance to slip past a battle this
   // phase. Remap it to the move handler (keeping the once-per-turn charge above) and flag the
   // slip locally.
-  if (action === 'forced_march') {
+  if (action === THE_HERO_ORDERS.forced_march.key) {
     if (skillLevel(c, 'march') < THE_MASTERY_ORDERS.forced_march.level) {
       emit(turnContext, {
         type: 'system',
@@ -420,13 +435,13 @@ export function processOrder(
       return;
     }
     _fmSlip = true;
-    action = 'move';
+    action = THE_HERO_ORDERS.move.key;
   }
 
   // ── a SPELL ITEM used via Use Item becomes a cast of its spell at a flat 95%. ──
   let _itemCast: { item: string; spell: string | undefined } | null = null;
   // a hero under a charm uses no item (R-049): his Use Item stays the item order's, which refuses it
-  if (action === 'use_item' && !isCharmedNow(G, c)) {
+  if (action === THE_HERO_ORDERS.use_item.key && !isCharmedNow(G, c)) {
     const theItems: readonly (AnItemAsTheSpellItemReadsIt | null | undefined)[] = asItsGuardReadsIt(c.items) ?? [];
     const _sit = theItems.find((x) => x && (String(x.id) === aTargetInWords(target) || x.name === target));
     // the spells' rows by any name an item gives (the key "undefined" for none, as JavaScript reads it)
@@ -438,7 +453,7 @@ export function processOrder(
       spellDefs[String(_sit.effect?.spell)]
     ) {
       _itemCast = { item: _sit.name, spell: _sit.effect?.spell };
-      action = 'cast_spell';
+      action = THE_HERO_ORDERS.cast_spell.key;
     }
   }
 

@@ -7,6 +7,7 @@
 import {
   THE_HERO_ORDERS,
   THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS,
+  type AHeroOrder,
 } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 
 /** A row of the hero orders (content). */
@@ -38,4 +39,14 @@ export function normaliseAction(order: { readonly action?: string | null | undef
   const raw = ((order?.action ?? '') || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS).toLowerCase().trim();
   const theKindByName: Readonly<Partial<Record<string, string>>> = PHASE_ACTION_MAP;
   return (theKindByName[raw] ?? '') || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS;
+}
+
+/** Each kind's hero order's row, by the row's key (Pursue's among them: a saved name, which no order's kind is). */
+const THE_ROW_OF_EACH_KIND_OF_ORDER: ReadonlyMap<string, AHeroOrder> = new Map(
+  Object.values(THE_HERO_ORDERS).map((row): [key: string, row: AHeroOrder] => [row.key, row]),
+);
+/** The hero order's row of a kind of order (B-06an: the checks before an order read its fields). Every kind is a row's
+ *  key (OrderKind is the rows' keys), so there is always one; for none, a row with no field, as the checks read it. */
+export function theHeroOrdersRowOfAKind(kind: OrderKind): AHeroOrder {
+  return THE_ROW_OF_EACH_KIND_OF_ORDER.get(kind) ?? { key: kind, theNamesTheTurnReads: [], tier: 0 };
 }

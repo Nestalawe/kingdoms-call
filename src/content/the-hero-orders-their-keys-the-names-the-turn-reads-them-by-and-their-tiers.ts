@@ -14,11 +14,14 @@
 // that stay put (answer 133: its fix comes with KD-065's after T7). theTierAnOrderActsIn reads each row's tier
 // (src/engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts), and the phase's
 // stages read it through that file (src/engine/turn/phase-stages-…).
+// The checks before an order runs read a row's fields (B-06an: processOrder, src/engine/orders/order-dispatch-…): a
+// mastery order (charged once a turn, and refused to a hero who joined the realm this turn, R-048), a Cast Spell (of a
+// mastery spell, a mastery), what a hero seized by a charm refuses, and the battle lock's orders.
 import { THE_ALIGNMENT_ORDERS } from './alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from './mastery-orders-their-keys-names-skills-and-levels.ts';
 
-/** A row: one kind of order, the names the turn reads it by and the tier it acts in. */
-interface AHeroOrder {
+/** A row: one kind of order, the names the turn reads it by, the tier it acts in, and the checks before it runs. */
+export interface AHeroOrder {
   /** The kind the turn reads the order as (an order's action, as the bots write it). */
   readonly key: string;
   /** Every name the turn reads the order by, in lower case, in the order the turn's names for the orders hold them. */
@@ -27,6 +30,17 @@ interface AHeroOrder {
   readonly tier: 0 | 1 | 2;
   /** The kind a saved name reads as, where it is no kind of its own (Pursue's row only). */
   readonly readsAs?: string;
+  /** A mastery order (THE_MASTERY_ORDERS' rows): given at most once a turn, and by no hero who joined the realm this
+   *  turn (R-048) or is seized by a charm. */
+  readonly aMasteryOrder?: true;
+  /** A Cast Spell: a cast of a mastery spell is a mastery, refused as one to a hero who joined the realm this turn or
+   *  is seized by a charm (not charged once a turn here: the cast's own rule). */
+  readonly aCastOfAMasterySpellIsAMastery?: true;
+  /** What a hero seized by a charm from an enemy refuses: Disband Army, a creed's order and a mastery order. */
+  readonly aSeizedHeroRefusesIt?: true;
+  /** Pinned by the battle lock: a Move or an Encounter out of a province whose battle is unresolved, while an armed
+   *  foe stands there (a Pursue reads as an Encounter first; a Forced March becomes a Move only after the lock). */
+  readonly pinnedByTheBattleLock?: true;
 }
 
 /** A creed order's row, built from its alignment row: its key, then its name in lower case and its other names. */
@@ -39,12 +53,22 @@ function theRowOfACreedOrder<const Key extends string>(order: {
     key: order.key,
     theNamesTheTurnReads: [order.key, order.name.toLowerCase(), ...order.theOtherNamesTheTurnReads],
     tier: 0,
+    aSeizedHeroRefusesIt: true,
   } as const;
+}
+
+/** A mastery order's row, joined to its mastery row by key: the names the turn reads it by; it stays put (tier 0, a
+ *  Forced March too: answer 133), it is a mastery order, and a hero seized by a charm refuses it. */
+function theRowOfAMasteryOrder<const Key extends string, const Names extends readonly string[]>(
+  order: { readonly key: Key },
+  theNamesTheTurnReads: Names,
+) {
+  return { key: order.key, theNamesTheTurnReads, tier: 0, aMasteryOrder: true, aSeizedHeroRefusesIt: true } as const;
 }
 
 /** The hero orders, by kind, in the order the turn's names for the orders run. */
 export const THE_HERO_ORDERS = {
-  move: { key: 'move', theNamesTheTurnReads: ['move'], tier: 1 },
+  move: { key: 'move', theNamesTheTurnReads: ['move'], tier: 1, pinnedByTheBattleLock: true },
   explore: { key: 'explore', theNamesTheTurnReads: ['explore', 'explore province'], tier: 0 },
   // 'search feature': the name orders written before the Lair's rename hold
   search: { key: 'search', theNamesTheTurnReads: ['search', 'search lair', 'search feature'], tier: 0 },
@@ -62,7 +86,12 @@ export const THE_HERO_ORDERS = {
     theNamesTheTurnReads: ['leave_army', 'leave/transfer army', 'leave army', 'transfer army'],
     tier: 0,
   },
-  disband_army: { key: 'disband_army', theNamesTheTurnReads: ['disband_army', 'disband army', 'disband'], tier: 0 },
+  disband_army: {
+    key: 'disband_army',
+    theNamesTheTurnReads: ['disband_army', 'disband army', 'disband'],
+    tier: 0,
+    aSeizedHeroRefusesIt: true,
+  },
   pickup_army: { key: 'pickup_army', theNamesTheTurnReads: ['pickup_army', 'pick up army', 'pick_up_army'], tier: 0 },
   // Give Item is renamed Send Item: the old names stay read
   give_item: {
@@ -70,7 +99,12 @@ export const THE_HERO_ORDERS = {
     theNamesTheTurnReads: ['give_item', 'give item', 'give magic item', 'send_item', 'send item', 'send magic item'],
     tier: 0,
   },
-  cast_spell: { key: 'cast_spell', theNamesTheTurnReads: ['cast_spell', 'cast spell'], tier: 0 },
+  cast_spell: {
+    key: 'cast_spell',
+    theNamesTheTurnReads: ['cast_spell', 'cast spell'],
+    tier: 0,
+    aCastOfAMasterySpellIsAMastery: true,
+  },
   spy: { key: 'spy', theNamesTheTurnReads: ['spy'], tier: 0 },
   practice: { key: 'practice', theNamesTheTurnReads: ['practice', 'practice skill', 'practice ability'], tier: 0 },
   research: { key: 'research', theNamesTheTurnReads: ['research', 'research discovery'], tier: 0 },
@@ -84,7 +118,12 @@ export const THE_HERO_ORDERS = {
   // Awaken the Wild and Call from the Pit: removed orders (2026-10-12) whose names the turn still reads
   awaken_wild: { key: 'awaken_wild', theNamesTheTurnReads: ['awaken the wild', 'awaken_wild'], tier: 0 },
   call_pit: { key: 'call_pit', theNamesTheTurnReads: ['call from the pit', 'call_pit'], tier: 0 },
-  encounter: { key: 'encounter', theNamesTheTurnReads: ['encounter', 'encounter character'], tier: 1 },
+  encounter: {
+    key: 'encounter',
+    theNamesTheTurnReads: ['encounter', 'encounter character'],
+    tier: 1,
+    pinnedByTheBattleLock: true,
+  },
   steal: { key: 'steal', theNamesTheTurnReads: ['steal', 'steal item', 'steal from character'], tier: 0 },
   use_item: { key: 'use_item', theNamesTheTurnReads: ['use_item', 'use item', 'use magic item'], tier: 0 },
   equip_items: {
@@ -96,83 +135,37 @@ export const THE_HERO_ORDERS = {
   // theTierAnOrderActsIn gives 'pursue', which no order's kind is: KD-406)
   pursue: { key: 'pursue', theNamesTheTurnReads: ['pursue', 'pursue character'], tier: 1, readsAs: 'encounter' },
   // the mastery orders: each row's key is its mastery row's (THE_MASTERY_ORDERS: its name, skill and level)
-  sabotage: { key: THE_MASTERY_ORDERS.sabotage.key, theNamesTheTurnReads: ['sabotage'], tier: 0 },
+  sabotage: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.sabotage, ['sabotage']),
   // a Forced March acts at tier 0, with the orders that stay put, though it marches (answer 133)
-  forced_march: {
-    key: THE_MASTERY_ORDERS.forced_march.key,
-    theNamesTheTurnReads: ['forced march', 'forced_march'],
-    tier: 0,
-  },
-  grand_heist: {
-    key: THE_MASTERY_ORDERS.grand_heist.key,
-    theNamesTheTurnReads: ['grand heist', 'grand_heist'],
-    tier: 0,
-  },
-  awaken_grove: {
-    key: THE_MASTERY_ORDERS.awaken_grove.key,
-    theNamesTheTurnReads: ['awaken grove', 'awaken_grove'],
-    tier: 0,
-  },
-  chart_unknown: {
-    key: THE_MASTERY_ORDERS.chart_unknown.key,
-    theNamesTheTurnReads: ['chart the unknown', 'chart_unknown'],
-    tier: 0,
-  },
-  discover_ruin: {
-    key: THE_MASTERY_ORDERS.discover_ruin.key,
-    theNamesTheTurnReads: ['discover lost ruin', 'discover_ruin'],
-    tier: 0,
-  },
-  blockade: { key: THE_MASTERY_ORDERS.blockade.key, theNamesTheTurnReads: ['blockade'], tier: 0 },
-  research_breakthrough: {
-    key: THE_MASTERY_ORDERS.research_breakthrough.key,
-    theNamesTheTurnReads: ['research breakthrough', 'research_breakthrough'],
-    tier: 0,
-  },
-  assassinate: { key: THE_MASTERY_ORDERS.assassinate.key, theNamesTheTurnReads: ['assassinate'], tier: 0 },
-  vanish: { key: THE_MASTERY_ORDERS.vanish.key, theNamesTheTurnReads: ['vanish'], tier: 0 },
-  challenge: { key: THE_MASTERY_ORDERS.challenge.key, theNamesTheTurnReads: ['challenge'], tier: 0 },
-  rampage: { key: THE_MASTERY_ORDERS.rampage.key, theNamesTheTurnReads: ['rampage'], tier: 0 },
-  rain_of_arrows: {
-    key: THE_MASTERY_ORDERS.rain_of_arrows.key,
-    theNamesTheTurnReads: ['rain of arrows', 'rain_of_arrows'],
-    tier: 0,
-  },
-  snipers_mark: {
-    key: THE_MASTERY_ORDERS.snipers_mark.key,
-    theNamesTheTurnReads: ["sniper's mark", 'snipers mark', 'snipers_mark'],
-    tier: 0,
-  },
-  feigned_retreat: {
-    key: THE_MASTERY_ORDERS.feigned_retreat.key,
-    theNamesTheTurnReads: ['feigned retreat', 'feigned_retreat'],
-    tier: 0,
-  },
-  grand_stratagem: {
-    key: THE_MASTERY_ORDERS.grand_stratagem.key,
-    theNamesTheTurnReads: ['grand stratagem', 'grand_stratagem'],
-    tier: 0,
-  },
-  lightning_advance: {
-    key: THE_MASTERY_ORDERS.lightning_advance.key,
-    theNamesTheTurnReads: ['lightning advance', 'lightning_advance'],
-    tier: 0,
-  },
-  raid_coast: {
-    key: THE_MASTERY_ORDERS.raid_coast.key,
-    theNamesTheTurnReads: ['raid the coast', 'raid_coast'],
-    tier: 0,
-  },
-  wild_calling: {
-    key: THE_MASTERY_ORDERS.wild_calling.key,
-    theNamesTheTurnReads: ['wild calling', 'wild_calling'],
-    tier: 0,
-  },
-  grand_design: {
-    key: THE_MASTERY_ORDERS.grand_design.key,
-    theNamesTheTurnReads: ['grand design', 'grand_design'],
-    tier: 0,
-  },
+  forced_march: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.forced_march, ['forced march', 'forced_march']),
+  grand_heist: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.grand_heist, ['grand heist', 'grand_heist']),
+  awaken_grove: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.awaken_grove, ['awaken grove', 'awaken_grove']),
+  chart_unknown: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.chart_unknown, ['chart the unknown', 'chart_unknown']),
+  discover_ruin: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.discover_ruin, ['discover lost ruin', 'discover_ruin']),
+  blockade: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.blockade, ['blockade']),
+  research_breakthrough: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.research_breakthrough, [
+    'research breakthrough',
+    'research_breakthrough',
+  ]),
+  assassinate: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.assassinate, ['assassinate']),
+  vanish: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.vanish, ['vanish']),
+  challenge: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.challenge, ['challenge']),
+  rampage: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.rampage, ['rampage']),
+  rain_of_arrows: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.rain_of_arrows, ['rain of arrows', 'rain_of_arrows']),
+  snipers_mark: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.snipers_mark, [
+    "sniper's mark",
+    'snipers mark',
+    'snipers_mark',
+  ]),
+  feigned_retreat: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.feigned_retreat, ['feigned retreat', 'feigned_retreat']),
+  grand_stratagem: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.grand_stratagem, ['grand stratagem', 'grand_stratagem']),
+  lightning_advance: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.lightning_advance, [
+    'lightning advance',
+    'lightning_advance',
+  ]),
+  raid_coast: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.raid_coast, ['raid the coast', 'raid_coast']),
+  wild_calling: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.wild_calling, ['wild calling', 'wild_calling']),
+  grand_design: theRowOfAMasteryOrder(THE_MASTERY_ORDERS.grand_design, ['grand design', 'grand_design']),
 } as const satisfies Readonly<Record<string, AHeroOrder>>;
 
 /** The kind a blank order, or one the turn has no name for, reads as: a Defend. */

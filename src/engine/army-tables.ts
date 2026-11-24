@@ -232,13 +232,15 @@ export const NPC_SCHOOL_SPELL = {
 // ── ONCE PER TURN (mastery) ── the 20 L7/L9 mastery ORDERS; each may be attempted only once per
 // turn per character (mirrors the mastery-spell once-per-turn rule in the cast handler). The content's rows' keys, in
 // their order (the masteries' names are the prose's: MASTERY_ORDER_LABEL) (src/content/mastery-orders-their-keys-names-skills-and-levels.ts, P1-11d10): a row's key that
-// is no kind of order fails to compile.
+// is no kind of order fails to compile. The order dispatch reads each hero order's row (aMasteryOrder, B-06an), these
+// keys' rows.
 export const MASTERY_ORDER_KEYS = new Set<string>(
   Object.values(THE_MASTERY_ORDERS).map((order) => order.key) satisfies readonly OrderKind[],
 );
 // Alignment-signature orders, by engine action key: the content's rows' keys, in their order (plan P1-19's alignment
-// orders, Decision 3). Used with MASTERY_ORDER_KEYS to decide what a charmed enemy hero may not be made to do. A row's
-// key that is no kind of order fails to compile. Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22).
+// orders, Decision 3). What a charmed enemy hero may not be made to do, with the masteries: the order dispatch reads
+// each hero order's row (aSeizedHeroRefusesIt, B-06an), these keys' rows among them. A row's key that is no kind of
+// order fails to compile. Awaken the Wild and Call from the Pit removed 2026-10-12 (item 22).
 export const ALIGNMENT_ORDER_KEYS = new Set<string>(
   Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.key) satisfies readonly OrderKind[],
 );
