@@ -110,6 +110,9 @@ const thePlansAndCombatants = await import('../../src/engine/personal-combat/spe
 const theTerrain = await import('../../src/engine/battle/terrain-and-unit-strength.ts');
 const { COMBAT_ONLY_TACTICS } = await import('../../src/engine/army-tables.ts');
 const { ARMY_UNIT_NAMES } = await import('../../src/content/kingdoms-call-data.ts');
+const { THE_HERO_ORDERS } =
+  await import('../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts');
+const { theNameOfTheSpell } = await import('../../src/engine/bots/the-name-of-a-spell-by-its-slug.ts');
 const { BOT_SKILL_BUILD, _usedBotKingdomNames } = theBotsSetUp;
 /** Each function of the engine's a test here calls by its name, the export of the module that defines it. */
 const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
@@ -791,6 +794,94 @@ describe('The Spring orders pass: what a host in contact does first', () => {
       'defend',
       'defend',
     ]);
+  });
+});
+
+// ── The Spring orders pass reads the hero orders' rows (B-06as) ──────────────────────────────────────────────────
+// The pass compares each order with its row's key (THE_HERO_ORDERS), and keeps the bots' own sets of them as they
+// were: what they count as a march (BOT_P1.reloc: Lightning Advance in it, KD-468), what keeps an unarmed hero beside
+// an enemy host, and what keeps a hero from a feint or a second front. Each case is aimed at one read: a key swapped
+// for another kind's turns it red. The matrix's games give the bots no such plans.
+describe("The Spring orders pass reads the hero orders' rows (B-06as)", () => {
+  const runBotPhaseOne = fn('runBotPhaseOne');
+  const botIsFiller = theBotsPhaseOne.botIsFiller as unknown as (o: Raw | null) => boolean;
+  const BOT_P1 = theBotsStrategy.BOT_P1;
+  const anOrder = (action: string, target = '', extra = '', desc = ''): Raw => ({ action, target, extra, desc });
+  const hold = (desc = 'Hold'): Raw => anOrder(THE_HERO_ORDERS.defend.key, '', '', desc);
+  const plans = (b: Board) => b.G.turnOrders as unknown as Record<number, Raw[]>;
+  const actions = (b: Board, id: number) =>
+    must(plans(b)[id], 'his orders').map((o) => `${String(o['action'])}|${String(o['target'])}`);
+  test("what the bots count as a march: Move, Pursue, Encounter, Forced March and Lightning Advance, by the rows' keys; two of them stay put by the rule (KD-468, answer 133)", () => {
+    expect([...BOT_P1.reloc]).toEqual(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']);
+    const rows: Readonly<Record<string, { readonly tier: number }>> = THE_HERO_ORDERS;
+    expect([...BOT_P1.reloc].filter((k) => rows[k]?.tier !== 1)).toEqual(['forced_march', 'lightning_advance']);
+  });
+  test("a filler: a Defend but a Watch, a Practice, an Explore and a Research that teach no one, by the rows' keys", () => {
+    expect(
+      [
+        hold(),
+        hold('Watch'),
+        anOrder('practice', 'melee'),
+        anOrder('explore'),
+        anOrder('research'),
+        anOrder('rest'),
+        anOrder('move', 'dir:NW'),
+        null,
+      ].map(botIsFiller),
+    ).toEqual([true, false, true, true, true, false, false, true]);
+  });
+  /** A bot host on realm 0's ground, at war with it, so in contact; his plan `before` his own orders. */
+  const ranked = (
+    order: Raw,
+    before: readonly Raw[] = [hold(), hold()],
+    more: (b: Board, h: Character) => void = () => undefined,
+  ) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(b.X, 0);
+    const h = standAHero(b, { player: 1, at: b.X, troops: 1 });
+    plans(b)[h.id] = [...before, order, ...[hold(), hold(), hold()]].slice(0, 5);
+    more(b, h);
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    return actions(b, h.id);
+  };
+  test.for([
+    ['a cast of Invisibility', anOrder('cast_spell', theNameOfTheSpell('invisibility'))],
+    ['a strike: a cast of Curse', anOrder('cast_spell', theNameOfTheSpell('curse'))],
+    ['a Challenge', anOrder('challenge')],
+    ['a Steal of an item', anOrder('steal', 'item')],
+    ['a Recruit for his host', anOrder('recruit', 'Men-at-Arms|1')],
+    ['a Pick Up Army', anOrder('pickup_army')],
+    ['a summoning: a cast of Elemental Summon', anOrder('cast_spell', theNameOfTheSpell('elemental-summon'))],
+    ['guard magic: a cast of Oratory', anOrder('cast_spell', theNameOfTheSpell('oratory'))],
+    ['a Feigned Retreat', anOrder('feigned_retreat')],
+    ['the Watch', hold('Watch')],
+  ] as const)('a bot host in contact puts %s ahead of the orders written before it', ([, order]) => {
+    expect(ranked(order)[0]).toBe(`${String(order['action'])}|${String(order['target'])}`);
+  });
+  test('a Hire ranks above a Defend, below a Challenge', () => {
+    expect(ranked(anOrder('challenge'), [hold(), anOrder('hire')])).toEqual([
+      'challenge|',
+      'hire|',
+      'defend|',
+      'defend|',
+      'defend|',
+    ]);
+  });
+  test('a hand-over to a leader of the realm ranks ahead, for a host in contact', () => {
+    const got = ranked(anOrder('leave_army', 'all'), [hold(), hold()], (b, h) => {
+      const order = must(plans(b)[h.id]?.[2], 'the hand-over');
+      order['extra'] = String(must((fn('botRoles')(b.G, 1) as { leaders: number[] }).leaders[0], 'a leader'));
+    });
+    expect(got[0]).toBe('leave_army|all');
+  });
+  test('a Recruit for the garrison of our own ground, with an enemy host there, ranks ahead', () => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(b.X, 1);
+    standAHero(b, { player: 0, at: b.X, troops: 2 });
+    const h = standAHero(b, { player: 1, at: b.X });
+    plans(b)[h.id] = [hold(), hold(), anOrder('recruit', 'Men-at-Arms|1,to:garrison'), hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    expect(actions(b, h.id)[0]).toBe('recruit|Men-at-Arms|1,to:garrison');
   });
 });
 
