@@ -35,6 +35,9 @@
 // record holding none (P1-10b38); two allies seeking an alliance in a game of three, each told, still allied; no list
 // of realms, no roll of heroes (a call, a claim, an elimination, a concession); a realm with no provinces but a king,
 // still in the game; a foe's hero beside a host with no companies list; a game decided before with no standings.
+// The small game's alliance limit (B-06ar), at each of its three readers: in a game of three, two Neutral realms'
+// Treats come to nothing, two allies' are refused an alliance and told so, and the report's card allows none; in a
+// game of four, each allows one.
 // Properties (fast-check): each pair's relation after the declarations is the rule's, each realm keeps exactly the
 // overtures it didn't answer and has met who courted it; the game ends by elimination exactly when one realm is left
 // with land or a living hero, else by concession when one realm still in it is left or all left are allies, announced
@@ -47,6 +50,8 @@ import {
   LANDS,
   ALL_CONCEDED,
   RUINS,
+  allied,
+  blocked,
   broken,
   byConcession,
   called,
@@ -886,5 +891,57 @@ describe('Diplomacy and victory: properties', () => {
       ),
       { seed: SEED, numRuns: 300 },
     );
+  });
+});
+
+// ── The small game's alliance limit (B-06ar): one number of the diplomacy ladder's row in content, read by the
+// resolution's check of a declaration, by the resolution itself and by the report's Diplomacy card. In a game of three
+// realms no alliance can be forged; in a game of four, one can.
+const { buildTurnReport } = await import('../../src/views/turn-report.ts');
+const { playerView } = await import('../../src/views/what-each-realm-may-see-of-the-world.ts');
+describe("the small game's alliance limit: no alliance in a game of three realms, one in a game of four", () => {
+  test.each([
+    [3, 'neutral', false],
+    [4, 'allied', true],
+  ] as const)(
+    'in a game of %i, two Neutral realms who both send a Treat are left %s, each told of an alliance: %s',
+    (n, relation, toldOfAnAlliance) => {
+      const b = fresh(n);
+      relate(b, {});
+      merge(b, { 1: { diplomacy: { 2: 'treat' } }, 2: { diplomacy: { 1: 'treat' } } });
+      settle(b, [diplomacy]);
+      const theAlliance = toldOfAnAlliance ? [allied(name(b, 1), name(b, 2)), allied(name(b, 2), name(b, 1))] : [];
+      expect(
+        [relationOf(b, 1, 2), said(outcome(b)).map(([, t]) => t)],
+        `in a game of ${String(n)}: the pair's relation and every line said`,
+      ).toEqual([relation, theAlliance]);
+    },
+  );
+
+  test.each([
+    [3, true],
+    [4, false],
+  ] as const)(
+    'in a game of %i, two allies who both send a Treat stay allied, told no alliance may be forged: %s',
+    (n, told) => {
+      const b = fresh(n);
+      relate(b, { '1-2': 'allied' });
+      merge(b, { 1: { diplomacy: { 2: 'treat' } }, 2: { diplomacy: { 1: 'treat' } } });
+      settle(b, [diplomacy]);
+      const lines = said(outcome(b)).map(([, t]) => t);
+      expect(
+        [relationOf(b, 1, 2), lines.includes(blocked(name(b, 1), name(b, 2)))],
+        `in a game of ${String(n)}: the allies' relation, and whether they are told no alliance may be forged`,
+      ).toEqual(['allied', told]);
+    },
+  );
+
+  test.each([
+    [3, false],
+    [4, true],
+  ] as const)("in a game of %i, a realm's report says whether alliances are allowed: %s", (n, allowed) => {
+    const b = fresh(n);
+    const report = buildTurnReport(playerView(b.G as never, 0)) as { diplomacy: { alliancesAllowed: unknown } };
+    expect(report.diplomacy.alliancesAllowed, `in a game of ${String(n)}: alliances allowed`).toBe(allowed);
   });
 });
