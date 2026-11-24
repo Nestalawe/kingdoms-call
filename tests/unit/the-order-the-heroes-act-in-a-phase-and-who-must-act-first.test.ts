@@ -1,9 +1,10 @@
 // What a hero holds, on plain values (plan P1-11e16 moved these rules out of the phase pipeline, so the order form's
 // replay of a phase can act its heroes in the turn's order): a hero's initiative (his skills added up, his March three
-// times); the tier an order acts in (orders that stay put, then Move and Encounter, then Defend); which of two heroes
-// acts first (the tier, then initiative, then the lower id); who must act before whom (a giver before his recipient, a
-// friendly spell before its mark, a Pick Up after the Leaves, a comrade marching in before the giver, a pursuer after
-// his quarry); and the order Kahn's sort gives (the dependencies first, a cycle in initiative order).
+// times); the tier an order acts in (orders that stay put, then Move and Encounter, then Defend; since B-06al, as each
+// hero order's row in content writes it); which of two heroes acts first (the tier, then initiative, then the lower
+// id); who must act before whom (a giver before his recipient, a friendly spell before its mark, a Pick Up after the
+// Leaves, a comrade marching in before the giver, a pursuer after his quarry); and the order Kahn's sort gives (the
+// dependencies first, a cycle in initiative order).
 //
 // Level 1 (unit): the functions of src/engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts
 // on made-up heroes and intents, and the engine's totalInit that asks the first. A lower level can't run a function. A
@@ -20,6 +21,7 @@ import {
   type AHerosIntentAsWhoMustActFirstReadsIt,
 } from '../../src/engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
 import { totalInit } from '../../src/engine/heroes/effective-skills-and-hidden-heroes.ts';
+import { THE_HERO_ORDERS } from '../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 
 const SKILLS = [
   'melee',
@@ -77,6 +79,15 @@ describe('the tier an order acts in, and which of two heroes acts first', () => 
       expect(theTierAnOrderActsIn(kind), kind).toBe(0);
     for (const kind of ['move', 'encounter', 'pursue']) expect(theTierAnOrderActsIn(kind), kind).toBe(1);
     expect(theTierAnOrderActsIn('defend')).toBe(2);
+  });
+
+  // The hero orders' rows (content) write each kind's tier, and Pursue's (B-06al); theTierAnOrderActsIn gives its own
+  // until it reads them, so the two are held to one answer. A Forced March stays at 0 (answer 133).
+  test("each hero order's row writes the tier theTierAnOrderActsIn gives its key", () => {
+    const rows = Object.values(THE_HERO_ORDERS);
+    expect(rows.length, "the hero orders' rows").toBe(49);
+    for (const row of rows) expect(row.tier, `${row.key}'s tier`).toBe(theTierAnOrderActsIn(row.key));
+    expect(THE_HERO_ORDERS.forced_march.tier, "a Forced March's tier").toBe(0);
   });
 
   const hero = (id: number, action: string, melee: number) => ({ id, action, skills: { melee } });
