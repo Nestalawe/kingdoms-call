@@ -257,7 +257,9 @@ tier (`theTierAnOrderActsIn`, and the phase's stages through it); a name no row 
 before an order runs (`processOrder`, before it hands the order to the registry, B-06an) read its row's fields: `aMasteryOrder` (once a turn,
 and no mastery from a hero who joined the realm this turn or is seized by a charm), `aCastOfAMasterySpellIsAMastery`
 (Cast Spell: a mastery spell counts as a mastery), `aSeizedHeroRefusesIt` (Disband Army, the creed orders) and
-`pinnedByTheBattleLock` (Move, Encounter); a check of one kind compares with its row's key.
+`pinnedByTheBattleLock` (Move, Encounter); a check of one kind compares with its row's key. So does every other check
+of an order's kind in the engine but the bots' (B-06ap), and a blank phase reads
+`THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS`: the ratchet's `orderKindChecksInEngine` is 0.
 
 ## A mastery order is one row, and its resolver's level
 
