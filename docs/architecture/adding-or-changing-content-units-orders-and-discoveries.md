@@ -158,7 +158,7 @@ A rule a realm holds by its alignment is one row of
 `src/engine/rules/the-registry-of-alignment-abilities.ts`, its effect at a stage in `src/engine/rules/alignment-abilities/`;
 the resolver keeps its name and asks the stage's runner, which is handed the alignment the rule reads. The engine's
 names of an alignment outside `src/engine/rules/` are counted by the ratchet (`alignmentChecksInEngine`), and the count
-only falls: the bots' checks and the lines that choose words, not rules, still count. The marks such a rule leaves on a
+is 0: a new one fails it. The marks such a rule leaves on a
 province (consecrated ground, Terror, Enslave) are laid, lifted and faded by
 `src/engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts`, each mark keeping its field of the
 save. The stages, the marks, what stays outside the family and how to add an ability:

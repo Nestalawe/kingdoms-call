@@ -193,8 +193,10 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   checks), their hand-overs ask `theRisenDeadFollowAHandOverTo`, and a hero leaves the Bless to his king where
   `theYieldOfABlessARealmsAlignmentGives` raises the king's (P1-19bb7), each with the bot's own conditions and numbers;
   where a bot's copy differs from the rule it keeps the bot's figure, with a `KD-` row. What a creed's ability is
-  worth to a bot is [the bots' worth of an alignment ability](#the-bots-worth-of-an-alignment-ability); their tuning
-  by creed and the creeds their war counts as dark still name the alignments.
+  worth to a bot is [the bots' worth of an alignment ability](#the-bots-worth-of-an-alignment-ability). Their tuning's
+  overlays (`botTuning`) ask the runners of Divine grace, the Banner of Fellowship, the conquest doctrine and the Blood
+  Harvest, one overlay at most, with the bot's own numbers; their war's lower bar for the dark creeds (`botWarAssess`)
+  asks `doesAnAlignmentDeclareWarWithoutWarning` (P1-19bb9).
 - **The order form** keeps a hand-written widget for each alignment order: a new order's row does not appear on it by
   itself.
 
@@ -241,8 +243,8 @@ and [of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk
   the foe's alignment (75/50/20), and the Evil and Undead's laughter.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
   `alignmentChecksInEngine`: the functions taken name no alignment, and the engine's names of an alignment outside
-  `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
-  the count stays above 0.
+  `src/engine/rules/` only fall. The count is 0 (P1-19bb9): any such name, a race's `'Undead'` among them, fails
+  the ratchet.
 - `tests/unit/the-marks-on-a-province-each-read-laid-lifted-and-faded.test.ts`: each mark read, laid and lifted
   through the turn's own callers (with the cases its header names, each read, lay, lift and fade).
 - `tests/unit/the-wonders-each-by-its-row-and-the-realm-it-serves.test.ts`: each Wonder's slug and alignment, one row
