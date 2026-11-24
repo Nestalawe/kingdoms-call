@@ -251,8 +251,8 @@ unknown order's Defend (`normaliseAction`) are built from them
 (`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`). The creed orders' rows are
 built from their alignment rows; the mastery orders' rows join theirs (below) by key. A new row with no case in
 `processOrder`'s switch fails to compile
-(`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). The tier is written there
-only: the phase's order (`theTierAnOrderActsIn`) still gives its own, the same.
+(`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). The phase's order reads the
+tier (`theTierAnOrderActsIn`, and the phase's stages through it); a name no row writes acts in tier 0.
 
 ## A mastery order is one row, and its resolver's level
 
