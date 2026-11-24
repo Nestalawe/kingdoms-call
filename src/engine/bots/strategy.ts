@@ -3,6 +3,7 @@ import {
   KC_UNIT_CLASS,
   THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
 } from '../../content/kingdoms-call-data.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
@@ -955,6 +956,17 @@ export function botSchoolLimit(lvl: number) {
   return actionSpellsAllowedPerSchoolEachTurn(lvl);
 }
 // ── The phase-one pass's tuning, and whether a host is in contact (bots/phase-one.ts says the pass) ──
+/** What the bots count as a march, where the Spring pass's block of orders before a march ends (B-06as: the orders'
+ *  rows' keys, the bots' own set): a Move, a Pursue, an Encounter, a Forced March and a Lightning Advance. The rule
+ *  has a Lightning Advance stay put (a flag on the hero's attacks this turn), so the bots' set differs from it there
+ *  (KD-468); a Forced March acts with the orders that stay put too (answer 133). */
+const whatTheBotsCountAsAMarch: ReadonlySet<string> = new Set([
+  THE_HERO_ORDERS.move.key,
+  THE_HERO_ORDERS.pursue.key,
+  THE_HERO_ORDERS.encounter.key,
+  THE_HERO_ORDERS.forced_march.key,
+  THE_HERO_ORDERS.lightning_advance.key,
+]);
 export const BOT_P1 = {
   retreatRatio: 0.75,
   fleeRatio: 0.5,
@@ -976,7 +988,7 @@ export const BOT_P1 = {
     theNameOfTheSpell('phantasmal-armies'),
   ]),
   gainSpell: new Set([theNameOfTheSpell('elemental-summon'), theNameOfTheSpell('skeletal-armies')]),
-  reloc: new Set(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']),
+  reloc: whatTheBotsCountAsAMarch,
 };
 export function botEnemyHostsIn(G: GameState, pi: number, X: Province | null | undefined) {
   return X

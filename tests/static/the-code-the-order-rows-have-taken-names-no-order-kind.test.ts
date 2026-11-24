@@ -3,12 +3,13 @@
 // OrderKind, the alignment orders' aside, or `'pursue'`): compared with an order's action, a `case` of a switch on
 // one, a list of kinds, a default kind or an action assigned, or a value of the kinds' own table. It reads the order's
 // row instead. Each row adds what it takes to TAKEN (B-06al the first; B-06ao processOrder, its switch gone for the
-// registry; B-06ap the last outside the bots, so the engine's count is 0). With them, the ratchet's two counts of those
-// checks outside src/engine/rules/, in the engine and in the bots (tools/ratchet.ts's orderKindChecksInEngine and
-// orderKindChecksInTheBots, by their helper orderKindChecksByFunction), so both only fall: the helper counts each
-// check planted, and none of an order written (`action: 'move'`), a line's kind (`type: 'move'`), a skill handed to a
-// call, a mixed list, or a comparison of another sense (a bot's role `'spy'`, a duel's stance `'challenge'`), a name
-// being bound to an order's kind in its own function only.
+// registry; B-06ap the last outside the bots, so the engine's count is 0; B-06as the bots' Spring pass and their march
+// set). With them, the ratchet's two counts of those checks outside src/engine/rules/, in the engine and in the bots
+// (tools/ratchet.ts's orderKindChecksInEngine and orderKindChecksInTheBots, by their helper
+// orderKindChecksByFunction), so both only fall: the helper counts each check planted, and none of an order written
+// (`action: 'move'`), a line's kind (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of
+// another sense (a bot's role `'spy'`, a duel's stance `'challenge'`), a name being bound to an order's kind in its
+// own function only.
 //
 // Level 0 (static): the files' syntax trees and the hero orders' rows as content writes them; nothing runs.
 import fs from 'node:fs';
@@ -53,6 +54,9 @@ const THE_PSYCHIC_SPELLS_FILE =
   'src/engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts';
 const THE_WHITE_MAGIC_FILE = 'src/engine/orders/spells/white-magic-spells-the-cast-spell-order-works.ts';
 const THE_LOG_LINE_HELPERS_FILE = 'src/engine/turn/log-line-helpers.ts';
+/** The bots, 1 of 2 (B-06as): the Spring pass, and the bots' tuning of it (BOT_P1). */
+const THE_BOTS_SPRING_PASS_FILE = 'src/engine/bots/phase-one.ts';
+const THE_BOTS_STRATEGY_FILE = 'src/engine/bots/strategy.ts';
 
 /** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it: each row
  *  adds what it takes. */
@@ -92,6 +96,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   [THE_PSYCHIC_SPELLS_FILE, '_applyCharmOrders', "B-06ap, the charm's pre-orders but a Defend: its row's key"],
   [THE_WHITE_MAGIC_FILE, 'workResurrect', "B-06ap, the rising's pre-orders but a Defend: its row's key"],
   [THE_LOG_LINE_HELPERS_FILE, 'telOrdersFor', 'B-06ap, a blank phase in the telemetry: the default kind'],
+  [THE_BOTS_STRATEGY_FILE, TOP, "B-06as, what the bots count as a march (BOT_P1.reloc): the rows' keys, the bots' set"],
+  [
+    THE_BOTS_SPRING_PASS_FILE,
+    'botIsFiller',
+    "B-06as, a filler order: the Defend's, Practice's, Explore's, Research's keys",
+  ],
+  [THE_BOTS_SPRING_PASS_FILE, 'runBotPhaseOne', "B-06as, the Spring pass: the rows' keys, the bots' errands named"],
+  [THE_BOTS_SPRING_PASS_FILE, 'attacksOf', "B-06as, a general's attacks: no Encounter nor Pursue, by the rows' keys"],
+  [THE_BOTS_SPRING_PASS_FILE, 'castsOf', "B-06as, a caster's casts of a school: the Cast Spell row's key"],
+  [THE_BOTS_SPRING_PASS_FILE, 'urgency', "B-06as, the urgency of an order before the first march: the rows' keys"],
 ];
 
 test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {
