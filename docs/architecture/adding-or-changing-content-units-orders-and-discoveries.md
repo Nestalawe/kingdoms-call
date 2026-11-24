@@ -259,7 +259,10 @@ and no mastery from a hero who joined the realm this turn or is seized by a char
 (Cast Spell: a mastery spell counts as a mastery), `aSeizedHeroRefusesIt` (Disband Army, the creed orders) and
 `pinnedByTheBattleLock` (Move, Encounter); a check of one kind compares with its row's key. So does every other check
 of an order's kind in the engine but the bots' (B-06ap), and a blank phase reads
-`THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS`; the ratchet's `orderKindChecksInEngine` keeps it so.
+`THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS`; the ratchet's `orderKindChecksInEngine` keeps it so. The bots' Spring
+pass (`bots/phase-one.ts`, B-06as) compares with the rows' keys too, its sets of orders named lists of them (what the
+bots count as a march, `BOT_P1.reloc`, holds Lightning Advance, which stays put: KD-468); `orderKindChecksInTheBots`
+counts the bots' rest.
 
 ## A mastery order is one row, and its resolver's level
 

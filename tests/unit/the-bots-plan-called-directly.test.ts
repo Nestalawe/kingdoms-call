@@ -28,6 +28,9 @@
 // gives two shares of its fights, never more than all; for any bot realms every pass is handed exactly those, in the
 // plan's order. Planted faults: in the PR (P1-08l2). Then the Spring orders pass (`runBotPhaseOne`) called directly: a
 // bot host in contact ranks Harvest the Field and Perform Rite, by the order's key, ahead of slower orders (P1-21f).
+// Then the same pass on the hero orders' rows' keys (B-06as): the bots' march set (Lightning Advance in it, KD-468), a
+// filler, each order a host in contact ranks ahead, the errands that keep an unarmed hero beside an enemy host, a march
+// that keeps a hero from the evacuation and the triage, the march a Master of March forces, and a softener's castings.
 // Then the intel and the setup on what no matrix game hands them (P1-10b40): a game's slot and setup as the GM's page
 // reads them, a realm's name once its pool is used, the alignments' spread beside humans, the weights for any
 // difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field. Then the strategy's
@@ -35,7 +38,8 @@
 // or a field, the musters of an admiral, a flying general and a host, a garrison, a hire and the kinds a province raises.
 // Then the Spring orders pass on what no matrix game hands it (P1-10b42), with a case aimed at each fault the night
 // run's mutation session found unguarded (P1-21j): the empire's width, a feint past a visiting host, the forced march
-// at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit.
+// at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit;
+// and no feint nor second front for a hero busy with an errand (B-06as).
 // Then the spellcraft on what no matrix game hands it (P1-10b43): the single best cast, the titles a realm with no
 // standings chases, the ratings and a guardian weighed on a hero lacking a field, a lair, a march, a path, a quarry, a
 // cast plan, the cross-training, the actions pass, a spy's target and the practice fallback on a world lacking a list.
@@ -810,7 +814,7 @@ describe("The Spring orders pass reads the hero orders' rows (B-06as)", () => {
   const hold = (desc = 'Hold'): Raw => anOrder(THE_HERO_ORDERS.defend.key, '', '', desc);
   const plans = (b: Board) => b.G.turnOrders as unknown as Record<number, Raw[]>;
   const actions = (b: Board, id: number) =>
-    must(plans(b)[id], 'his orders').map((o) => `${String(o['action'])}|${String(o['target'])}`);
+    must(plans(b)[id], 'his orders').map((o) => `${String(o['action'])}|${String(o['target'])}|${String(o['desc'])}`);
   test("what the bots count as a march: Move, Pursue, Encounter, Forced March and Lightning Advance, by the rows' keys; two of them stay put by the rule (KD-468, answer 133)", () => {
     expect([...BOT_P1.reloc]).toEqual(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']);
     const rows: Readonly<Record<string, { readonly tier: number }>> = THE_HERO_ORDERS;
@@ -856,15 +860,15 @@ describe("The Spring orders pass reads the hero orders' rows (B-06as)", () => {
     ['a Feigned Retreat', anOrder('feigned_retreat')],
     ['the Watch', hold('Watch')],
   ] as const)('a bot host in contact puts %s ahead of the orders written before it', ([, order]) => {
-    expect(ranked(order)[0]).toBe(`${String(order['action'])}|${String(order['target'])}`);
+    expect(ranked(order)[0]).toBe(`${String(order['action'])}|${String(order['target'])}|${String(order['desc'])}`);
   });
   test('a Hire ranks above a Defend, below a Challenge', () => {
     expect(ranked(anOrder('challenge'), [hold(), anOrder('hire')])).toEqual([
-      'challenge|',
-      'hire|',
-      'defend|',
-      'defend|',
-      'defend|',
+      'challenge||',
+      'hire||',
+      'defend||Hold',
+      'defend||Hold',
+      'defend||Hold',
     ]);
   });
   test('a hand-over to a leader of the realm ranks ahead, for a host in contact', () => {
@@ -872,7 +876,7 @@ describe("The Spring orders pass reads the hero orders' rows (B-06as)", () => {
       const order = must(plans(b)[h.id]?.[2], 'the hand-over');
       order['extra'] = String(must((fn('botRoles')(b.G, 1) as { leaders: number[] }).leaders[0], 'a leader'));
     });
-    expect(got[0]).toBe('leave_army|all');
+    expect(got[0]).toBe('leave_army|all|');
   });
   test('a Recruit for the garrison of our own ground, with an enemy host there, ranks ahead', () => {
     const { b } = fresh(() => ({ bots: [1] }));
@@ -881,7 +885,83 @@ describe("The Spring orders pass reads the hero orders' rows (B-06as)", () => {
     const h = standAHero(b, { player: 1, at: b.X });
     plans(b)[h.id] = [hold(), hold(), anOrder('recruit', 'Men-at-Arms|1,to:garrison'), hold(), hold()];
     runBotPhaseOne(b.G, new Set([1]), 'order');
-    expect(actions(b, h.id)[0]).toBe('recruit|Men-at-Arms|1,to:garrison');
+    expect(actions(b, h.id)[0]).toBe('recruit|Men-at-Arms|1,to:garrison|');
+  });
+  /** An unarmed bot hero beside an enemy host, with a way out to our own ground: his plan after the muster stage. */
+  const evacuated = (errand: Raw | null, first: Raw = hold()) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(must(b.ring1[0], 'a neighbour'), 1);
+    standAHero(b, { player: 0, at: b.X, troops: 2 });
+    const h = standAHero(b, { player: 1, at: b.X });
+    plans(b)[h.id] = [first, errand ?? hold(), hold(), hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'muster');
+    return actions(b, h.id)[0];
+  };
+  test('an unarmed hero beside an enemy host, with no errand there, leaves', () => {
+    expect(evacuated(null)).toMatch(/^move\|dir:/);
+  });
+  test.for(['steal', 'spy', 'encounter', 'challenge', 'grand_heist', 'assassinate', 'sabotage'])(
+    'an unarmed hero beside an enemy host stays there on purpose for his %s',
+    (action) => {
+      expect(evacuated(anOrder(action)), action).toBe('defend||Hold');
+    },
+  );
+  test('an unarmed hero beside an enemy host whose first order is a march keeps it', () => {
+    expect(evacuated(null, anOrder('move', 'dir:NW', '', 'Scout'))).toBe('move|dir:NW|Scout');
+  });
+  /** An outmatched bot host beside an enemy host, with a way out to our own ground: his plan after the muster stage. */
+  const triaged = (first: Raw) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(must(b.ring1[0], 'a neighbour'), 1);
+    standAHero(b, { player: 0, at: b.X, troops: 12 });
+    const h = standAHero(b, { player: 1, at: b.X, troops: 1 });
+    plans(b)[h.id] = [first, hold(), hold(), hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'muster');
+    return actions(b, h.id)[0];
+  };
+  test('an outmatched host withdraws, but not when his first order is a march of his own', () => {
+    expect([triaged(hold()), triaged(anOrder('move', 'dir:NW', '', 'Scout'))]).toEqual([
+      expect.stringMatching(/^move\|dir:\w+\|Withdraw from /),
+      'move|dir:NW|Scout',
+    ]);
+  });
+  /** A Master of March's plan after the Spring stage: two attacks, and what he writes between and after them. */
+  const marched = (second: Raw, third: Raw) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const g = standAHero(b, { player: 1, at: b.X, troops: 3, skills: { melee: 2, tactical: 2, march: 7, spy: 0 } });
+    plans(b)[g.id] = [anOrder('move', 'dir:E', '', 'Attack the first'), second, third, hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    return actions(b, g.id).slice(0, 3);
+  };
+  test('a Master of March forces the march between his two attacks, and no other once he has a Forced March', () => {
+    expect([
+      marched(anOrder('move', 'dir:E', '', 'March on'), anOrder('move', 'dir:E', '', 'Attack the second')),
+      marched(anOrder('move', 'dir:E', '', 'Attack the second'), anOrder('forced_march', 'dir:E', '', 'March on')),
+    ]).toEqual([
+      [
+        'move|dir:E|Attack the first',
+        'forced_march|dir:E|Forced March \u2014 March on',
+        'move|dir:E|Attack the second',
+      ],
+      ['move|dir:E|Attack the first', 'move|dir:E|Attack the second', 'forced_march|dir:E|March on'],
+    ]);
+  });
+  /** A caster of Illusory Magic beside a general's target, with `casts` already in his plan: whether the Spring stage
+   *  writes him an Illusory Terrain to soften the target, as it does if his school has a casting to spare. */
+  const softened = (casts: readonly Raw[]) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const N = must(b.ring1[0], 'a neighbour');
+    b.own(N, 0);
+    const g = standAHero(b, { player: 1, at: b.X, troops: 3 });
+    plans(b)[g.id] = [anOrder('move', String(N.id), '', 'Attack ' + N.name), hold(), hold(), hold(), hold()];
+    const m = standAHero(b, { player: 1, at: b.X, skills: { illusory: 1 } });
+    plans(b)[m.id] = [...casts, hold(), hold(), hold(), hold(), hold()].slice(0, 5);
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    return actions(b, m.id).some((o) => o.startsWith(`cast_spell|${theNameOfTheSpell('illusory-terrain')}|`));
+  };
+  test("a caster softens a general's target unless his school's castings this turn are spent", () => {
+    const invisibility = anOrder('cast_spell', theNameOfTheSpell('invisibility'), '', 'Cloak');
+    expect([softened([]), softened([invisibility])]).toEqual([true, false]);
   });
 });
 
@@ -2147,6 +2227,16 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
       '[[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:SE|Reinforce Hero # in the battle for Wide Waters","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:NW|undefined","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:SE|Reinforce Hero # in the battle for Wide Waters","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]]]',
     );
   });
+  // B-06as: the errands that keep the hero at the general's side from a feint or a second front, by the rows' keys
+  test.for(['steal', 'spy', 'encounter', 'challenge', 'hire'])(
+    'no feint nor second front is handed to a hero at the general’s side busy with a %s',
+    (action) => {
+      const [general] = feint((b, _g, hero) => {
+        plans(b)[hero.id] = [hold(), { action, target: '', extra: '', desc: '' }, hold(), hold(), hold()];
+      });
+      expect(must(general, 'his plan')[0], action).toMatch(/^move\|/);
+    },
+  );
   test('a feint: a unit to a hero at the general’s side, to draw the enemy host off his target', () => {
     expect(
       JSON.stringify([
