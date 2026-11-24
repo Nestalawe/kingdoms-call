@@ -67,8 +67,10 @@ const { processOrder: theProcessOrder } =
 const { setMovePool: theSetMovePool } = await import('../../src/engine/units/movement-pools.ts');
 const { phaseInitCompare: thePhaseInitCompare } =
   await import('../../src/engine/turn/phase-intents-and-dependency-ordering.ts');
-const { PHASE_ACTION_MAP: THE_PHASE_ACTION_MAP } =
+const { PHASE_ACTION_MAP: THE_PHASE_ACTION_MAP, theHeroOrdersRowOfAKind: theRowOfAKind } =
   await import('../../src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts');
+const { THE_HERO_ORDERS } =
+  await import('../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts');
 const { ALIGNMENT_ORDER_KEYS, MASTERY_ORDER_KEYS } = await import('../../src/engine/army-tables.ts');
 const { MASTERY_ORDER_LABEL } =
   await import('../../src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts');
@@ -647,6 +649,21 @@ describe('the battle lock: a Move or an Encounter out of a province whose battle
     },
   );
 
+  // B-06an: the orders the lock pins are their rows' (pinnedByTheBattleLock)
+  test('every other order the game knows is not held: only a Move and an Encounter (a Pursue reads as one)', () => {
+    const notHeld = Object.keys(HANDED).filter((a) => a !== 'move' && a !== 'encounter');
+    const held = notHeld.filter((action) => {
+      const b = fresh();
+      const c = standing(b);
+      enemy(b);
+      standIn(() => {
+        dispatch(b, c, o(action), 2);
+      });
+      return textOf(b, c).includes(locked(c, b.X));
+    });
+    expect(held, 'the orders held by the battle lock, besides a Move and an Encounter').toEqual([]);
+  });
+
   test('the foes are read from the world, a save missing their companies or the heroes included', () => {
     const b = fresh();
     const c = standing(b);
@@ -832,6 +849,35 @@ describe('a hero held by a charm, or new to the realm this turn, is refused the 
       ...others.map((a) => must(HANDED[a], a)[0]),
       'resolveCastSpellOrder',
     ]);
+  });
+});
+
+describe("the checks before an order read its hero order's row (B-06an)", () => {
+  /** The kinds whose row holds `field`, in the rows' order. */
+  const theKindsWhoseRowHolds = (field: string) =>
+    Object.values(THE_HERO_ORDERS)
+      .filter((row) => field in row)
+      .map((row): string => row.key);
+  test("every kind of order the turn reads finds its own row, by the row's key", () => {
+    const kinds = [...new Set(Object.values(THE_PHASE_ACTION_MAP))];
+    const rows: Record<string, object> = THE_HERO_ORDERS;
+    expect(
+      kinds.filter((k) => theRowOfAKind(k) !== rows[k]),
+      'the kinds that find no row, or another',
+    ).toEqual([]);
+  });
+  test("the rows' sets are the engine's: the masteries, a seized hero's refusals, the cast, the battle lock", () => {
+    expect({
+      masteries: new Set(theKindsWhoseRowHolds('aMasteryOrder')),
+      refusedBesidesAMastery: theKindsWhoseRowHolds('aSeizedHeroRefusesIt'),
+      castOfAMasterySpell: theKindsWhoseRowHolds('aCastOfAMasterySpellIsAMastery'),
+      battleLock: theKindsWhoseRowHolds('pinnedByTheBattleLock'),
+    }).toEqual({
+      masteries: new Set(MASTERIES),
+      refusedBesidesAMastery: ['disband_army', ...RITES],
+      castOfAMasterySpell: ['cast_spell'],
+      battleLock: ['move', 'encounter'],
+    });
   });
 });
 

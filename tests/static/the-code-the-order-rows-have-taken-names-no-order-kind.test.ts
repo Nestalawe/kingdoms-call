@@ -2,12 +2,13 @@
 // each function (or file's top level) the family's rows have taken holds no check of an order by its kind (a kind of
 // OrderKind, the alignment orders' aside, or `'pursue'`): compared with an order's action, a `case` of a switch on
 // one, a list of kinds, a default kind or an action assigned, or a value of the kinds' own table. It reads the order's
-// row instead. Each row adds what it takes to TAKEN (B-06al the first). With them, the ratchet's
-// two counts of those checks outside src/engine/rules/, in the engine and in the bots (tools/ratchet.ts's
-// orderKindChecksInEngine and orderKindChecksInTheBots, by their helper orderKindChecksByFunction), so both only fall:
-// the helper counts each check planted, and none of an order written (`action: 'move'`), a line's kind
-// (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of another sense (a bot's role `'spy'`, a
-// duel's stance `'challenge'`), a name being bound to an order's kind in its own function only.
+// row instead. Each row adds what it takes to TAKEN (B-06al the first); B-06an holds processOrder to its switch's
+// cases. With them, the ratchet's two counts of those checks outside src/engine/rules/, in the engine and in the bots
+// (tools/ratchet.ts's orderKindChecksInEngine and orderKindChecksInTheBots, by their helper
+// orderKindChecksByFunction), so both only fall: the helper counts each check planted, and none of an order written
+// (`action: 'move'`), a line's kind (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of another
+// sense (a bot's role `'spy'`, a duel's stance `'challenge'`), a name being bound to an order's kind in its own
+// function only.
 //
 // Level 0 (static): the files' syntax trees and the hero orders' rows as content writes them; nothing runs.
 import fs from 'node:fs';
@@ -60,6 +61,18 @@ test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {
   const counts = orderKindChecksByFunction(file, fs.readFileSync(path.join(ROOT, file), 'utf8'));
   expect(fn === TOP || counts.has(fn), `${file} declares ${fn}`).toBe(true);
   expect(counts.get(fn) ?? 0, `${fn}'s checks of an order's kind (the ratchet's helper)`).toBe(0);
+});
+
+// The checks before a hero's order (B-06an): processOrder's only checks of an order's kind are its switch's cases (one
+// a kind, by its key's words), which B-06ao takes; then processOrder joins TAKEN and this case goes.
+const THE_ORDER_DISPATCH_FILE = 'src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+test("processOrder checks an order's kind only in its switch's cases: the checks above it read the order's row", () => {
+  const text = fs.readFileSync(path.join(ROOT, THE_ORDER_DISPATCH_FILE), 'utf8');
+  const cases = [...text.matchAll(/^\s+case '(\w+)':/gm)].filter(([, kind]) => ORDER_KIND_VOCABULARY.has(kind ?? ''));
+  expect(cases.length, "the switch's cases a kind's words name (B-06ao's)").toBe(42);
+  expect(orderKindChecksByFunction(THE_ORDER_DISPATCH_FILE, text).get('processOrder'), "processOrder's checks").toBe(
+    cases.length,
+  );
 });
 
 // The words are the hero orders' rows' keys (content): every kind of order but the five alignment orders' (their rows

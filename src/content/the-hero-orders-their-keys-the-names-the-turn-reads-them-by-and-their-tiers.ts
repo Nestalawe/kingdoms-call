@@ -36,7 +36,8 @@ export interface AHeroOrder {
   /** A Cast Spell: a cast of a mastery spell is a mastery, refused as one to a hero who joined the realm this turn or
    *  is seized by a charm (not charged once a turn here: the cast's own rule). */
   readonly aCastOfAMasterySpellIsAMastery?: true;
-  /** What a hero seized by a charm from an enemy refuses: Disband Army, a creed's order and a mastery order. */
+  /** What a hero seized by a charm from an enemy refuses besides a mastery (aMasteryOrder, and a cast of a mastery
+   *  spell): Disband Army and a creed's order. */
   readonly aSeizedHeroRefusesIt?: true;
   /** Pinned by the battle lock: a Move or an Encounter out of a province whose battle is unresolved, while an armed
    *  foe stands there (a Pursue reads as an Encounter first; a Forced March becomes a Move only after the lock). */
@@ -58,12 +59,12 @@ function theRowOfACreedOrder<const Key extends string>(order: {
 }
 
 /** A mastery order's row, joined to its mastery row by key: the names the turn reads it by; it stays put (tier 0, a
- *  Forced March too: answer 133), it is a mastery order, and a hero seized by a charm refuses it. */
+ *  Forced March too: answer 133), and it is a mastery order. */
 function theRowOfAMasteryOrder<const Key extends string, const Names extends readonly string[]>(
   order: { readonly key: Key },
   theNamesTheTurnReads: Names,
 ) {
-  return { key: order.key, theNamesTheTurnReads, tier: 0, aMasteryOrder: true, aSeizedHeroRefusesIt: true } as const;
+  return { key: order.key, theNamesTheTurnReads, tier: 0, aMasteryOrder: true } as const;
 }
 
 /** The hero orders, by kind, in the order the turn's names for the orders run. */
