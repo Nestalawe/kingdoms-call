@@ -115,6 +115,12 @@ list each, which the province pass, the creed's neighbour and the wild country a
 and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
 (`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.
 
+**The wild's race and the race of none** are content constants beside `KC_HUMANOID_RACES` (B-06ac):
+`THE_RACE_OF_THE_WILD` (`Primal`; a wild province's `Primal:<sub-race>` starts with it) and
+`THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS` (Human). The engine asks whether a race is the wild's through
+`isTheRaceTheWildsOrOneOfItsSubRaces` in `rules-on-plain-values/`. The world's making, the bots and the player portal
+still write the words themselves (their rows: B-06ad, B-06ah, B-06ak).
+
 ## A sea unit must be a carrier or a primal sea beast
 
 The engine's "crosses the sea under its own power" set (`SEA_TYPES`, and the bots' `BOT_SEA_ALL`) is built from

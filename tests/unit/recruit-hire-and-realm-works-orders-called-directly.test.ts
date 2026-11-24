@@ -17,7 +17,7 @@
 // cases one phase at a time, then on what the dice decide (fixed) and what the balance matrix never reaches: a
 // recruit's grade from Superior
 // Forging or the Druidic Wonder, the Druid's rise from a beast raised, a Whale Cohort or Shark Shoals raised Primal
-// whatever folk the province holds (P1-19ao), the running cost of an order, a garrison two a
+// whatever folk the province holds (P1-19ao), a province of no race's recruits Human (B-06ac), the running cost of an order, a garrison two a
 // season, bands hired by a Recruit (named four ways, a band not named passed over, Black Market's discount, a band
 // unpaid staying, a stale one skipped by its old id), the written orders' cards (the hirer's own first, never a
 // rival's), a wanderer dead earlier in the turn or a hero already serving not hired, the Broker's refusals, its
@@ -276,6 +276,23 @@ describe('Recruit Armies, called directly', () => {
       ['Shark Shoals', 'Primal'],
       ['Great Turtles', 'Elven'],
     ]);
+  });
+
+  // A province of no race (its race empty, or not given) raises companies of the race content says one reads as
+  // (THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS, Human: B-06ac); no seeded game holds one.
+  test('a province of no race raises Human companies', () => {
+    for (const race of ['', undefined]) {
+      const b = fresh();
+      holds(b, b.X, ['Shieldwall Levies']);
+      b.X['race'] = race;
+      realm(b)['gold'] = 100;
+      const h = at(b);
+      play(b, h, o('recruit', 'Shieldwall Levies|1'));
+      expect(
+        h.armies.map((u) => [u.type, u.race]),
+        `a province of race ${String(race)}`,
+      ).toEqual([['Shieldwall Levies', 'Human']]);
+    }
   });
 
   test('a Druid of 6 pays half for beasts only, never for men', () => {
