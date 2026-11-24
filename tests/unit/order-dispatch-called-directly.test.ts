@@ -22,8 +22,9 @@
 // or extra as empty, a wanderer with no realm, the log's context his while the order runs; no hero, a fallen one or no
 // order does nothing; the superseded order (the leader named, or "another hero"); the battle lock's foes one by one (an
 // enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no companies or elsewhere, an ally, his own
-// realm's: not), a neutral garrison (not on his own ground), the line's fields, a stale flag, no companies, other
-// orders; each charm refusal (and not spent, and told before a spent mastery); a hero under a charm this turn not
+// realm's: not), a neutral garrison (not on his own ground), the line's fields, a stale flag, no companies, every
+// other order; each kind's own row, and the rows' sets (the masteries, a seized hero's refusals, the cast of a mastery
+// spell, the battle lock) the engine's (B-06an: the checks before an order read its row); each charm refusal (and not spent, and told before a spent mastery); a hero under a charm this turn not
 // released and his spell item not cast; a mastery order or spell refused to a hero who joined this turn (and to a
 // seized one: its spell too), not to one who joined earlier; each mastery's charge to this turn and second refusal; the
 // Forced March (handed on to slip, refused below March 7 or with no skills in the save, still spent); a spell item by

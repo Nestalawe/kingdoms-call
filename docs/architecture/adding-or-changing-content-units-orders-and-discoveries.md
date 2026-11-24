@@ -252,13 +252,17 @@ unknown order's Defend (`normaliseAction`) are built from them
 built from their alignment rows; the mastery orders' rows join theirs (below) by key. A new row with no case in
 `processOrder`'s switch fails to compile
 (`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). The phase's order reads the
-tier (`theTierAnOrderActsIn`, and the phase's stages through it); a name no row writes acts in tier 0.
+tier (`theTierAnOrderActsIn`, and the phase's stages through it); a name no row writes acts in tier 0. The checks
+before an order runs (`processOrder`, above its switch, B-06an) read its row's fields: `aMasteryOrder` (once a turn,
+and no mastery from a hero who joined the realm this turn or is seized by a charm), `aCastOfAMasterySpellIsAMastery`
+(Cast Spell: a mastery spell counts as a mastery), `aSeizedHeroRefusesIt` (Disband Army, the creed orders) and
+`pinnedByTheBattleLock` (Move, Encounter); a check of one kind compares with its row's key.
 
 ## A mastery order is one row, and its resolver's level
 
 Each of the 20 mastery orders (a hero's level 7 or 9 of a skill) is one row of `THE_MASTERY_ORDERS`
 (`src/content/mastery-orders-their-keys-names-skills-and-levels.ts`, P1-11d10): its key, its name, its skill and its
-level. The turn's `MASTERY_ORDER_KEYS` (the once-a-turn stamp, the Charmed-hero gate) and the prose's
+level. The turn's `MASTERY_ORDER_KEYS` (the once-a-turn stamp's keys; each is a kind of order) and the prose's
 `MASTERY_ORDER_LABEL` (`src/views/prose/the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts`) are
 built from the rows, and so is the order form's `L79_ORDERS` (each order's name, skill and level; its target and hint
 are the form's own, by the row's key). Each resolver reads its level from its row (`skillLevel(c, …) <
