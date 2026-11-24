@@ -7,6 +7,8 @@
 //   • the report is whole: every line is text with no "NaN" or "undefined", and the summary names the side that won;
 //   • the turn's statistics get exactly one record of the battle, with its result, its losses and its carry-on round:
 //     a fresh clash starts the count at 0, a resumed battle adds 1, and a war's opening clash starts it again;
+//   • Raiders' Muster's flag (B-06ae: the race gifts' runner): the province is flagged with the turn exactly when the
+//     winner's realm is Orcish and the province is Orcish, over each pair of the realms' races and the province's;
 //   • a hero who serves no realm, attacking or defending, is named in his host's header and the "moves into" line
 //     without a realm's brackets, and his foe with his realm's name (one staged battle each).
 // Level 1 (unit): combatVsChar called directly on the engine's modules (since P1-14m; the bare vm before), on a fresh
@@ -288,6 +290,64 @@ test(
         ]);
         expect(prov._carryOnRounds).toBe(round);
       }),
+    );
+  },
+);
+
+/** Five Elite companies with Tactical 9 against one Green with none, on open plain, a fresh clash: the attacker wins. */
+const overwhelming = (
+  attackersRace: string,
+  defendersRace: string,
+): [BattleInput, string, string, string | undefined] => [
+  {
+    attacker: {
+      companies: Array.from({ length: 5 }, () => ({ kind: 0, quality: QUALITIES.length - 1 })),
+      tactical: 9,
+      stance: 'refuse',
+    },
+    defender: { companies: [{ kind: 0, quality: 0 }], tactical: 0, stance: 'refuse' },
+    ground: 'open ground',
+    terrain: 'plain',
+    round: 'fresh clash',
+    roundsBefore: 0,
+  },
+  attackersRace,
+  defendersRace,
+  'Orcish',
+];
+const { KC_HUMANOID_RACES: THE_PEOPLES } = await import('../../src/content/kingdoms-call-data.ts');
+const PROVINCE_RACES = [...THE_PEOPLES, 'Primal:Wolf', undefined] as const;
+test(
+  "Raiders' Muster's flag: the province is flagged exactly when an Orcish realm wins in an Orcish province",
+  timeLimitForPropertyRuns(RUNS, 50),
+  () => {
+    fc.assert(
+      fc.property(
+        battleInput,
+        fc.constantFrom(...THE_PEOPLES),
+        fc.constantFrom(...THE_PEOPLES),
+        fc.constantFrom(...PROVINCE_RACES),
+        (input, attackersRace, defendersRace, provincesRace) => {
+          const { tc, atk, def, prov } = stage(input);
+          const G = tc.G as { turn: number; players: { race: string }[] };
+          const [attackersRealm, defendersRealm] = [G.players[0], G.players[1]];
+          if (!attackersRealm || !defendersRealm) throw new Error('the world has no realm 0 or 1');
+          attackersRealm.race = attackersRace;
+          defendersRealm.race = defendersRace;
+          if (provincesRace === undefined) delete prov['race'];
+          else prov['race'] = provincesRace;
+          delete prov['_raidersMuster'];
+          const r = combatVsChar(tc, atk, def, prov);
+          const theWinnersRace = r.won ? attackersRace : defendersRace;
+          expect(
+            prov['_raidersMuster'],
+            `a ${theWinnersRace} realm wins in a ${String(provincesRace)} province (attacker won: ${String(r.won)})`,
+          ).toBe(theWinnersRace === 'Orcish' && provincesRace === 'Orcish' ? G.turn : undefined);
+        },
+      ),
+      // and, whatever the runs draw, an Orcish host that overwhelms a Human one in an Orcish province, and the other
+      // way round: the winner is known, so the flag can't fall to the loser unseen
+      { examples: [overwhelming('Orcish', 'Human'), overwhelming('Human', 'Orcish')] },
     );
   },
 );
