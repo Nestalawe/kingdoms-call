@@ -1601,7 +1601,7 @@ export function botDuelSkill(c: Character) {
   );
 }
 export function botIsTeach(o: { readonly action?: string; readonly desc?: string } | null | undefined) {
-  return o?.action === 'practice' && (o.desc ?? '').includes('(teach ');
+  return o?.action === THE_HERO_ORDERS.practice.key && (o.desc ?? '').includes('(teach ');
 }
 
 // ══ BOT PLAYERS — Phase 3c: character actions (Practice / Rest / Explore) ═════ Runs AFTER

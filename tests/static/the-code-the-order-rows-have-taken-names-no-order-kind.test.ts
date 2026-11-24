@@ -4,7 +4,7 @@
 // one, a list of kinds, a default kind or an action assigned, or a value of the kinds' own table. It reads the order's
 // row instead. Each row adds what it takes to TAKEN (B-06al the first; B-06ao processOrder, its switch gone for the
 // registry; B-06ap the last outside the bots, so the engine's count is 0; B-06as the bots' Spring pass and their march
-// set). With them, the ratchet's two counts of those checks outside src/engine/rules/, in the engine and in the bots
+// set; B-06at the rest of the bots, so the bots' count is 0 too). With them, the ratchet's two counts of those checks outside src/engine/rules/, in the engine and in the bots
 // (tools/ratchet.ts's orderKindChecksInEngine and orderKindChecksInTheBots, by their helper
 // orderKindChecksByFunction), so both only fall: the helper counts each check planted, and none of an order written
 // (`action: 'move'`), a line's kind (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of
@@ -57,6 +57,13 @@ const THE_LOG_LINE_HELPERS_FILE = 'src/engine/turn/log-line-helpers.ts';
 /** The bots, 1 of 2 (B-06as): the Spring pass, and the bots' tuning of it (BOT_P1). */
 const THE_BOTS_SPRING_PASS_FILE = 'src/engine/bots/phase-one.ts';
 const THE_BOTS_STRATEGY_FILE = 'src/engine/bots/strategy.ts';
+/** The bots, 2 of 2 (B-06at): the economy and the order hygiene, the spellcraft and the fill of a plan, the missions,
+ *  the movement and the specialists. */
+const THE_BOTS_ECONOMY_FILE = 'src/engine/bots/economy.ts';
+const THE_BOTS_SPELLCRAFT_FILE = 'src/engine/bots/spellcraft.ts';
+const THE_BOTS_MISSIONS_FILE = 'src/engine/bots/missions.ts';
+const THE_BOTS_MOVEMENT_FILE = 'src/engine/bots/movement.ts';
+const THE_BOTS_SPECIALISTS_FILE = 'src/engine/bots/specialists.ts';
 
 /** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it: each row
  *  adds what it takes. */
@@ -106,6 +113,33 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   [THE_BOTS_SPRING_PASS_FILE, 'attacksOf', "B-06as, a general's attacks: no Encounter nor Pursue, by the rows' keys"],
   [THE_BOTS_SPRING_PASS_FILE, 'castsOf', "B-06as, a caster's casts of a school: the Cast Spell row's key"],
   [THE_BOTS_SPRING_PASS_FILE, 'urgency', "B-06as, the urgency of an order before the first march: the rows' keys"],
+  [THE_BOTS_STRATEGY_FILE, 'botIsTeach', "B-06at, a teaching phase: the Practice row's key"],
+  [THE_BOTS_ECONOMY_FILE, TOP, "B-06at, a phase to spare: the rows' keys, the bots' set"],
+  [THE_BOTS_ECONOMY_FILE, 'runBotEconomy', "B-06at, the economy's musters, pick-ups and teaching: the rows' keys"],
+  [THE_BOTS_ECONOMY_FILE, 'isIdle', "B-06at, an idle hero's plan: the Defend row's key"],
+  [THE_BOTS_ECONOMY_FILE, 'filler', "B-06at, a spare phase: the rows' keys, the bots' set"],
+  [THE_BOTS_ECONOMY_FILE, 'locs', "B-06at, where a plan's marches go: the Move row's key"],
+  [
+    THE_BOTS_ECONOMY_FILE,
+    'runBotOrderHygiene',
+    "B-06at, the order hygiene's casts, drills, hires, hand-overs: the rows' keys",
+  ],
+  [THE_BOTS_ECONOMY_FILE, 'isPr', "B-06at, a drill: the Practice row's key"],
+  [THE_BOTS_ECONOMY_FILE, 'free', "B-06at, a free phase: the Defend row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, TOP, "B-06at, free to train beside a comrade: the rows' keys, the bots' set"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'botPlannedAttackTarget', "B-06at, a planned attack's march: the Move row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'botCrossTrainSkill', "B-06at, a training partner: the bots' set of the rows' keys"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'runBotActions', "B-06at, the muster orders kept: the rows' keys"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'isFillable', "B-06at, a plan with phases to fill: the Defend row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'overlay', "B-06at, a phase the overlay fills: the Defend row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'botFillOrders', "B-06at, a plan that moves: the Move and Encounter rows' keys"],
+  [THE_BOTS_MISSIONS_FILE, 'botOrderLocs', "B-06at, where a plan's marches go: the Move row's key"],
+  [THE_BOTS_MISSIONS_FILE, 'botTeachFree', "B-06at, a phase free to teach: the Practice and Defend rows' keys"],
+  [THE_BOTS_MISSIONS_FILE, 'botRunSlayerSchool', "B-06at, the slayers' school: the rows' keys"],
+  [THE_BOTS_MOVEMENT_FILE, 'runBotMovement', "B-06at, the movement's marches and challenges: the rows' keys"],
+  [THE_BOTS_SPECIALISTS_FILE, 'botTrainOrders', "B-06at, a mentor who moves: the Move and Encounter rows' keys"],
+  [THE_BOTS_SPECIALISTS_FILE, 'botScholarOrders', "B-06at, a king who stays: the Move row's key"],
+  [THE_BOTS_SPECIALISTS_FILE, 'botCloakPre', "B-06at, a cloak already cast: the Cast Spell row's key"],
 ];
 
 test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {

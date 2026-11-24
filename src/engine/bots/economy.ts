@@ -1,3 +1,4 @@
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { KC_UNIT_CLASS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -44,6 +45,14 @@ declare global {
 type AnOrderAsThePassesReadIt = PhaseOrder | null | undefined;
 /** The turn's orders as the passes read them, by hero (G.turnOrders). */
 type TheTurnsOrdersAsThePassesHoldThem = Partial<Record<string, AnOrderAsThePassesReadIt[]>>;
+/** The orders that leave a bot hero a phase to spare for a muster or a pick-up, unless the phase teaches (B-06at: the
+ *  orders' rows' keys, the bots' own set): a Practice, a Defend, a Research and an Explore. */
+const theOrdersThatLeaveABotHeroAPhaseToSpare: readonly string[] = [
+  THE_HERO_ORDERS.practice.key,
+  THE_HERO_ORDERS.defend.key,
+  THE_HERO_ORDERS.research.key,
+  THE_HERO_ORDERS.explore.key,
+];
 /** The turn's orders, where the code tests a hero's plan for a gap. */
 function theTurnsOrders(G: GameState): TheTurnsOrdersAsThePassesHoldThem {
   return G.turnOrders;
@@ -132,7 +141,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
     // action.
     const isIdle = (c: Character) => {
       const o = theTurnsOrders(G)[c.id];
-      return !o || o.every((x) => x == null || x.action === 'defend' || botIsTeach(x));
+      return !o || o.every((x) => x == null || x.action === THE_HERO_ORDERS.defend.key || botIsTeach(x));
     }; // a teaching phase (slayer school) is kept, the rest is filled
     // Leaders first (their host is the priority), then feeders raising troops to carry to a host.
     const holders = theCharactersOf(G)
@@ -199,7 +208,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
     // (b) With 20g+ in the chest, a specialist still TRAINING in an owned recruit province spends one phase
     //     mustering troops to carry to the nearest host next year (an armed hero is a feeder).
     const filler = (o: AnOrderAsThePassesReadIt) =>
-      !o || (['practice', 'defend', 'research', 'explore'].includes(o.action) && !botIsTeach(o)); // a teaching phase is not spare
+      !o || (theOrdersThatLeaveABotHeroAPhaseToSpare.includes(o.action) && !botIsTeach(o)); // a teaching phase is not spare
     // review II A2: a leader, defender, armed hero or unassigned hero standing (or arriving) in an owned province
     // holding more than two garrison units takes the surplus up at his first filler phase there.
     theCharactersOf(G).forEach((c) => {
@@ -211,7 +220,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
       if (!cur) return;
       for (let p = 0; p < 5; p++) {
         const x = o[p];
-        if (x?.action === 'move') {
+        if (x?.action === THE_HERO_ORDERS.move.key) {
           let N: Province | null | undefined;
           if (theTargetAsWords(x).startsWith('dir:')) {
             const d = BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4));
@@ -221,8 +230,8 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
           cur = N;
           continue;
         }
-        if (x?.action === 'pickup_army') return;
-        if (filler(x) && !(x?.action === 'defend' && p === 0 && c._botRole === 'defender')) {
+        if (x?.action === THE_HERO_ORDERS.pickup_army.key) return;
+        if (filler(x) && !(x?.action === THE_HERO_ORDERS.defend.key && p === 0 && c._botRole === 'defender')) {
           const po = botPickupOrder(G, pi, c, cur);
           if (po) {
             o[p] = po;
@@ -234,13 +243,13 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
     theCharactersOf(G).forEach((c) => {
       if (!(c?.alive && c.player === pi && !c._isHeir)) return;
       const o = theTurnsOrders(G)[c.id];
-      if (!o?.some((x) => x?.action === 'move')) return;
+      if (!o?.some((x) => x?.action === THE_HERO_ORDERS.move.key)) return;
       if (!roles.leaders.includes(c.id)) return;
       let cur = G.world.provinces[c.location];
       if (!cur) return;
       for (let p = 0; p < 5; p++) {
         const x = o[p];
-        if (x?.action === 'move') {
+        if (x?.action === THE_HERO_ORDERS.move.key) {
           let N: Province | null | undefined;
           if (theTargetAsWords(x).startsWith('dir:')) {
             const d = BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4));
@@ -277,7 +286,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
         for (let p = 0; p < 5; p++) {
           out.push(cur ? cur.id : null);
           const x = o[p];
-          if (x?.action === 'move' && cur) {
+          if (x?.action === THE_HERO_ORDERS.move.key && cur) {
             let N: Province | null | undefined;
             if (theTargetAsWords(x).startsWith('dir:'))
               N = botNeighbourProv(G, cur, BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4)));
@@ -302,16 +311,16 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
       const filler = (m: Character, p: number) => {
         const k = (theTurnsOrders(G)[m.id] ?? [])[p];
         if (!k) return true;
-        if (k.action === 'practice')
+        if (k.action === THE_HERO_ORDERS.practice.key)
           return !/drill the host|drill the fleet|lead the host cleanly/.test(k.desc || '') && !botIsTeach(k);
-        return k.action === 'defend' && p > 0 && !botNearbyThreat(G, pi, m);
+        return k.action === THE_HERO_ORDERS.defend.key && p > 0 && !botNearbyThreat(G, pi, m);
       };
       mine.forEach((t) => {
         const to = thePlanOf(G, t);
         const tl = placesOf(t);
         for (let p = 0; p < 5; p++) {
           const x = to[p];
-          if (!(x?.action === 'practice' && x.target)) continue;
+          if (!(x?.action === THE_HERO_ORDERS.practice.key && x.target)) continue;
           const S = x.target;
           const lvl = theLevelOf(t, S);
           if (lvl >= 5) continue;
@@ -328,7 +337,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
           if (!best) continue;
           const mo = thePlanOf(G, best);
           const taught = mo[p];
-          if (taught?.action === 'practice' && taught.target === S) continue; // already teaching
+          if (taught?.action === THE_HERO_ORDERS.practice.key && taught.target === S) continue; // already teaching
           mo[p] = {
             action: 'practice',
             target: S,
@@ -351,7 +360,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
           if (!Array.isArray(to) || !tl) return;
           for (let p = 0; p < 5; p++) {
             const x = to[p];
-            if (!(x?.action === 'practice' && PARTNER_SK.has(x.target))) continue;
+            if (!(x?.action === THE_HERO_ORDERS.practice.key && PARTNER_SK.has(x.target))) continue;
             const S = x.target;
             if (theLevelOf(t, S) >= 5) continue;
             mine.forEach((m) => {
@@ -361,7 +370,8 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
               if (!filler(m, p)) return;
               const mo = thePlanOf(G, m);
               const cur = mo[p];
-              if (cur?.action === 'practice' && (cur.target === S || cur.target === theCraftOf(m))) return;
+              if (cur?.action === THE_HERO_ORDERS.practice.key && (cur.target === S || cur.target === theCraftOf(m)))
+                return;
               if (theLevelOf(m, S) >= 5 && theLevelOf(t, S) >= theLevelOf(m, S)) return;
               mo[p] = {
                 action: 'practice',
@@ -378,8 +388,10 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
         if (!(c?.alive && c.player === pi && !c.isKing && !c._isHeir && !theUnitsWithGapsOf(c).length)) return;
         if (L.budget < 2 || L.upkeep >= L.upkeepCap) return;
         const o = theTurnsOrders(G)[c.id];
-        if (!o?.length || o.some((x) => x?.action === 'move')) return;
-        const training = o.some((x) => x && (x.action === 'practice' || x.action === 'explore'));
+        if (!o?.length || o.some((x) => x?.action === THE_HERO_ORDERS.move.key)) return;
+        const training = o.some(
+          (x) => x && (x.action === THE_HERO_ORDERS.practice.key || x.action === THE_HERO_ORDERS.explore.key),
+        );
         if (!training) return; // 2026-09-26: Explore is a filler phase too (the explore-first fallback had closed this muster path)
         if (c._botRole === 'scholar' || c._botRole === 'spy') return; // the court's scholars and spies keep at their books
         const prov = G.world.provinces[c.location];
@@ -387,7 +399,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
         const p = o.findIndex(
           (x) =>
             x &&
-            (x.action === 'practice' || x.action === 'explore') &&
+            (x.action === THE_HERO_ORDERS.practice.key || x.action === THE_HERO_ORDERS.explore.key) &&
             !botIsTeach(x) &&
             !(x.desc || '').includes('(taught by '),
         );
@@ -479,7 +491,8 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
       return l ? l[p] : null;
     };
     const here = (a: Character, b: Character, p: number) => at(a, p) != null && at(a, p) === at(b, p);
-    const isPr = (o: AnOrderAsThePassesReadIt): o is PhaseOrder => !!(o?.action === 'practice' && o.target);
+    const isPr = (o: AnOrderAsThePassesReadIt): o is PhaseOrder =>
+      !!(o?.action === THE_HERO_ORDERS.practice.key && o.target);
     const isDrill = (o: AnOrderAsThePassesReadIt) =>
       /drill the host|drill the fleet|lead the host cleanly/.test(o?.desc ?? '');
     /** Whether a hero's order in a phase is a practice of the skill. */
@@ -496,7 +509,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
       let summoned = false;
       for (let p = 0; p < 5; p++) {
         const x = o[p];
-        if (x?.action !== 'cast_spell') continue;
+        if (x?.action !== THE_HERO_ORDERS.cast_spell.key) continue;
         const d = spells[x.target];
         if (!d?.school) continue;
         if (x.target === theNameOfTheSpell('elemental-summon')) {
@@ -512,7 +525,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
           G,
           c,
           school,
-          o.slice(0, p).filter((y) => y?.action === 'practice' && y.target === school).length,
+          o.slice(0, p).filter((y) => y?.action === THE_HERO_ORDERS.practice.key && y.target === school).length,
         );
         const castInTheSchool = used[school] ?? 0;
         used[school] = castInTheSchool;
@@ -533,7 +546,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
         const o = thePlanOf(G, c);
         for (let p = 0; p < 5; p++) {
           const x = o[p];
-          if (x?.action === 'hire') H.push([c, p, x]);
+          if (x?.action === THE_HERO_ORDERS.hire.key) H.push([c, p, x]);
         }
       });
       H.sort((a, b) => a[1] - b[1]);
@@ -569,7 +582,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
       const o = thePlanOf(G, c);
       for (let p = 0; p < 5; p++) {
         const x = o[p];
-        if (!(x?.action === 'leave_army' && x.extra)) continue;
+        if (!(x?.action === THE_HERO_ORDERS.leave_army.key && x.extra)) continue;
         const r = theCharactersOf(G).find((z) => z?.id === parseInt(x.extra));
         if (!r) continue;
         // whether the risen dead follow him: the Undead's row (the-risen-dead-follow-only-the-undead), his own
@@ -666,7 +679,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
     const free = (m: Character, p: number) => {
       const k = ord(m, p);
       if (!k) return true;
-      if (k.action === 'defend')
+      if (k.action === THE_HERO_ORDERS.defend.key)
         return p > 0 && !/Watch|lies in wait/i.test(k.desc || '') && !botNearbyThreat(G, pi, m);
       if (!isPr(k) || isDrill(k) || /\((teach|taught by|with) /.test(k.desc || '')) return false;
       if (m._botRole === 'slayer' || m._botRole === 'mage') return false;

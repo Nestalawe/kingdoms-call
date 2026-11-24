@@ -1,3 +1,4 @@
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import {
   KC_CARRIER_BERTHS,
   KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
@@ -1741,7 +1742,7 @@ export function botOrderLocs(G: GameState, c: Character) {
   for (let p = 0; p < 5; p++) {
     out.push(cur ? cur.id : null);
     const x = o[p];
-    if (x?.action === 'move' && cur) {
+    if (x?.action === THE_HERO_ORDERS.move.key && cur) {
       const N: Province | null | undefined = theTargetAsWords(x).startsWith('dir:')
         ? botNeighbourProv(G, cur, BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4)))
         : G.world.provinces[+x.target];
@@ -1753,9 +1754,9 @@ export function botOrderLocs(G: GameState, c: Character) {
 export function botTeachFree(G: GameState, pi: number, m: Character, p: number) {
   const k = (theTurnsOrders(G)[m.id] ?? [])[p];
   if (!k) return true;
-  if (k.action === 'practice')
+  if (k.action === THE_HERO_ORDERS.practice.key)
     return !/drill the host|drill the fleet|lead the host cleanly/.test(k.desc || '') && !botIsTeach(k);
-  return k.action === 'defend' && p > 0 && !botNearbyThreat(G, pi, m);
+  return k.action === THE_HERO_ORDERS.defend.key && p > 0 && !botNearbyThreat(G, pi, m);
 }
 export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRoles) {
   const res = botTurnCache(G).teach ?? {}; // mentorId → {phase: skill}
@@ -1822,11 +1823,13 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       const free = [0, 1, 2, 3, 4].map(
         (p) =>
           botTeachFree(G, pi, m, p) ||
-          (m.isKing && mo[p]?.action === 'practice' && /drill the host|lead the host cleanly/.test(mo[p].desc || '')),
+          (m.isKing &&
+            mo[p]?.action === THE_HERO_ORDERS.practice.key &&
+            /drill the host|lead the host cleanly/.test(mo[p].desc || '')),
       );
       // the KING's recruit phase can be handed to a hero standing with him who has that phase spare
       const helper = [0, 1, 2, 3, 4].map((p) => {
-        if (!m.isKing || mo[p]?.action !== 'recruit') return null;
+        if (!m.isKing || mo[p]?.action !== THE_HERO_ORDERS.recruit.key) return null;
         return (
           mine.find(
             (h) =>
@@ -1899,7 +1902,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       let kEnd: Province | null | undefined = G.world.provinces[kl[4] ?? -1];
       {
         const x = ko[4];
-        if (x?.action === 'move' && kEnd) {
+        if (x?.action === THE_HERO_ORDERS.move.key && kEnd) {
           const N: Province | null | undefined = theTargetAsWords(x).startsWith('dir:')
             ? botNeighbourProv(G, kEnd, BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4)))
             : G.world.provinces[+x.target];

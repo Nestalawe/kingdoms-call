@@ -1,3 +1,4 @@
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -559,10 +560,12 @@ export function runBotMovement(
           const lo = theTurnsOrders(G)[gen.id] ?? [];
           if (c.location === gen.location) {
             const firstMovePh = (() => {
-              const i = lo.findIndex((o) => o?.action === 'move');
+              const i = lo.findIndex((o) => o?.action === THE_HERO_ORDERS.move.key);
               return i < 0 ? 5 : i;
             })();
-            const genAttacks = lo.some((o) => o?.action === 'move' && /^(Attack|Assault)/.test(o.desc || ''));
+            const genAttacks = lo.some(
+              (o) => o?.action === THE_HERO_ORDERS.move.key && /^(Attack|Assault)/.test(o.desc || ''),
+            );
             // Casts: offence on enemies standing here, buffs for the general (only while he is
             // still here — the engine resolves a friendly cast before its co-located target's own
             // move), defence, economy.
@@ -580,7 +583,7 @@ export function runBotMovement(
             const follow: PhaseOrder[] = [];
             let cur = P;
             for (const o of lo) {
-              if (o?.action !== 'move') continue;
+              if (o?.action !== THE_HERO_ORDERS.move.key) continue;
               let N: Province | null | undefined;
               if (o.target.startsWith('dir:')) {
                 const d = BOT_HEX_DIRS.indexOf(o.target.slice(4));
@@ -722,7 +725,7 @@ export function runBotMovement(
         // ── review II A7: a Melee-7 hero Challenges a rival here when the forecast (on known skills) says 70%+. ──
         if (!isLeader && hp >= mhp * 0.85) {
           const mo = botMasteryPre(G, pi, c, P, { duelSim: hooks.duelSim });
-          if (mo?.action === 'challenge') {
+          if (mo?.action === THE_HERO_ORDERS.challenge.key) {
             theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, [...pre, mo], []);
             assigned.add(c.id);
             return;

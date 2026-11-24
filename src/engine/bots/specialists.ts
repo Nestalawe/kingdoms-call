@@ -1,3 +1,4 @@
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -408,7 +409,11 @@ export function botTrainOrders(
       const ml = Number(theSkillsOf(m)[skill]) || 0;
       if (ml <= lvl) continue;
       const mo = theTurnsOrders(G)[m.id];
-      if (Array.isArray(mo) && mo.some((x) => x && (x.action === 'move' || x.action === 'encounter'))) continue;
+      if (
+        Array.isArray(mo) &&
+        mo.some((x) => x && (x.action === THE_HERO_ORDERS.move.key || x.action === THE_HERO_ORDERS.encounter.key))
+      )
+        continue;
       const d = m.location === c.location ? 0 : botPathLen(G, pi, P, m.location, true);
       if (d == null || d > 3) continue;
       const sc = ml * 4 - d;
@@ -458,7 +463,12 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
     // year keeps him in one province within three hops, the scholar goes there; otherwise the capital.
     const king = theCharactersOf(G).find((k) => k && k.alive && k.isKing && k.player === pi);
     const ko = king && theTurnsOrders(G)[king.id];
-    if (king && king.location !== c.location && Array.isArray(ko) && !ko.some((x) => x?.action === 'move')) {
+    if (
+      king &&
+      king.location !== c.location &&
+      Array.isArray(ko) &&
+      !ko.some((x) => x?.action === THE_HERO_ORDERS.move.key)
+    ) {
       const P = G.world.provinces[c.location];
       const path = P ? (botPathDirs(G, pi, P, king.location, Math.min(3, 4 - pre.length), true) ?? []) : [];
       const d = P ? botPathLen(G, pi, P, king.location, true) : null;
@@ -552,7 +562,8 @@ export function botCloakPre(
   destProv: Province | null | undefined,
 ) {
   if ((Number(theSkillsOf(c).illusory) || 0) < 1 || pre.length >= 4) return pre;
-  if (pre.some((o) => o?.action === 'cast_spell' && o.target === theNameOfTheSpell('invisibility'))) return pre;
+  if (pre.some((o) => o?.action === THE_HERO_ORDERS.cast_spell.key && o.target === theNameOfTheSpell('invisibility')))
+    return pre;
   if (destProv?.owner === pi) return pre;
   return [
     ...pre,

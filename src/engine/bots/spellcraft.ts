@@ -1,3 +1,4 @@
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import type {
   AHerosDeedsAnImperialTitleCounts,
@@ -344,7 +345,7 @@ export function botPlannedAttackTarget(G: GameState, l: Character) {
   let cur = G.world.provinces[l.location];
   if (!cur) return null;
   for (const o of lo) {
-    if (o?.action !== 'move') continue;
+    if (o?.action !== THE_HERO_ORDERS.move.key) continue;
     let N: Province | null | undefined;
     if (theTargetAsWords(o).startsWith('dir:')) {
       const d = BOT_HEX_DIRS.indexOf(theTargetAsWords(o).slice(4));
@@ -545,6 +546,17 @@ export function botHuntTarget(
 // laggards (including freshly-hired heroes standing with the king) level up quickly. Deterministic
 // from skills, so every member of the cluster independently picks the same focus and they all
 // co-train.
+/** The orders that leave a bot hero free to train beside a comrade, when every phase of his plan is one or none
+ *  (B-06at: the orders' rows' keys, the bots' own set): a Defend, a Practice, a Research, a Hire, a Recruit and a Leave
+ *  Army. */
+const theOrdersThatLeaveABotHeroFreeToCrossTrain: readonly string[] = [
+  THE_HERO_ORDERS.defend.key,
+  THE_HERO_ORDERS.practice.key,
+  THE_HERO_ORDERS.research.key,
+  THE_HERO_ORDERS.hire.key,
+  THE_HERO_ORDERS.recruit.key,
+  THE_HERO_ORDERS.leave_army.key,
+];
 export function botCrossTrainSkill(G: GameState, c: Character, pi: number) {
   const partners = theCharactersOf(G).filter(
     (x): x is Character =>
@@ -555,12 +567,7 @@ export function botCrossTrainSkill(G: GameState, c: Character, pi: number) {
       x.id !== c.id &&
       (() => {
         const o = theTurnsOrders(G)[x.id];
-        return (
-          !o ||
-          o.every(
-            (y) => y == null || ['defend', 'practice', 'research', 'hire', 'recruit', 'leave_army'].includes(y.action),
-          )
-        );
+        return !o || o.every((y) => y == null || theOrdersThatLeaveABotHeroFreeToCrossTrain.includes(y.action));
       })(),
   );
   if (partners.length === 0) return null; // need a training partner
@@ -915,10 +922,17 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
   // Sept 2026 (bot strategy): a character is "fillable" if it is not marching this turn — its
   // remaining Hold phases (after any phase-0 hire / recruit / garrison / hand-over muster orders)
   // get real work.
-  const MUSTER = new Set(['hire', 'recruit', 'leave_army']);
+  const MUSTER: ReadonlySet<string> = new Set([
+    THE_HERO_ORDERS.hire.key,
+    THE_HERO_ORDERS.recruit.key,
+    THE_HERO_ORDERS.leave_army.key,
+  ]);
   const isFillable = (c: Character) => {
     const o = theTurnsOrders(G)[c.id];
-    return !o || o.every((x) => x == null || x.action === 'defend' || MUSTER.has(x.action) || botIsTeach(x));
+    return (
+      !o ||
+      o.every((x) => x == null || x.action === THE_HERO_ORDERS.defend.key || MUSTER.has(x.action) || botIsTeach(x))
+    );
   }; // teaching phases kept (overlay only fills null / Hold)
   // Overlay a 5-phase plan onto the free (null / Hold) phases, in order, keeping muster orders in
   // place.
@@ -927,7 +941,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
     let k = 0;
     for (let p = 0; p < 5 && k < plan.length; p++) {
       const held = o[p];
-      if (held == null || held.action === 'defend') {
+      if (held == null || held.action === THE_HERO_ORDERS.defend.key) {
         o[p] = { ...theOrderOfThePlan(plan, k++) };
       }
     }
@@ -1187,7 +1201,7 @@ export function botFillOrders(
       : [...pre, ...(met ? [{ action: 'defend', target: '', extra: '', desc: 'Hold' }] : [])]
   ).slice(0, 5);
   const tail = botPracticeFallback(G, pi, c, {
-    moving: out.some((o) => o && (o.action === 'move' || o.action === 'encounter')),
+    moving: out.some((o) => o && (o.action === THE_HERO_ORDERS.move.key || o.action === THE_HERO_ORDERS.encounter.key)),
   });
   while (out.length < 5) out.push(tail ? { ...tail } : { action: 'defend', target: '', extra: '', desc: 'Hold' });
   return out;
