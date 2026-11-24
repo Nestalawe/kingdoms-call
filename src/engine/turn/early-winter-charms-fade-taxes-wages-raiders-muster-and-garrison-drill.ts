@@ -43,6 +43,10 @@ import {
 import { theUnitsAProvinceRaisesAtTheTurnsEnd } from '../rules/the-registry-of-content-effects.ts';
 import { theTaxTheHeroesItemsAdd } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
+  doesACompanyTakeItsRealmsSpoilsOfABattleWonAttacking,
+  doesARealmsRaceTakeTheSpoilsOfABattleWonAttacking,
+} from '../rules/the-registry-of-the-race-gifts.ts';
+import {
   aHerosTitlesCutHisRealmsCompanyWages,
   heHoldsAMinorTitleThatGivesHisRealmTheGold,
 } from '../rules/the-registry-of-the-minor-titles-perks.ts';
@@ -332,7 +336,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // no wage and are never disbanded for non-payment (see the disband loop below). ORC
     // WAR-SPOILS — an Orcish unit of an Orcish realm that won a battle as part of an attacking
     // force THIS turn pays only half upkeep for this turn (min 1g).
-    const _orcKingdom = p.race === 'Orcish';
+    const _orcKingdom = doesARealmsRaceTakeTheSpoilsOfABattleWonAttacking(p.race);
     // DRUID L6 — creatures/monsters led by a Druid-6 character pay half wages. Built as a Set
     // of the actual army objects (identity), since the wage sum flattens away the leader
     // association.
@@ -374,7 +378,10 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         const _w0 = w;
         const theWageThisTurn = theWageOfACompanyThisTurn({
           theWage: w,
-          itTookTheWarSpoilsThisTurn: _orcKingdom && a.race === 'Orcish' && a._orcAtkWinTurn === G.turn,
+          itTookTheWarSpoilsThisTurn:
+            _orcKingdom &&
+            doesACompanyTakeItsRealmsSpoilsOfABattleWonAttacking(p.race, { theCompanysRace: a.race }) &&
+            a._orcAtkWinTurn === G.turn,
           theHalfGoldsCarried: _orcFrac,
         });
         w = theWageThisTurn.theWage;

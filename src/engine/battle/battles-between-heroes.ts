@@ -82,6 +82,7 @@ import {
 } from '../turn/mercenary-ids-and-battle-records.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
+import { doesTheWinnersRaceFlagTheProvinceItWonABattleIn } from '../rules/the-registry-of-the-race-gifts.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import {
   REIGN_OF_FEAR_MULT,
@@ -1436,7 +1437,11 @@ export function combatVsChar(
   // Goblin Horde at turn's end (the end-of-turn pass reads the flag).
   {
     const _wp = won ? atk.player : def.player;
-    if (prov.race === 'Orcish' && _wp != null && G.players[_wp]?.race === 'Orcish') prov._raidersMuster = G.turn;
+    if (
+      _wp != null &&
+      doesTheWinnersRaceFlagTheProvinceItWonABattleIn(G.players[_wp]?.race, { theProvincesRace: prov.race })
+    )
+      prov._raidersMuster = G.turn;
   }
   // Tactical gain deferred to the end of the battle narrative — see the return below.
   const _rollTacticalGainPvP = prov.terrain !== 'sea';

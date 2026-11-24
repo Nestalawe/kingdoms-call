@@ -1378,6 +1378,24 @@ export interface AnAttackerOnConsecratedGround {
   readonly theAttackersAlignment: string;
 }
 
+/** A company of a force, as a gift of its realm's race weighs it (armStr, after the ground). */
+export interface ACompanyAsItsRealmsRaceGiftWeighsIt {
+  readonly theCompanysRace: string | null | undefined;
+  readonly theTerrain: string | null | undefined;
+  /** The side it fights on, or nothing when the battle's caller gives none. */
+  readonly itsSide: 'defending' | 'attacking' | null;
+}
+
+/** A province a realm won a battle in, as a gift of the realm's race weighs it (both battles). */
+export interface AProvinceAsARaceGiftWeighsAWinInIt {
+  readonly theProvincesRace: string | null | undefined;
+}
+
+/** A company of a realm, as a gift of the realm's race weighs its share of a battle won attacking. */
+export interface ACompanyAsARaceGiftWeighsItsSpoils {
+  readonly theCompanysRace: string | null | undefined;
+}
+
 /** A unit of a force, as Home of the Wild weighs it (armStr, after the unit's abilities). */
 export interface AUnitAsTheWildWeighsIt {
   readonly theUnitType: string;
@@ -2118,6 +2136,11 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's discoveries weight the lines behind the front": (
       theEffect: TheEffectOfADiscovery,
     ) => readonly number[] | undefined;
+    /** The factor a gift of the company's realm's race strengthens it by, or nothing (armStr, after the ground: one
+     *  rounded step a gift; the race gifts' registry, B-06ae). */
+    readonly "a race's gift strengthens a company of its realm": (
+      facts: ACompanyAsItsRealmsRaceGiftWeighsIt,
+    ) => number | null;
   };
   readonly volley: {
     /** Whether a unit that is no ranged unit shoots in the volley (abilityMissileUnits, after the ranged units). */
@@ -2153,6 +2176,16 @@ export interface TheStagesOfEachHookPoint {
     /** Whether a beaten host's realm's alignment holds it on the field, with no flight losses (both battles' routs,
      *  first of each chain; the alignment abilities' registry, P1-19au2). */
     readonly "a realm's alignment holds a beaten host on the field": (facts: ABeatenHostsCompanies) => boolean;
+    /** Whether a gift of a winning realm's race flags the province it won a battle in (both battles, on the win; the
+     *  turn's end reads the flag: the race gifts' registry, B-06ae). */
+    readonly "a race's gift flags a province its realm wins a battle in": (
+      facts: AProvinceAsARaceGiftWeighsAWinInIt,
+    ) => boolean;
+    /** Whether a gift of a realm's race gives a company of it the spoils of a battle won attacking (markOrcAttackWin
+     *  stamps it, Early Winter halves its wage by the stamp: the race gifts' registry, B-06ae). */
+    readonly "a race's gift gives a company the spoils of a battle won attacking": (
+      facts: ACompanyAsARaceGiftWeighsItsSpoils,
+    ) => boolean;
     /** The gold an ability of a victor's realm's alignment claims for each enemy unit destroyed, before the discoveries
      *  add theirs (bloodHarvest, both battles: the alignment abilities' registry, P1-19ax1). */
     readonly "a realm's alignment claims gold for each foe destroyed": () => number;

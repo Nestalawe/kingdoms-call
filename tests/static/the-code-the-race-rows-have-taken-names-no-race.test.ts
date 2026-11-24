@@ -117,6 +117,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits',
     "B-06ad, the wild left as it is and a slot of no race's, from content and the helper",
   ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'armStr',
+    "B-06ae, Woodland Mastery and the Bulwark, from the race gifts' runner",
+  ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'combatVsNPC',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner",
+  ],
+  [
+    'src/engine/battle/battles-between-heroes.ts',
+    'combatVsChar',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner",
+  ],
+  [
+    'src/engine/units/drill-and-spoils.ts',
+    'markOrcAttackWin',
+    "B-06ae, the War-spoils' stamp, from the race gifts' runner",
+  ],
+  [
+    'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
+    'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
+    "B-06ae, the War-spoils' half wage, from the race gifts' runner",
+  ],
 ];
 
 test.for(TAKEN)('%s: %s names no race (%s)', ([file, fn]) => {
