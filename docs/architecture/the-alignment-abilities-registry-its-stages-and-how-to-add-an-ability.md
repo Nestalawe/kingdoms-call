@@ -243,7 +243,7 @@ and [of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk
   the foe's alignment (75/50/20), and the Evil and Undead's laughter.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
   `alignmentChecksInEngine`: the functions taken name no alignment, and the engine's names of an alignment outside
-  `src/engine/rules/` only fall. The count is 0 (P1-19bb9): any such name, a race's `'Undead'` among them, fails
+  `src/engine/rules/` only fall. None is left (P1-19bb9): any such name, a race's `'Undead'` among them, fails
   the ratchet.
 - `tests/unit/the-marks-on-a-province-each-read-laid-lifted-and-faded.test.ts`: each mark read, laid and lifted
   through the turn's own callers (with the cases its header names, each read, lay, lift and fade).

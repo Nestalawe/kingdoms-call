@@ -27,7 +27,12 @@ describe("botTuning: each creed's overlay, by the ability its row gives", () => 
   /** The weights of a Human realm of the alignment given (a Human: no race's overlay), holding consecrated ground or
    *  none: the king's and the assault's margins, the tax's weight and the rival bias. */
   const theWeights = (alignment: string, consecratedProvIds: number[]) => {
-    const T = botTuning({ botDifficulty: 'hard', players: [{ alignment, race: 'Human', consecratedProvIds }] }, 0);
+    // `as`: a realm made of the few fields botTuning reads, as it reads them
+    const G = {
+      botDifficulty: 'hard',
+      players: [{ alignment, race: 'Human', consecratedProvIds }],
+    } as unknown as GameState;
+    const T = botTuning(G, 0);
     return [T.kingAttackMargin, T.assaultMargin, T.taxScoreWeight, T.rivalBias].map(four).join(' ');
   };
   test("with consecrated ground: the Divine king's margin, the Good assault's, the Evil tax and bias, the Pagan bias", () => {
