@@ -144,7 +144,9 @@ portal shows a hero of none with it (B-06ak). The join form's temper description
 
 The rule says what, the bot says how much, as for
 [the bots' worth of a race's gift](the-race-gifts-registry-its-stages-and-how-to-add-a-gift.md#the-bots-worth-of-a-races-gift)
-(B-06aj). The bots write no temper's name: each table they read by a temper takes its numbers from their weights.
+(B-06aj). The bots name a temper only as the keys of their two tables by temper (the duel worth in `bots/spellcraft.ts`,
+`BOT_WAR.temper` in `bots/war.ts`), each taking its numbers from their weights; a static test holds both tables' keys
+to `KC_TEMPERS`.
 
 - **What the rules say:** what a temper does in a fight is its row of `TEMPER_TRAITS`. The bots' duel rating
   (`botDuelRating`, `bots/spellcraft.ts`) reads the hero's own temper, not the one his items give him (`effTemper`):
