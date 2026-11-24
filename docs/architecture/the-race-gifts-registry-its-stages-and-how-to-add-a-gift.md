@@ -1,7 +1,7 @@
 # The race gifts' registry: its stages, and how to add a gift
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
-This file is its part for the race gifts (B-06, T7, the races' family, from B-06ae). The family is modelled on
+This file is its part for the race gifts (B-06, T7, the races' family: B-06ae and B-06af). The family is modelled on
 [the alignment abilities'](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md): a gift belongs to
 a realm of its race, as an ability belongs to a realm of its alignment.
 
@@ -14,13 +14,15 @@ row in `src/content/the-race-gifts-their-keys-races-and-numbers.ts` and one entr
 
 - **A row** gives the gift's name as the books write it, its race (one of `KC_HUMANOID_RACES`), and what the turn reads
   for it: the factor a company of its race fights at (`theStrength`), the ground (`theGround`) or the side
-  (`theSide`) it fights on to be given it.
+  (`theSide`) it fights on to be given it; the factor a hero learns at (`theLearning`) or a company drills at
+  (`theDrill`); a hero's hit points at the start and the shift of his hardening's bands; a fallen company's chance to
+  flee home by the ground (`theFlightHome`).
 - **The registry** ends `satisfies Record<RaceGiftSlug, RaceGiftEntry>`, both ways: a row with no entry, or an entry with
   no row, fails to compile. Its stages are the hook points' own (`TheStagesOfEachHookPoint`); its orders are
   `THE_ORDER_OF_EACH_STAGE_OF_THE_RACE_GIFTS`.
-- **A runner is handed the race of the realm the rule reads** (the company's realm, the winner's) and asks, in the
-  stage's order, the effects of the gifts that race holds. Each effect checks the rest: its company's or its province's
-  race, its ground, its side. No effect draws a die, and none changes what it is handed.
+- **A runner is handed the race of the realm the rule reads** (the company's realm, the winner's, the hero's) and asks,
+  in the stage's order, the effects of the gifts that race holds. Each effect checks the rest: its company's, its
+  hero's or its province's race, its ground, its side. No effect draws a die, and none changes what it is handed.
 
 ## The stages written so far
 
@@ -34,6 +36,16 @@ row in `src/content/the-race-gifts-their-keys-races-and-numbers.ts` and one entr
 
 Home of the Wild, also a step of `armStr`, is the alignment abilities' (question 79 is open on it).
 
+**The heroes and the companies** (B-06af, `race-gifts/the-race-gifts-on-heroes-and-companies.ts`):
+
+| Stage | Its gifts | Where it is asked, and what it gives |
+|---|---|---|
+| `experience`: **a race's gift quickens a hero's learning** | Quick learners (a Human hero, ×1.5) | `trySkillGain`, on the chance a skill rises by experience; `resolvePracticeSkillOrder`, whether he practises at the quick learners' share (`theShareAQuickLearnerPractisesAt` reads the row's factor) |
+| `experience`: **a race's gift quickens a company's drill** | Drillmasters (a Human company, ×2) | `humanXPMult`: a commander's drill, the garrison's drill, a rise after a battle |
+| `aHerosStanding`: **a race's gift sets a hero's hit points** | Iron constitution (an Orcish hero: 18 at the start, each band 5 higher) | `hpStartOf`, `hpGainBand` and `maxHpIsOrc`; a hero of any other starts at 15 |
+| `aHerosStanding`: **a race's gift suits a hero of its realm in mithril** | Mithril Armour (a Dwarven hero) | `mithrilQualifies` (the world's making's end and each turn's start), and the grant on a hire and on the Broker's hire |
+| `fate`: **a race's gift gives a fallen company its chance to flee home** | Homeward Flight (an Elven company: 30 in desert or mountain, 60 in forest or jungle, 45 elsewhere) | `recordBattleGraves`, before the realm's discoveries add theirs; the die is drawn only for a company the gift reaches, not raised for the turn, not of the Wild Hunt and not fled already |
+
 ## The tests
 
 - `tests/unit/the-race-gifts-each-a-row-of-content-and-the-battles-ask-their-runner.test.ts`: each runner against the
@@ -41,6 +53,10 @@ Home of the Wild, also a step of `armStr`, is the alignment abilities' (question
   `markOrcAttackWin`'s stamp.
 - `tests/unit/battles-between-heroes.test.ts`: Raiders' Muster's flag between heroes, a property with two fixed
   examples whose winner is known.
+- `tests/unit/the-race-gifts-on-heroes-and-companies-each-a-row-of-content-and-the-engine-asks-their-runner.test.ts`:
+  each runner against the old tests over every pair of races and ground; `humanXPMult`, the hit points and
+  `mithrilQualifies`; `recordBattleGraves` with its die fed. Mithril Armour on a hire and on the Broker's:
+  `tests/unit/recruit-hire-and-realm-works-orders-called-directly.test.ts`.
 - The two registry tests (each effect once in its stage's order, each row's race a humanoid one; a row with no entry,
   and an entry with no row, fail to compile), and `tests/static/the-code-the-race-rows-have-taken-names-no-race.test.ts`
   with the ratchet's `raceChecksInEngine`.
