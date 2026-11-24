@@ -26,7 +26,8 @@
 // (a die of 50 wins, 51 loses) with the room it leaves and each place it tears beasts from named once (the settling of
 // the province after it stood in for), the onlookers told the realm by name, and the Grand Design's Wonder by creed,
 // once (P1-10b20 added the cases its proof asked for), and a Call to Arms' company of its province's folk and the
-// crown's home itself refused (P1-11e22's proof).
+// crown's home itself refused (P1-11e22's proof), and Mithril Armour on a hire and on the Broker's for a Dwarven
+// hero of a Dwarven realm only (B-06af).
 // 192 planted faults in the functions and their calls: 191 turn at least one of the two tests red, and every test goes
 // red for at least one; the one left can't change the game (the Wild Calling's own-realm guard, which the next guard
 // covers)
@@ -553,6 +554,21 @@ describe('Hire Hero, called directly', () => {
     }).toEqual({ player: null, gold, heroes: false, orders: null, hiredInPhase: null });
     expect(textOf(b, h)).toContain('none matching that description');
   });
+
+  // B-06af: Mithril Armour's row of the race gifts (its runner asked on the hire)
+  test.for([
+    ['Dwarven', 'Dwarven', ['Mithril Armour']],
+    ['Human', 'Dwarven', []],
+    ['Dwarven', 'Human', []],
+  ] as const)('Mithril Armour: a %s wanderer hired by a %s realm wears %j', ([heroRace, realmRace, suits]) => {
+    const b = fresh();
+    realm(b)['race'] = realmRace;
+    const w = wanderer(b, b.X);
+    w['race'] = heroRace;
+    play(b, at(b), o('hire', w.id));
+    expect(w.player).toBe(0);
+    expect(w.items.flatMap((it) => (it['name'] === 'Mithril Armour' ? [it['name']] : []))).toEqual(suits);
+  });
 });
 
 describe('Broker, called directly', () => {
@@ -595,6 +611,21 @@ describe('Broker, called directly', () => {
       heroes: true,
     });
     expect((b.G.turnOrders[w.id] ?? [])[2]?.action).toBe('explore');
+  });
+
+  // B-06af: Mithril Armour's row of the race gifts (its runner asked on the Broker's hire)
+  test.for([
+    ['Dwarven', 'Dwarven', ['Mithril Armour']],
+    ['Human', 'Dwarven', []],
+    ['Dwarven', 'Human', []],
+  ] as const)('Mithril Armour: a %s wanderer brokered by a %s realm wears %j', ([heroRace, realmRace, suits]) => {
+    const { b, k, w } = broker((bb, ww) => {
+      realm(bb)['race'] = realmRace;
+      ww['race'] = heroRace;
+    });
+    play(b, k, o('broker', `hire:${String(b.G.characters.indexOf(w))}`), 1);
+    expect(w.player).toBe(0);
+    expect(w.items.flatMap((it) => (it['name'] === 'Mithril Armour' ? [it['name']] : []))).toEqual(suits);
   });
 
   test('a hero brokered in the last season of the turn may act from next turn', () => {
