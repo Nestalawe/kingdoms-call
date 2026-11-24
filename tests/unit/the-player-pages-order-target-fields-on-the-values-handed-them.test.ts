@@ -211,6 +211,42 @@ describe('order-targets.ts: the target field', () => {
     );
     expect(say()).toContain('You already hold 2/1 consecrated province (the most');
   });
+  test("the Call to Arms field offers each owned province of a people's, none of the wild's or the sea's (B-06ak)", () => {
+    // the wild's race alone (`Primal`), one of its sub-races and any race that starts with it are the wild's, as the
+    // turn asks it (isTheRaceTheWildsOrOneOfItsSubRaces); a province of no race is a people's
+    stage('');
+    const prov = (id: number, race: string | undefined, terrain = 'plains') => ({
+      id,
+      name: `P${String(id)}`,
+      race,
+      terrain,
+    });
+    const king = { isKing: true };
+    const offered = (provinces: unknown[]) => {
+      g['currentReport'] = { characters: [hero(king)], kingdom: { alignment: 'Good' }, ownedProvinces: provinces };
+      const box = page.createElement('template');
+      box.innerHTML = String(field(king, 'Call to Arms'));
+      return [...box.content.querySelectorAll('option')].map((o) => o.value);
+    };
+    expect(
+      offered([
+        prov(1, 'Human'),
+        prov(2, 'Primal'),
+        prov(3, 'Primal:Stone Giant'),
+        prov(4, 'Primalish'),
+        prov(5, undefined),
+        prov(6, 'Elven', 'sea'),
+        prov(7, 'Orcish'),
+      ]),
+    ).toEqual(['1', '5', '7']);
+    expect(placeholderOf(field(king, 'Call to Arms'))).toBe('');
+    g['currentReport'] = {
+      characters: [hero(king)],
+      kingdom: { alignment: 'Good' },
+      ownedProvinces: [prov(2, 'Primal'), prov(3, 'Primal:Wolf')],
+    };
+    expect(placeholderOf(field(king, 'Call to Arms'))).toBe('No owned humanoid provinces to raise');
+  });
   test("the Perform Rite field: no site, and a saved offering's marks", () => {
     stage('');
     g['currentReport'] = {

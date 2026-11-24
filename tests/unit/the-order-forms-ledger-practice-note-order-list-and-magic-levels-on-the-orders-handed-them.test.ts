@@ -251,6 +251,12 @@ describe('the note under an order that quotes its chance', () => {
     expect(note(practising, 'Practice Skill', 'sage', elsewhere)).toContain(
       'Improvement: <strong>25%</strong> at Sage 2.',
     );
+    // (B-06ak) an Elven hero of a Human realm, or a hero of no race, is no quick learner: Quick learners' row asks
+    // both races
+    expect(note({ ...practising, race: 'Elven' }, 'Practice Skill', 'sage')).toContain(
+      'Improvement: <strong>25%</strong> at Sage 2.',
+    );
+    expect(note({ ...practising, race: undefined }, 'Practice Skill', 'sage')).not.toContain('half as fast again');
     expect(note(practising, 'Practice Skill', 'white')).toContain('No roll is made');
     expect(note(practising, 'Practice Skill', null)).toContain('Chance falls as mastery grows: 25% at 0, 20% at 1');
   });

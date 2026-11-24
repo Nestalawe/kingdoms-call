@@ -1,4 +1,5 @@
 import { kcHtml } from '../shared/kc-safe.ts';
+import { THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../../engine/army-tables.ts';
 import { thePagesDb } from './config.ts';
 import { MAP_MAX_PLAYERS } from './game-list.ts';
@@ -167,7 +168,7 @@ export async function runTurn0() {
         kingdomName: (setup.kingdomName ?? '') || p.display_name || `Realm ${String(p.player_index + 1)}`,
         race: (setup.race ?? '') || 'Human',
         alignment: (setup.alignment ?? '') || 'Neutral',
-        temper: (setup.temper ?? '') || 'Brave',
+        temper: (setup.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
         skills: theSkillsOrNone(setup.skills),
       };
     })

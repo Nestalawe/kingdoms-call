@@ -448,6 +448,27 @@ describe('the read-only view: the realm card', () => {
       theViewOf({ characters: [{ id: 6, name: 'Eda', items: [null] }] });
     }).toThrow("Cannot read properties of null (reading 'name')");
   });
+  test("the armies a hero leads: a beast's line ends on its class, as players read it (B-06ak)", () => {
+    theViewOf({
+      characters: [
+        {
+          id: 7,
+          name: 'Wenna Brook',
+          skills: { druid: 5 },
+          armies: [
+            { type: 'Thunderbirds', quality: 'Green' },
+            { type: 'Cave Trolls', quality: 'Green' },
+            { type: 'Spearmen', quality: 'Green' },
+          ],
+        },
+      ],
+    });
+    const card = theCardOf('Wenna');
+    expect(card).toMatch(/🦅 Creature, Thunderbirds, Green, Base str 11 str 13 \[Creature\]/);
+    expect(card).toMatch(/Monster, Cave Trolls, Green, Base str 11 str 13 \[Monster\]/);
+    expect(card).toContain('🛡️ Spearmen, Green, Base str 4 str 4⚔ Total strength 30');
+    expect(card.match(/\[(Creature|Monster)\]/g)).toEqual(['[Creature]', '[Monster]']);
+  });
 });
 
 const THE_OTHER_CARDS = {

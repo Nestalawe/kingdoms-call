@@ -33,7 +33,9 @@
 // without warning, break an alliance into war and conquer by a doctrine, since P1-19ax2: the march's forecast, the
 // diplomacy card's button and the order form's doctrine; the alignments one realm a game may hold, since P1-19ay1: the
 // join form; a force's row's kind and its colour of six hex digits: the Chronicle draws a force's rows by them; the price
-// of a company of a type, since B-06b: the treasury ledger prices a company the report's table prices at nothing).
+// of a company of a type, since B-06b: the treasury ledger prices a company the report's table prices at nothing;
+// whether a race is the wild's and the wild's sub-race of a beast, and whether a hero is a quick learner, since B-06ak:
+// Call to Arms' field, the beasts' classes and the Practice Skill note ask them).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -124,6 +126,7 @@ export {
   aCompanyIsABeastADruidHalves,
   aLeadersBeastsPayHalfWages,
   aSkillAtThisLevelIsPractisedNoFurther,
+  isAHeroAQuickLearnerByHisRaceAndHisRealms,
   theChanceAHeroPractisingAloneRaisesHisSkill,
   theHostLeadersCut,
   thePriceADruidPaysForABeast,
@@ -168,3 +171,7 @@ export {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
 } from '../engine/rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+export {
+  isTheRaceTheWildsOrOneOfItsSubRaces,
+  theWildsSubRaceOf,
+} from '../engine/rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';

@@ -5,6 +5,7 @@ import {
   MONSTERS_P,
   PRIMAL_ARMY_DEFS_P,
   SAGE_DISCOVERIES_P,
+  THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
   TITLE_DEFS,
 } from '../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
@@ -865,7 +866,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
         race: (g.race ?? '') || null,
         skills: g.skills ?? {},
         alignment: (g.alignment ?? '') || 'Neutral',
-        temper: (g.temper ?? '') || 'Brave',
+        temper: (g.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
         locationId: locId,
         locationName: (g.locationName ?? '') || 'unknown',
         isMonarch: g._monarch === true,

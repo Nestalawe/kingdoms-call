@@ -46,6 +46,18 @@ export function theShareAQuickLearnerPractisesAt(isHeAHumanOfAHumanRealm: boolea
   return isHeAHumanOfAHumanRealm ? RACE_GIFTS['quick-learners'].theLearning : 1;
 }
 
+/** Whether a hero is a quick learner: he and his realm are both of Quick learners' race (its row of the race gifts).
+ *  The order form's practice note asks it (B-06ak); the turn asks the race gifts' runner
+ *  (doesAGiftOfHisRealmsRaceQuickenAHerosLearning, src/engine/rules/the-registry-of-the-race-gifts.ts), which reads
+ *  the same row, and a unit test holds the two to the same answer over every pair of races. */
+export function isAHeroAQuickLearnerByHisRaceAndHisRealms(
+  theHerosRace: string | null | undefined,
+  theRealmsRace: string | null | undefined,
+): boolean {
+  const theGift = RACE_GIFTS['quick-learners'];
+  return theHerosRace === theGift.race && theRealmsRace === theGift.race;
+}
+
 /** The chance (0 to 1) a hero practising alone raises his skill: the base by the level he holds, plus what his realm's
  *  discoveries add, times his perseverance and his quick learners' share. Peers and a mentor work on top of it. */
 export function theChanceAHeroPractisingAloneRaisesHisSkill(

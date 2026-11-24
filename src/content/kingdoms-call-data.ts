@@ -579,7 +579,9 @@ export const TEMPER_TRAITS = {
     terrorsCourageMod: 0,
   },
 };
-/** The temper a hero of no temper fights with (effTemper), and the row a name no row has reads as (temperOf). */
+/** The temper a hero of no temper fights with (effTemper), and the row a name no row has reads as (temperOf); the
+ *  temper the GM's turn zero gives a king whose setup names none, and the one the player portal shows a hero of none
+ *  with (a fallen hero's on the report, a raised or a charmed hero's card: B-06ak). */
 export const THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH = 'Brave' satisfies keyof typeof TEMPER_TRAITS;
 
 // Hero names are themed by ALIGNMENT. Each alignment has a pool of given names and a pool of
