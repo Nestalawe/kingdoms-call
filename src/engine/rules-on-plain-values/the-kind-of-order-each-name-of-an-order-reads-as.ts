@@ -2,7 +2,7 @@
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a). The turn reads each order's action (a spelling the order form or a bot wrote) as one kind of
-// order: processOrder's switch and the phase pipeline (turn/phase-intents-and-dependency-ordering.ts) read it so; the
+// order: processOrder and the phase pipeline (turn/phase-intents-and-dependency-ordering.ts) read it so; the
 // order form reads its own orders so to put a season's heroes in the turn's order (moved as they were, P1-11e20).
 import {
   THE_HERO_ORDERS,
@@ -15,9 +15,9 @@ type AHeroOrdersRow = (typeof THE_HERO_ORDERS)[keyof typeof THE_HERO_ORDERS];
 
 // The kinds of order (plan P1-10a2): the hero orders' rows' keys (THE_HERO_ORDERS, src/content/the-hero-orders-…), but
 // Pursue's, a saved name that reads as an Encounter: what an order's action reads as. A phase order's own type is
-// PhaseOrder (src/schemas/orders-a-realm-submits.ts), whose action is a spelling the form or a bot wrote. Every kind is
-// a case of processOrder's switch but forced_march, which is handled before it: a row added with no case there fails
-// to compile (P1-10z). A row's readsAs that is no kind fails to compile too (the map's `satisfies`).
+// PhaseOrder (src/schemas/orders-a-realm-submits.ts), whose action is a spelling the form or a bot wrote. Every kind has
+// its resolver in the hero orders' registry (src/engine/orders/the-registry-of-the-hero-orders-…, B-06ao) but
+// forced_march, which processOrder makes a Move before it: a row added with no resolver there fails to compile (P1-10z). A row's readsAs that is no kind fails to compile too (the map's `satisfies`).
 export type OrderKind = Exclude<AHeroOrdersRow, { readonly readsAs: string }>['key'];
 
 /** The kind a row's names read as: its own key, or the kind it reads as (Pursue's). */

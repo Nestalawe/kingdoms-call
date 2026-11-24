@@ -64,6 +64,7 @@ import { timeLimitForPropertyRuns } from '../lib/time-limits.ts';
 const RUNS = fc.readConfigureGlobal().numRuns ?? 100;
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+const REGISTRY = 'engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts';
 
 const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -907,9 +908,11 @@ describe('Research Breakthrough, called directly', () => {
   );
 });
 
-test('every order of the family is a function of its own, and processOrder only calls it', () => {
-  // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
-  const src = compactDeclaration(DISPATCH, 'processOrder');
+test("every order of the family is a function of its own, and its entry in the hero orders' registry only calls it", () => {
+  // read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a); processOrder hands an order to its
+  // kind's entry (B-06ao), keyed by its row's key
+  const dispatch = compactDeclaration(DISPATCH, 'processOrder');
+  const src = compactDeclaration(REGISTRY, 'THE_REGISTRY_OF_THE_HERO_ORDERS_RESOLVERS');
   for (const [key, name] of [
     ['research', 'resolveResearchOrder'],
     ['practice', 'resolvePracticeSkillOrder'],
@@ -917,6 +920,7 @@ test('every order of the family is a function of its own, and processOrder only 
     ['research_breakthrough', 'resolveResearchBreakthroughOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case '${key}':${name}\\(turnContext,c[^)]*\\);break;`));
+    expect(src).toMatch(new RegExp(`[{,]${key}:\\(\\{[^}]*\\}\\)=>\\{${name}\\(turnContext,c[^)]*\\);\\}`));
+    expect(dispatch).not.toContain(`${name}(`);
   }
 });

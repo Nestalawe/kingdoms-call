@@ -43,6 +43,9 @@
 // Since B-06ae the race gifts' registry (src/engine/rules/the-registry-of-the-race-gifts.ts) ends the same way,
 // `satisfies Record<RaceGiftSlug, RaceGiftEntry>`, on the keys of its content rows (the race gifts:
 // src/content/the-race-gifts-their-keys-races-and-numbers.ts), and the copies plant the same two faults in it.
+// The hero orders' registry (src/engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts,
+// B-06ao) ends the same way, but imports the engine's resolvers, so it is not among these copies: its compile test is
+// tests/static/an-order-kind-with-no-resolver-in-the-hero-orders-registry-fails-to-compile.test.ts.
 // The files as they are compile with no error. Level 0 (static): the compiler reads the copies and nothing runs; a
 // lower level has nothing to read. The copies hold only src/content/, src/engine/rules/ and (since P1-19m)
 // src/engine/rules-on-plain-values/ (the registries import nothing else: npm run lint:arch), so each compiles on its own

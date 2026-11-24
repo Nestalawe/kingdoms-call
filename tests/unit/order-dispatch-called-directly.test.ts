@@ -17,24 +17,25 @@
 // `processOrder` itself (P1-08j9), called directly: the whole-turn cases one phase at a time (the heroes in the phase's
 // own order, `phaseInitCompare`); then, with every order's own function stood in by a recorder (vi.spyOn on its
 // module), what it hands each: every order name the game knows reaches its own function once with the values it reads
-// (so the `switch`'s `default:` is never reached), a name in capitals or with spaces, an unknown, empty or missing name
-// as a Defend, a name every object holds as a key (`constructor`) as nothing (the `default:`, P1-10z), a missing target
-// or extra as empty, a wanderer with no realm, the log's context his while the order runs; no hero, a fallen one or no
-// order does nothing; the superseded order (the leader named, or "another hero"); the battle lock's foes one by one (an
-// enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no companies or elsewhere, an ally, his own
-// realm's: not), a neutral garrison (not on his own ground), the line's fields, a stale flag, no companies, every
-// other order; each kind's own row, and the rows' sets (the masteries, a seized hero's refusals, the cast of a mastery
-// spell, the battle lock) the engine's (B-06an: the checks before an order read its row); each charm refusal (and not spent, and told before a spent mastery); a hero under a charm this turn not
-// released and his spell item not cast; a mastery order or spell refused to a hero who joined this turn (and to a
-// seized one: its spell too), not to one who joined earlier; each mastery's charge to this turn and second refusal; the
-// Forced March (handed on to slip, refused below March 7 or with no skills in the save, still spent); a spell item by
-// id, number or name (and an unknown spell, another power, none, one not carried); a bot's Practice read from the
-// season's start, a comrade's level too, a fallen or idle comrade, the order copied not changed, a fleet to drill, a
-// player's hero, a wanderer or no skill named; a bot's Search on a save missing his HP. each mastery's level as a
-// number (P1-11d11: a hero one level short of the 20 refused, told; one at it not refused); Properties: at most one
-// order function runs for any order and none after a refusal, which clears the log's context; a mastery runs at most
-// once a turn however five seasons are given; a bot's switched Practice names a skill below 5, or is a Defend. Planted
-// faults: in the PR (P1-08j9)
+// (so none is left without a resolver in the hero orders' registry), a name in capitals or with spaces, an unknown,
+// empty or missing name as a Defend, a name every object holds as a key (`constructor`) as nothing (no resolver of the
+// registry's, P1-10z), a missing target or extra as empty, a wanderer with no realm, the log's context his while the
+// order runs; no hero, a fallen one or no order does nothing; the superseded order (the leader named, or "another
+// hero"); the battle lock's foes one by one (an enemy, a wanderer, a leaderless host: held; a fallen enemy, one with no
+// companies or elsewhere, an ally, his own realm's: not), a neutral garrison (not on his own ground), the line's
+// fields, a stale flag, no companies, every other order; each kind's own row, and the rows' sets (the masteries, a
+// seized hero's refusals, the cast of a mastery spell, the battle lock) the engine's (B-06an: the checks before an
+// order read its row); each charm refusal (and not spent, and told before a spent mastery); a hero under a charm this
+// turn not released and his spell item not cast; a mastery order or spell refused to a hero who joined this turn (and
+// to a seized one: its spell too), not to one who joined earlier; each mastery's charge to this turn and second
+// refusal; the Forced March (handed on to slip, refused below March 7 or with no skills in the save, still spent); a
+// spell item by id, number or name (and an unknown spell, another power, none, one not carried); a bot's Practice read
+// from the season's start, a comrade's level too, a fallen or idle comrade, the order copied not changed, a fleet to
+// drill, a player's hero, a wanderer or no skill named; a bot's Search on a save missing his HP. each mastery's level
+// as a number (P1-11d11: a hero one level short of the 20 refused, told; one at it not refused); Properties: at most
+// one order function runs for any order and none after a refusal, which clears the log's context; a mastery runs at
+// most once a turn however five seasons are given; a bot's switched Practice names a skill below 5, or is a Defend.
+// Planted faults: in the PR (P1-08j9)
 import fc from 'fast-check';
 import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import { companies, item } from '../lib/item-and-army-order-cases.ts';
@@ -440,7 +441,7 @@ describe('what processOrder hands each order', () => {
   });
 
   test.each(['constructor', '__proto__'])(
-    "a name every object holds as a key (%s) reaches the switch's default, which runs no order's function",
+    "a name every object holds as a key (%s) finds no resolver in the hero orders' registry, and no order's function runs",
     (name) => {
       const b = fresh();
       const c = at(b);
@@ -453,7 +454,7 @@ describe('what processOrder hands each order', () => {
     },
   );
 
-  test("every order name the game knows has a function of its own: the switch's default is never reached", () => {
+  test('every order name the game knows has a function of its own: each kind it reads as has its resolver in the registry', () => {
     const values = new Set(Object.values(PHASE_ACTION_MAP));
     expect([...values].filter((v) => !(v in HANDED))).toEqual([]);
   });

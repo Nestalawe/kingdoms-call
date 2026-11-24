@@ -1,5 +1,4 @@
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import {
   THE_HERO_ORDERS,
@@ -18,70 +17,11 @@ import {
   theHeroOrdersRowOfAKind,
   type OrderKind,
 } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
-import { resolveMoveOrder } from './move-order-marches-voyages-and-battles-on-arrival.ts';
 import {
-  resolveChartTheUnknownOrder,
-  resolveDiscoverLostRuinOrder,
-  resolveExploreOrder,
-  resolveHuntingRumoursOrder,
-  resolveSearchLairOrder,
-} from './explore-and-search-orders-maps-lairs-rites-and-rumours.ts';
-import {
-  resolveHireHeroOrder,
-  resolveRecruitArmiesOrder,
-} from './recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
-import {
-  resolveAwakenGroveOrder,
-  resolveGrandDesignOrder,
-  resolveRemovedAwakenTheWildAndCallFromThePitOrders,
-  resolveWildCallingOrder,
-} from './realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
-import { resolveConsecrateOrder } from './alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts';
-import { resolveCallToArmsOrder } from './alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts';
-import { resolveBrokerOrder } from './alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts';
-import { resolveHarvestTheFieldOrder } from './alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts';
-import { resolvePerformRiteOrder } from './alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts';
-import {
-  resolvePracticeSkillOrder,
-  resolveResearchBreakthroughOrder,
-  resolveResearchOrder,
-  resolveRestOrder,
-} from './research-and-practice-orders-discoveries-skill-drills-and-rest.ts';
-import {
-  resolveEquipItemsOrder,
-  resolveSendItemOrder,
-  resolveUseItemOrder,
-} from './item-orders-equip-use-and-send-magic-items.ts';
-import {
-  resolveDisbandArmyOrder,
-  resolveLeaveOrTransferArmyOrder,
-  resolvePickUpArmyOrder,
-  resolveReleaseHeroOrder,
-} from './army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.ts';
-import {
-  resolveAssassinateOrder,
-  resolveGrandHeistOrder,
-  resolveSabotageOrder,
-  resolveSpyOrder,
-  resolveStealOrder,
-  resolveVanishOrder,
-} from './espionage-orders-spy-steal-sabotage-grand-heist-assassinate-and-vanish.ts';
-import { resolveCastSpellOrder } from './cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts';
-import {
-  resolveDefendOrder,
-  resolveEncounterCharacterOrder,
-} from './encounter-and-defend-orders-chasing-a-hero-down-and-keeping-watch.ts';
-import {
-  resolveBlockadeOrder,
-  resolveChallengeOrder,
-  resolveFeignedRetreatOrder,
-  resolveGrandStratagemOrder,
-  resolveLightningAdvanceOrder,
-  resolveRaidTheCoastOrder,
-  resolveRainOfArrowsOrder,
-  resolveRampageOrder,
-  resolveSnipersMarkOrder,
-} from './war-mastery-orders-challenge-rampage-volleys-tactics-blockade-and-coast-raids.ts';
+  THE_REGISTRY_OF_THE_HERO_ORDERS_RESOLVERS,
+  type AnOrderAsTheDispatchReadsIt,
+  type AnOrdersResolver,
+} from './the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts';
 import {
   emit,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -90,19 +30,9 @@ import {
 import { botPracticeSkill } from '../bots/strategy.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { thePowerAnItemWorksWhenUsed } from '../rules/the-registry-of-magic-item-effects.ts';
-import type { Character, Item, Province } from '../../schemas/saved-game-state.ts';
+import type { Character, Item } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from '../turn/context.ts';
 
-/** A hero's order as the dispatch reads it: the turn's order, with the marks the engine and a bot's plan write on it
- *  (the hero whose battle he joined, a bot's least share of his hit points for a Search, the rumour's band a bot's
- *  Search waits for, and the lower band he takes at full health). */
-type AnOrderAsTheDispatchReadsIt = TurnOrder & {
-  readonly _unifiedWith?: number | null | undefined;
-  readonly _botMinHp?: number | undefined;
-  readonly _botIfRumour?: number | undefined;
-  readonly _botIfRumourLow?: number | undefined;
-  readonly _botIfRumourLowHp?: number | undefined;
-};
 /** An order's province as the dispatch guards it (an older order may hold it as words, or as none). */
 interface AnOrdersProvinceAsTheDispatchGuardsIt {
   readonly prov?: number | string | null | undefined;
@@ -126,22 +56,15 @@ const aLevelByAnyName = (skills: SkillsByAnyName, name: string) => Number(skills
 /** An order's target in words, as `String()` makes them: the turn's order holds words, but a save may hold an item's id
  *  as a number (tests/unit/order-dispatch-called-directly.test.ts stages one), so the words are made as before. */
 const aTargetInWords = (target: string | number) => String(target);
-/** The province a hero stands in, as the orders' typed functions take it: every living hero stands in a province of
- *  the map (the matrix's invariant "armies in real provinces"), so there is always one; for none, a TypeError, as the
- *  first read of it there would throw. */
-function theProvinceAnOrderTakes(prov: Province | undefined): Province {
-  if (!prov) throw new TypeError("Cannot read properties of undefined (reading 'id')");
-  return prov;
-}
-
 // ── ONE HERO'S ORDER, CHECKED AND HANDED TO ITS ORDER'S FUNCTION (plan P1-08j9: lifted out of resolveTurn) ────
 // processOrder carries out one hero's order for one phase: resolveTurn's phase loop calls it for each hero in turn.
 // First the checks that come before any order: a hero unified into another's battle this phase is superseded; a
 // bot's Practice on a skill already at 5 switches skill, and a bot's Search too hurt, on a rumour not heard, or out of
 // the province it was written for becomes a Rest; a Move or an Encounter out of an unresolved battle is refused;
 // a charmed enemy hero won't disband, perform the rites or spend a mastery; a mastery is charged once a turn; a Forced
-// March becomes a Move that may slip past a battle; a spell item's Use Item becomes a cast. Then the switch hands the
-// order to its own function (src/engine/orders/, rows j1 to j8). It takes the turn's context first
+// March becomes a Move that may slip past a battle; a spell item's Use Item becomes a cast. Then the hero orders' registry
+// (the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts, B-06ao) hands the order to its kind's own
+// function (src/engine/orders/, rows j1 to j8). It takes the turn's context first
 // (src/engine/turn/context.ts).
 // Process one order
 export function processOrder(
@@ -173,7 +96,7 @@ export function processOrder(
   turnContext._logCtx = { charId: c.id, phase: ph }; // every line emitted inside here inherits this
   const rawAction = (o.action || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS).toLowerCase().trim();
   // the kind of order each name gives (a name it doesn't hold gives none, read as a Defend; P1-10z: a kind of
-  // order, so a kind the switch below has no case for fails to compile)
+  // order, so a kind the registry below has no resolver for fails to compile)
   const actionsByName: Readonly<Partial<Record<string, OrderKind>>> = PHASE_ACTION_MAP;
   let action: OrderKind = (actionsByName[rawAction] ?? '') || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS;
   let _fmSlip = false; // MARCH L7 Forced March: set below when a forced-march move should try to slip past battle
@@ -457,169 +380,11 @@ export function processOrder(
     }
   }
 
-  switch (action) {
-    case 'move':
-      resolveMoveOrder(turnContext, c, ph, _fmSlip, target, prov, player);
-      break;
-    case 'explore':
-      resolveExploreOrder(turnContext, c, prov);
-      break;
-    case THE_ALIGNMENT_ORDERS['perform-rite'].key:
-      resolvePerformRiteOrder(turnContext, c, ph, target, extra, prov, player);
-      break;
-    case 'hunt_rumours':
-      resolveHuntingRumoursOrder(turnContext, c, target, prov, player);
-      break;
-
-    case 'search':
-      resolveSearchLairOrder(turnContext, c, ph, target, prov, player);
-      break;
-    case 'recruit':
-      resolveRecruitArmiesOrder(turnContext, c, ph, target, extra, prov, player);
-      break;
-    case 'hire':
-      resolveHireHeroOrder(turnContext, c, ph, target, prov, player);
-      break;
-    case 'spy':
-      resolveSpyOrder(turnContext, c, target, prov);
-      break;
-    case THE_ALIGNMENT_ORDERS.consecrate.key:
-      resolveConsecrateOrder(turnContext, c, prov, player);
-      break;
-    case THE_ALIGNMENT_ORDERS['call-to-arms'].key:
-      resolveCallToArmsOrder(turnContext, c, target, player);
-      break;
-    case THE_ALIGNMENT_ORDERS.broker.key:
-      resolveBrokerOrder(turnContext, c, ph, target, player);
-      break;
-    case 'awaken_wild':
-    case 'call_pit':
-      resolveRemovedAwakenTheWildAndCallFromThePitOrders(turnContext, c, action);
-      break;
-    case THE_ALIGNMENT_ORDERS['harvest-the-field'].key:
-      resolveHarvestTheFieldOrder(turnContext, c, ph, prov, player);
-      break;
-    case 'research':
-      resolveResearchOrder(turnContext, c, ph, target, player);
-      break;
-    case 'practice':
-      resolvePracticeSkillOrder(turnContext, c, ph, target);
-      break;
-    case 'equip_items':
-      resolveEquipItemsOrder(turnContext, c, target);
-      break;
-    case 'use_item':
-      resolveUseItemOrder(turnContext, c, target, prov);
-      break;
-    case 'rest':
-      resolveRestOrder(turnContext, c, prov);
-      break;
-    case 'give_item':
-      resolveSendItemOrder(turnContext, c, ph, target, extra);
-      break;
-    case 'leave_army':
-      resolveLeaveOrTransferArmyOrder(turnContext, c, ph, target, extra, prov);
-      break;
-    case 'release':
-      resolveReleaseHeroOrder(turnContext, c, ph, prov, player);
-      break;
-    case 'disband_army':
-      resolveDisbandArmyOrder(turnContext, c, target, prov);
-      break;
-
-    case 'pickup_army':
-      resolvePickUpArmyOrder(turnContext, c, target, prov);
-      break;
-    case 'encounter':
-      resolveEncounterCharacterOrder(turnContext, c, ph, target, theProvinceAnOrderTakes(prov));
-      break;
-
-    case 'steal':
-      resolveStealOrder(turnContext, c, target, prov, player);
-      break;
-
-    case 'defend':
-      resolveDefendOrder(turnContext, c, o, ph, theProvinceAnOrderTakes(prov));
-      break;
-
-    // the standalone 'pursue' case is removed — Pursue is folded into Encounter Character (see
-    // the 'encounter' case above), and PHASE_ACTION_MAP aliases any saved 'pursue' order to
-    // 'encounter' so in-flight games resolve cleanly.
-
-    case 'cast_spell':
-      resolveCastSpellOrder(turnContext, c, o, ph, target, extra, theProvinceAnOrderTakes(prov), player, _itemCast);
-      break;
-
-    // ══ L7/L9 MASTERY ORDERS (batch 2a) ════
-    case 'sabotage':
-      resolveSabotageOrder(turnContext, c, target);
-      break;
-    case 'grand_heist':
-      resolveGrandHeistOrder(turnContext, c, ph, prov);
-      break;
-    case 'awaken_grove':
-      resolveAwakenGroveOrder(turnContext, c, ph, prov);
-      break;
-    case 'chart_unknown':
-      resolveChartTheUnknownOrder(turnContext, c, target, prov);
-      break;
-    case 'discover_ruin':
-      resolveDiscoverLostRuinOrder(turnContext, c, target, prov);
-      break;
-
-    // ══ L7/L9 MASTERY ORDERS (batch 2b) ════
-    case 'blockade':
-      resolveBlockadeOrder(turnContext, c, target);
-      break;
-    case 'research_breakthrough':
-      resolveResearchBreakthroughOrder(turnContext, c);
-      break;
-    case 'assassinate':
-      resolveAssassinateOrder(turnContext, c, target, prov);
-      break;
-    case 'vanish':
-      resolveVanishOrder(turnContext, c, prov);
-      break;
-
-    // ══ L7/L9 MASTERY ORDERS (batch 2c-i — immediate strikes) ════
-    case 'challenge':
-      resolveChallengeOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
-      break;
-    case 'rampage':
-      resolveRampageOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
-      break;
-    case 'rain_of_arrows':
-      resolveRainOfArrowsOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
-      break;
-    case 'snipers_mark':
-      resolveSnipersMarkOrder(turnContext, c, target, theProvinceAnOrderTakes(prov));
-      break;
-
-    // ══ L7/L9 MASTERY ORDERS (batch 2c-ii — battle-strength flags) ════
-    case 'feigned_retreat':
-      resolveFeignedRetreatOrder(turnContext, c, theProvinceAnOrderTakes(prov));
-      break;
-    case 'grand_stratagem':
-      resolveGrandStratagemOrder(turnContext, c, theProvinceAnOrderTakes(prov));
-      break;
-    case 'lightning_advance':
-      resolveLightningAdvanceOrder(turnContext, c, theProvinceAnOrderTakes(prov));
-      break;
-    case 'raid_coast':
-      resolveRaidTheCoastOrder(turnContext, c, theProvinceAnOrderTakes(prov));
-      break;
-    // ══ L7/L9 MASTERY ORDERS (batch 2c-iii — specials) ════
-    case 'wild_calling':
-      resolveWildCallingOrder(turnContext, c, ph, prov);
-      break;
-    case 'grand_design':
-      resolveGrandDesignOrder(turnContext, c, prov);
-      break;
-
-    default:
-      // Every kind of order has its case above (a Forced March is a Move by here). So a kind added to OrderKind with no
-      // case fails to compile on this line, which names it (P1-10z). When the turn runs, this line does nothing,
-      // as the empty default did: an order named by a key every object holds (such as `constructor`) still comes here.
-      action satisfies never;
-  }
+  // the registry hands the order to its kind's resolver (B-06ao), with what each reads. A name every object holds as a
+  // key (such as `constructor`) gives no kind the registry holds: no resolver runs. A Forced March is a Move by here:
+  // handed on as itself, it fails to compile (the registry holds no Forced March).
+  const theResolver: AnOrdersResolver | undefined = Object.hasOwn(THE_REGISTRY_OF_THE_HERO_ORDERS_RESOLVERS, action)
+    ? THE_REGISTRY_OF_THE_HERO_ORDERS_RESOLVERS[action]
+    : undefined;
+  theResolver?.({ turnContext, c, o, ph, _fmSlip, target, extra, prov, player, _itemCast, action });
 }
