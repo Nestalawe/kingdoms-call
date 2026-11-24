@@ -19,6 +19,6 @@ defects placed so far come after the rebuild, in [Later](the-later-group-what-se
 ### P1-19: the rule registry for content effects
 
 A group, not a row ([how to read a row](README.md#how-to-read-a-row)): one content family at a time, and every family
-is in it (#229–#587). Its rows left, P1-19ba1 to P1-19bb9, are B-06's alignments, in
-[the top](README.md#1-t7-the-rules-pulled-out); its finished rows are in
-[the finished list](finished-steps-p1-13-to-p1-25.md#p1-19).
+is in it (#229–#755). Its rows are all finished: in [the finished list](finished-steps-p1-13-to-p1-25.md#p1-19), and
+its last, P1-19ba1 to P1-19bb9 (B-06's alignments), in
+[B-06's](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out).
