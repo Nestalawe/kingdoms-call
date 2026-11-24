@@ -27,6 +27,7 @@ import type { ElvenEscape, TurnContext } from './context.ts';
 import type { SkeletalCompaniesThatCrumbled } from './the-facts-the-lines-after-the-phases-record.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Army, Character, GameState, Province, Realm } from '../../schemas/saved-game-state.ts';
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 
 // ── AFTER THE PHASES (plan P1-08k3: the first stage taken out of resolveTurn's own body) ──────────────────────────
 // Once the turn's five phases are played (no phase is current any more, and every later line is filed after them),
@@ -374,7 +375,8 @@ export function afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAn
       (asItsGuardReadsIt(G.characters) ?? []).forEach((t: Character | null | undefined) => {
         if (!t?.alive || t.location !== healer.location || _mhDone.has(t.id)) return;
         const friendly =
-          t.player === healer.player || (t.player != null && relOfReport(G, healer.player, t.player) === 'allied');
+          t.player === healer.player ||
+          (t.player != null && relOfReport(G, healer.player, t.player) === THE_STATES_TWO_REALMS_STAND_IN.allied);
         if (!friendly) return;
         const max = t.maxHp || 20;
         if ((asItsGuardReadsIt(t.hp) ?? max) < max) {

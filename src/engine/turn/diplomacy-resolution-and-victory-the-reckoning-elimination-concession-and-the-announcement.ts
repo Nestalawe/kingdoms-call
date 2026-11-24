@@ -33,6 +33,12 @@ import type { ARealmsStanding } from '../titles/reckoning.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { doesAnAlignmentBreakAnAllianceIntoWar } from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
 import type { Character, Realm } from '../../schemas/saved-game-state.ts';
+import {
+  THE_STATE_A_PAIR_WITH_NO_ENTRY_STANDS_IN,
+  THE_STATES_TWO_REALMS_STAND_IN,
+  THE_TREAT_DECLARATION,
+} from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { THE_DIPLOMACY_LADDER } from '../../content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts';
 
 // ── DIPLOMACY RESOLUTION AND VICTORY (plan P1-08k4: two stages taken out of resolveTurn's own body) ────────────────
 // Once the turn has settled what its seasons left (after-the-phases-….js) and the bots have made any late declaration,
@@ -70,12 +76,17 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
     });
     const validDecl = (from: number, to: number) => {
       const d = diploDeclarations[from]?.[to];
-      if (d !== 'treat' && d !== 'enemy') return null;
+      if (d !== THE_TREAT_DECLARATION && d !== THE_DIPLOMACY_LADDER.aWarIsDeclaredAs) return null;
       if (!realmHasMet(turnContext, from, to)) return null; // must have met them
       // 2026-10-08 (Toby item 3b): in a game of three realms or fewer no alliance can be forged, so
       // a Treat between two NEUTRAL realms can achieve nothing. The portal never offers it; a bot's
       // is dropped here, so nobody is asked to answer an offer that cannot be accepted.
-      if (d === 'treat' && np <= 3 && theStateThePairsEntryHolds(G.relations, from, to) === 'neutral') return null;
+      if (
+        d === THE_TREAT_DECLARATION &&
+        np <= THE_DIPLOMACY_LADDER.theMostRealmsInAGameThatForgesNoAlliance &&
+        theStateThePairsEntryHolds(G.relations, from, to) === THE_STATES_TWO_REALMS_STAND_IN.neutral
+      )
+        return null;
       return d;
     };
     for (let a = 0; a < np; a++) {
@@ -87,22 +98,32 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         const cur = theStateThePairsEntryHolds(G.relations, a, b);
         // No ALLIANCES in small games (≤3 players): players still start Neutral and may make peace,
         // but the Neutral→Allied step cannot be taken.
-        const noAlliances = G.players.length <= 3;
+        const noAlliances = G.players.length <= THE_DIPLOMACY_LADDER.theMostRealmsInAGameThatForgesNoAlliance;
         let next = cur,
           blockedAlliance = false;
         // 2026-09-24 (Toby item 6): breaking an ALLIANCE drops the pair back to Neutral, not to
         // war — unless the crown that breaks it is Evil or Undead, who go straight to war.
         let _brokenPact = false;
-        if (da === 'enemy' || db === 'enemy') {
-          if (cur === 'allied') {
+        if (da === THE_DIPLOMACY_LADDER.aWarIsDeclaredAs || db === THE_DIPLOMACY_LADDER.aWarIsDeclaredAs) {
+          if (cur === THE_STATES_TWO_REALMS_STAND_IN.allied) {
             // R-044's dark crowns, from their rows (the alignment abilities' family, P1-19ax2)
             const _dark = (pi: number) => doesAnAlignmentBreakAnAllianceIntoWar(G.players[pi]?.alignment);
-            next = (da === 'enemy' && _dark(a)) || (db === 'enemy' && _dark(b)) ? 'enemy' : 'neutral';
-            _brokenPact = next === 'neutral';
-          } else next = 'enemy';
-        } else if (da === 'treat' && db === 'treat') {
-          const wouldBe = cur === 'enemy' ? 'neutral' : cur === 'neutral' ? 'allied' : 'allied';
-          if (wouldBe === 'allied' && noAlliances) {
+            next =
+              (da === THE_DIPLOMACY_LADDER.aWarIsDeclaredAs && _dark(a)) ||
+              (db === THE_DIPLOMACY_LADDER.aWarIsDeclaredAs && _dark(b))
+                ? THE_DIPLOMACY_LADDER.aWarMovesThePairTo
+                : THE_DIPLOMACY_LADDER.anAllianceBrokenMovesThePairTo;
+            _brokenPact = next === THE_DIPLOMACY_LADDER.anAllianceBrokenMovesThePairTo;
+          } else next = THE_DIPLOMACY_LADDER.aWarMovesThePairTo;
+        } else if (da === THE_TREAT_DECLARATION && db === THE_TREAT_DECLARATION) {
+          const aStepUp = THE_DIPLOMACY_LADDER.aMutualTreatMovesThePair;
+          const wouldBe =
+            cur === THE_STATES_TWO_REALMS_STAND_IN.atWar
+              ? aStepUp.fromWar
+              : cur === THE_STATES_TWO_REALMS_STAND_IN.neutral
+                ? aStepUp.fromNeutral
+                : aStepUp.fromAnAllianceOrAnyOther;
+          if (wouldBe === THE_STATES_TWO_REALMS_STAND_IN.allied && noAlliances) {
             blockedAlliance = true;
             next = cur;
           } else next = wouldBe;
@@ -110,7 +131,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         // ── OVERTURES RECEIVED ── A realm that is offered peace or an alliance is TOLD SO, whether
         // or not it answered in kind. The word used matches what the offer would actually achieve
         // from the current relation (each line's fact holds a realm's name, or its seat where it has none).
-        const _mutual = da === 'treat' && db === 'treat';
+        const _mutual = da === THE_TREAT_DECLARATION && db === THE_TREAT_DECLARATION;
         const _tellOffered = (to: number, from: number) => {
           // 2026-10-08 (Toby item 3a/3c): being courted counts as MEETING the realm that sent it, so
           // the courted realm can answer (only met realms are on the Diplomacy card, and only met
@@ -123,13 +144,17 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           // When both sides treated and the relation actually moved, the pact announcement below
           // says it all — no need to also report the overture that produced it.
           if (_mutual && next !== cur) return;
-          if (_tp && !_mutual) (_tp._overturesIn ??= []).push({ from, kind: cur === 'enemy' ? 'peace' : 'alliance' }); // still awaiting an answer
+          if (_tp && !_mutual)
+            (_tp._overturesIn ??= []).push({
+              from,
+              kind: cur === THE_DIPLOMACY_LADDER.anOvertureIsOfPeaceWhenThePairIs ? 'peace' : 'alliance',
+            }); // still awaiting an answer
           emit(turnContext, {
             type: 'system',
             fact: {
               kind: 'a realm is sent an overture',
               from: { realmName: (G.players[from]?.name ?? '') || null, seat: from },
-              ofPeace: cur === 'enemy',
+              ofPeace: cur === THE_DIPLOMACY_LADDER.anOvertureIsOfPeaceWhenThePairIs,
               answeredInKind: _mutual,
             },
             audience: { actor: null, realms: [to] },
@@ -138,8 +163,8 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             system: true,
           });
         };
-        if (da === 'treat') _tellOffered(b, a);
-        if (db === 'treat') _tellOffered(a, b);
+        if (da === THE_TREAT_DECLARATION) _tellOffered(b, a);
+        if (db === THE_TREAT_DECLARATION) _tellOffered(a, b);
         if (blockedAlliance) {
           emit(turnContext, {
             type: 'system',
@@ -170,28 +195,28 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         if (next === cur) {
           // Unreciprocated overture: let the offerer(s) know nothing changed. (The party who was
           // courted has already been told of the overture itself, just above.)
-          if (da === 'treat')
+          if (da === THE_TREAT_DECLARATION)
             emit(turnContext, {
               type: 'system',
               fact: {
                 kind: "a realm's overture goes unanswered",
                 realm: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
                 otherRealm: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
-                ofPeace: cur === 'enemy',
+                ofPeace: cur === THE_DIPLOMACY_LADDER.anOvertureIsOfPeaceWhenThePairIs,
               },
               audience: { actor: null, realms: [a] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
               phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
               system: true,
             });
-          if (db === 'treat')
+          if (db === THE_TREAT_DECLARATION)
             emit(turnContext, {
               type: 'system',
               fact: {
                 kind: "a realm's overture goes unanswered",
                 realm: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
                 otherRealm: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
-                ofPeace: cur === 'enemy',
+                ofPeace: cur === THE_DIPLOMACY_LADDER.anOvertureIsOfPeaceWhenThePairIs,
               },
               audience: { actor: null, realms: [b] },
               hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -200,18 +225,18 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             });
           continue;
         }
-        if (next === 'neutral') delete G.relations[key];
+        if (next === THE_STATE_A_PAIR_WITH_NO_ENTRY_STANDS_IN) delete G.relations[key];
         else G.relations[key] = next;
         // the line each realm is told (a fact: both realms read the same one but for an alliance, which names the realm
         // told first)
         let mA: TheFactOfADiplomacyOrVictoryLine, mB: TheFactOfADiplomacyOrVictoryLine;
-        if (next === 'enemy') {
+        if (next === THE_STATES_TWO_REALMS_STAND_IN.atWar) {
           mA = mB = {
             kind: 'war now stands between two realms',
             first: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
             second: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
           };
-        } else if (next === 'allied') {
+        } else if (next === THE_STATES_TWO_REALMS_STAND_IN.allied) {
           mA = {
             kind: 'two realms are now allied',
             first: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
@@ -227,8 +252,8 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
             kind: 'an alliance is broken and two realms are neutral once more',
             first: { realmName: (G.players[a]?.name ?? '') || null, seat: a },
             second: { realmName: (G.players[b]?.name ?? '') || null, seat: b },
-            brokenByFirst: da === 'enemy',
-            brokenBySecond: db === 'enemy',
+            brokenByFirst: da === THE_DIPLOMACY_LADDER.aWarIsDeclaredAs,
+            brokenBySecond: db === THE_DIPLOMACY_LADDER.aWarIsDeclaredAs,
           };
         } else {
           mA = mB = {
@@ -256,7 +281,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
         // WAR FRONTS: hosts already standing on the new enemy's ground (or beside his host) will turn
         // on that province at the END of next Spring unless they leave — both sides are told now,
         // while they can still write orders for it (see resolveWarFronts).
-        if (next === 'enemy') {
+        if (next === THE_STATES_TWO_REALMS_STAND_IN.atWar) {
           warFrontThreats(turnContext).forEach((t) => {
             const c = t.c,
               pv = t.prov;

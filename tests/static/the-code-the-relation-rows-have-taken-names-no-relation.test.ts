@@ -28,6 +28,8 @@ const THE_HOME = 'src/engine/realms/relations-and-captures.ts';
 const THE_KEY_AND_THE_ENTRY =
   'src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 const FAME = 'src/engine/heroes/fame-and-consecration.ts';
+const DIPLOMACY =
+  'src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts';
 /** Each function (or a file's top level) the relation rows have taken, by its file, from the row that took it: each
  *  row adds what it takes. */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
@@ -46,6 +48,38 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ],
   ['src/engine/turn/intrusion-warnings.ts', 'generateIntrusionNotifications', "B-06aq, at war: the content's state"],
   ['src/engine/turn/log-line-helpers.ts', 'telRealmSnapshot', "B-06aq, at war and allied: the content's states"],
+  [DIPLOMACY, 'validDecl', "B-06ar, a declaration and the small game's limit: the ladder's row"],
+  [
+    DIPLOMACY,
+    'diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings',
+    "B-06ar, each step: the ladder's row",
+  ],
+  [DIPLOMACY, '_tellOffered', "B-06ar, the overture's kind: the ladder's row"],
+  [
+    'src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts',
+    'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages',
+    "B-06ar, war without warning: the ladder's war",
+  ],
+  [
+    'src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts',
+    'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans',
+    "B-06ar, a declaration refused at the safe start: the Treat and the ladder's war",
+  ],
+  [
+    'src/engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.ts',
+    'afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames',
+    "B-06ar, an ally healed: the content's state",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts',
+    'aProvinceIsSafePassageForARealmsColumn',
+    "B-06ar, an ally's ground: the content's state",
+  ],
+  [
+    'src/engine/rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts',
+    'aColumnIsTurnedBackAtANeutralRealmsBorder',
+    "B-06ar, a Neutral realm's border: the content's state",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
