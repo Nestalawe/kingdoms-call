@@ -101,13 +101,14 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 ### An order
 
 - **Where:** `src/engine/orders/`, one file a family of orders, each file's name listing its orders. The checks before
-  a hero's order, and the switch that picks its resolver, are in
-  `src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`. A new kind of order is a row of
+  a hero's order are in `src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`, and the
+  registry that picks its resolver beside it
+  (`src/engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts`). A new kind of order is a row of
   `THE_HERO_ORDERS` (`src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts`: its
   key, its names, its tier), from which `OrderKind` and `PHASE_ACTION_MAP` are built
-  (`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`); the switch fails to
-  compile until the kind has its case
-  (`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). An alignment order is one
+  (`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`); the registry fails to
+  compile until the kind has its entry
+  (`tests/static/an-order-kind-with-no-resolver-in-the-hero-orders-registry-fails-to-compile.test.ts`). An alignment order is one
   row of `src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`, and a mastery order one row of
   `src/content/mastery-orders-their-keys-names-skills-and-levels.ts`.
 - **What a realm sends:** its shape is `src/schemas/orders-a-realm-submits.ts`; the player's form is in `src/ui/player/`.

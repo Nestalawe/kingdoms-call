@@ -198,7 +198,7 @@
   in `engine/turn/` (and the titles' in `engine/titles/`); each order family's `resolve<Order>Order` is in
   `engine/orders/`, called by `processOrder(turnContext, c, o, ph)`
   (`engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`: the checks before any order, then
-  the `switch`); battles in `engine/battle/`, personal combat in `engine/personal-combat/`, heroes in `engine/heroes/`,
+  the registry beside it); battles in `engine/battle/`, personal combat in `engine/personal-combat/`, heroes in `engine/heroes/`,
   the bots in `engine/bots/`, the map in `engine/world/`. What `resolveTurn` calls, stage by stage, and `processOrder`'s checks:
   [the turn's context](the-turns-context-and-calling-its-helpers-and-stages-from-a-test.md#what-resolveturn-calls-in-order).
 - **A helper that reads the turn's state takes the turn's context first**: `turnContext`, made by

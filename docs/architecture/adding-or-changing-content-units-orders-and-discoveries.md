@@ -213,7 +213,7 @@ state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is bu
 order dispatch's prose's own set, for the charmed hero's line), and so are the
 rows of the hero orders for them (each row's key, its name in lower case and its other names, which
 `PHASE_ACTION_MAP` reads: the section after this one);
-the order switch's `case`s read their row's key. Who may give one is two checks of
+the hero orders' registry keys their resolvers by their row's key. Who may give one is two checks of
 `src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
 the row's creed; the king, where the row marks it his alone): each resolver asks them through the registry's
 runner (`src/engine/rules/alignment-abilities/who-may-give-an-alignment-order.ts`), in the order's own order, and so does the player portal's
@@ -221,14 +221,14 @@ order list (`actionsFor`), whose `ACTIONS`, `ACTION_DISPLAY_ORDER` and `ALIGN_AC
 price, the Wild Hunt's beasts, grade and turns, the Blood Offering's tiers); the target widget's words, the Move note's bound beasts (their grade too), the Blood Offering's hint and the gold ledger's prices read them there, each the report's figure first where the turn's differs (the carters' price, the Wild Hunt's term, Consecrate's home and limit: questions 36 and 41); Call to Arms' company and the companies a Blood Offering may take, gives and raises (its rows and hint) are the turn's own rules, through `src/shared/`. The turn and the report price the carters with one
 function (`theCorpseCartersPriceForARealm`), and the report's price of word is the row's. The bots write each key from
 its row and read the two prices they budget (word, the carters) from it: the engine names no key outside
-`src/engine/rules/`. A new row's order still needs its own `case` and resolver.
+`src/engine/rules/`. A new row's order still needs its own resolver and its entry in the hero orders' registry.
 `tests/static/each-alignment-orders-name-creed-and-numbers-are-in-the-books-as-its-row-says.test.ts` reads each row
 against both rulebooks and the player page's two texts of its creed (the turn report's `ALIGNMENT_SUMMARIES`, the join
 form's `DESCS`): a number's optional phrase for a place (`inTheReportsSummary`, `inTheJoinForm`) says where that text
 states it. The GM's statistics label each of the five by its row's name
 ([R-189](../rulings/R-189-the-gm-page-names-each-creed-order-as-its-row-does.md)). The ratchet's `alignmentOrderChecksInEngine` counts the keys the engine writes itself.
 
-Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's `case` in the order switch, the order-name map
+Call from the Pit (2026-10-13; removed with Awaken the Wild on 2026-10-12, item 22) touched: the engine's resolver of the order, the order-name map
 (`'call from the pit':'call_pit'`), `ALIGNMENT_ORDER_KEYS`, the short label map, the
 bots' `botSignaturePre` case and their two lists of muster-like orders; the player portal's `ACTIONS`,
 `ALIGN_ACTIONS` (both the rows' since P1-11d7), `ACTION_DISPLAY_ORDER` (the rows' names since P1-19ba1), the target widget `case`, the army projection and the gold ledger; the
@@ -238,7 +238,7 @@ throws when one is missed: the order is simply refused, hidden or priced wrong. 
 the form offers that the order-name map lacks (it reads as Defend), one left out of `ACTION_DISPLAY_ORDER`, a row the
 form doesn't offer, and an order the rulebook never names. Copy Harvest the Field's
 occurrences (grep `harvest_field` and `Harvest the Field`) and mirror each. Removing one touches the same places;
-keep its `case` as a plain refusal, so an order a save still holds is answered rather than silently dropped.
+keep its resolver as a plain refusal, so an order a save still holds is answered rather than silently dropped.
 
 ## A kind of order is one row: its names and its tier
 
@@ -249,11 +249,12 @@ stays put, 1 a Move or an Encounter, 2 a Defend; a Forced March 0). One more row
 an Encounter. `OrderKind` is the rows' keys, and the turn's names for the orders (`PHASE_ACTION_MAP`) and a blank or
 unknown order's Defend (`normaliseAction`) are built from them
 (`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`). The creed orders' rows are
-built from their alignment rows; the mastery orders' rows join theirs (below) by key. A new row with no case in
-`processOrder`'s switch fails to compile
-(`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). The phase's order reads the
+built from their alignment rows; the mastery orders' rows join theirs (below) by key. A new row with no resolver in
+the hero orders' registry (`src/engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts`,
+B-06ao: every kind but Forced March's, a Move by then) fails to compile
+(`tests/static/an-order-kind-with-no-resolver-in-the-hero-orders-registry-fails-to-compile.test.ts`). The phase's order reads the
 tier (`theTierAnOrderActsIn`, and the phase's stages through it); a name no row writes acts in tier 0. The checks
-before an order runs (`processOrder`, above its switch, B-06an) read its row's fields: `aMasteryOrder` (once a turn,
+before an order runs (`processOrder`, before it hands the order to the registry, B-06an) read its row's fields: `aMasteryOrder` (once a turn,
 and no mastery from a hero who joined the realm this turn or is seized by a charm), `aCastOfAMasterySpellIsAMastery`
 (Cast Spell: a mastery spell counts as a mastery), `aSeizedHeroRefusesIt` (Disband Army, the creed orders) and
 `pinnedByTheBattleLock` (Move, Encounter); a check of one kind compares with its row's key.
