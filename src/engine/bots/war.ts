@@ -1,6 +1,7 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { doesAnAlignmentDeclareWarWithoutWarning } from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
 import {
   BOT_AERIAL_TYPES,
   BOT_CARRIER_TYPES,
@@ -357,11 +358,12 @@ export function botWarAssess(
   const tempers: Readonly<Partial<Record<string, number>>> = BOT_WAR.temper;
   const dist = alignDistP(botAlignOf(G, pi), botAlignOf(G, j));
   const expanding = botStillExpanding(G, pi);
+  // the dark creeds' lower bar: a realm whose alignment declares war without warning (its rows, P1-19bb9)
   let thr =
     BOT_WAR.base +
     (tempers[String(king?.temper)] ?? 0) +
     lean -
-    (['Evil', 'Undead'].includes(botAlignOf(G, pi)) ? BOT_WAR.dark : 0) -
+    (doesAnAlignmentDeclareWarWithoutWarning(botAlignOf(G, pi)) ? BOT_WAR.dark : 0) -
     Math.max(0, dist - 2) * BOT_WAR.farStep +
     (expanding ? BOT_WAR.expand : 0) -
     Math.min(BOT_WAR.oppCap, opp.length * BOT_WAR.oppStep);

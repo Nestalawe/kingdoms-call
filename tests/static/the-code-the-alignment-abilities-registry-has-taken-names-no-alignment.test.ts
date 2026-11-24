@@ -323,6 +323,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'botRoleReady',
     "P1-19bb8, the bots' scholar is ready: at the weights' Sage level for a realm whose alignment adds to research",
   ],
+  [
+    'src/engine/bots/intel.ts',
+    'botTuning',
+    "P1-19bb9, the bots' tuning: Divine grace's, the Banner's, the doctrine's and the Blood Harvest's overlays, by their rows",
+  ],
+  [
+    'src/engine/bots/war.ts',
+    'botWarAssess',
+    "P1-19bb9, the bots' war bar: the dark creeds' lower bar for a realm that declares war without warning, by its rows",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper
