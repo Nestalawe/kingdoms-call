@@ -135,6 +135,22 @@ hero of no temper fights as `THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH` (Brave:
 name no row has as that row; the stance and the terror ask `theRowOfATemperByItsName`, so such a name accepts and
 shifts nothing, as before.
 
+## The bots' worth of a temper
+
+The rule says what, the bot says how much, as for
+[the bots' worth of a race's gift](the-race-gifts-registry-its-stages-and-how-to-add-a-gift.md#the-bots-worth-of-a-races-gift)
+(B-06aj). The bots write no temper's name: each table they read by a temper takes its numbers from their weights.
+
+- **What the rules say:** what a temper does in a fight is its row of `TEMPER_TRAITS`. The bots' duel rating
+  (`botDuelRating`, `bots/spellcraft.ts`) reads the hero's own temper, not the one his items give him (`effTemper`):
+  the bot's figure, kept in T7 (KD-467). The war bar (`botWarAssess`, `bots/war.ts`) reads the king's temper in
+  `BOT_WAR.temper`.
+- **What the bot says:** the `temper` kind of the first version's weights, one weight a temper each (answer 135: one
+  kind; weights by kind come after T7): a hero's worth in a duel (Berserk 6, Brave 4, Cautious 5, Cowardly 0) and what
+  a king adds to the bar a war of his realm must clear (Berserk −0.25, Brave −0.1, Cautious +0.15, Cowardly +0.3). A
+  temper no weight names, or none, adds nothing. For example, a Berserk king's realm goes to war on a lower bar than a
+  Cowardly king's.
+
 ## A sea unit must be a carrier or a primal sea beast
 
 The engine's "crosses the sea under its own power" set (`SEA_TYPES`, and the bots' `BOT_SEA_ALL`) is built from
