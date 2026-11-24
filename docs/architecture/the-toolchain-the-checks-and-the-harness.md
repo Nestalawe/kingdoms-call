@@ -67,8 +67,10 @@ since the test scripts load `site/` (built from `src/`) by file name and `vitest
 **The ratchet** (`npm run ratchet`, `tools/ratchet.ts`) lets the harness only get stronger. It counts what weakens
 the harness, or what a step of the backlog is still taking out: switched-off checks, allowlist entries, JavaScript
 files, quarantined tests, tests on the engine's `vm` loader, the engine's checks of content by name outside the [rule registry](the-rule-registry-and-the-one-source-for-shared-rules.md)
-(a family each), ESLint's suppressed findings, the import rules' known violations and what knip finds unused. It
-fails when a count is above its baseline, and `tests/static/harness.test.ts` makes `npm test` and CI fail with it.
+(a family each, the races, tempers, order kinds and relations among them), the rules' numbers in listed functions
+(the economy's, the world's making's, the battles'), the portal's naming of an alignment, ESLint's suppressed
+findings, the import rules' known violations and what knip finds unused. It fails when a count is above its
+baseline, and `tests/static/harness.test.ts` makes `npm test` and CI fail with it.
 When a count falls, lower its baseline in the same pull request (`npm run ratchet -- --update` only ever lowers it);
 never raise one. **Where to look:** `tests/ratchet.json` for each count today, `tools/ratchet.ts` for what each
 counts, and [the backlog](../backlog/README.md) for the steps that lower them. The docs name a count by its key
