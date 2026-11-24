@@ -99,6 +99,8 @@ const {
   await import('../../src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts');
 const theWarFronts = await import('../../src/engine/battle/war-fronts-and-enemy-stand-offs.ts');
 const theRelations = await import('../../src/engine/realms/relations-and-captures.ts');
+const theKeyOfAPairOfRealms =
+  await import('../../src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts');
 const theReckoning = await import('../../src/engine/titles/reckoning.ts');
 const thePerks = await import('../../src/engine/titles/perks.ts');
 const diplomacy = diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings as Fn;
@@ -187,7 +189,7 @@ const THE_HELPERS_THE_STAGES_CALL = {
       calls,
     ),
   relKeyOf: (b: Board, calls: Call[]) =>
-    recordEachCall(theRelations.relKeyOf, vi.spyOn(theRelations, 'relKeyOf'), 'relKeyOf', b, calls),
+    recordEachCall(theKeyOfAPairOfRealms.relKeyOf, vi.spyOn(theKeyOfAPairOfRealms, 'relKeyOf'), 'relKeyOf', b, calls),
   areAllied: (b: Board, calls: Call[]) =>
     recordEachCall(theRelations.areAllied, vi.spyOn(theRelations, 'areAllied'), 'areAllied', b, calls),
   reckoningCallEligibility: (b: Board, calls: Call[]) =>

@@ -100,7 +100,7 @@ import {
 import { anItemIsTheMithrilSuit } from '../../src/engine/rules/the-registry-of-magic-item-effects.ts';
 import { createTurnContext, type TheGamesSlotRow, type TurnContext } from '../../src/engine/turn/context.ts';
 import { warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages } from '../../src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts';
-import { relKeyOf } from '../../src/engine/realms/relations-and-captures.ts';
+import { relKeyOf } from '../../src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill } from '../../src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts';
 import { isBotRow } from '../../src/engine/bots/setup.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';

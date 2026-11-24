@@ -1,3 +1,5 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { theStateThePairsEntryHolds } from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import {
   MINOR_TITLES,
@@ -144,12 +146,11 @@ export function _charTitleMerit(c: AHeroAsTheTitlesCountHim): AHerosMeritTowards
 // allies also raises the bar (reckoningAllyStepPct), so a bloc is a real commitment rather than a
 // free ride, and a bloc padded with tiny passengers is worse than no bloc at all.
 export function alliedBloc(state: Pick<TheWorldAsTheReckoningReadsIt, 'relations' | 'players'>, pi: number): number[] {
-  const rel = state.relations ?? {},
-    np = (state.players ?? []).length;
-  const key = (a: number, b: number) => (a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`);
+  const np = (state.players ?? []).length;
   const out = [pi];
   for (let y = 0; y < np; y++) {
-    if (y !== pi && rel[key(pi, y)] === 'allied') out.push(y);
+    if (y !== pi && theStateThePairsEntryHolds(state.relations, pi, y) === THE_STATES_TWO_REALMS_STAND_IN.allied)
+      out.push(y);
   }
   return out;
 }

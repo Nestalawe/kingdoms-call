@@ -1,3 +1,5 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { theStateThePairsEntryHolds } from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import {
   KC_HEX_DIRS,
   KC_RIVAL_RACE,
@@ -924,9 +926,8 @@ export function botRelationRaw(
   a: number | null | undefined,
   b: number | null | undefined,
 ) {
-  if (a == null || b == null || a === b) return 'neutral';
-  const k = a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`;
-  return (asItsGuardReadsIt(G.relations)?.[k] ?? '') || 'neutral';
+  if (a == null || b == null || a === b) return THE_STATES_TWO_REALMS_STAND_IN.neutral;
+  return theStateThePairsEntryHolds(asItsGuardReadsIt(G.relations), a, b);
 }
 // ── PERSONAL-COMBAT PROVINCE MARKER ────
 // _hadBattleThisTurn drives the map's RED crossed swords and is for ARMY battles only. A personal

@@ -16,7 +16,11 @@ import {
   reckoningOwnShare,
   reckoningWinner,
 } from '../titles/reckoning.ts';
-import { areAllied, realmHasMet, relKeyOf } from '../realms/relations-and-captures.ts';
+import { areAllied, realmHasMet } from '../realms/relations-and-captures.ts';
+import {
+  relKeyOf,
+  theStateThePairsEntryHolds,
+} from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
 import {
   emit,
@@ -71,7 +75,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
       // 2026-10-08 (Toby item 3b): in a game of three realms or fewer no alliance can be forged, so
       // a Treat between two NEUTRAL realms can achieve nothing. The portal never offers it; a bot's
       // is dropped here, so nobody is asked to answer an offer that cannot be accepted.
-      if (d === 'treat' && np <= 3 && ((G.relations[relKeyOf(from, to)] ?? '') || 'neutral') === 'neutral') return null;
+      if (d === 'treat' && np <= 3 && theStateThePairsEntryHolds(G.relations, from, to) === 'neutral') return null;
       return d;
     };
     for (let a = 0; a < np; a++) {
@@ -80,7 +84,7 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
           db = validDecl(b, a);
         if (!da && !db) continue;
         const key = relKeyOf(a, b);
-        const cur = (G.relations[key] ?? '') || 'neutral';
+        const cur = theStateThePairsEntryHolds(G.relations, a, b);
         // No ALLIANCES in small games (≤3 players): players still start Neutral and may make peace,
         // but the Neutral→Allied step cannot be taken.
         const noAlliances = G.players.length <= 3;

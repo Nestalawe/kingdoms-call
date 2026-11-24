@@ -24,9 +24,29 @@ import {
 } from '../../tools/ratchet.ts';
 import { everyStringIn, TOP } from '../lib/the-strings-a-function-of-the-code-holds.ts';
 
-/** Each function (or a file's top level) the relation rows have taken, by its file, from the row that took it. Empty
- *  until the family's first row: each adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+const THE_HOME = 'src/engine/realms/relations-and-captures.ts';
+const THE_KEY_AND_THE_ENTRY =
+  'src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
+const FAME = 'src/engine/heroes/fame-and-consecration.ts';
+/** Each function (or a file's top level) the relation rows have taken, by its file, from the row that took it: each
+ *  row adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  [THE_KEY_AND_THE_ENTRY, 'theStateThePairsEntryHolds', "B-06aq, a pair's entry: Neutral the content's"],
+  [THE_HOME, 'relationBetween', "B-06aq, the reader: the entry's reader and the content's Neutral"],
+  [THE_HOME, 'areEnemies', "B-06aq, at war: the content's state"],
+  [THE_HOME, 'areAllied', "B-06aq, allied: the content's state"],
+  [FAME, 'relOfReport', "B-06aq, the report's copy: the entry's reader"],
+  [FAME, 'spotEnemyInOwnedProvince', "B-06aq, an ally: the content's state"],
+  ['src/engine/bots/intel.ts', 'botRelationRaw', "B-06aq, the bots' copy: the entry's reader"],
+  ['src/engine/titles/reckoning.ts', 'alliedBloc', "B-06aq, the Reckoning's copy: the entry's reader"],
+  [
+    'src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts',
+    'enemyCharVisibleTo',
+    "B-06aq, at war: the content's state",
+  ],
+  ['src/engine/turn/intrusion-warnings.ts', 'generateIntrusionNotifications', "B-06aq, at war: the content's state"],
+  ['src/engine/turn/log-line-helpers.ts', 'telRealmSnapshot', "B-06aq, at war and allied: the content's states"],
+];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
 const isARelation = (word: string): boolean => RELATION_VOCABULARY.has(word);

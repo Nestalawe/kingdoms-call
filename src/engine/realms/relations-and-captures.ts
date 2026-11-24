@@ -1,4 +1,6 @@
 import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../content/kingdoms-call-data.ts';
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { theStateThePairsEntryHolds } from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
@@ -59,7 +61,7 @@ type AnEvilConqueror = Pick<Character, 'name' | 'encounterPlan'> & { readonly pl
 // ── RELATIONS AND CAPTURES (plan P1-08a: lifted out of resolveTurn) ────
 // Who is at war or allied with whom (G.relations, keyed "minIdx-maxIdx": see "DIPLOMACY" in resolveTurn), and what
 // happens when a province changes hands: its consecration breaks, its old owner is told, and an Evil conqueror loots
-// or enslaves. Each takes the turn's context first (src/engine/turn/context.ts), but relKeyOf, which reads none.
+// or enslaves. Each takes the turn's context first (src/engine/turn/context.ts).
 // ── PROVINCE CAPTURE ────
 // Every path that hands a province to a new realm goes through here. When the ground was another
 // player's, that player gets a line in their REALM EVENTS for the phase — who took it (hero and
@@ -184,33 +186,31 @@ export function setProvinceOwner(
   });
 }
 
-export function relKeyOf(a: number, b: number) {
-  return a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`;
-}
+// How two realms stand: a realm missing reads Neutral, a realm with itself 'self', and a pair the state its entry in
+// the relations holds (the key and the entry's one reader, src/engine/rules-on-plain-values/how-two-realms-stand-…).
 export function relationBetween(
   turnContext: Pick<TurnContext, 'G'>,
   a: number | null | undefined,
   b: number | null | undefined,
 ) {
   const { G } = turnContext;
-  if (a == null || b == null) return 'neutral';
+  if (a == null || b == null) return THE_STATES_TWO_REALMS_STAND_IN.neutral;
   if (a === b) return 'self';
-  const rel = G.relations[relKeyOf(a, b)] ?? '';
-  return rel || 'neutral';
+  return theStateThePairsEntryHolds(G.relations, a, b);
 }
 export function areEnemies(
   turnContext: Pick<TurnContext, 'G'>,
   a: number | null | undefined,
   b: number | null | undefined,
 ) {
-  return relationBetween(turnContext, a, b) === 'enemy';
+  return relationBetween(turnContext, a, b) === THE_STATES_TWO_REALMS_STAND_IN.atWar;
 }
 export function areAllied(
   turnContext: Pick<TurnContext, 'G'>,
   a: number | null | undefined,
   b: number | null | undefined,
 ) {
-  return relationBetween(turnContext, a, b) === 'allied';
+  return relationBetween(turnContext, a, b) === THE_STATES_TWO_REALMS_STAND_IN.allied;
 }
 // A realm may declare a Treat or war only on a realm it has met (its record of meetings): diplomacy's resolution reads
 // no other declaration, and the bots' grudge is recorded only from a war it would read.

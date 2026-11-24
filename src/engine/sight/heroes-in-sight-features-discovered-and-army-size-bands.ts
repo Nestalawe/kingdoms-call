@@ -3,6 +3,7 @@
 // seen hero can't be encountered, and which realm knows a province's feature. Pure: the engine asks them as it resolves
 // (the bots, Move, Explore, world generation, a spy's findings, the warnings, the report's filter), and perception in
 // src/views applies them. The engine may not import src/views, so they live here, in one copy.
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';
 import { theHerosItemsHideHisFace } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -75,7 +76,7 @@ export function enemyCharVisibleTo(
   // seen; their Spy cannot slip them past your hero (only Invisibility, above, still can). Wandering
   // heroes and local chieftains keep their small chance to slip by (the cloak below).
   if (coLoc && c.player != null) return true;
-  const isEnemy = c.player != null && relOfReport(gs, viewerPi, c.player) === 'enemy';
+  const isEnemy = c.player != null && relOfReport(gs, viewerPi, c.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar;
   if (isEnemy && ownHere && !coLoc) {
     // Lurking in land you own with none of your characters present: Spy contest (a column can't
     // hide).

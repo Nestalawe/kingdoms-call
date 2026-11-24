@@ -29,6 +29,10 @@ import {
 } from '../src/content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_HERO_ORDERS } from '../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
+import {
+  THE_STATES_TWO_REALMS_STAND_IN,
+  THE_TREAT_DECLARATION,
+} from '../src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');
@@ -1179,8 +1183,12 @@ export const orderKindChecksInTheBots = (codeFiles: readonly (readonly [file: st
 // strings are a `'neutral'` of another sense, listed so that the count can reach 0: a battle's kind and a death's cause.
 // tests/static/the-code-the-relation-rows-have-taken-names-no-relation.test.ts holds the functions the rows have taken
 // at 0 each, with relationChecksByFunction.
-/** The words of the relations' count. */
-export const RELATION_VOCABULARY: ReadonlySet<string> = new Set(['enemy', 'allied', 'neutral', 'treat']);
+/** The words of the relations' count: the three states two realms stand in and the Treat declaration, from the
+ *  content. */
+export const RELATION_VOCABULARY: ReadonlySet<string> = new Set<string>([
+  ...Object.values(THE_STATES_TWO_REALMS_STAND_IN),
+  THE_TREAT_DECLARATION,
+]);
 /** The two `'neutral'`s that are no relation (above). */
 export const THE_RELATION_WORDS_THAT_ARE_NOT_A_RELATION: readonly AWordThatIsNotTheCountsWord[] = [
   [
