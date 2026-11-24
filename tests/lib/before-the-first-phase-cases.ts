@@ -1826,6 +1826,19 @@ export const RECORD_CASES: BeforeCase[] = [
     }),
   },
   {
+    // B-06ap: an order sent with no action is a blank phase, recorded as the kind a blank order reads as (a Defend),
+    // as a phase with no order is.
+    name: 'an order sent with no action is recorded as Defend',
+    stage: (b) => {
+      const h = realmHero(b, 1);
+      return { hero: h, sends: { 1: { orders: { [h.id]: [order('move', 3), order(''), order('rest')] } } } };
+    },
+    check: (o, s) => ({
+      got: { ph: phasesOf(recordOf(o, 1), hero(s)) },
+      want: { ph: ['move', 'defend', 'rest', 'defend', 'defend'] },
+    }),
+  },
+  {
     name: 'the record shows a realm’s declarations and its call for the Reckoning',
     stage: () => sending({ 2: { diplomacy: { 1: 'enemy' }, callReckoning: true } }),
     check: (o) => {
