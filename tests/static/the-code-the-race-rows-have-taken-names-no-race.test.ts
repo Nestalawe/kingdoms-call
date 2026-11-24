@@ -166,6 +166,18 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ],
   ['src/engine/units/drill-and-spoils.ts', 'humanXPMult', "B-06af, Drillmasters, from the race gifts' runner"],
   ['src/engine/graves.ts', 'recordBattleGraves', "B-06af, Homeward Flight, from the race gifts' runner"],
+  [
+    'src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts',
+    TOP,
+    "B-06ag, the race of each unit type of the four races, content's",
+  ],
+  ['src/engine/discoveries.ts', '_isHumanoidRace', "B-06ag, the Plague's humanoid races, content's"],
+  ['src/engine/army-tables.ts', TOP, "B-06ag, an old save's races of the wild renamed, content's"],
+  [
+    'src/engine/saves/upgrade-a-saved-game-and-check-it.ts',
+    'everyNeutralHeroWearingABeastsRaceGivenAPeoplesRace',
+    "B-06ag, the beasts' classes an old save's neutral hero may wear, content's",
+  ],
 ];
 
 test.for(TAKEN)('%s: %s names no race (%s)', ([file, fn]) => {

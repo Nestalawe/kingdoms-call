@@ -1,4 +1,5 @@
 import {
+  AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED,
   KC_EACH_UNIT_TYPES_PRICE_AND_WAGE,
   KC_QUALITY_TIERS,
   KC_SKILL_LABELS,
@@ -278,11 +279,10 @@ export const LEGACY_UNIT_RENAMES: Readonly<Record<string, string>> = {
   'Kraken Tentacles': 'Eldritch Kraken',
   'Leviathan Pods': 'Eldritch Kraken',
 };
-// A province's (or a company's) primal race string, where the beast it names was renamed.
-export const LEGACY_RACE_RENAMES: Readonly<Record<string, string>> = {
-  'Primal:Giant Eagle': 'Primal:Thunderbird',
-  'Primal:Leviathan': 'Primal:Kraken',
-};
+// A province's (or a company's) primal race string, where the beast it names was renamed: an old save's words, content's
+// (B-06ag).
+export const LEGACY_RACE_RENAMES: Readonly<Record<string, string>> =
+  AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED;
 // The saved state as migrateLegacyUnitNames reads it: today's, or an older save's, so any field it reads may be
 // missing (the guards below say so). P1-15 types the old saves; until then their shape is declared here, with only the
 // fields this function reads. Today's GameState passes.

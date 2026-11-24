@@ -76,6 +76,7 @@ import { migrateItemTiers } from '../items/equipment.ts';
 import { migrateMaxHpV2, retireDiscoveries } from '../heroes/skills-and-hp.ts';
 import { renameLairsThematicP } from '../names.ts';
 import { GUARDIAN_PERKS_THE_REGISTRY_HOLDS } from '../../content/guardian-perks-their-kinds-numbers-and-words.ts';
+import { THE_BEASTS_CLASSES_AN_OLD_SAVES_NEUTRAL_HERO_MAY_WEAR_AS_HIS_RACE } from '../../content/kingdoms-call-data.ts';
 import { THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES } from './the-saved-games-version-this-build-writes.ts';
 import { anOlderSavesShapesMendedOnce } from './version-2-an-older-saves-shapes-mended-once.ts';
 import { whereASavedGameDiffersFromThisBuildsSchema } from '../../schemas/where-a-saved-game-differs-from-this-builds-schema.ts';
@@ -255,11 +256,14 @@ interface AHeroAsTheBeastsRaceRepairReadsHim {
  *  monster class belongs to the armies. World generation gives every neutral hero a people's race, but a save made
  *  before that may hold neutral heroes, active guards included, wearing one: each is given a people's race, by his id
  *  (deterministic, so it never flickers turn to turn). The monster class stays on the armies they lead. */
+// The beasts' two classes an old save's neutral hero may wear as his race: an old save's words, content's (B-06ag).
+const theBeastsClassesAHeroMayWear: readonly (string | null | undefined)[] =
+  THE_BEASTS_CLASSES_AN_OLD_SAVES_NEUTRAL_HERO_MAY_WEAR_AS_HIS_RACE;
 function everyNeutralHeroWearingABeastsRaceGivenAPeoplesRace(save: {
   readonly characters?: readonly (AHeroAsTheBeastsRaceRepairReadsHim | null | undefined)[] | null | undefined;
 }): void {
   (save.characters ?? []).forEach((c) => {
-    if (c?.player === null && (c.race === 'Monster' || c.race === 'Creature')) {
+    if (c?.player === null && theBeastsClassesAHeroMayWear.includes(c.race)) {
       c.race = RACES_P[((((c.id ?? 0) || 0) % RACES_P.length) + RACES_P.length) % RACES_P.length];
     }
   });

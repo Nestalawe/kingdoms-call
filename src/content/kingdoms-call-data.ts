@@ -15368,6 +15368,56 @@ export const THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS = 'Human' satisf
 // to Arms musters there, Evil enslaves no one there, and a druid may awaken a grove there. The engine asks whether a
 // race is the wild's through src/engine/rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts.
 export const THE_RACE_OF_THE_WILD = 'Primal';
+// The race of each unit type of the four races (B-06ag, moved from the engine as it was): a discovery that reaches a
+// race's units asks it of a unit type named alone (a recruit's price and grade). The engine reads it as
+// ARMY_RACE_OF_TYPE (src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts).
+// The Noble Griffons and the Galleon Fleet aren't in it (KD-407).
+export const THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES = {
+  'Shieldwall Levies': 'Human',
+  'Free Lances': 'Human',
+  'Yeoman Longbows': 'Human',
+  'Gilded Lances': 'Human',
+  'Human Garrison': 'Human',
+  'Men-at-Arms': 'Human',
+  'Elven Bowmen': 'Elven',
+  'Forest Wardens': 'Elven',
+  'Shadow Archers': 'Elven',
+  'Eagle Riders': 'Elven',
+  'Elven Galleys': 'Elven',
+  'Elven Garrison': 'Elven',
+  'Stag Riders': 'Elven',
+  'Dwarven Guard': 'Dwarven',
+  'Ironwood Crossbows': 'Dwarven',
+  'Mountain Guns': 'Dwarven',
+  'Dwarf Ironclads': 'Dwarven',
+  'Gnomish Gyrocopters': 'Dwarven',
+  'Dwarf Garrison': 'Dwarven',
+  'Ironhoof Rams': 'Dwarven',
+  'Warg Riders': 'Orcish',
+  'Orc Berserkers': 'Orcish',
+  'Goblin Horde': 'Orcish',
+  'Wyvern Riders': 'Orcish',
+  'Orcish Longships': 'Orcish',
+  'Black Arrows': 'Orcish',
+  'Orc Garrison': 'Orcish',
+} satisfies Partial<Record<HumanoidUnitType, (typeof KC_HUMANOID_RACES)[number]>>;
+// The garrison company a Call to Arms musters by the province's race (B-06ag, moved from the engine as it was), where
+// the province's own pool holds no garrison type.
+export const THE_GARRISON_A_CALL_TO_ARMS_MUSTERS_BY_THE_PROVINCES_RACE = {
+  Human: 'Human Garrison',
+  Elven: 'Elven Garrison',
+  Dwarven: 'Dwarf Garrison',
+  Orcish: 'Orc Garrison',
+} satisfies Record<(typeof KC_HUMANOID_RACES)[number], HumanoidUnitType>;
+// An old save's race words (B-06ag, moved from the engine as they were): no race of today's world, but a game saved
+// before a change may hold them, and the save's upgrade mends them. A province's or a company's race of the wild whose
+// beast was renamed (2026-10-13: the Giant Eagles became Thunderbirds, the Leviathans' waters the Kraken's), and the
+// beasts' two classes a neutral hero may wear as his race (he is given a people's race).
+export const AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED = {
+  'Primal:Giant Eagle': 'Primal:Thunderbird',
+  'Primal:Leviathan': 'Primal:Kraken',
+};
+export const THE_BEASTS_CLASSES_AN_OLD_SAVES_NEUTRAL_HERO_MAY_WEAR_AS_HIS_RACE = ['Monster', 'Creature'] as const;
 export const KC_RIVAL_RACE = { Elven: 'Dwarven', Dwarven: 'Elven', Human: 'Orcish', Orcish: 'Human' };
 export const KC_HEX_DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
 export const KC_GRAND_DESIGNS = {

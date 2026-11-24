@@ -1,7 +1,7 @@
 // The units a discovery's effect reaches: by its type, its class, its race and its quality (moved from
 // src/engine/discoveries.ts by plan P1-19aa, as they were, so that the discoveries' effects in src/engine/rules/ and the
 // engine's own readers ask one rule: the rules there may import only the content and this folder).
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { KC_UNIT_CLASS, THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES } from '../../content/kingdoms-call-data.ts';
 import type { TheEffectOfADiscovery } from '../../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import {
   CREATURE_ARMIES,
@@ -83,32 +83,6 @@ export function discUnitMatch(e: TheEffectOfADiscovery | null | undefined, ...un
   }
   return true;
 }
-export const ARMY_RACE_OF_TYPE: Readonly<Partial<Record<string, string>>> = {
-  'Shieldwall Levies': 'Human',
-  'Free Lances': 'Human',
-  'Yeoman Longbows': 'Human',
-  'Gilded Lances': 'Human',
-  'Human Garrison': 'Human',
-  'Men-at-Arms': 'Human',
-  'Elven Bowmen': 'Elven',
-  'Forest Wardens': 'Elven',
-  'Shadow Archers': 'Elven',
-  'Eagle Riders': 'Elven',
-  'Elven Galleys': 'Elven',
-  'Elven Garrison': 'Elven',
-  'Stag Riders': 'Elven',
-  'Dwarven Guard': 'Dwarven',
-  'Ironwood Crossbows': 'Dwarven',
-  'Mountain Guns': 'Dwarven',
-  'Dwarf Ironclads': 'Dwarven',
-  'Gnomish Gyrocopters': 'Dwarven',
-  'Dwarf Garrison': 'Dwarven',
-  'Ironhoof Rams': 'Dwarven',
-  'Warg Riders': 'Orcish',
-  'Orc Berserkers': 'Orcish',
-  'Goblin Horde': 'Orcish',
-  'Wyvern Riders': 'Orcish',
-  'Orcish Longships': 'Orcish',
-  'Black Arrows': 'Orcish',
-  'Orc Garrison': 'Orcish',
-};
+// The race of each unit type of the four races: content's (B-06ag).
+export const ARMY_RACE_OF_TYPE: Readonly<Partial<Record<string, string>>> =
+  THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES;
