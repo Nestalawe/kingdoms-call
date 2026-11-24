@@ -2,6 +2,7 @@
 // afar, or to buy word from a province the realm has seen. Who may give it (the creed, then the king) is the alignment
 // abilities' registry's, at "orderValidity: who may give an alignment order"; the rest is the order's own, as the realm's
 // works' file held it until P1-19aw2. It draws no die of its own.
+import { doesAGiftOfHisRealmsRaceSuitAHeroInMithril } from '../../rules/the-registry-of-the-race-gifts.ts';
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { heroHireWage } from '../../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -121,7 +122,8 @@ export function resolveBrokerOrder(
     bh.player = c.player;
     bh.name = bh.name.replace(' (wandering)', '');
     // a brokered hire is a HIRE.
-    if (bh.race === 'Dwarven' && G.players[c.player]?.race === 'Dwarven') grantMithrilTo(bh, G); // mithril on hire into a dwarf realm
+    if (doesAGiftOfHisRealmsRaceSuitAHeroInMithril(G.players[c.player]?.race, { theHerosRace: bh.race }))
+      grantMithrilTo(bh, G); // mithril on hire into a dwarf realm (Mithril Armour's row, B-06af)
     player.heroes = asItsGuardReadsIt(player.heroes) ?? [];
     player.heroes.push(bh.id);
     bh.hiredInPhase = ph;

@@ -1,3 +1,4 @@
+import { doesAGiftOfHisRealmsRaceSuitAHeroInMithril } from '../rules/the-registry-of-the-race-gifts.ts';
 import { KC_RUMOUR_COST_BY_POWER } from '../../content/kingdoms-call-data.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
@@ -579,9 +580,9 @@ export function mithrilQualifies(
   ch: AHeroAsMithrilQualifiesHim | null | undefined,
   gs: Pick<TheStateAsTheMithrilPassesReadIt, 'players'> | null | undefined,
 ) {
-  if (!ch || ch.alive === false || ch.race !== 'Dwarven' || ch.player == null) return false;
+  if (!ch || ch.alive === false || ch.player == null) return false;
   const pl = gs?.players?.[ch.player]; // his realm, read once
-  return pl?.race === 'Dwarven';
+  return doesAGiftOfHisRealmsRaceSuitAHeroInMithril(pl?.race, { theHerosRace: ch.race }); // Mithril Armour's row (B-06af)
 }
 export function grantMithrilToDwarves(gs: TheStateAsTheMithrilPassesReadIt | null | undefined) {
   if (!gs?.characters || !gs.players) return;

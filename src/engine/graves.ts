@@ -6,6 +6,7 @@ import { effSkillOf } from './heroes/skills-and-hp.ts';
 import { armyUnitName } from './dice-and-army-names.ts';
 import { noteServedRealm } from './heroes/charms-and-neutrals.ts';
 import { whatARealmsDiscoveriesAddToAFallenUnitsFlightHome } from './rules/the-registry-of-discovery-effects.ts';
+import { theFlightHomeTheGiftsOfItsRealmsRaceGiveAFallenCompany } from './rules/the-registry-of-the-race-gifts.ts';
 import type { Army, Character, Grave, Realm } from '../schemas/saved-game-state.ts';
 import type { ElvenEscape } from './turn/context.ts';
 
@@ -300,9 +301,6 @@ export function recordHeroGrave(
   });
 }
 
-export function elvenEscapeChance(terrain: string | null | undefined) {
-  return terrain === 'desert' || terrain === 'mountain' ? 30 : terrain === 'forest' || terrain === 'jungle' ? 60 : 45;
-}
 export function recordBattleGraves(
   turnContext: {
     readonly G: { readonly players: readonly (ARealmAsAFallenUnitsFlightHomeReadsIt | null | undefined)[] };
@@ -317,16 +315,29 @@ export function recordBattleGraves(
   prov.battleGraves ??= [];
   // the graves, the same list each push below fills
   const graves = prov.battleGraves;
-  const ownerIsElven = ownerPlayer != null && G.players[ownerPlayer]?.race === 'Elven';
+  // the owner's realm's race, whose gifts may send a fallen company home (Homeward Flight's row of the race gifts,
+  // B-06af: its chance by the ground, 30 in desert or mountain, 60 in forest or jungle, 45 elsewhere)
+  const theOwnersRace = ownerPlayer != null ? G.players[ownerPlayer]?.race : undefined;
   killedArmies.forEach((a) => {
     // Don't record skeletal armies — they don't leave useful remains
     if (a._isSkeletal) return;
     if (a._phantom) return; // spectral doubles leave no graves and never flee home
     // (no unit at all threw above, so each test below reads one)
-    if (ownerIsElven && a.race === 'Elven' && !a._temporary && a._wildHuntUntilTurn == null && !a._elvenEscaped) {
+    // (a realm of none holds no gift: its fallen leave their graves)
+    const theFlightHome = theFlightHomeTheGiftsOfItsRealmsRaceGiveAFallenCompany(theOwnersRace, {
+      theCompanysRace: a.race,
+      theTerrain: prov.terrain,
+    });
+    if (
+      ownerPlayer != null &&
+      theFlightHome !== null &&
+      !a._temporary &&
+      a._wildHuntUntilTurn == null &&
+      !a._elvenEscaped
+    ) {
       if (
         kcRng() * 100 <
-        elvenEscapeChance(prov.terrain) + whatARealmsDiscoveriesAddToAFallenUnitsFlightHome(G.players[ownerPlayer])
+        theFlightHome.thePercent + whatARealmsDiscoveriesAddToAFallenUnitsFlightHome(G.players[ownerPlayer])
       ) {
         // Homeward Song
         a._elvenEscaped = true;
@@ -335,7 +346,7 @@ export function recordBattleGraves(
           unit: {
             type: a.type,
             quality: a.quality,
-            race: 'Elven',
+            race: theFlightHome.theRace,
             unitName: a.unitName || armyUnitName(a.type),
             strength: a.strength,
           },

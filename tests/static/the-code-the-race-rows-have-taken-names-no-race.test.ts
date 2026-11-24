@@ -142,6 +142,30 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
     "B-06ae, the War-spoils' half wage, from the race gifts' runner",
   ],
+  [
+    'src/engine/heroes/experience-skill-rises-and-earned-hp.ts',
+    'trySkillGain',
+    "B-06af, Quick learners in the field, from the race gifts' runner",
+  ],
+  [
+    'src/engine/orders/research-and-practice-orders-discoveries-skill-drills-and-rest.ts',
+    'resolvePracticeSkillOrder',
+    "B-06af, Quick learners at practice, from the race gifts' runner",
+  ],
+  ['src/engine/heroes/skills-and-hp.ts', 'maxHpIsOrc', "B-06af, Iron constitution, from the race gifts' runner"],
+  ['src/engine/personal-combat/helpers.ts', 'mithrilQualifies', "B-06af, Mithril Armour, from the race gifts' runner"],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveHireHeroOrder',
+    "B-06af, Mithril Armour on a hire, from the race gifts' runner",
+  ],
+  [
+    'src/engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts',
+    'resolveBrokerOrder',
+    "B-06af, Mithril Armour on the Broker's hire, from the race gifts' runner",
+  ],
+  ['src/engine/units/drill-and-spoils.ts', 'humanXPMult', "B-06af, Drillmasters, from the race gifts' runner"],
+  ['src/engine/graves.ts', 'recordBattleGraves', "B-06af, Homeward Flight, from the race gifts' runner"],
 ];
 
 test.for(TAKEN)('%s: %s names no race (%s)', ([file, fn]) => {

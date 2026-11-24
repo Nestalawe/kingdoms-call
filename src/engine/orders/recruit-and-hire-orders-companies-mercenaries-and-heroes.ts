@@ -1,3 +1,4 @@
+import { doesAGiftOfHisRealmsRaceSuitAHeroInMithril } from '../rules/the-registry-of-the-race-gifts.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   KC_HUMANOID_RACES,
@@ -646,7 +647,8 @@ export function resolveHireHeroOrder(
   player.gold -= hireWage;
   h.player = c.player;
   h.name = h.name.replace(' (wandering)', '');
-  if (h.race === 'Dwarven' && G.players[c.player]?.race === 'Dwarven') grantMithrilTo(h, G); // mithril on hire into a dwarf realm
+  if (doesAGiftOfHisRealmsRaceSuitAHeroInMithril(G.players[c.player]?.race, { theHerosRace: h.race }))
+    grantMithrilTo(h, G); // mithril on hire into a dwarf realm (Mithril Armour's row, B-06af)
   player.heroes = asItsGuardReadsIt(player.heroes) ?? [];
   player.heroes.push(h.id);
   // Hero can receive orders starting the phase AFTER they were hired (AK 3.5) We mark the

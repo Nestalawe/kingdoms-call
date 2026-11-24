@@ -1,3 +1,4 @@
+import { theFactorTheGiftsOfHisRealmsRaceQuickenAHerosLearningBy } from '../rules/the-registry-of-the-race-gifts.ts';
 import { kcRng } from '../rng.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { rollHpGain, syncMaxHp } from './skills-and-hp.ts';
@@ -229,10 +230,11 @@ export function trySkillGain(
       : Math.max(0.1, 0.2 - 0.0125 * lvl); // standard experience: 20% @ L0 → 10% @ L8
   // a Human character of a Human realm learns 50% faster — every skill, and every chance-based
   // experience path (experience, moves…) flows through here; Practice applies the same ×1.5 itself.
-  // (his realm by his index, as JavaScript reads G.players[null] for a hero of none)
+  // (his realm by his index, as JavaScript reads G.players[null] for a hero of none) Quick learners is a row of the
+  // race gifts (B-06af), asked through their runner.
   const hisRealm = real.player == null ? undefined : G.players[real.player];
   const _humanLearn =
-    (real.race === 'Human' && hisRealm?.race === 'Human' ? 1.5 : 1) *
+    theFactorTheGiftsOfHisRealmsRaceQuickenAHerosLearningBy(hisRealm?.race, { theHerosRace: real.race }) *
     (1 + whatARealmsDiscoveriesAddToASkillsRise(hisRealm, { theSkill: skill })); // skillGain discoveries (all skills, or a listed few: the discoveries' registry's since plan P1-19ac)
   // diminishing returns — every time this skill has ALREADY risen this turn, the next chance to
   // raise it through experience is ×0.8 (cumulative). Reset each turn with _sgLog.

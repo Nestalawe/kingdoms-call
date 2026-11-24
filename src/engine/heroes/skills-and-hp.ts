@@ -1,3 +1,4 @@
+import { theHitPointsTheGiftsOfHisRealmsRaceGiveAHero } from '../rules/the-registry-of-the-race-gifts.ts';
 import { MONSTERS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import {
@@ -208,9 +209,8 @@ export function effSkillOf(
 // GAINS; the roll only sets how much: 1–3 while the earned base is under 40, 1–2 from 40, 1 from 50
 // (+5 on each shoulder for the Orcish edge). The old shrinking chance of any gain at all is gone.
 // A winner adds +1 (awardHpRoll). Skills no longer drive HP.
+// The Orcish edge (18 at the start, each band 5 higher) is Iron constitution's row of the race gifts (B-06af).
 export const HPGAIN_START = 15,
-  HPGAIN_START_ORC = 18,
-  HPGAIN_ORC_SHIFT = 5,
   HPGAIN_MIGRATE_CLAMP = 60;
 export const HPGAIN_S1 = 40,
   HPGAIN_S2 = 50;
@@ -218,12 +218,21 @@ export const HPGAIN_S1 = 40,
 // `let` (plan P1-09b), so that once the engine is modules (P1-09d) the files that set it change a field, never another
 // file's binding. P1-10 passes the realms in and removes it.
 export const maxHpPlayers: { players: TheRealmsAsTheMaxHpReadsThem } = { players: null }; // set by runTurn / generateNewGame so module-level callers can see the realm races
-export function maxHpIsOrc(ch: AHeroAsHisHitPointsAreRead | null | undefined, players: TheRealmsAsTheMaxHpReadsThem) {
+/** The hit points the gifts of his realm's race give a hero (Iron constitution's), or nothing. */
+function theHitPointsHisRealmsRaceGivesAHero(
+  ch: AHeroAsHisHitPointsAreRead | null | undefined,
+  players: TheRealmsAsTheMaxHpReadsThem,
+) {
   const pl = players ?? maxHpPlayers.players ?? [];
-  return ch?.race === 'Orcish' && ch.player != null && pl[ch.player]?.race === 'Orcish';
+  return ch?.player != null
+    ? theHitPointsTheGiftsOfHisRealmsRaceGiveAHero(pl[ch.player]?.race, { theHerosRace: ch.race })
+    : null;
+}
+export function maxHpIsOrc(ch: AHeroAsHisHitPointsAreRead | null | undefined, players: TheRealmsAsTheMaxHpReadsThem) {
+  return theHitPointsHisRealmsRaceGivesAHero(ch, players) !== null;
 }
 export function hpStartOf(ch: AHeroAsHisHitPointsAreRead | null | undefined, players: TheRealmsAsTheMaxHpReadsThem) {
-  return maxHpIsOrc(ch, players) ? HPGAIN_START_ORC : HPGAIN_START;
+  return theHitPointsHisRealmsRaceGivesAHero(ch, players)?.theHitPointsAtTheStart ?? HPGAIN_START;
 }
 // The earned base: start + pool, before any item/discovery bonus. This is what the gain curve
 // reads.
@@ -243,7 +252,7 @@ export function computeMaxHp(ch: AHeroAsHisHitPointsAreRead | null | undefined, 
 // The gain curve. Returns {lo, hi}: how much the NEXT roll gains, given the current earned base.
 export function hpGainBand(ch: AHeroAsHisHitPointsAreRead | null | undefined, players: TheRealmsAsTheMaxHpReadsThem) {
   const base = hpEarnedBase(ch, players),
-    sh = maxHpIsOrc(ch, players) ? HPGAIN_ORC_SHIFT : 0;
+    sh = theHitPointsHisRealmsRaceGivesAHero(ch, players)?.theShiftOfTheHardeningsBands ?? 0;
   if (base < HPGAIN_S1 + sh) return { lo: 1, hi: 3 };
   if (base < HPGAIN_S2 + sh) return { lo: 1, hi: 2 };
   return { lo: 1, hi: 1 };

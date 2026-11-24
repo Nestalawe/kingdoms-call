@@ -3,6 +3,7 @@ import { kcRng } from '../rng.ts';
 import {
   doesACompanyTakeItsRealmsSpoilsOfABattleWonAttacking,
   doesARealmsRaceTakeTheSpoilsOfABattleWonAttacking,
+  theFactorTheGiftsOfItsRealmsRaceQuickenACompanysDrillBy,
 } from '../rules/the-registry-of-the-race-gifts.ts';
 import { SEA_TYPES_GEN } from '../world/tables.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
@@ -76,7 +77,10 @@ export function humanXPMult(
   ownerPi: number | null | undefined,
   gs: TheRealmsAsADrillReadsThem,
 ): number {
-  return a?.race === 'Human' && ownerPi != null && gs.players[ownerPi]?.race === 'Human' ? 2 : 1;
+  // Drillmasters is a row of the race gifts (B-06af), asked through their runner
+  return ownerPi != null
+    ? theFactorTheGiftsOfItsRealmsRaceQuickenACompanysDrillBy(gs.players[ownerPi]?.race, { theCompanysRace: a?.race })
+    : 1;
 }
 
 export function rP(a: number, b: number) {
