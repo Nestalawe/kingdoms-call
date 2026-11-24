@@ -78,9 +78,9 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
 - `src/content/kingdoms-call-data.ts`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
   starting companies are the first two non-garrison types of his home's cell), `ARMY_UNIT_NAMES` (40
   names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
-  `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage).
-- GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
-  `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
+  `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage), and a unit of the four
+  races its race in `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` (the engine reads it as `ARMY_RACE_OF_TYPE`).
+- GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `DISC_CLS_SETS`,
   `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.ts`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - `src/content/unit-abilities-their-names-numbers-and-words.ts`: the unit's blurb in `UNIT_ABILITIES` (the player
   portal shows it). Player portal: the race blurbs. Rulebook: the roster, home-roster, move-rate and
@@ -96,8 +96,8 @@ end in `satisfies`, so a unit in `KC_UNIT_TYPE` that is missing from one fails `
 that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `KC_UNIT_TYPE` doesn't fails too
 (TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it.
 The engine's `ARMY_SPEED_MASTER` (`engine/army-tables.ts`) ends in `satisfies Record<HumanoidUnitType, number>` too
-(a primal unit's cost and speed come from `PRIMAL_ARMY_DEFS_P`; the engine reads the price table as `ARMY_COST_MASTER`). The engine's other tables are keyed by any string (`UNIT_SHORT`, `ARMY_RACE_OF_TYPE`,
-…), so a unit missing from one still compiles, and `TERRAIN_MODS` refuses a misspelt unit but not a missing one. The
+(a primal unit's cost and speed come from `PRIMAL_ARMY_DEFS_P`; the engine reads the price table as `ARMY_COST_MASTER`). The engine's other tables are keyed by any string (`UNIT_SHORT`,
+…), so a unit missing from one still compiles, and `TERRAIN_MODS` and `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` refuse a misspelt unit but not a missing one. The
 lists above are still the whole job. `tests/static/every-unit-order-and-effect-the-content-names-is-in-every-table-that-must-list-it.test.ts` finds
 what the compiler can't: a name in a class list, a Druid level, a province's cell, a discovery or the wild pools that is no
 unit type, a unit of the four races with no race in `ARMY_RACE_OF_TYPE`, and a unit the rulebook never names.
@@ -119,7 +119,10 @@ and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` a
 `THE_RACE_OF_THE_WILD` (`Primal`; a wild province's `Primal:<sub-race>` starts with it) and
 `THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS` (Human). The engine asks whether a race is the wild's through
 `isTheRaceTheWildsOrOneOfItsSubRaces` in `rules-on-plain-values/`; beside it, the world's making makes a wild
-province's race with `theWildsSubRaceOf` (a beast's noun) and asks `isTheRaceOneOfTheWildsSubRaces` (B-06ad). Each
+province's race with `theWildsSubRaceOf` (a beast's noun) and asks `isTheRaceOneOfTheWildsSubRaces` (B-06ad). Beside
+them (B-06ag): the garrison a Call to Arms musters by the province's race, and an old save's race words, which the
+save's upgrade mends (`AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED`, read as `LEGACY_RACE_RENAMES`; the
+beasts' classes a neutral hero of an old save may wear as his race). Each
 humanoid race's heartland is content's `THE_HEARTLAND_OF_EACH_HUMANOID_RACE`, and the one fleet a home of a race offers
 is the first of its `THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST` (`theFleetAHomeOfItsRaceOffers`, world/tables.ts).
 The bots and the player portal still write the words themselves (their rows: B-06ah, B-06ak).

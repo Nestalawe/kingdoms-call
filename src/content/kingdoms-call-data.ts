@@ -15086,7 +15086,8 @@ export const KC_UNIT_TYPE = {
 //   PRIMAL_ARMY_DEFS_P, KC_CARRIER_BERTHS   unit types only (so KC_UNIT_TYPE must list every primal unit)
 // tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts compiles copies of this file, each with a
 // unit left out.
-// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS, ARMY_RACE_OF_TYPE) get theirs
+//   THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES   humanoid units only
+// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS) get theirs
 // when their files lose their ts-nocheck line: a `satisfies` checks nothing in a file with it (plan P1-10, Decision 6).
 export type UnitType = keyof typeof KC_UNIT_TYPE;
 /** The wild's units, a Druid's or a monster's: PRIMAL_ARMY_DEFS_P's. */
