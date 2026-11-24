@@ -7,6 +7,7 @@ import {
   KC_UNIT_TYPES_RAISED_TWO_A_TURN_BESIDE_THE_GARRISONS_AND_THE_HUMANOID_FLEETS,
   PROVINCE_ARMIES_P,
   TEMPER_TRAITS,
+  THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
 } from '../../content/kingdoms-call-data.ts';
 import {
   THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST,
@@ -338,10 +339,15 @@ export const TEMPERS_P = KC_TEMPERS.slice();
 type TheTraitsOfATemper = Omit<(typeof TEMPER_TRAITS)['Brave'], 'rageHp'> & {
   readonly rageHp: readonly [min: number, max: number] | null;
 };
-export function temperOf(t: string | null | undefined): TheTraitsOfATemper {
+/** A temper's row by its name, or none: a name no row has (read where a name no row has takes no temper's figure). */
+export function theRowOfATemperByItsName(t: string | null | undefined): TheTraitsOfATemper | undefined {
   // the rows read by any temper's name
   const rows: Readonly<Partial<Record<string, TheTraitsOfATemper>>> = TEMPER_TRAITS;
-  return rows[String(t)] ?? TEMPER_TRAITS.Brave;
+  return rows[String(t)];
+}
+/** A temper's row by its name; a name no row has reads as the temper a hero of no temper fights with. */
+export function temperOf(t: string | null | undefined): TheTraitsOfATemper {
+  return theRowOfATemperByItsName(t) ?? TEMPER_TRAITS[THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH];
 }
 // A feature's steal-able treasure as a plain number.
 export function featureTreasure(f: { readonly treasure?: AFeaturesTreasure } | null | undefined) {

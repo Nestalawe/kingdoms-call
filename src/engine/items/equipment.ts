@@ -2,6 +2,7 @@ import {
   ALL_MAGIC_ITEMS_P,
   KC_ITEM_SLOT_CAP,
   LEGENDARY_ITEMS_P,
+  THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
   _VARIANT_BANK,
 } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
@@ -663,9 +664,11 @@ export function effTemper(
     | null
     | undefined,
 ) {
-  if (!c) return 'Brave';
+  if (!c) return THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH;
   // the items' registry (plan P1-19p)
-  return theTemperAHerosItemsGiveHim(activeItems(c)) ?? ((c.temper ?? '') || 'Brave');
+  return (
+    theTemperAHerosItemsGiveHim(activeItems(c)) ?? ((c.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH)
+  );
 }
 export function rollMagicItem(
   monsterPower: string,

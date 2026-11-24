@@ -2,7 +2,7 @@
 // B-06aj): each function (or file's top level) the family's rows have taken holds no string naming a temper
 // (`'Berserk'`, `'Brave'`, `'Cautious'`, `'Cowardly'`), whatever the code does with it (compared, a `case`, a list, a
 // map's value, a literal type, or in a function nested inside). It reads the temper's row instead. Each row adds what it
-// takes to TAKEN, which is empty until the first of them (B-06ai). With them, the ratchet's count of the tempers the
+// takes to TAKEN. With them, the ratchet's count of the tempers the
 // engine names outside src/engine/rules/ (tools/ratchet.ts's temperChecksInEngine, by its helper
 // temperChecksByFunction), so that count only falls: the helper counts each temper planted, and none in
 // src/engine/rules/ or a page's code.
@@ -24,9 +24,12 @@ import {
 } from '../../tools/ratchet.ts';
 import { everyStringIn, TOP } from '../lib/the-strings-a-function-of-the-code-holds.ts';
 
-/** Each function (or a file's top level) the temper rows have taken, by its file, from the row that took it. Empty
- *  until B-06ai: each of the family's rows adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+/** Each function (or a file's top level) the temper rows have taken, by its file, from the row that took it: each of
+ *  the family's rows adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  ['src/engine/items/equipment.ts', 'effTemper', 'B-06ai'],
+  ['src/engine/personal-combat/speed-encounter-plans-and-combatants.ts', 'autoEncounterPlan', 'B-06ai'],
+];
 
 test.for(TAKEN)('%s: %s names no temper (%s)', ([file, fn]) => {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');

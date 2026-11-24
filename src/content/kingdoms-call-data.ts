@@ -454,6 +454,10 @@ export const PROVINCE_ARMIES_P = {
 // defence ALSO lowers the 80% melee hit ceiling for anyone attacking them
 // openingShot the first move up to firing range in a fight cannot fail
 // mercy may beg for mercy when felled instead of dying
+// anAutoPlanKeepsAnExit an auto plan (a hero with no orders: a neutral's or a bot's) holds five actions and ends with Flee
+// anAutoPlanChargesFiringOnce an auto plan charges: one shot, whatever the bow, then the blade
+// theDuelStanceOfAHeroWithNoOrders how a commander with no orders answers single combat ('' = none of its own: accept)
+// terrorsCourageMod % added to the chance of breaking before a terrifying foe (the courage test)
 export const TEMPER_TRAITS = {
   Berserk: {
     meleeHit: 18,
@@ -473,6 +477,10 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: false,
+    anAutoPlanChargesFiringOnce: true,
+    theDuelStanceOfAHeroWithNoOrders: 'challenge',
+    terrorsCourageMod: -15,
   },
   Brave: {
     meleeHit: 12,
@@ -492,6 +500,10 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: false,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: 'challenge',
+    terrorsCourageMod: -10,
   },
   Cautious: {
     meleeHit: 0,
@@ -511,6 +523,10 @@ export const TEMPER_TRAITS = {
     riposte: 0.4,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: true,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: 'accept',
+    terrorsCourageMod: -5,
   },
   Cowardly: {
     meleeHit: -4,
@@ -530,6 +546,10 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: true,
     mercy: true,
+    anAutoPlanKeepsAnExit: true,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: 'refuse',
+    terrorsCourageMod: 10,
   },
   // A true no-temper profile — all zeros, no second wind, no mercy. Feature guardians (the
   // monsters/beasts on a treasure site) use this so they neither gain hero-style temper perks nor
@@ -553,8 +573,14 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: false,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: '',
+    terrorsCourageMod: 0,
   },
 };
+/** The temper a hero of no temper fights with (effTemper), and the row a name no row has reads as (temperOf). */
+export const THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH = 'Brave' satisfies keyof typeof TEMPER_TRAITS;
 
 // Hero names are themed by ALIGNMENT. Each alignment has a pool of given names and a pool of
 // alignment-flavoured epithets; a hero's name is composed "{Given} {Epithet}". The combinatorial
