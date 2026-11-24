@@ -51,6 +51,10 @@
 // no matrix game hands them (P1-10b48): no bots, no map, no orders listed, a teaching phase kept, a holder with no
 // fallback, a muster for the host, the study's two page hooks; a cast of no school, a hire of no hero, a hand-over
 // trimmed, a capped practice refilled; the drill on a unit of no known quality and the cast limit with no characters.
+// Then the bots' other passes on the hero orders' rows' keys (B-06at): the economy's spare phase (a garrison's surplus
+// taken up), the muster orders the actions pass keeps and the Defends it fills, a comrade free to train beside, a
+// cloak already cast, the king teaching in his host's drill, a Challenge the mastery pass hands a hero (stood in), and
+// a companion casting for his general's attack and following his march (the assaults stood in).
 import fc from 'fast-check';
 import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
@@ -3876,5 +3880,266 @@ describe('The economy and the order hygiene on what no matrix game hands them (P
     ).toBe(
       '[["none","no hook"],["none","no hook"],["none","no hook"],[{},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"}]},1],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach Oswin)"},{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"}]},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"}]},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units (for the host)"},null,null,null,null],"2":[{"action":"move","target":"99","extra":"","desc":"move"},null,null,null,null],"3":[{"action":"practice","target":"melee","extra":"","desc":"practice"},null,null,null,null]},"no hook"]]',
     );
+  });
+});
+
+// ── The bots' other passes read the hero orders' rows (B-06at) ─────────────────────────────────────────────────────
+// The economy, the actions pass, the cross-training, the cloak, the slayers' school and the movement compare each
+// order with its row's key (THE_HERO_ORDERS), and keep the bots' own sets of them as they were: the orders that leave a hero a phase
+// to spare, the orders that leave him free to train beside a comrade, and the muster orders the actions pass keeps.
+// Each case is aimed at one read: a key swapped for another kind's turns it red.
+describe("The bots' other passes read the hero orders' rows (B-06at)", () => {
+  /** A world of two realms, at war, and the lists named; its map a row of three, as wide as named. */
+  const aWorld = (lists: Record<string, unknown> = {}): Raw => ({
+    turn: 3,
+    relations: { '0-1': 'enemy' },
+    players: [{ gold: 40, alignment: 'Good' }, {}],
+    turnOrders: {},
+    ...lists,
+    world: { cols: 3, rows: 1, ...(lists['world'] ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const aRow = (fields: readonly Record<string, unknown>[]) =>
+    fields.map((f, i) => aProvince({ id: i, col: i, name: `Hold${String(i)}`, ...f }));
+  const hero = (fields: Record<string, unknown> = {}) => ({
+    id: 1,
+    name: 'Wren',
+    player: 0,
+    alive: true,
+    location: 0,
+    maxHp: 20,
+    hp: 20,
+    skills: {},
+    ...fields,
+  });
+  const order = (action: string, target = '', desc = action) => ({ action, target, extra: '', desc });
+  /** Each phase of a plan as `action|target`, a gap as `-`. */
+  const asWords = (plan: unknown) =>
+    (plan as readonly (Raw | null)[]).map((o) => (o ? `${String(o['action'])}|${String(o['target'])}` : '-'));
+  const garrison = (n: number) =>
+    Array.from({ length: n }, () => ({ type: 'Militia', quality: 'Average', race: 'Human' }));
+
+  /** The economy on one hero of the bot realm 0 and his plan, each province named holding a garrison of four (its
+   *  surplus three at the capital, four beyond). */
+  const theEconomysPlan = (plan: readonly unknown[], more: Record<string, unknown> = {}, lands = [0]) => {
+    const G = aWorld({
+      characters: [hero(more)],
+      turnOrders: { 1: [...plan] },
+      world: { provinces: aRow([0, 1, 2].map((i) => (lands.includes(i) ? { garrisonArmies: garrison(4) } : {}))) },
+    });
+    fn('runBotEconomy')(G, new Set([0]));
+    return asWords((G['turnOrders'] as Record<number, unknown>)[1]);
+  };
+  test.for([
+    ['a Practice', order(THE_HERO_ORDERS.practice.key, 'melee')],
+    ['a Defend', order(THE_HERO_ORDERS.defend.key)],
+    ['a Research', order(THE_HERO_ORDERS.research.key)],
+    ['an Explore', order(THE_HERO_ORDERS.explore.key)],
+  ] as const)(
+    "the economy's spare phase: %s leaves a hero the first phase to take up a garrison's surplus",
+    ([, o]) => {
+      expect(theEconomysPlan([o, o, null, null, null])[0], 'the first phase').toBe('pickup_army|g:0,g:1,g:2');
+    },
+  );
+  test("the economy's spare phase: a Rest and a teaching Practice are not spare", () => {
+    const rest = order('rest');
+    const teach = order(THE_HERO_ORDERS.practice.key, 'melee', 'Practice Melee (teach Oswin)');
+    expect(theEconomysPlan([rest, null, null, null, null]).slice(0, 2), 'a Rest').toEqual([
+      'rest|',
+      'pickup_army|g:0,g:1,g:2',
+    ]);
+    expect(theEconomysPlan([teach, null, null, null, null]).slice(0, 2), 'a teaching Practice').toEqual([
+      'practice|melee',
+      'pickup_army|g:0,g:1,g:2',
+    ]);
+  });
+  test("the economy's spare phase: a march carries the hero to the garrison, a Pick Up Army already written ends it", () => {
+    const march = order(THE_HERO_ORDERS.move.key, 'dir:E');
+    const hold = order(THE_HERO_ORDERS.defend.key);
+    expect(theEconomysPlan([march, hold, null, null, null], {}, [1]).slice(0, 2), 'a march east').toEqual([
+      'move|dir:E',
+      'pickup_army|g:0,g:1,g:2,g:3',
+    ]);
+    const pickup = order(THE_HERO_ORDERS.pickup_army.key, 'g:0');
+    expect(theEconomysPlan([pickup, hold, null, null, null]).slice(0, 2), 'a Pick Up Army first').toEqual([
+      'pickup_army|g:0',
+      'defend|',
+    ]);
+  });
+
+  /** The actions pass on one wounded hero of the bot realm 0 and his plan: a plan it may fill is filled with Rest. */
+  const theActionsPlan = (plan: readonly unknown[]) => {
+    const G = aWorld({
+      characters: [hero({ hp: 5 })],
+      turnOrders: { 1: [...plan] },
+      world: { provinces: [aProvince()] },
+    });
+    fn('runBotActions')(G, new Set([0]));
+    return asWords((G['turnOrders'] as Record<number, unknown>)[1]);
+  };
+  test.for([
+    ['a Hire', THE_HERO_ORDERS.hire.key],
+    ['a Recruit', THE_HERO_ORDERS.recruit.key],
+    ['a Leave Army', THE_HERO_ORDERS.leave_army.key],
+  ] as const)('the actions pass keeps %s, a muster order, and fills the phases after it', ([, kind]) => {
+    expect(theActionsPlan([order(kind, 'x'), null, null, null, null])).toEqual([
+      `${kind}|x`,
+      'rest|',
+      'rest|',
+      'rest|',
+      'rest|',
+    ]);
+  });
+  test('the actions pass fills a Defend, and leaves a plan with any other order as it is', () => {
+    const hold = order(THE_HERO_ORDERS.defend.key);
+    expect(theActionsPlan([hold, hold, null, null, null]), 'Defends').toEqual([
+      'rest|',
+      'rest|',
+      'rest|',
+      'rest|',
+      'rest|',
+    ]);
+    expect(theActionsPlan([order(THE_HERO_ORDERS.explore.key), null, null, null, null]), 'an Explore').toEqual([
+      'explore|',
+      '-',
+      '-',
+      '-',
+      '-',
+    ]);
+  });
+
+  /** The skill a hero of Sage 1 trains beside a comrade whose plan is `plan`: `sage`, or null for no partner. */
+  const crossTrains = (plan: readonly unknown[]) =>
+    fn('botCrossTrainSkill')(
+      aWorld({
+        turnOrders: { 2: [...plan] },
+        characters: [null, hero({ skills: { sage: 1 } }), hero({ id: 2, name: 'Oswin' })],
+      }),
+      hero({ skills: { sage: 1 } }),
+      0,
+    );
+  test.for([
+    ['a Defend', THE_HERO_ORDERS.defend.key],
+    ['a Practice', THE_HERO_ORDERS.practice.key],
+    ['a Research', THE_HERO_ORDERS.research.key],
+    ['a Hire', THE_HERO_ORDERS.hire.key],
+    ['a Recruit', THE_HERO_ORDERS.recruit.key],
+    ['a Leave Army', THE_HERO_ORDERS.leave_army.key],
+  ] as const)('the cross-training: a comrade whose plan is %s is free to train beside', ([, kind]) => {
+    expect(crossTrains([order(kind), null, null, null, null])).toBe('sage');
+  });
+  test('the cross-training: a comrade who marches or explores is no partner', () => {
+    expect(crossTrains([order(THE_HERO_ORDERS.move.key, 'dir:E'), null, null, null, null]), 'a Move').toBe(null);
+    expect(crossTrains([order(THE_HERO_ORDERS.explore.key), null, null, null, null]), 'an Explore').toBe(null);
+  });
+
+  /** The movement on a court of four of the bot realm 0, each of Melee 7 (a king and three heroes), the mastery pass
+   *  (botMasteryPre, stood in) handing each hero who asks it `handed`: the heroes' plans, and how often it was asked. */
+  const theCourtHanded = (handed: Raw) => {
+    const mastery = vi.spyOn(theBotsMissions, 'botMasteryPre').mockReturnValue(handed as never);
+    try {
+      const G = aWorld({
+        characters: [0, 1, 2, 3].map((i) =>
+          hero({ id: i + 1, name: `Hold${String(i)}`, isKing: i === 0, skills: { melee: 7 } }),
+        ),
+        world: { provinces: aRow([{}, {}, {}]) },
+      });
+      fn('runBotMovement')(G, new Set([0]), {});
+      return { plans: G['turnOrders'] as Record<number, unknown>, asked: mastery.mock.calls.length };
+    } finally {
+      mastery.mockRestore();
+    }
+  };
+  test("the movement: a hero at full health takes up a Challenge the mastery pass hands him, by the Challenge row's key", () => {
+    const challenge = theCourtHanded(order(THE_HERO_ORDERS.challenge.key, '9'));
+    expect(challenge.asked, 'the mastery pass asked').toBeGreaterThan(0);
+    expect(asWords(challenge.plans[4]), 'his plan').toEqual([
+      'challenge|9',
+      'defend|',
+      'explore|',
+      'explore|',
+      'explore|',
+    ]);
+    const retreat = theCourtHanded(order(THE_HERO_ORDERS.feigned_retreat.key, '9'));
+    expect(retreat.asked, 'the mastery pass asked').toBeGreaterThan(0);
+    expect(asWords(retreat.plans[4])[0], 'another order handed').not.toBe('feigned_retreat|9');
+  });
+  test("the movement: a companion casts for his general's attack and follows his march, by the Move row's key", () => {
+    // The general's plan is the assaults' (botPlanAssaults, stood in): an attack east, then a Defend.
+    const assaults = vi
+      .spyOn(theBotsWar, 'botPlanAssaults')
+      .mockImplementation((G: Raw, _pi: number, _chars: unknown, assigned: Set<number>) => {
+        (G['turnOrders'] as Record<number, unknown>)[1] = [
+          order(THE_HERO_ORDERS.move.key, 'dir:E', 'Attack Hold1'),
+          order(THE_HERO_ORDERS.defend.key),
+          null,
+          null,
+          null,
+        ];
+        assigned.add(1);
+      });
+    const casts = vi.spyOn(theBotsSpellcraft, 'botCastPlan');
+    try {
+      const G = aWorld({
+        characters: [
+          hero({ name: 'Gerd', armies: garrison(4), skills: { tactical: 3 } }),
+          hero({ id: 2, name: 'Mira', skills: { white: 2 } }),
+          hero({ id: 3, name: 'Aldric', isKing: true }),
+          hero({ id: 4, name: 'Tamsin' }),
+        ],
+        world: { provinces: aRow([{}, {}, {}]) },
+      });
+      fn('runBotMovement')(G, new Set([0]), {});
+      expect(assaults, 'the assaults asked').toHaveBeenCalled();
+      expect(asWords((G['turnOrders'] as Record<number, unknown>)[2]), "the companion's plan").toEqual([
+        'cast_spell|Bless Province',
+        'move|dir:E',
+        'practice|white',
+        'practice|white',
+        'practice|white',
+      ]);
+      const forTheCompanion = casts.mock.calls.filter((c) => (c[2] as Raw)['id'] === 2);
+      expect(
+        forTheCompanion.map((c) => ((c[4] as Raw | null)?.['fighting'] as Raw | null)?.['id'] ?? null),
+        'the general he casts for',
+      ).toEqual([1]);
+    } finally {
+      assaults.mockRestore();
+      casts.mockRestore();
+    }
+  });
+  test('the cloak: a hero already casting Invisibility casts no second one', () => {
+    const cloak = order(THE_HERO_ORDERS.cast_spell.key, theNameOfTheSpell('invisibility'));
+    const cloakPre = (pre: readonly unknown[]) =>
+      asWords(fn('botCloakPre')(aWorld(), 0, hero({ skills: { illusory: 1 } }), pre, aProvince({ id: 1, owner: 1 })));
+    expect(cloakPre([cloak]), 'cloaked').toEqual([`cast_spell|${theNameOfTheSpell('invisibility')}`]);
+    expect(cloakPre([null]), 'not yet').toEqual(['-', `cast_spell|${theNameOfTheSpell('invisibility')}`]);
+  });
+
+  test("the slayers' school: the king teaches in his host's drill phases, not in his fleet's", () => {
+    const king = hero({ isKing: true, skills: { melee: 6, archery: 4 } });
+    const slayer = hero({ id: 2, name: 'Oswin', _botRole: 'slayer', skills: { melee: 1 } });
+    const school = (desc: string) => {
+      const drill = order(THE_HERO_ORDERS.practice.key, 'tactical', desc);
+      const recruit = order(THE_HERO_ORDERS.recruit.key, 'Militia,to:9');
+      const G = aWorld({
+        characters: [king, slayer],
+        turnOrders: { 1: [drill, recruit, recruit, recruit, recruit] },
+        world: { provinces: aRow([{}, {}]) },
+      });
+      fn('botRunSlayerSchool')(G, 0, { leaders: [] });
+      return asWords((G['turnOrders'] as Record<number, unknown>)[1])[0];
+    };
+    expect(school('Practice Tactical (drill the host)'), 'a drill').toBe('practice|melee');
+    expect(school('Practice Tactical (drill the fleet)'), 'a fleet drill').toBe('practice|tactical');
   });
 });
