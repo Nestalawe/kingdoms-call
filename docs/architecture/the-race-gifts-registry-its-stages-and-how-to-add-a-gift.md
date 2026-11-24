@@ -1,7 +1,7 @@
 # The race gifts' registry: its stages, and how to add a gift
 
 The rule registry is described in [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md).
-This file is its part for the race gifts (B-06, T7, the races' family: B-06ae and B-06af). The family is modelled on
+This file is its part for the race gifts (B-06, T7, the races' family: B-06ae and B-06af; the bots' reads, B-06ah). The family is modelled on
 [the alignment abilities'](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md): a gift belongs to
 a realm of its race, as an ability belongs to a realm of its alignment.
 
@@ -46,6 +46,24 @@ Home of the Wild, also a step of `armStr`, is the alignment abilities' (question
 | `aHerosStanding`: **a race's gift suits a hero of its realm in mithril** | Mithril Armour (a Dwarven hero) | `mithrilQualifies` (the world's making's end and each turn's start), and the grant on a hire and on the Broker's hire |
 | `fate`: **a race's gift gives a fallen company its chance to flee home** | Homeward Flight (an Elven company: 30 in desert or mountain, 60 in forest or jungle, 45 elsewhere) | `recordBattleGraves`, before the realm's discoveries add theirs; the die is drawn only for a company the gift reaches, not raised for the turn, not of the Wild Hunt and not fled already |
 
+## The bots' worth of a race's gift
+
+The rule says what, the bot says how much, as for
+[the bots' worth of gold](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#the-bots-worth-of-gold-a-bot-versions-weights-by-kind-of-result)
+and [of an alignment ability](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#the-bots-worth-of-an-alignment-ability)
+(B-06ah). The bots name no race: they ask the rows and content's race constants.
+
+- **What the rules say:** a company's strength in the bots' estimates (`botRaceTerrainMult`) takes the kin rule's
+  factors (content's `THE_FACTORS_OF_THE_KIN_RULE`, which `theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt` reads too)
+  and the steps of the strength stage's runner for the owner's race, each multiplied unrounded (KD-466). Their tuning
+  (`botTuning`) asks the runners whether a company of the realm's race defends at a gift's factor on any ground (the
+  Bulwark) or the realm takes the spoils of a battle won attacking (the War-spoils): one overlay at most. A province of
+  no race reads as `THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS`, and the wild's race is asked of
+  `isTheRaceTheWildsOrOneOfItsSubRaces` and `isTheRaceOneOfTheWildsSubRaces` (a Call to Arms, a recruit's grudge, a
+  sea's kind, a scout's target); a poor sea is one of content's poor seas' race tags.
+- **What the bot says:** the `raceGift` kind of the first version's weights: what such a realm adds to (or takes off)
+  its king's and its heroes' attack margins, and the share of the income its wages may take more.
+
 ## The tests
 
 - `tests/unit/the-race-gifts-each-a-row-of-content-and-the-battles-ask-their-runner.test.ts`: each runner against the
@@ -60,6 +78,8 @@ Home of the Wild, also a step of `armStr`, is the alignment abilities' (question
 - The two registry tests (each effect once in its stage's order, each row's race a humanoid one; a row with no entry,
   and an entry with no row, fail to compile), and `tests/static/the-code-the-race-rows-have-taken-names-no-race.test.ts`
   with the ratchet's `raceChecksInEngine`.
+- `tests/unit/the-bots-races-ask-the-race-constants-the-gifts-rows-and-the-kin-rule-and-weigh-them-as-race-gifts.test.ts`:
+  the bots' reads of the gifts, the kin rule and the race constants, against the bot's old figures.
 
 ## How to add a gift
 
