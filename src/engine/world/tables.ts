@@ -8,13 +8,17 @@ import {
   PROVINCE_ARMIES_P,
   TEMPER_TRAITS,
 } from '../../content/kingdoms-call-data.ts';
-import { THE_HUMANOID_FLEET_TYPES } from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import {
+  THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST,
+  THE_HEARTLAND_OF_EACH_HUMANOID_RACE,
+  THE_HUMANOID_FLEET_TYPES,
+} from '../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 import { THE_PROVINCE_POOLS_AND_THEIR_CHANCES } from '../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../rng.ts';
 import { shuffleP } from '../battle/fortune.ts';
 import { rollMagicItem } from '../items/equipment.ts';
 import { LAIR_ITEM_ODDS, awardedEffectSet, itemEffectKey } from '../items/tiers-and-hoards.ts';
-import { HOME_FLEET_BY_RACE, homeProvinceIdFor } from '../grand-design.ts';
+import { homeProvinceIdFor } from '../grand-design.ts';
 import { discProvCoastal } from '../discoveries.ts';
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import {
@@ -111,14 +115,23 @@ export const RACES_P = KC_HUMANOID_RACES.slice();
 // either one of these, null for open sea, or a 'Primal:<sub-race>' string).
 export const HUMANOID_RACES_GEN = new Set(RACES_P);
 export const LAND_TERRAINS_GEN = ['plain', 'desert', 'forest', 'jungle', 'mountain'];
-// Each race's heartland. Province race allocation is weighted towards these terrains, so most Human
-// provinces are plains, most Elven ones forest, and so on — while any race can still turn up
-// anywhere. See the allocation pass in generateNewGame.
-export const SIGNATURE_TERRAIN_P = { Human: 'plain', Elven: 'forest', Dwarven: 'mountain', Orcish: 'desert' };
+// Each race's heartland, from content (B-06ad). Province race allocation is weighted towards these terrains, so most
+// Human provinces are plains, most Elven ones forest, and so on — while any race can still turn up anywhere. See the
+// allocation pass in generateNewGame.
+export const SIGNATURE_TERRAIN_P = THE_HEARTLAND_OF_EACH_HUMANOID_RACE;
 // How much more likely a race is to be placed in its signature terrain than in any other. 6 puts
 // roughly two thirds of a terrain's provinces with its signature race while leaving every race
 // genuinely possible everywhere.
 export const SIGNATURE_WEIGHT_P = THE_PROVINCE_POOLS_AND_THEIR_CHANCES.theWeightOfARacesHeartland;
+/** The fleet a home (or a re-raced neighbour) of a race offers, by any race's name: the first of content's fleets its
+ *  race builds on a coast (THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST), and none for a race content doesn't list.
+ *  Asked by a running game's home rosters (backfillHomeRosters), a Naval king's home (S9) and the neutral races
+ *  rebalanced (S11); it draws no die. */
+export const theFleetAHomeOfItsRaceOffers = (theRace: string): string | undefined => {
+  const fleetsByAnyRace: Readonly<Partial<Record<string, readonly string[]>>> =
+    THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST;
+  return fleetsByAnyRace[theRace]?.[0];
+};
 
 // Every humanoid province offers 2 or 3 recruitable land types PLUS its racial garrison (and, on a
 // coast, its race's fleet). 2026-10-14 (Toby, item 15): two three times in four, three one time in
@@ -202,7 +215,7 @@ export function backfillHomeRosters(gs: TheStateAsTheBackfillReadsIt | null | un
     });
     // 2026-09-25 (Toby): a coastal capital always offers its racial fleet — add it to any running
     // game whose home rolled without one.
-    const fleet = HOME_FLEET_BY_RACE[pl.race];
+    const fleet = theFleetAHomeOfItsRaceOffers(pl.race);
     if (fleet && !h.armyTypes.includes(fleet) && typeof discProvCoastal === 'function' && discProvCoastal(gs, h))
       h.armyTypes.push(fleet);
   });

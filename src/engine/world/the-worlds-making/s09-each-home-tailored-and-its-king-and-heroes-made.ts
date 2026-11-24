@@ -25,7 +25,10 @@ import {
   THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
 } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from '../../rng.ts';
-import { HOME_FLEET_BY_RACE } from '../../grand-design.ts';
+import {
+  isTheRaceTheWildsOrOneOfItsSubRaces,
+  theWildsSubRaceOf,
+} from '../../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import {
   COASTAL_NAVAL_CHANCE,
   RACES_P,
@@ -34,6 +37,7 @@ import {
   buildHumanoidPool,
   fullRaceLandRoster,
   provincePoolSize,
+  theFleetAHomeOfItsRaceOffers,
 } from '../tables.ts';
 import { getDruidLevel } from '../../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
@@ -196,7 +200,7 @@ export function eachHomeTailoredAndItsKingAndHeroesMade({
     const _rawLandNbrs = getNeighborsP(best, cols, rows, provinces).filter(
       (n) => n.terrain !== 'sea' && n.owner == null,
     );
-    const _isHumanoid = (n: AProvinceAsTheWorldIsMadeIt | null) => !!n && !(n.race ?? '').startsWith('Primal');
+    const _isHumanoid = (n: AProvinceAsTheWorldIsMadeIt | null) => !!n && !isTheRaceTheWildsOrOneOfItsSubRaces(n.race);
     // when a tax band has to be FORCED, prefer a cell that is not an earlier king's guaranteed pair
     // member, so fixing this home can't silently break a neighbouring home's.
     const _earlierPair = new Set(playerStarts.flatMap((h) => h._homePairIds ?? []));
@@ -300,7 +304,7 @@ export function eachHomeTailoredAndItsKingAndHeroesMade({
                   ? creaturesByTerrain
                   : monstersByTerrain)[cand.terrain] ?? ['Stone Giants']);
           const primalUnit = theOneMadeSure(bank[Math.floor(kcRng() * bank.length)]);
-          const candsRace = 'Primal:' + ((primalDefs[primalUnit]?.race ?? '') || primalUnit);
+          const candsRace = theWildsSubRaceOf((primalDefs[primalUnit]?.race ?? '') || primalUnit);
           cand.race = candsRace;
           cand.armyTypes = [primalUnit];
           const dc = neutralDefCount(cand.tax);
@@ -334,7 +338,7 @@ export function eachHomeTailoredAndItsKingAndHeroesMade({
     // province of a random race (own-race guarantee above is untouched — it never picks a primal).
     {
       const _ringPrimal = getNeighborsP(best, cols, rows, provinces).filter(
-        (n) => n.terrain !== 'sea' && n.owner == null && (n.race ?? '').startsWith('Primal'),
+        (n) => n.terrain !== 'sea' && n.owner == null && isTheRaceTheWildsOrOneOfItsSubRaces(n.race),
       );
       if (_ringPrimal.length > 1) {
         const keepId =
@@ -419,8 +423,7 @@ export function eachHomeTailoredAndItsKingAndHeroesMade({
     // least one of their race's naval units is recruitable in their home province. The king still
     // starts with land armies only — this just adds the option to build a fleet from turn one.
     if ((kingSkills['naval'] ?? 0) >= 1) {
-      const NAVAL_BY_RACE = { ...HOME_FLEET_BY_RACE };
-      const navalUnit = (NAVAL_BY_RACE[sp.race] ?? '') || 'Galleon Fleet';
+      const navalUnit = (theFleetAHomeOfItsRaceOffers(sp.race) ?? '') || 'Galleon Fleet';
       if (!best.armyTypes.includes(navalUnit)) best.armyTypes.push(navalUnit);
     }
 

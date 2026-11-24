@@ -102,12 +102,6 @@ export function neutralTradeGold(
   return whatARealmsAlignmentAddsToItsTax(pl?.alignment, { theIncome: income });
 }
 
-export const HOME_FLEET_BY_RACE: Readonly<Record<string, string | undefined>> = {
-  Human: 'Galleon Fleet',
-  Elven: 'Elven Galleys',
-  Dwarven: 'Dwarf Ironclads',
-  Orcish: 'Orcish Longships',
-};
 // Resting place for a fallen MONARCH awaiting Resurrect (item: dead kings resurrectable). The body
 // is borne home: it lies in the player's home province while they still hold it, else in their
 // wealthiest remaining province. Returns null only if the dynasty holds no land at all (extinct).

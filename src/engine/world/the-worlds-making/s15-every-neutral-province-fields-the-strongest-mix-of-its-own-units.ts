@@ -2,7 +2,9 @@
 // the-worlds-making-its-stages-their-files-and-how-a-stage-is-moved-into-one.md): the strongest neutral mix. Every
 // neutral humanoid land province fields the most effective mix of its own units, the same number, each slot keeping
 // its quality, in place on the provinces' list.
+import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../../content/kingdoms-call-data.ts';
 import { THE_STRONGEST_NEUTRAL_MIX } from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
+import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { UNIT_Q_MULT } from '../../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { bestNeutralMix } from '../../units/drill-and-spoils.ts';
 import { armyUnitName } from '../../dice-and-army-names.ts';
@@ -24,7 +26,7 @@ export function everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits({ provinc
   // of units, each slot keeping the quality it was dealt. A unit keeps its company name when its type
   // is unchanged. Primal provinces offer one beast and are left as they are.
   provinces.forEach((p) => {
-    if (p.owner !== null || p.terrain === 'sea' || (p.race ?? '').startsWith('Primal')) return;
+    if (p.owner !== null || p.terrain === 'sea' || isTheRaceTheWildsOrOneOfItsSubRaces(p.race)) return;
     const defs = p.neutralDefenders;
     if (!defs.length) return;
     const quals = defs
@@ -43,7 +45,7 @@ export function everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits({ provinc
       return {
         type: t,
         quality: theOneMadeSure(quals[i]),
-        race: theOneMadeSure(defs[0]).race || (p.race ?? '') || 'Human',
+        race: theOneMadeSure(defs[0]).race || (p.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
         unitName: theOneMadeSure(armyUnitName(t)),
       };
     });

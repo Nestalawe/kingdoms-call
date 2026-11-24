@@ -4,7 +4,6 @@
 // from the most-held race to the least, its army pool and defenders made again for its new race, in place on the
 // provinces' list.
 import { kcRng } from '../../rng.ts';
-import { HOME_FLEET_BY_RACE } from '../../grand-design.ts';
 import {
   COASTAL_NAVAL_CHANCE,
   RACES_P,
@@ -12,6 +11,7 @@ import {
   SIGNATURE_TERRAIN_P,
   buildHumanoidPool,
   provincePoolSize,
+  theFleetAHomeOfItsRaceOffers,
 } from '../tables.ts';
 import { shuffleP } from '../../battle/fortune.ts';
 import { neutralDefCount } from '../../units/drill-and-spoils.ts';
@@ -76,7 +76,7 @@ export function theNeutralRacesRebalancedToWithinOneProvince({
         return nb?.terrain === 'sea';
       });
       if (coastal && kcRng() < COASTAL_NAVAL_CHANCE) {
-        const f = HOME_FLEET_BY_RACE[_race];
+        const f = theFleetAHomeOfItsRaceOffers(_race);
         if (f && !conv.armyTypes.includes(f)) conv.armyTypes.push(f);
       }
       const pool = conv.armyTypes.filter((t) => !t.toLowerCase().includes('garrison') && !SEA_TYPES_GEN.has(t));

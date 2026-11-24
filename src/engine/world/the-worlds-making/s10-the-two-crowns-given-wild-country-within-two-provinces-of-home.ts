@@ -6,6 +6,10 @@ import { KC_UNIT_CLASS } from '../../../content/kingdoms-call-data.ts';
 import { THE_WILD_COUNTRY_NEAR_THE_TWO_CROWNS } from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../../rng.ts';
 import {
+  isTheRaceTheWildsOrOneOfItsSubRaces,
+  theWildsSubRaceOf,
+} from '../../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
+import {
   doesACapitalOfTheAlignmentOpenBesideCreatures,
   doesACapitalOfTheAlignmentOpenBesideMonsters,
 } from '../../rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
@@ -75,7 +79,7 @@ export function theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome({
     const creatureUnits: readonly (string | undefined)[] = KC_UNIT_CLASS.creature;
     const monsterUnits: readonly (string | undefined)[] = KC_UNIT_CLASS.monster;
     const _famOf = (p: AProvinceAsTheWorldIsMadeIt) => {
-      if (p.terrain === 'sea' || !(p.race ?? '').startsWith('Primal')) return null;
+      if (p.terrain === 'sea' || !isTheRaceTheWildsOrOneOfItsSubRaces(p.race)) return null;
       const t = p.armyTypes[0];
       return creatureUnits.includes(t) ? 'creature' : monsterUnits.includes(t) ? 'monster' : null;
     };
@@ -116,7 +120,9 @@ export function theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome({
         Boolean(
           q && q.terrain !== 'sea' && q.owner == null && !_homeIds.has(q.id) && !_pairIds.has(q.id) && !soleFor(q.id),
         );
-      const ringHasPrimal = _nb(cr.home).some((n) => n.terrain !== 'sea' && (n.race ?? '').startsWith('Primal'));
+      const ringHasPrimal = _nb(cr.home).some(
+        (n) => n.terrain !== 'sea' && isTheRaceTheWildsOrOneOfItsSubRaces(n.race),
+      );
       const rank = (list: AProvinceAsTheWorldIsMadeIt[]) =>
         list.sort(
           (x, y) =>
@@ -138,7 +144,7 @@ export function theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome({
         cr.want === 'creature' ? 'Stone Giants' : 'Cave Trolls',
       ];
       const unit = theOneMadeSure(bank[Math.floor(kcRng() * bank.length)]);
-      const candsRace = 'Primal:' + ((primalDefs[unit]?.race ?? '') || unit);
+      const candsRace = theWildsSubRaceOf((primalDefs[unit]?.race ?? '') || unit);
       cand.race = candsRace;
       cand.armyTypes = [unit];
       cand.neutralDefenders = Array.from({ length: neutralDefCount(cand.tax) }, () => ({

@@ -3,7 +3,12 @@
 // with Garreth's name kept back, the Pagan flag, the content's tables by any name, the map's grid and its helpers,
 // pickLand, and the naming pools and functions, which the naming pass (S17) runs once the map is whole. It draws no
 // dice of its own: pickLand and the naming functions draw when a later stage calls them.
-import { PRIMAL_ARMY_DEFS_P, PRIMAL_UNIT_NAMES, PROVINCE_ARMIES_P } from '../../../content/kingdoms-call-data.ts';
+import {
+  PRIMAL_ARMY_DEFS_P,
+  PRIMAL_UNIT_NAMES,
+  PROVINCE_ARMIES_P,
+  THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+} from '../../../content/kingdoms-call-data.ts';
 import {
   THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE,
   THE_FIRST_HALVES_OF_A_WILD_PROVINCES_NAME,
@@ -14,6 +19,10 @@ import {
 } from '../../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 import { THE_PROVINCES_NAMES } from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../../rng.ts';
+import {
+  isTheRaceOneOfTheWildsSubRaces,
+  theWildsSubRaceOf,
+} from '../../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { HUMANOID_RACES_GEN } from '../tables.ts';
 import { doTheRitualStonesStandWithARealmOf } from '../../rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 import { _usedHeroEpithets, _usedHeroFirsts, _usedHeroNames } from '../../names.ts';
@@ -132,16 +141,16 @@ export function theSetUpTheMapsGridAndTheProvincesNames({ setupPlayers, sz, genO
   const themedName = (p: AProvinceAsTheWorldIsMadeIt) => {
     if (p.terrain === 'sea') {
       let kind: keyof typeof NAME_SEA_BY_TYPE = 'open';
-      if (p.race === 'Primal:Whale') kind = 'whale';
-      else if (p.race === 'Primal:Shark') kind = 'shark';
-      else if (p.race?.startsWith('Primal:')) kind = 'primal';
+      if (p.race === theWildsSubRaceOf('Whale')) kind = 'whale';
+      else if (p.race === theWildsSubRaceOf('Shark')) kind = 'shark';
+      else if (isTheRaceOneOfTheWildsSubRaces(p.race)) kind = 'primal';
       const pool = NAME_SEA_BY_TYPE[kind];
       return String(pickFrom(pool.pre)) + String(pickFrom(pool.suf));
     }
     // Land: prefix reflects the people (or wild primal beasts), suffix reflects the terrain.
-    const prePool = p.race?.startsWith('Primal:')
+    const prePool = isTheRaceOneOfTheWildsSubRaces(p.race)
       ? NAME_PREFIX_PRIMAL
-      : (prefixesByRace[String(p.race)] ?? NAME_PREFIX_BY_RACE.Human);
+      : (prefixesByRace[String(p.race)] ?? NAME_PREFIX_BY_RACE[THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS]);
     const sufPool = suffixesByTerrain[p.terrain] ?? NAME_SUFFIX_BY_TERRAIN.plain;
     return String(pickFrom(prePool)) + String(pickFrom(sufPool));
   };

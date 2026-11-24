@@ -72,6 +72,51 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'resolveAwakenGroveOrder',
     "B-06ac, Awaken Grove in a province of the wild's race, from content's race and its helper",
   ],
+  [
+    'src/engine/world/the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts',
+    'themedName',
+    "B-06ad, a province's name: the whale and shark waters and a wild province by the wild's sub-races, a race of none's names from content",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s03-every-province-made-its-terrain-tax-armies-and-lairs.ts',
+    'everyProvinceMadeItsTerrainTaxArmiesAndLairs',
+    "B-06ad, a wild province's sub-race, its defenders' grade and a province of no race's defenders, from content and the helpers",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s05-the-coastal-fleets-a-humanoid-shore-offers.ts',
+    'theCoastalFleetsAHumanoidShoreOffers',
+    "B-06ad, the fleet of a coast of no race, from the content's constant",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s06-the-seas-by-kind-primal-poor-waters-and-open-water.ts',
+    'theSeasByKindPrimalPoorWatersAndOpenWater',
+    "B-06ad, a primal sea's sub-race and its beasts' race, from content and the helper",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts',
+    'eachHomeTailoredAndItsKingAndHeroesMade',
+    "B-06ad, the creed's wild neighbour and the one-primal cap, from the helpers",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts',
+    '_isHumanoid',
+    "B-06ad, a home's humanoid neighbour: not the wild's, from the helper",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s10-the-two-crowns-given-wild-country-within-two-provinces-of-home.ts',
+    'theTwoCrownsGivenWildCountryWithinTwoProvincesOfHome',
+    "B-06ad, a crown's wild ring and the wild country turned, from the helpers",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s10-the-two-crowns-given-wild-country-within-two-provinces-of-home.ts',
+    '_famOf',
+    "B-06ad, a wild province's family: the wild's, from the helper",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s15-every-neutral-province-fields-the-strongest-mix-of-its-own-units.ts',
+    'everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits',
+    "B-06ad, the wild left as it is and a slot of no race's, from content and the helper",
+  ],
 ];
 
 test.for(TAKEN)('%s: %s names no race (%s)', ([file, fn]) => {

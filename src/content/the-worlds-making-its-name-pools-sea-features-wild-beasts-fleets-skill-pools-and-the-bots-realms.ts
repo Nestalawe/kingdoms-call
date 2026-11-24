@@ -223,6 +223,15 @@ export const THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST: Readonly<
   Dwarven: ['Dwarf Ironclads'],
   Orcish: ['Orcish Longships'],
 };
+/** Each humanoid race's heartland: the terrain the world's making weights the race towards (by the province pools'
+ *  `theWeightOfARacesHeartland`), so most Human provinces are plains and most Elven ones forest, while any race can
+ *  still turn up anywhere. Read by the races dealt to their heartlands (S4) and the neutral races rebalanced (S11). */
+export const THE_HEARTLAND_OF_EACH_HUMANOID_RACE: Readonly<Record<'Human' | 'Elven' | 'Dwarven' | 'Orcish', string>> = {
+  Human: 'plain',
+  Elven: 'forest',
+  Dwarven: 'mountain',
+  Orcish: 'desert',
+};
 /** Every humanoid fleet type, the retired Corsair Fleet too (a save's companies may still be one). */
 export const THE_HUMANOID_FLEET_TYPES: readonly string[] = [
   'Galleon Fleet',

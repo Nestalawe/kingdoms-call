@@ -5,9 +5,11 @@
 import {
   KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
   KC_UNIT_CLASS,
+  THE_RACE_OF_THE_WILD,
 } from '../../../content/kingdoms-call-data.ts';
 import { THE_SEAS_BY_KIND } from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../../rng.ts';
+import { theWildsSubRaceOf } from '../../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { neutralDefCount, rP } from '../../units/drill-and-spoils.ts';
 import { armyUnitName } from '../../dice-and-army-names.ts';
 import {
@@ -41,7 +43,7 @@ export function theSeasByKindPrimalPoorWatersAndOpenWater({ provinces, unitNames
       if (r < THE_SEAS_BY_KIND.theDieUnderWhichASeaIsPrimal) {
         const chosen = theOneMadeSure(PRIMAL_SEA_TYPES[Math.floor(kcRng() * PRIMAL_SEA_TYPES.length)]);
         p.armyTypes = [chosen];
-        p.race = 'Primal:' + chosen.replace(/s$/, '').replace('Eldritch Kraken', 'Kraken'); // 'Primal:Sea Giant' / 'Primal:Kraken'
+        p.race = theWildsSubRaceOf(chosen.replace(/s$/, '').replace('Eldritch Kraken', 'Kraken')); // 'Primal:Sea Giant' / 'Primal:Kraken'
         // Primal seas are Prosperous waters — tax 4-6, same band as prosperous land. (Capped at 6:
         // tax 7 displays as "Rich", so the old rP(4,7) was quietly minting rich sea provinces.)
         p.tax = rP(THE_SEAS_BY_KIND.thePrimalSeasTax.theLeast, THE_SEAS_BY_KIND.thePrimalSeasTax.theMost);
@@ -54,7 +56,7 @@ export function theSeasByKindPrimalPoorWatersAndOpenWater({ provinces, unitNames
         p.neutralDefenders = Array.from({ length: defCount }, () => ({
           type: chosen,
           quality: defQuality,
-          race: 'Primal',
+          race: THE_RACE_OF_THE_WILD,
           unitName: theOneMadeSure(armyUnitName(chosen)),
         }));
         p.npcArmies = defCount;
@@ -71,7 +73,7 @@ export function theSeasByKindPrimalPoorWatersAndOpenWater({ provinces, unitNames
         p.neutralDefenders = Array.from({ length: defCount }, () => ({
           type: beast,
           quality: 'Average',
-          race: 'Primal',
+          race: THE_RACE_OF_THE_WILD,
           unitName: theOneMadeSure(armyUnitName(beast)),
         }));
         p.npcArmies = defCount;
