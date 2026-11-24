@@ -24,7 +24,8 @@ import { botRelationRaw } from '../../src/engine/bots/intel.ts';
 import { alliedBloc } from '../../src/engine/titles/reckoning.ts';
 
 type TheRelations = Record<string, string> | undefined;
-/** The relations a save may hold for realms 1 and 3 (key "1-3"), each by its name. */
+/** The relations a save may hold for realms 1 and 3 (key "1-3"), each by its name; the last holds an entry for realm
+ *  3 with itself too (key "3-3"), which no reader but the reads of a pair's entry ever reads. */
 const THE_STATES_A_SAVE_ALLOWS: readonly (readonly [name: string, relations: TheRelations])[] = [
   ['no relations at all', undefined],
   ['no entry for the pair', { '0-1': 'allied' }],
@@ -33,6 +34,7 @@ const THE_STATES_A_SAVE_ALLOWS: readonly (readonly [name: string, relations: The
   ['allied', { '1-3': 'allied' }],
   ['neutral', { '1-3': 'neutral' }],
   ['a word no state is', { '1-3': 'sworn-brothers' }],
+  ['an entry for realm 3 with itself', { '1-3': 'enemy', '3-3': 'allied' }],
 ];
 /** The pairs asked: either way round, a realm missing on either side, and a realm with itself. */
 const THE_PAIRS: readonly (readonly [a: number | null | undefined, b: number | null | undefined])[] = [
@@ -55,7 +57,7 @@ const everyCase = THE_STATES_A_SAVE_ALLOWS.flatMap(([name, relations]) =>
 describe('the home: relationBetween, areEnemies and areAllied', () => {
   test.for(everyCase)('$name, realms $a and $b', ({ relations, a, b }) => {
     const answer = theReadersAnswer(relations, a, b);
-    const entry = a != null && b != null ? (relations?.['1-3'] ?? '') : '';
+    const entry = a != null && b != null && a !== b ? (relations?.['1-3'] ?? '') : '';
     const expected = a != null && b != null && a === b ? 'self' : entry || 'neutral';
     expect(answer, `relationBetween(${String(a)}, ${String(b)})`).toBe(expected);
     const G = { relations: relations ?? {} };
@@ -81,15 +83,16 @@ describe('each copy gives the reader’s answer, and Neutral for a realm with it
     );
   });
 
-  // The reads inside diplomacy's resolution and war without warning: a pair of two realms, never one with itself (each
-  // loop skips it), and never a realm missing; on a realm with itself the read is the pair's entry, Neutral.
+  // The reads inside diplomacy's resolution and war without warning: a pair of two realms, never a realm missing, and
+  // never one with itself (each loop skips it); on a realm with itself the read is that realm's own entry, as the
+  // inline reads were, Neutral when it has none.
   test.for(everyCase.filter(({ a, b }) => a != null && b != null))(
     'the reads inside diplomacy’s resolution and war without warning: $name, realms $a and $b',
     ({ relations, a, b }) => {
       if (a == null || b == null) throw new Error('a pair of two realms');
-      expect(theStateThePairsEntryHolds(relations, a, b), `the entry of ${String(a)} and ${String(b)}`).toBe(
-        asACopyAnswers(theReadersAnswer(relations, a, b)),
-      );
+      const expected =
+        a === b ? relations?.[`${String(a)}-${String(a)}`] || 'neutral' : theReadersAnswer(relations, a, b);
+      expect(theStateThePairsEntryHolds(relations, a, b), `the entry of ${String(a)} and ${String(b)}`).toBe(expected);
     },
   );
 
