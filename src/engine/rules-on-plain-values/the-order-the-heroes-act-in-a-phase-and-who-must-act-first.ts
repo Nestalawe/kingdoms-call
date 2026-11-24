@@ -5,6 +5,9 @@
 // (normaliseAction's answer), where he stands and where his march takes him, his order's target and extra choice, the
 // hero his Send Item or Leave/Transfer Army hands to, the hero he pursues, and his skills. The engine works each out
 // from its world (turn/phase-intents-and-dependency-ordering.ts); the order form can from the report and its orders.
+// Each order's kind is a hero order's row (THE_HERO_ORDERS, src/content/the-hero-orders-…): its tier, and its key where
+// a rule names one kind (B-06am).
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 
 /** The skills a hero's initiative adds up, by name (each a level; a missing one counts none). */
 type TheSkillsInitiativeAddsUp = Readonly<
@@ -63,10 +66,23 @@ export function theInitiativeAHeroActsBy(c: AHeroAsHisInitiativeReadsHim): numbe
 // act. Dependency edges (theHeroesWhoMustActFirstInAPhase, e.g. a hero marching in to receive
 // an item) still override this tiering through Kahn's topological sort, so the AK [3.0]
 // exceptions that require a specific move-before/after ordering are preserved.
-/** The tier an order's kind acts in: 0 an order that stays put, 1 Move and Encounter, 2 Defend. */
+/** Each kind's tier, by its key, as its hero order's row writes it (Pursue's row among them: a saved name). */
+const THE_TIER_EACH_KIND_OF_ORDER_ACTS_IN: ReadonlyMap<string, number> = new Map(
+  Object.values(THE_HERO_ORDERS).map((row): [key: string, tier: number] => [row.key, row.tier]),
+);
+/** The tier an order's kind acts in, as its row writes it: 0 an order that stays put, 1 Move and Encounter (a chase,
+ *  so it tiers with Move), 2 Defend. A name no row writes stays put (0). A Forced March's row writes 0 (answer 133). */
 export function theTierAnOrderActsIn(d: string): number {
-  return d === 'defend' ? 2 : d === 'move' || d === 'pursue' || d === 'encounter' ? 1 : 0;
-} // Encounter relocates (chases), so it tiers with Move
+  return THE_TIER_EACH_KIND_OF_ORDER_ACTS_IN.get(d) ?? 0;
+}
+/** Whether an order's kind acts in the Moves' tier (1): a Move or an Encounter, and Pursue's saved name. */
+export function anOrderActsInTheMovesTier(d: string): boolean {
+  return theTierAnOrderActsIn(d) === 1;
+}
+/** Whether an order's kind acts after the orders that stay put: in the Moves' tier (1) or the Defend's (2). */
+export function anOrderActsAfterTheOrdersThatStayPut(d: string): boolean {
+  return theTierAnOrderActsIn(d) !== 0;
+}
 
 /** A hero as the phase's order reads him: his id, his order's kind this phase, and his skills. */
 export interface AHeroAsThePhasesOrderReadsHim extends AHeroAsHisInitiativeReadsHim {
@@ -125,12 +141,12 @@ export function theHeroesWhoMustActFirstInAPhase(
     // applies instead and the ally arrives first — emitting both edges would make a cycle,
     // and Kahn's algorithm would then fall back to plain initiative and honour neither.
     const tgtArrivingHere = (t: AHerosIntentAsWhoMustActFirstReadsIt | null | undefined) =>
-      !!t && t.action === 'move' && t.toId === it.fromId;
+      !!t && t.action === THE_HERO_ORDERS.move.key && t.toId === it.fromId;
     // 2026-09-23: the RECIPIENT of Send Item / Transfer Army is in `extra` (the target holds item
     // indices / unit names). Reading `target` here linked the sender to whichever character's id
     // matched the first item index, and never to the real recipient.
     const _rcp =
-      action === 'give_item' || action === 'leave_army'
+      action === THE_HERO_ORDERS.give_item.key || action === THE_HERO_ORDERS.leave_army.key
         ? (() => {
             const r = it.theHeroHisOrderHandsTo;
             return r !== null ? byId(r) : null;
@@ -139,16 +155,16 @@ export function theHeroesWhoMustActFirstInAPhase(
     if (_rcp?.player === it.player && _rcp.id !== it.id && !tgtArrivingHere(_rcp)) {
       edges.push([it.id, _rcp.id]);
     }
-    if (action === 'cast_spell') {
+    if (action === THE_HERO_ORDERS.cast_spell.key) {
       const spellTargetId = parseInt(order.extra);
       const st = isNaN(spellTargetId) ? null : byId(spellTargetId);
       if (st?.player === it.player && st.id !== it.id && !tgtArrivingHere(st)) edges.push([it.id, st.id]);
     }
     // (b) Pick Up waits for anyone Leaving armies in the same province this phase.
-    if (action === 'pickup_army') {
+    if (action === THE_HERO_ORDERS.pickup_army.key) {
       list.forEach((other) => {
         if (other.id === it.id || other.player !== it.player) return;
-        if (other.action !== 'leave_army') return;
+        if (other.action !== THE_HERO_ORDERS.leave_army.key) return;
         if (other.fromId !== it.fromId) return;
         edges.push([other.id, it.id]);
       });
@@ -156,18 +172,19 @@ export function theHeroesWhoMustActFirstInAPhase(
     // (c) A character MOVING IN to a province where an ally intends to hand him something
     // arrives first — the ally waits for him (AK [3.0]).
     const itsDest = it.toId;
-    if (action === 'move' && itsDest !== null) {
+    if (action === THE_HERO_ORDERS.move.key && itsDest !== null) {
       list.forEach((other) => {
         if (other.id === it.id || other.player !== it.player) return;
         if (other.fromId !== itsDest) return;
-        if (other.action !== 'give_item' && other.action !== 'leave_army') return;
+        if (other.action !== THE_HERO_ORDERS.give_item.key && other.action !== THE_HERO_ORDERS.leave_army.key) return;
         const _oR = other.theHeroHisOrderHandsTo; // recipient is in extra (2026-09-23)
         if (_oR !== it.id) return;
         edges.push([it.id, other.id]);
       });
     }
     // (d) A pursuer acts immediately after the character he is chasing (AK [3.0]).
-    if ((action === 'pursue' || action === 'encounter') && tgt && tgt.id !== it.id) edges.push([tgt.id, it.id]); // an Encounter chaser acts right after their quarry
+    if ((action === THE_HERO_ORDERS.pursue.key || action === THE_HERO_ORDERS.encounter.key) && tgt && tgt.id !== it.id)
+      edges.push([tgt.id, it.id]); // an Encounter chaser acts right after their quarry
     if (it.theHeroHePursues !== null) {
       const pt = byId(it.theHeroHePursues);
       if (pt && pt.id !== it.id) edges.push([pt.id, it.id]);

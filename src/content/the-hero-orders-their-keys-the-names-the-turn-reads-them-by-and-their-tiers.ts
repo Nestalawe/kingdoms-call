@@ -11,9 +11,9 @@
 // src/engine/army-tables.ts).
 // The tier: 0 an order that stays put, which settles first, while every hero is where the phase found him; 1 a Move
 // or an Encounter (a chase), and the battles they start; 2 a Defend, last. A Forced March acts at 0, with the orders
-// that stay put (answer 133: its fix comes with KD-065's after T7). The tiers are written here only, for now:
-// theTierAnOrderActsIn (src/engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts)
-// gives the same until it reads them.
+// that stay put (answer 133: its fix comes with KD-065's after T7). theTierAnOrderActsIn reads each row's tier
+// (src/engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts), and the phase's
+// stages read it through that file (src/engine/turn/phase-stages-…).
 import { THE_ALIGNMENT_ORDERS } from './alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from './mastery-orders-their-keys-names-skills-and-levels.ts';
 

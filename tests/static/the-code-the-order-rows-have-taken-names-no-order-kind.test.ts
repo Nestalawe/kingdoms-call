@@ -29,12 +29,31 @@ import { THE_HERO_ORDERS } from '../../src/content/the-hero-orders-their-keys-th
 
 /** The top level of a file: what no function holds. */
 const TOP = '(top)';
+/** The phase's order (B-06am): the tiers and who must act first, the phase's intents, and the phase's stages. */
+const THE_ORDER_TIERS_FILE =
+  'src/engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
+const THE_PHASE_INTENTS_FILE = 'src/engine/turn/phase-intents-and-dependency-ordering.ts';
+const THE_PHASE_STAGES_FILE = 'src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts';
 
 /** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it: each row
  *  adds what it takes. */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   [THE_ORDER_KINDS_FILE, TOP, "B-06al, the turn's names for the orders: PHASE_ACTION_MAP"],
   [THE_ORDER_KINDS_FILE, 'normaliseAction', "B-06al, a blank or unknown order's kind"],
+  [THE_ORDER_TIERS_FILE, 'theTierAnOrderActsIn', "B-06am, the tier an order acts in: its row's"],
+  [THE_ORDER_TIERS_FILE, 'theHeroesWhoMustActFirstInAPhase', "B-06am, who must act first: the rows' keys"],
+  [THE_ORDER_TIERS_FILE, 'tgtArrivingHere', "B-06am, a comrade marching in: the Move row's key"],
+  [THE_PHASE_INTENTS_FILE, 'buildPhaseIntents', "B-06am, a march's destination: the Move row's key"],
+  [THE_PHASE_INTENTS_FILE, 'isHostileInvasion', "B-06am, an invasion is a Move: its row's key"],
+  [THE_PHASE_INTENTS_FILE, 'phaseDependencies', "B-06am, the hero a hand-over goes to: the rows' keys"],
+  [THE_PHASE_INTENTS_FILE, 'applyMoveInterlocks', "B-06am, a pinned march: the Move row's key"],
+  [THE_PHASE_STAGES_FILE, 'pinAndReactToPhaseIntents', "B-06am, the battle lock and a Defend: the tier, the row's key"],
+  [
+    THE_PHASE_STAGES_FILE,
+    'resolvePhaseOrdersInTwoTiersAroundTheDefendStep',
+    "B-06am, the Defend step's flush: the tier",
+  ],
+  [THE_PHASE_STAGES_FILE, 'endPhaseSkillRisesFallenCommandersAndProvinceMemory', 'B-06am, a watch ended: the tier'],
 ];
 
 test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {
