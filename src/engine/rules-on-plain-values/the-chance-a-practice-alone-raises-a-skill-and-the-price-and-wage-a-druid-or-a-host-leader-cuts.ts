@@ -49,7 +49,9 @@ export function theShareAQuickLearnerPractisesAt(isHeAHumanOfAHumanRealm: boolea
 /** Whether a hero is a quick learner: he and his realm are both of Quick learners' race (its row of the race gifts).
  *  The order form's practice note asks it (B-06ak); the turn asks the race gifts' runner
  *  (doesAGiftOfHisRealmsRaceQuickenAHerosLearning, src/engine/rules/the-registry-of-the-race-gifts.ts), which reads
- *  the same row, and a unit test holds the two to the same answer over every pair of races. */
+ *  the same row. This is a second reader of that row, because the player portal may not import src/engine/rules/; a
+ *  unit test holds the two to the same answer over every pair of races. It reads Quick learners' row alone, not the
+ *  stage's order of gifts: if a second gift that quickens a hero's learning ever joins, this must ask it too. */
 export function isAHeroAQuickLearnerByHisRaceAndHisRealms(
   theHerosRace: string | null | undefined,
   theRealmsRace: string | null | undefined,
