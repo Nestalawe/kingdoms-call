@@ -9,6 +9,7 @@ import {
   CREATURE_ARMIES,
   heroHireWage,
   isLegendaryItem,
+  isTheRaceTheWildsOrOneOfItsSubRaces,
   itemSlot,
   itemUsableBy,
   MONSTER_ARMIES,
@@ -1275,7 +1276,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only the KING's voice carries the Call" disabled>`;
       const theGrade = theRowsNumber(theAlignmentOrdersRow('Call to Arms'), 'theGradeMustered'); // its row's: the grade a company mustered has
       const human = (report.ownedProvinces ?? []).filter(
-        (p) => p.terrain !== 'sea' && !(p.race ?? '').startsWith('Primal'),
+        (p) => p.terrain !== 'sea' && !isTheRaceTheWildsOrOneOfItsSubRaces(p.race),
       );
       if (!human.length)
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="No owned humanoid provinces to raise" disabled>`;

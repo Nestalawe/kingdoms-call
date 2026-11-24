@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, the world's making's numbers and lists, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, the world's making's numbers and lists, the engine's naming of a race, a temper, an order's kind and a relation, the battles' and personal combat's numbers in the engine and in the bots, the portal's naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -17,7 +17,9 @@ import {
   _ITEM_NAME_ALTS,
   ALL_MAGIC_ITEMS_P,
   KC_ALIGNMENTS,
+  KC_HUMANOID_RACES,
   KC_SKILLS,
+  KC_TEMPERS,
   KC_UNIT_TYPE,
   LEGENDARY_ITEMS_P,
   MONSTERS_P,
@@ -932,6 +934,379 @@ export const worldMakingNumbersInEngine = (codeFiles: readonly (readonly [file: 
 export const worldMakingListsInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
   worldMakingCountIn('lists', codeFiles);
 
+// The counts of B-06's Run 3 (T7, the rules pulled out: the races and the tempers, the hero orders, diplomacy, the
+// battles and the player portal's alignments), set on 2026-11-24 by Run 3a's first row (#756) on main c5b3b437. Each
+// family's rows move its rules into content's rows and the registry (the ratchet's paragraph in
+// docs/architecture/the-toolchain-the-checks-and-the-harness.md; the registry's in
+// docs/architecture/the-rule-registry-and-the-one-source-for-shared-rules.md), so each count only falls. Each has its
+// by-function helper, and a static test (named in its comment) holds the functions its rows have taken at 0. Every
+// syntax tree they read is parsed once and shared (theSyntaxTreeOf): nine counts over the same files, one parse each.
+const theSyntaxTrees = new Map<string, { text: string; tree: ts.SourceFile }>();
+/** A file's syntax tree, parsed once for its text and kept for every count that reads it. */
+function theSyntaxTreeOf(file: string, text: string): ts.SourceFile {
+  const kept = theSyntaxTrees.get(file);
+  if (kept?.text === text) return kept.tree;
+  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  theSyntaxTrees.set(file, { text, tree });
+  return tree;
+}
+/** A string that one of a count's listed functions holds but is not the count's word: its file, its function (or
+ *  '(top)'), the word, and why. Each lets one such string of its function through. */
+export type AWordThatIsNotTheCountsWord = readonly [file: string, fn: string, word: string, why: string];
+/** Each function of a file, by its name, with the strings in it that are a count's word (0 for a function with none),
+ *  a literal type's and an import's aside; one inside a nested function that has no name counts for the named one
+ *  around it, and one outside any function for '(top)'. Each listed exception lets one of its function's words
+ *  through. */
+function theWordsNamedByFunction(
+  file: string,
+  text: string,
+  isTheWord: (word: string) => boolean,
+  exceptions: readonly AWordThatIsNotTheCountsWord[] = [],
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  const letThrough = exceptions.filter(([f]) => f === file).map(([, fn, word]) => ({ fn, word, left: 1 }));
+  const visit = (node: ts.Node, inside: string): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      isTheWord(node.text) &&
+      !ts.isLiteralTypeNode(node.parent) &&
+      !ts.isImportDeclaration(node.parent)
+    ) {
+      const exception = letThrough.find((e) => e.fn === fn && e.word === node.text && e.left > 0);
+      if (exception) exception.left--;
+      else counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    }
+    ts.forEachChild(node, (child) => {
+      visit(child, fn);
+    });
+  };
+  visit(theSyntaxTreeOf(file, text), '(top)');
+  return counts;
+}
+/** A by-function count's total over the files it reads, for the files given as [path from the repository's root,
+ *  text]. */
+function theTotalOf(
+  byFunction: (file: string, text: string) => ReadonlyMap<string, number>,
+  reads: (file: string) => boolean,
+  codeFiles: readonly (readonly [file: string, text: string])[],
+): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    if (!reads(file)) continue;
+    for (const count of byFunction(file, text).values()) n += count;
+  }
+  return n;
+}
+
+// The engine's naming of a race (Run 3a, the races): a string naming a humanoid race (KC_HUMANOID_RACES, in content:
+// `'Human'`, `'Elven'`, `'Dwarven'`, `'Orcish'`), the wild's race (`'Primal'`, or a sub-race `'Primal:…'`) or a beast's
+// class (`'Creature'`, `'Monster'`), anywhere but a literal type, counted by syntax tree in the files of src/engine/
+// outside src/engine/rules/ (the bots' and the world's making's included), as alignmentChecksInEngine counts an
+// alignment. The count can't see a race as a property's key (`{ Human: 'plain' }`), a race inside a unit's name
+// (`'Orc Garrison'`) or a lower-case form; each row of the family names those it takes.
+// tests/static/the-code-the-race-rows-have-taken-names-no-race.test.ts holds the functions the rows have taken at 0
+// each, with raceChecksByFunction.
+/** The words of the races' count: the humanoid races, the wild's race and the beasts' two classes. */
+export const RACE_VOCABULARY: ReadonlySet<string> = new Set<string>([
+  ...KC_HUMANOID_RACES,
+  'Primal',
+  'Creature',
+  'Monster',
+]);
+/** Whether a string names a race (above): a word of the vocabulary, or a sub-race of the wild (`'Primal:Wolf'`). */
+export const namesARace = (word: string): boolean => RACE_VOCABULARY.has(word) || word.startsWith('Primal:');
+/** Each function of a file, by its name, with the races named in it (theWordsNamedByFunction's rule). */
+export const raceChecksByFunction = (file: string, text: string): Map<string, number> =>
+  theWordsNamedByFunction(file, text, namesARace);
+/** The races named in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine counts). */
+export const raceChecksInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  theTotalOf(raceChecksByFunction, countsUnitNameChecks, codeFiles);
+
+// The engine's naming of a temper (Run 3a, the tempers): a string naming one of KC_TEMPERS (in content: `'Berserk'`,
+// `'Brave'`, `'Cautious'`, `'Cowardly'`), counted as the races are. `'None'`, the guardians' row of no temper, is too
+// common a word to count. The tempers' numbers are content's already (TEMPER_TRAITS); the count can't see a temper as a
+// property's key (`TEMPER_TRAITS.Brave`, a table keyed by temper).
+// tests/static/the-code-the-temper-rows-have-taken-names-no-temper.test.ts holds the functions the rows have taken at 0
+// each, with temperChecksByFunction.
+/** Every temper's name, as content writes it. */
+export const TEMPER_VOCABULARY: ReadonlySet<string> = new Set<string>(KC_TEMPERS);
+/** Each function of a file, by its name, with the tempers named in it (theWordsNamedByFunction's rule). */
+export const temperChecksByFunction = (file: string, text: string): Map<string, number> =>
+  theWordsNamedByFunction(file, text, (word) => TEMPER_VOCABULARY.has(word));
+/** The tempers named in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine counts). */
+export const temperChecksInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  theTotalOf(temperChecksByFunction, countsUnitNameChecks, codeFiles);
+
+// The engine's checks of an order by its kind (Run 3b, the hero orders): a string naming a kind of order (OrderKind's
+// members, read from its file's syntax tree, but the five alignment orders' keys, which their rows give and
+// alignmentOrderChecksInEngine counts, and with `'pursue'`, a saved name the turn still reads) that the code (a)
+// compares (===, !==, ==, !=) with an order's kind: an expression ending `action` (`o.action`, `_action`), a call of
+// normaliseAction, or a name the function binds to one (`const a = o.action`, or a parameter of a function whose name
+// says Order); (b) is a `case` of a switch over one; (c) is an element of an array literal of two or more strings, every
+// one a kind (a list of kinds); (d) gives as a default (`|| 'defend'`) or assigns to an action (`o.action = 'rest'`); or
+// (e) is a value of the kinds' own table (PHASE_ACTION_MAP). Counted by syntax tree in the files of src/engine/ outside
+// src/engine/rules/; orderKindChecksInTheBots counts the same in src/engine/bots/, and orderKindChecksInEngine the rest,
+// as the economy's two counts are split. Not counted, each for its sense: an order the code writes (`action: 'move'`, a
+// bot's or a hire's pre-order), a line's kind (`type: 'move'`), a skill or a line's split handed to a call (`'spy'`),
+// a list that mixes kinds with roles, skills or stances, and a comparison or switch over anything else (a duel's stance
+// `'challenge'`, a bot's role `'spy'`: a name is bound in its own function only).
+// tests/static/the-code-the-order-rows-have-taken-names-no-order-kind.test.ts holds the functions the rows have taken
+// at 0 each, with orderKindChecksByFunction.
+/** The file that declares OrderKind and PHASE_ACTION_MAP. */
+export const THE_ORDER_KINDS_FILE =
+  'src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
+/** OrderKind's members, in the order written, read from the syntax tree of its file's `type OrderKind = 'a' | 'b'`. */
+export function theOrderKinds(text: string): string[] {
+  const source = ts.createSourceFile(THE_ORDER_KINDS_FILE, text, ts.ScriptTarget.Latest, true);
+  for (const statement of source.statements) {
+    if (!ts.isTypeAliasDeclaration(statement) || statement.name.text !== 'OrderKind') continue;
+    const union = statement.type;
+    if (!ts.isUnionTypeNode(union)) break;
+    return union.types.flatMap((t) =>
+      ts.isLiteralTypeNode(t) && ts.isStringLiteral(t.literal) ? [t.literal.text] : [],
+    );
+  }
+  throw new Error(`${THE_ORDER_KINDS_FILE}: no "type OrderKind = '…' | '…'" found. The ratchet reads its kinds.`);
+}
+/** Every kind of order the count reads (above). */
+export const ORDER_KIND_VOCABULARY: ReadonlySet<string> = new Set([
+  ...theOrderKinds(fs.readFileSync(path.join(ROOT, THE_ORDER_KINDS_FILE), 'utf8')).filter(
+    (kind) => !ALIGNMENT_ORDER_VOCABULARY.has(kind),
+  ),
+  'pursue',
+]);
+/** The text of an expression that is an order's kind: one ending `action`, or a call of normaliseAction. */
+const AN_ORDERS_KIND = /(\.|^)_?action$|^normaliseAction\(|^\(?\(?\w+\.action \?\? ''\)/;
+/** The names a function binds to an order's kind, anywhere in it (its nested functions' too): a variable given an
+ *  order's kind, and, for a function whose name says Order, its parameters. */
+function theNamesBoundToAnOrdersKindIn(fn: ts.Node): Set<string> {
+  const bound = new Set<string>();
+  const collect = (node: ts.Node): void => {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      AN_ORDERS_KIND.test(node.initializer.getText())
+    )
+      bound.add(node.name.text);
+    if (ts.isParameter(node) && ts.isIdentifier(node.name)) {
+      const owner = node.parent;
+      const ownersName =
+        (ts.isFunctionDeclaration(owner) || ts.isMethodDeclaration(owner) || ts.isFunctionExpression(owner)) &&
+        owner.name
+          ? owner.name.getText()
+          : '';
+      if (ownersName.includes('Order')) bound.add(node.name.text);
+    }
+    ts.forEachChild(node, collect);
+  };
+  collect(fn);
+  return bound;
+}
+/** Whether a string literal of the vocabulary is a check of an order's kind (above), with the names bound around it. */
+function isAnOrderKindCheck(
+  node: ts.StringLiteral | ts.NoSubstitutionTemplateLiteral,
+  bound: ReadonlySet<string>,
+  inTheKindsFile: boolean,
+): boolean {
+  const isAnOrdersKind = (e: ts.Expression): boolean => {
+    const t = e.getText().trim();
+    return AN_ORDERS_KIND.test(t) || (ts.isIdentifier(e) && bound.has(t));
+  };
+  let p = node.parent;
+  while (ts.isParenthesizedExpression(p)) p = p.parent;
+  if (ts.isBinaryExpression(p) && COMPARISONS.has(p.operatorToken.kind))
+    return isAnOrdersKind(p.left === node || p.left.getText() === node.getText() ? p.right : p.left);
+  if (ts.isCaseClause(p)) return isAnOrdersKind(p.parent.parent.expression);
+  if (ts.isArrayLiteralExpression(p))
+    return p.elements.length > 1 && p.elements.every((e) => ts.isStringLiteral(e) && ORDER_KIND_VOCABULARY.has(e.text));
+  if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.BarBarToken) return true;
+  if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken)
+    return isAnOrdersKind(p.left) || p.left.getText().includes('action');
+  if (ts.isPropertyAssignment(p) && p.initializer === node) {
+    const field = p.name.getText();
+    return inTheKindsFile && field !== 'type' && field !== 'action';
+  }
+  return false;
+}
+/** Each function of a file, by its name, with the checks of an order's kind in it (0 for a function with none); one
+ *  inside a nested function that has no name counts for the named one around it, and one outside any function for
+ *  '(top)'. A name is bound to an order's kind in the named function that binds it (and the functions inside it). */
+export function orderKindChecksByFunction(file: string, text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const inTheKindsFile = file === THE_ORDER_KINDS_FILE;
+  const visit = (node: ts.Node, inside: string, bound: ReadonlySet<string>): void => {
+    const named = nameOfAFunction(node);
+    if (named) counts.set(named, counts.get(named) ?? 0);
+    const fn = named ?? inside;
+    const theBound = named ? new Set([...bound, ...theNamesBoundToAnOrdersKindIn(node)]) : bound;
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      ORDER_KIND_VOCABULARY.has(node.text) &&
+      !ts.isLiteralTypeNode(node.parent) &&
+      isAnOrderKindCheck(node, theBound, inTheKindsFile)
+    )
+      counts.set(fn, (counts.get(fn) ?? 0) + 1);
+    ts.forEachChild(node, (child) => {
+      visit(child, fn, theBound);
+    });
+  };
+  const tree = theSyntaxTreeOf(file, text);
+  visit(tree, '(top)', theNamesBoundToAnOrdersKindOutsideEveryFunction(tree));
+  return counts;
+}
+/** The names bound to an order's kind outside every named function of a file (its top level). */
+function theNamesBoundToAnOrdersKindOutsideEveryFunction(tree: ts.SourceFile): Set<string> {
+  const bound = new Set<string>();
+  const collect = (node: ts.Node): void => {
+    if (nameOfAFunction(node)) return;
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      AN_ORDERS_KIND.test(node.initializer.getText())
+    )
+      bound.add(node.name.text);
+    ts.forEachChild(node, collect);
+  };
+  collect(tree);
+  return bound;
+}
+/** The files of the bots, which orderKindChecksInTheBots counts. */
+const isTheBots = (file: string): boolean => file.startsWith('src/engine/bots/');
+/** The checks of an order's kind in the engine's files outside src/engine/rules/ and the bots. */
+export const orderKindChecksInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  theTotalOf(orderKindChecksByFunction, (f) => countsUnitNameChecks(f) && !isTheBots(f), codeFiles);
+/** The checks of an order's kind in the bots' files (src/engine/bots/). */
+export const orderKindChecksInTheBots = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  theTotalOf(orderKindChecksByFunction, (f) => countsUnitNameChecks(f) && isTheBots(f), codeFiles);
+
+// The engine's naming of a relation between two realms (Run 3b, diplomacy): a string naming a relation's state or the
+// Treat declaration (`'enemy'`, `'allied'`, `'neutral'`, `'treat'`), anywhere but a literal type, counted by syntax tree
+// in the files of src/engine/ outside src/engine/rules/, the bots' included, as the races are. 'peace', 'war',
+// 'hostile' and 'self' are left out: the bots' own decisions, the GM's setting and the relation reader's own value. Two
+// strings are a `'neutral'` of another sense, listed so that the count can reach 0: a battle's kind and a death's cause.
+// tests/static/the-code-the-relation-rows-have-taken-names-no-relation.test.ts holds the functions the rows have taken
+// at 0 each, with relationChecksByFunction.
+/** The words of the relations' count. */
+export const RELATION_VOCABULARY: ReadonlySet<string> = new Set(['enemy', 'allied', 'neutral', 'treat']);
+/** The two `'neutral'`s that are no relation (above). */
+export const THE_RELATION_WORDS_THAT_ARE_NOT_A_RELATION: readonly AWordThatIsNotTheCountsWord[] = [
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'combatVsNPC',
+    'neutral',
+    "the battle's kind: a battle against a province's neutral defenders",
+  ],
+  [
+    'src/engine/heroes/hero-death-and-leaderless-hosts.ts',
+    'handleHeroDeath',
+    'neutral',
+    "the death's cause: a hero killed by a hero who serves no realm",
+  ],
+];
+/** Each function of a file, by its name, with the relations named in it (theWordsNamedByFunction's rule), the two
+ *  listed exceptions let through. */
+export const relationChecksByFunction = (file: string, text: string): Map<string, number> =>
+  theWordsNamedByFunction(
+    file,
+    text,
+    (word) => RELATION_VOCABULARY.has(word),
+    THE_RELATION_WORDS_THAT_ARE_NOT_A_RELATION,
+  );
+/** The relations named in the files of src/engine/ outside src/engine/rules/ (the files unitNameChecksInEngine
+ *  counts). */
+export const relationChecksInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  theTotalOf(relationChecksByFunction, countsUnitNameChecks, codeFiles);
+
+// The battles' numbers written in the engine's code (Runs 3c and 3d, the battles): worldMakingNumbersInEngine's rule
+// (each number other than 0 and 1, not a literal type nor an element's index), by top-level function and table, in
+// every file of src/engine/battle/ (its folders' too: a stage split out of a battle is counted where it goes) but its
+// facts' files (`the-facts-…`, a line's words), and in the two files of src/engine/units/ the battles' ride-outs and
+// retreats are in. personalCombatNumbersInEngine counts the same in src/engine/personal-combat/ but its facts' file,
+// and battleNumbersInTheBots in the bots' battle estimate, its functions listed (THE_BATTLES_FUNCTIONS_IN_THE_BOTS):
+// a listed function a row empties stays in the list at 0, so a number moved out of the list can't hide.
+// tests/static/the-code-the-battle-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts holds the
+// functions the rows have taken at 0 each, with battleNumbersByFunction, and fails on a listed file or bots' function
+// the code no longer has.
+/** The files of src/engine/units/ that the battles' count reads beside src/engine/battle/. */
+export const THE_BATTLES_FILES_IN_THE_UNITS_FOLDER: readonly string[] = [
+  'src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts',
+  'src/engine/units/sea-lift-stranding-and-retreats.ts',
+];
+/** Whether a file is a facts' file (`the-facts-…`), whose numbers are a line's, not a rule's. */
+const isAFactsFile = (file: string): boolean => path.posix.basename(file).startsWith('the-facts-');
+/** The files whose numbers battleNumbersInEngine counts. */
+export const countsBattleNumbers = (file: string): boolean =>
+  file.endsWith('.ts') &&
+  ((file.startsWith('src/engine/battle/') && !isAFactsFile(file)) ||
+    THE_BATTLES_FILES_IN_THE_UNITS_FOLDER.includes(file));
+/** The files whose numbers personalCombatNumbersInEngine counts. */
+export const countsPersonalCombatNumbers = (file: string): boolean =>
+  file.endsWith('.ts') && file.startsWith('src/engine/personal-combat/') && !isAFactsFile(file);
+/** The bots' battle estimate: their strength of a host, their ground factor, their guess of a defence, their margin,
+ *  the defence bonus they assume and their Druid shortfall. */
+export const THE_BATTLES_FUNCTIONS_IN_THE_BOTS: readonly (readonly [file: string, fn: string])[] = [
+  ['src/engine/bots/intel.ts', 'botBattleForce'],
+  ['src/engine/bots/intel.ts', 'botRaceTerrainMult'],
+  ['src/engine/bots/intel.ts', 'botGuessDefence'],
+  ['src/engine/bots/intel.ts', 'botMarginFor'],
+  ['src/engine/bots/intel.ts', 'BOT_DEF_BONUS'],
+  ['src/engine/bots/intel.ts', 'botDruidShortfall'],
+];
+/** Each top-level function and table of a file, by its name, with its numbers other than 0 and 1 (the world's
+ *  making's rule, worldMakingCountsByFunction's numbers). */
+export function battleNumbersByFunction(file: string, text: string): Map<string, number> {
+  return new Map([...worldMakingCountsByFunction(file, text)].map(([fn, c]): [string, number] => [fn, c.numbers]));
+}
+/** The battles' numbers in the files of src/engine/battle/ but its facts' files, and in the units' two files. */
+export const battleNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  theTotalOf(battleNumbersByFunction, countsBattleNumbers, codeFiles);
+/** Personal combat's numbers in the files of src/engine/personal-combat/ but its facts' file. */
+export const personalCombatNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  theTotalOf(battleNumbersByFunction, countsPersonalCombatNumbers, codeFiles);
+/** The battles' numbers in the bots' functions listed (above). */
+export function battleNumbersInTheBots(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = 0;
+  for (const [file, text] of codeFiles) {
+    const theFunctions = THE_BATTLES_FUNCTIONS_IN_THE_BOTS.filter(([f]) => f === file).map(([, fn]) => fn);
+    if (theFunctions.length === 0) continue;
+    const counts = battleNumbersByFunction(file, text);
+    for (const fn of theFunctions) n += counts.get(fn) ?? 0;
+  }
+  return n;
+}
+
+// The player portal's naming of an alignment (Run 3e, the portal's alignment rules): alignmentChecksByFunction's rule
+// (a string naming one of KC_ALIGNMENTS, anywhere but a literal type) in the files of src/ui/, src/views/ and
+// src/shared/, where the portal and the views restate an alignment's rule (a realm of none reads as Neutral, the beasts'
+// guide, the Research forecast). One string is a relation's label, not an alignment, and is listed. The count can't see
+// an alignment's rule written in prose or a page's HTML.
+// tests/static/the-portal-code-the-alignment-rows-have-taken-names-no-alignment.test.ts holds the functions the rows
+// have taken at 0 each, with alignmentChecksOutsideTheEngineByFunction.
+/** The `'Neutral'` that is the label of the relation "neutral" on the map, not an alignment. */
+export const THE_ALIGNMENT_WORDS_OUTSIDE_THE_ENGINE_THAT_ARE_NOT_AN_ALIGNMENT: readonly AWordThatIsNotTheCountsWord[] =
+  [['src/ui/player/map-symbols.ts', '_ownerLineP', 'Neutral', 'the label of the relation "neutral" on the map']];
+/** The files alignmentChecksOutsideTheEngine counts: the TypeScript of src/ui/, src/views/ and src/shared/. */
+export const countsAlignmentChecksOutsideTheEngine = (file: string): boolean =>
+  /^src\/(ui|views|shared)\//.test(file) && file.endsWith('.ts') && !file.endsWith('.d.ts');
+/** Each function of a file, by its name, with the alignments named in it (theWordsNamedByFunction's rule), the listed
+ *  exception let through. */
+export const alignmentChecksOutsideTheEngineByFunction = (file: string, text: string): Map<string, number> =>
+  theWordsNamedByFunction(
+    file,
+    text,
+    (word) => ALIGNMENT_VOCABULARY.has(word),
+    THE_ALIGNMENT_WORDS_OUTSIDE_THE_ENGINE_THAT_ARE_NOT_AN_ALIGNMENT,
+  );
+/** The alignments named in the portal's, the views' and the shared files (above). */
+export const alignmentChecksOutsideTheEngine = (
+  codeFiles: readonly (readonly [file: string, text: string])[],
+): number => theTotalOf(alignmentChecksOutsideTheEngineByFunction, countsAlignmentChecksOutsideTheEngine, codeFiles);
+
 // The number of entries in the array (or new Set([...])) a top-level `const <name> =` holds.
 export function allowlistLength(file: string, name: string): number {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -1027,6 +1402,15 @@ export function measure(): Counts {
     titleChecksInEngine: titleChecksInEngine(codeFiles),
     worldMakingNumbersInEngine: worldMakingNumbersInEngine(codeFiles),
     worldMakingListsInEngine: worldMakingListsInEngine(codeFiles),
+    raceChecksInEngine: raceChecksInEngine(codeFiles),
+    temperChecksInEngine: temperChecksInEngine(codeFiles),
+    orderKindChecksInEngine: orderKindChecksInEngine(codeFiles),
+    orderKindChecksInTheBots: orderKindChecksInTheBots(codeFiles),
+    relationChecksInEngine: relationChecksInEngine(codeFiles),
+    battleNumbersInEngine: battleNumbersInEngine(codeFiles),
+    personalCombatNumbersInEngine: personalCombatNumbersInEngine(codeFiles),
+    battleNumbersInTheBots: battleNumbersInTheBots(codeFiles),
+    alignmentChecksOutsideTheEngine: alignmentChecksOutsideTheEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
     unusedCode: unusedCode(),

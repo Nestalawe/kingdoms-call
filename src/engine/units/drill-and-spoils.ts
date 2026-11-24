@@ -1,4 +1,10 @@
+import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import {
+  doesACompanyTakeItsRealmsSpoilsOfABattleWonAttacking,
+  doesARealmsRaceTakeTheSpoilsOfABattleWonAttacking,
+  theFactorTheGiftsOfItsRealmsRaceQuickenACompanysDrillBy,
+} from '../rules/the-registry-of-the-race-gifts.ts';
 import { SEA_TYPES_GEN } from '../world/tables.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { botBattleForce } from '../bots/intel.ts';
@@ -36,10 +42,14 @@ export function markOrcAttackWin(
 ): number {
   if (ch?.player == null) return 0;
   const hisRealm = gs.players[ch.player];
-  if (hisRealm?.race !== 'Orcish') return 0;
+  if (!doesARealmsRaceTakeTheSpoilsOfABattleWonAttacking(hisRealm?.race)) return 0;
   let n = 0;
   (asItsGuardReadsIt(ch.armies) ?? []).forEach((a: Army | null | undefined) => {
-    if (a?.race === 'Orcish' && !a._phantom) {
+    if (
+      a != null &&
+      doesACompanyTakeItsRealmsSpoilsOfABattleWonAttacking(hisRealm?.race, { theCompanysRace: a.race }) &&
+      !a._phantom
+    ) {
       a._orcAtkWinTurn = gs.turn;
       n++;
     }
@@ -67,7 +77,10 @@ export function humanXPMult(
   ownerPi: number | null | undefined,
   gs: TheRealmsAsADrillReadsThem,
 ): number {
-  return a?.race === 'Human' && ownerPi != null && gs.players[ownerPi]?.race === 'Human' ? 2 : 1;
+  // Drillmasters is a row of the race gifts (B-06af), asked through their runner
+  return ownerPi != null
+    ? theFactorTheGiftsOfItsRealmsRaceQuickenACompanysDrillBy(gs.players[ownerPi]?.race, { theCompanysRace: a?.race })
+    : 1;
 }
 
 export function rP(a: number, b: number) {
@@ -126,7 +139,7 @@ export function resyncNeutralDefenders(
       defs.push({
         type: dt,
         quality: proto ? proto.quality : 'Average',
-        race: proto ? proto.race : (prov.race ?? '') || 'Human',
+        race: proto ? proto.race : (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
         unitName: theDefendersNameDrawn(armyUnitName(dt)),
       });
     }

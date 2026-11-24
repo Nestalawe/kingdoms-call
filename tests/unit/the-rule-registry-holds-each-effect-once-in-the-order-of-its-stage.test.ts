@@ -64,6 +64,11 @@
 // Since B-06o the Imperial Titles' registry (src/engine/rules/the-registry-of-the-imperial-titles-effects.ts) is held
 // to the same, on TITLE_DEFS' rows (no two rows' key or name, the entries in the rows' order), and each stage's order
 // is the rows' order of the titles in it (the title intelligence's: one board after another, as each block ran).
+// Since B-06ae the race gifts' registry (src/engine/rules/the-registry-of-the-race-gifts.ts) is held to the same: each
+// effect once in its stage's order (THE_ORDER_OF_EACH_STAGE_OF_THE_RACE_GIFTS), each order naming only entries with an
+// effect there, each content row with its entry and each entry with its row, no two rows' name, and each row's race a
+// humanoid race (its runners' values: tests/unit/the-race-gifts-each-a-row-of-content-and-the-battles-ask-their-
+// runner.test.ts).
 // Level 1 (unit): it reads the registry's values (its effects and orders), which a syntax tree can't evaluate; the
 // whole engine is imported first (tests/lib/the-whole-engine.ts). Planted: an entry left out of its order, one named
 // twice, an order naming an entry with no effect at its stage, a row's unit that isn't a unit type (and a unit it
@@ -122,7 +127,12 @@ import {
   THE_REGISTRY_OF_THE_ECONOMYS_RULES,
 } from '../../src/engine/rules/the-registry-of-the-economys-rules.ts';
 import { MINOR_TITLES } from '../../src/content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
-import { TITLE_DEFS } from '../../src/content/kingdoms-call-data.ts';
+import { KC_HUMANOID_RACES, TITLE_DEFS } from '../../src/content/kingdoms-call-data.ts';
+import { RACE_GIFTS } from '../../src/content/the-race-gifts-their-keys-races-and-numbers.ts';
+import {
+  THE_ORDER_OF_EACH_STAGE_OF_THE_RACE_GIFTS,
+  THE_REGISTRY_OF_THE_RACE_GIFTS,
+} from '../../src/engine/rules/the-registry-of-the-race-gifts.ts';
 import {
   THE_ORDER_OF_EACH_STAGE_OF_THE_IMPERIAL_TITLES,
   THE_REGISTRY_OF_THE_IMPERIAL_TITLES_EFFECTS,
@@ -1208,5 +1218,44 @@ test("planted in the Imperial Titles' registry, a stage's order out of the rows'
     'a-planted-namesake and wild share the name The Wildwarden',
     'a-planted-namesake has a content row and no entry',
     "the order of turnEnd: the board a hero's Imperial Title shows his realm is not the rows' order: beast, carto, wild, marshal",
+  ]);
+});
+
+const RACE_GIFTS_ENTRIES: Entries = THE_REGISTRY_OF_THE_RACE_GIFTS;
+const RACE_GIFTS_ORDERS: Orders = THE_ORDER_OF_EACH_STAGE_OF_THE_RACE_GIFTS;
+const RACE_GIFTS_ROWS: Readonly<Record<string, { readonly name: string; readonly race: string }>> = RACE_GIFTS;
+const THE_HUMANOID_RACES: readonly string[] = KC_HUMANOID_RACES;
+const RACE_GIFTS_BREAK = (
+  entries: Entries,
+  orders: Orders,
+  rows: Readonly<Record<string, { readonly name: string; readonly race: string }>>,
+) =>
+  whatTheRegistryBreaks(entries, orders, rows, (slug, row) =>
+    THE_HUMANOID_RACES.includes(row.race) ? [] : [`${slug}'s race ${row.race} is no humanoid race`],
+  );
+
+test("the race gifts' registry holds each effect once, in the order of its stage, each entry at a stage, and each content row with its entry and a humanoid race", () => {
+  expect(RACE_GIFTS_BREAK(RACE_GIFTS_ENTRIES, RACE_GIFTS_ORDERS, RACE_GIFTS_ROWS)).toEqual([]);
+  const ordered = Object.values(RACE_GIFTS_ORDERS).flatMap((stages) => Object.values(stages).flat());
+  expect([...ordered].sort()).toEqual(Object.keys(RACE_GIFTS_ENTRIES).sort());
+});
+
+test("planted in the race gifts' registry, an entry left out of its order, one named twice, a row with no entry, two rows' name and a row of no humanoid race, are found", () => {
+  const orders: Orders = {
+    ...RACE_GIFTS_ORDERS,
+    strength: { "a race's gift strengthens a company of its realm": ['woodland-mastery', 'woodland-mastery'] },
+  };
+  const rows = {
+    ...RACE_GIFTS_ROWS,
+    'a-planted-gift': { name: 'Bulwark', race: 'Human' },
+    'a-planted-beasts-gift': { name: 'Planted', race: 'Primal' },
+  };
+  expect(RACE_GIFTS_BREAK(RACE_GIFTS_ENTRIES, orders, rows)).toEqual([
+    "woodland-mastery is in the order of strength: a race's gift strengthens a company of its realm 2 times",
+    "bulwark is in the order of strength: a race's gift strengthens a company of its realm 0 times",
+    'a-planted-gift and bulwark share the name Bulwark',
+    'a-planted-gift has a content row and no entry',
+    "a-planted-beasts-gift's race Primal is no humanoid race",
+    'a-planted-beasts-gift has a content row and no entry',
   ]);
 });

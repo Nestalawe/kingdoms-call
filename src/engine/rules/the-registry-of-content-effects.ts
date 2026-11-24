@@ -1378,6 +1378,48 @@ export interface AnAttackerOnConsecratedGround {
   readonly theAttackersAlignment: string;
 }
 
+/** A company of a force, as a gift of its realm's race weighs it (armStr, after the ground). */
+export interface ACompanyAsItsRealmsRaceGiftWeighsIt {
+  readonly theCompanysRace: string | null | undefined;
+  readonly theTerrain: string | null | undefined;
+  /** The side it fights on, or nothing when the battle's caller gives none. */
+  readonly itsSide: 'defending' | 'attacking' | null;
+}
+
+/** A province a realm won a battle in, as a gift of the realm's race weighs it (both battles). */
+export interface AProvinceAsARaceGiftWeighsAWinInIt {
+  readonly theProvincesRace: string | null | undefined;
+}
+
+/** A company of a realm, as a gift of the realm's race weighs its share of a battle won attacking. */
+export interface ACompanyAsARaceGiftWeighsItsSpoils {
+  readonly theCompanysRace: string | null | undefined;
+}
+
+/** A hero of a realm, as a gift of the realm's race weighs him (his learning, his hit points, his mithril: B-06af). */
+export interface AHeroAsARaceGiftWeighsHim {
+  readonly theHerosRace: string | null | undefined;
+}
+
+/** A company of a realm, as a gift of the realm's race weighs its drill (a commander's, the garrison's, a battle's). */
+export interface ACompanyAsARaceGiftWeighsItsDrill {
+  readonly theCompanysRace: string | null | undefined;
+}
+
+/** A company of a realm killed in a battle, as a gift of the realm's race weighs its flight home: its race, and the
+ *  ground it fell on. */
+export interface AFallenCompanyAsARaceGiftWeighsItsFlight {
+  readonly theCompanysRace: string | null | undefined;
+  readonly theTerrain: string | null | undefined;
+}
+
+/** A hero's hit points as a gift of his realm's race sets them: his maximum at the start, and the shift of each band of
+ *  his hardening. */
+export interface TheHitPointsARaceGiftGivesAHero {
+  readonly theHitPointsAtTheStart: number;
+  readonly theShiftOfTheHardeningsBands: number;
+}
+
 /** A unit of a force, as Home of the Wild weighs it (armStr, after the unit's abilities). */
 export interface AUnitAsTheWildWeighsIt {
   readonly theUnitType: string;
@@ -2118,6 +2160,11 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's discoveries weight the lines behind the front": (
       theEffect: TheEffectOfADiscovery,
     ) => readonly number[] | undefined;
+    /** The factor a gift of the company's realm's race strengthens it by, or nothing (armStr, after the ground: one
+     *  rounded step a gift; the race gifts' registry, B-06ae). */
+    readonly "a race's gift strengthens a company of its realm": (
+      facts: ACompanyAsItsRealmsRaceGiftWeighsIt,
+    ) => number | null;
   };
   readonly volley: {
     /** Whether a unit that is no ranged unit shoots in the volley (abilityMissileUnits, after the ranged units). */
@@ -2153,6 +2200,22 @@ export interface TheStagesOfEachHookPoint {
     /** Whether a beaten host's realm's alignment holds it on the field, with no flight losses (both battles' routs,
      *  first of each chain; the alignment abilities' registry, P1-19au2). */
     readonly "a realm's alignment holds a beaten host on the field": (facts: ABeatenHostsCompanies) => boolean;
+    /** Whether a gift of a winning realm's race flags the province it won a battle in (both battles, on the win; the
+     *  turn's end reads the flag: the race gifts' registry, B-06ae). */
+    readonly "a race's gift flags a province its realm wins a battle in": (
+      facts: AProvinceAsARaceGiftWeighsAWinInIt,
+    ) => boolean;
+    /** Whether a gift of a realm's race gives a company of it the spoils of a battle won attacking (markOrcAttackWin
+     *  stamps it, Early Winter halves its wage by the stamp: the race gifts' registry, B-06ae). */
+    readonly "a race's gift gives a company the spoils of a battle won attacking": (
+      facts: ACompanyAsARaceGiftWeighsItsSpoils,
+    ) => boolean;
+    /** The chance, in percent, a gift of a fallen company's realm's race gives it to flee home instead of leaving a
+     *  grave, or nothing (recordBattleGraves, before the realm's discoveries add theirs: the race gifts' registry,
+     *  B-06af). */
+    readonly "a race's gift gives a fallen company its chance to flee home": (
+      facts: AFallenCompanyAsARaceGiftWeighsItsFlight,
+    ) => number | null;
     /** The gold an ability of a victor's realm's alignment claims for each enemy unit destroyed, before the discoveries
      *  add theirs (bloodHarvest, both battles: the alignment abilities' registry, P1-19ax1). */
     readonly "a realm's alignment claims gold for each foe destroyed": () => number;
@@ -2277,6 +2340,12 @@ export interface TheStagesOfEachHookPoint {
     /** The factor a discovery the king's realm holds multiplies his hardening after a fight by (the hit points a win
      *  or a wound earns him); the runner gives the first effect's, or nothing if the realm holds none (awardHpRoll). */
     readonly "a realm's discoveries harden the king": (theEffect: TheEffectOfADiscovery) => number;
+    /** The factor a gift of a hero's realm's race quickens his learning by, or nothing (trySkillGain, on the chance a
+     *  skill rises; resolvePracticeSkillOrder, on a practice's: the race gifts' registry, B-06af). */
+    readonly "a race's gift quickens a hero's learning": (facts: AHeroAsARaceGiftWeighsHim) => number | null;
+    /** The factor a gift of a company's realm's race quickens its drill by, or nothing (humanXPMult: a commander's
+     *  drill, the garrison's, a battle's rise: the race gifts' registry, B-06af). */
+    readonly "a race's gift quickens a company's drill": (facts: ACompanyAsARaceGiftWeighsItsDrill) => number | null;
   };
   /** What a realm sees (plan P1-19's discoveries family: its row P1-19ad typed it). */
   readonly visibility: {
@@ -2663,7 +2732,16 @@ export interface TheStagesOfEachHookPoint {
     readonly "a realm's discoveries add to maximum HP": (
       theEffect: TheEffectOfADiscovery,
       facts: AHeroWhoseMaximumHpARealmsDiscoveriesMayRaise,
-    ) => number | null;
+    ) =>
+      | number
+      | null; /** A hero's hit points as a gift of his realm's race sets them, or nothing (hpStartOf, hpGainBand and maxHpIsOrc:
+     *  the race gifts' registry, B-06af). */
+    readonly "a race's gift sets a hero's hit points": (
+      facts: AHeroAsARaceGiftWeighsHim,
+    ) => TheHitPointsARaceGiftGivesAHero | null;
+    /** Whether a gift of a hero's realm's race suits him in mithril (mithrilQualifies; a hire's and the Broker's grant:
+     *  the race gifts' registry, B-06af). */
+    readonly "a race's gift suits a hero of its realm in mithril": (facts: AHeroAsARaceGiftWeighsHim) => boolean;
   };
   /** A fighter in a personal combat (plan P1-19's items family, Choice 1: its first row, P1-19q, typed it). A guardian's
    *  perks reach the same effects at "what a fighter wears" as a hero's items: one applier for both (pcApplyFx). */

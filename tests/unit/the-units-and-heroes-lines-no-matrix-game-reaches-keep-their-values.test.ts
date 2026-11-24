@@ -27,7 +27,7 @@
 // - a retreat by sea: to the water a landing came from only when it is unowned and undefended (retreatOptions,
 //   navalSplitRetreat), the units the hulls can't carry joining the garrison of the realm's ground beside it, and each
 //   function handed a list that is missing.
-// And two the balance alone caught (plan P1-21i, the mutation session of 2026-11-05): the Widowmaker counts a slain
+// And Quick learners in trySkillGain, for a Human hero of a Human realm only (B-06af). And two the balance alone caught (plan P1-21i, the mutation session of 2026-11-05): the Widowmaker counts a slain
 // hero of a rival realm, never a wanderer's death; and the chance two hosts unify, by March and provinces apart.
 // Level 1 (unit): the functions called directly on the engine's modules (plan P1-14a) on a staged province or a world
 // the engine makes from a fixed seed, with no turn played; a lower level can't run them. The dice are fed.
@@ -305,6 +305,31 @@ describe("a skill rise's guards, its duel's foe and its province's mark", () => 
       (h['_sgPending'] as { list: { duelWith: unknown }[] }).list[0]?.duelWith;
     expect([theFoe(duellist), theFoe(onlooker)]).toEqual(['Gorm Ironjaw', null]);
   });
+
+  // B-06af: Quick learners' row of the race gifts, asked by trySkillGain through the runner (a die of 0.25 at level 0:
+  // 20% for any hero, 30% for a Human of a Human realm)
+  test.for([
+    ['Human', 'Human', ['melee']],
+    ['Elven', 'Human', []],
+    ['Human', 'Elven', []],
+  ] as const)(
+    'Quick learners: a hero (%s) of a realm (%s) rises on a die of 0.25 at level 0: %j',
+    ([heroRace, realmRace, rises]) => {
+      const G = JSON.parse(THE_WORLD) as World;
+      const theRealms = G.players as unknown as Record<string, unknown>[];
+      theRealms[0] = { ...theRealms[0], race: realmRace, discoveries: [] };
+      const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
+      const him: Record<string, unknown> = { ...aStandIn(), race: heroRace, skills: { melee: 0 } };
+      const was = kcRng.use(() => 0.25);
+      try {
+        trySkillGain(tc as never, him, 'melee', SKILLGAIN_STD);
+      } finally {
+        kcRng.use(was);
+      }
+      const theRises = (him['_sgPending'] as { list: { skill: string }[] } | undefined)?.list ?? [];
+      expect(theRises.map((e) => e.skill)).toEqual(rises);
+    },
+  );
 
   test("a rise drawn in a province where he has risen this turn keeps that rise's mark beside its own", () => {
     const G = JSON.parse(THE_WORLD) as World;

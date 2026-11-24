@@ -1,5 +1,5 @@
 import { kcRng } from '../rng.ts';
-import { temperOf } from '../world/tables.ts';
+import { temperOf, theRowOfATemperByItsName } from '../world/tables.ts';
 import { GUARDIAN_MELEE_BASE, PC_HIT_CAP_FRAC } from '../names.ts';
 import { THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS } from '../../content/guardian-perks-their-kinds-numbers-and-words.ts';
 import { activeItems, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
@@ -282,18 +282,23 @@ export const PC_TERROR_BASE = 55,
   PC_TERROR_PER_LVL = 5,
   PC_TERROR_MIN = 10,
   PC_TERROR_MAX = 70;
-export const PC_TERROR_TEMPER = { Berserk: -15, Brave: -10, Cautious: -5, Cowardly: 10 };
 export const PC_TERROR_BY_POWER = { Weak: 0, Moderate: 0, Powerful: 5, Legendary: 15 };
 export function pcCourageChance(
   foe: AFighterAsTheCourageTestReadsHim,
   actor: AFighterAsTheCourageTestReadsHisFoe | null | undefined,
 ) {
   const terrorOfPower: Readonly<Partial<Record<string, number>>> = PC_TERROR_BY_POWER;
-  const terrorOfTemper: Readonly<Partial<Record<string, number>>> = PC_TERROR_TEMPER;
   const nerve = Math.max(foe.meleeRaw ?? (foe.melee || 0), foe.archeryRaw ?? (foe.archery || 0));
   const faith = 5 * Math.min(2, Number(foe.school?.white) || 0);
   const stature = terrorOfPower[actor?.ref?.power ?? ''] ?? 0; // the table holds no NaN; a grade '' is the key '' as before
-  const c = PC_TERROR_BASE + stature - PC_TERROR_PER_LVL * nerve - faith + (terrorOfTemper[foe.temper] ?? 0);
+  const c =
+    PC_TERROR_BASE +
+    stature -
+    PC_TERROR_PER_LVL * nerve -
+    faith +
+    // (a name like an object's own key, `constructor`, shifts nothing, where before B-06ai it gave NaN: no temper is
+    // named so)
+    (theRowOfATemperByItsName(foe.temper)?.terrorsCourageMod ?? 0);
   return Math.max(PC_TERROR_MIN, Math.min(PC_TERROR_MAX, Math.round(c)));
 }
 // ── SELF-SUSTAIN FADE ────

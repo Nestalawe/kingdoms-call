@@ -83,7 +83,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   [the guardian perks'](the-guardian-perks-registry-its-stages-and-how-to-add-a-perk.md#how-to-add-a-perk)
   [the alignment abilities'](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#how-to-add-an-ability)
   [the economy's](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#how-to-add-a-rule-of-the-economy)
-  and [the minor titles'](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#how-to-add-a-perk).
+  [the minor titles'](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#how-to-add-a-perk)
+  and [the race gifts'](the-race-gifts-registry-its-stages-and-how-to-add-a-gift.md#how-to-add-a-gift).
 - **The trap:** [An effect reads only what its hook hands it](../traps.md#an-effect-reads-only-what-its-hook-hands-it);
   for an alignment's rule, [A realm's alignment's rule is a row of its abilities](../traps.md#a-realms-alignments-rule-is-a-row-of-its-abilities).
 

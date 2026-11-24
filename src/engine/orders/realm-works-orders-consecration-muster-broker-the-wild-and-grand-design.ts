@@ -1,3 +1,4 @@
+import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_GRAND_DESIGNS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
@@ -86,7 +87,8 @@ export function resolveAwakenGroveOrder(
     return;
   }
   theProvinceIsHanded(prov); // the province he stands in (processOrder's: there is one)
-  const okTerrain = prov.terrain === 'forest' || prov.terrain === 'jungle' || (prov.race ?? '').startsWith('Primal');
+  const okTerrain =
+    prov.terrain === 'forest' || prov.terrain === 'jungle' || isTheRaceTheWildsOrOneOfItsSubRaces(prov.race);
   if (prov.owner !== c.player || !okTerrain) {
     emit(turnContext, {
       type: 'system',

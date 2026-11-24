@@ -12,6 +12,7 @@
 // (src/content/the-economys-rules-their-keys-names-and-numbers.ts), and Early Winter and the forecast ask these through
 // the economy's registry; the order form's ledger and the army card ask them here.
 import { THE_ECONOMYS_RULES } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
+import { RACE_GIFTS } from '../../content/the-race-gifts-their-keys-races-and-numbers.ts';
 import { CREATURE_ARMIES, MONSTER_ARMIES } from './units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 
 /** The Druid's half and the Host-Leader's cut: their numbers, from their rows in the economy's rules (B-06d). */
@@ -40,9 +41,23 @@ export function thePerseveranceOfAHeroWhoFailedPracticesThisTurn(thePracticesHeF
   return Math.pow(1.2, thePracticesHeFailedThisTurn);
 }
 
-/** Quick learners: a Human of a Human realm practises at ×1.5. */
+/** Quick learners: a Human of a Human realm practises at ×1.5 (its row of the race gifts, B-06af). */
 export function theShareAQuickLearnerPractisesAt(isHeAHumanOfAHumanRealm: boolean): number {
-  return isHeAHumanOfAHumanRealm ? 1.5 : 1;
+  return isHeAHumanOfAHumanRealm ? RACE_GIFTS['quick-learners'].theLearning : 1;
+}
+
+/** Whether a hero is a quick learner: he and his realm are both of Quick learners' race (its row of the race gifts).
+ *  The order form's practice note asks it (B-06ak); the turn asks the race gifts' runner
+ *  (doesAGiftOfHisRealmsRaceQuickenAHerosLearning, src/engine/rules/the-registry-of-the-race-gifts.ts), which reads
+ *  the same row. This is a second reader of that row, because the player portal may not import src/engine/rules/; a
+ *  unit test holds the two to the same answer over every pair of races. It reads Quick learners' row alone, not the
+ *  stage's order of gifts: if a second gift that quickens a hero's learning ever joins, this must ask it too. */
+export function isAHeroAQuickLearnerByHisRaceAndHisRealms(
+  theHerosRace: string | null | undefined,
+  theRealmsRace: string | null | undefined,
+): boolean {
+  const theGift = RACE_GIFTS['quick-learners'];
+  return theHerosRace === theGift.race && theRealmsRace === theGift.race;
 }
 
 /** The chance (0 to 1) a hero practising alone raises his skill: the base by the level he holds, plus what his realm's

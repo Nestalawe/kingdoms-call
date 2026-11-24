@@ -9,8 +9,9 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 
 ## B-06, T7: the rules pulled out
 
-B-06 is open; its foundations are finished: Run 1 (the economy, then the Reckoning and the titles) and Run 2a (world
-generation). The tranche's plan, its counts and its risks: #711.
+B-06 is open; its foundations and the alignments are finished: Run 1 (the economy, then the Reckoning and the titles),
+Run 2a (world generation) and Run 2b (the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows). The tranche's plan,
+its counts and its risks: #711.
 
 - B-06a: #711 The ratchet counts the economy and the titles, B-06's lettered rows, the KD- rows found by the scoping, B-20 and the bots' worth hook
 - B-06b: #712 The economy's prices in content: the price table, the fallback 2g and the skeleton's 1g, through one price rule and one wage rule
@@ -40,6 +41,17 @@ generation). The tranche's plan, its counts and its risks: #711.
 - B-06z: #740 The world's making split by stage, 5 of 6: the wild country, the neutral races, the tax floor, the shipyards and the defenders
 - B-06aa: #741 The world's making split by stage, 6 of 6: the neutral heroes, Garreth, and the world named and handed on
 - B-06ab: #742 The world's making's stages as one typed list, in the order they run
+- P1-19ba1: #744 The creed orders in the order form, and the Wild Hunt's grade, read from the alignment abilities' rows
+- P1-19ba2: #746 The GM page's creed-order labels read their names from the creed orders' rows
+- P1-19bb1: #747 A realm of no alignment reads as Neutral from one content constant
+- P1-19bb2: #748 The risen dead's race, and the undead guardians' label, read from their rows
+- P1-19bb3: #749 The Wonders by row, 1 of 2: each Grand Design's row says its creed, in the battles and the orders
+- P1-19bb4: #750 The Wonders by row, 2 of 2: each Grand Design's row says its creed, in the turn
+- P1-19bb5: #751 The facts the reports' words read, and Garreth's creed, from the alignments' rows
+- P1-19bb6: #752 The bots, 1 of 4: a realm of no alignment reads as the engine's content constant says
+- P1-19bb7: #753 The bots, 2 of 4: their creed orders and the rules they share read the alignment abilities' rows
+- P1-19bb8: #754 The bots, 3 of 4: their worth of the alignment abilities' rows, the bots' worth hook's third kind
+- P1-19bb9: #755 The bots, 4 of 4: their tuning and their dark war keyed by the alignment abilities, not the creeds' names
 - The fix Run 1 found on the way, its known-defect row deleted: #720 The registry compile test: a test and a program for each registry, every planted copy and expected error as it was
 
 ## The other new items

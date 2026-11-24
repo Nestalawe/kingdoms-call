@@ -343,3 +343,34 @@ describe('the second mutation run’s cases (P1-21q)', () => {
     expect(payOf(3)).toBe(3);
   });
 });
+
+describe('a raised or a charmed hero of no temper (B-06ak)', () => {
+  test("his card's hero shows the temper a hero of no temper fights with (Brave); one of a temper keeps his", () => {
+    const tempers = (dead: Record<string, unknown>, wanderer: Record<string, unknown>): unknown => {
+      stage(
+        `currentReport = ${JSON.stringify({
+          characters: [{ id: 1, name: 'Healer', alive: true, skills: { white: 3 }, armies: [], items: [] }],
+          knownDeadHeroes: [{ id: 7, name: 'Fallen Friend', race: 'Elven', locationId: 3, ...dead }],
+          visibleChars: [{ id: 5, name: 'Wandering Wren', isKing: false, armies: 0, locationId: 3, ...wanderer }],
+        })};`,
+      );
+      doc.body.insertAdjacentHTML(
+        'beforeend',
+        `<div id="nt-test"><div class="orders-char-block"><select id="po-action-1-0"></select></div></div>`,
+      );
+      call('injectResurrectOrders', 1, 0, 7, null);
+      call('injectCharmOrders', 1, 0, 5, 'charm-orders-test');
+      const held = stage(
+        `['resurrect_7_via_1_ph0', 'charm_5_via_1_ph0'].map((id) => (currentReport.characters.find((c) => c.id === id) || {}).temper)`,
+      );
+      doc.getElementById('nt-test')?.remove();
+      doc.getElementById('resurrect-orders-7')?.remove();
+      doc.getElementById('charm-orders-test')?.remove();
+      return held;
+    };
+    expect(tempers({}, {})).toEqual(['Brave', 'Brave']);
+    expect(tempers({ temper: '' }, { temper: '' })).toEqual(['Brave', 'Brave']);
+    expect(tempers({ temper: 'Cautious' }, { temper: 'Cowardly' })).toEqual(['Cautious', 'Cowardly']);
+    expect(errs, 'no page error').toEqual([]);
+  });
+});

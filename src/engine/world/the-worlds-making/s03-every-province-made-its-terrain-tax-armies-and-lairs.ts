@@ -4,7 +4,7 @@
 // the sea share made exact), then each cell's province: its tax, whether it is wild, its people, its army pool, its
 // features and lairs, a ritual site where a Pagan realm plays, and its neutral defenders, pushed onto the provinces'
 // list in place.
-import { MONSTERS_P } from '../../../content/kingdoms-call-data.ts';
+import { MONSTERS_P, THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../../content/kingdoms-call-data.ts';
 import {
   THE_WILD_CREATURES_BY_TERRAIN,
   THE_WILD_MONSTERS_BY_TERRAIN,
@@ -14,6 +14,10 @@ import {
   THE_TAX_BANDS,
 } from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
 import { kcRng } from '../../rng.ts';
+import {
+  isTheRaceOneOfTheWildsSubRaces,
+  theWildsSubRaceOf,
+} from '../../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { PRIMAL_LAND_CHANCE, RACES_P, buildHumanoidPool, provincePoolSize } from '../tables.ts';
 import { shuffleP } from '../../battle/fortune.ts';
 import { SEA_GUARDIAN_NAMES } from '../../names.ts';
@@ -191,7 +195,7 @@ export function everyProvinceMadeItsTerrainTaxArmiesAndLairs({
         // Province race carries the singular sub-race noun (e.g. 'Primal:Stone Giant'); the player
         // portal maps that to "Creature (Stone Giant)" / "Monster (Cave Troll)" and never shows
         // "Primal".
-        race = 'Primal:' + ((primalDefs[primalUnit]?.race ?? '') || primalUnit);
+        race = theWildsSubRaceOf((primalDefs[primalUnit]?.race ?? '') || primalUnit);
       } else {
         race = nextHumanoidRace();
       }
@@ -306,7 +310,7 @@ export function everyProvinceMadeItsTerrainTaxArmiesAndLairs({
       // Neutral defenders
       const neutralDefenders: Army[] = [];
       if (terrain !== 'sea') {
-        const isPrimalProv = race?.startsWith('Primal:');
+        const isPrimalProv = isTheRaceOneOfTheWildsSubRaces(race);
         // Neutral army count by wealth tier — Rich 3-4 / Prosperous 2-3 / Poor 1-2. Applies to
         // humanoid AND primal land alike; primal quality still leans Veteran below.
         const dc = neutralDefCount(baseTax);
@@ -326,7 +330,7 @@ export function everyProvinceMadeItsTerrainTaxArmiesAndLairs({
           neutralDefenders.push({
             type: dt,
             quality: defQuality,
-            race: (race ?? '') || 'Human',
+            race: (race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
             unitName: theOneMadeSure(armyUnitName(dt)),
           });
         }

@@ -43,6 +43,7 @@ import {
   THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA,
   THE_WILD_CREATURES_BY_TERRAIN,
 } from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
+import { theWildsSubRaceOf } from '../../src/engine/rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { compactOf } from '../lib/source.ts';
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import { COMING, isLand, LAND_TERRAINS, LIVE, RENAMED, ROSTER, type WildUnitAsDecided } from '../lib/primal-decided.ts';
@@ -245,7 +246,9 @@ describe('the sea beasts and the new Creatures', () => {
       const gm = compactOf('engine/world/the-worlds-making/s00-the-set-up-the-maps-grid-and-the-provinces-names.ts');
       expect(THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA.shark.pre.length).toBeGreaterThan(0);
       expect(gm).toMatch(/NAME_SEA_BY_TYPE=THE_HALVES_OF_A_SEAS_NAME_BY_THE_KIND_OF_SEA;/);
-      expect(gm).toMatch(/race==='Primal:Shark'\)\s*kind='shark'/);
+      // the race is the wild's sub-race of the shark, made by its helper since B-06ad
+      expect(theWildsSubRaceOf('Shark'), "the shark's sub-race").toBe('Primal:Shark');
+      expect(gm).toMatch(/race===theWildsSubRaceOf\('Shark'\)\)\s*kind='shark'/);
     },
   );
 

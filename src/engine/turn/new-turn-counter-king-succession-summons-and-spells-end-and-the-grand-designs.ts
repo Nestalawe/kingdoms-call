@@ -1,5 +1,9 @@
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
-import { KC_SKILLS, SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_SKILLS,
+  SAGE_DISCOVERIES_P,
+  THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+} from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { TEMPERS_P } from '../world/tables.ts';
 import { nextHeroName } from '../names.ts';
@@ -218,7 +222,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       name: heirName,
       isKing: true,
       player: pi,
-      race: p.race || 'Human',
+      race: p.race || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
       alignment: theAlignmentARealmReadsAs(p.alignment),
       temper: theOneThePickFell(TEMPERS_P[Math.floor(kcRng() * TEMPERS_P.length)]), // provisional — the player may rename and re-temper their heir
       hp: 15,

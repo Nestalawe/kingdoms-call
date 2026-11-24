@@ -2,6 +2,7 @@
 // the-worlds-making-its-stages-their-files-and-how-a-stage-is-moved-into-one.md): the coastal fleets. A humanoid land
 // province beside the sea may offer its race's fleet; the fleets by race and the fleets' types are handed on to the
 // coastal shipyards (S13).
+import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../../content/kingdoms-call-data.ts';
 import { THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST } from '../../../content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 import { kcRng } from '../../rng.ts';
 import { COASTAL_NAVAL_CHANCE, HUMANOID_FLEET_TYPES } from '../tables.ts';
@@ -49,7 +50,9 @@ export function theCoastalFleetsAHumanoidShoreOffers({
     });
     if (adjSea && kcRng() < COASTAL_NAVAL_CHANCE) {
       // share of coastal humanoid provinces with a fleet option
-      const fleets = fleetsByRace[(p.race ?? '') || 'Human'] ?? ['Galleon Fleet'];
+      const fleets = fleetsByRace[(p.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS] ?? [
+        'Galleon Fleet',
+      ];
       const fleet = theOneMadeSure(fleets[Math.floor(kcRng() * fleets.length)]);
       if (!p.armyTypes.includes(fleet)) p.armyTypes.push(fleet);
     }

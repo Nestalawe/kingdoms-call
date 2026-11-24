@@ -25,6 +25,7 @@ import {
   armyLabel,
   theArmyCardsAirAndSeaNotesOfAColumn,
   theArmyCardsFiguresOfAColumn,
+  THE_WORDS_PLAYERS_READ_FOR_THE_WILDS_TWO_CLASSES_OF_BEAST,
 } from './skills-and-projections.ts';
 import {
   CHIEFTAIN_MARKER_COLOR,
@@ -739,7 +740,7 @@ export function renderReportView(report: TheReportAsTheReportScreenReadsIt) {
                 : '';
               const tag =
                 creature || monster
-                  ? kcHtml` <span style="color:#1d5a1d;font-size:.62rem">[${creature ? 'Creature' : 'Monster'}]</span>`
+                  ? kcHtml` <span style="color:#1d5a1d;font-size:.62rem">[${creature ? THE_WORDS_PLAYERS_READ_FOR_THE_WILDS_TWO_CLASSES_OF_BEAST.creature : THE_WORDS_PLAYERS_READ_FOR_THE_WILDS_TWO_CLASSES_OF_BEAST.monster}]</span>`
                   : '';
               return kcHtml`<div style="font-size:.75rem">${unitAbilityTip(a.type, kcHtml`${unitEmoji(a.type)} <span style="color:${(reportColour(kingdom.color) ?? '') || 'var(--ink)'}">${armyLabel(a, { noMove: true })}</span>`)} <span style="color:var(--stone);font-size:.66rem">str ${bs}${a.moveRate != null ? ` · move ${String(a.moveRate)}${a.moveKind === 'sea' ? ' (sea)' : a.moveKind === 'air' ? ' (air)' : ''}` : ''}</span>${tag}${raceBoost}${feudTag}${mast}${pen}</div>`;
             });

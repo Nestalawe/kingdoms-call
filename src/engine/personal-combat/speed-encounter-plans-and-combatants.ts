@@ -1,5 +1,5 @@
 import { NPC_SCHOOL_SPELL } from '../army-tables.ts';
-import { temperOf } from '../world/tables.ts';
+import { temperOf, theRowOfATemperByItsName } from '../world/tables.ts';
 import { GUARDIAN_BODY_CAP_PCT, _escapesTheEnd } from '../names.ts';
 import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { isAHeroOfTheAlignmentUndeadInPersonalCombat } from '../rules/the-registry-of-alignment-abilities.ts';
@@ -151,8 +151,8 @@ export function autoEncounterPlan(turnContext: Pick<TurnContext, 'G'>, ch: AHero
     'elemental',
   );
   const magic = effStat(turnContext, ch, bestSchool);
-  const temper = effTemper(ch); // equipped temper item overrides
-  const avoids = temper === 'Cautious' || temper === 'Cowardly';
+  const traits = temperOf(effTemper(ch)); // equipped temper item overrides
+  const avoids = traits.anAutoPlanKeepsAnExit;
   // ── BATTLE-MAGIC tactics (pre-battle phase only; the personal-combat plan-filter strips CS:).
   // ── a neutral hero should put every spell they know to good use when a player attacks. List a
   // CS: entry for EVERY battle-capable school they have skill in, strongest first, so
@@ -193,7 +193,7 @@ export function autoEncounterPlan(turnContext: Pick<TurnContext, 'G'>, ch: AHero
   }
   if (arch > 0) {
     // A Berserk charges regardless; everyone else works the bow while the range allows it.
-    const shots = temper === 'Berserk' ? 1 : arch >= melee ? 3 : 1;
+    const shots = traits.anAutoPlanChargesFiringOnce ? 1 : arch >= melee ? 3 : 1;
     for (let i = 0; i < shots; i++) plan.push('FI');
   }
   while (plan.length < (avoids ? 5 : 6)) plan.push('ME');
@@ -209,20 +209,19 @@ export function autoEncounterPlan(turnContext: Pick<TurnContext, 'G'>, ch: AHero
 // challenge 'refuse' — will not duel; costs their force 20% strength if challenged (a player's
 // default since 2026-10-13, Toby: a hero with no stance set no longer answers a challenge)
 export const DUEL_STANCES_P = ['challenge', 'accept', 'refuse'];
-export const NPC_DUEL_STANCE_BY_TEMPER = {
-  Berserk: 'challenge',
-  Brave: 'challenge',
-  Cautious: 'accept',
-  Cowardly: 'refuse',
-};
+/** How a commander with no orders answers single combat by the temper he fights with (his temper's row); a temper of no
+ *  stance of its own, or a name no row has, accepts. */
+function theDuelStanceOfAHeroWithNoOrdersByHisTemper(ch: AHeroAsAFightTakesHim) {
+  // (a name like an object's own key, `constructor`, also accepts, where before B-06ai it gave NaN: no temper is named so)
+  return (theRowOfATemperByItsName(effTemper(ch))?.theDuelStanceOfAHeroWithNoOrders ?? '') || 'accept';
+}
 export function duelStanceOf(ch: Character | null | undefined) {
-  const stanceOfTemper: Readonly<Partial<Record<string, string>>> = NPC_DUEL_STANCE_BY_TEMPER;
   const v = ch?.encounterPlan?.duelStance;
   if (v !== undefined && DUEL_STANCES_P.includes(v)) return v; // no stance is in the list
   // NPC commanders have no orders, so Temper decides — across all THREE stances, not just the two
   // extremes. Berserk and Brave ride out and demand single combat; Cautious will answer a
   // challenge but won't issue one; only the Cowardly refuse outright and shame their own ranks.
-  if (ch?.player === null) return (stanceOfTemper[effTemper(ch)] ?? '') || 'accept';
+  if (ch?.player === null) return theDuelStanceOfAHeroWithNoOrdersByHisTemper(ch);
   return 'refuse';
 }
 
@@ -234,7 +233,6 @@ export function ensureEncounterPlan(
   const { _botPlayerIdx } = turnContext;
   if (!ch) return null;
   const stances: readonly (string | undefined)[] = DUEL_STANCES_P; // a stance that may be missing is looked up as it is
-  const stanceOfTemper: Readonly<Partial<Record<string, string>>> = NPC_DUEL_STANCE_BY_TEMPER;
   const t = ch.encounterPlan?.tactics;
   // Auto-plan NEUTRAL characters (NPCs) — and BOT-controlled ones, which never submit a plan
   // through the portal. Without this a bot commander casts no battle magic and fights duels with
@@ -249,7 +247,7 @@ export function ensureEncounterPlan(
       tactics: autoEncounterPlan(turnContext, ch),
       notes: '',
       _auto: true,
-      duelStance: (kept ?? '') || (stanceOfTemper[effTemper(ch)] ?? '') || 'accept',
+      duelStance: (kept ?? '') || theDuelStanceOfAHeroWithNoOrdersByHisTemper(ch),
       _botStance: !!kept,
     };
   }

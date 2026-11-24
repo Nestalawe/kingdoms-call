@@ -1,5 +1,10 @@
 import { kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
-import { KC_HUMANOID_RACES, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_HUMANOID_RACES,
+  KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
+  KC_UNIT_CLASS,
+  PRIMAL_ARMY_DEFS_P,
+} from '../../content/kingdoms-call-data.ts';
 import {
   MONSTER_ARMIES,
   TAMED_FLYER_TYPES_D,
@@ -11,6 +16,7 @@ import {
   druidMasteryGainOver,
   druidShortfall,
   CREATURE_ARMIES,
+  isTheRaceTheWildsOrOneOfItsSubRaces,
   seaLiftOfAColumn,
   strengthLeftByADruidShortfall,
   takesHalfAHullAboard,
@@ -19,6 +25,7 @@ import {
   theMasteryTierATrainedLevelGives,
   theStrengthAUnitHasBeforeTheGroundAndTheFoe,
   theWageABeastPaysUnderADruid,
+  theWildsSubRaceOf,
   unitBaseStrength,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
@@ -288,9 +295,10 @@ export function capitalise(s: string | null | undefined): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
 }
 // Every primal sub-race is either a Creature or a Monster (the engine's CREATURE_ARMIES / MONSTER_ARMIES sets, which
-// src/shared/ hands the portal since P1-11d12 — Druidic favours Creatures, Evil favours Monsters). "Primal" is an
-// internal engine term; players only ever see Creature or Monster. Where only the unit type is known (race stored as a
-// bare 'Primal'), formatRace reads the unit's class from those sets.
+// src/shared/ hands the portal since P1-11d12 — Druidic favours Creatures, Evil favours Monsters): PRIMAL_SUBRACE_CLASS
+// reads each sub-race's class from its unit's (B-06ak). "Primal" is an internal engine term; players only ever see
+// Creature or Monster. Where only the unit type is known (race stored as a bare 'Primal'), formatRace reads the unit's
+// class from those sets.
 export const HUMANOID_RACES_UI = new Set(KC_HUMANOID_RACES);
 const theHumanoidRaces: ReadonlySet<string> = HUMANOID_RACES_UI;
 // ── DRUID: WHAT DOES THIS COMMANDER NEED TO LEAD THIS UNIT? (2026-09-27) ────────────────────────
@@ -459,43 +467,57 @@ export function theArmyCardsAirAndSeaNotesOfAColumn(
     _seaNote = kcHtml` · ⚓ <span style="color:var(--crimson)">Sea transport: ${_hulls} — ${_ashore} unit${_ashore !== 1 ? 's' : ''} left ashore: more fleet units or flyers to carry the whole force</span>`;
   return { _airNote, _seaNote };
 }
-export const PRIMAL_SUBRACE_CLASS = {
-  'Stone Giant': 'Creature',
-  'Forest Ent': 'Creature',
-  Thunderbird: 'Creature',
-  'Giant Eagle': 'Creature',
-  Roc: 'Creature',
-  Whale: 'Creature', // 'Giant Eagle' and 'Leviathan': older reports, before the renames of 2026-10-13
-  'Great Bear': 'Creature',
-  Unicorn: 'Creature',
-  Mammoth: 'Creature',
-  'Great Turtle': 'Creature', // 2026-10-13 (Creatures and Monsters IV)
-  'Cave Troll': 'Monster',
-  Manticore: 'Monster',
-  Basilisk: 'Monster',
-  Dragon: 'Monster',
-  Titan: 'Monster',
-  'Sea Giant': 'Monster',
-  Kraken: 'Monster',
-  Hydra: 'Monster',
-  Leviathan: 'Monster',
-  Shark: 'Monster',
+/** The words players read for the wild's two classes of beast (KC_UNIT_CLASS's `creature` and `monster`, the
+ *  engine's CREATURE_ARMIES and MONSTER_ARMIES): players never see "Primal", only Creature or Monster. */
+export const THE_WORDS_PLAYERS_READ_FOR_THE_WILDS_TWO_CLASSES_OF_BEAST = {
+  creature: 'Creature',
+  monster: 'Monster',
+};
+const A_CREATURE = THE_WORDS_PLAYERS_READ_FOR_THE_WILDS_TWO_CLASSES_OF_BEAST.creature;
+const A_MONSTER = THE_WORDS_PLAYERS_READ_FOR_THE_WILDS_TWO_CLASSES_OF_BEAST.monster;
+/** Where a sub-race's own name begins in a race of the wild's: after the wild's race and its colon (`Primal:`). */
+const WHERE_A_SUB_RACES_NAME_BEGINS = theWildsSubRaceOf('').length;
+
+/** The class word of a unit type: Creature or Monster by the engine's two sets of beasts, or none (not a beast). */
+export const theClassWordOfAUnitType = (theType: string): string | null =>
+  CREATURE_ARMIES.has(theType) ? A_CREATURE : MONSTER_ARMIES.has(theType) ? A_MONSTER : null;
+
+/** Each wild beast's unit type and its sub-race: the primal roster's (PRIMAL_ARMY_DEFS_P) and the poor seas' beasts'
+ *  (the Whale Cohort's `Primal:Whale`). */
+const THE_WILDS_UNIT_TYPES_AND_THEIR_SUB_RACES: readonly (readonly [theType: string, theSubRace: string])[] = [
+  ...Object.entries(PRIMAL_ARMY_DEFS_P).map(([theType, theDef]): readonly [string, string] => [theType, theDef.race]),
+  ...KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS.map((theBeast): readonly [string, string] => [
+    theBeast.type,
+    theBeast.raceTag.slice(WHERE_A_SUB_RACES_NAME_BEGINS),
+  ]),
+];
+/** Each primal sub-race's class as players read it (`Stone Giant` a Creature, `Cave Troll` a Monster), from its unit's
+ *  class in content (B-06ak); and two names an older report holds, before the renames of 2026-10-13 (the Giant Eagles
+ *  became Thunderbirds, the Leviathans' waters the Kraken's: an old save's upgrade renames them). */
+export const PRIMAL_SUBRACE_CLASS: Readonly<Partial<Record<string, string>>> = {
+  ...Object.fromEntries(
+    THE_WILDS_UNIT_TYPES_AND_THEIR_SUB_RACES.flatMap(([theType, theSubRace]) => {
+      const theClass = theClassWordOfAUnitType(theType);
+      return theClass === null ? [] : [[theSubRace, theClass]];
+    }),
+  ),
+  'Giant Eagle': A_CREATURE,
+  Leviathan: A_MONSTER,
 };
 // Present a province/unit race cleanly: humanoid races as-is, primal provinces as their
 // player-facing
 // category — 'Primal:Stone Giant' → 'Creature (Stone Giant)', 'Primal:Cave Troll' → 'Monster (Cave
 // Troll)' — and empty/sea provinces as 'Uninhabited'. Never shows the word "Primal".
-const thePrimalSubracesClass: Readonly<Partial<Record<string, string>>> = PRIMAL_SUBRACE_CLASS;
 export function formatRace(race: string | null | undefined, unitType?: string | null): string {
   if (!race) return 'Uninhabited';
-  if (race.startsWith('Primal')) {
-    const sub = race.slice(7).trim(); // '' for bare 'Primal', else the sub-race after 'Primal:'
+  if (isTheRaceTheWildsOrOneOfItsSubRaces(race)) {
+    const sub = race.slice(WHERE_A_SUB_RACES_NAME_BEGINS).trim(); // '' for bare 'Primal', else the sub-race after 'Primal:'
     // Bare 'Primal' (as stored on sea beasts and recruited Whale Cohorts) carries no sub-race, so
     // fall back to classifying the UNIT TYPE — otherwise every Kraken and Leviathan read
     // "Creature".
-    if (sub) return (thePrimalSubracesClass[sub] ?? '') || 'Creature';
-    if (unitType) return MONSTER_ARMIES.has(unitType) ? 'Monster' : 'Creature';
-    return 'Creature';
+    if (sub) return (PRIMAL_SUBRACE_CLASS[sub] ?? '') || A_CREATURE;
+    if (unitType) return MONSTER_ARMIES.has(unitType) ? A_MONSTER : A_CREATURE;
+    return A_CREATURE;
   }
   return race;
 }
@@ -516,7 +538,7 @@ export function armyLabel(
   // the full word 'Creature' or 'Monster' (derived from the unit TYPE, so it shows even when the
   // army carries no race field — e.g. awakened/recruited beasts), and no separate [C]/[M] tag is
   // used.
-  const primalWord = CREATURE_ARMIES.has(a.type) ? 'Creature' : MONSTER_ARMIES.has(a.type) ? 'Monster' : null;
+  const primalWord = theClassWordOfAUnitType(a.type);
   const race = a.race ? formatRace(a.race, a.type) : null;
   // a unit with a HUMANOID race leads with that race — "Orcish (Monster), Wyvern Riders" — so an
   // Orc garrison of wyverns is not mistaken for a primal band. Only raceless / primal units lead

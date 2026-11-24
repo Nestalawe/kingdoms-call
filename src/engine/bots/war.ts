@@ -25,6 +25,7 @@ import {
   botVisibleCharsIn,
 } from './intel.ts';
 import { botCanBeatGuardian, botFillOrders, botPathLenAny } from './spellcraft.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import {
   BOT_CAVALRY_TYPES,
   BOT_CREATURE_ARMIES,
@@ -106,8 +107,8 @@ function theTargetedProvince(G: GameState, id: number): Province {
 //   7 SUE FOR PEACE — at war for minWarTurns+ and badly outmatched, or losing the battles against
 //     them, the bot offers peace; it accepts a peace the rival offers this turn only when it is
 //     not winning.
-//   8 PERSONALITY — the king's Temper moves the bar (Berserk −0.25 … Cowardly +0.3), with a small
-//     fixed per-realm lean; a new war is kept minWarTurns before peace is weighed, and a new peace
+//   8 PERSONALITY — the king's Temper moves the bar (Berserk −0.25 … Cowardly +0.3: the bots' weights' `temper`),
+//     with a small fixed per-realm lean; a new war is kept minWarTurns before peace is weighed, and a new peace
 //     peaceCooldown turns before war is weighed again.
 // The Aggressive bot-diplomacy setting, a Reckoning claim, the grudge (with its survival exception)
 // and alignment alliances (one step or less; never with a realm allied to one of our enemies) are
@@ -134,7 +135,13 @@ export const BOT_WAR = {
   newsTurns: 4,
   landUnit: 5,
   farFromHome: 3,
-  temper: { Berserk: -0.25, Brave: -0.1, Cautious: 0.15, Cowardly: 0.3 },
+  // what the king's temper adds to the bar, by the temper's name: the bots' first version's weights' `temper`
+  temper: {
+    Berserk: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatABerserkKingAddsToTheBarForWar,
+    Brave: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatABraveKingAddsToTheBarForWar,
+    Cautious: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatACautiousKingAddsToTheBarForWar,
+    Cowardly: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatACowardlyKingAddsToTheBarForWar,
+  },
   grudgeYield: 5,
   grudgeRecall: 2, // a grudge yields when the human is 5× our strength, returns at 2×
   prizeHops: 2, // a prize may lie on our border or one province beyond it

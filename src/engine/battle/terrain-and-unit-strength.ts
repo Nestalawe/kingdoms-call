@@ -18,6 +18,10 @@ import {
 } from '../rules/the-registry-of-content-effects.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT, unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt } from '../rules-on-plain-values/the-strength-a-units-kin-and-a-rival-kins-leader-leave-it.ts';
+import {
+  theStepsTheGiftsOfItsRealmsRaceMakeOnACompany,
+  type ARaceGiftThatStrengthensACompany,
+} from '../rules/the-registry-of-the-race-gifts.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
 import {
   druidLevelTheMasteryCounts,
@@ -549,6 +553,11 @@ export function druidMasteryGain(
   const gain = druidMasteryGainOver(lvl, min);
   return { gain: Math.round(gain * 100) / 100, lvl, min };
 }
+/** The reason armStr's ladder names each race gift's step by (its words are the views'). */
+const THE_REASON_EACH_RACE_GIFT_STRENGTHENS_A_COMPANY_BY = {
+  'woodland-mastery': { kind: 'elven woodland mastery' },
+  bulwark: { kind: 'the dwarven bulwark' },
+} as const satisfies Record<ARaceGiftThatStrengthensACompany, AUnitsModifierInTheLadder>;
 export function armStr(
   turnContext: TurnContext,
   army: ArmyInABattle,
@@ -670,17 +679,17 @@ export function armStr(
     if (_tr && Math.abs(terrainMultFinal - 1) > 1e-9)
       _tr.push({ reason: { kind: 'the ground', terrain, multiplier: terrainMultFinal } });
   }
-  // ── ELVEN WOODLAND MASTERY ── Elven armies of an Elven realm fight +50% in forest and jungle —
-  // their home ground. (Raised from +20% this session.)
-  if (_unitRace === 'Elven' && _ownerRace === 'Elven' && (terrain === 'forest' || terrain === 'jungle')) {
-    str = Math.round(str * 1.5);
-    if (_tr) _tr.push({ reason: { kind: 'elven woodland mastery' } });
-  }
-  // ── DWARVEN BULWARK ── Dwarven armies of a Dwarven realm defend at ×1.5 in any battle
-  // (per-unit; applies only on the defending side).
-  if (_unitRace === 'Dwarven' && _ownerRace === 'Dwarven' && ctx?.isAttacker === false) {
-    str = Math.round(str * 1.5);
-    if (_tr) _tr.push({ reason: { kind: 'the dwarven bulwark' } });
+  // ── THE RACE GIFTS ── ELVEN WOODLAND MASTERY: Elven armies of an Elven realm fight +50% in forest and jungle —
+  // their home ground. (Raised from +20% this session.) DWARVEN BULWARK: Dwarven armies of a Dwarven realm defend at
+  // ×1.5 in any battle (per-unit; applies only on the defending side). Each a row of the race gifts (B-06ae), its own
+  // rounded step, in the registry's order (Woodland Mastery's, then the Bulwark's).
+  for (const _gift of theStepsTheGiftsOfItsRealmsRaceMakeOnACompany(_ownerRace, {
+    theCompanysRace: _unitRace,
+    theTerrain: terrain,
+    itsSide: ctx?.isAttacker === false ? 'defending' : ctx?.isAttacker === true ? 'attacking' : null,
+  })) {
+    str = Math.round(str * _gift.theFactor);
+    if (_tr) _tr.push({ reason: { ...THE_REASON_EACH_RACE_GIFT_STRENGTHENS_A_COMPANY_BY[_gift.theGift] } });
   }
   // GRAND DESIGN — Pagan (Standing Stones). 2026-09-14: keyed on the DEFENDING REALM, not on a
   // hero being present, so an unled garrison holding forest, jungle or mountain gets the same

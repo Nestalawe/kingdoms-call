@@ -1,3 +1,4 @@
+import { doesAGiftOfHisRealmsRaceQuickenAHerosLearning } from '../rules/the-registry-of-the-race-gifts.ts';
 import { KC_THE_GOLD_A_SAGE_MASTERS_NEW_DISCOVERY_BRINGS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import { kcRng } from '../rng.ts';
@@ -443,8 +444,10 @@ export function resolvePracticeSkillOrder(turnContext: TurnContext, c: Character
     const _streak = c._practiceFailStreak?.turn === G.turn ? c._practiceFailStreak.n : 0;
     const _persevere = thePerseveranceOfAHeroWhoFailedPracticesThisTurn(_streak);
     // 2026-10-14 (batch item 10, Toby): QUICK LEARNERS on the Practice ground too — a Human of a
-    // Human realm practises at ×1.5, as they learn in the field (trySkillGain).
-    const _prHumanOfAHumanRealm = c.race === 'Human' && hisRealm?.race === 'Human';
+    // Human realm practises at ×1.5, as they learn in the field (trySkillGain). A row of the race gifts (B-06af).
+    const _prHumanOfAHumanRealm = doesAGiftOfHisRealmsRaceQuickenAHerosLearning(hisRealm?.race, {
+      theHerosRace: c.race,
+    });
     const _prHuman = theShareAQuickLearnerPractisesAt(_prHumanOfAHumanRealm);
     const soloChance = theChanceAHeroPractisingAloneRaisesHisSkill(current, astroBonus, _streak, _prHumanOfAHumanRealm); // this character's normal (solo) chance to improve
     // Mentor rule: if any co-trainer had a HIGHER level in this skill AT PHASE START, they

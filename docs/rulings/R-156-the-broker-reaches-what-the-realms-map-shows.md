@@ -1,7 +1,7 @@
 # R-156: The Broker reaches what the realm's map shows
 
 - **Decided:** 2026-11-05, a maintainer
-- **Status:** Decided, not built
+- **Status:** Superseded
 - **Source:** Question 35: the turn, the order form and the bots disagree on the Broker's reach: which is right? Answer: option 1, the turn follows the form and the books.
 - **Enforced by:** no test yet
 
@@ -12,7 +12,8 @@ him. Ashfall lies on her border, never entered: her Broker can buy word from it.
 the turn hires a wanderer anywhere the realm has been, and buys word only from provinces it has held, visited or
 explored.
 
-**Note:** Decided, not yet built.
+Superseded by [R-190](R-190-the-broker-reaches-as-the-turn-does.md): the Broker reaches as the turn does, and the
+words follow the turn.
 
 The question was: the turn, the order form and the bots disagreed on the Broker's reach. Option 1: "the turn follows
 the form and the books".

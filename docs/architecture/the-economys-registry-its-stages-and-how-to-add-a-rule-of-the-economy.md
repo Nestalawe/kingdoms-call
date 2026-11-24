@@ -130,7 +130,11 @@ makes of that gold from its version's weights file.
   file gives it its weights: a title is the second kind
   ([the bots' worth of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#the-bots-worth-of-a-title)),
   an alignment ability the third
-  ([the bots' worth of an alignment ability](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#the-bots-worth-of-an-alignment-ability)).
+  ([the bots' worth of an alignment ability](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#the-bots-worth-of-an-alignment-ability)),
+  a race's gift the fourth
+  ([the bots' worth of a race's gift](the-race-gifts-registry-its-stages-and-how-to-add-a-gift.md#the-bots-worth-of-a-races-gift)),
+  a temper the fifth
+  ([the bots' worth of a temper](adding-or-changing-content-units-orders-and-discoveries.md#the-bots-worth-of-a-temper)).
 
 ## The tests
 

@@ -87,6 +87,7 @@ import { telSpell } from '../turn/log-line-helpers.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
+import { doesTheWinnersRaceFlagTheProvinceItWonABattleIn } from '../rules/the-registry-of-the-race-gifts.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import {
   MISSILE_CAP_FRACTION,
@@ -1687,7 +1688,8 @@ export function combatVsNPC(
   const margin = finalAtk - finalDef;
   const won = margin >= 0;
   // ORC — Raiders' Muster (2026-10-11, Toby): an orc realm's win in an orcish province (the end-of-turn pass reads the flag).
-  if (won && prov.race === 'Orcish' && theAttackersRealm?.race === 'Orcish') prov._raidersMuster = G.turn;
+  if (won && doesTheWinnersRaceFlagTheProvinceItWonABattleIn(theAttackersRealm?.race, { theProvincesRace: prov.race }))
+    prov._raidersMuster = G.turn;
   // Tactical gain for winning a land battle is rolled AT THE END of the battle (just before the
   // return) so the 📈 line closes the battle report instead of preceding it in the chronicle.
   const _rollTacticalGain = won && prov.terrain !== 'sea';

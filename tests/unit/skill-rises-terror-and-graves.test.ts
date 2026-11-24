@@ -6,7 +6,7 @@
 // - resolvePendingSkillGain (property): the phase's draw raises at most one skill, one of the candidates, by exactly one
 //   level and never past 9, clears the hero's candidates, and closes that skill to experience for the rest of the turn.
 // - recordBattleGraves (property): a fallen unit leaves a grave or, in an Elven kingdom, slips away home, never both;
-//   skeletons and spectral doubles leave neither.
+//   skeletons and spectral doubles leave neither; and (a case) a company of no race leaves a Human grave (B-06ac).
 // - takeBestGrave, senseGravesUnderfoot and graveIntelFor, where no matrix game goes: a gap among a province's graves,
 //   a necromancer handed no state, and a realm's lore of a province no map holds.
 // Level 1 (unit): each function is called on a context made in the test; nothing else of the turn runs. The properties
@@ -228,6 +228,32 @@ describe('recordBattleGraves', () => {
       );
     },
   );
+
+  // A company of no race (its race empty, or not given) is buried as the race content says one reads as
+  // (THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS, Human: B-06ac); no seeded game holds one.
+  test("a fallen company of no race leaves a Human grave, one of a race its own race's", () => {
+    const owner = G.players[0];
+    if (!owner) throw new Error('no realm 0');
+    const was = owner.race;
+    owner.race = 'Human';
+    const prov: Province = { id: 0, name: 'Testmere', terrain: 'plain', battleGraves: [] };
+    const fallen = [{ race: '' }, {}, { race: 'Orcish' }].map((r) => ({
+      type: 'Shieldwall Levies',
+      quality: 'Average',
+      unitName: 'the Ashford Levy',
+      ...r,
+    }));
+    try {
+      recordBattleGraves(tc, prov, fallen, 0);
+    } finally {
+      owner.race = was;
+    }
+    const graves = prov['battleGraves'] as { race: string }[];
+    expect(
+      graves.map((g) => g.race),
+      "the graves' races",
+    ).toEqual(['Human', 'Human', 'Orcish']);
+  });
 });
 
 // What no matrix game reaches in the graves' own functions (plan P1-10b19): a gap among a province's graves, a

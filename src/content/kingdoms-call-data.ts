@@ -454,6 +454,10 @@ export const PROVINCE_ARMIES_P = {
 // defence ALSO lowers the 80% melee hit ceiling for anyone attacking them
 // openingShot the first move up to firing range in a fight cannot fail
 // mercy may beg for mercy when felled instead of dying
+// anAutoPlanKeepsAnExit an auto plan (a hero with no orders: a neutral's or a bot's) holds five actions and ends with Flee
+// anAutoPlanChargesFiringOnce an auto plan charges: one shot, whatever the bow, then the blade
+// theDuelStanceOfAHeroWithNoOrders how a commander with no orders answers single combat ('' = none of its own: accept)
+// terrorsCourageMod % added to the chance of breaking before a terrifying foe (the courage test)
 export const TEMPER_TRAITS = {
   Berserk: {
     meleeHit: 18,
@@ -473,6 +477,10 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: false,
+    anAutoPlanChargesFiringOnce: true,
+    theDuelStanceOfAHeroWithNoOrders: 'challenge',
+    terrorsCourageMod: -15,
   },
   Brave: {
     meleeHit: 12,
@@ -492,6 +500,10 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: false,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: 'challenge',
+    terrorsCourageMod: -10,
   },
   Cautious: {
     meleeHit: 0,
@@ -511,6 +523,10 @@ export const TEMPER_TRAITS = {
     riposte: 0.4,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: true,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: 'accept',
+    terrorsCourageMod: -5,
   },
   Cowardly: {
     meleeHit: -4,
@@ -530,6 +546,10 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: true,
     mercy: true,
+    anAutoPlanKeepsAnExit: true,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: 'refuse',
+    terrorsCourageMod: 10,
   },
   // A true no-temper profile — all zeros, no second wind, no mercy. Feature guardians (the
   // monsters/beasts on a treasure site) use this so they neither gain hero-style temper perks nor
@@ -553,8 +573,16 @@ export const TEMPER_TRAITS = {
     riposte: 0,
     openingShot: false,
     mercy: false,
+    anAutoPlanKeepsAnExit: false,
+    anAutoPlanChargesFiringOnce: false,
+    theDuelStanceOfAHeroWithNoOrders: '',
+    terrorsCourageMod: 0,
   },
 };
+/** The temper a hero of no temper fights with (effTemper), and the row a name no row has reads as (temperOf); the
+ *  temper the GM's turn zero gives a king whose setup names none, and the one the player portal shows a hero of none
+ *  with (a fallen hero's on the report, a raised or a charmed hero's card: B-06ak). */
+export const THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH = 'Brave' satisfies keyof typeof TEMPER_TRAITS;
 
 // Hero names are themed by ALIGNMENT. Each alignment has a pool of given names and a pool of
 // alignment-flavoured epithets; a hero's name is composed "{Given} {Epithet}". The combinatorial
@@ -15086,7 +15114,8 @@ export const KC_UNIT_TYPE = {
 //   PRIMAL_ARMY_DEFS_P, KC_CARRIER_BERTHS   unit types only (so KC_UNIT_TYPE must list every primal unit)
 // tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts compiles copies of this file, each with a
 // unit left out.
-// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS, ARMY_RACE_OF_TYPE) get theirs
+//   THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES   humanoid units only
+// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS) get theirs
 // when their files lose their ts-nocheck line: a `satisfies` checks nothing in a file with it (plan P1-10, Decision 6).
 export type UnitType = keyof typeof KC_UNIT_TYPE;
 /** The wild's units, a Druid's or a monster's: PRIMAL_ARMY_DEFS_P's. */
@@ -15359,7 +15388,76 @@ export const KC_SEASONS = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Ear
 export const KC_ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'] as const;
 export const KC_TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
 export const KC_HUMANOID_RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'] as const;
+// The race a company or a province of no race reads as (B-06ac): the grave of a company of no race, a disbanded one's
+// folk, and the companies a province of no race gives (a Call to Arms', Evil's enslaved garrison, the neutral
+// defenders, a recruit) are of this race, and so is the heir of a realm of no race, and the king the GM's turn zero
+// makes of a setup that names no race (B-06ak). No seeded game holds one.
+export const THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS = 'Human' satisfies (typeof KC_HUMANOID_RACES)[number];
+// The wild's race (B-06ac): the wild sea beasts a Recruit order raises, and a Wild Hunt's beasts in a province of no
+// race, are of it; a province of it (or of one of its sub-races, 'Primal:Wolf') is the wild's, not a people's: no Call
+// to Arms musters there, Evil enslaves no one there, and a druid may awaken a grove there. The engine asks whether a
+// race is the wild's through src/engine/rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts.
+export const THE_RACE_OF_THE_WILD = 'Primal';
+// The race of each unit type of the four races (B-06ag, moved from the engine as it was): a discovery that reaches a
+// race's units asks it of a unit type named alone (a recruit's price and grade). The engine reads it as
+// ARMY_RACE_OF_TYPE (src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts).
+// The Noble Griffons and the Galleon Fleet aren't in it (KD-407).
+export const THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES = {
+  'Shieldwall Levies': 'Human',
+  'Free Lances': 'Human',
+  'Yeoman Longbows': 'Human',
+  'Gilded Lances': 'Human',
+  'Human Garrison': 'Human',
+  'Men-at-Arms': 'Human',
+  'Elven Bowmen': 'Elven',
+  'Forest Wardens': 'Elven',
+  'Shadow Archers': 'Elven',
+  'Eagle Riders': 'Elven',
+  'Elven Galleys': 'Elven',
+  'Elven Garrison': 'Elven',
+  'Stag Riders': 'Elven',
+  'Dwarven Guard': 'Dwarven',
+  'Ironwood Crossbows': 'Dwarven',
+  'Mountain Guns': 'Dwarven',
+  'Dwarf Ironclads': 'Dwarven',
+  'Gnomish Gyrocopters': 'Dwarven',
+  'Dwarf Garrison': 'Dwarven',
+  'Ironhoof Rams': 'Dwarven',
+  'Warg Riders': 'Orcish',
+  'Orc Berserkers': 'Orcish',
+  'Goblin Horde': 'Orcish',
+  'Wyvern Riders': 'Orcish',
+  'Orcish Longships': 'Orcish',
+  'Black Arrows': 'Orcish',
+  'Orc Garrison': 'Orcish',
+} satisfies Partial<Record<HumanoidUnitType, (typeof KC_HUMANOID_RACES)[number]>>;
+// The garrison company a Call to Arms musters by the province's race (B-06ag, moved from the engine as it was), where
+// the province's own pool holds no garrison type.
+export const THE_GARRISON_A_CALL_TO_ARMS_MUSTERS_BY_THE_PROVINCES_RACE = {
+  Human: 'Human Garrison',
+  Elven: 'Elven Garrison',
+  Dwarven: 'Dwarf Garrison',
+  Orcish: 'Orc Garrison',
+} satisfies Record<(typeof KC_HUMANOID_RACES)[number], HumanoidUnitType>;
+// An old save's race words (B-06ag, moved from the engine as they were): no race of today's world, but a game saved
+// before a change may hold them, and the save's upgrade mends them. A province's or a company's race of the wild whose
+// beast was renamed (2026-10-13: the Giant Eagles became Thunderbirds, the Leviathans' waters the Kraken's), and the
+// beasts' two classes a neutral hero may wear as his race (he is given a people's race).
+export const AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED = {
+  'Primal:Giant Eagle': 'Primal:Thunderbird',
+  'Primal:Leviathan': 'Primal:Kraken',
+};
+export const THE_BEASTS_CLASSES_AN_OLD_SAVES_NEUTRAL_HERO_MAY_WEAR_AS_HIS_RACE = ['Monster', 'Creature'] as const;
 export const KC_RIVAL_RACE = { Elven: 'Dwarven', Dwarven: 'Elven', Human: 'Orcish', Orcish: 'Human' };
+// The kin rule's factors (B-06ah, moved from the rule as they were): a unit of its realm's king's race fights at ×1.2,
+// one led by a commander of its race at ×1.2 more (a king leading his own race's troops: ×1.44), then one led by a
+// commander of its rival kin (KC_RIVAL_RACE) at ×0.8. The battle rounds each step
+// (theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt); the bots' estimate multiplies them unrounded (KD-466).
+export const THE_FACTORS_OF_THE_KIN_RULE = {
+  aUnitOfItsKingsRace: 1.2,
+  aUnitLedByACommanderOfItsRace: 1.2,
+  aUnitLedByACommanderOfItsRivalKin: 0.8,
+};
 export const KC_HEX_DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
 export const KC_GRAND_DESIGNS = {
   Divine: {

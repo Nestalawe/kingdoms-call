@@ -1,5 +1,5 @@
 import { kcArg, kcHtml } from '../shared/kc-safe.ts';
-import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import { KC_SEASONS, THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH } from '../../content/kingdoms-call-data.ts';
 import {
   skillFameLabelM,
   theNameTheFormWritesOfTheAlignmentOrder,
@@ -673,7 +673,7 @@ export function injectResurrectOrders(
     isKing: false,
     race: (dead.race ?? '') || 'Unknown',
     alignment: (dead.alignment ?? '') || 'Neutral',
-    temper: (dead.temper ?? '') || 'Brave',
+    temper: (dead.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
     skills: dead.skills ?? {},
     armies: [],
     items: [],
@@ -844,7 +844,7 @@ export function injectCharmOrders(charId: unknown, ph: number, heroId: unknown, 
     isKing: false,
     race: (wanderer.race ?? '') || 'Unknown',
     alignment: (wanderer.alignment ?? '') || 'Neutral',
-    temper: (wanderer.temper ?? '') || 'Brave',
+    temper: (wanderer.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
     // the charmer does not see the charmed hero's skills or items. skills stays empty and
     // _hiddenSkills tells the order fields to list choices without levels; Send Item is not offered
     // at all.

@@ -1,7 +1,10 @@
+import { doesAGiftOfHisRealmsRaceSuitAHeroInMithril } from '../rules/the-registry-of-the-race-gifts.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   KC_HUMANOID_RACES,
   KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM,
+  THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+  THE_RACE_OF_THE_WILD,
 } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import {
@@ -458,8 +461,8 @@ export function resolveRecruitArmiesOrder(
           : 'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
       // Whale Cohorts and Shark Shoals are wild sea beasts — always the Primal race, whoever raises them.
       const recruitRace = SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM.has(armyType)
-        ? 'Primal'
-        : (prov.race ?? '') || 'Human';
+        ? THE_RACE_OF_THE_WILD
+        : (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS;
       _pushRecruit({
         type: armyType,
         quality: startQuality,
@@ -644,7 +647,8 @@ export function resolveHireHeroOrder(
   player.gold -= hireWage;
   h.player = c.player;
   h.name = h.name.replace(' (wandering)', '');
-  if (h.race === 'Dwarven' && G.players[c.player]?.race === 'Dwarven') grantMithrilTo(h, G); // mithril on hire into a dwarf realm
+  if (doesAGiftOfHisRealmsRaceSuitAHeroInMithril(G.players[c.player]?.race, { theHerosRace: h.race }))
+    grantMithrilTo(h, G); // mithril on hire into a dwarf realm (Mithril Armour's row, B-06af)
   player.heroes = asItsGuardReadsIt(player.heroes) ?? [];
   player.heroes.push(h.id);
   // Hero can receive orders starting the phase AFTER they were hired (AK 3.5) We mark the

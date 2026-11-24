@@ -1,4 +1,4 @@
-import { KC_UNIT_CLASS, SAGE_DISCOVERIES_P } from '../content/kingdoms-call-data.ts';
+import { KC_HUMANOID_RACES, KC_UNIT_CLASS, SAGE_DISCOVERIES_P } from '../content/kingdoms-call-data.ts';
 import type { ADiscoverysRow } from '../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import { THE_WONDERS, type AWondersSlug } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
@@ -383,6 +383,8 @@ export function discAvailableFor(turnContext: Pick<TurnContext, 'G'>, pi: number
   return SAGE_DISCOVERIES_P.filter((d) => !known.has(d.id) && !_blk.has(d.id) && discEligible(d, pl));
 } // forgotten + awaiting-choice ids excluded (research choice)
 
+// The four humanoid races, content's (B-06ag), as the Plague asks of a company's race.
+const theHumanoidRaces: ReadonlySet<string | null | undefined> = new Set(KC_HUMANOID_RACES);
 export function _isHumanoidRace(r: string | null | undefined) {
-  return r === 'Human' || r === 'Elven' || r === 'Dwarven' || r === 'Orcish';
+  return theHumanoidRaces.has(r);
 }

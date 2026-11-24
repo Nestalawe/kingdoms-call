@@ -33,7 +33,7 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   them as the old reader did. The old readers (`discEffectsOf`, `discSum`, `discEff`, `discSumOf`, `discParam`,
   `hasDisc`, the bots' `botHasDisc`) went with their last callers; every kind of content has its row.
 - **The unit-class tests** the filters need (`discUnitIs`, `discUnitMatch`, the class sets `DISC_CLS_SETS`,
-  `ARMY_RACE_OF_TYPE`) are in `src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts`,
+  `ARMY_RACE_OF_TYPE`, which reads content's `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES`) are in `src/engine/rules-on-plain-values/units-a-discoverys-effect-reaches-by-type-class-race-and-quality.ts`,
   which the engine, the views and the registry's effects all read.
 - **No effect draws a die.** An effect that rolls returns its chance, and the resolver draws where it drew before.
 

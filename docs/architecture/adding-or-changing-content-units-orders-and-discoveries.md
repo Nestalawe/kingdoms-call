@@ -78,9 +78,9 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
 - `src/content/kingdoms-call-data.ts`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
   starting companies are the first two non-garrison types of his home's cell), `ARMY_UNIT_NAMES` (40
   names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
-  `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage).
-- GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `ARMY_RACE_OF_TYPE` (keep
-  `'Orc Garrison':'Orcish'};` as its last entry: a test slices the source up to it), `DISC_CLS_SETS`,
+  `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage), and a unit of the four
+  races its race in `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` (the engine reads it as `ARMY_RACE_OF_TYPE`).
+- GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `DISC_CLS_SETS`,
   `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.ts`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - `src/content/unit-abilities-their-names-numbers-and-words.ts`: the unit's blurb in `UNIT_ABILITIES` (the player
   portal shows it). Player portal: the race blurbs. Rulebook: the roster, home-roster, move-rate and
@@ -96,8 +96,8 @@ end in `satisfies`, so a unit in `KC_UNIT_TYPE` that is missing from one fails `
 that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `KC_UNIT_TYPE` doesn't fails too
 (TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it.
 The engine's `ARMY_SPEED_MASTER` (`engine/army-tables.ts`) ends in `satisfies Record<HumanoidUnitType, number>` too
-(a primal unit's cost and speed come from `PRIMAL_ARMY_DEFS_P`; the engine reads the price table as `ARMY_COST_MASTER`). The engine's other tables are keyed by any string (`UNIT_SHORT`, `ARMY_RACE_OF_TYPE`,
-…), so a unit missing from one still compiles, and `TERRAIN_MODS` refuses a misspelt unit but not a missing one. The
+(a primal unit's cost and speed come from `PRIMAL_ARMY_DEFS_P`; the engine reads the price table as `ARMY_COST_MASTER`). The engine's other tables are keyed by any string (`UNIT_SHORT`,
+…), so a unit missing from one still compiles, and `TERRAIN_MODS` and `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` refuse a misspelt unit but not a missing one. The
 lists above are still the whole job. `tests/static/every-unit-order-and-effect-the-content-names-is-in-every-table-that-must-list-it.test.ts` finds
 what the compiler can't: a name in a class list, a Druid level, a province's cell, a discovery or the wild pools that is no
 unit type, a unit of the four races with no race in `ARMY_RACE_OF_TYPE`, and a unit the rulebook never names.
@@ -110,10 +110,53 @@ the master tables and the player portal's speeds are built from it), `PRIMAL_UNI
 swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and the wild pools
 (`THE_WILD_CREATURES_BY_TERRAIN` / `THE_WILD_MONSTERS_BY_TERRAIN` in
 `src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts`, one
-list each, which the province pass, the creed's neighbour and the wild country all read); the player portal's `PRIMAL_SUBRACE_CLASS`
-(the `Primal:<sub-race>` string a wild province carries) and its alignment texts; the rulebook's Druid ladder
-and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and `LEGACY_RACE_RENAMES`
-(`migrateLegacyUnitNames` runs at the top of every turn) and the discoveries whose `effect.types` name it.
+list each, which the province pass, the creed's neighbour and the wild country all read); the player portal's alignment
+texts; the rulebook's Druid ladder and the Druidic or Evil section. The player portal's `PRIMAL_SUBRACE_CLASS` (a
+sub-race's Creature or Monster) needs nothing: it reads the beast's sub-race and class. Renaming one also needs `LEGACY_UNIT_RENAMES` and
+`LEGACY_RACE_RENAMES` (`migrateLegacyUnitNames` runs at the top of every turn), the old sub-race's name in
+`PRIMAL_SUBRACE_CLASS` (an older report holds it) and the discoveries whose `effect.types` name it.
+
+**The wild's race and the race of none** are content constants beside `KC_HUMANOID_RACES` (B-06ac):
+`THE_RACE_OF_THE_WILD` (`Primal`; a wild province's `Primal:<sub-race>` starts with it) and
+`THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS` (Human). The engine asks whether a race is the wild's through
+`isTheRaceTheWildsOrOneOfItsSubRaces` in `rules-on-plain-values/`; beside it, the world's making makes a wild
+province's race with `theWildsSubRaceOf` (a beast's noun) and asks `isTheRaceOneOfTheWildsSubRaces` (B-06ad). Beside
+them (B-06ag): the garrison a Call to Arms musters by the province's race, and an old save's race words, which the
+save's upgrade mends (`AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED`, read as `LEGACY_RACE_RENAMES`; the
+beasts' classes a neutral hero of an old save may wear as his race). Each
+humanoid race's heartland is content's `THE_HEARTLAND_OF_EACH_HUMANOID_RACE`, and the one fleet a home of a race offers
+is the first of its `THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST` (`theFleetAHomeOfItsRaceOffers`, world/tables.ts).
+The player portal asks them through `src/shared/` (B-06ak): Call to Arms' field asks
+`isTheRaceTheWildsOrOneOfItsSubRaces`, and the practice note `isAHeroAQuickLearnerByHisRaceAndHisRealms` (Quick
+learners' row, the answer of the race gifts' runner).
+
+**A temper's rules are its row of `TEMPER_TRAITS`** (B-06ai): beside its fight figures, whether a hero's auto plan
+(a neutral's or a bot's) keeps an exit and five actions (`anAutoPlanKeepsAnExit`: Cautious, Cowardly) or charges,
+firing once (`anAutoPlanChargesFiringOnce`: Berserk), how a commander with no orders answers single combat
+(`theDuelStanceOfAHeroWithNoOrders`; `''` accepts) and its shift of terror's courage test (`terrorsCourageMod`). A
+hero of no temper fights as `THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH` (Brave: `effTemper`), and `temperOf` reads a
+name no row has as that row; the stance and the terror ask `theRowOfATemperByItsName`, so such a name accepts and
+shifts nothing, as before. The GM's turn zero gives a king whose setup names no temper that temper, and the player
+portal shows a hero of none with it (B-06ak). The join form's temper descriptions restate the rows' figures:
+`tests/static/the-join-forms-temper-descriptions-state-each-figure-as-the-tempers-rows-give-it.test.ts` holds them.
+
+## The bots' worth of a temper
+
+The rule says what, the bot says how much, as for
+[the bots' worth of a race's gift](the-race-gifts-registry-its-stages-and-how-to-add-a-gift.md#the-bots-worth-of-a-races-gift)
+(B-06aj). The bots name a temper only as the keys of their two tables by temper (the duel worth in `bots/spellcraft.ts`,
+`BOT_WAR.temper` in `bots/war.ts`), each taking its numbers from their weights; a static test holds both tables' keys
+to `KC_TEMPERS`.
+
+- **What the rules say:** what a temper does in a fight is its row of `TEMPER_TRAITS`. The bots' duel rating
+  (`botDuelRating`, `bots/spellcraft.ts`) reads the hero's own temper, not the one his items give him (`effTemper`):
+  the bot's figure, kept in T7 (KD-467). The war bar (`botWarAssess`, `bots/war.ts`) reads the king's temper in
+  `BOT_WAR.temper`.
+- **What the bot says:** the `temper` kind of the first version's weights, one weight a temper each (answer 135: one
+  kind; weights by kind come after T7): a hero's worth in a duel (Berserk 6, Brave 4, Cautious 5, Cowardly 0) and what
+  a king adds to the bar a war of his realm must clear (Berserk −0.25, Brave −0.1, Cautious +0.15, Cowardly +0.3). A
+  temper no weight names, or none, adds nothing. For example, a Berserk king's realm goes to war on a lower bar than a
+  Cowardly king's.
 
 ## A sea unit must be a carrier or a primal sea beast
 

@@ -1,4 +1,8 @@
 import { kcHtml } from '../shared/kc-safe.ts';
+import {
+  THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+  THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
+} from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../../engine/army-tables.ts';
 import { thePagesDb } from './config.ts';
 import { MAP_MAX_PLAYERS } from './game-list.ts';
@@ -165,9 +169,9 @@ export async function runTurn0() {
         name: p.display_name || `Player ${String(p.player_index + 1)}`,
         kingName: (setup.kingName ?? '') || p.display_name || `King ${String(p.player_index + 1)}`,
         kingdomName: (setup.kingdomName ?? '') || p.display_name || `Realm ${String(p.player_index + 1)}`,
-        race: (setup.race ?? '') || 'Human',
+        race: (setup.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
         alignment: (setup.alignment ?? '') || 'Neutral',
-        temper: (setup.temper ?? '') || 'Brave',
+        temper: (setup.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
         skills: theSkillsOrNone(setup.skills),
       };
     })

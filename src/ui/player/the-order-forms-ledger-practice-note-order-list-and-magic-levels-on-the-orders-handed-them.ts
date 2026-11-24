@@ -17,6 +17,7 @@ import {
   aWageUnderEachCeiling,
   dispFloor,
   heroHireWage,
+  isAHeroAQuickLearnerByHisRaceAndHisRealms,
   theAlignmentOrdersByTheNameTheFormWrites,
   theChanceAHeroPractisingAloneRaisesHisSkill,
   theHostLeadersCut,
@@ -689,7 +690,7 @@ export function theNoteUnderAnOrderThatQuotesItsChance(
         );
       const discoveries =
         ((o.astro ?? 0) || 0) + ((o.discovery ?? 0) || 0) + (o.bySkill ? (o.bySkill[String(sel)] ?? 0) || 0 : 0); // + skill-scoped practice discoveries
-      const quick = c.race === 'Human' && report?.kingdom?.race === 'Human';
+      const quick = isAHeroAQuickLearnerByHisRaceAndHisRealms(c.race, report?.kingdom?.race); // Quick learners' row (B-06ak)
       const chance = theChanceAHeroPractisingAloneRaisesHisSkill(lvl, discoveries / 100, 0, quick) * 100;
       return chanceLine(
         kcHtml`Improvement: ${pct(chance)} at ${label} ${lvl}.${quick ? ' A Human of a Human realm learns half as fast again (×1.5).' : ''} ${extra}`,

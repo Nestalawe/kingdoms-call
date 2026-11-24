@@ -70,4 +70,44 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     /** ... and any other realm's from this one. */
     theSageLevelFromWhichAnyOtherRealmsScholarResearches: 2,
   },
+  /** What a gift of a realm's race gives it: its tuning's margins and wage cap (botTuning, bots/intel.ts). What each
+   *  gift does is its row's, asked through the race gifts' runners (a company of the realm's race defending at a
+   *  gift's factor, the spoils of a battle won attacking); a company's strength in the estimates (botRaceTerrainMult)
+   *  is the rows' factors themselves, and the kin rule's, weighed at a point of strength a point. */
+  raceGift: {
+    /** A realm whose companies of its race defend at a gift's factor on any ground (it wins by being attacked) adds
+     *  this to its king's attack margin, ... */
+    theKingsAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds: 0.1,
+    /** ... and this to its heroes'. */
+    theHerosAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds: 0.1,
+    /** A realm that takes the spoils of a battle won attacking (its winners' wages halved) takes this off its king's
+     *  attack margin, ... */
+    theKingsAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
+    /** ... this off its heroes', ... */
+    theHerosAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
+    /** ... and lets its wages take this share of the income more (never more than the whole). */
+    theShareOfTheIncomeTheWagesMayTakeMoreInARealmThatTakesTheSpoilsOfABattleWonAttacking: 0.05,
+  },
+  /** What a temper gives a hero or a king: a hero's worth in a duel (botDuelRating, bots/spellcraft.ts) and the bar a
+   *  realm's war must clear, by its king's temper (botWarAssess, bots/war.ts). What each temper does in a fight is its
+   *  row's (TEMPER_TRAITS); these are the bots' reading of the four tempers a hero is given, one weight a temper each
+   *  (answer 135: under one kind; weights by kind come after T7). A temper none names, or none, adds nothing. */
+  temper: {
+    /** A Berserk hero's worth in a duel, added to his hit points, skills and items. */
+    theDuelWorthOfABerserkHero: 6,
+    /** A Brave hero's. */
+    theDuelWorthOfABraveHero: 4,
+    /** A Cautious hero's. */
+    theDuelWorthOfACautiousHero: 5,
+    /** A Cowardly hero's. */
+    theDuelWorthOfACowardlyHero: 0,
+    /** What a Berserk king adds to the bar a war of his realm's must clear (less: war comes sooner). */
+    whatABerserkKingAddsToTheBarForWar: -0.25,
+    /** A Brave king's. */
+    whatABraveKingAddsToTheBarForWar: -0.1,
+    /** A Cautious king's. */
+    whatACautiousKingAddsToTheBarForWar: 0.15,
+    /** A Cowardly king's. */
+    whatACowardlyKingAddsToTheBarForWar: 0.3,
+  },
 } satisfies Record<AKindOfResultABotWeighs, TheWeightsOfAKindOfResult>;
