@@ -192,10 +192,31 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   realm's creed (`aRealmOfThisCreedMayGiveTheAlignmentOrder`: the signature order, Consecrate's and Perform Rite's
   checks), their hand-overs ask `theRisenDeadFollowAHandOverTo`, and a hero leaves the Bless to his king where
   `theYieldOfABlessARealmsAlignmentGives` raises the king's (P1-19bb7), each with the bot's own conditions and numbers;
-  where a bot's copy differs from the rule it keeps the bot's figure, with a `KD-` row. Their other alignment checks
-  wait for the bots' step.
+  where a bot's copy differs from the rule it keeps the bot's figure, with a `KD-` row. What a creed's ability is
+  worth to a bot is [the bots' worth of an alignment ability](#the-bots-worth-of-an-alignment-ability); their tuning
+  by creed and the creeds their war counts as dark still name the alignments.
 - **The order form** keeps a hand-written widget for each alignment order: a new order's row does not appear on it by
   itself.
+
+## The bots' worth of an alignment ability
+
+The rule says what, the bot says how much, as for
+[the bots' worth of gold](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#the-bots-worth-of-gold-a-bot-versions-weights-by-kind-of-result)
+and [of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#the-bots-worth-of-a-title)
+(P1-19bb8). The bots ask the rules what a realm's alignment gives, never its name:
+
+- **What the rules say:** a host's fervour in the bots' estimates (`botFervourMult`) is `theFervourOfASide` (savage
+  fury's and skeletal fervour's rows, the strongest counting) and, on a defence, Righteous Defence's factor
+  (`theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy`); a recruit's worth (`effOf`, in
+  `botRecruitableTypes`) is `theFervourOfASide` of a host of that one unit. The court's size (`botHeroCap`) asks the
+  hire wage (`heroHireWage`) which realm's dearest wanderer asks the least (the ladder's middle, Neutral); the scholars
+  ask `whatARealmsAlignmentAddsToResearch` whether the realm's alignment adds to a Research (the Neutral scholars).
+- **What the bot says:** the `alignmentAbility` kind of the first version's weights: the heroes more such a court
+  wants, the scholars more such a realm wants, and the Sage level its scholar researches from (any other realm's from
+  the next). A point of strength is a point: the factors are the rules' own, with no weight.
+- **The bot's own conditions stay**, each a `KD-` row: Righteous Defence on any defence (KD-434), no factor with no
+  commander (KD-462), savage fury for each Monster recruit (KD-435), the court's "capped at 3g" (KD-464); the
+  estimate leaves out four battle rules (KD-465).
 
 ## The tests
 

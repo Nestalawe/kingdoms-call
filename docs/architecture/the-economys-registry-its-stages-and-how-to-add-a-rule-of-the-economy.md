@@ -128,8 +128,9 @@ makes of that gold from its version's weights file.
 - **A later bot version** is a weights file of its own beside this one, of the same kinds and names, for the bots
   to read in its place (after T7, the old bot played against the new). A new kind joins the kinds, and every version's
   file gives it its weights: a title is the second kind
-  ([the bots' worth of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#the-bots-worth-of-a-title));
-  the alignments' (P1-19bb8) comes next.
+  ([the bots' worth of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#the-bots-worth-of-a-title)),
+  an alignment ability the third
+  ([the bots' worth of an alignment ability](the-alignment-abilities-registry-its-stages-and-how-to-add-an-ability.md#the-bots-worth-of-an-alignment-ability)).
 
 ## The tests
 
