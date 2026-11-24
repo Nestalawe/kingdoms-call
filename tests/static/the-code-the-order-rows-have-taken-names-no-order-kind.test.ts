@@ -3,12 +3,12 @@
 // OrderKind, the alignment orders' aside, or `'pursue'`): compared with an order's action, a `case` of a switch on
 // one, a list of kinds, a default kind or an action assigned, or a value of the kinds' own table. It reads the order's
 // row instead. Each row adds what it takes to TAKEN (B-06al the first; B-06ao processOrder, its switch gone for the
-// registry). With them, the ratchet's two counts of those checks outside src/engine/rules/, in the engine and in the bots
-// (tools/ratchet.ts's orderKindChecksInEngine and orderKindChecksInTheBots, by their helper
-// orderKindChecksByFunction), so both only fall: the helper counts each check planted, and none of an order written
-// (`action: 'move'`), a line's kind (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of another
-// sense (a bot's role `'spy'`, a duel's stance `'challenge'`), a name being bound to an order's kind in its own
-// function only.
+// registry; B-06ap the last outside the bots, so the engine's count is 0). With them, the ratchet's two counts of those
+// checks outside src/engine/rules/, in the engine and in the bots (tools/ratchet.ts's orderKindChecksInEngine and
+// orderKindChecksInTheBots, by their helper orderKindChecksByFunction), so both only fall: the helper counts each
+// check planted, and none of an order written (`action: 'move'`), a line's kind (`type: 'move'`), a skill handed to a
+// call, a mixed list, or a comparison of another sense (a bot's role `'spy'`, a duel's stance `'challenge'`), a name
+// being bound to an order's kind in its own function only.
 //
 // Level 0 (static): the files' syntax trees and the hero orders' rows as content writes them; nothing runs.
 import fs from 'node:fs';
@@ -39,6 +39,20 @@ const THE_PHASE_STAGES_FILE = 'src/engine/turn/phase-stages-start-intents-and-re
 const THE_ORDER_DISPATCH_FILE = 'src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
 const THE_ORDER_RESOLVERS_REGISTRY_FILE =
   'src/engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts';
+/** The last outside the bots (B-06ap): the move order, a ride-out, a chase, a cast's slot, the removed orders, the
+ *  pre-orders of a hire, a charm and a rising, and the telemetry's record of a phase. */
+const THE_MOVE_ORDER_FILE = 'src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
+const THE_RIDE_OUTS_FILE = 'src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts';
+const THE_PURSUITS_FILE = 'src/engine/heroes/pursuits-and-the-catch-roll.ts';
+const THE_CAST_SPELL_FILE =
+  'src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts';
+const THE_REALM_WORKS_FILE =
+  'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+const THE_HIRE_FILE = 'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+const THE_PSYCHIC_SPELLS_FILE =
+  'src/engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts';
+const THE_WHITE_MAGIC_FILE = 'src/engine/orders/spells/white-magic-spells-the-cast-spell-order-works.ts';
+const THE_LOG_LINE_HELPERS_FILE = 'src/engine/turn/log-line-helpers.ts';
 
 /** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it: each row
  *  adds what it takes. */
@@ -65,6 +79,19 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06an, the checks before an order: its row's fields; B-06ao, the dispatch: the registry",
   ],
   [THE_ORDER_RESOLVERS_REGISTRY_FILE, TOP, "B-06ao, each kind's resolver: keyed by its row's key"],
+  [THE_MOVE_ORDER_FILE, 'resolveMoveOrder', "B-06ap, an ally's march joined: the Move row's key"],
+  [THE_RIDE_OUTS_FILE, 'runReinforcementArrivals', "B-06ap, a march that reinforces: the Move row's key"],
+  [THE_PURSUITS_FILE, 'advancePursuit', "B-06ap, a king hunting back: the Encounter row's key"],
+  [THE_CAST_SPELL_FILE, 'resolveCastSpellOrder', "B-06ap, the casts so far: the Cast Spell row's key"],
+  [
+    THE_REALM_WORKS_FILE,
+    'resolveRemovedAwakenTheWildAndCallFromThePitOrders',
+    "B-06ap, the removed orders: Call from the Pit's row's key",
+  ],
+  [THE_HIRE_FILE, 'landHirePreOrders', "B-06ap, the hire's pre-orders but a Defend: its row's key"],
+  [THE_PSYCHIC_SPELLS_FILE, '_applyCharmOrders', "B-06ap, the charm's pre-orders but a Defend: its row's key"],
+  [THE_WHITE_MAGIC_FILE, 'workResurrect', "B-06ap, the rising's pre-orders but a Defend: its row's key"],
+  [THE_LOG_LINE_HELPERS_FILE, 'telOrdersFor', 'B-06ap, a blank phase in the telemetry: the default kind'],
 ];
 
 test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {

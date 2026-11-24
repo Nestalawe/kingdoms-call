@@ -4,6 +4,7 @@
 // cast ends here": no skill gain) and its end `return true;` ("the spell is worked"). The table in the-action-
 // spells-the-cast-spell-order-works-by-slug.ts finds each by its slug.
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
+import { THE_HERO_ORDERS } from '../../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { kcRng } from '../../rng.ts';
 import { COMBAT_ONLY_TACTICS, demoteOrDisband } from '../../army-tables.ts';
 import { heroHireWage } from '../../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -377,7 +378,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
     let applied = 0;
     if (pend && Array.isArray(pend.orders)) {
       pend.orders.forEach((o, pi2) => {
-        if (pi2 > ph && o?.action && o.action !== 'Defend' && o.action !== 'defend') {
+        if (pi2 > ph && o?.action && o.action !== 'Defend' && o.action !== THE_HERO_ORDERS.defend.key) {
           slots[pi2] = o;
           applied++;
         }

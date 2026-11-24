@@ -6,6 +6,7 @@
 // telemetry's two snapshots of a realm, its situation and its orders (telRealmSnapshot, telOrdersFor: moved from
 // src/views/turn-report.ts in plan P1-12b1, so the engine imports no view), which read no turn context.
 import { emit, recordForTheStatistics } from './events-and-their-audiences.ts';
+import { THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { relOfReport } from '../heroes/fame-and-consecration.ts';
 import { consecratedIds } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
@@ -370,8 +371,10 @@ export function telOrdersFor(
       king: !!c.isKing,
       ph: [0, 1, 2, 3, 4].map((i): APhaseAsTheOrdersRecordHoldsIt => {
         const o = slots[i];
-        if (!o) return { a: 'defend' };
-        const r: APhaseAsTheOrdersRecordHoldsIt = { a: ((o.action ?? '') || 'defend').toLowerCase() };
+        if (!o) return { a: THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS };
+        const r: APhaseAsTheOrdersRecordHoldsIt = {
+          a: ((o.action ?? '') || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS).toLowerCase(),
+        };
         if (o.target != null && o.target !== '') r.t = String(o.target).slice(0, 80);
         if (o.extra != null && o.extra !== '') r.x = String(o.extra).slice(0, 80);
         if (o.desc) r.d = o.desc.slice(0, 140);

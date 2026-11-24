@@ -22,7 +22,7 @@
     "worldMakingListsInEngine": 17,
     "raceChecksInEngine": 0,
     "temperChecksInEngine": 0,
-    "orderKindChecksInEngine": 10,
+    "orderKindChecksInEngine": 0,
     "orderKindChecksInTheBots": 117,
     "relationChecksInEngine": 152,
     "battleNumbersInEngine": 363,

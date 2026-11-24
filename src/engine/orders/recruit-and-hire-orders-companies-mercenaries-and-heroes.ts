@@ -1,4 +1,5 @@
 import { doesAGiftOfHisRealmsRaceSuitAHeroInMithril } from '../rules/the-registry-of-the-race-gifts.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   KC_HUMANOID_RACES,
@@ -147,7 +148,7 @@ export function landHirePreOrders(
     if (_pend && Array.isArray(_pend.orders)) {
       const slots = G.turnOrders[h.id] ?? [null, null, null, null, null];
       _pend.orders.forEach((o, pi2) => {
-        if (pi2 > ph && o?.action && o.action !== 'Defend' && o.action !== 'defend') {
+        if (pi2 > ph && o?.action && o.action !== 'Defend' && o.action !== THE_HERO_ORDERS.defend.key) {
           slots[pi2] = o;
           _applied++;
         }

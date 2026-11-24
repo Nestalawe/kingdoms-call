@@ -1,4 +1,5 @@
 import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_GRAND_DESIGNS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
@@ -61,7 +62,7 @@ export function resolveRemovedAwakenTheWildAndCallFromThePitOrders(
     fact: {
       kind: 'the orders that called beasts are no more',
       heroName: c.name,
-      itWasCallFromThePit: action === 'call_pit',
+      itWasCallFromThePit: action === THE_HERO_ORDERS.call_pit.key,
     },
     audience: { actor: c.player, realms: [c.player] },
     hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
