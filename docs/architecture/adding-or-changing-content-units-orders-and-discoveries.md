@@ -118,8 +118,11 @@ and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` a
 **The wild's race and the race of none** are content constants beside `KC_HUMANOID_RACES` (B-06ac):
 `THE_RACE_OF_THE_WILD` (`Primal`; a wild province's `Primal:<sub-race>` starts with it) and
 `THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS` (Human). The engine asks whether a race is the wild's through
-`isTheRaceTheWildsOrOneOfItsSubRaces` in `rules-on-plain-values/`. The world's making, the bots and the player portal
-still write the words themselves (their rows: B-06ad, B-06ah, B-06ak).
+`isTheRaceTheWildsOrOneOfItsSubRaces` in `rules-on-plain-values/`; beside it, the world's making makes a wild
+province's race with `theWildsSubRaceOf` (a beast's noun) and asks `isTheRaceOneOfTheWildsSubRaces` (B-06ad). Each
+humanoid race's heartland is content's `THE_HEARTLAND_OF_EACH_HUMANOID_RACE`, and the one fleet a home of a race offers
+is the first of its `THE_FLEETS_A_HUMANOID_RACE_BUILDS_ON_A_COAST` (`theFleetAHomeOfItsRaceOffers`, world/tables.ts).
+The bots and the player portal still write the words themselves (their rows: B-06ah, B-06ak).
 
 ## A sea unit must be a carrier or a primal sea beast
 
