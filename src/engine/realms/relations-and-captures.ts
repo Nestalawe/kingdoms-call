@@ -1,3 +1,5 @@
+import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../content/kingdoms-call-data.ts';
+import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { consecCaptureXpPct } from '../heroes/fame-and-consecration.ts';
@@ -254,14 +256,14 @@ export function applyEvilConquest(
   if (prov._evilConqTurn === G.turn) return;
   prov._evilConqTurn = G.turn;
   const mode = (cc.encounterPlan?.evilMode ?? '') || 'terror';
-  const humanoid = prov.terrain !== 'sea' && !(prov.race ?? '').startsWith('Primal');
+  const humanoid = prov.terrain !== 'sea' && !isTheRaceTheWildsOrOneOfItsSubRaces(prov.race);
   if (mode === 'enslave' && humanoid) {
     const enType = (prov.armyTypes?.[0] ?? '') || 'Shieldwall Levies';
     prov.garrisonArmies ??= [];
     prov.garrisonArmies.push({
       type: enType,
       quality: theDoctrine.theGradeOfTheEnslavedGarrison,
-      race: (prov.race ?? '') || 'Human',
+      race: (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
       unitName: armyUnitName(enType),
     });
     enslaveAProvinceUntil(prov, G.turn + theDoctrine.theTurnsTheEnslavedProvincePaysLess); // the marks' module lays it

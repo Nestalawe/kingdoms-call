@@ -1,4 +1,8 @@
-import { KC_A_HEROS_WAGE_IN_SERVICE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_A_HEROS_WAGE_IN_SERVICE,
+  KC_UNIT_CLASS,
+  THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+} from '../../content/kingdoms-call-data.ts';
 import { beastCommandRoom, theBeastCommandAsALineTellsIt } from '../world/tables.ts';
 import { unitAsItsRealmSeesIt } from '../rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import {
@@ -471,7 +475,7 @@ export function resolveDisbandArmyOrder(
       id: newMercId(turnContext),
       type: army.type,
       quality: army.quality,
-      race: army.race || 'Human',
+      race: army.race || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
       unitName: army.unitName || army.type,
       location: prov.id,
       isSea: SEA_TYPES_D.has(army.type),

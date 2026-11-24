@@ -2,6 +2,8 @@ import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignmen
 import {
   KC_HUMANOID_RACES,
   KC_SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM,
+  THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+  THE_RACE_OF_THE_WILD,
 } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import {
@@ -458,8 +460,8 @@ export function resolveRecruitArmiesOrder(
           : 'Average'; // GRAND DESIGN Druidic; recruitQ discoveries (sd01 Superior Forging …) roll per unit
       // Whale Cohorts and Shark Shoals are wild sea beasts — always the Primal race, whoever raises them.
       const recruitRace = SEA_BEASTS_RAISED_AS_THE_PRIMAL_RACE_WHOEVER_RAISES_THEM.has(armyType)
-        ? 'Primal'
-        : (prov.race ?? '') || 'Human';
+        ? THE_RACE_OF_THE_WILD
+        : (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS;
       _pushRecruit({
         type: armyType,
         quality: startQuality,

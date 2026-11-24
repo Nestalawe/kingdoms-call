@@ -1,3 +1,4 @@
+import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../content/kingdoms-call-data.ts';
 import { kcRng } from './rng.ts';
 import { QUALITY_TIERS } from './army-tables.ts';
 import { unitBaseStrength } from './rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -342,7 +343,12 @@ export function recordBattleGraves(
         return; // fled toward home — no grave left here
       }
     }
-    graves.push({ type: a.type, quality: a.quality, race: a.race || 'Human', unitName: a.unitName });
+    graves.push({
+      type: a.type,
+      quality: a.quality,
+      race: a.race || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+      unitName: a.unitName,
+    });
   });
 }
 

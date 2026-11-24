@@ -15359,6 +15359,15 @@ export const KC_SEASONS = ['Spring', 'Early Summer', 'Late Summer', 'Fall', 'Ear
 export const KC_ALIGNMENTS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead'] as const;
 export const KC_TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
 export const KC_HUMANOID_RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'] as const;
+// The race a company or a province of no race reads as (B-06ac): the grave of a company of no race, a disbanded one's
+// folk, and the companies a province of no race gives (a Call to Arms', Evil's enslaved garrison, the neutral
+// defenders, a recruit) are of this race, and so is the heir of a realm of no race. No seeded game holds one.
+export const THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS = 'Human' satisfies (typeof KC_HUMANOID_RACES)[number];
+// The wild's race (B-06ac): the wild sea beasts a Recruit order raises, and a Wild Hunt's beasts in a province of no
+// race, are of it; a province of it (or of one of its sub-races, 'Primal:Wolf') is the wild's, not a people's: no Call
+// to Arms musters there, Evil enslaves no one there, and a druid may awaken a grove there. The engine asks whether a
+// race is the wild's through src/engine/rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts.
+export const THE_RACE_OF_THE_WILD = 'Primal';
 export const KC_RIVAL_RACE = { Elven: 'Dwarven', Dwarven: 'Elven', Human: 'Orcish', Orcish: 'Human' };
 export const KC_HEX_DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
 export const KC_GRAND_DESIGNS = {

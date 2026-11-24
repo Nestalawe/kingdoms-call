@@ -3,7 +3,7 @@
 // alignment abilities' registry's, at "orderValidity: who may give an alignment order"; the rest is the order's own, as
 // the explore and search orders' file held it until P1-19aw2. Its dice in their place: the Wild Hunt's beasts' names,
 // drawn in its loop.
-import { PRIMAL_ARMY_DEFS_P } from '../../../content/kingdoms-call-data.ts';
+import { PRIMAL_ARMY_DEFS_P, THE_RACE_OF_THE_WILD } from '../../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { QUALITY_TIERS } from '../../army-tables.ts';
 import { WILD_HUNT_UNITS, theTurnsAWildHuntServesBeyondThisOne, wildHuntPrice } from '../../items/tiers-and-hoards.ts';
@@ -143,7 +143,7 @@ export function resolvePerformRiteOrder(
       const _u: Army = {
         type: _wildType,
         quality: THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers.theWildHuntsGrade.value,
-        race: (prov.race ?? '') || 'Primal',
+        race: (prov.race ?? '') || THE_RACE_OF_THE_WILD,
         unitName: theNameDrawn(armyUnitName(_wildType)),
         _wildHuntUntilTurn: G.turn + theTurnsAWildHuntServesBeyondThisOne(G.players[c.player]),
       };

@@ -8,6 +8,7 @@
 // The consecrations a king may hold read the discoveries' registry, so they stay engine side
 // (theConsecrationsAKingMayHold, in heroes/fame-and-consecration.ts), as the Wild Hunt's term does
 // (theTurnsAWildHuntServesBeyondThisOne, in items/tiers-and-hoards.ts): the report names both (plan P1-11e24).
+import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../content/kingdoms-call-data.ts';
 import type { AUnitAsItsRealmSeesIt } from './beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 
 /** A province as a Call to Arms reads it: the companies its folk raise (its pool of types) and its folk's race. */
@@ -33,7 +34,7 @@ export function theCompanyACallToArmsMusters(ctaProv: AProvinceAsACallToArmsRead
     ((ctaProv.armyTypes ?? []).find((t) => t.toLowerCase().includes('garrison')) ?? '') ||
     (GARRISON_BY_RACE_CTA[String(ctaProv.race)] ?? '') ||
     'Human Garrison';
-  return { type: ctaType, race: (ctaProv.race ?? '') || 'Human' };
+  return { type: ctaType, race: (ctaProv.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS };
 }
 
 /** Whether a Blood Offering may take a company, to give or to raise: one borrowed for a while (summoned, charmed), a

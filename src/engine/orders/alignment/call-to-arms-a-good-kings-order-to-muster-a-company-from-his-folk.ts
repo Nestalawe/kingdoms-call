@@ -3,6 +3,7 @@
 // abilities' registry's, at "orderValidity: who may give an alignment order"; the rest is the order's own, as the realm's
 // works' file held it until P1-19aw2. Its dice in their place: one kcRng() for each Muster Rolls chance, then the
 // company's name.
+import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from '../../rng.ts';
 import { QUALITY_TIERS } from '../../army-tables.ts';
@@ -77,7 +78,7 @@ export function resolveCallToArmsOrder(
     });
     return;
   }
-  if (ctaProv.terrain === 'sea' || (ctaProv.race ?? '').startsWith('Primal')) {
+  if (ctaProv.terrain === 'sea' || isTheRaceTheWildsOrOneOfItsSubRaces(ctaProv.race)) {
     emit(turnContext, {
       type: 'system',
       fact: {

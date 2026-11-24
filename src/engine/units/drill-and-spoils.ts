@@ -1,3 +1,4 @@
+import { THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { SEA_TYPES_GEN } from '../world/tables.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
@@ -126,7 +127,7 @@ export function resyncNeutralDefenders(
       defs.push({
         type: dt,
         quality: proto ? proto.quality : 'Average',
-        race: proto ? proto.race : (prov.race ?? '') || 'Human',
+        race: proto ? proto.race : (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
         unitName: theDefendersNameDrawn(armyUnitName(dt)),
       });
     }

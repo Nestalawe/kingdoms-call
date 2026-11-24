@@ -2,8 +2,7 @@
 // B-06ah): each function (or file's top level) the family's rows have taken holds no string naming a race (a humanoid
 // race, `'Human'`; the wild's, `'Primal'` or `'Primal:Wolf'`; a beast's class, `'Creature'`, `'Monster'`), whatever the
 // code does with it (compared, a `case`, a lookup, a list, a map's value, a literal type, or in a function nested
-// inside). It reads the race's row or content's constant instead. Each row adds what it takes to TAKEN, which is empty
-// until the first of them (B-06ac). With them, the ratchet's count of the races the engine names outside
+// inside). It reads the race's row or content's constant instead. Each row adds what it takes to TAKEN. With them, the ratchet's count of the races the engine names outside
 // src/engine/rules/ (tools/ratchet.ts's raceChecksInEngine, by its helper raceChecksByFunction), so that count only
 // falls: the helper counts each race planted, and none in src/engine/rules/ or a page's code.
 // Not seen: a race as a property's key (`{ Human: 'plain' }`), inside a unit's name, or in lower case.
@@ -25,9 +24,55 @@ import {
 } from '../../tools/ratchet.ts';
 import { everyStringIn, TOP } from '../lib/the-strings-a-function-of-the-code-holds.ts';
 
-/** Each function (or a file's top level) the race rows have taken, by its file, from the row that took it. Empty until
- *  B-06ac: each of the family's rows adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+/** Each function (or a file's top level) the race rows have taken, by its file, from the row that took it: each of the
+ *  family's rows adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  [
+    'src/engine/rules-on-plain-values/the-company-a-call-to-arms-musters-a-blood-offerings-companies-and-a-consecrations-checks.ts',
+    'theCompanyACallToArmsMusters',
+    "B-06ac, the company's race in a province of no race, from the content's constant",
+  ],
+  [
+    'src/engine/realms/relations-and-captures.ts',
+    'applyEvilConquest',
+    "B-06ac, Evil's conquest: whether the folk are the wild's, and the enslaved garrison's race, from content",
+  ],
+  [
+    'src/engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts',
+    'newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns',
+    "B-06ac, an heir's race in a province of no race, from the content's constant",
+  ],
+  [
+    'src/engine/units/drill-and-spoils.ts',
+    'resyncNeutralDefenders',
+    "B-06ac, the neutral defenders' race in a province of no race, from the content's constant",
+  ],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveRecruitArmiesOrder',
+    "B-06ac, a recruit's race: the sea beasts the wild's, a province of no race's the content's constant",
+  ],
+  [
+    'src/engine/orders/army-orders-hand-over-garrison-disband-and-pick-up-companies-and-release-a-hero.ts',
+    'resolveDisbandArmyOrder',
+    "B-06ac, a disbanded company of no race's folk, from the content's constant",
+  ],
+  [
+    'src/engine/orders/alignment/call-to-arms-a-good-kings-order-to-muster-a-company-from-his-folk.ts',
+    'resolveCallToArmsOrder',
+    "B-06ac, no Call to Arms in a province of the wild's race, from content's race and its helper",
+  ],
+  [
+    'src/engine/orders/alignment/perform-rite-a-pagan-heros-rite-of-the-wild-hunt-or-blood-offering.ts',
+    'resolvePerformRiteOrder',
+    "B-06ac, a Wild Hunt's beasts in a province of no race are of the wild's race, from content",
+  ],
+  [
+    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'resolveAwakenGroveOrder',
+    "B-06ac, Awaken Grove in a province of the wild's race, from content's race and its helper",
+  ],
+];
 
 test.for(TAKEN)('%s: %s names no race (%s)', ([file, fn]) => {
   const text = fs.readFileSync(path.join(ROOT, file), 'utf8');
