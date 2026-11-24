@@ -1,7 +1,8 @@
 // The world's making (src/engine/world/generate.ts) on the inputs no game of the balance matrix gives it: a sea share
 // in words or none, a map too small for its realms or for its share of sea, a sea so wide its names run out, a setup
 // whose king or kingdom has no name of its own, a king's skills in the join form's own words, a race the land tables
-// don't hold, and an eleventh realm, past the ten colours. Each case reads what the world records: the share, the
+// don't hold (its names the Human ones), and an eleventh realm, past the ten colours; each race's heartland and the
+// fleet its home offers, content's (B-06ad). Each case reads what the world records: the share, the
 // warnings to the GM, the provinces' names, the realms' and kings' names, the king's skills and home roster, a realm's
 // colour. And (plan P1-21i, the mutation session of 2026-11-05) the crowded maps again on a planted copy of src/ in
 // which no home finds a prosperous neighbour, so each forces one: never a cell an earlier king was promised.
@@ -24,6 +25,9 @@ import { kcRng } from '../../src/engine/rng.ts';
 import { REALM_COLOURS, REALM_COLOUR_FALLBACK } from '../../src/engine/bots/intel.ts';
 import { SEA_PCT_DEFAULT, generateNewGame, normSeaPct } from '../../src/engine/world/generate.ts';
 import { getNeighborsP } from '../../src/engine/world/map-helpers.ts';
+import { SIGNATURE_TERRAIN_P, theFleetAHomeOfItsRaceOffers } from '../../src/engine/world/tables.ts';
+import { KC_HUMANOID_RACES } from '../../src/content/kingdoms-call-data.ts';
+import { THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE } from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 
 vi.mock('../../src/engine/items/lair-items.ts', { spy: true });
 
@@ -140,6 +144,36 @@ test("a race the land tables don't hold opens with the levies, a galleon for a N
   const home = w.world.provinces[w.players[0]?.homeProvinceId ?? -1];
   expect(home?.race).toBe('Gnomish');
   expect(home?.armyTypes).toEqual(['Shieldwall Levies', 'Galleon Fleet']);
+});
+
+// B-06ad: the land name pools by race (content's) hold no Gnomish names, so a Gnomish province reads its names as a
+// province of no race does, the Human ones (THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS); a Gnomish home and the
+// neighbours re-raced to its king's race are such provinces.
+test("a province of a race the name pools don't hold takes the first half of its name from the Human pool", () => {
+  const w = aWorld(
+    realms(3, () => ({ race: 'Gnomish' })),
+    8,
+    5,
+    20,
+  );
+  const gnomish = w.world.provinces.filter((p) => p.race === 'Gnomish');
+  expect(gnomish.length, 'the Gnomish provinces').toBeGreaterThanOrEqual(3);
+  const humanFirstHalves = THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE.Human;
+  expect(
+    gnomish.filter((p) => !humanFirstHalves.some((half) => String(p.name).startsWith(half))).map((p) => p.name),
+    'the Gnomish provinces whose name starts with no Human first half',
+  ).toEqual([]);
+});
+
+// B-06ad: each humanoid race's heartland and the one fleet its home offers are content's, as the world's making read
+// them before (SIGNATURE_TERRAIN_P, and HOME_FLEET_BY_RACE, a copy of the first of each race's coastal fleets); a race
+// content doesn't list offers none, and a Naval king of one opens with the galleon (the case above).
+test("each race's heartland, and the fleet a home of each race offers, are content's", () => {
+  expect(SIGNATURE_TERRAIN_P).toEqual({ Human: 'plain', Elven: 'forest', Dwarven: 'mountain', Orcish: 'desert' });
+  expect(
+    [...KC_HUMANOID_RACES, 'Gnomish', ''].map((race) => theFleetAHomeOfItsRaceOffers(race)),
+    'the fleet of a Human, Elven, Dwarven, Orcish, Gnomish and raceless home',
+  ).toEqual(['Galleon Fleet', 'Elven Galleys', 'Dwarf Ironclads', 'Orcish Longships', undefined, undefined]);
 });
 
 test('an eleventh realm, past the ten colours, takes the fallback colour', () => {
