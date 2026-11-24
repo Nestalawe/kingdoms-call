@@ -2,14 +2,14 @@
 // each function (or file's top level) the family's rows have taken holds no check of an order by its kind (a kind of
 // OrderKind, the alignment orders' aside, or `'pursue'`): compared with an order's action, a `case` of a switch on
 // one, a list of kinds, a default kind or an action assigned, or a value of the kinds' own table. It reads the order's
-// row instead. Each row adds what it takes to TAKEN, which is empty until the first of them. With them, the ratchet's
+// row instead. Each row adds what it takes to TAKEN (B-06al the first). With them, the ratchet's
 // two counts of those checks outside src/engine/rules/, in the engine and in the bots (tools/ratchet.ts's
 // orderKindChecksInEngine and orderKindChecksInTheBots, by their helper orderKindChecksByFunction), so both only fall:
 // the helper counts each check planted, and none of an order written (`action: 'move'`), a line's kind
 // (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of another sense (a bot's role `'spy'`, a
 // duel's stance `'challenge'`), a name being bound to an order's kind in its own function only.
 //
-// Level 0 (static): the files' syntax trees and OrderKind as its file writes it; nothing runs.
+// Level 0 (static): the files' syntax trees and the hero orders' rows as content writes them; nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';
@@ -24,15 +24,18 @@ import {
   readBaseline,
   THE_ORDER_KINDS_FILE,
   theCodeFiles,
-  theOrderKinds,
 } from '../../tools/ratchet.ts';
+import { THE_HERO_ORDERS } from '../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 
 /** The top level of a file: what no function holds. */
 const TOP = '(top)';
 
-/** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it. Empty
- *  until the family's first row: each adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+/** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it: each row
+ *  adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  [THE_ORDER_KINDS_FILE, TOP, "B-06al, the turn's names for the orders: PHASE_ACTION_MAP"],
+  [THE_ORDER_KINDS_FILE, 'normaliseAction', "B-06al, a blank or unknown order's kind"],
+];
 
 test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {
   const counts = orderKindChecksByFunction(file, fs.readFileSync(path.join(ROOT, file), 'utf8'));
@@ -40,18 +43,18 @@ test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {
   expect(counts.get(fn) ?? 0, `${fn}'s checks of an order's kind (the ratchet's helper)`).toBe(0);
 });
 
-// The words are OrderKind's own, read from its file: every kind but the five alignment orders' keys (their rows give
-// them, and alignmentOrderChecksInEngine counts them), and 'pursue', a saved name the turn still reads.
-test("the vocabulary is OrderKind's kinds less the alignment orders' keys, and 'pursue'", () => {
-  const kinds = theOrderKinds(fs.readFileSync(path.join(ROOT, THE_ORDER_KINDS_FILE), 'utf8'));
-  expect(kinds.length, "OrderKind's members").toBe(48);
+// The words are the hero orders' rows' keys (content): every kind of order but the five alignment orders' (their rows
+// give them, and alignmentOrderChecksInEngine counts them), and Pursue's row, a saved name the turn still reads.
+test("the vocabulary is the hero orders' rows' keys less the alignment orders' keys, Pursue's among them", () => {
+  const keys = Object.values(THE_HERO_ORDERS).map((row): string => row.key);
+  expect(keys.length, "the hero orders' rows: OrderKind's 48 kinds and Pursue's").toBe(49);
   expect(
-    [...ALIGNMENT_ORDER_VOCABULARY].filter((k) => !kinds.includes(k)),
+    [...ALIGNMENT_ORDER_VOCABULARY].filter((k) => !keys.includes(k)),
     "the alignment orders' keys",
   ).toEqual([]);
-  expect([...ORDER_KIND_VOCABULARY]).toEqual([...kinds.filter((k) => !ALIGNMENT_ORDER_VOCABULARY.has(k)), 'pursue']);
+  expect([...ORDER_KIND_VOCABULARY]).toEqual(keys.filter((k) => !ALIGNMENT_ORDER_VOCABULARY.has(k)));
   expect(ORDER_KIND_VOCABULARY.size).toBe(44);
-  expect(() => theOrderKinds('export type Other = string;')).toThrow(/no "type OrderKind/);
+  expect(ORDER_KIND_VOCABULARY.has('pursue'), "Pursue's row").toBe(true);
 });
 
 // The helper finds what it counts, and only that: each form planted in one function (an arrow given to a name counts

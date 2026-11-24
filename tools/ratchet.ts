@@ -28,6 +28,7 @@ import {
   TITLE_DEFS,
 } from '../src/content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { THE_HERO_ORDERS } from '../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');
@@ -1040,9 +1041,9 @@ export const temperChecksByFunction = (file: string, text: string): Map<string, 
 export const temperChecksInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
   theTotalOf(temperChecksByFunction, countsUnitNameChecks, codeFiles);
 
-// The engine's checks of an order by its kind (Run 3b, the hero orders): a string naming a kind of order (OrderKind's
-// members, read from its file's syntax tree, but the five alignment orders' keys, which their rows give and
-// alignmentOrderChecksInEngine counts, and with `'pursue'`, a saved name the turn still reads) that the code (a)
+// The engine's checks of an order by its kind (Run 3b, the hero orders): a string naming a kind of order (the hero
+// orders' rows' keys, in content: OrderKind's kinds, and `'pursue'`, a saved name the turn still reads, but the five
+// alignment orders' keys, which their rows give and alignmentOrderChecksInEngine counts) that the code (a)
 // compares (===, !==, ==, !=) with an order's kind: an expression ending `action` (`o.action`, `_action`), a call of
 // normaliseAction, or a name the function binds to one (`const a = o.action`, or a parameter of a function whose name
 // says Order); (b) is a `case` of a switch over one; (c) is an element of an array literal of two or more strings, every
@@ -1058,26 +1059,13 @@ export const temperChecksInEngine = (codeFiles: readonly (readonly [file: string
 /** The file that declares OrderKind and PHASE_ACTION_MAP. */
 export const THE_ORDER_KINDS_FILE =
   'src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
-/** OrderKind's members, in the order written, read from the syntax tree of its file's `type OrderKind = 'a' | 'b'`. */
-export function theOrderKinds(text: string): string[] {
-  const source = ts.createSourceFile(THE_ORDER_KINDS_FILE, text, ts.ScriptTarget.Latest, true);
-  for (const statement of source.statements) {
-    if (!ts.isTypeAliasDeclaration(statement) || statement.name.text !== 'OrderKind') continue;
-    const union = statement.type;
-    if (!ts.isUnionTypeNode(union)) break;
-    return union.types.flatMap((t) =>
-      ts.isLiteralTypeNode(t) && ts.isStringLiteral(t.literal) ? [t.literal.text] : [],
-    );
-  }
-  throw new Error(`${THE_ORDER_KINDS_FILE}: no "type OrderKind = '…' | '…'" found. The ratchet reads its kinds.`);
-}
-/** Every kind of order the count reads (above). */
-export const ORDER_KIND_VOCABULARY: ReadonlySet<string> = new Set([
-  ...theOrderKinds(fs.readFileSync(path.join(ROOT, THE_ORDER_KINDS_FILE), 'utf8')).filter(
-    (kind) => !ALIGNMENT_ORDER_VOCABULARY.has(kind),
-  ),
-  'pursue',
-]);
+/** Every kind of order the count reads (above): the hero orders' rows' keys (content, THE_HERO_ORDERS: OrderKind's
+ *  kinds and Pursue's row), but the alignment orders'. */
+export const ORDER_KIND_VOCABULARY: ReadonlySet<string> = new Set(
+  Object.values(THE_HERO_ORDERS)
+    .map((row): string => row.key)
+    .filter((kind) => !ALIGNMENT_ORDER_VOCABULARY.has(kind)),
+);
 /** The text of an expression that is an order's kind: one ending `action`, or a call of normaliseAction. */
 const AN_ORDERS_KIND = /(\.|^)_?action$|^normaliseAction\(|^\(?\(?\w+\.action \?\? ''\)/;
 /** The names a function binds to an order's kind, anywhere in it (its nested functions' too): a variable given an

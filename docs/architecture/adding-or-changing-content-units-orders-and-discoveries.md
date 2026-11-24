@@ -211,7 +211,8 @@ The five alignment orders are its rows given as an order, which `THE_ALIGNMENT_O
 its key, its name, the other names the turn reads, its creed (`alignment`), whether the king alone gives it (`howItIsUsed`), and the numbers the books
 state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows (and so is the
 order dispatch's prose's own set, for the charmed hero's line), and so are the
-order-name map's entries for them (`PHASE_ACTION_MAP`: each row's key, its name in lower case and its other names);
+rows of the hero orders for them (each row's key, its name in lower case and its other names, which
+`PHASE_ACTION_MAP` reads: the next section);
 the order switch's `case`s read their row's key. Who may give one is two checks of
 `src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
 the row's creed; the king, where the row marks it his alone): each resolver asks them through the registry's
@@ -238,6 +239,20 @@ the form offers that the order-name map lacks (it reads as Defend), one left out
 form doesn't offer, and an order the rulebook never names. Copy Harvest the Field's
 occurrences (grep `harvest_field` and `Harvest the Field`) and mirror each. Removing one touches the same places;
 keep its `case` as a plain refusal, so an order a save still holds is answered rather than silently dropped.
+
+## A kind of order is one row: its names and its tier
+
+Each kind of order a hero is given is one row of `THE_HERO_ORDERS`
+(`src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts`, B-06al): its key (the
+kind), every name the turn reads it by (in lower case, as the form or a bot writes it) and its tier in a phase (0 it
+stays put, 1 a Move or an Encounter, 2 a Defend; a Forced March 0). One more row, Pursue, is an old name that reads as
+an Encounter. `OrderKind` is the rows' keys, and the turn's names for the orders (`PHASE_ACTION_MAP`) and a blank or
+unknown order's Defend (`normaliseAction`) are built from them
+(`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`). The creed orders' rows are
+built from their alignment rows; the mastery orders' rows join theirs (below) by key. A new row with no case in
+`processOrder`'s switch fails to compile
+(`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). The tier is written there
+only: the phase's order (`theTierAnOrderActsIn`) still gives its own, the same.
 
 ## A mastery order is one row, and its resolver's level
 

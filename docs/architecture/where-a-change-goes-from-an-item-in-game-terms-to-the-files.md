@@ -102,8 +102,9 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 
 - **Where:** `src/engine/orders/`, one file a family of orders, each file's name listing its orders. The checks before
   a hero's order, and the switch that picks its resolver, are in
-  `src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`. A new kind of order goes into
-  `OrderKind`, and its names into `PHASE_ACTION_MAP`
+  `src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`. A new kind of order is a row of
+  `THE_HERO_ORDERS` (`src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts`: its
+  key, its names, its tier), from which `OrderKind` and `PHASE_ACTION_MAP` are built
   (`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`); the switch fails to
   compile until the kind has its case
   (`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). An alignment order is one

@@ -2,7 +2,8 @@
 // function (or file's top level) the content's rows (THE_ALIGNMENT_ORDERS, in src/content/alignment-abilities-their-
 // keys-names-numbers-and-words.ts) have taken holds no string naming an alignment order's key (`'consecrate'`, `'harvest_field'`), whatever
 // the code does with it (compared, a `case`, a lookup, an order written, a list, a map's value, a literal type, or in a
-// function nested inside), but the literal types its entry lists as left (OrderKind's, in the order-name map's file).
+// function nested inside), but the literal types its entry lists as left (none since B-06al, which builds OrderKind
+// from the hero orders' rows).
 // It reads a row's key instead. Each row of the family adds what it takes. With them, the
 // ratchet's count of the keys the engine names outside src/engine/rules/ (tools/ratchet.ts's
 // alignmentOrderChecksInEngine, by its helper alignmentOrderChecksByFunction: a key anywhere but a literal type), so that
@@ -32,10 +33,6 @@ import {
 /** The top level of a file: what no function holds. */
 const TOP = '(top)';
 
-/** OrderKind's literal types, the only strings naming a key left at the top level of the turn's order-name map's file
- *  (the plan's Decision 5: P1-10 derives or checks them), in the order written. */
-const ORDER_KINDS_LITERAL_TYPES = ['consecrate', 'call_to_arms', 'broker', 'harvest_field', 'rite'];
-
 /** The five resolvers' files (src/engine/orders/alignment/, since P1-19aw2: the realm's works' file held four, the
  *  explore and search orders' the Rite). */
 const CONSECRATE = 'src/engine/orders/alignment/consecrate-a-divine-kings-order-to-sanctify-a-province-of-his-realm.ts';
@@ -56,8 +53,8 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, left: re
   [
     'src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts',
     TOP,
-    "P1-19aq, the turn's order-name map: PHASE_ACTION_MAP",
-    ORDER_KINDS_LITERAL_TYPES,
+    "P1-19aq, the turn's order-name map: PHASE_ACTION_MAP (and OrderKind's literal types, since B-06al the rows')",
+    [],
   ],
   [
     'src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts',
