@@ -1,3 +1,4 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import {
   KC_RIVAL_RACE,
   KC_UNIT_CLASS,
@@ -110,7 +111,9 @@ export function botIsBotPlayer(
 // Land a column may march through freely: our own, or an ally's (free passage).
 export function botPassable(G: GameState, pi: number | null, N: Province | null | undefined) {
   return (
-    !!N && N.terrain !== 'sea' && (N.owner === pi || (N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied'))
+    !!N &&
+    N.terrain !== 'sea' &&
+    (N.owner === pi || (N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied))
   );
 }
 // Hex distance with the map's east-west wrap — mirrors generateNewGame's cellDistRC.
@@ -524,7 +527,7 @@ export function botUnderAttack(G: GameState, pi: number) {
       e.player != null &&
       e.player !== pi &&
       (asItsGuardReadsIt(e.armies) ?? []).length &&
-      botRelationRaw(G, pi, e.player) === 'enemy'
+      botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
     ))
       return false;
     if (!botSeesChar(G, pi, e)) return false;
@@ -888,7 +891,11 @@ export function botDefenceNeed(G: GameState, prov: Province | null | undefined, 
     // unseen country now falls on the bot unannounced, as it would on a player.
     let s = 0;
     botVisibleCharsIn(G, pi, N).forEach((e) => {
-      if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy')
+      if (
+        e.player != null &&
+        e.player !== pi &&
+        botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+      )
         s += botForceStrength(e.armies);
     });
     if (s > threat) threat = s;
@@ -916,7 +923,11 @@ export function botEnemyChars(G: GameState, prov: Province | null | undefined, p
     hasKing = false,
     units = 0;
   botVisibleCharsIn(G, pi, prov).forEach((e) => {
-    if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy') {
+    if (
+      e.player != null &&
+      e.player !== pi &&
+      botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+    ) {
       force += botEffForce(G, e, undefined);
       value += e.isKing ? 50 : 15;
       if (e.isKing) hasKing = true;
@@ -997,7 +1008,7 @@ export function botEnemyHostsIn(G: GameState, pi: number, X: Province | null | u
           e.player != null &&
           e.player !== pi &&
           (asItsGuardReadsIt(e.armies) ?? []).length &&
-          botRelationRaw(G, pi, e.player) === 'enemy',
+          botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar,
       )
     : [];
 }
@@ -1007,7 +1018,8 @@ export function botInContact(G: GameState, pi: number, c: Character | null | und
   const P = G.world.provinces[c.location];
   if (!P) return false;
   if (P._battleUnresolved || botEnemyHostsIn(G, pi, P).length) return true;
-  if (P.owner != null && P.owner !== pi && botRelationRaw(G, pi, P.owner) === 'enemy') return true;
+  if (P.owner != null && P.owner !== pi && botRelationRaw(G, pi, P.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar)
+    return true;
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, P, i);
     if (N && botEnemyHostsIn(G, pi, N).length) return true;
@@ -1144,7 +1156,7 @@ export function botAtWar(G: GameState, pi: number) {
       (asItsGuardReadsIt(G.characters) ?? []).some(
         (c) => asItsGuardReadsIt(c) && c.alive && c.isKing && c.player === j,
       ) &&
-      botRelationRaw(G, pi, j) === 'enemy',
+      botRelationRaw(G, pi, j) === THE_STATES_TWO_REALMS_STAND_IN.atWar,
   );
 }
 // the biggest army stack (unit count) any at-war enemy is currently leading. Used to decide when to
@@ -1158,7 +1170,7 @@ export function botMaxEnemyStack(G: GameState, pi: number) {
       c.alive &&
       c.player != null &&
       c.player !== pi &&
-      botRelationRaw(G, pi, c.player) === 'enemy' &&
+      botRelationRaw(G, pi, c.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar &&
       botSeesChar(G, pi, c)
     ) {
       const n = (asItsGuardReadsIt(c.armies) ?? []).length;
@@ -1180,7 +1192,14 @@ export function botNavalEnemyCoast(G: GameState, prov: Province, pi: number) {
     for (let j = 0; j < 6; j++) {
       const K = botNeighbourProv(G, N, j);
       const ko = botBelievedOwner(G, pi, K);
-      if (K && K.terrain !== 'sea' && ko != null && ko !== pi && botRelationRaw(G, pi, ko) === 'enemy') return true;
+      if (
+        K &&
+        K.terrain !== 'sea' &&
+        ko != null &&
+        ko !== pi &&
+        botRelationRaw(G, pi, ko) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+      )
+        return true;
     }
   } // believed owner, not the true one
   return false;
@@ -1288,7 +1307,7 @@ export function botHasMetPlayers(G: GameState, pi: number) {
   let met = false;
   const rel = asItsGuardReadsIt(G.relations) ?? {};
   for (const k of Object.keys(rel)) {
-    if (rel[k] !== 'neutral' && k.split('-').map(Number).includes(pi)) {
+    if (rel[k] !== THE_STATES_TWO_REALMS_STAND_IN.neutral && k.split('-').map(Number).includes(pi)) {
       met = true;
       break;
     }
@@ -1316,7 +1335,7 @@ export function botNearbyThreat(G: GameState, pi: number, c: Character) {
       e.player != null &&
       e.player !== pi &&
       (asItsGuardReadsIt(e.armies) ?? []).length &&
-      botRelationRaw(G, pi, e.player) !== 'allied' &&
+      botRelationRaw(G, pi, e.player) !== THE_STATES_TWO_REALMS_STAND_IN.allied &&
       botSeesChar(G, pi, e) &&
       (() => {
         const X = G.world.provinces[e.location];
@@ -1394,7 +1413,8 @@ export function botIsEdge(G: GameState, pi: number, prov: Province) {
   for (let i = 0; i < 6; i++) {
     const N = botNeighbourProv(G, prov, i);
     if (!N || N.terrain === 'sea') continue;
-    if (N.owner == null || (N.owner !== pi && botRelationRaw(G, pi, N.owner) === 'enemy')) return true;
+    if (N.owner == null || (N.owner !== pi && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar))
+      return true;
   }
   return false;
 }
@@ -1409,7 +1429,7 @@ export function botFrontierTarget(G: GameState, pi: number, P: Province) {
       if (!K || K.terrain === 'sea') continue;
       const ko = botBelievedOwner(G, pi, K);
       if (ko === undefined) continue;
-      if (ko == null || (ko !== pi && botRelationRaw(G, pi, ko) === 'enemy')) {
+      if (ko == null || (ko !== pi && botRelationRaw(G, pi, ko) === THE_STATES_TWO_REALMS_STAND_IN.atWar)) {
         const b = botBelief(G, pi, K);
         n += 1 + Math.min(3, (Number(b?.tax) || 0) / 3);
       }
@@ -1483,7 +1503,13 @@ export function botUpdateIntel(G: GameState, pi: number) {
   });
   // review II A10: allied realms exchange reports — what an ally saw this turn is copied in (never overwriting fresher news)
   (asItsGuardReadsIt(G.players) ?? []).forEach((a, j) => {
-    if (j === pi || !asItsGuardReadsIt(a) || !a._botIntel || botRelationRaw(G, pi, j) !== 'allied') return;
+    if (
+      j === pi ||
+      !asItsGuardReadsIt(a) ||
+      !a._botIntel ||
+      botRelationRaw(G, pi, j) !== THE_STATES_TWO_REALMS_STAND_IN.allied
+    )
+      return;
     const theRecords: TheRecordsAnAllyShares = [
       ['generals', I.generals, a._botIntel.generals],
       ['heroes', I.heroes, a._botIntel.heroes],
@@ -1492,7 +1518,7 @@ export function botUpdateIntel(G: GameState, pi: number) {
       const told = theirs ?? {};
       Object.keys(told).forEach((k) => {
         const r = told[k];
-        if (!r || r.player === pi || botRelationRaw(G, pi, r.player) !== 'enemy') return;
+        if (!r || r.player === pi || botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) return;
         const had = mine[k];
         if (!had || had.turn < r.turn) mine[k] = { ...r };
       });

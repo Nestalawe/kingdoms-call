@@ -1,3 +1,4 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -169,7 +170,11 @@ export function noteRealmBattle(
 // News of a battle reaches realm pi if it or an ally fought in it, or it can see the field.
 export function botHeardBattle(G: GameState, pi: number, x: ABattlesNews) {
   if (x.a === pi || x.d === pi) return true;
-  if (botRelationRaw(G, pi, x.a) === 'allied' || botRelationRaw(G, pi, x.d) === 'allied') return true;
+  if (
+    botRelationRaw(G, pi, x.a) === THE_STATES_TWO_REALMS_STAND_IN.allied ||
+    botRelationRaw(G, pi, x.d) === THE_STATES_TWO_REALMS_STAND_IN.allied
+  )
+    return true;
   return x.p != null && botSees(G, pi, x.p);
 }
 export function botOwnPower(G: GameState, pi: number) {
@@ -235,7 +240,7 @@ export function botWarBook(
   p._botWar = books;
   const b = books[j] ?? {};
   books[j] = b;
-  if (botRelationRaw(G, pi, j) === 'enemy') {
+  if (botRelationRaw(G, pi, j) === THE_STATES_TWO_REALMS_STAND_IN.atWar) {
     b.since ??= G.turn || 0;
   } else if (b.since != null) {
     b.peaceAt = G.turn || 0;
@@ -308,9 +313,9 @@ export function botWarAssess(
     if (!q || k === pi || k === j || q.conceded || q._eliminated) continue;
     const rpk = botRelationRaw(G, pi, k),
       rjk = botRelationRaw(G, j, k);
-    if (rpk === 'allied') mine += BOT_WAR.allyWeight * botRivalPower(G, pi, k);
-    else if (rjk === 'allied') theirs += BOT_WAR.allyWeight * botRivalPower(G, pi, k); // alliances are known to all
-    if (rpk === 'enemy') {
+    if (rpk === THE_STATES_TWO_REALMS_STAND_IN.allied) mine += BOT_WAR.allyWeight * botRivalPower(G, pi, k);
+    else if (rjk === THE_STATES_TWO_REALMS_STAND_IN.allied) theirs += BOT_WAR.allyWeight * botRivalPower(G, pi, k); // alliances are known to all
+    if (rpk === THE_STATES_TWO_REALMS_STAND_IN.atWar) {
       const pk = botRivalPower(G, pi, k);
       mine -= BOT_WAR.burden * pk;
       if (botOwnPower(G, pi) < pk * BOT_WAR.losingRatio) losingElsewhere = true;
@@ -332,7 +337,11 @@ export function botWarAssess(
   if (
     pls.some(
       (q, k) =>
-        q && k !== pi && k !== j && botRelationRaw(G, pi, k) === 'allied' && botRelationRaw(G, k, j) === 'enemy',
+        q &&
+        k !== pi &&
+        k !== j &&
+        botRelationRaw(G, pi, k) === THE_STATES_TWO_REALMS_STAND_IN.allied &&
+        botRelationRaw(G, k, j) === THE_STATES_TWO_REALMS_STAND_IN.atWar,
     )
   )
     opp.push('ally at war with them');
@@ -391,7 +400,7 @@ export function botWarAssess(
   });
   let decision: 'peace' | 'war' | null = null,
     why = '';
-  if (rel === 'enemy') {
+  if (rel === THE_STATES_TWO_REALMS_STAND_IN.atWar) {
     const age = book.since != null ? turn - book.since : 99;
     if (age >= BOT_WAR.minWarTurns) {
       if (ratio < BOT_WAR.peaceRatio) {
@@ -408,7 +417,7 @@ export function botWarAssess(
         why = 'accepts their offer';
       }
     }
-  } else if (rel === 'neutral') {
+  } else if (rel === THE_STATES_TWO_REALMS_STAND_IN.neutral) {
     const cooling = book.peaceAt != null && turn - book.peaceAt < BOT_WAR.peaceCooldown;
     if (!cooling && !losingElsewhere && (prize || ratio >= thr * BOT_WAR.noPrizeMult) && ratio >= thr) {
       decision = 'war';
@@ -450,7 +459,11 @@ export function botPlanAssaults(G: GameState, pi: number, chars: readonly Charac
         if (!N) continue;
         let s = 0;
         botVisibleCharsIn(G, pi, N).forEach((e) => {
-          if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy')
+          if (
+            e.player != null &&
+            e.player !== pi &&
+            botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+          )
             s += botForceStrength(e.armies);
         });
         if (s > maxAdj) maxAdj = s;
@@ -475,7 +488,7 @@ export function botPlanAssaults(G: GameState, pi: number, chars: readonly Charac
       const N = botNeighbourProv(G, P, i);
       if (!N || N.terrain === 'sea') continue;
       if (N.owner == null || N.owner === pi) continue;
-      if (botRelationRaw(G, pi, N.owner) !== 'enemy') continue;
+      if (botRelationRaw(G, pi, N.owner) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
       const here = byTarget[N.id] ?? [];
       byTarget[N.id] = here;
       here.push({ c, dirIdx: i });

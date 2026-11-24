@@ -28,6 +28,9 @@ const THE_HOME = 'src/engine/realms/relations-and-captures.ts';
 const THE_KEY_AND_THE_ENTRY =
   'src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 const FAME = 'src/engine/heroes/fame-and-consecration.ts';
+const STRATEGY = 'src/engine/bots/strategy.ts';
+const WAR = 'src/engine/bots/war.ts';
+const BOT_DIPLOMACY = 'src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts';
 const DIPLOMACY =
   'src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts';
 /** Each function (or a file's top level) the relation rows have taken, by its file, from the row that took it: each
@@ -79,6 +82,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts',
     'aColumnIsTurnedBackAtANeutralRealmsBorder',
     "B-06ar, a Neutral realm's border: the content's state",
+  ],
+  [STRATEGY, 'botPassable', "B-06au, an ally's ground: the content's state"],
+  [STRATEGY, 'botUnderAttack', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botDefenceNeed', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botEnemyChars', "B-06au, a foe's hero: the content's state"],
+  [STRATEGY, 'botEnemyHostsIn', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botInContact', "B-06au, a foe's ground: the content's state"],
+  [STRATEGY, 'botAtWar', "B-06au, at war: the content's state"],
+  [STRATEGY, 'botMaxEnemyStack', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botNavalEnemyCoast', "B-06au, a foe's coast: the content's state"],
+  [STRATEGY, 'botHasMetPlayers', "B-06au, a pair's entry not Neutral: the content's state"],
+  [STRATEGY, 'botNearbyThreat', "B-06au, a hero not allied: the content's state"],
+  [STRATEGY, 'botIsEdge', "B-06au, a foe's ground: the content's state"],
+  [STRATEGY, 'openCount', "B-06au, a foe's ground: the content's state"],
+  [STRATEGY, 'botUpdateIntel', "B-06au, an ally's intel and a foe's hero: the content's states"],
+  [WAR, 'botHeardBattle', "B-06au, an ally's battle: the content's state"],
+  [WAR, 'botWarBook', "B-06au, at war: the content's state"],
+  [WAR, 'botWarAssess', "B-06au, allies, wars and Neutral: the content's states"],
+  [WAR, 'botPlanAssaults', "B-06au, a foe's host: the content's state"],
+  [WAR, 'isPinnedOrNeeded', "B-06au, a foe's ground: the content's state"],
+  ['src/engine/bots/intel.ts', 'botMutualFoe', "B-06au, an ally at war: the content's states"],
+  [
+    BOT_DIPLOMACY,
+    'botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim',
+    "B-06au, the bots' diplomacy: the readers, the Treat and the ladder's war",
   ],
 ];
 

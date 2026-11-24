@@ -24,7 +24,7 @@
     "temperChecksInEngine": 0,
     "orderKindChecksInEngine": 0,
     "orderKindChecksInTheBots": 0,
-    "relationChecksInEngine": 90,
+    "relationChecksInEngine": 44,
     "battleNumbersInEngine": 363,
     "personalCombatNumbersInEngine": 176,
     "battleNumbersInTheBots": 20,

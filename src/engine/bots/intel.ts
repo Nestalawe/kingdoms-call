@@ -969,7 +969,11 @@ export function botMutualFoe(G: Pick<GameState, 'players' | 'relations'>, pi: nu
   const pls = asItsGuardReadsIt(G.players) ?? [];
   for (let a = 0; a < pls.length; a++) {
     if (a === pi || a === j || !pls[a]) continue;
-    if (botRelationRaw(G, pi, a) === 'allied' && botRelationRaw(G, a, j) === 'enemy') return true;
+    if (
+      botRelationRaw(G, pi, a) === THE_STATES_TWO_REALMS_STAND_IN.allied &&
+      botRelationRaw(G, a, j) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+    )
+      return true;
   }
   return false;
 }
