@@ -44,13 +44,13 @@ function theExploreLines(n: number): readonly string[] {
   return Array<string>(n).fill('explore');
 }
 
-/** The type of a march's lines and of an ally's order the unify rolls read, `'move'`, and of the lines of what the
- *  march maps, `'explore'`: the words of the kinds of a march's and an explorer's discoveries, but no discovery's
- *  (resolveMoveOrder, 34 and 2 times, in the order written). */
+/** The type of a march's lines, `'move'`, and of the lines of what the march maps, `'explore'`: the words of the
+ *  kinds of a march's and an explorer's discoveries, but no discovery's (resolveMoveOrder, 32 and 2 times, in the
+ *  order written; an ally's order the unify rolls read is the Move row's key since B-06ap). */
 const THE_MARCHS_LINES_AND_ORDERS: readonly string[] = [
   ...Array<string>(23).fill('move'),
   'explore',
-  ...Array<string>(11).fill('move'),
+  ...Array<string>(9).fill('move'),
   'explore',
 ];
 /** Each function the discoveries' registry has taken, by its file, from the row that took it, with the strings in it
