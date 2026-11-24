@@ -70,4 +70,22 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     /** ... and any other realm's from this one. */
     theSageLevelFromWhichAnyOtherRealmsScholarResearches: 2,
   },
+  /** What a gift of a realm's race gives it: its tuning's margins and wage cap (botTuning, bots/intel.ts). What each
+   *  gift does is its row's, asked through the race gifts' runners (a company of the realm's race defending at a
+   *  gift's factor, the spoils of a battle won attacking); a company's strength in the estimates (botRaceTerrainMult)
+   *  is the rows' factors themselves, and the kin rule's, weighed at a point of strength a point. */
+  raceGift: {
+    /** A realm whose companies of its race defend at a gift's factor on any ground (it wins by being attacked) adds
+     *  this to its king's attack margin, ... */
+    theKingsAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds: 0.1,
+    /** ... and this to its heroes'. */
+    theHerosAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds: 0.1,
+    /** A realm that takes the spoils of a battle won attacking (its winners' wages halved) takes this off its king's
+     *  attack margin, ... */
+    theKingsAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
+    /** ... this off its heroes', ... */
+    theHerosAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
+    /** ... and lets its wages take this share of the income more (never more than the whole). */
+    theShareOfTheIncomeTheWagesMayTakeMoreInARealmThatTakesTheSpoilsOfABattleWonAttacking: 0.05,
+  },
 } satisfies Record<AKindOfResultABotWeighs, TheWeightsOfAKindOfResult>;

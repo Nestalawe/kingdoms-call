@@ -4,7 +4,7 @@
 // share them (P1-11a). The battle's armStr (src/engine/battle/terrain-and-unit-strength.ts) asks it after a Druid
 // shortfall is taken off; the army card on the player's report (renderReportView, src/ui/player/report.ts) asks it
 // through src/shared/, in the same order (R-122).
-import { KC_RIVAL_RACE } from '../../content/kingdoms-call-data.ts';
+import { KC_RIVAL_RACE, THE_FACTORS_OF_THE_KIN_RULE } from '../../content/kingdoms-call-data.ts';
 
 /** A unit's figure once its kin and a rival kin's leader have counted, and which of them did. */
 export interface TheStrengthAUnitsKinAndARivalKinsLeaderLeaveIt {
@@ -33,9 +33,11 @@ export function theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt(
   const itsKingIsOfItsKin = !!theUnitsRace && !!theKingsRace && theUnitsRace === theKingsRace;
   const itsLeaderIsOfItsKin = !!theUnitsRace && !!theLeadersRace && theUnitsRace === theLeadersRace;
   const aLeaderOfItsRivalKinLeadsIt = !!theUnitsRace && !!theLeadersRace && rivalKin[theUnitsRace] === theLeadersRace;
+  // the factors are content's (THE_FACTORS_OF_THE_KIN_RULE), each step rounded
+  const theFactors = THE_FACTORS_OF_THE_KIN_RULE;
   let str = strength;
-  if (itsKingIsOfItsKin) str = Math.round(str * 1.2);
-  if (itsLeaderIsOfItsKin) str = Math.round(str * 1.2);
-  if (aLeaderOfItsRivalKinLeadsIt) str = Math.round(str * 0.8);
+  if (itsKingIsOfItsKin) str = Math.round(str * theFactors.aUnitOfItsKingsRace);
+  if (itsLeaderIsOfItsKin) str = Math.round(str * theFactors.aUnitLedByACommanderOfItsRace);
+  if (aLeaderOfItsRivalKinLeadsIt) str = Math.round(str * theFactors.aUnitLedByACommanderOfItsRivalKin);
   return { strength: str, itsKingIsOfItsKin, itsLeaderIsOfItsKin, aLeaderOfItsRivalKinLeadsIt };
 }

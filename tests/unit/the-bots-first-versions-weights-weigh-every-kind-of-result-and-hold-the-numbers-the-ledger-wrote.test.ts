@@ -5,8 +5,9 @@
 // kinds, and it fails the Record of the kinds with one more (a kind with no weight), each a constant whose type holds
 // only while that is so (no comment that waives an error). Then the gold's weights, each the number botLedger wrote
 // before T7, a title's (B-06r), each the number botTargetTitles and botSpecialistRoles wrote, and an alignment
-// ability's (P1-19bb8), each the number botHeroCap, botSpecialistRoles and the scholar's orders wrote, in its place: a
-// change of one is a change of the bots' play (the balance matrix), never a refactor.
+// ability's (P1-19bb8), each the number botHeroCap, botSpecialistRoles and the scholar's orders wrote, and a race
+// gift's (B-06ah), each the number botTuning's race overlays wrote, in its place: a change of one is a change of the
+// bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module is imported and its numbers read; its types are the compiler's (`npm run check`),
 // which a lower level can't run.
@@ -71,5 +72,15 @@ test("an alignment ability's weights are the numbers botHeroCap, botSpecialistRo
     theScholarsMoreARealmWhoseAlignmentAddsToResearchWants: 1,
     theSageLevelFromWhichSuchARealmsScholarResearches: 1,
     theSageLevelFromWhichAnyOtherRealmsScholarResearches: 2,
+  });
+});
+
+test("a race gift's weights are the numbers botTuning's race overlays wrote before T7, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.raceGift).toEqual({
+    theKingsAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds: 0.1,
+    theHerosAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds: 0.1,
+    theKingsAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
+    theHerosAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff: 0.05,
+    theShareOfTheIncomeTheWagesMayTakeMoreInARealmThatTakesTheSpoilsOfABattleWonAttacking: 0.05,
   });
 });

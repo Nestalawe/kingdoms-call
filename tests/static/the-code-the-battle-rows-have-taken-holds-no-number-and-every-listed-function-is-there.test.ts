@@ -1,7 +1,7 @@
 // The code the battle rows have taken holds no number, and every file and bots' function the battles' counts list is
 // there (B-06, T7, the rules pulled out: Runs 3c and 3d, the battles). Each function or table the family's rows have
 // taken holds no number other than 0 and 1 (the battles' factors, bands and tables are read from content's rows
-// instead). Each row adds what it takes to TAKEN, which is empty until the first of them. With them, the ratchet's
+// instead). Each row adds what it takes to TAKEN (the bots' race row B-06ah took the first). With them, the ratchet's
 // three counts of the battles' numbers (tools/ratchet.ts's battleNumbersInEngine over src/engine/battle/ but its facts'
 // files and two files of src/engine/units/, personalCombatNumbersInEngine over src/engine/personal-combat/ but its
 // facts' file, and battleNumbersInTheBots over the bots' battle estimate's listed functions, by their helper
@@ -30,9 +30,15 @@ import {
 /** The top level of a file: what no function or table holds. */
 const TOP = '(top)';
 
-/** Each function or table (or a file's top level) the battle rows have taken, by its file, from the row that took it.
- *  Empty until the family's first row: each adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+/** Each function or table (or a file's top level) the battle rows have taken, by its file, from the row that took it:
+ *  each of the family's rows adds what it takes (and a row of another family whose move empties one). */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  [
+    'src/engine/bots/intel.ts',
+    'botRaceTerrainMult',
+    "B-06ah, the kin's factors from the kin rule's content, the gifts' from their rows",
+  ],
+];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
 

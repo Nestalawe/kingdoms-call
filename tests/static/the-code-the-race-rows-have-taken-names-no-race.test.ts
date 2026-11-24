@@ -178,6 +178,33 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'everyNeutralHeroWearingABeastsRaceGivenAPeoplesRace',
     "B-06ag, the beasts' classes an old save's neutral hero may wear, content's",
   ],
+  [
+    'src/engine/bots/intel.ts',
+    'botTuning',
+    "B-06ah, the race's overlay, by the gift its row gives, from the race gifts' runners and the raceGift weights",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botRaceTerrainMult',
+    "B-06ah, Woodland Mastery and the Bulwark in the bots' estimate, from the race gifts' runner",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botRecruitableTypes',
+    "B-06ah, a recruit's province of no race and the grudge's wild check, from content's constant and the helper",
+  ],
+  ['src/engine/bots/strategy.ts', 'effOf', "B-06ah, a recruit's province of no race, from content's constant"],
+  [
+    'src/engine/bots/missions.ts',
+    'botSignaturePre',
+    "B-06ah, no Call to Arms in a province of the wild's race, from the helper",
+  ],
+  [
+    'src/engine/bots/missions.ts',
+    'consider',
+    "B-06ah, a sea's kind: the poor seas' race tags, content's, and the wild's sub-races, from the helper",
+  ],
+  ['src/engine/bots/specialists.ts', 'botScoutTarget', "B-06ah, a scout's wild province, from the helper"],
 ];
 
 test.for(TAKEN)('%s: %s names no race (%s)', ([file, fn]) => {

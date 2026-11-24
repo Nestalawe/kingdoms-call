@@ -15420,6 +15420,15 @@ export const AN_OLD_SAVES_RACES_OF_THE_WILD_WHOSE_BEAST_WAS_RENAMED = {
 };
 export const THE_BEASTS_CLASSES_AN_OLD_SAVES_NEUTRAL_HERO_MAY_WEAR_AS_HIS_RACE = ['Monster', 'Creature'] as const;
 export const KC_RIVAL_RACE = { Elven: 'Dwarven', Dwarven: 'Elven', Human: 'Orcish', Orcish: 'Human' };
+// The kin rule's factors (B-06ah, moved from the rule as they were): a unit of its realm's king's race fights at ×1.2,
+// one led by a commander of its race at ×1.2 more (a king leading his own race's troops: ×1.44), then one led by a
+// commander of its rival kin (KC_RIVAL_RACE) at ×0.8. The battle rounds each step
+// (theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt); the bots' estimate multiplies them unrounded (KD-466).
+export const THE_FACTORS_OF_THE_KIN_RULE = {
+  aUnitOfItsKingsRace: 1.2,
+  aUnitLedByACommanderOfItsRace: 1.2,
+  aUnitLedByACommanderOfItsRivalKin: 0.8,
+};
 export const KC_HEX_DIRS = ['NW', 'NE', 'W', 'E', 'SW', 'SE'];
 export const KC_GRAND_DESIGNS = {
   Divine: {

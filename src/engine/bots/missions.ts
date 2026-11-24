@@ -1,4 +1,12 @@
-import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_CARRIER_BERTHS,
+  KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
+  PRIMAL_ARMY_DEFS_P,
+} from '../../content/kingdoms-call-data.ts';
+import {
+  isTheRaceOneOfTheWildsSubRaces,
+  isTheRaceTheWildsOrOneOfItsSubRaces,
+} from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { aRealmOfThisCreedMayGiveTheAlignmentOrder } from '../rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
 import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
@@ -419,7 +427,7 @@ export function botSignaturePre(
     let best: { readonly X: Province; readonly sc: number } | null = null;
     for (const X of theProvincesOf(G)) {
       if (X?.owner !== pi || X.terrain === 'sea') continue;
-      if ((asItsGuardReadsIt(X.race) ?? '').startsWith('Primal')) continue; // the engine falls back to GARRISON_BY_RACE_CTA
+      if (isTheRaceTheWildsOrOneOfItsSubRaces(asItsGuardReadsIt(X.race))) continue; // the engine falls back to GARRISON_BY_RACE_CTA
       if ((X.tax || 0) < 4 && X.id !== botHomeId(G, pi)) continue; // Toby's garrison rule: Prosperous+ land (and the capital) only
       const g = (asItsGuardReadsIt(X.garrisonArmies) ?? []).length;
       if (g >= 2) continue;
@@ -1256,12 +1264,13 @@ export function botSeaStrike(
       if (N.owner == null && botKnows(G, pi, N.id)) {
         const tStr = botTargetDefence(G, pi, N);
         if (tStr > 0 && strIn('sea') < tStr * margin) return;
-        const kind =
-          N.race === 'Primal:Whale' || N.race === 'Primal:Shark'
-            ? 'whale'
-            : N.race?.startsWith('Primal:')
-              ? 'primal'
-              : 'open'; // poor waters (whale or shark) score alike
+        const kind = KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS.some(
+          (beast) => beast.raceTag === N.race,
+        )
+          ? 'whale'
+          : isTheRaceOneOfTheWildsSubRaces(N.race)
+            ? 'primal'
+            : 'open'; // poor waters (whale or shark) score alike
         sc = (N.tax || 1) * T.taxScoreWeight - tStr - d * 2 + (kind === 'open' ? 40 : kind === 'whale' ? 15 : 0);
         fight = tStr > 0;
       }

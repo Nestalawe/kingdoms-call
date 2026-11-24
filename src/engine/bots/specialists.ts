@@ -84,6 +84,7 @@ import {
 } from './spellcraft.ts';
 import { botPins } from './phase-one.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
+import { isTheRaceOneOfTheWildsSubRaces } from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
@@ -498,7 +499,7 @@ export function botScoutTarget(G: GameState, pi: number, c: Character, maxD: num
     if (mapped >= 100) continue;
     const d = X.id === from.id ? 0 : botPathLen(G, pi, from, X.id, true);
     if (d == null || d > maxD) continue;
-    const wild = (asItsGuardReadsIt(X.race) ?? '').startsWith('Primal:') ? 15 : 0;
+    const wild = isTheRaceOneOfTheWildsSubRaces(asItsGuardReadsIt(X.race)) ? 15 : 0;
     const sc = (100 - mapped) / 4 + wild + (X.owner === pi ? 6 : 0) - d * 8;
     if (!best || sc > best.sc) best = { X, d, sc };
   }

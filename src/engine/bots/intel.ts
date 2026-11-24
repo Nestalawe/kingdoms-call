@@ -1,4 +1,14 @@
-import { KC_HEX_DIRS, KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_HEX_DIRS,
+  KC_RIVAL_RACE,
+  KC_UNIT_CLASS,
+  THE_FACTORS_OF_THE_KIN_RULE,
+} from '../../content/kingdoms-call-data.ts';
+import {
+  doesARealmsRaceTakeTheSpoilsOfABattleWonAttacking,
+  theStepsTheGiftsOfItsRealmsRaceMakeOnACompany,
+} from '../rules/the-registry-of-the-race-gifts.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import { battleFrontWidth, battleLineTotal } from '../battle/lines.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
@@ -74,11 +84,12 @@ interface AHeroWhoseSkillsAreKnown {
 // version's weights file (the-weights-of-the-bots-first-version-…ts) says what it makes of a unit of each kind of
 // result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
 // it gives no weights fails to compile. The economy's (a gold) is the first kind, the titles' (a title, B-06r) the
-// second, the alignments' (an alignment ability, P1-19bb8) the third. The weights are the bots', never content's: content
-// holds the rules only.
+// second, the alignments' (an alignment ability, P1-19bb8) the third, the races' (a race's gift, B-06ah) the fourth.
+// The weights are the bots', never content's: content holds the rules only.
 /** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
- *  Imperial Title (held, or chased by what its row measures), and what an ability of a realm's alignment gives it. */
-export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility';
+ *  Imperial Title (held, or chased by what its row measures), what an ability of a realm's alignment gives it, and
+ *  what a gift of its race gives it. */
+export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility' | 'raceGift';
 /** A kind of result's weights in a bot version: each a number, named for what it weighs. */
 export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 /** The bots' weights at a difficulty. */
@@ -340,16 +351,29 @@ export function botTuning(
   } else if (theGoldARealmsAlignmentClaimsForEachFoeDestroyed(pl.alignment) !== null) {
     T.rivalBias += 3; // Blood Harvest: gold per unit slain
   }
-  switch (pl.race) {
-    case 'Dwarven':
-      T.kingAttackMargin += 0.1;
-      T.heroAttackMargin += 0.1;
-      break; // Bulwark: dwarves win by being attacked
-    case 'Orcish':
-      T.kingAttackMargin -= 0.05;
-      T.heroAttackMargin -= 0.05;
-      T.upkeepCapFrac = Math.min(1, T.upkeepCapFrac + 0.05);
-      break; // War-spoils halve wages on a won attack
+  // The race's overlay, keyed by the gift the realm's race holds (its row, as the rule's runner asks it), not by the
+  // race's name (B-06ah); the bot's numbers are the first version's raceGift weights, as they were. Each gift is of
+  // one race, so at most one overlay applies, as the races' `case`s did, in their order.
+  const W = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.raceGift;
+  if (
+    theStepsTheGiftsOfItsRealmsRaceMakeOnACompany(pl.race, {
+      theCompanysRace: pl.race,
+      theTerrain: null,
+      itsSide: 'defending',
+    }).length > 0
+  ) {
+    // the Bulwark: a company of the realm's race defends at its gift's factor on any ground, so its realm wins by
+    // being attacked
+    T.kingAttackMargin += W.theKingsAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds;
+    T.heroAttackMargin += W.theHerosAttackMarginARealmWhoseCompaniesDefendAtAGiftsFactorOnAnyGroundAdds;
+  } else if (doesARealmsRaceTakeTheSpoilsOfABattleWonAttacking(pl.race)) {
+    // the War-spoils halve the wages on a won attack
+    T.kingAttackMargin -= W.theKingsAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff;
+    T.heroAttackMargin -= W.theHerosAttackMarginARealmThatTakesTheSpoilsOfABattleWonAttackingTakesOff;
+    T.upkeepCapFrac = Math.min(
+      1,
+      T.upkeepCapFrac + W.theShareOfTheIncomeTheWagesMayTakeMoreInARealmThatTakesTheSpoilsOfABattleWonAttacking,
+    );
   }
   return T;
 }
@@ -674,7 +698,9 @@ export function botEffForce(
 // Sept 2026 (bot strategy review §3): the per-unit race/terrain arithmetic the engine applies in armStr,
 // mirrored for the estimate — kinship (+20% king's race, +20% leader's race), the old grudges (−20%),
 // unit terrain modifiers and the sea penalty, Elven Woodland Mastery (×1.5 in forest/jungle) and Dwarven
-// Bulwark (×1.5 defending). All public: races, terrain and the rulebook's numbers.
+// Bulwark (×1.5 defending). All public: races, terrain and the rulebook's numbers. The kin's factors are the kin
+// rule's (content's THE_FACTORS_OF_THE_KIN_RULE) and the gifts' are their rows', asked of the race gifts' runner of
+// the owner's race (B-06ah); the bot multiplies each unrounded, where the battle rounds each step (KD-466).
 export function botRaceTerrainMult(
   G: TheStateAsTheEstimatesReadIt & object,
   c: ACommanderAsTheEstimatesReadHim | null | undefined,
@@ -689,10 +715,10 @@ export function botRaceTerrainMult(
   const oRace = oPi != null ? ((G.players ?? [])[oPi]?.race ?? '') || null : null;
   const lRace = (c?.race ?? '') || null;
   if (uRace) {
-    if (oRace && uRace === oRace) m *= 1.2;
-    if (lRace && uRace === lRace) m *= 1.2;
+    if (oRace && uRace === oRace) m *= THE_FACTORS_OF_THE_KIN_RULE.aUnitOfItsKingsRace;
+    if (lRace && uRace === lRace) m *= THE_FACTORS_OF_THE_KIN_RULE.aUnitLedByACommanderOfItsRace;
     const RIV: Readonly<Partial<Record<string, string>>> = { ...KC_RIVAL_RACE };
-    if (lRace && RIV[uRace] === lRace) m *= 0.8;
+    if (lRace && RIV[uRace] === lRace) m *= THE_FACTORS_OF_THE_KIN_RULE.aUnitLedByACommanderOfItsRivalKin;
   }
   // terrainMod / seaPenalty are runTurn-LOCAL (the scope trap): runTurn hands them in through hooks.terrainMult
   if (terrain) {
@@ -705,8 +731,14 @@ export function botRaceTerrainMult(
       }
     }
   }
-  if (uRace === 'Elven' && oRace === 'Elven' && (terrain === 'forest' || terrain === 'jungle')) m *= 1.5;
-  if (uRace === 'Dwarven' && oRace === 'Dwarven' && defending) m *= 1.5;
+  // the race gifts of the owner's race that strengthen the unit (Woodland Mastery's, then the Bulwark's), each its
+  // row's factor: defending where `defending` is, attacking where it is false, no side where it isn't given
+  for (const theStep of theStepsTheGiftsOfItsRealmsRaceMakeOnACompany(oRace, {
+    theCompanysRace: uRace,
+    theTerrain: terrain,
+    itsSide: defending ? 'defending' : defending === false ? 'attacking' : null,
+  }))
+    m *= theStep.theFactor;
   return m;
 }
 // Whole-force multipliers the rulebook promises without a roll: Evil ×1.25 with any Monster (the Druidic

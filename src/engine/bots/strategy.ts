@@ -1,4 +1,9 @@
-import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_RIVAL_RACE,
+  KC_UNIT_CLASS,
+  THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
+} from '../../content/kingdoms-call-data.ts';
+import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../rules-on-plain-values/whether-a-race-is-the-wilds-or-one-of-its-sub-races.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { ALIGNMENTS_P, heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -1018,7 +1023,7 @@ export function botRecruitableTypes(
     try {
       m = druIdPenaltyMult(
         cmdr,
-        { type: t, race: (prov.race ?? '') || 'Human' },
+        { type: t, race: (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS },
         align,
         aRealmsDiscoveriesLetABeastFollowWithoutItsDruid(theRealm, { theUnitsType: t }),
         G.characters,
@@ -1029,7 +1034,14 @@ export function botRecruitableTypes(
     // Sept 2026: kinship / grudge for THIS commander, and the unconditional fervour an Evil (Monster) realm
     // gets from the unit — an Orc lord buying human levies at −20% was paying full price. (The Druidic
     // ×1.25, Wild Ferocity, was retired 2026-10-13.)
-    m *= botRaceTerrainMult(G, cmdr, { type: t, race: (prov.race ?? '') || 'Human' }, null, false, cmdr.player);
+    m *= botRaceTerrainMult(
+      G,
+      cmdr,
+      { type: t, race: (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS },
+      null,
+      false,
+      cmdr.player,
+    );
     // the fervour a host of this one unit fights at, as the battles weigh it (savage fury's row: an Evil realm's
     // Monster, ×1.25), taken for each unit, not once a host (KD-435; P1-19bb8)
     m *= theFervourOfASide(align, {
@@ -1044,8 +1056,8 @@ export function botRecruitableTypes(
   // grudge-race province yields nothing to that commander; the feeder pipeline brings him kin instead.
   if (G && cmdr) {
     const RIV: Partial<Record<string, string>> = { ...KC_RIVAL_RACE };
-    const pr = (prov.race ?? '') || 'Human';
-    if (cmdr.race && RIV[pr] === cmdr.race && !pr.startsWith('Primal')) {
+    const pr = (prov.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS;
+    if (cmdr.race && RIV[pr] === cmdr.race && !isTheRaceTheWildsOrOneOfItsSubRaces(pr)) {
       const pi2 = cmdr.player;
       const near = (asItsGuardReadsIt(G.world.provinces) ?? []).some(
         (x) =>
@@ -1056,7 +1068,7 @@ export function botRecruitableTypes(
           (asItsGuardReadsIt(x.armyTypes) ?? []).some(
             (t) => asItsGuardReadsIt(t) && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t),
           ) &&
-          RIV[(x.race ?? '') || 'Human'] !== cmdr.race &&
+          RIV[(x.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS] !== cmdr.race &&
           ((botPathLen(G, pi2, prov, x.id, false) ?? 0) || 99) <= 2,
       );
       if (near) return [];
