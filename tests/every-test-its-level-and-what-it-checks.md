@@ -515,7 +515,7 @@ CI's `db` job, not by `npm test`.
 - `tests/browser/map-fits-panel.spec.ts` (browser): In real Chromium, an 8×7 map fits whole inside the desktop map panel (after switching the panel to Report and back), the legend stays inside the panel, and the zoomed (desktop) or phone map scrolls both ways down to its bottom row
 - `tests/browser/orders-buttons-visible.spec.ts` (browser): In real Chromium, Save Draft and Submit Orders stay on screen over a long orders form, at the top and part-way down, on desktop windows and a phone
 - `tests/browser/the-dispatches-panel-end-to-end.spec.ts` (browser): In real Chromium on the fake, the player portal's Dispatches panel end to end: tabs, channels, sending, unread badges and read marks, a conference, paging back, one human, no table, the phone's tabs, the poll stopped
-- `tests/browser/the-gms-statistics-label-the-creed-orders-by-their-rows-names.spec.ts` (browser): In Chromium on the fake, the GM's Statistics tab labels Harvest the Field and Perform Rite by their rows' names (R-189), whole in the hover text; it notes if one is cut in its 110 px column
+- `tests/browser/the-gms-statistics-label-the-creed-orders-by-their-rows-names.spec.ts` (browser): In Chromium on the fake, the GM's Statistics tab shows Harvest the Field and Perform Rite by their rows' names (R-189), whole in the hover text, in a column the CSS keeps within 110 px
 - `tests/browser/third-party-requests.spec.ts` (browser): Every page, opened in Chromium with the real supabase-js and no database, asks no other site for anything but Google Fonts; on the pages that use the database the library loads from `assets/`. Level 4 …
 
 ## Quarantined (not run)

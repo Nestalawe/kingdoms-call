@@ -3,10 +3,11 @@
 // 110 px wide that cuts a longer name with an ellipsis (statsBars in src/ui/gm/stats-tab.ts), so a longer name may show
 // cut off: the hover text (the label's title) is where the GM reads it whole.
 //
-// Level: browser (Chromium). The unit case beside the tab's other cards (jsdom) holds the label's words and its title,
-// but jsdom lays nothing out, so only a browser can measure whether the name fits its column. The spec doesn't pin
-// whether it is cut (that depends on the fonts the machine has); it notes the measure, and holds that the label and its
-// title both give the whole name, cut or not.
+// Level: browser (Chromium). The unit case beside the tab's other cards (jsdom) holds the label's words and its title in
+// the tab's HTML, handed the rows directly. This spec holds them as the real page renders them: the GM signed in, the
+// tab opened, the turn records read from the fake database, the label shown with its words and its hover text, in a
+// column the page's CSS lays out no wider than 110 px. jsdom lays nothing out, so it can't hold the column. Whether a
+// name fits whole is not held: that depends on the fonts the machine has.
 import { expect, test } from '@playwright/test';
 import type { TheGameMastersWorldAsData } from '../lib/fake-db.ts';
 import { gmPortalSignedIn } from './started.ts';
@@ -76,19 +77,9 @@ test("the Statistics tab labels Harvest the Field and Perform Rite by their rows
     const label = page.locator('#stats-body').locator(`div[title="${name}"]`).first();
     await expect(label, `${name}: no label holds it as its hover text`).toBeVisible();
     await expect(label, `${name}: the label's words`).toHaveText(name);
-    // the words' own width, laid out on one line (a range over them), against the column's
-    const measure = await label.evaluate((el) => {
-      const words = document.createRange();
-      words.selectNodeContents(el);
-      return { shown: el.clientWidth, whole: Math.ceil(words.getBoundingClientRect().width) };
-    });
-    expect(measure.shown, `${name}: the label's column`).toBeLessThanOrEqual(110);
-    test.info().annotations.push({
-      type: 'measure',
-      description: `${name}: ${String(measure.whole)} px whole in a ${String(measure.shown)} px column: ${
-        measure.whole > measure.shown ? 'cut, with an ellipsis' : 'shown whole'
-      }`,
-    });
+    // the column the page's CSS lays the label out in
+    const theColumn = await label.evaluate((el) => el.clientWidth);
+    expect(theColumn, `${name}: the label's column`).toBeLessThanOrEqual(110);
   }
   expect(errs, 'page errors').toEqual([]);
 });
