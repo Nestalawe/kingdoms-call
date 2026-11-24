@@ -15390,7 +15390,8 @@ export const KC_TEMPERS = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
 export const KC_HUMANOID_RACES = ['Human', 'Elven', 'Dwarven', 'Orcish'] as const;
 // The race a company or a province of no race reads as (B-06ac): the grave of a company of no race, a disbanded one's
 // folk, and the companies a province of no race gives (a Call to Arms', Evil's enslaved garrison, the neutral
-// defenders, a recruit) are of this race, and so is the heir of a realm of no race. No seeded game holds one.
+// defenders, a recruit) are of this race, and so is the heir of a realm of no race, and the king the GM's turn zero
+// makes of a setup that names no race (B-06ak). No seeded game holds one.
 export const THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS = 'Human' satisfies (typeof KC_HUMANOID_RACES)[number];
 // The wild's race (B-06ac): the wild sea beasts a Recruit order raises, and a Wild Hunt's beasts in a province of no
 // race, are of it; a province of it (or of one of its sub-races, 'Primal:Wolf') is the wild's, not a people's: no Call
