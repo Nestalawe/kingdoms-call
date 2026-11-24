@@ -1104,6 +1104,24 @@ export const HERO_EPITHET_OVERFLOW = [
   'the Mended',
 ];
 
+/** The label a player reads each guardian's kind by (P1-19bb2: moved here from src/engine/rules-on-plain-values/a-
+ *  guardians-kind-and-the-label-a-player-reads-it-by.ts, whose monsterCatLabel reads it): the word the reports print
+ *  beside a guardian's name, by its kind (monsterCat). Words for players: the Undead kind's label is its own fact, not
+ *  the risen dead's race, though the word is the same. */
+export const MONSTER_CAT_LABELS = {
+  humanoid: 'Humanoid',
+  undead: 'Undead',
+  beast: 'Beast',
+  vermin: 'Vermin',
+  giant: 'Giant',
+  dragon: 'Dragon',
+  fiend: 'Fiend',
+  fey: 'Fey',
+  aberration: 'Aberration',
+  elemental: 'Elemental',
+  construct: 'Construct',
+};
+
 export const MONSTERS_P = [
   // ── 2026-10-14 (batch item 7): every guardian has ONE PERK PER GRADE in `passives` (Weak 1,
   // Moderate 2, Powerful 3, Legendary 4), each valued by its grade (the decided table in

@@ -1,5 +1,6 @@
 import { KC_UNIT_CLASS, SAGE_DISCOVERIES_P } from '../content/kingdoms-call-data.ts';
 import type { ADiscoverysRow } from '../content/discovery-effects-their-kinds-numbers-and-words.ts';
+import { THE_WONDERS, type AWondersSlug } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   DISC_BY_ID,
   aRealmsDiscoveriesLetABeastFollowWithoutItsDruid,
@@ -300,6 +301,16 @@ export function applyPendingSynthPlan(
 export function gdActive(turnContext: Pick<TurnContext, 'G'>, playerIdx: number, align: string | null | undefined) {
   const { G } = turnContext;
   return gdActiveFor(G, playerIdx, align);
+}
+/** Whether a Wonder serves a realm (P1-19bb3), asked by the Wonder's row (its slug in THE_WONDERS): the realm is of the
+ *  row's alignment, has raised its Grand Design, and still holds the Wonder's province (gdActive's rule, by that
+ *  alignment). */
+export function theWonderServesTheRealm(
+  turnContext: Pick<TurnContext, 'G'>,
+  playerIdx: number,
+  theWonder: AWondersSlug,
+) {
+  return gdActive(turnContext, playerIdx, THE_WONDERS[theWonder].alignment);
 }
 // sd40 Dragon Taming: true when this commander's realm leads this winged beast without Druid
 // penalty.

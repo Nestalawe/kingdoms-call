@@ -1,4 +1,6 @@
+import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
+import { aRealmOfThisCreedMayGiveTheAlignmentOrder } from '../rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
 import { kcRng } from '../rng.ts';
 import {
   ENCOUNTER_CLEAR_GOLD_BANDS,
@@ -506,7 +508,11 @@ export function resolveSearchLairOrder(
   // the order form no longer offers one. An old saved order that names one is refused here.
   if (f.ritualSite) {
     // Nothing lairs at a ritual site — there is no guardian to fight and no treasure to lift.
-    const isPagan = hisRealm()?.alignment === 'Pagan';
+    // whether his realm is of Perform Rite's creed (its row, P1-19bb5): the words tell him he may perform rites here
+    const isPagan = aRealmOfThisCreedMayGiveTheAlignmentOrder(
+      THE_ALIGNMENT_ORDERS['perform-rite'],
+      hisRealm()?.alignment,
+    );
     emit(turnContext, {
       type: 'explore',
       fact: {

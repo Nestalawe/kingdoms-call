@@ -10,6 +10,8 @@
 // hero against. Every player-facing list now prints it beside the name. Display only; no mechanic
 // moves. Shipped on the feature payloads as `monsterCat` and rendered by the player portal.
 
+import { MONSTER_CAT_LABELS } from '../../content/kingdoms-call-data.ts';
+
 /** A guardian as the lair names and its kind read it (a test's may hold its category alone). */
 export interface AGuardianAsTheseRead {
   readonly cat?: string | null | undefined;
@@ -42,19 +44,6 @@ export function monsterCat(m: AGuardianAsTheseRead | null | undefined) {
     return 'humanoid';
   return 'beast';
 }
-export const MONSTER_CAT_LABELS = {
-  humanoid: 'Humanoid',
-  undead: 'Undead',
-  beast: 'Beast',
-  vermin: 'Vermin',
-  giant: 'Giant',
-  dragon: 'Dragon',
-  fiend: 'Fiend',
-  fey: 'Fey',
-  aberration: 'Aberration',
-  elemental: 'Elemental',
-  construct: 'Construct',
-};
 export function monsterCatLabel(m: Parameters<typeof monsterCat>[0]) {
   if (!m) return '';
   const c = monsterCat(m);

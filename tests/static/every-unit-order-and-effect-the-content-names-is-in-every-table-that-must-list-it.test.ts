@@ -193,7 +193,10 @@ const THE_RULEBOOK = fs
 const ACTIONS = stringsIn(
   theLiteralDeclared(THE_ORDER_FORMS_LISTS, 'ACTIONS', { theNameTheFormWritesOfTheAlignmentOrder }),
 );
-const ACTION_DISPLAY_ORDER = stringsIn(theLiteralDeclared(THE_ORDER_FORMS_LISTS, 'ACTION_DISPLAY_ORDER'));
+// (since P1-19ba1 its alignment orders are their rows' names too, as ACTIONS' are)
+const ACTION_DISPLAY_ORDER = stringsIn(
+  theLiteralDeclared(THE_ORDER_FORMS_LISTS, 'ACTION_DISPLAY_ORDER', { theNameTheFormWritesOfTheAlignmentOrder }),
+);
 const THE_WILD_POOLS = {
   creatures: ['THE_WILD_CREATURES_BY_TERRAIN'],
   monsters: ['THE_WILD_MONSTERS_BY_TERRAIN'],

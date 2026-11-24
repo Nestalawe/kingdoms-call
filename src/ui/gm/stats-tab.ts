@@ -77,14 +77,14 @@ export const STATS_ACTION_LABEL = {
   equip_items: 'Equip',
   give_item: 'Give item',
   encounter: 'Encounter',
-  // three alignment orders by their rows' names; "Harvest Field" and "Rite" below are the GM's own short words
+  // the five creed orders by their rows' names (R-189); the two removed orders have no row, so keep their words
   consecrate: THE_ALIGNMENT_ORDERS.consecrate.name,
   call_to_arms: THE_ALIGNMENT_ORDERS['call-to-arms'].name,
   broker: THE_ALIGNMENT_ORDERS.broker.name,
   awaken_wild: 'Awaken Wild',
   call_pit: 'Call from the Pit',
-  harvest_field: 'Harvest Field',
-  rite: 'Rite',
+  harvest_field: THE_ALIGNMENT_ORDERS['harvest-the-field'].name,
+  rite: THE_ALIGNMENT_ORDERS['perform-rite'].name,
 };
 export const STATS_COL = { crimson: '#7a1c1c', forest: '#2d4a1e', gold: '#c8922a', blue: '#2f5f8f', stone: '#6b5a42' };
 

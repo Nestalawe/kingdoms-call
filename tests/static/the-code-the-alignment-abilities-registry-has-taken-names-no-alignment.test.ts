@@ -107,6 +107,232 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     TOP,
     'P1-19ax2, war without warning, a broken alliance and the doctrine for the portal: their rows',
   ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'combatVsNPC',
+    "P1-19bb1, a realm of none: the attacker's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/battle/battles-between-heroes.ts',
+    'combatVsChar',
+    "P1-19bb1, a realm of none: each side's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/battle/best-commander.ts',
+    'commandScore',
+    "P1-19bb1, a realm of none: the candidate's realm's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/orders/alignment/broker-a-neutral-kings-order-to-hire-a-hero-or-buy-word-from-afar.ts',
+    'resolveBrokerOrder',
+    "P1-19bb1, a realm of none: the hiring realm's alignment in the wage, from the content's constant",
+  ],
+  [
+    'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts',
+    'resolveGrandDesignOrder',
+    "P1-19bb1, a realm of none: the Wonder's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts',
+    'workCharm',
+    "P1-19bb1, a realm of none: the charming realm's alignment in the wage, from the content's constant",
+  ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workControlUndead',
+    "P1-19bb2, the risen dead's race: the dead Control Undead finds, by the content's race",
+  ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workRaiseWraiths',
+    "P1-19bb2, the risen dead's race: the wraiths raised, of the content's race",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s09-each-home-tailored-and-its-king-and-heroes-made.ts',
+    'eachHomeTailoredAndItsKingAndHeroesMade',
+    "P1-19bb2, the risen dead's race: an Undead king's skeletal company, of the content's race",
+  ],
+  [
+    'src/engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts',
+    TOP,
+    "P1-19bb2, a guardian's kind: the labels a player reads, moved to the content",
+  ],
+  [
+    'src/engine/battle/blood-harvest-and-iron-throne.ts',
+    'ironThroneRaise',
+    "P1-19bb2 and bb3, the Iron Throne's rises: their race, and the Wonder by its row",
+  ],
+  ['src/engine/battle/terrain-and-unit-strength.ts', 'armStr', 'P1-19bb3, the Standing Stones: the Wonder by its row'],
+  [
+    'src/engine/orders/alignment/harvest-the-field-an-undead-realms-order-to-raise-a-grave-as-a-skeletal-company.ts',
+    'resolveHarvestTheFieldOrder',
+    "P1-19bb2 and bb3, Harvest the Field: the risen's race, and the Deathless Legion by its row",
+  ],
+  [
+    'src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts',
+    'resolveCastSpellOrder',
+    "P1-19bb3, the Grand Cathedral's Bless: the Wonder by its row",
+  ],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveRecruitArmiesOrder',
+    "P1-19bb3, the World-Tree Grove's Veterans: the Wonder by its row",
+  ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workSkeletalArmies',
+    "P1-19bb2 and bb3, Skeletal Armies: the risen's race, and the Deathless Legion by its row",
+  ],
+  [
+    'src/engine/orders/spells/necromancy-spells-the-cast-spell-order-works.ts',
+    'workDeathsDominion',
+    "P1-19bb2 and bb3, Death's Dominion: the risen's race, and the Deathless Legion by its row",
+  ],
+  [
+    'src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts',
+    'movePoolsPerTurnTrackersEspionageResetsAndTheSaveSweepsBeforeTheBotsPlan',
+    "P1-19bb4, the Grand Cathedral's ward: the Wonder by its row",
+  ],
+  [
+    'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
+    'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
+    "P1-19bb4, the Free City Charter's tax, the World-Tree Grove's wages and the Deathless Legion's unpaid: their Wonders by their rows",
+  ],
+  [
+    'src/engine/turn/new-turn-counter-king-succession-summons-and-spells-end-and-the-grand-designs.ts',
+    'newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesigns',
+    "P1-19bb1 and bb4, the new turn: a realm of none's alignment, from the content's constant, and the Grand Library by its row",
+  ],
+  [
+    'src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts',
+    'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages',
+    "P1-19bb5, war without warning's words: the dead's, from the Undead's row",
+  ],
+  [
+    'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts',
+    'resolveHireHeroOrder',
+    "P1-19bb1 and bb5, Hire Hero: a realm of none's alignment, from the content's constant, and the gulf's words, from the ladder's first rung",
+  ],
+  [
+    'src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts',
+    'resolveSearchLairOrder',
+    "P1-19bb5, a ritual site walked: the words for Perform Rite's creed, from its row",
+  ],
+  [
+    'src/engine/world/the-worlds-making/s16-every-neutral-province-gets-its-guard-hero-and-garreth-his-province.ts',
+    'everyNeutralProvinceGetsItsGuardHeroAndGarrethHisProvince',
+    "P1-19bb5, Garreth the Independent: his creed, from the content's constant",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botEffForce',
+    "P1-19bb6, the bots' force estimate: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botBattleForce',
+    "P1-19bb6, the bots' battle estimate: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botDruidShortfall',
+    "P1-19bb6, the bots' Druid shortfall: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botAlignOf',
+    "P1-19bb6, the bots' read of a realm's alignment: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/movement.ts',
+    'theAlignmentOf',
+    "P1-19bb6, the bots' marches: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/setup.ts',
+    'pickBotAlignment',
+    "P1-19bb6, a bot's alignment: the one a bot takes with none left, from the content's constant",
+  ],
+  [
+    'src/engine/bots/setup.ts',
+    'pickBotAlignmentBalanced',
+    "P1-19bb6, a bot's balanced alignment: the one a bot takes with none left, from the content's constant",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botHireOrder',
+    "P1-19bb6, the bots' Hire Hero: a realm of none's alignment, from the content's constant",
+  ],
+  [
+    'src/engine/bots/economy.ts',
+    'runBotOrderHygiene',
+    "P1-19bb7, the bots' hand-overs: whether the risen dead follow, from the Undead's row (and bb6's wage)",
+  ],
+  [
+    'src/engine/bots/missions.ts',
+    'botConsecrateOK',
+    "P1-19bb7, the bots' Consecrate: the realm of its creed, from its row",
+  ],
+  [
+    'src/engine/bots/missions.ts',
+    'botSignaturePre',
+    "P1-19bb7, the bots' creed orders: Consecrate, Call to Arms, Harvest the Field and Broker, each by its row",
+  ],
+  [
+    'src/engine/bots/missions.ts',
+    'botRitePre',
+    "P1-19bb7, the bots' Perform Rite: the realm of its creed, from its row",
+  ],
+  [
+    'src/engine/bots/spellcraft.ts',
+    'botCastPlan',
+    "P1-19bb7, the bots' Bless: a hero leaves it to his king where the Divine blessing raises it, from its row",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botFervourMult',
+    "P1-19bb8, the bots' fervour: savage fury's, skeletal fervour's and Righteous Defence's factors, from their rows (and bb6's realm of none)",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'effOf',
+    "P1-19bb8, the bots' worth of a recruit: savage fury's factor, from its row (and bb6's realm of none)",
+  ],
+  [
+    'src/engine/bots/strategy.ts',
+    'botHeroCap',
+    "P1-19bb8, the bots' court: the realm whose dearest wanderer asks the least, by the hire wage, wants the weights' heroes more",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botSpecialistRoles',
+    "P1-19bb8, the bots' scholars: a realm whose alignment adds to research, by its row, wants the weights' scholars more",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botScholarOrders',
+    "P1-19bb8, the bots' scholar: researches from the weights' Sage level for a realm whose alignment adds to research",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botRoleWork',
+    "P1-19bb8, the bots' scholar's work: from the weights' Sage level for a realm whose alignment adds to research",
+  ],
+  [
+    'src/engine/bots/specialists.ts',
+    'botRoleReady',
+    "P1-19bb8, the bots' scholar is ready: at the weights' Sage level for a realm whose alignment adds to research",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botTuning',
+    "P1-19bb9, the bots' tuning: Divine grace's, the Banner's, the doctrine's and the Blood Harvest's overlays, by their rows",
+  ],
+  [
+    'src/engine/bots/war.ts',
+    'botWarAssess',
+    "P1-19bb9, the bots' war bar: the dark creeds' lower bar for a realm that declares war without warning, by its rows",
+  ],
 ];
 
 /** A function's or a method's declaration, or a variable's arrow or function, and its name (as the ratchet's helper

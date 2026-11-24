@@ -54,4 +54,20 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     /** A chased title wants this many specialists more, of the role whose work earns its deeds. */
     theSpecialistsMoreAChasedTitleWants: 1,
   },
+  /** What an ability of a realm's alignment gives it: the heroes its court wants (botHeroCap, bots/strategy.ts), and
+   *  the scholars it wants and the Sage level they work from (botSpecialistRoles and the scholar's orders,
+   *  bots/specialists.ts). What each ability does is its row's, asked through the rules (the hire wage by the ladder,
+   *  a Research's chance by the alignment); a host's fervour (botFervourMult, bots/intel.ts) and a recruit's
+   *  (botRecruitableTypes) are the rules' factors themselves, weighed at a point of strength a point. */
+  alignmentAbility: {
+    /** A realm whose dearest wandering hero asks the least wage any realm's dearest asks (the ladder's middle) wants
+     *  this many heroes more at court. */
+    theHeroesMoreARealmWhoseDearestWandererAsksTheLeastWants: 1,
+    /** A realm whose alignment adds to a Research's chance with each Sage level wants this many scholars more. */
+    theScholarsMoreARealmWhoseAlignmentAddsToResearchWants: 1,
+    /** Such a realm's scholar researches from this Sage level, and trains Sage below it, ... */
+    theSageLevelFromWhichSuchARealmsScholarResearches: 1,
+    /** ... and any other realm's from this one. */
+    theSageLevelFromWhichAnyOtherRealmsScholarResearches: 2,
+  },
 } satisfies Record<AKindOfResultABotWeighs, TheWeightsOfAKindOfResult>;

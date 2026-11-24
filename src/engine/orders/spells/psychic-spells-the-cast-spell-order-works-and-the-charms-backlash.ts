@@ -3,6 +3,7 @@
 // as one object (what-an-action-spell-of-the-cast-spell-order-is-handed.ts), a `return;` made `return false;` ("the
 // cast ends here": no skill gain) and its end `return true;` ("the spell is worked"). The table in the-action-
 // spells-the-cast-spell-order-works-by-slug.ts finds each by its slug.
+import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { kcRng } from '../../rng.ts';
 import { COMBAT_ONLY_TACTICS, demoteOrDisband } from '../../army-tables.ts';
 import { heroHireWage } from '../../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -405,7 +406,7 @@ export function workCharm({ turnContext, G, c, ph, prov, player, targetChar }: T
     }
     // The Divine/Undead gulf binds even magic: no charm sways a soul across distance 6.
     const _chWage = heroHireWage(
-      (G.players[c.player]?.alignment ?? '') || 'Neutral',
+      theAlignmentARealmReadsAs(G.players[c.player]?.alignment),
       t.alignment,
       doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]), // sd31 Diplomatic Protocols (the registry's, P1-19ae)
       t,

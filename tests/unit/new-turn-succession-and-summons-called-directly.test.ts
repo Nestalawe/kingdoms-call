@@ -181,8 +181,15 @@ const THE_HELPERS_THE_STAGE_CALLS = {
     ),
   nextHeroName: (b: Board, calls: Call[], instead?: Fn) =>
     recordEachCall(theNames.nextHeroName, vi.spyOn(theNames, 'nextHeroName'), 'nextHeroName', b, calls, instead),
-  gdActive: (b: Board, calls: Call[], instead?: Fn) =>
-    recordEachCall(theDiscoveries.gdActive, vi.spyOn(theDiscoveries, 'gdActive'), 'gdActive', b, calls, instead),
+  theWonderServesTheRealm: (b: Board, calls: Call[], instead?: Fn) =>
+    recordEachCall(
+      theDiscoveries.theWonderServesTheRealm,
+      vi.spyOn(theDiscoveries, 'theWonderServesTheRealm'),
+      'theWonderServesTheRealm',
+      b,
+      calls,
+      instead,
+    ),
   discBlockedIds: (b: Board, calls: Call[], instead?: Fn) =>
     recordEachCall(
       theDiscoveries.discBlockedIds,
@@ -223,7 +230,7 @@ function standIn(
 const HELPERS: AHelperTheStageCalls[] = [
   'ownedConsecratedProvs',
   'nextHeroName',
-  'gdActive',
+  'theWonderServesTheRealm',
   'discBlockedIds',
   'discEligible',
 ];
@@ -239,10 +246,10 @@ describe('The new turn: what it calls', () => {
     const of = (f: string) => calls.filter((c) => c.fn === f).map((c) => c.args);
     expect(of('ownedConsecratedProvs')).toEqual([[b.G, 0]]);
     expect(of('nextHeroName')).toEqual([['Divine']]);
-    expect(of('gdActive')).toEqual([
-      [b.tc, 0, 'Neutral'],
-      [b.tc, 1, 'Neutral'],
-      [b.tc, 2, 'Neutral'],
+    expect(of('theWonderServesTheRealm')).toEqual([
+      [b.tc, 0, 'grand-library'],
+      [b.tc, 1, 'grand-library'],
+      [b.tc, 2, 'grand-library'],
     ]);
     expect(of('discBlockedIds')).toEqual([[realm(b, 2)]]);
     const ds = SAGE_DISCOVERIES_P;

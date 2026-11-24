@@ -102,6 +102,7 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsRoles } from './intel.ts';
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 
 // Its types (plan P1-10b47): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -176,7 +177,7 @@ function theProvinceOfTheThreat(G: GameState, provId: number): Province {
 }
 /** A realm's alignment, else Neutral (a realm off the list reads as one of none). */
 function theAlignmentOf(G: GameState, pi: number): string {
-  return (G.players[pi]?.alignment ?? '') || 'Neutral';
+  return theAlignmentARealmReadsAs(G.players[pi]?.alignment);
 }
 
 // ══ RAISE THE FALLEN (2026-09-28, Toby: bots with white mages resurrect their heroes) ════

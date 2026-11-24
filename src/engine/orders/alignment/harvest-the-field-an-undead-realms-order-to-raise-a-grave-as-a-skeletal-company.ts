@@ -3,10 +3,13 @@
 // alignment abilities' registry's, at "orderValidity: who may give an alignment order"; the rest is the order's own, as
 // the realm's works' file held it until P1-19aw2. Its one die in its place: a name for a grave that has none.
 import { KC_QUALITY_UP } from '../../../content/kingdoms-call-data.ts';
-import { THE_ALIGNMENT_ORDERS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  THE_ALIGNMENT_ORDERS,
+  THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
+} from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { takeBestGrave } from '../../graves.ts';
 import { armyUnitName } from '../../dice-and-army-names.ts';
-import { gdActive } from '../../discoveries.ts';
+import { theWonderServesTheRealm } from '../../discoveries.ts';
 import {
   emit,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -77,11 +80,11 @@ export function resolveHarvestTheFieldOrder(
   if (!hGrave) throw new TypeError("Cannot read properties of null (reading 'type')");
   // the qualities a tier up, by any quality's name
   const qualityUp: Readonly<Partial<Record<string, string>>> = KC_QUALITY_UP;
-  const _uTierH = gdActive(turnContext, c.player, 'Undead'); // GRAND DESIGN — Undead
+  const _uTierH = theWonderServesTheRealm(turnContext, c.player, 'deathless-legion'); // GRAND DESIGN — Undead
   const hSkel = {
     type: hGrave.type,
     quality: _uTierH ? (qualityUp[hGrave.quality] ?? '') || hGrave.quality : hGrave.quality,
-    race: 'Undead',
+    race: THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
     _isSkeletal: true,
     unitName: `${String(hGrave.unitName || armyUnitName(hGrave.type))} (Skeletal)`,
   };

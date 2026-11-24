@@ -2,6 +2,7 @@
 // afar, or to buy word from a province the realm has seen. Who may give it (the creed, then the king) is the alignment
 // abilities' registry's, at "orderValidity: who may give an alignment order"; the rest is the order's own, as the realm's
 // works' file held it until P1-19aw2. It draws no die of its own.
+import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { heroHireWage } from '../../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { grantMithrilTo } from '../../personal-combat/helpers.ts';
@@ -90,7 +91,7 @@ export function resolveBrokerOrder(
     // sd31 Diplomatic Protocols (the discoveries' registry's since plan P1-19ae: "orderValidity: a realm's discoveries
     // waive the hiring ban")
     const bWage = heroHireWage(
-      (G.players[c.player]?.alignment ?? '') || 'Neutral',
+      theAlignmentARealmReadsAs(G.players[c.player]?.alignment),
       bh.alignment,
       doARealmsDiscoveriesWaiveTheHiringBan(G.players[c.player]),
       bh,

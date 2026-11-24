@@ -1,9 +1,10 @@
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_SKILLS, SAGE_DISCOVERIES_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { TEMPERS_P } from '../world/tables.ts';
 import { nextHeroName } from '../names.ts';
 import { ownedConsecratedProvs } from '../heroes/fame-and-consecration.ts';
-import { discBlockedIds, discEligible, gdActive } from '../discoveries.ts';
+import { discBlockedIds, discEligible, theWonderServesTheRealm } from '../discoveries.ts';
 import {
   emit,
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
@@ -208,7 +209,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     // (a test stands in an engine with no name-giver: tests/unit/new-turn-succession-and-summons-called-directly.test.ts)
     const heirName =
       typeof asItsGuardReadsIt(nextHeroName) === 'function'
-        ? nextHeroName(p.alignment || 'Neutral')
+        ? nextHeroName(theAlignmentARealmReadsAs(p.alignment))
         : deadKing
           ? 'Heir of ' + deadKing.name
           : 'The New Monarch';
@@ -218,7 +219,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       isKing: true,
       player: pi,
       race: p.race || 'Human',
-      alignment: p.alignment || 'Neutral',
+      alignment: theAlignmentARealmReadsAs(p.alignment),
       temper: theOneThePickFell(TEMPERS_P[Math.floor(kcRng() * TEMPERS_P.length)]), // provisional — the player may rename and re-temper their heir
       hp: 15,
       maxHp: 15,
@@ -436,7 +437,7 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
 
   // GRAND DESIGN — Neutral (Grand Library): one guaranteed Sage discovery each turn, reported.
   (asItsGuardReadsIt(G.players) ?? []).forEach((pl, pi) => {
-    if (!gdActive(turnContext, pi, 'Neutral')) return;
+    if (!theWonderServesTheRealm(turnContext, pi, 'grand-library')) return;
     pl.discoveries = asItsGuardReadsIt(pl.discoveries) ?? [];
     const _known = new Set(pl.discoveries.map((d) => d.id));
     const _blkGL = discBlockedIds(pl);

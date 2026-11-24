@@ -9,9 +9,9 @@
 // the intro states. Neither table names a signature order with no row. The player page's two texts of its creed (the
 // turn report's summary, ALIGNMENT_SUMMARIES; the join form's description, the alignment's DESCS, read by scan: the one
 // string that opens on the creed in bold) name it, and state each number in the words its row gives for that place
-// (P1-11d9). The GM's statistics label Consecrate, Call to Arms and the Broker by their rows' names; "Harvest Field" and
-// "Rite" are the GM's own words. So a number, a name, a creed or the king's mark changed in content, and not in the
-// books or the page's texts (or there, and not in content), turns this red. Since P1-19at1 each alignment ability's
+// (P1-11d9). The GM's statistics label each of the five by its row's name (R-189). So a number, a name, a creed or the
+// king's mark changed in content, and not in the books or the page's texts (or there, and not in content), turns this
+// red. Since P1-19at1 each alignment ability's
 // numbers (the rows always on, in the same file) are held the same way: each stated in
 // the words its row gives in its creed's section of the rulebook, the rulebook's paragraph on gold, its creed's row of
 // the rulebook's orders table (since P1-19at2), its creed's row of the intro's table, and the page's two texts of its
@@ -248,15 +248,15 @@ test.for(ROWS.map((row) => [row.name, row] as const))(
   },
 );
 
-test("the GM's statistics label Consecrate, Call to Arms and the Broker by their rows' names; Harvest Field and Rite are its own words", () => {
-  // (P1-11d9, choice 3's option 1) a value read from a row is its source; a literal, its words
+test("the GM's statistics label each creed order by its row's name (R-189)", () => {
+  // a value read from a row is its source; a literal would be the GM page's own words, which R-189 retired
   const labels = new Map(entriesOf('ui/gm/stats-tab.ts', 'STATS_ACTION_LABEL').map((e) => [e.key, e.value]));
   expect(ROWS.map((row) => [row.key, labels.get(row.key)])).toEqual([
     ['consecrate', 'THE_ALIGNMENT_ORDERS.consecrate.name'],
     ['call_to_arms', "THE_ALIGNMENT_ORDERS['call-to-arms'].name"],
     ['broker', 'THE_ALIGNMENT_ORDERS.broker.name'],
-    ['harvest_field', 'Harvest Field'],
-    ['rite', 'Rite'],
+    ['harvest_field', "THE_ALIGNMENT_ORDERS['harvest-the-field'].name"],
+    ['rite', "THE_ALIGNMENT_ORDERS['perform-rite'].name"],
   ]);
 });
 
@@ -277,7 +277,12 @@ test("the rows' numbers are the ones the books state today", () => {
     'Call to Arms': { theGradeMustered: 'Green' },
     Broker: { thePriceOfWordFromAProvince: 2 },
     'Harvest the Field': { thePrice: 2 },
-    'Perform Rite': { theWildHuntsBeasts: 2, theWildHuntsTurnsMore: 1, theBloodOfferingsGrades: 2 },
+    'Perform Rite': {
+      theWildHuntsBeasts: 2,
+      theWildHuntsGrade: 'Veteran',
+      theWildHuntsTurnsMore: 1,
+      theBloodOfferingsGrades: 2,
+    },
   });
 });
 

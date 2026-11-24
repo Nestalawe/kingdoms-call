@@ -22,6 +22,11 @@ export const doesAnAlignmentDeclareWarWithoutWarning = (theAlignment: unknown): 
     theAlignment,
   );
 
+/** Whether a realm of the alignment declares war without warning as the dead do (the Undead's row, P1-19bb5): the
+ *  line's words ("the dead keep no truce", not "the wicked keep no faith"). */
+export const doesAnAlignmentDeclareWarWithoutWarningAsTheDead = (theAlignment: unknown): boolean =>
+  anAbilityOfTheListIsOf(['war-without-warning-of-an-undead-realm'], theAlignment);
+
 /** Whether a realm of the alignment that breaks an alliance goes to war, not to neutral (the reckoning, and the
  *  diplomacy card's button). */
 export const doesAnAlignmentBreakAnAllianceIntoWar = (theAlignment: unknown): boolean =>

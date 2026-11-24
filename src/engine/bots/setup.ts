@@ -14,6 +14,7 @@ import { BOT_ALLY_ALIGN_DIST } from './intel.ts';
 import { gameMetaOf } from '../rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import type { GamesRowWithSettings } from '../rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
+import { THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 /** A games row as its setup-phase settings are read: its `meta`, its `game_state` (JSON or parsed) and its seats. */
 interface AGamesRowAsItsSetUpIsRead extends GamesRowWithSettings {
@@ -142,7 +143,7 @@ export function pickBotAlignment(takenCounts: Readonly<Partial<Record<string, nu
   const legal = ALIGNMENTS_P.filter((a) => !(BOT_UNIQUE_ALIGNS.includes(a) && used.has(a)));
   const unused = legal.filter((a) => !used.has(a));
   const pool = unused.length ? unused : legal.filter((a) => !BOT_UNIQUE_ALIGNS.includes(a));
-  const safePool = pool.length ? pool : ['Neutral'];
+  const safePool = pool.length ? pool : [THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS];
   let bestN = Infinity;
   safePool.forEach((a) => {
     const n = takenCounts[a] ?? 0;
@@ -177,7 +178,7 @@ export function pickBotAlignmentBalanced(
   if (!humanAligns?.length) return pickBotAlignment(takenCounts);
   const used = new Set(Object.keys(takenCounts).filter((a) => Number(takenCounts[a]) > 0));
   const legal = ALIGNMENTS_P.filter((a) => !(BOT_UNIQUE_ALIGNS.includes(a) && used.has(a)));
-  const pool = legal.length ? legal : ['Neutral'];
+  const pool = legal.length ? legal : [THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS];
   let best: { readonly cost: number; readonly ties: string[] } | null = null;
   for (const a of pool) {
     let cost = 0;
@@ -223,7 +224,7 @@ export function generateBotSetups(
     const temper = theOneThePickFell(TEMPERS_P[Math.floor(kcRng() * TEMPERS_P.length)]);
     // the builds read by any alignment's name
     const buildOf: Readonly<Partial<Record<string, Readonly<Partial<Record<string, number>>>>>> = BOT_SKILL_BUILD;
-    const skills = { ...(buildOf[alignment] ?? BOT_SKILL_BUILD.Neutral) };
+    const skills = { ...(buildOf[alignment] ?? BOT_SKILL_BUILD[THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS]) };
     bots.push({
       id: startIndex + i,
       isBot: true,

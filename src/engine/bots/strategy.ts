@@ -1,7 +1,8 @@
 import { KC_RIVAL_RACE, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
-import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { ALIGNMENTS_P, heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theFervourOfASide } from '../rules/the-registry-of-alignment-abilities.ts';
 import {
   thePriceOfACompanyOfAType,
   theWageOfACompany,
@@ -77,6 +78,7 @@ function theSkillsOfTheGrave(g: Grave): Grave['skills'] {
   return asItsGuardReadsIt(g.skills) ?? {};
 }
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════
 // Design (BOT_PLAYERS_DESIGN §8, v2.4): ONE big field army under the bot's BEST GENERAL is both its
@@ -757,12 +759,26 @@ export function botRecruitOrder(tokens: readonly string[], destId: number | null
     desc: 'Recruit ' + String(n) + ' unit' + (n > 1 ? 's' : ''),
   };
 }
+/** Whether a realm of this alignment hires its dearest wandering hero for the least any realm's dearest asks: the hire
+ *  wage's rule (heroHireWage, by the ladder) asked for a wanderer of each rung, a refusal left out (P1-19bb8). Today
+ *  only a Neutral realm, the ladder's middle, whose wanderers ask 2g to 3g before their skills (the bots' "capped at
+ *  3g": KD-464). An alignment the ladder doesn't hold (a realm of none's empty one among them) is not such a realm. */
+function doesARealmOfThisAlignmentHireItsDearestWandererForTheLeast(alignment: string | null | undefined): boolean {
+  if (alignment == null || !ALIGNMENTS_P.includes(alignment)) return false;
+  const theDearestWandererOf = (theRealms: string) =>
+    Math.max(...ALIGNMENTS_P.map((theWanderers) => heroHireWage(theRealms, theWanderers) ?? 0));
+  return theDearestWandererOf(alignment) <= Math.min(...ALIGNMENTS_P.map(theDearestWandererOf));
+}
 export function botHeroCap(G: GameState, pi: number) {
   const land = (asItsGuardReadsIt(G.world.provinces) ?? []).filter(
     (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea',
   ).length;
   const pl = (asItsGuardReadsIt(G.players) ?? [])[pi];
-  return 4 + land + (pl?.alignment === 'Neutral' ? 1 : 0) + ((Number(pl?.gold) || 0) > 30 ? 2 : 0);
+  // a realm whose wanderers ask the narrowest wages wants the widest court (P1-19bb8: the bots' weight)
+  const theWidestCourtWantsMore = doesARealmOfThisAlignmentHireItsDearestWandererForTheLeast(pl?.alignment)
+    ? THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.alignmentAbility.theHeroesMoreARealmWhoseDearestWandererAsksTheLeastWants
+    : 0;
+  return 4 + land + theWidestCourtWantsMore + ((Number(pl?.gold) || 0) > 30 ? 2 : 0);
 } // Sept 2026 (Toby): hire as much as possible   // §94: a fat chest hires two more   // Neutral: wages capped at 3g, so the widest court   // more heroes = more actions (was 2+land/2)
 // 2026-09-28 (Toby, option 1): a SLAYER must be a fighter — Melee or Archery 2+. While the realm has no fighting
 // slayer, a wandering fighter is worth two hops more than any other wanderer (seek / broker choices).
@@ -798,7 +814,7 @@ export function botHireOrder(G: GameState, pi: number, c: Character, L: ABotReal
       !h._justDefeated &&
       !hired.has(h.id) &&
       botSeesChar(G, pi, h) &&
-      heroHireWage((G.players[pi]?.alignment ?? '') || 'Neutral', h.alignment, false, h) != null,
+      heroHireWage(theAlignmentARealmReadsAs(G.players[pi]?.alignment), h.alignment, false, h) != null,
   );
   if (!hh) return null;
   // Self-play finding: an uncapped court (15 heroes, no army) ate the whole wage budget. Cap heroes
@@ -807,7 +823,7 @@ export function botHireOrder(G: GameState, pi: number, c: Character, L: ABotReal
     (x) => asItsGuardReadsIt(x) && x.alive && x.player === pi && !x.isKing && !x._isHeir,
   ).length;
   if (heroes >= botHeroCap(G, pi)) return null;
-  const wage = heroHireWage((G.players[pi]?.alignment ?? '') || 'Neutral', hh.alignment, false, hh);
+  const wage = heroHireWage(theAlignmentARealmReadsAs(G.players[pi]?.alignment), hh.alignment, false, hh);
   // a hero's wage (1–3g) is paid from the chest and no longer competes with troops for the upkeep
   // cap — bots try to hire at least one wanderer every turn they can reach one.
   if (wage == null || L.budget < wage) return null;
@@ -994,8 +1010,9 @@ export function botRecruitableTypes(
   const effOf = (t: string) => {
     const base = (UNIT_BASE_STR[t] ?? 0) || 4;
     if (!G || !cmdr) return base;
-    const align =
-      (cmdr.player != null ? ((asItsGuardReadsIt(G.players) ?? [])[cmdr.player]?.alignment ?? '') : '') || 'Neutral';
+    const align = theAlignmentARealmReadsAs(
+      cmdr.player != null ? (asItsGuardReadsIt(G.players) ?? [])[cmdr.player]?.alignment : undefined,
+    );
     const theRealm = cmdr.player != null ? (asItsGuardReadsIt(G.players) ?? [])[cmdr.player] : null;
     let m: number;
     try {
@@ -1013,7 +1030,13 @@ export function botRecruitableTypes(
     // gets from the unit — an Orc lord buying human levies at −20% was paying full price. (The Druidic
     // ×1.25, Wild Ferocity, was retired 2026-10-13.)
     m *= botRaceTerrainMult(G, cmdr, { type: t, race: (prov.race ?? '') || 'Human' }, null, false, cmdr.player);
-    if (align === 'Evil' && BOT_MONSTER_ARMIES.has(t)) m *= 1.25;
+    // the fervour a host of this one unit fights at, as the battles weigh it (savage fury's row: an Evil realm's
+    // Monster, ×1.25), taken for each unit, not once a host (KD-435; P1-19bb8)
+    m *= theFervourOfASide(align, {
+      isItSeizedByZeal: false,
+      isItLedByTheKing: false,
+      theForce: [{ type: t }],
+    }).theFactor;
     return base * m;
   };
   // Sept 2026 (Toby): a general raises troops of his own blood and the king's (+20% kinship each) and never

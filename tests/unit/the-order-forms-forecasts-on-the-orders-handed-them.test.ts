@@ -15,8 +15,8 @@
 // earlier Blood Offering's company read as the offering began (each red on its mutant of the 2026-11-07 session); since
 // P1-16b, which typed the file, a target field that isn't words, the province's name, Naval 8's hulls, a Recruit's boxes
 // trimmed, a same-phase hand-over by name, an earlier Skeletal Armies' graves and a Blood Offering's company by name
-// (each red on a fault planted in the line it reads); and
-// theOrdersTheFormHolds (the page's side) reading each field, a Recruit's boxes and the form's declarations, a field the
+// (each red on a fault planted in the line it reads); since P1-19ba1 the beasts an earlier Rite of the Wild Hunt binds,
+// at its row's grade; and theOrdersTheFormHolds (the page's side) reading each field, a Recruit's boxes and the form's declarations, a field the
 // form doesn't show absent.
 import { afterEach, describe, expect, test } from 'vitest';
 import {
@@ -29,6 +29,7 @@ import {
   poSeaAnalysis,
 } from '../../src/ui/player/the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { theOrdersTheFormHolds } from '../../src/ui/player/the-orders-the-form-holds-handed-to-its-forecasts.ts';
+import { THE_ALIGNMENT_ORDERS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 type AnOrder = Record<string, unknown>;
 /** The orders as the page's snapshot holds them: by hero, his order of each phase. */
@@ -287,6 +288,33 @@ describe('what a hero will lead and carry, and a garrison hold, on the orders ha
     const armies = typeof column === 'object' && column !== null && 'armies' in column ? column.armies : null;
     const grave = 'a grave you expect to raise this turn';
     expect(names(armies)).toEqual(['First Spears', 'Bowmen', grave, grave]);
+  });
+  test("the column the Move note counts holds the beasts an earlier Rite of the Wild Hunt binds: its row's number, at its row's grade", () => {
+    // (P1-19ba1: the beasts and their grade read from the rite's row, as the field's words and the turn read them)
+    const report = aReport();
+    const staged = {
+      ...report,
+      provinceOrderData: { 1: { ...report.provinceOrderData[1], wildHuntType: 'Stone Giants' } },
+    };
+    const orders = ordersOf({
+      1: [
+        { action: 'Perform Rite', target: 'Wild Hunt' },
+        { action: 'Move', target: 'prov:2' },
+      ],
+    });
+    const column: unknown = theColumnAHeroMarchesWithInAPhase(staged, orders, 1, 1);
+    const armies = typeof column === 'object' && column !== null && 'armies' in column ? column.armies : null;
+    const bound = (Array.isArray(armies) ? armies : []).filter(
+      (a: unknown) =>
+        typeof a === 'object' &&
+        a !== null &&
+        'unitName' in a &&
+        a.unitName === 'Stone Giants (bound by the Wild Hunt)',
+    );
+    const theRite = THE_ALIGNMENT_ORDERS['perform-rite'].theNumbers;
+    expect(bound.map((a: unknown) => (typeof a === 'object' && a !== null && 'quality' in a ? a.quality : a))).toEqual(
+      Array.from({ length: theRite.theWildHuntsBeasts.value }, () => theRite.theWildHuntsGrade.value),
+    );
   });
 });
 

@@ -1360,7 +1360,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
       // the engine will bind and its price (the cost of ONE beast, however many answer), so this
       // form never has to re-derive it and drift from the engine.
       const canHunt = !!pd?.wildHuntType;
-      const theRitesRow = theAlignmentOrdersRow('Perform Rite'); // its row's: the beasts the Wild Hunt binds, the tiers a Blood Offering raises
+      const theRitesRow = theAlignmentOrdersRow('Perform Rite'); // its row's: the beasts the Wild Hunt binds and their grade, the tiers a Blood Offering raises
       const huntCost = pd?.wildHuntCost;
       // the turns its beasts serve beyond this one as the turn counts them (The Long Hunt's too: the report's), else
       // its row's (plan P1-11e26, R-132)
@@ -1417,7 +1417,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
           )
         : kcHtml`<div style="font-size:.72rem;color:var(--stone)">This character leads no army units to offer.</div>`;
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="updateBloodOffering(${kcArg(String(c.id))},${kcArg(ph)})">
-        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind ${theRowsNumber(theRitesRow, 'theWildHuntsBeasts')} VETERAN ${pd.wildHuntType} (${huntCost}g — the price of one, no wages, serve until end of ${huntUntil})</option>` : ''}
+        ${canHunt ? kcHtml`<option value="Wild Hunt" ${target === 'Wild Hunt' ? 'selected' : ''}>\u{1F525} Rite of the Wild Hunt — bind ${theRowsNumber(theRitesRow, 'theWildHuntsBeasts')} ${String(theRowsNumber(theRitesRow, 'theWildHuntsGrade')).toUpperCase()} ${pd.wildHuntType} (${huntCost}g — the price of one, no wages, serve until end of ${huntUntil})</option>` : ''}
         <option value="Blood Offering" ${target === 'Blood Offering' || !target ? 'selected' : ''}>\u{1FA78} Blood Offering — sacrifice units to empower others (+${theRowsNumber(theRitesRow, 'theBloodOfferingsGrades')} tiers each)</option>
       </select>
       <input id="po-extra-${c.id}-${ph}" type="hidden" value="${itOrElse(extra, '')}">

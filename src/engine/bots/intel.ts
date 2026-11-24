@@ -17,6 +17,15 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { AUnitAnEstimateWeighs } from '../battle/lines.ts';
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
+import {
+  theConquestDoctrineOfARealmsAlignment,
+  theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
+  theFervourOfASide,
+  theGoldARealmsAlignmentClaimsForEachFoeDestroyed,
+  theReturnARealmsAlignmentGivesItsFallen,
+  whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite,
+} from '../rules/the-registry-of-alignment-abilities.ts';
 
 // Its types (plan P1-10b40): each parameter typed as wide as the body's guards, so each guard stays. The estimates
 // (botEffForce, botBattleForce, botDruidShortfall and the skills they read) are handed staged worlds and units (the
@@ -65,10 +74,11 @@ interface AHeroWhoseSkillsAreKnown {
 // version's weights file (the-weights-of-the-bots-first-version-…ts) says what it makes of a unit of each kind of
 // result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
 // it gives no weights fails to compile. The economy's (a gold) is the first kind, the titles' (a title, B-06r) the
-// second; the alignments' joins them (P1-19bb8). The weights are the bots', never content's: content holds the rules only.
-/** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, and an
- *  Imperial Title (held, or chased by what its row measures). */
-export type AKindOfResultABotWeighs = 'gold' | 'title';
+// second, the alignments' (an alignment ability, P1-19bb8) the third. The weights are the bots', never content's: content
+// holds the rules only.
+/** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
+ *  Imperial Title (held, or chased by what its row measures), and what an ability of a realm's alignment gives it. */
+export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility';
 /** A kind of result's weights in a bot version: each a number, named for what it weighs. */
 export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 /** The bots' weights at a difficulty. */
@@ -317,20 +327,18 @@ export function botTuning(
   // dealt. Each reads a rulebook number, nothing hidden.
   const pl = pi != null && G?.players ? G.players[pi] : null;
   if (!pl) return T;
-  switch (pl.alignment) {
-    case 'Divine':
-      if (consecratedIds(pl).length) T.kingAttackMargin *= 0.9;
-      break; // the grace returns a fallen king
-    case 'Good':
-      T.assaultMargin *= 0.9;
-      break; // Banner of Fellowship +15% unify
-    case 'Evil':
-      T.taxScoreWeight *= 1.5;
-      T.rivalBias += 3;
-      break; // Plunder: half the tax on capture; Terror chains
-    case 'Pagan':
-      T.rivalBias += 3;
-      break; // Blood Harvest: gold per unit slain
+  // Each overlay is keyed by the ability the realm's alignment holds (its row, as the rule's runner asks it), not by the
+  // creed's name (P1-19bb9); the bot's own numbers as they were. Each row is of one alignment, so at most one overlay
+  // applies, as the creeds' `case`s did, in their order.
+  if (theReturnARealmsAlignmentGivesItsFallen(pl.alignment) !== null) {
+    if (consecratedIds(pl).length) T.kingAttackMargin *= 0.9; // Divine grace: the grace returns a fallen king
+  } else if (whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite(pl.alignment) > 0) {
+    T.assaultMargin *= 0.9; // Banner of Fellowship +15% unify
+  } else if (theConquestDoctrineOfARealmsAlignment(pl.alignment) !== null) {
+    T.taxScoreWeight *= 1.5;
+    T.rivalBias += 3; // Plunder: half the tax on capture; Terror chains
+  } else if (theGoldARealmsAlignmentClaimsForEachFoeDestroyed(pl.alignment) !== null) {
+    T.rivalBias += 3; // Blood Harvest: gold per unit slain
   }
   switch (pl.race) {
     case 'Dwarven':
@@ -636,7 +644,7 @@ export function botEffForce(
   armies: TheUnitsAsTheEstimatesWeighThem,
 ) {
   if (!c) return botForceStrength(armies);
-  const align = (c.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs(c.player != null ? (G.players ?? [])[c.player]?.alignment : undefined);
   const theRealm = c.player != null ? (G.players ?? [])[c.player] : null;
   return (armies ?? c.armies ?? []).reduce((s, a) => {
     if (!a) return s;
@@ -703,7 +711,11 @@ export function botRaceTerrainMult(
 }
 // Whole-force multipliers the rulebook promises without a roll: Evil ×1.25 with any Monster (the Druidic
 // mirror, Wild Ferocity, was retired 2026-10-13), Undead skeletal fanaticism ×1.5 under the king / ×1.3 under
-// a hero, Good +10% defending its own land. Zeal itself is a roll and is left out, as before.
+// a hero, Good +10% defending its own land. Zeal itself is a roll and is left out, as before. Each factor is the
+// rule's, asked of the realm's alignment (P1-19bb8): the fervour that needs no roll, as the battles weigh it (savage
+// fury's and skeletal fervour's rows, the strongest counting), and Righteous Defence's (its row). The bot's own
+// conditions stay: no commander, no factor (a Good garrison's, KD-462); Righteous Defence on any defence, not only of
+// a province the realm owns (KD-434).
 export function botFervourMult(
   G: TheStateAsTheEstimatesReadIt,
   c: ACommanderAsTheEstimatesReadHim | null | undefined,
@@ -711,11 +723,17 @@ export function botFervourMult(
   defending: boolean | null | undefined,
 ) {
   if (c?.player == null) return 1;
-  const align = ((G.players ?? [])[c.player]?.alignment ?? '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs((G.players ?? [])[c.player]?.alignment);
   let m = 1;
-  if (align === 'Evil' && armies.some((a) => a && BOT_MONSTER_ARMIES.has(a.type))) m = Math.max(m, 1.25);
-  if (align === 'Undead' && armies.some((a) => a?._isSkeletal)) m = Math.max(m, c.isKing ? 1.5 : 1.3);
-  if (align === 'Good' && defending) m *= 1.1;
+  m = Math.max(
+    m,
+    theFervourOfASide(align, {
+      isItSeizedByZeal: false,
+      isItLedByTheKing: Boolean(c.isKing),
+      theForce: armies.flatMap((a) => (a ? [a] : [])),
+    }).theFactor,
+  );
+  if (defending) m *= theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy(align) ?? 1;
   return m;
 }
 // Its return type written for a typed caller (plan P1-10b32: drill-and-spoils.ts' bestNeutralMix): every path returns
@@ -738,7 +756,7 @@ export function botBattleForce(
   const defending = !!opts.defending;
   armies = armies ?? c?.armies ?? [];
   if (!armies.length) return 0;
-  const align = (c?.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs(c?.player != null ? (G.players ?? [])[c.player]?.alignment : undefined);
   const theRealm = c?.player != null ? (G.players ?? [])[c.player] : null;
   const flank = doARealmsDiscoveriesWeightTheLinesBehindTheFront(theRealm);
   const width = battleFrontWidth(terrain);
@@ -813,7 +831,7 @@ export function botDruidShortfall(
   armies: TheUnitsAsTheEstimatesWeighThem,
 ): number {
   if (!c) return 0;
-  const align = (c.player != null ? ((G.players ?? [])[c.player]?.alignment ?? '') : '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs(c.player != null ? (G.players ?? [])[c.player]?.alignment : undefined);
   const theRealm = c.player != null ? (G.players ?? [])[c.player] : null;
   let worst = 0;
   (armies ?? c.armies ?? []).forEach((a) => {
@@ -906,7 +924,7 @@ export function markProvinceCombat(
 // botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim, src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts).
 export const BOT_ALLY_ALIGN_DIST = 1;
 export function botAlignOf(G: Pick<GameState, 'players'>, pi: number) {
-  return ((asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment ?? '') || 'Neutral';
+  return theAlignmentARealmReadsAs((asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment);
 }
 export function botAlignFriendly(G: Pick<GameState, 'players'>, a: number, b: number) {
   return alignDistP(botAlignOf(G, a), botAlignOf(G, b)) <= BOT_ALLY_ALIGN_DIST;

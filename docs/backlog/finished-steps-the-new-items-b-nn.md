@@ -9,8 +9,8 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 
 ## B-06, T7: the rules pulled out
 
-B-06 is open; its first rows, Run 1 (the economy, then the Reckoning and the titles), are finished. The tranche's
-plan, its counts and its risks: #711.
+B-06 is open; its foundations are finished: Run 1 (the economy, then the Reckoning and the titles) and Run 2a (world
+generation). The tranche's plan, its counts and its risks: #711.
 
 - B-06a: #711 The ratchet counts the economy and the titles, B-06's lettered rows, the KD- rows found by the scoping, B-20 and the bots' worth hook
 - B-06b: #712 The economy's prices in content: the price table, the fallback 2g and the skeleton's 1g, through one price rule and one wage rule
@@ -30,6 +30,16 @@ plan, its counts and its risks: #711.
 - B-06p: #728 The title intelligence's other boards as effects of their titles: the Grand Marshal's, the Sea Lord's, the Monster-Bane's, the Loremaster's, the Archmage's, the Hierophant's, the Deathpriest's and the Spymaster's, each moved as it was
 - B-06q: #729 The Reckoning's numbers in one content row, read by the engine and the player portal's titles card; a test holds the rulebook's bar tables to them
 - B-06r: #730 The bots' worth of a title: the titles they chase and the skills they train read each title's row, their numbers in the bots' first version's weights; the knobs no code reads go
+- B-06s: #732 The world's making's proof: the same world and the same dice, stage by stage, against the base
+- B-06t: #734 The world's making's lists in content: the name pools, the sea features, the beast banks, the fleets and the skill pools
+- B-06u: #735 The world's making's numbers in content, as parameter rows by stage
+- B-06v: #736 The world's making split by stage, 1 of 6: the set-up, the capitals and each home's ring
+- B-06w: #737 The world's making split by stage, 2 of 6: every province made, its terrain, tax, armies and lairs
+- B-06x: #738 The world's making split by stage, 3 of 6: the races' heartlands, the coastal fleets and the seas
+- B-06y: #739 The world's making split by stage, 4 of 6: each home tailored, and its king and heroes made
+- B-06z: #740 The world's making split by stage, 5 of 6: the wild country, the neutral races, the tax floor, the shipyards and the defenders
+- B-06aa: #741 The world's making split by stage, 6 of 6: the neutral heroes, Garreth, and the world named and handed on
+- B-06ab: #742 The world's making's stages as one typed list, in the order they run
 - The fix Run 1 found on the way, its known-defect row deleted: #720 The registry compile test: a test and a program for each registry, every planted copy and expected error as it was
 
 ## The other new items

@@ -1,5 +1,6 @@
 import { KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { aRealmOfThisCreedMayGiveTheAlignmentOrder } from '../rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts';
 import { ARMY_SPEED_MASTER, SKILL_LABELS } from '../army-tables.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -354,7 +355,14 @@ export function botInfiltrateOrders(
 // signature pre-order per character per turn; the engine's own once-per-turn rules still apply.
 export function botConsecrateOK(G: GameState, pi: number, c: Character, X: Province | null | undefined) {
   const pl = theRealmsOf(G)[pi];
-  if (pl?.alignment !== 'Divine' || !c.isKing || X?.owner !== pi || X.terrain === 'sea') return false;
+  // a realm of Consecrate's creed (its row, P1-19bb7)
+  if (
+    !aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS.consecrate, pl?.alignment) ||
+    !c.isKing ||
+    X?.owner !== pi ||
+    X.terrain === 'sea'
+  )
+    return false;
   const home = botHomeId(G, pi);
   if (X.id === home) return false;
   const H = home != null ? G.world.provinces[home] : null;
@@ -398,104 +406,101 @@ export function botSignaturePre(
   const sk: Character['skills'] = asItsGuardReadsIt(c.skills) ?? {};
   const sig = L.sig ?? {}; // per-realm once-per-turn flags
   L.sig = sig;
-  switch (pl.alignment) {
-    case 'Divine': // CONSECRATE the ground the king stands on
-      if (botConsecrateOK(G, pi, c, P))
-        return { action: THE_ALIGNMENT_ORDERS.consecrate.key, target: '', extra: '', desc: 'Consecrate ' + P.name };
+  // each creed's order, by its row: a realm of the row's creed gives it (P1-19bb7; each `if` was a `case` of its creed)
+  if (aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS.consecrate, pl.alignment)) {
+    // CONSECRATE the ground the king stands on
+    if (botConsecrateOK(G, pi, c, P))
+      return { action: THE_ALIGNMENT_ORDERS.consecrate.key, target: '', extra: '', desc: 'Consecrate ' + P.name };
+    return null;
+  }
+  if (aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS['call-to-arms'], pl.alignment)) {
+    // CALL TO ARMS: a free Green garrison, king only, once a turn
+    if (!c.isKing || sig.cta) return null;
+    let best: { readonly X: Province; readonly sc: number } | null = null;
+    for (const X of theProvincesOf(G)) {
+      if (X?.owner !== pi || X.terrain === 'sea') continue;
+      if ((asItsGuardReadsIt(X.race) ?? '').startsWith('Primal')) continue; // the engine falls back to GARRISON_BY_RACE_CTA
+      if ((X.tax || 0) < 4 && X.id !== botHomeId(G, pi)) continue; // Toby's garrison rule: Prosperous+ land (and the capital) only
+      const g = (asItsGuardReadsIt(X.garrisonArmies) ?? []).length;
+      if (g >= 2) continue;
+      const sc = (X.tax || 0) + (botIsEdge(G, pi, X) ? 4 : 0) + (X.id === botHomeId(G, pi) ? 2 : 0) - g * 3;
+      if (!best || sc > best.sc) best = { X, sc };
+    }
+    if (!best) return null;
+    sig.cta = 1;
+    return {
+      action: THE_ALIGNMENT_ORDERS['call-to-arms'].key,
+      target: String(best.X.id),
+      extra: '',
+      desc: 'Call to Arms in ' + best.X.name,
+    };
+  }
+  // Druidic and Evil: no signature order since 2026-10-12 (Toby item 22: Awaken the Wild and Call from the Pit removed).
+  if (aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS['harvest-the-field'], pl.alignment)) {
+    // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it)
+    if ((Number(sk.necromancy) || 0) < 1 || !botSees(G, pi, P.id) || !(asItsGuardReadsIt(P.battleGraves) ?? []).length)
       return null;
-    case 'Good': {
-      // CALL TO ARMS: a free Green garrison, king only, once a turn
-      if (!c.isKing || sig.cta) return null;
-      let best: { readonly X: Province; readonly sc: number } | null = null;
-      for (const X of theProvincesOf(G)) {
-        if (X?.owner !== pi || X.terrain === 'sea') continue;
-        if ((asItsGuardReadsIt(X.race) ?? '').startsWith('Primal')) continue; // the engine falls back to GARRISON_BY_RACE_CTA
-        if ((X.tax || 0) < 4 && X.id !== botHomeId(G, pi)) continue; // Toby's garrison rule: Prosperous+ land (and the capital) only
-        const g = (asItsGuardReadsIt(X.garrisonArmies) ?? []).length;
-        if (g >= 2) continue;
-        const sc = (X.tax || 0) + (botIsEdge(G, pi, X) ? 4 : 0) + (X.id === botHomeId(G, pi) ? 2 : 0) - g * 3;
-        if (!best || sc > best.sc) best = { X, sc };
+    const thePrice = THE_ALIGNMENT_ORDERS['harvest-the-field'].theNumbers.thePrice.value;
+    if (L.budget < thePrice) return null;
+    L.budget -= thePrice;
+    L.upkeep += 1;
+    return {
+      action: THE_ALIGNMENT_ORDERS['harvest-the-field'].key,
+      target: '',
+      extra: '',
+      desc: 'Harvest the Field in ' + P.name,
+    };
+  }
+  if (aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS.broker, pl.alignment)) {
+    // BROKER: hire a seen wanderer from afar, else buy a Spy report (2g)
+    if (!c.isKing || sig.broker) return null;
+    const hired = L.hired ?? new Set();
+    L.hired = hired;
+    const heroes = theCharactersOf(G).filter((x) => x?.alive && x.player === pi && !x.isKing && !x._isHeir).length;
+    if (heroes < botHeroCap(G, pi)) {
+      let best: { readonly h: Character; readonly w: number; readonly v: number } | null = null;
+      for (const h of theCharactersOf(G)) {
+        if (!(h?.alive && h.player === null && !h._isNeutralGuard && !h._justDefeated && !hired.has(h.id))) continue;
+        if (h.location === c.location) continue; // a plain Hire does that
+        const X = G.world.provinces[h.location];
+        if (!X || !(X.owner === pi || (asItsGuardReadsIt(X.visitedBy) ?? []).includes(pi))) continue; // the engine's own Broker visibility
+        const w = heroHireWage(pl.alignment, h.alignment, false, h);
+        if (w == null || L.budget < w) continue;
+        const itsSkills: Character['skills'] = asItsGuardReadsIt(h.skills) ?? {};
+        const v =
+          Object.values(itsSkills).reduce((a: number, b) => a + (Number(b) || 0), 0) - w + botHireBias(G, pi, h) * 3;
+        if (!best || v > best.v) best = { h, w, v };
       }
-      if (!best) return null;
-      sig.cta = 1;
-      return {
-        action: THE_ALIGNMENT_ORDERS['call-to-arms'].key,
-        target: String(best.X.id),
-        extra: '',
-        desc: 'Call to Arms in ' + best.X.name,
-      };
-    }
-    // Druidic and Evil: no signature order since 2026-10-12 (Toby item 22: Awaken the Wild and Call from the Pit removed).
-    case 'Undead': {
-      // HARVEST THE FIELD: raise a grave for 2g (a necromancer keeps it)
-      if (
-        (Number(sk.necromancy) || 0) < 1 ||
-        !botSees(G, pi, P.id) ||
-        !(asItsGuardReadsIt(P.battleGraves) ?? []).length
-      )
-        return null;
-      const thePrice = THE_ALIGNMENT_ORDERS['harvest-the-field'].theNumbers.thePrice.value;
-      if (L.budget < thePrice) return null;
-      L.budget -= thePrice;
-      L.upkeep += 1;
-      return {
-        action: THE_ALIGNMENT_ORDERS['harvest-the-field'].key,
-        target: '',
-        extra: '',
-        desc: 'Harvest the Field in ' + P.name,
-      };
-    }
-    case 'Neutral': {
-      // BROKER: hire a seen wanderer from afar, else buy a Spy report (2g)
-      if (!c.isKing || sig.broker) return null;
-      const hired = L.hired ?? new Set();
-      L.hired = hired;
-      const heroes = theCharactersOf(G).filter((x) => x?.alive && x.player === pi && !x.isKing && !x._isHeir).length;
-      if (heroes < botHeroCap(G, pi)) {
-        let best: { readonly h: Character; readonly w: number; readonly v: number } | null = null;
-        for (const h of theCharactersOf(G)) {
-          if (!(h?.alive && h.player === null && !h._isNeutralGuard && !h._justDefeated && !hired.has(h.id))) continue;
-          if (h.location === c.location) continue; // a plain Hire does that
-          const X = G.world.provinces[h.location];
-          if (!X || !(X.owner === pi || (asItsGuardReadsIt(X.visitedBy) ?? []).includes(pi))) continue; // the engine's own Broker visibility
-          const w = heroHireWage(pl.alignment, h.alignment, false, h);
-          if (w == null || L.budget < w) continue;
-          const itsSkills: Character['skills'] = asItsGuardReadsIt(h.skills) ?? {};
-          const v =
-            Object.values(itsSkills).reduce((a: number, b) => a + (Number(b) || 0), 0) - w + botHireBias(G, pi, h) * 3;
-          if (!best || v > best.v) best = { h, w, v };
-        }
-        if (best) {
-          botSpend(L, best.w);
-          hired.add(best.h.id);
-          sig.broker = 1;
-          return {
-            action: THE_ALIGNMENT_ORDERS.broker.key,
-            target: `hire:${String(best.h.id)}`,
-            extra: '',
-            desc: 'Broker — hire ' + best.h.name,
-          };
-        }
+      if (best) {
+        botSpend(L, best.w);
+        hired.add(best.h.id);
+        sig.broker = 1;
+        return {
+          action: THE_ALIGNMENT_ORDERS.broker.key,
+          target: `hire:${String(best.h.id)}`,
+          extra: '',
+          desc: 'Broker — hire ' + best.h.name,
+        };
       }
-      const thePriceOfWord = THE_ALIGNMENT_ORDERS.broker.theNumbers.thePriceOfWordFromAProvince.value;
-      if (L.budget >= thePriceOfWord) {
-        const t = botSpyTarget(G, pi, c, 99);
-        if (t && botKnows(G, pi, t.X.id)) {
-          L.budget -= thePriceOfWord;
-          sig.broker = 1;
-          const memo = pl._botSpyMemo ?? {};
-          pl._botSpyMemo = memo;
-          memo[t.X.id] = G.turn;
-          return {
-            action: THE_ALIGNMENT_ORDERS.broker.key,
-            target: `spy:${String(t.X.id)}`,
-            extra: '',
-            desc: 'Broker — buy word from ' + t.X.name,
-          };
-        }
-      }
-      return null;
     }
+    const thePriceOfWord = THE_ALIGNMENT_ORDERS.broker.theNumbers.thePriceOfWordFromAProvince.value;
+    if (L.budget >= thePriceOfWord) {
+      const t = botSpyTarget(G, pi, c, 99);
+      if (t && botKnows(G, pi, t.X.id)) {
+        L.budget -= thePriceOfWord;
+        sig.broker = 1;
+        const memo = pl._botSpyMemo ?? {};
+        pl._botSpyMemo = memo;
+        memo[t.X.id] = G.turn;
+        return {
+          action: THE_ALIGNMENT_ORDERS.broker.key,
+          target: `spy:${String(t.X.id)}`,
+          extra: '',
+          desc: 'Broker — buy word from ' + t.X.name,
+        };
+      }
+    }
+    return null;
   }
   return null;
 }
@@ -511,7 +516,13 @@ export function botRitePre(
   fightAhead: unknown,
 ) {
   const pl = theRealmsOf(G)[pi];
-  if (pl?.alignment !== 'Pagan' || !P || !fightAhead) return null;
+  // a realm of Perform Rite's creed (its row, P1-19bb7)
+  if (
+    !aRealmOfThisCreedMayGiveTheAlignmentOrder(THE_ALIGNMENT_ORDERS['perform-rite'], pl?.alignment) ||
+    !P ||
+    !fightAhead
+  )
+    return null;
   if (P._riteTurn === G.turn) return null;
   const features: readonly (ProvinceFeature | null | undefined)[] = asItsGuardReadsIt(P.features) ?? [];
   const site = features.find((f) => f?.ritualSite && (featDiscovered(f, pi) || P.owner === pi));

@@ -1,3 +1,4 @@
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_GRAND_DESIGNS, PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { THE_MASTERY_ORDERS } from '../../content/mastery-orders-their-keys-names-skills-and-levels.ts';
 import {
@@ -293,7 +294,7 @@ export function resolveGrandDesignOrder(turnContext: TurnContext, c: Character, 
   const _GD_DEFS: Readonly<Partial<Record<string, { readonly name: string; readonly desc: string }>>> = {
     ...KC_GRAND_DESIGNS,
   };
-  const _gdA = (G.players[c.player]?.alignment ?? '') || 'Neutral';
+  const _gdA = theAlignmentARealmReadsAs(G.players[c.player]?.alignment);
   const _gdD = _GD_DEFS[_gdA] ?? { name: 'The Great Work', desc: 'A unique realm-wide Wonder.' };
   // the Wonder now STANDS SOMEWHERE. Its province is recorded on the realm and on the
   // province itself; every benefit is gated on the builder still holding that ground

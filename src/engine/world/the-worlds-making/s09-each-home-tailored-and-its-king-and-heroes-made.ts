@@ -20,7 +20,10 @@ import {
   THE_HOMES,
   THE_TAX_BANDS,
 } from '../../../content/the-worlds-making-its-numbers-by-stage-the-sea-the-capitals-the-taxes-the-lairs-the-seas-the-homes-and-the-heroes.ts';
-import { THE_LADDER_OF_THE_ALIGNMENTS } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  THE_LADDER_OF_THE_ALIGNMENTS,
+  THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
+} from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from '../../rng.ts';
 import { HOME_FLEET_BY_RACE } from '../../grand-design.ts';
 import {
@@ -472,7 +475,7 @@ export function eachHomeTailoredAndItsKingAndHeroesMade({
       king.armies.push({
         type: 'Shieldwall Levies',
         quality: 'Average',
-        race: 'Undead',
+        race: THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
         _isSkeletal: true,
         unitName: theOneMadeSure(armyUnitName('Shieldwall Levies')) + ' (Skeletal)',
       });

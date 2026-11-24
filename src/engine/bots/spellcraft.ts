@@ -43,6 +43,7 @@ import {
   botSkillsUnknown,
 } from './strategy.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
+import { theYieldOfABlessARealmsAlignmentGives } from '../rules/the-registry-of-alignment-abilities.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
@@ -312,7 +313,10 @@ export function botCastPlan(
     // Sept 2026: a Divine KING's Bless is +100% (a hero's +80%) — a hero standing with his Divine king leaves it to him
     const kingHere =
       !c.isKing &&
-      (asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment === 'Divine' &&
+      // the realm's alignment raises its king's Bless (the Divine blessing's row, as the spell asks it: P1-19bb7)
+      theYieldOfABlessARealmsAlignmentGives((asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment, {
+        isTheCasterTheKing: true,
+      }) !== null &&
       theCharactersOf(G).some(
         (k) =>
           k?.alive &&

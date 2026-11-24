@@ -4,7 +4,8 @@
 // compile. Here, as types the compiler checks: the file weighs every kind and no other, it meets the Record of the
 // kinds, and it fails the Record of the kinds with one more (a kind with no weight), each a constant whose type holds
 // only while that is so (no comment that waives an error). Then the gold's weights, each the number botLedger wrote
-// before T7, and a title's (B-06r), each the number botTargetTitles and botSpecialistRoles wrote, in its place: a
+// before T7, a title's (B-06r), each the number botTargetTitles and botSpecialistRoles wrote, and an alignment
+// ability's (P1-19bb8), each the number botHeroCap, botSpecialistRoles and the scholar's orders wrote, in its place: a
 // change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module is imported and its numbers read; its types are the compiler's (`npm run check`),
@@ -61,5 +62,14 @@ test("a title's weights are the numbers botTargetTitles and botSpecialistRoles w
     theWorthOfATitleWonBySlayingGuardiansBeforeAnyLevel: 2,
     theTitlesARealmChasesWhenNoneIsWorthAPoint: 2,
     theSpecialistsMoreAChasedTitleWants: 1,
+  });
+});
+
+test("an alignment ability's weights are the numbers botHeroCap, botSpecialistRoles and the scholar's orders wrote before T7", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.alignmentAbility).toEqual({
+    theHeroesMoreARealmWhoseDearestWandererAsksTheLeastWants: 1,
+    theScholarsMoreARealmWhoseAlignmentAddsToResearchWants: 1,
+    theSageLevelFromWhichSuchARealmsScholarResearches: 1,
+    theSageLevelFromWhichAnyOtherRealmsScholarResearches: 2,
   });
 });

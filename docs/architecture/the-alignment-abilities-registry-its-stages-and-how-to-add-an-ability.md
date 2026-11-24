@@ -96,7 +96,9 @@ P1-19's Decision 2 (no registry entry for an order).
 |---|---|---|
 | **who may give an alignment order** | the five orders | each order's resolver, before it reads the province or the target; the first check that refuses the hero, in the order's own order (Consecrate the king, then the creed; Call to Arms and Broker the creed, then the king; Harvest the Field and Perform Rite the creed alone), or null. The resolver writes its own line for it. The rest of each order's refusals (its province, its gold, once a turn) stay in its resolver |
 
-The runner is handed the order's row (`THE_ALIGNMENT_ORDERS.consecrate`), so the resolvers name no order's key.
+The runner is handed the order's row (`THE_ALIGNMENT_ORDERS.consecrate`), so the resolvers name no order's key. A hero
+who walks a ritual site is told "a Pagan may Perform Rites here" when his realm is of Perform Rite's creed
+(`aRealmOfThisCreedMayGiveTheAlignmentOrder` on its row, P1-19bb5).
 
 **The fallen, the Rest, the harvest and the conquests** (P1-19ax1,
 `alignment-abilities/the-fallen-the-rest-the-harvest-and-the-conquests-of-a-realms-alignment.ts`): new stages on
@@ -119,7 +121,8 @@ today's hooks (Decision C: no "hero's fate" hook). Each runner gives the first a
 War without warning, a broken alliance into war (two rows each: Evil, Undead) and the risen dead's hand-over are read in
 `src/engine/rules-on-plain-values/` (the player portal shares them through `src/shared/`: the march's forecast, the
 diplomacy card, the forecasts' replay), with empty entries; so is whether a creed sets a doctrine (the order form).
-The line "declares war without warning" keeps its own `'Undead'` (its words, not the rule).
+The line "declares war without warning" chooses its words ("the dead keep no truce") by the Undead's row
+(`doesAnAlignmentDeclareWarWithoutWarningAsTheDead`, P1-19bb5).
 
 The capture of consecrated land (Undead 100%, Evil 50%: R-045) stays in `fame-and-consecration.ts`: the books state
 50% for every conqueror (KD-125), so no row's words would be true until they are mended. A unit case pins its rise.
@@ -155,14 +158,67 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   `THE_LADDER_OF_THE_ALIGNMENTS` in the content file (P1-19av2), with no registry entry. Its rungs' order is data (the
   heroes' deal draws by it). `alignments-and-a-wandering-heros-hire-wage.ts` reads it (`heroHireWage`, mercy's
   chance and laughter: the foe's own alignment), and the player portal shares that file. Its rungs also give the
-  wanderers' deck of alignments (P1-19ay1: 1, 2, 4, 6, 4, 2, 1 cards, dealt in the rungs' order).
+  wanderers' deck of alignments (P1-19ay1: 1, 2, 4, 6, 4, 2, 1 cards, dealt in the rungs' order). A hero who recoils
+  across the gulf tells a realm on its first rung "no creature of the grave will serve a Divine crown", and any other
+  "the faithful will never serve an Undead throne" (`doesAnAlignmentStandAtTheHolyEndOfTheGulf`, P1-19bb5).
+- **Garreth the Independent's creed** is `GARRETH_THE_INDEPENDENT` beside the neutral heroes' numbers (S16 of the
+  world's making, P1-19bb5): Neutral, whatever creed the deck deals him; his name parts are that creed's pool's.
+- **A realm of none** (its alignment empty, or not given) reads as `THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS` (Neutral),
+  a constant beside the rows (P1-19bb1). The engine asks it through `theAlignmentARealmReadsAs` in
+  `rules-on-plain-values/` (the battles, a commander's score, a hero's hire, the Broker's and the Charm's wage, the
+  Wonder, the heir); a hero's name of an alignment with no name pools is drawn from its pools. The bots ask it too
+  (P1-19bb6: their estimates, their hires and `botAlignOf`); a bot with no alignment left to take is dealt the
+  constant, and an alignment with no first skills of its own takes the constant's. No game holds a realm of none:
+  unit cases hold the constant and the bots' reads.
+- **The risen dead's race** is `THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS` ('Undead'), a constant beside the rows
+  (P1-19bb2): every raising (Harvest the Field, the Necromancy spells, the Iron Throne, an Undead king's skeletal
+  company) makes its units of it, and Control Undead finds the dead by it. It is a unit's race, not an alignment. The
+  label a player reads a guardian's kind by ('Undead' too) is a word for players, its own fact: the content's
+  `MONSTER_CAT_LABELS`, which `monsterCatLabel` reads.
 - **Skeletal upkeep** and its disband order are a unit's rule: any realm with skeletons pays it (Necromancy, the Iron
   Throne), not Undead's alone.
-- **The creed discoveries, the alignment-only items, guardians' Anathema and the Grand Designs** keep their own
-  registries. A row names one by its key when it reads it.
-- **The bots** read the rows' numbers; their own alignment checks wait for the bots' step.
+- **The Wonders (the Grand Designs)** are `THE_WONDERS`, a table beside the rows (P1-19bb3): each Wonder by its slug
+  (`'standing-stones'`) and the alignment it serves; its name and text are `KC_GRAND_DESIGNS`'s, by that alignment.
+  What a Wonder does stays in the rule that asks for it. A rule asks by the Wonder's slug,
+  `theWonderServesTheRealm(turnContext, realm, 'standing-stones')` (`src/engine/discoveries.ts`): the realm is of
+  the row's alignment, has raised its Grand Design and holds the Wonder's province, as `gdActive` by that alignment.
+  Every Wonder's rule asks it (P1-19bb3 and bb4): the battles' and the orders' (the Standing Stones, the Iron Throne,
+  the Grand Cathedral's Bless, the World-Tree Grove's Veterans, the Deathless Legion's raisings) and the turn's (the
+  Grand Cathedral's ward, the Free City Charter's tax, the World-Tree Grove's half wages, the Deathless Legion never
+  disbanded unpaid, the Grand Library's discovery). No rule asks `gdActive` by a creed's name.
+- **The creed discoveries, the alignment-only items and guardians' Anathema** keep their own registries. A row names
+  one by its key when it reads it.
+- **The bots** read the rows' numbers and a realm of none's constant. Their creed orders ask each order's row for the
+  realm's creed (`aRealmOfThisCreedMayGiveTheAlignmentOrder`: the signature order, Consecrate's and Perform Rite's
+  checks), their hand-overs ask `theRisenDeadFollowAHandOverTo`, and a hero leaves the Bless to his king where
+  `theYieldOfABlessARealmsAlignmentGives` raises the king's (P1-19bb7), each with the bot's own conditions and numbers;
+  where a bot's copy differs from the rule it keeps the bot's figure, with a `KD-` row. What a creed's ability is
+  worth to a bot is [the bots' worth of an alignment ability](#the-bots-worth-of-an-alignment-ability). Their tuning's
+  overlays (`botTuning`) ask the runners of Divine grace, the Banner of Fellowship, the conquest doctrine and the Blood
+  Harvest, one overlay at most, with the bot's own numbers; their war's lower bar for the dark creeds (`botWarAssess`)
+  asks `doesAnAlignmentDeclareWarWithoutWarning` (P1-19bb9).
 - **The order form** keeps a hand-written widget for each alignment order: a new order's row does not appear on it by
   itself.
+
+## The bots' worth of an alignment ability
+
+The rule says what, the bot says how much, as for
+[the bots' worth of gold](the-economys-registry-its-stages-and-how-to-add-a-rule-of-the-economy.md#the-bots-worth-of-gold-a-bot-versions-weights-by-kind-of-result)
+and [of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk.md#the-bots-worth-of-a-title)
+(P1-19bb8). The bots ask the rules what a realm's alignment gives, never its name:
+
+- **What the rules say:** a host's fervour in the bots' estimates (`botFervourMult`) is `theFervourOfASide` (savage
+  fury's and skeletal fervour's rows, the strongest counting) and, on a defence, Righteous Defence's factor
+  (`theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy`); a recruit's worth (`effOf`, in
+  `botRecruitableTypes`) is `theFervourOfASide` of a host of that one unit. The court's size (`botHeroCap`) asks the
+  hire wage (`heroHireWage`) which realm's dearest wanderer asks the least (the ladder's middle, Neutral); the scholars
+  ask `whatARealmsAlignmentAddsToResearch` whether the realm's alignment adds to a Research (the Neutral scholars).
+- **What the bot says:** the `alignmentAbility` kind of the first version's weights: the heroes more such a court
+  wants, the scholars more such a realm wants, and the Sage level its scholar researches from (any other realm's from
+  the next). A point of strength is a point: the factors are the rules' own, with no weight.
+- **The bot's own conditions stay**, each a `KD-` row: Righteous Defence on any defence (KD-434), no factor with no
+  commander (KD-462), savage fury for each Monster recruit (KD-435), the court's "capped at 3g" (KD-464); the
+  estimate leaves out four battle rules (KD-465).
 
 ## The tests
 
@@ -187,10 +243,12 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   the foe's alignment (75/50/20), and the Evil and Undead's laughter.
 - `tests/static/the-code-the-alignment-abilities-registry-has-taken-names-no-alignment.test.ts`, with the ratchet's
   `alignmentChecksInEngine`: the functions taken name no alignment, and the engine's names of an alignment outside
-  `src/engine/rules/` only fall. The bots' and a race's `'Undead'` count too, so
-  the count stays above 0.
+  `src/engine/rules/` only fall. None is left (P1-19bb9): any such name, a race's `'Undead'` among them, fails
+  the ratchet.
 - `tests/unit/the-marks-on-a-province-each-read-laid-lifted-and-faded.test.ts`: each mark read, laid and lifted
   through the turn's own callers (with the cases its header names, each read, lay, lift and fade).
+- `tests/unit/the-wonders-each-by-its-row-and-the-realm-it-serves.test.ts`: each Wonder's slug and alignment, one row
+  for each Grand Design's text; `theWonderServesTheRealm` answers as `gdActive` by the row's alignment.
 
 ## How to add an ability
 

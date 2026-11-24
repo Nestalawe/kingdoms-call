@@ -27,7 +27,7 @@ import {
   discHeroWage,
   discTaxAdd,
   discUpkeepWage,
-  gdActive,
+  theWonderServesTheRealm,
   realmBaseTax,
   taxBonusCap,
   taxRecordsGold,
@@ -213,7 +213,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
       t = theTaxOfAProvinceFromTheRealmsWonder({
         theTax: t,
         itKeepsAGarrison: (pv.garrisonArmies ?? []).length > 0,
-        theFreeCityCharterStands: () => gdActive(turnContext, pi, 'Good'),
+        theFreeCityCharterStands: () => theWonderServesTheRealm(turnContext, pi, 'free-city-charter'),
       });
       return s + t;
     }, 0);
@@ -338,7 +338,11 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
     // association.
     const _druidHalfWage = new Set<ArmyInABattle>();
     playerChars.forEach((ch: AHeroAsEarlyWinterReadsHisArmies) => {
-      if (aLeadersBeastsPayHalfWages(perkTier(ch, 'druid') > 0, () => gdActive(turnContext, p.id, 'Druidic')))
+      if (
+        aLeadersBeastsPayHalfWages(perkTier(ch, 'druid') > 0, () =>
+          theWonderServesTheRealm(turnContext, p.id, 'world-tree-grove'),
+        )
+      )
         (ch.armies ?? []).forEach((a) => {
           if (aCompanyIsABeastADruidHalves(a.type)) _druidHalfWage.add(a);
         });
@@ -554,7 +558,7 @@ export function earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill(tur
         // dissolve on their own at turn's end (and no longer draw a wage above).
         if (army._temporary) return;
         if (army._wildHuntUntilTurn != null) return; // Wild Hunt beasts draw no wage, so they cannot be disbanded for one
-        if (army._isSkeletal && gdActive(turnContext, p.id, 'Undead')) return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
+        if (army._isSkeletal && theWonderServesTheRealm(turnContext, p.id, 'deathless-legion')) return; // GRAND DESIGN — Undead (Deathless Legion): skeletal units never disband for unpaid wages
         // _isSkeletal armies cost 1g upkeep (all types); base cost-0 armies (other summons)
         // still free
         const cost = theWageOfACompany(army);

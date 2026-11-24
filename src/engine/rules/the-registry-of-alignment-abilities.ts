@@ -13,6 +13,7 @@ import {
   type AlignmentAbilitySlug,
   type AnAlignmentAbility,
 } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   A_REALMS_ALIGNMENT_ADDS_TO_ITS_TAX,
   A_REALMS_CONSECRATED_GROUND_RAISES_A_PROVINCES_TAX,
@@ -360,10 +361,10 @@ export function theTaxOfAProvinceOnConsecratedGround(facts: TheTaxOfAProvinceOnC
   );
 }
 
-/** The alignment a side of a battle fights under: its realm's, or Neutral for a realm of none (or none given), as both
- *  battles read it before. */
+/** The alignment a side of a battle fights under: its realm's, or for a realm of none (or none given) the one the
+ *  content names, as both battles read it before (P1-19bb1: theAlignmentARealmReadsAs). */
 export const theAlignmentASideFightsUnder = (theAlignment: string | null | undefined): string =>
-  (theAlignment ?? '') || 'Neutral';
+  theAlignmentARealmReadsAs(theAlignment);
 
 /** The runner of "strength: a realm's alignment gives a side its chance of zeal" (both battles, before the realm's
  *  fanaticism discoveries add theirs): the chance of the ability the side's alignment holds, or 0.1 for an alignment

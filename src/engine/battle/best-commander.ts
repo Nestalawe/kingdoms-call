@@ -1,3 +1,4 @@
+import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { battleFrontWidth, battleLineTotal } from './lines.ts';
 import { tacMulted } from '../units/movement.ts';
 import {
@@ -50,7 +51,7 @@ export function commandScore(
 ) {
   const { G } = turnContext;
   if (!cand || !pooled?.length) return 0;
-  const align = (cand.player != null ? (G.players[cand.player]?.alignment ?? '') : '') || 'Neutral';
+  const align = theAlignmentARealmReadsAs(cand.player != null ? (G.players[cand.player]?.alignment ?? '') : '');
   const terrain = (prov?.terrain ?? '') || 'plain';
   let tact = cand._tacticalNegated
     ? 0

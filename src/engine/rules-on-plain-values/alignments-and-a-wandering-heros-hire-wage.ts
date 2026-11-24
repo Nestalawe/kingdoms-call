@@ -63,6 +63,11 @@ export function heroHireWage(
     (hero ? heroSkillWage(hero) : 0)
   );
 }
+/** Whether a realm of this alignment stands at the holy end of the full gulf, the ladder's first rung (Divine; P1-19bb5):
+ *  a hero of the far end refuses its hire in the words a Divine crown hears, not an Undead throne's. */
+export function doesAnAlignmentStandAtTheHolyEndOfTheGulf(alignment: string): boolean {
+  return ALIGNMENTS_P[0] === alignment;
+}
 // ── Mercy, by the foe's own alignment (P1-19av2: a column of the ladder, Decision D) ────
 // A felled coward begs his foe for mercy; the foe's own alignment (his, or his temper item's: Decision G) sets the chance
 // he spares him, and whether a refusal is his laughter. The resolver draws the dice, where it drew them before.
