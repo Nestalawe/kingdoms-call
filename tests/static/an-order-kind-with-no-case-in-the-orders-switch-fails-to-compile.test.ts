@@ -77,7 +77,11 @@ const PLANTS: Record<string, APlantedCopy> = {
   "the Forced March's remapping to a Move left out": {
     rows: ROWS,
     kinds: KINDS,
-    dispatch: replacedOnce(DISPATCH, "    _fmSlip = true;\n    action = 'move';\n", '    _fmSlip = true;\n'),
+    dispatch: replacedOnce(
+      DISPATCH,
+      '    _fmSlip = true;\n    action = THE_HERO_ORDERS.move.key;\n',
+      '    _fmSlip = true;\n',
+    ),
   },
 };
 
