@@ -8,7 +8,7 @@
 The GM page names each creed order as its row does: Harvest the Field, Perform Rite. Each of the five creed orders
 (Consecrate, Call to Arms, the Broker, Harvest the Field, Perform Rite) has one name, written once, in its row of
 `src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`; the order form, the books and the GM's
-Statistics tab all read it there. Example: a Pagan hero harvests the field; the bar for that order on the "What
+Statistics tab all read it there. Example: an Undead hero harvests the field; the bar for that order on the "What
 players order" card says "Harvest the Field", as the hero's order form does. The two removed orders, Awaken the Wild
 and Call from the Pit, have no row, so the tab keeps its own words for the turns that recorded them. The statistics'
 exports keep each order's key (`harvest_field`, `rite`), not its name.

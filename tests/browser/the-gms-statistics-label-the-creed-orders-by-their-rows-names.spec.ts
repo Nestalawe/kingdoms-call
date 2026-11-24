@@ -12,8 +12,8 @@ import type { TheGameMastersWorldAsData } from '../lib/fake-db.ts';
 import { gmPortalSignedIn } from './started.ts';
 import { handThePageTheFakeDb } from './the-fake-db-handed-to-chromium.ts';
 
-/** A made-up realm's turn record: its hero gave each order named, one a phase. */
-const aTurnRecordGiving = (playerIndex: number, ...orders: string[]) => ({
+/** A made-up realm's turn record, of the alignment given: its hero gave each order named, one a phase. */
+const aTurnRecordGiving = (playerIndex: number, alignment: string, ...orders: string[]) => ({
   game_id: 'G1',
   turn: 1,
   player_index: playerIndex,
@@ -21,14 +21,15 @@ const aTurnRecordGiving = (playerIndex: number, ...orders: string[]) => ({
   bot_difficulty: null,
   realm: `Realm ${String(playerIndex)}`,
   race: 'Elf',
-  alignment: 'Pagan',
+  alignment,
   orders: { chars: { c1: { ph: orders.map((a) => ({ a })) } } },
   pre: null,
   post: null,
   outcomes: null,
 });
 
-// u0, a Game Master named Test GM, signed in; one game's turn: one realm harvested the field and performed the rite.
+// u0, a Game Master named Test GM, signed in; one game's turn: an Undead realm harvested the field (the Undead's order)
+// and a Pagan realm performed the rite (the Pagan's order).
 const theGameMastersWorld = (): TheGameMastersWorldAsData => ({
   me: 'u0',
   tables: {
@@ -36,7 +37,10 @@ const theGameMastersWorld = (): TheGameMastersWorldAsData => ({
     games: [{ id: 'G1', name: 'A Made-up Game', gm_user_id: 'u0', status: 'active', turn: 2 }],
     game_players: [],
     turn_logs: [],
-    turn_events: [aTurnRecordGiving(0, 'harvest_field', 'rite', 'move')],
+    turn_events: [
+      aTurnRecordGiving(0, 'Undead', 'harvest_field', 'move'),
+      aTurnRecordGiving(1, 'Pagan', 'rite', 'move'),
+    ],
     game_results: [],
     game_records: [],
     game_messages: [],
