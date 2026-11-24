@@ -16,6 +16,8 @@
 // Since P1-19ag discEffectsOf, discParam, discSumOf and discTaxMatch are gone with their last callers: their cases ask
 // the registry's finder (theEffectsOfAKindARealmHolds), the fallbacks the effects keep (Taxation Records' 99g, War
 // Academy's 50%, Herbal Lore's 40%), discTaxAdd (the tax effect's filters) and discMaxHpFor (a row with no `hp`).
+// Since B-06ag _isHumanoidRace (the Plague's victims) reads content's humanoid races: its case holds it to the test it
+// wrote inline before, on every race word and none (the matrix's Plagues meet only some).
 // Level 1 (unit): each is a plain function on staged values, called directly on the engine's modules (plan P1-14a). The
 // staged values carry only the fields each reads, so their type is given by assertion (`as never`), as the views' unit
 // cases give a staged world's.
@@ -23,6 +25,7 @@ import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import {
   DISC_BY_ID,
+  _isHumanoidRace,
   applyPendingSynthPlan,
   capItemTaxGold,
   discBlockedIds,
@@ -362,5 +365,19 @@ describe("the discoveries' lines no matrix game reaches keep their values", () =
     expect(discFanaticApplies({ withCls: 'creature' }, 'atk', 'plains', undefined)).toBe(false);
     expect(discFanaticApplies({ withCls: 'creature' }, 'atk', 'plains', [null, { type: 'Stone Giants' }])).toBe(true);
     expect(discFanaticApplies({ withCls: 'creature' }, 'atk', 'plains', [null, { type: 'Free Lances' }])).toBe(false);
+  });
+
+  test("the Plague's victims: a company of one of the four humanoid races, as the test wrote inline before", () => {
+    const theTestWrittenInlineBefore = (r: string | null | undefined) =>
+      r === 'Human' || r === 'Elven' || r === 'Dwarven' || r === 'Orcish';
+    const races = ['Human', 'Elven', 'Dwarven', 'Orcish', 'Primal', 'Primal:Wolf', 'Creature', 'Monster', 'Undead'];
+    const words = [...races, 'human', '', null, undefined];
+    words.forEach((r) => {
+      expect(_isHumanoidRace(r), `_isHumanoidRace(${String(r)})`).toBe(theTestWrittenInlineBefore(r));
+    });
+    expect(
+      races.filter((r) => _isHumanoidRace(r)),
+      'the races the Plague takes',
+    ).toEqual(['Human', 'Elven', 'Dwarven', 'Orcish']);
   });
 });
