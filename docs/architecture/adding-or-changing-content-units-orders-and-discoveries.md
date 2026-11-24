@@ -212,7 +212,7 @@ its key, its name, the other names the turn reads, its creed (`alignment`), whet
 state, each with its words. `ALIGNMENT_ORDER_KEYS` (the Charmed-hero gate) is built from the rows (and so is the
 order dispatch's prose's own set, for the charmed hero's line), and so are the
 rows of the hero orders for them (each row's key, its name in lower case and its other names, which
-`PHASE_ACTION_MAP` reads: the next section);
+`PHASE_ACTION_MAP` reads: the section after this one);
 the order switch's `case`s read their row's key. Who may give one is two checks of
 `src/engine/rules-on-plain-values/the-alignment-orders-the-names-the-form-writes-and-who-may-give-each.ts` (a realm of
 the row's creed; the king, where the row marks it his alone): each resolver asks them through the registry's
