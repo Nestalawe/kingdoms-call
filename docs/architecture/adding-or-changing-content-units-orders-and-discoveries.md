@@ -111,8 +111,8 @@ swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM porta
 (`THE_WILD_CREATURES_BY_TERRAIN` / `THE_WILD_MONSTERS_BY_TERRAIN` in
 `src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts`, one
 list each, which the province pass, the creed's neighbour and the wild country all read); the player portal's alignment
-texts (its `PRIMAL_SUBRACE_CLASS`, a sub-race's Creature or Monster, reads the beast's sub-race and class); the
-rulebook's Druid ladder and the Druidic or Evil section. Renaming one also needs `LEGACY_UNIT_RENAMES` and
+texts; the rulebook's Druid ladder and the Druidic or Evil section. The player portal's `PRIMAL_SUBRACE_CLASS` (a
+sub-race's Creature or Monster) needs nothing: it reads the beast's sub-race and class. Renaming one also needs `LEGACY_UNIT_RENAMES` and
 `LEGACY_RACE_RENAMES` (`migrateLegacyUnitNames` runs at the top of every turn), the old sub-race's name in
 `PRIMAL_SUBRACE_CLASS` (an older report holds it) and the discoveries whose `effect.types` name it.
 
