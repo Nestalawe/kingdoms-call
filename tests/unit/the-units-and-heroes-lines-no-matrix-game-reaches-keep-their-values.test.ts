@@ -312,21 +312,24 @@ describe("a skill rise's guards, its duel's foe and its province's mark", () => 
     ['Human', 'Human', ['melee']],
     ['Elven', 'Human', []],
     ['Human', 'Elven', []],
-  ] as const)('Quick learners: a hero (%s) of a realm (%s) rises on a die of 0.25 at level 0: %j', ([heroRace, realmRace, rises]) => {
-    const G = JSON.parse(THE_WORLD) as World;
-    const theRealms = G.players as unknown as Record<string, unknown>[];
-    theRealms[0] = { ...theRealms[0], race: realmRace, discoveries: [] };
-    const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
-    const him: Record<string, unknown> = { ...aStandIn(), race: heroRace, skills: { melee: 0 } };
-    const was = kcRng.use(() => 0.25);
-    try {
-      trySkillGain(tc as never, him, 'melee', SKILLGAIN_STD);
-    } finally {
-      kcRng.use(was);
-    }
-    const theRises = (him['_sgPending'] as { list: { skill: string }[] } | undefined)?.list ?? [];
-    expect(theRises.map((e) => e.skill)).toEqual(rises);
-  });
+  ] as const)(
+    'Quick learners: a hero (%s) of a realm (%s) rises on a die of 0.25 at level 0: %j',
+    ([heroRace, realmRace, rises]) => {
+      const G = JSON.parse(THE_WORLD) as World;
+      const theRealms = G.players as unknown as Record<string, unknown>[];
+      theRealms[0] = { ...theRealms[0], race: realmRace, discoveries: [] };
+      const tc = addTheFieldsResolveTurnAdds(createTurnContext(G, [], 3), { KC_SEASONS, isBotRow });
+      const him: Record<string, unknown> = { ...aStandIn(), race: heroRace, skills: { melee: 0 } };
+      const was = kcRng.use(() => 0.25);
+      try {
+        trySkillGain(tc as never, him, 'melee', SKILLGAIN_STD);
+      } finally {
+        kcRng.use(was);
+      }
+      const theRises = (him['_sgPending'] as { list: { skill: string }[] } | undefined)?.list ?? [];
+      expect(theRises.map((e) => e.skill)).toEqual(rises);
+    },
+  );
 
   test("a rise drawn in a province where he has risen this turn keeps that rise's mark beside its own", () => {
     const G = JSON.parse(THE_WORLD) as World;
