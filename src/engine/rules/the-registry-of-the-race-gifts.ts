@@ -5,7 +5,7 @@
 // order is THE_ORDER_OF_EACH_STAGE_OF_THE_RACE_GIFTS. A runner is handed the race of the realm the rule reads (the
 // company's realm, the winner's, the stamped company's) and asks, in the stage's order, the effects of the gifts that
 // race holds; each effect checks the rest (its company's or its province's race, its ground, its side). No effect draws
-// a die. How to add one: docs/architecture/the-rule-registry-and-the-one-source-for-shared-rules.md.
+// a die. How to add one: docs/architecture/the-race-gifts-registry-its-stages-and-how-to-add-a-gift.md.
 import {
   RACE_GIFTS,
   type ARaceGift,

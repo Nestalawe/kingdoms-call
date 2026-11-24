@@ -3,7 +3,7 @@
 // that race too). Each gift is one row here (its name, its race, and the numbers, the ground or the side the turn reads
 // for it) and one entry in src/engine/rules/the-registry-of-the-race-gifts.ts, keyed by the same slug. These are the
 // battles' gifts; the heroes' and the units' (Quick learners, Drillmasters, Iron constitution, Mithril, Homeward
-// Flight) are not rows yet. How to add one: docs/architecture/the-rule-registry-and-the-one-source-for-shared-rules.md.
+// Flight) are not rows yet. How to add one: docs/architecture/the-race-gifts-registry-its-stages-and-how-to-add-a-gift.md.
 import type { KC_HUMANOID_RACES } from './kingdoms-call-data.ts';
 
 /** A race's gift: its name (as the books write it), the race whose realms hold it, and what its row adds: the factor a
