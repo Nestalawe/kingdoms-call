@@ -81,6 +81,13 @@ describe('the tier an order acts in, and which of two heroes acts first', () => 
     expect(theTierAnOrderActsIn('defend')).toBe(2);
   });
 
+  // A name no hero order's row writes stays put: a name the turn doesn't read as a kind (its form's own words, in
+  // another case), and the names an object holds of its own.
+  test('a name no row writes acts in tier 0', () => {
+    for (const name of ['a name no row writes', 'Move', 'Defend', 'move ', 'toString', 'constructor', '__proto__'])
+      expect(theTierAnOrderActsIn(name), name).toBe(0);
+  });
+
   // The hero orders' rows (content) write each kind's tier, and Pursue's (B-06al); theTierAnOrderActsIn gives its own
   // until it reads them, so the two are held to one answer. A Forced March stays at 0 (answer 133).
   test("each hero order's row writes the tier theTierAnOrderActsIn gives its key", () => {
