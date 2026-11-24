@@ -2,7 +2,7 @@
 // in words or none, a map too small for its realms or for its share of sea, a sea so wide its names run out, a setup
 // whose king or kingdom has no name of its own, a king's skills in the join form's own words, a race the land tables
 // don't hold (its names the Human ones), and an eleventh realm, past the ten colours; each race's heartland and the
-// fleet its home offers, content's (B-06ad). Each case reads what the world records: the share, the
+// fleet its home offers, content's, and the strongest neutral mix of a province of no race (B-06ad). Each case reads what the world records: the share, the
 // warnings to the GM, the provinces' names, the realms' and kings' names, the king's skills and home roster, a realm's
 // colour. And (plan P1-21i, the mutation session of 2026-11-05) the crowded maps again on a planted copy of src/ in
 // which no home finds a prosperous neighbour, so each forces one: never a cell an earlier king was promised.
@@ -26,6 +26,8 @@ import { REALM_COLOURS, REALM_COLOUR_FALLBACK } from '../../src/engine/bots/inte
 import { SEA_PCT_DEFAULT, generateNewGame, normSeaPct } from '../../src/engine/world/generate.ts';
 import { getNeighborsP } from '../../src/engine/world/map-helpers.ts';
 import { SIGNATURE_TERRAIN_P, theFleetAHomeOfItsRaceOffers } from '../../src/engine/world/tables.ts';
+import { everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits } from '../../src/engine/world/the-worlds-making/s15-every-neutral-province-fields-the-strongest-mix-of-its-own-units.ts';
+import type { AProvinceAsTheWorldIsMadeIt } from '../../src/engine/world/the-worlds-making/what-every-stage-shares-the-shapes-it-hands-on-and-its-two-checks.ts';
 import { KC_HUMANOID_RACES } from '../../src/content/kingdoms-call-data.ts';
 import { THE_FIRST_HALVES_OF_A_PROVINCES_NAME_BY_ITS_RACE } from '../../src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts';
 
@@ -174,6 +176,29 @@ test("each race's heartland, and the fleet a home of each race offers, are conte
     [...KC_HUMANOID_RACES, 'Gnomish', ''].map((race) => theFleetAHomeOfItsRaceOffers(race)),
     'the fleet of a Human, Elven, Dwarven, Orcish, Gnomish and raceless home',
   ).toEqual(['Galleon Fleet', 'Elven Galleys', 'Dwarf Ironclads', 'Orcish Longships', undefined, undefined]);
+});
+
+// B-06ad: the strongest neutral mix (S15) called directly on a made world's neutral province turned raceless, its one
+// company of no race and of a type the province doesn't offer: each slot of the new mix is a new company, of the race
+// a province of no race reads as (THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS), Human. No world makes one: a
+// land province always has a race, and so do its companies.
+test('the strongest neutral mix of a province and companies of no race fields Human companies', () => {
+  const w = aWorld(realms(2), 8, 5, 20);
+  const p = w.world.provinces.find(
+    (q) => q.owner === null && q.terrain === 'plain' && q.race === 'Human' && q.neutralDefenders.length > 0,
+  );
+  if (!p) throw new Error('the world has no neutral Human plain with defenders');
+  const raceless: AProvinceAsTheWorldIsMadeIt = {
+    ...p,
+    race: '',
+    armyTypes: ['Shieldwall Levies', 'Free Lances', 'Yeoman Longbows'],
+    neutralDefenders: [{ type: 'Gnomish Pikes', quality: 'Average', race: '', unitName: 'the Gnomish Pikes' }],
+  };
+  everyNeutralProvinceFieldsTheStrongestMixOfItsOwnUnits({ provinces: [raceless] });
+  expect(
+    raceless.neutralDefenders.map((d) => [d.type === 'Gnomish Pikes', d.race]),
+    'each company of the mix: whether it is the old one, and its race',
+  ).toEqual([[false, 'Human']]);
 });
 
 test('an eleventh realm, past the ten colours, takes the fallback colour', () => {
