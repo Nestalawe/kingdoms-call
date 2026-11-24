@@ -91,7 +91,7 @@ describe('each copy gives the reader’s answer, and Neutral for a realm with it
     ({ relations, a, b }) => {
       if (a == null || b == null) throw new Error('a pair of two realms');
       const expected =
-        a === b ? relations?.[`${String(a)}-${String(a)}`] || 'neutral' : theReadersAnswer(relations, a, b);
+        a === b ? (relations?.[`${String(a)}-${String(a)}`] ?? '') || 'neutral' : theReadersAnswer(relations, a, b);
       expect(theStateThePairsEntryHolds(relations, a, b), `the entry of ${String(a)} and ${String(b)}`).toBe(expected);
     },
   );
