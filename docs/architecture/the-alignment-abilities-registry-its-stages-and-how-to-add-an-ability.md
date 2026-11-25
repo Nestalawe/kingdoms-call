@@ -194,7 +194,13 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   Every Wonder's rule asks it (P1-19bb3 and bb4): the battles' and the orders' (the Standing Stones, the Iron Throne,
   the Grand Cathedral's Bless, the World-Tree Grove's Veterans, the Deathless Legion's raisings) and the turn's (the
   Grand Cathedral's ward, the Free City Charter's tax, the World-Tree Grove's half wages, the Deathless Legion never
-  disbanded unpaid, the Grand Library's discovery). No rule asks `gdActive` by a creed's name.
+  disbanded unpaid, the Grand Library's discovery), and the reports' view (B-06bx: its books' three Wonders). No rule
+  asks `gdActive` by a creed's name.
+- **The parts of the view only some creeds read** are `THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ`, a table beside
+  the rows (B-06bx): each part by its slug, named by the fields it holds, and the creeds whose realms read it. The view
+  and the turn's report ask `doesARealmOfTheAlignmentReadThePart` (`src/views/what-each-realm-may-see-of-the-world.ts`).
+  With it, no function of the portal, the views or the shared rules names a creed (`alignmentChecksOutsideTheEngine`
+  is 0).
 - **The creed discoveries, the alignment-only items and guardians' Anathema** keep their own registries. A row names
   one by its key when it reads it.
 - **The bots** read the rows' numbers and a realm of none's constant. Their creed orders ask each order's row for the

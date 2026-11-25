@@ -724,6 +724,24 @@ export const THE_WONDERS = {
 /** A Wonder's slug: a key of THE_WONDERS. */
 export type AWondersSlug = keyof typeof THE_WONDERS;
 
+/** A part of a realm's view of the world that only the realms of some creeds read (B-06bx): the view adds it for a
+ *  realm of one of the part's creeds, and leaves it out for any other (src/views/what-each-realm-may-see-of-the-
+ *  world.ts's `doesARealmOfTheAlignmentReadThePart`). */
+export interface APartOfTheViewOnlySomeCreedsRead {
+  readonly theCreedsWhoseRealmsReadIt: readonly (typeof KC_ALIGNMENTS)[number][];
+}
+
+/** The parts of a realm's view only the realms of some creeds read, by slug (a table beside the rows, not abilities):
+ *  each named by the fields it holds. */
+export const THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ = {
+  // a province's `terror` (its record's `_terrorStacks`, `_terrorTurn`, `_terrorPct` and `_terrorisedBy`), and the
+  // report's readings of it (src/views/turn-report.ts's `theTerrorAnEvilRealmSees`)
+  'a-provinces-terror': { theCreedsWhoseRealmsReadIt: ['Evil'] },
+} as const satisfies Readonly<Record<string, APartOfTheViewOnlySomeCreedsRead>>;
+
+/** A slug of a part of the view only some creeds read: a key of THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ. */
+export type APartOfTheViewOnlySomeCreedsReadsSlug = keyof typeof THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ;
+
 // The alignments' ladder (P1-19av2): a table beside the rows, not abilities. The rungs run down the moral spectrum from
 // holiest to unholiest, and their order is data: a wandering hero's wage is set by the steps between two rungs, Divine
 // and Undead (the full gulf) never serve each other, a king's starting heroes are dealt within a step of his rung (a die

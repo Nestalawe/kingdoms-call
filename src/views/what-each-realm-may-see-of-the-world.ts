@@ -21,7 +21,7 @@
 //
 // It writes nothing and draws no dice (tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts).
 // The cases of each sight rule: tests/unit/what-each-realm-may-see-of-the-world.test.ts.
-import { discTaxAdd, realmBaseTax, taxBonusCap } from '../engine/discoveries.ts';
+import { discTaxAdd, realmBaseTax, taxBonusCap, theWonderServesTheRealm } from '../engine/discoveries.ts';
 import { gdActiveFor, homeFounderOf, homeProvinceIdFor, mapCentreColFor } from '../engine/grand-design.ts';
 import { graveIntelFor } from '../engine/graves.ts';
 import { graveServedOther } from '../engine/heroes/charms-and-neutrals.ts';
@@ -30,6 +30,10 @@ import { activeItems } from '../engine/items/equipment.ts';
 import { monsterCatLabel } from '../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../engine/titles/perks.ts';
 import { MINOR_TITLES } from '../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+import {
+  THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ,
+  type APartOfTheViewOnlySomeCreedsReadsSlug,
+} from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   computeMinorTitles,
   computeStandings,
@@ -462,6 +466,17 @@ const OFFSETS_ODD: readonly (readonly [number, number])[] = [
   [1, 1],
 ];
 
+/** Whether a realm of the alignment reads a part of the view only the realms of some creeds read (B-06bx): the part's
+ *  row (THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ) holds the alignment; one no row holds, or none, doesn't. The view
+ *  and the turn's report both ask it. */
+export const doesARealmOfTheAlignmentReadThePart = (
+  thePart: APartOfTheViewOnlySomeCreedsReadsSlug,
+  theAlignment: unknown,
+): boolean =>
+  THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ[thePart].theCreedsWhoseRealmsReadIt.some(
+    (theCreed) => theCreed === theAlignment,
+  );
+
 /** What realm `realm` may see of `state`, the world after the turn; `itsLines`, what its lines of the turn show
  *  (absent for a report built with no turn: Turn 0, the tests' staged worlds). */
 export function playerView(state: GameState, realm: number, itsLines?: WhatItsLinesShow): PlayerView {
@@ -513,7 +528,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     clairId != null ? characters.find((x) => asSaved(x).id === clairId && x.alive && x.player !== realm) : undefined;
   const spiedByItsLines = new Set(Object.keys(itsLines?.spiedProvincesAndTheirFirstPhase ?? {}).map(Number));
   const provincesOfItsProvinceEvents = new Set((itsLines?.provinceEvents ?? []).map((e) => e.provinceId));
-  const evil = player.alignment === 'Evil';
+  const evil = doesARealmOfTheAlignmentReadThePart('a-provinces-terror', player.alignment);
   // sd31 Diplomatic Protocols: the hiring ban waived (the discoveries' registry's since plan P1-19ae: "orderValidity: a
   // realm's discoveries waive the hiring ban", the rule the hire reads)
   const sd31 = doARealmsDiscoveriesWaiveTheHiringBan(me);
@@ -996,9 +1011,9 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
       baseTax,
       discoveryTaxGoldOfEachOfItsProvinces,
       wonderBlesses: {
-        Good: gdActiveFor(state, realm, 'Good'),
-        Druidic: gdActiveFor(state, realm, 'Druidic'),
-        Divine: gdActiveFor(state, realm, 'Divine'),
+        Good: theWonderServesTheRealm({ G: state }, realm, 'free-city-charter'),
+        Druidic: theWonderServesTheRealm({ G: state }, realm, 'world-tree-grove'),
+        Divine: theWonderServesTheRealm({ G: state }, realm, 'grand-cathedral'),
       },
       provincesItHoldsByTheirRecord: provincesItHoldsByTheirRecord.length,
       unitsGarrisonedInTheProvincesItHolds: provincesItHoldsByTheirRecord.flatMap(

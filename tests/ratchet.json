@@ -29,7 +29,7 @@
     "personalCombatNumbersInEngine": 22,
     "battleNumbersInTheBots": 0,
     "sightNumbersInEngine": 0,
-    "alignmentChecksOutsideTheEngine": 5,
+    "alignmentChecksOutsideTheEngine": 0,
     "eslintSuppressions": 216,
     "knownArchitectureViolations": 0,
     "unusedCode": 8
