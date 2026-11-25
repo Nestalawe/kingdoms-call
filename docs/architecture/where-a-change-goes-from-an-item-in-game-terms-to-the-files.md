@@ -43,7 +43,7 @@ a hint by its words or its function's name, not by the file's name.
 | Sight: who sees whom, spotting, what a province shows | `sight/`, and `src/views/what-each-realm-may-see-of-the-world.ts` |
 | The warnings of a rival's hero in your land | `turn/intrusion-warnings.ts` |
 | Spies: what a spy learns | `espionage/`, and the espionage orders in `orders/` |
-| Relations between realms, captures | `realms/`; the three states and the Treat in `src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts`, the diplomacy ladder (each declaration's step, the overture's kind, the small game's alliance limit) in `src/content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts`, and the key of a pair and its entry's one reader in `rules-on-plain-values/how-two-realms-stand-…` |
+| Relations between realms, captures | `realms/`; the three states, the Treat and the map's name for each state in `src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts` (the player portal's popup and Diplomacy card read them too: `ui/player/map-symbols.ts`), the diplomacy ladder (each declaration's step, the overture's kind, the small game's alliance limit) in `src/content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts`, and the key of a pair and its entry's one reader in `rules-on-plain-values/how-two-realms-stand-…` |
 | The turn's steps: the new turn, the phases, Early Winter, after the phases, diplomacy and victory | `turn/` |
 | The world and the map | `world/` |
 | Bots | `bots/` |
