@@ -1,5 +1,6 @@
 import { kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
 import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   asItsGuardReadsIt,
   countsAgainstBeastCommand,
@@ -597,14 +598,18 @@ export function renderReportView(report: TheReportAsTheReportScreenReadsIt) {
     </div>`
     : '';
 
+  // the beasts' guide: the Druidic and Evil battle abilities' rows, their alignments and factors (Home of the Wild's
+  // Creatures in forest and jungle, Savage Fury's host with a Monster in it)
+  const theWild = ALIGNMENT_ABILITIES['home-of-the-wild'];
+  const theFury = ALIGNMENT_ABILITIES['savage-fury'];
   const cmGuide =
-    playerAlignment === 'Druidic' || playerAlignment === 'Evil'
+    playerAlignment === theWild.alignment || playerAlignment === theFury.alignment
       ? kcHtml`
     <div style="font-size:.72rem;color:var(--stone);background:#f5f0e8;border:1px solid var(--stone);border-radius:2px;padding:5px 8px;margin-bottom:8px">
-      ${playerAlignment === 'Druidic' ? kcHtml`🌿 <strong>Druidic bonuses</strong> — <span style="color:#1d5a1d"><strong>[C] Creature</strong></span> armies get no Druid penalty and fight at ×1.5 in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1.` : ''}
-      ${playerAlignment === 'Evil' ? kcHtml`💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×1.25 in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest, by each hero's doctrine: Terror plunders 50% of its tax; Enslave presses a free Green garrison unit, and the province pays 1g less tax for 3 turns.` : ''}
+      ${playerAlignment === theWild.alignment ? kcHtml`🌿 <strong>Druidic bonuses</strong> — <span style="color:#1d5a1d"><strong>[C] Creature</strong></span> armies get no Druid penalty and fight at ×${theWild.theNumbers.theStrengthOfACreature.value} in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1.` : ''}
+      ${playerAlignment === theFury.alignment ? kcHtml`💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×${theFury.theNumbers.theStrengthOfTheHost.value} in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest, by each hero's doctrine: Terror plunders 50% of its tax; Enslave presses a free Green garrison unit, and the province pays 1g less tax for 3 turns.` : ''}
       <br><span style="color:#1d5a1d;font-weight:600">[C] Creatures:</span> Thunderbirds, Forest Ents, Great Bears, Stone Giants, Unicorn Herd, Mammoth Host, Crimson Rocs, Whale Cohort, Great Turtles
-      ${playerAlignment === 'Evil' ? kcHtml`<br><span style="color:#701010;font-weight:600">[M] Monsters:</span> Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals` : ''}
+      ${playerAlignment === theFury.alignment ? kcHtml`<br><span style="color:#701010;font-weight:600">[M] Monsters:</span> Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals` : ''}
     </div>`
       : '';
   // Royal-succession skill allocation is rendered at the TOP of the orders column now

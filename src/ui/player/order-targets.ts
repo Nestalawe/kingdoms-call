@@ -28,6 +28,7 @@ import {
   theAlignmentARealmReadsAs,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import {
   DIRECTIONS,
@@ -1512,7 +1513,13 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
     case 'Research': {
       const sg = Math.min(5, effSkillP(c, 'sage'));
       const per = 5;
-      const neutral = report.kingdom?.alignment === 'Neutral' ? sg * 5 : 0;
+      // a Neutral realm's scholars: their row's alignment and the points each Sage level adds (P1-19av1's row, as the
+      // turn's Research reads it)
+      const theScholars = ALIGNMENT_ABILITIES['neutral-scholars'];
+      const neutral =
+        report.kingdom?.alignment === theScholars.alignment
+          ? sg * theScholars.theNumbers.thePointsASageLevelAdds.value
+          : 0;
       const chance = sg * per + neutral;
       // choose a FIELD of study. Categories with every discovery already made are greyed out.
       const cats = report.researchCategories ?? [];
