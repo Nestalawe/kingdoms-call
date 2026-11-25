@@ -15800,11 +15800,11 @@ export const KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT = {
   theMasteryTierOfArcheryThatTakesTrueshot: 3,
   theChanceATrueshotFindsAVitalPoint: 0.5,
 } as const;
-// A guardian's plan (pcMonsterPlan, pcAct): this many actions before his heals; he looses a shot when his plan reaches
-// a multiple of this (if he has a ranged attack) and uses his next power at a multiple of this; a power whose record
-// names no chance is used at this chance in percent.
+// A guardian's plan (pcMonsterPlan, pcAct): his plan holds this many actions, his heals the last of them (at least one
+// action before them); he looses a shot when his plan reaches a multiple of this (if he has a ranged attack) and uses
+// his next power at a multiple of this; a power whose record names no chance is used at this chance in percent.
 export const KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT = {
-  theActionsOfHisPlanBeforeHisHeals: 12,
+  theActionsOfHisPlanHisHealsTheLastOfThem: 12,
   theActionsBetweenHisShots: 4,
   theActionsBetweenHisPowers: 3,
   theChanceInPercentHeUsesAPowerWhoseRecordNamesNone: 50,

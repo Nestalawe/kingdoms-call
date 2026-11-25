@@ -442,7 +442,10 @@ export function pcMonsterPlan(m: Pick<AGuardianAsHisFighterIsBuilt, 'spells' | '
   const heals = all.filter(pcSpecialHealsSelf).map((s) => 'MS:' + s.name);
   const specials = all.filter((s) => !pcSpecialHealsSelf(s)).map((s) => 'MS:' + s.name);
   const ranged = (m.archery ?? 0) > 0 || !!m.ranged;
-  const room = Math.max(1, KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT.theActionsOfHisPlanBeforeHisHeals - heals.length); // leave the tail free for the heals
+  const room = Math.max(
+    1,
+    KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT.theActionsOfHisPlanHisHealsTheLastOfThem - heals.length,
+  ); // leave the tail free for the heals
   const plan: string[] = [];
   const first = specials[0];
   if (first !== undefined) plan.push(first); // there is a first special exactly when the list isn't empty
