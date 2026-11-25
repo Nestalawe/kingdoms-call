@@ -57,7 +57,10 @@
 // a companion casting for his general's attack and following his march (the assaults stood in).
 // Then the bots' relations on the content's states (B-06au), each state and a pair with no entry: an ally's ground
 // passable, an ally's battle heard, a common foe, a province on the edge, the biggest foe's host in sight, a war judged
-// for peace and a Neutral pair for war, a third realm's alliances and wars weighed, and a crown met (a blank: KD-469).
+// for peace and a Neutral pair for war, a third realm's alliances and wars weighed, and a crown met (a blank: KD-469);
+// then the same for the missions, the specialists, the spellcraft and the first phase (B-06av): an ally's host near, a
+// foe's host by the home, a step to safety, a raid's target, a lair's candidates, a roam, a general remembered by a spy
+// and by a mage (the casts stood in), and a hunter's quarry.
 import fc from 'fast-check';
 import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
@@ -191,6 +194,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botResurrectErrands: theBotsMovement.botResurrectErrands,
   runBotMovement: theBotsMovement.runBotMovement,
   botPins: theBotsPhaseOne.botPins,
+  botSafeStep: theBotsPhaseOne.botSafeStep,
   runBotPhaseOne: theBotsPhaseOne.runBotPhaseOne,
   botConfigFor: theBotsSetUp.botConfigFor,
   botKingdomName: theBotsSetUp.botKingdomName,
@@ -4155,7 +4159,7 @@ describe("The bots' other passes read the hero orders' rows (B-06at)", () => {
 // ── The bots' relations read the content's states (B-06au) ───────────────────────────────────────────────────────────
 // Each check of how two realms stand in the bots' strategy, war and intel compares the bots' reader's answer with the
 // content's state: a case for each the matrix's games decide one way on every turn they reach it.
-describe("The bots' relations read the content's states (B-06au)", () => {
+describe("The bots' relations read the content's states (B-06au, B-06av)", () => {
   const { atWar, allied, neutral } = THE_STATES_TWO_REALMS_STAND_IN;
   /** Each state a pair can stand in, and a pair with no entry. */
   const EACH = [atWar, allied, neutral, null] as const;
@@ -4320,5 +4324,141 @@ describe("The bots' relations read the content's states (B-06au)", () => {
       'null: false',
       ': true',
     ]);
+  });
+  // B-06av: the missions, the specialists, the spellcraft and the first phase.
+  /** A host of realm 1 (`units` companies of Militia) and a hero of realm 0 beside it, in province 0. */
+  const aHostSeen = (units: number) => [
+    { id: 1, alive: true, player: 0, location: 0 },
+    {
+      id: 2,
+      alive: true,
+      player: 1,
+      location: 0,
+      armies: Array.from({ length: units }, () => ({ type: 'Militia', quality: 'Average', race: 'Human' })),
+    },
+  ];
+  test("an ally's host of three companies is near, and no other realm's", () => {
+    const G = (s: string | null) => aWorld(s, { characters: aHostSeen(3), world: { provinces: aRow([0, 1, 0]) } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        return fn('botAllyNear')(W, 0, ((W['world'] as Raw)['provinces'] as readonly Raw[])[0]);
+      }),
+    ).toEqual(['enemy: false', 'allied: true', 'neutral: false', 'null: false']);
+  });
+  test("a host by the realm's home threatens it only when the realm is at war with its own", () => {
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: aHostSeen(2),
+        players: [{ homeProvinceId: 0 }, {}, {}],
+        world: { provinces: aRow([0, 1, 0]) },
+      });
+    expect(byState((s) => (fn('botHomeThreat')(G(s), 0) as Raw | null)?.['provId'] ?? null)).toEqual([
+      'enemy: 0',
+      'allied: null',
+      'neutral: null',
+      'null: null',
+    ]);
+  });
+  test("a step to safety is the realm's own ground or an ally's, and not a Neutral's nor a foe's", () => {
+    const G = (s: string | null) => aWorld(s, { world: { provinces: aRow([1, 0, 1]) } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        const P = ((W['world'] as Raw)['provinces'] as readonly Raw[])[1];
+        return ((fn('botSafeStep')(W, 0, P, null) as Raw | null)?.['N'] as Raw | undefined)?.['id'] ?? null;
+      }),
+    ).toEqual(['enemy: null', 'allied: 0', 'neutral: null', 'null: null']);
+  });
+  test("a raid's target is a foe's ground, and no other realm's", () => {
+    const G = (s: string | null) =>
+      aWorld(s, { world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 1, tax: 5 })] } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        const from = ((W['world'] as Raw)['provinces'] as readonly Raw[])[0];
+        return ((fn('botRaidTarget')(W, 0, from, 3) as Raw | null)?.['P'] as Raw | undefined)?.['id'] ?? null;
+      }),
+    ).toEqual(['enemy: 1', 'allied: null', 'neutral: null', 'null: null']);
+  });
+  test("a lair's candidates: on an ally's ground, and not on a foe's nor a Neutral's", () => {
+    const hero = { id: 1, player: 0, alive: true, location: 0, skills: { melee: 6 }, items: [] };
+    const den = { name: 'Den', monster: { power: 'Weak' }, discovered: true, cleared: false };
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: [hero],
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 1, features: [den] })] },
+      });
+    expect(byState((s) => (fn('botLairCandidates')(G(s), 0, hero, 4) as readonly unknown[]).length)).toEqual([
+      'enemy: 0',
+      'allied: 1',
+      'neutral: 0',
+      'null: 0',
+    ]);
+  });
+  test("a hero roams to an ally's ground he has not visited, and to no other realm's (he scouts instead)", () => {
+    const hero = { id: 1, player: 0, alive: true, location: 0 };
+    const G = (s: string | null) => aWorld(s, { characters: [hero], world: { provinces: aRow([0, 1, 1]) } });
+    expect(
+      byState((s) => {
+        const orders = fn('botRoamOrders')(G(s), 0, hero, []) as readonly { desc?: string }[] | null;
+        return (orders?.[0]?.desc ?? '').startsWith('Roam to');
+      }),
+    ).toEqual(['enemy: false', 'allied: true', 'neutral: false', 'null: false']);
+  });
+  /** Realm 0's memory of a general of realm 1 (id 2, two companies) seen in province 1 this turn. */
+  const aGeneralRemembered = [
+    { _botIntel: { generals: { 2: { player: 1, provId: 1, turn: 3, units: 2, strength: 8 } }, heroes: {} } },
+    {},
+    {},
+  ];
+  test("a spy's target weighs a general remembered there only when his realm is at war with the spy's", () => {
+    const spy = { id: 1, player: 0, alive: true, location: 0 };
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: [spy],
+        players: aGeneralRemembered,
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 2 })] },
+      });
+    expect(byState((s) => (fn('botSpyTarget')(G(s), 0, spy, 3) as Raw | null)?.['sc'] ?? null)).toEqual([
+      'enemy: 12',
+      'allied: 7',
+      'neutral: 7',
+      'null: 7',
+    ]);
+  });
+  test("a mage closes on a general remembered within reach only when his realm is at war with the mage's", () => {
+    const mage = { id: 1, player: 0, alive: true, location: 0, skills: { necromancy: 2 } };
+    const general = { id: 2, player: 1, alive: true, location: 1 };
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: [mage, general],
+        players: aGeneralRemembered,
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 2 })] },
+      });
+    const casts = vi.spyOn(theBotsSpellcraft, 'botCastPlan').mockReturnValue([]);
+    try {
+      expect(
+        byState((s) => {
+          casts.mockClear();
+          fn('botMageOrders')(G(s), 0, mage, []);
+          return casts.mock.calls.filter((c) => (c[3] as Raw | null)?.['id'] === 1).length;
+        }),
+        "the casts planned on the general's province (the stand-in asked)",
+      ).toEqual(['enemy: 1', 'allied: 0', 'neutral: 0', 'null: 0']);
+    } finally {
+      casts.mockRestore();
+    }
+  });
+  test("a hunter's quarry in sight is a foe's hero, and no other realm's", () => {
+    const hunter = { id: 1, player: 0, alive: true, location: 0, skills: { melee: 9, archery: 9 }, maxHp: 40 };
+    const quarry = { id: 2, player: 1, alive: true, location: 0, skills: {} };
+    const G = (s: string | null) => aWorld(s, { characters: [hunter, quarry], world: { provinces: aRow([0, 1, 0]) } });
+    expect(
+      byState(
+        (s) =>
+          ((fn('botHuntTarget')(G(s), 0, hunter, 3, null) as Raw | null)?.['e'] as Raw | undefined)?.['id'] ?? null,
+      ),
+    ).toEqual(['enemy: 2', 'allied: null', 'neutral: null', 'null: null']);
   });
 });
