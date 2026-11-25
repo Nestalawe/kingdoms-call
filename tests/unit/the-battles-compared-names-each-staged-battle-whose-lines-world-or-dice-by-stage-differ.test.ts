@@ -331,9 +331,9 @@ const THE_FORTUNE_MOVED: APlant = {
       new: '  const _fort = theFortuneOfTheBattleAgainstTheDefenders();',
     },
     {
-      // (combatVsNPC's own head: the line check above it moved to a file of its own, B-06ba)
-      old: 'export function combatVsNPC(',
-      new: "import { theFortuneOfTheBattleAgainstTheDefenders } from './the-fortune-of-both-battles-moved.ts';\nexport function combatVsNPC(",
+      // (the head of the stage the fortune's text is in, the-battle-against-the-defenders/n8-to-n10-…, since B-06bc)
+      old: 'export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders(',
+      new: "import { theFortuneOfTheBattleAgainstTheDefenders } from '../the-fortune-of-both-battles-moved.ts';\nexport function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders(",
     },
     {
       old: [...PVP_FORTUNE, '  const _fortP = battleFortune();'].join('\n'),
