@@ -3,8 +3,9 @@
 // no hull or sea-beast among it is there only because its flyers carried its foot: its land units fight at ×0.25 and
 // the humanoid flyers carrying them at ×0.5 (armStr applies them), and both battles tell it before the fighting: the
 // battle against a province's defenders ("Airborne over open water: …") and the battle between two heroes ("<side>'s
-// host is airborne over open water: …"). No game of the balance matrix and no case of the battle proof stages such a
-// host, so these lines are held here: each red on a figure of the row changed.
+// host is airborne over open water: …"). No game of the balance matrix stages such a host; the battle proof's grid
+// fights one (flyers carrying foot at sea, B-06az) against the base, and these hold the lines' figures to the row:
+// each red on a figure of the row changed.
 //
 // Level 1 (unit): combatVsNPC and combatVsChar called directly (tests/lib/a-battle-called-directly.ts) on a world the
 // engine makes from KC_SEED; no turn is played. Not lower: the line is written inside each battle, from the host it
