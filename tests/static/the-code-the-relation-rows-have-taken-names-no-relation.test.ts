@@ -145,7 +145,13 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   [
     'src/ui/player/map-symbols.ts',
     '_renderDiplomacyInto',
-    "B-06bu, the Diplomacy card's badge and buttons: the content's states and the Treat",
+    "B-06bu, the Diplomacy card's buttons: the content's states and the Treat",
+  ],
+  ['src/ui/player/map-symbols.ts', 'relBadge', "B-06bu, the Diplomacy card's badge: the content's states"],
+  [
+    'src/ui/player/map-symbols.ts',
+    'pendingLabel',
+    "B-06bu, a declaration pending on the Diplomacy card: the content's states and the Treat",
   ],
 ];
 
