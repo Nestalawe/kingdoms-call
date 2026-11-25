@@ -73,14 +73,15 @@ rulebooks.
 
 A unit type is keyed by its name in tables spread over three files, and nothing throws when one is
 missed: a unit with no cost recruits for 2g, one with no speed never marches, one with no names is "the
-Guard", one missing from a terrain block fights at ×1 there. When adding (or renaming) a unit, touch:
+Guard". When adding (or renaming) a unit, touch:
 
 - `src/content/kingdoms-call-data.ts`: `PROVINCE_ARMIES_P` (append to the cell: order is data, a king's two
   starting companies are the first two non-garrison types of his home's cell), `ARMY_UNIT_NAMES` (40
   names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
-  `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage), and a unit of the four
-  races its race in `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` (the engine reads it as `ARMY_RACE_OF_TYPE`).
-- The data file's `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND` (its factor on each ground; the engine reads it as `TERRAIN_MODS`).
+  `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage),
+  `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND` (its factor on each land ground; the engine reads it as `TERRAIN_MODS`),
+  and a unit of the four races its race in `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` (the engine reads it as
+  `ARMY_RACE_OF_TYPE`).
 - GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `DISC_CLS_SETS` and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - `src/content/unit-abilities-their-names-numbers-and-words.ts`: the unit's blurb in `UNIT_ABILITIES` (the player
   portal shows it). Player portal: the race blurbs. Rulebook: the roster, home-roster, move-rate and
