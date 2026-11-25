@@ -1,4 +1,5 @@
 import { kcRng } from '../rng.ts';
+import { THE_FIGURES_OF_A_SPYS_SUCCESS } from '../../content/the-sight-rules-numbers-an-armys-size-band-spotting-an-enemy-in-an-owned-province-and-a-spys-success.ts';
 import { homeProvinceIdFor } from '../grand-design.ts';
 import { recordDeadHeroSighting } from '../graves.ts';
 import { discoverFeat, featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -56,8 +57,10 @@ function theRealmTheIndexNames(realm: Realm | undefined): Realm {
 // which are fought as a garrison copy through the same function).
 // Everything a SUCCESSFUL spy learns about a province — shared by the Spy action and the Neutral
 // Broker's paid remote intelligence (identical effect by design).
+// Its figures are content's row (THE_FIGURES_OF_A_SPYS_SUCCESS, B-06bv).
 export function applySpySuccess(turnContext: TurnContext, c: Character, sprov: AProvinceAsTheSpyReadsIt) {
   const { G } = turnContext;
+  const figures = THE_FIGURES_OF_A_SPYS_SUCCESS;
   trySkillGain(turnContext, c, 'spy', SKILLGAIN_STD); // Spy: successful espionage
   const actingP = c.player === null ? undefined : G.players[c.player]; // a hero of no realm: G.players[null], none
   if (actingP) {
@@ -115,7 +118,14 @@ export function applySpySuccess(turnContext: TurnContext, c: Character, sprov: A
         province: sprov.id,
       });
       const _spyLvl = effStat(turnContext, c, 'spy');
-      const _stealPct = Math.max(5, Math.min(95, 10 + _spyLvl * 10));
+      const _stealPct = Math.max(
+        figures.theLeastChanceToCopyADiscovery,
+        Math.min(
+          figures.theMostChanceToCopyADiscovery,
+          figures.theChanceToCopyADiscoveryBeforeHisSpy +
+            _spyLvl * figures.theRiseEachLevelOfHisSpyGivesToTheChanceToCopy,
+        ),
+      );
       const _mine = new Set((actingP?.discoveries ?? []).map((d) => d.id));
       const _blkSpy = discBlockedIds(actingP);
       const _stealable = (_kp.discoveries ?? []).filter(
@@ -150,7 +160,7 @@ export function applySpySuccess(turnContext: TurnContext, c: Character, sprov: A
             turnDiscovered: G.turn,
           });
           try {
-            TM(c).discoveries += 1;
+            TM(c).discoveries += figures.theTitleMeritsDiscoveriesACopiedOneAdds;
           } catch {
             // the title merit's count never stops the theft
           }
@@ -204,11 +214,11 @@ export function applySpySuccess(turnContext: TurnContext, c: Character, sprov: A
       province: sprov.id,
     });
   }
-  c.merits = (c.merits || 0) + 1;
+  c.merits = (c.merits || 0) + figures.theMeritsASuccessEarns;
   (sprov.features ?? [])
     .filter((f) => !featDiscovered(f, c.player))
     .forEach((f) => {
-      if (kcRng() < 0.5) discoverFeat(f, c.player);
+      if (kcRng() < figures.theChanceOfEachFeaturesDraw) discoverFeat(f, c.player);
     });
   if (c.player !== null) recordDeadHeroSighting(turnContext, c.player, sprov.id); // a hero of no realm: it finds none at G.players[null], and records nothing
 }

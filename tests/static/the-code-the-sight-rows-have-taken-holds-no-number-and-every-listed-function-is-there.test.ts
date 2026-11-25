@@ -30,6 +30,17 @@ const THE_SIGHT_RULES = 'src/engine/sight/heroes-in-sight-features-discovered-an
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   [THE_SIGHT_RULES, 'enemyCharVisibleTo', "sight's row 0: no number written there, held at 0 from the start"],
   [THE_SIGHT_RULES, 'nearSpiedProvIds', "sight's row 0: no number written there, held at 0 from the start"],
+  [THE_SIGHT_RULES, 'armySizeBand', 'B-06bv: its bands read from content'],
+  [
+    'src/engine/heroes/fame-and-consecration.ts',
+    'spotEnemyInOwnedProvince',
+    "B-06bv: its roll's figures read from content",
+  ],
+  [
+    'src/engine/espionage/what-a-spy-learns.ts',
+    'applySpySuccess',
+    "B-06bv: a spy's success's figures read from content",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
