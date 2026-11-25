@@ -1,8 +1,11 @@
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { theStateThePairsEntryHolds } from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import {
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
   KC_HEX_DIRS,
   KC_RIVAL_RACE,
+  KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
+  KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT,
   KC_UNIT_CLASS,
   THE_FACTORS_OF_THE_KIN_RULE,
 } from '../../content/kingdoms-call-data.ts';
@@ -87,11 +90,12 @@ interface AHeroWhoseSkillsAreKnown {
 // result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
 // it gives no weights fails to compile. The economy's (a gold) is the first kind, the titles' (a title, B-06r) the
 // second, the alignments' (an alignment ability, P1-19bb8) the third, the races' (a race's gift, B-06ah) the fourth,
-// the tempers' (a temper, B-06aj) the fifth. The weights are the bots', never content's: content holds the rules only.
+// the tempers' (a temper, B-06aj) the fifth, the battles' (a point of a host's strength, B-06bq) the sixth. The weights
+// are the bots', never content's: content holds the rules only.
 /** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
  *  Imperial Title (held, or chased by what its row measures), what an ability of a realm's alignment gives it, what a
- *  gift of its race gives it, and what a temper gives a hero or a king. */
-export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility' | 'raceGift' | 'temper';
+ *  gift of its race gives it, what a temper gives a hero or a king, and a point of a host's strength. */
+export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility' | 'raceGift' | 'temper' | 'battleStrength';
 /** A kind of result's weights in a bot version: each a number, named for what it weighs. */
 export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
 /** The bots' weights at a difficulty. */
@@ -597,7 +601,8 @@ export function botBelievedOwner(G: GameState, pi: number, prov: Province | null
 export function botGuessDefence(G: GameState, pi: number, prov: Province | null | undefined) {
   const b = botBelief(G, pi, prov);
   if (!b) return 0;
-  const AVG_UNIT = 6; // ≈ an average line unit's base strength
+  const theWeights = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.battleStrength;
+  const AVG_UNIT = theWeights.theStrengthOfAUnitTheBotsCantSee; // ≈ an average line unit's base strength
   const I = botIntel(G, pi);
   // GROUND THIS REALM HAS WALKED ON. The human report prints an intelligence line for every VISITED
   // province — "N neutral defenders (composition unknown — Spy this province to reveal)" — and that
@@ -618,9 +623,16 @@ export function botGuessDefence(G: GameState, pi: number, prov: Province | null 
   // (Rich 3-4 / Prosperous 2-3 / Poor 1-2 defenders is how the world was stocked). A rival's own
   // province is assumed a shade more heavily held than neutral ground of the same wealth.
   const tax = b.tax || 0;
-  const units = tax >= 7 ? 3.5 : tax >= 4 ? 2.5 : 1.5; // 2026-09-21: tracks neutralDefBand's Poor/Prosperous cut (now tax 4)
+  const units =
+    tax >= theWeights.theTaxFromWhichTheBotsGuessALandRich
+      ? theWeights.theUnitsTheBotsGuessInARichLand
+      : tax >= theWeights.theTaxFromWhichTheBotsGuessALandProsperous
+        ? theWeights.theUnitsTheBotsGuessInAProsperousLand
+        : theWeights.theUnitsTheBotsGuessInAPoorLand; // 2026-09-21: tracks neutralDefBand's Poor/Prosperous cut (now tax 4)
   const owned = b.owner != null && b.owner !== pi;
-  return units * AVG_UNIT * (owned ? 1.25 : 1) * BOT_DEF_BONUS;
+  return (
+    units * AVG_UNIT * (owned ? theWeights.theFactorTheBotsGuessARivalsProvinceHeldMoreHeavilyBy : 1) * BOT_DEF_BONUS
+  );
 }
 // Discovered features only — an undiscovered lair is not on this realm's map at all.
 export function botKnownFeatures(G: unknown, pi: number, prov: Province | null | undefined) {
@@ -801,8 +813,23 @@ export function botBattleForce(
       : (c?.skills ?? {}); // Sept 2026 (A5): a rival's skills only as our spies reported them
   // (the skills read by any skill's name: an assumed profile names no Naval)
   const theSkillsWeighed: Readonly<Partial<Record<string, number>>> = csk;
-  const tac = terrain === 'sea' ? 1 : Math.min(2.0, 1 + 0.2 * Math.min(5, Number(csk.tactical) || 0));
-  const nav = 1 + 0.2 * Math.min(5, Number(theSkillsWeighed['naval']) || 0); // Naval lifts fleets on land and sea
+  // Tactical's rise a level and its most, and Naval's rise, are the battle's rows; the levels the bots weigh are their
+  // own (KD-477: his skills alone, each to level 5)
+  const theBattlesRows = KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE;
+  const theWeights = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.battleStrength;
+  const tac =
+    terrain === 'sea'
+      ? 1
+      : Math.min(
+          theBattlesRows.theMostTimesTacticalLiftsHisHost,
+          1 +
+            theBattlesRows.theRiseEachLevelOfTacticalGivesHisHost *
+              Math.min(theWeights.theHighestLevelOfTacticalTheBotsWeigh, Number(csk.tactical) || 0),
+        );
+  const nav =
+    1 +
+    theBattlesRows.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts *
+      Math.min(theWeights.theHighestLevelOfNavalTheBotsWeigh, Number(theSkillsWeighed['naval']) || 0); // Naval lifts fleets on land and sea
   const rows = armies
     .filter((a): a is AUnitAsTheEstimatesWeighIt => Boolean(a))
     .map((a) => {
@@ -832,8 +859,8 @@ export function botBattleForce(
   );
 }
 // What an assault on province N is really up against: the standing defenders on N's own terrain
-// (guard hero's Tactical included), times the engine's ×1.25 fortification bonus.
-export const BOT_DEF_BONUS = 1.25;
+// (guard hero's Tactical included), times the engine's ×1.25 fortification bonus: the battle's defender's edge (its row).
+export const BOT_DEF_BONUS = KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.theDefendersEdge;
 // only counted from GROUND THE REALM CAN SEE INTO. On a province it has merely scouted from across
 // the border — or only remembers — it gets botGuessDefence's wealth-band estimate instead of the
 // true order of battle, which is all a human has to go on there.
@@ -883,7 +910,7 @@ export function botDruidShortfall(
       m = 1;
     }
     if (m < 1) {
-      const sf = Math.round((1 - m) / 0.2);
+      const sf = Math.round((1 - m) / KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT.theShareEachLevelShortTakes);
       if (sf > worst) worst = sf;
     }
   });
@@ -902,10 +929,21 @@ export function botMarginFor(
   c: Pick<Character, 'isKing' | 'armies'> | null | undefined,
   T: Pick<TheBotsWeights, 'kingAttackMargin' | 'heroAttackMargin'>,
 ) {
+  const theWeights = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.battleStrength;
   const base = c?.isKing ? T.kingAttackMargin : T.heroAttackMargin;
-  const floor = c?.isKing ? 1.15 : 1.0;
-  const mult = Math.max(0.6, 1 - 0.08 * botStallTurns(G, pi));
-  const stake = Math.min(0.1, 0.02 * Math.max(0, (asItsGuardReadsIt(c?.armies) ?? []).length - 5)); // Sept 2026 (R5): the bigger the host, the more a loss costs
+  const floor = c?.isKing ? theWeights.theLeastMarginAKingsAttackWants : theWeights.theLeastMarginAHerosAttackWants;
+  const mult = Math.max(
+    theWeights.theLeastShareTheMarginEasesTo,
+    1 - theWeights.theShareTheMarginEasesEachTurnTheRealmGainsNoLand * botStallTurns(G, pi),
+  );
+  const stake = Math.min(
+    theWeights.theMostAHostsStakeAddsToTheMargin,
+    theWeights.whatEachUnitMoreOfAHostAddsToTheMargin *
+      Math.max(
+        0,
+        (asItsGuardReadsIt(c?.armies) ?? []).length - theWeights.theUnitsOfAHostBeforeItsStakeAddsToTheMargin,
+      ),
+  ); // Sept 2026 (R5): the bigger the host, the more a loss costs
   return Math.max(Math.min(base, floor), base * mult) + stake;
 }
 export function botNoteLand(G: GameState, pi: number) {

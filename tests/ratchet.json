@@ -27,7 +27,7 @@
     "relationChecksInEngine": 0,
     "battleNumbersInEngine": 44,
     "personalCombatNumbersInEngine": 22,
-    "battleNumbersInTheBots": 20,
+    "battleNumbersInTheBots": 0,
     "alignmentChecksOutsideTheEngine": 5,
     "eslintSuppressions": 216,
     "knownArchitectureViolations": 0,

@@ -5,7 +5,11 @@
 // the levels and alignments each side works out for itself: the engine hands its own unit through
 // unitAsItsRealmSeesIt, and works out the leader's Druid from his skills and items (P1-11b, Decisions 2 and 3).
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
-import { KC_DRUID_LEVELS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_DRUID_LEVELS,
+  KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT,
+  KC_UNIT_CLASS,
+} from '../../content/kingdoms-call-data.ts';
 import { CREATURE_ARMIES, MONSTER_ARMIES } from './units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 
 /** A unit as its realm sees it (the turn report's projection names): its type, and whether it is a skeleton, summoned
@@ -174,12 +178,15 @@ export function druidShortfall(levelNeeded: number, levelBrought: number): numbe
   return Math.max(0, levelNeeded - levelBrought);
 }
 /** The share of its strength a unit keeps in battle when its leader is `shortfall` levels of Druid short of its need:
- *  20% less a level, never below a tenth. */
+ *  20% less a level, never below a tenth (the row's shares). */
 export function strengthLeftByADruidShortfall(shortfall: number): number {
   if (shortfall === 0) return 1.0;
 
   // 20% strength penalty per level of shortfall
-  return Math.max(0.1, 1 - shortfall * 0.2);
+  return Math.max(
+    KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT.theLeastShareAUnitKeeps,
+    1 - shortfall * KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT.theShareEachLevelShortTakes,
+  );
 }
 
 // DRUID MASTERY (2026-09-24, Toby): +20% per Druid level over the minimum to lead a Creature/Monster,

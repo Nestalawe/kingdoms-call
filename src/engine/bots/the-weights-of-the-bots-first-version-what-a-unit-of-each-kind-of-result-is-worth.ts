@@ -110,4 +110,44 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     /** A Cowardly king's. */
     whatACowardlyKingAddsToTheBarForWar: 0.3,
   },
+  /** A point of a host's strength: how the bots estimate a host and a defence (botBattleForce, botGuessDefence,
+   *  bots/intel.ts) and the margin of strength they want before they attack (botMarginFor). What a battle does is its
+   *  rows' (Tactical's and Naval's rise, Tactical's most, the defender's edge, a Druid shortfall's step), which the
+   *  bots read; these are the bots' own reading beside them, where it differs from the battle's (KD-477) or the battle
+   *  has no rule (B-06bq). */
+  battleStrength: {
+    /** The highest level of a commander's Tactical the bots weigh: his skills alone, no title's level (the battle
+     *  counts every level, to its most). */
+    theHighestLevelOfTacticalTheBotsWeigh: 5,
+    /** The highest level of a commander's Naval the bots weigh (the battle's Naval has no cap). */
+    theHighestLevelOfNavalTheBotsWeigh: 5,
+    /** The strength the bots give a defending unit they can't see: about an average line unit's base strength. */
+    theStrengthOfAUnitTheBotsCantSee: 6,
+    /** A province they can't see is guessed by its tax: Rich from this tax, ... */
+    theTaxFromWhichTheBotsGuessALandRich: 7,
+    /** ... Prosperous from this one (both neutralDefBand's cuts, written in its function: no row holds them), ... */
+    theTaxFromWhichTheBotsGuessALandProsperous: 4,
+    /** ... with this many units in a Rich land (the middle of the band its neutral defenders are dealt in), ... */
+    theUnitsTheBotsGuessInARichLand: 3.5,
+    /** ... this many in a Prosperous land, ... */
+    theUnitsTheBotsGuessInAProsperousLand: 2.5,
+    /** ... and this many in a Poor one. */
+    theUnitsTheBotsGuessInAPoorLand: 1.5,
+    /** A rival's province is guessed this many times more heavily held than neutral ground of the same tax. */
+    theFactorTheBotsGuessARivalsProvinceHeldMoreHeavilyBy: 1.25,
+    /** The least margin a king's attack wants, however long his realm gains no land, ... */
+    theLeastMarginAKingsAttackWants: 1.15,
+    /** ... and a hero's. */
+    theLeastMarginAHerosAttackWants: 1.0,
+    /** Each turn its realm gains no land, the margin eases by this share, ... */
+    theShareTheMarginEasesEachTurnTheRealmGainsNoLand: 0.08,
+    /** ... to at least this share of it. */
+    theLeastShareTheMarginEasesTo: 0.6,
+    /** A host of more units than this stakes more on its attack: ... */
+    theUnitsOfAHostBeforeItsStakeAddsToTheMargin: 5,
+    /** ... each unit more adds this to the margin, ... */
+    whatEachUnitMoreOfAHostAddsToTheMargin: 0.02,
+    /** ... and at most this. */
+    theMostAHostsStakeAddsToTheMargin: 0.1,
+  },
 } satisfies Record<AKindOfResultABotWeighs, TheWeightsOfAKindOfResult>;
