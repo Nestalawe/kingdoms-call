@@ -29,6 +29,7 @@ import { provinceConsecrated } from '../engine/world/the-marks-on-a-province-con
 import { activeItems } from '../engine/items/equipment.ts';
 import { monsterCatLabel } from '../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../engine/titles/perks.ts';
+import { KC_HEX_DIRS } from '../content/kingdoms-call-data.ts';
 import { MINOR_TITLES } from '../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
 import {
   THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ,
@@ -45,6 +46,7 @@ import {
 import type { ARealmsStanding } from '../engine/titles/reckoning.ts';
 import { topSkillOf } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theHexNextToAProvinceInADirection } from '../engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 import { theAlignmentARealmReadsAs } from '../engine/rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { doARealmsDiscoveriesWaiveTheHiringBan } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import {
@@ -448,23 +450,15 @@ export interface PlayerView {
   };
 }
 
-// The hex grid's neighbours (an even row's and an odd row's), wrapping east to west, as the map draws them.
-const OFFSETS_EVEN: readonly (readonly [number, number])[] = [
-  [-1, -1],
-  [-1, 0],
-  [0, -1],
-  [0, 1],
-  [1, -1],
-  [1, 0],
-];
-const OFFSETS_ODD: readonly (readonly [number, number])[] = [
-  [-1, 0],
-  [-1, 1],
-  [0, -1],
-  [0, 1],
-  [1, 0],
-  [1, 1],
-];
+/** The places in the map's list (row × `cols` + column) of the hexes next to `prov`, in the compass directions' order
+ *  (KC_HEX_DIRS), on a map `cols` wide and `rows` high: the engine's hex step (B-06by), the columns wrapping round,
+ *  none past the top or bottom row. */
+const thePlacesOfTheHexesNextToAProvince = (
+  prov: Pick<Province, 'row' | 'col'>,
+  cols: number,
+  rows: number,
+): number[] =>
+  KC_HEX_DIRS.map((dir) => theHexNextToAProvinceInADirection(prov, dir, cols, rows)).filter((at) => at !== null);
 
 /** Whether a realm of the alignment reads a part of the view only the realms of some creeds read (B-06bx): the part's
  *  row (THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ) holds the alignment; one no row holds, or none, doesn't. The view
@@ -493,12 +487,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   const adjacentProvIds = new Set<number>();
   provinces.forEach((p) => {
     if (!visitedProvIds.has(p.id) && !ownedProvIds.has(p.id)) return;
-    const offsets = p.row % 2 === 0 ? OFFSETS_EVEN : OFFSETS_ODD;
-    offsets.forEach(([dr, dc]) => {
-      const nr = p.row + dr;
-      if (nr < 0 || nr >= rows) return;
-      const nc = (((p.col + dc) % cols) + cols) % cols;
-      const nid = nr * cols + nc;
+    thePlacesOfTheHexesNextToAProvince(p, cols, rows).forEach((nid) => {
       if (!visitedProvIds.has(nid) && !ownedProvIds.has(nid)) adjacentProvIds.add(nid);
     });
   });
@@ -512,12 +501,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   const ownedAdjacentIds = new Set<number>();
   provinces.forEach((p) => {
     if (!ownedProvIds.has(p.id)) return;
-    const offs = p.row % 2 === 0 ? OFFSETS_EVEN : OFFSETS_ODD;
-    offs.forEach(([dr, dc]) => {
-      const nr = p.row + dr;
-      if (nr < 0 || nr >= rows) return;
-      const nc = (((p.col + dc) % cols) + cols) % cols;
-      const nid = nr * cols + nc;
+    thePlacesOfTheHexesNextToAProvince(p, cols, rows).forEach((nid) => {
       if (!ownedProvIds.has(nid)) ownedAdjacentIds.add(nid);
     });
   });
@@ -789,14 +773,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     const onTheMapNow = owned || heroThere || spied || nextToOwned || nextToSpied || watchedHeroThere;
     const inItsOrderForms = owned || visited || seen.nextToOwnedOrVisited || heroThere;
 
-    const neighbours = (p.row % 2 === 0 ? OFFSETS_EVEN : OFFSETS_ODD)
-      .map(([dr, dc]) => {
-        const nr = p.row + dr;
-        if (nr < 0 || nr >= rows) return null;
-        const nc = (((p.col + dc) % cols) + cols) % cols;
-        return nr * cols + nc;
-      })
-      .filter((n) => n !== null);
+    const neighbours = thePlacesOfTheHexesNextToAProvince(p, cols, rows);
 
     const total = (q.features ?? []).length;
     const explored = q.exploredBy?.[String(realm)] ?? 0;

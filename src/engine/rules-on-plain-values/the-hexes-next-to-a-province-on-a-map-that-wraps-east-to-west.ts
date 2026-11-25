@@ -6,7 +6,7 @@
 // the map's list is its row × `cols` + its column. The columns wrap round (west of the first is the last); past the top
 // and bottom rows lie the icy wastes, where no step goes. The engine's two lookups (`getNeighborsP` and
 // `neighborInDir`, src/engine/world/map-helpers.ts) call this file; src/shared/ hands the player portal the step in a
-// direction.
+// direction, and the views' `playerView` asks it in each direction (B-06by).
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 
 /** A place on the map: its row and column. */
