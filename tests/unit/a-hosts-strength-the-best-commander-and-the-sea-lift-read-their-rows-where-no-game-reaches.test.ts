@@ -178,6 +178,8 @@ describe('a pre-battle duel', () => {
       _unkillable: true,
       hp: 1,
       maxHp: 21,
+      // his temper pinned as his skills are: a Cowardly king's fight ends by another way (the world's seed picks it)
+      temper: 'Brave',
       skills: { ...challenger.skills, melee: 0 },
       encounterPlan: plan('challenge'),
     });
@@ -185,6 +187,7 @@ describe('a pre-battle duel', () => {
       items: [],
       hp: 200,
       maxHp: 200,
+      temper: 'Brave',
       skills: { ...challenged.skills, melee: 9 },
       encounterPlan: plan('accept'),
     });
