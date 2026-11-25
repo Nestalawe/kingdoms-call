@@ -297,7 +297,7 @@ naming the plant to update.
 **The battle lines the matrix misses** (`npm run proof:coverage` on B-06aw's base): 426 of the 9,773 lines with code in
 `src/engine/battle/`; the most in `hosts-gained-in-a-province.ts` (102), `battles-between-heroes.ts` (99),
 `battles-against-province-defenders.ts` (83) and `stalled-battles-and-beaten-guards.ts` (70). The list, file by file:
-the pull request (#PR).
+its pull request (#780).
 
 **What it can't see:** a stage no case reaches (above); a value no world keeps and no line says; state beyond one case,
 which a fresh process hides by design. Those need unit cases.
