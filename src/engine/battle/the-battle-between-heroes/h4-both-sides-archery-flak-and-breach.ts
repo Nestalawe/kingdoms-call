@@ -3,8 +3,8 @@
 // cohorts' hulls sunk and the sunk removed, then the ground's notes, Illusory Terrain's flags, each side's rows and
 // lines, the Druid's shortfall, the discoveries' bonus and the illusory ground's lines), moved here as they were, the
 // same statements in the same order. combatVsChar calls it where they stood, after the magic and army spells
-// (h3-…), and hands it what the set-up returned, as it is, and the front's width as it stands (its `let`, which only
-// H5 changes, after this). It returns what the later stages read, each final here: the lines' flanking, each side's
+// (h3-…), and hands it what the set-up returned, as it is, and the front's width the set-up rolled (only H5's deploy
+// changes it, after this). It returns what the later stages read, each final here: the lines' flanking, each side's
 // rows, the discoveries' bonus and the command stage's builders' `_pvpRow` (made here, read by H9). It writes no `let`
 // of the table in h0-to-h2-…; the titles' merit tally, the battle's state, it writes through `_tallyLost`, as before.
 // The battle proof (tools/proof/README.md, section 8) finds H4's anchor in this file; nothing above it draws a die.

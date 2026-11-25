@@ -3,11 +3,11 @@
 // sides (H2: Righteous Defence, the zeal, Consecrate's seizure, home and the front's width, to each commander's Archery
 // and Naval), moved here as they were, the same statements in the same order. combatVsChar calls it where they stood
 // and takes, under the same names, what its later stages read. Each value it hands on is final here but two: the
-// front's width, which the scout's deploy changes in a later stage (so combatVsChar holds its own `let` of it, from the
-// width rolled here), and the titles' merit tally, which `_tallyLost` (made here) writes from the later stages (so it
-// is the battle's state, handed on by reference). The battle proof (tools/proof/README.md, section 8) finds H1's and
-// H2's anchors in this file; the draws above H1's (the tiers that fight) have no anchor above them here, so they count
-// under the caller's line, H0, as they did.
+// front's width, which the scout's deploy changes in a later stage (so H5 holds its own `let` of it, from the width
+// rolled here, and hands on the deploy's), and the titles' merit tally, which `_tallyLost` (made here) writes from the
+// later stages (so it is the battle's state, handed on by reference). The battle proof (tools/proof/README.md,
+// section 8) finds H1's and H2's anchors in this file; the draws above H1's (the tiers that fight) have no anchor above
+// them here, so they count under the caller's line, H0, as they did.
 //
 // The battle's state: every `let` of combatVsChar, the stage that writes it and the stages that read it (the stages
 // are the battle proof's, H0 to H10; each later cut follows this table). A `let` final within the stage that writes it
@@ -21,9 +21,9 @@
 // | `atkTactBonus`, `defTactBonus` | H0, H1 (a commander slain in the duel) | H7, the command stage's builders | a value, final after H1 |
 // | `defBonus` | H1 (made; Siege), H2 (Righteous Defence, the realm's own ground, the commanders' items) | H5, H9 | a value, final after H2 |
 // | `_defFanPct` | H2 (made; Consecrate) | H2 | this stage's own |
-// | `pvpFront` (the front's width) | H2 (rolled), H5 (the scout's deploy) | H4, H5, H7, H9 | a value: combatVsChar's own `let` from the width rolled here; H4 is handed it as it stands; the row that cuts H5 hands the deploy's width on |
+// | `pvpFront` (the front's width) | H2 (rolled), H5 (the scout's deploy) | H4, H5, H7, H9 | a value: H4 is handed the width rolled here (nothing changes it before H5); H5's own `let` from it, its deploy's width handed on (B-06bi), final there |
 // | `atkNav`, `defNav` | H2 (made; a Curse halves it) | H2, the command stage's builders | a value, final in H2 |
-// | `atkOrd`, `defOrd` (the mastery orders) | H5 | H5, H9 | H5's own, then a value |
+// | `atkOrd`, `defOrd` (the mastery orders) | H5 | H5, H9 | H5's own, then a value, final there (B-06bi) |
 // | `_stayLo`, `_stayWi` | H9 (`_wantsToStay`) | H9 | H9's own |
 // | `_heldField` | H9 | H9 | H9's own |
 // | `defFriendlyAdj`, `atkFriendlyAdj` | H9 | H9 | H9's own |

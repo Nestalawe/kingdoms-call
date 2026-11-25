@@ -65,6 +65,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19n, the battles' items (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
+    'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
+  ],
+  [
     'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
     'applyPreBattleArchery',
     "P1-19n, the battles' items",

@@ -116,6 +116,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
+    'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
+  ],
+  [
     'src/engine/battle/best-commander.ts',
     'commandScore',
     "P1-19ab, a realm's discoveries weight the lines behind the front",

@@ -312,7 +312,7 @@ const ARCHERY = [
   '    def,',
   '    prov,',
   '    theSetUp,',
-  '    pvpFront,',
+  '    theSetUp.pvpFront,',
   '  );',
 ].join('\n');
 /** The two battles' fortune, each stage's text as it is, moved into a file of their own: one file holding two stages,
@@ -347,9 +347,9 @@ const THE_FORTUNE_MOVED: APlant = {
       new: '  const _fortP = theFortuneOfTheBattleBetweenHeroes();',
     },
     {
-      // (a head of combatVsChar's file, where the fortune's text still is: its first helper moved with H3, B-06bg)
-      old: 'function theOutcomeLineAt(',
-      new: "import { theFortuneOfTheBattleBetweenHeroes } from './the-fortune-of-both-battles-moved.ts';\nfunction theOutcomeLineAt(",
+      // (the head of the stage the fortune's text is in, the-battle-between-heroes/h5-to-h7-…, since B-06bi)
+      old: 'export function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(',
+      new: "import { theFortuneOfTheBattleBetweenHeroes } from '../the-fortune-of-both-battles-moved.ts';\nexport function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(",
     },
   ],
   adds: {
@@ -370,7 +370,15 @@ const THE_FORTUNE_MOVED: APlant = {
 const PLANTS: readonly APlant[] = [
   {
     name: "an extra draw at the end of the battle between heroes' fortune",
-    edits: [{ old: '  // ── STAT BLOCK ── 2026-09-23b', new: '  kcRng();\n  // ── STAT BLOCK ── 2026-09-23b' }],
+    edits: [
+      // (the fortune's stage, the-battle-between-heroes/h5-to-h7-…, since B-06bi, reads no die of its own: the draw
+      // brings its import)
+      {
+        old: 'export function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(',
+        new: "import { kcRng } from '../../rng.ts';\nexport function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(",
+      },
+      { old: '  // ── STAT BLOCK ── 2026-09-23b', new: '  kcRng();\n  // ── STAT BLOCK ── 2026-09-23b' },
+    ],
   },
   {
     name: "the battle between heroes' swing in its statistics record rounded to hundredths (no draw)",

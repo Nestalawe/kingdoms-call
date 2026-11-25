@@ -1,27 +1,14 @@
-import { PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes } from '../rules/the-registry-of-content-effects.ts';
 import {
   doesARealmsAlignmentHoldABeatenHostOnTheField,
   theConquestDoctrineOfARealmsAlignment,
-  theFactorConsecratedGroundWeakensAnAttackersHostBy,
 } from '../rules/the-registry-of-alignment-abilities.ts';
 import { QUALITY_TIERS } from '../army-tables.ts';
 import { battleMarginBand, rollUnitFates } from './fates.ts';
-import {
-  battleDeploy,
-  battleFacedClauses,
-  battleFacing,
-  battleGrid,
-  battleGridLines,
-  battleMovesLine,
-  battleScout,
-  battleScoutLine,
-  battleWidthLine,
-} from './lines.ts';
-import { UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, ladderLines } from './ladder.ts';
-import { pursuitsOfTheBeaten, shieldFortHolds, tacMulted, theFractionThePursuitsAdd } from '../units/movement.ts';
-import { battleFortune } from './fortune.ts';
+import { battleFacing, battleGrid } from './lines.ts';
+import { UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN } from './ladder.ts';
+import { pursuitsOfTheBeaten, shieldFortHolds, theFractionThePursuitsAdd } from '../units/movement.ts';
 import { recordBattleGraves } from '../graves.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -29,8 +16,6 @@ import { clearPhantomCopies, getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { discDeathMult, discPromo } from '../discoveries.ts';
 import { completeDefendWatches, noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
-import { doesTheWinnersRaceFlagTheProvinceItWonABattleIn } from '../rules/the-registry-of-the-race-gifts.ts';
-import { finishSide } from './terrain-and-unit-strength.ts';
 import {
   bestRetreat,
   navalSplitRetreat,
@@ -42,31 +27,25 @@ import { realCharOf } from './best-commander.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
 import { spreadTerror } from './evil-terror.ts';
 import { bloodHarvest, ironThroneRaise } from './blood-harvest-and-iron-throne.ts';
-import { raidLandedHere } from './raid-the-coast-and-landing-parties.ts';
 import {
   CARRYON_DEATH_CAP,
   CARRYON_DEATH_STEP,
 } from './the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts';
-import { narrateAll, narrate, recordForTheStatistics } from '../turn/events-and-their-audiences.ts';
+import { narrate, recordForTheStatistics } from '../turn/events-and-their-audiences.ts';
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
-  theFortuneAsTheLineTellsIt,
   theUnitsAsTheLineNamesThem,
 } from './the-facts-a-battles-lines-record.ts';
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
-import type { BattleGrid } from './lines.ts';
-import type {
-  ABattleIsDecided,
-  AForceWideModifierOfASide,
-  ASideOfABattle,
-} from './the-facts-a-battles-lines-record.ts';
+import type { ABattleIsDecided, ASideOfABattle } from './the-facts-a-battles-lines-record.ts';
 import type { APursuitOfTheBeaten } from '../rules/the-registry-of-content-effects.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes } from './the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts';
 import { bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes } from './the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts';
 import { bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes } from './the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts';
+import { sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes } from './the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts';
 
 /** The battle's outcome at its place in the narrative: the head line, written there just before the casualties, which
  *  the battle rewrites in place when the beaten side holds the field; for any other line, a TypeError. */
@@ -95,13 +74,13 @@ export function combatVsChar(
 ) {
   // The set-up, the duel and the sides (B-06bf: the-battle-between-heroes/, its first stage), to the front's width and
   // each commander's Archery and Naval: what the later stages read, each final there but the front's width (the
-  // scout's deploy changes it below) and the battle's state (the titles' merit tally, which _tallyLost writes).
+  // scout's deploy changes it in the fourth stage) and the battle's state (the titles' merit tally, which _tallyLost
+  // writes).
   const theSetUp = theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(turnContext, atk, def, prov);
   const {
     G,
     theAttackerAsTheGuardsReadHim,
     theDefenderAsTheGuardsReadHim,
-    theProvinceAsTheGuardsReadIt,
     _fieldIds,
     narrative,
     atkArmies,
@@ -112,256 +91,70 @@ export function combatVsChar(
     _tallyLost,
     atkTact,
     defTact,
-    atkTactBonus,
-    defTactBonus,
     atkMorale,
     defMorale,
-    atkName,
-    defName,
     atkSide,
     defSide,
     atkHomeBonusP,
     defBonus,
-    atkAlign,
-    _consecratedHere,
     atkSkelFanatic,
     defSkelFanatic,
     atkSkelHero,
     defSkelHero,
     atkEvilMonster,
     defEvilMonster,
-    atkFanMult,
-    defFanMult,
     pvpTerrain,
-    pvpIsLand,
   } = theSetUp;
-  let { pvpFront } = theSetUp;
   // Both sides' pre-battle magic and army spells (B-06bg: the-battle-between-heroes/, its second stage), called where
   // they stood: they change the hosts, the commanders and the narrative they are handed, and hand on no value.
   bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(turnContext, atk, def, theSetUp);
 
   // Both sides' archery, Flak and Breach (B-06bh: the-battle-between-heroes/, its third stage), called where they
-  // stood, with the front's width as it stands: what the later stages read, each final there, the command stage's
-  // builders' row among it (made there once Illusory Terrain's flags are set; H9's stay-or-retreat check reads it).
+  // stood, with the front's width the set-up rolled (nothing changes it before the fourth stage's deploy): what the
+  // later stages read, each final there, the command stage's builders' row among it (made there once Illusory
+  // Terrain's flags are set; H9's stay-or-retreat check reads it).
   const theArcheryFlakAndBreach = bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(
     turnContext,
     atk,
     def,
     prov,
     theSetUp,
+    theSetUp.pvpFront,
+  );
+  const { atkFlankPvp, defFlankPvp, atkDiscBonus, defDiscBonus, _pvpRow } = theArcheryFlakAndBreach;
+  // Sanctuary, the mastery orders, the lines, fortune and the result (B-06bi: the-battle-between-heroes/, its fourth
+  // stage), called where they stood: the whole-force multipliers and the scout's deploy, the fortune of battle, the
+  // stat block and who won, to the margin: what the later stages read, each final there, the front's width after the
+  // deploy among it.
+  const theLinesTheFortuneAndTheResult =
+    sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(
+      turnContext,
+      atk,
+      def,
+      prov,
+      theSetUp,
+      theArcheryFlakAndBreach,
+    );
+  const {
+    atkSanct,
+    defSanct,
+    atkOrd,
+    defOrd,
+    _consecPenalty,
     pvpFront,
-  );
-  const { atkFlankPvp, defFlankPvp, atkRows, defRows, atkDiscBonus, defDiscBonus, _pvpRow } = theArcheryFlakAndBreach;
-  // WHITE L7 — Sanctuary: enemies of the warding caster fight at −25% in the warded province this
-  // turn.
-  const _sanctBy = theProvinceAsTheGuardsReadIt?._sanctuaryTurn === G.turn ? prov._sanctuaryBy : null;
-  const atkSanct = _sanctBy != null && atk.player !== _sanctBy ? 0.75 : 1;
-  const defSanct = _sanctBy != null && def.player !== _sanctBy ? 0.75 : 1;
-  if (atkSanct < 1)
-    narrate(narrative, {
-      kind: "the sanctuary wards of the province sap a side's attackers",
-      provName: prov.name,
-      sideName: atkSide,
-    });
-  if (defSanct < 1)
-    narrate(narrative, {
-      kind: "the sanctuary wards of the province sap a side's attackers",
-      provName: prov.name,
-      sideName: defSide,
-    });
-  // ── L7/L9 MASTERY ORDER battle modifiers (turn-stamped flags set in the action phase) ──
-  let atkOrd = 1,
-    defOrd = 1;
-  if (atk._grandStratagemTurn === G.turn) {
-    atkOrd *= 1.2;
-    narrate(narrative, { kind: 'the attacker unfolds a grand stratagem', atkName: atkSide });
-  }
-  if (def._grandStratagemTurn === G.turn) {
-    defOrd *= 1.2;
-    narrate(narrative, { kind: 'the defender unfolds a grand stratagem', defName: defSide });
-  }
-  if (def._feignedRetreatTurn === G.turn) {
-    defOrd *= 1.25;
-    narrate(narrative, { kind: "the defender's feigned retreat springs shut", defName: defSide });
-  }
-  if (raidLandedHere(turnContext, atk, prov)) {
-    atkOrd *= 1.25;
-    narrate(narrative, { kind: 'the attacker storms ashore in a raid on the coast', atkName: atkSide });
-  } // 2026-09-23e: only a coast attacked from the sea
-  // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
-  // consecrated province; the alignment abilities' registry's runner, P1-19au2).
-  const _consecPenalty = _consecratedHere
-    ? theFactorConsecratedGroundWeakensAnAttackersHostBy({ theAttackersAlignment: atkAlign })
-    : 1;
-  if (_consecPenalty < 1)
-    narrate(narrative, {
-      kind: "the consecrated ground of the province weakens the attacker's host",
-      provName: prov.name,
-      atkName: atkSide,
-      attackersAlignment: atkAlign,
-    });
-  // Post-multiplier base strengths — every battle-level multiplier folded in, BEFORE the dice.
-  // BUG FIX: the defender's Tactical bonus was applied TWICE — once per-unit inside pvpArmStr
-  // (already folded into defRaw, exactly like the attacker's) and AGAIN as an explicit
-  // ×defTactBonus here. The attacker only gets it once (no ×atkTactBonus below), so this
-  // over-strengthened every PvP land defender with Tactical skill (×1.44 at Tac 2 up to ×4.0 at
-  // Tac 5). defRaw already carries it; drop the duplicate so both sides are symmetric.
-  // 2026-09-24 (Toby): whole-force multipliers per unit BEFORE pre-battle damage (finishSide). These
-  // lists are the single source of each side's force product — the ladder prints them as they are.
-  const _pAtkFM: AForceWideModifierOfASide[] = [
-    { reason: 'fanaticism', m: atkFanMult },
-    { reason: 'discoveries', m: atkDiscBonus },
-    { reason: 'duel-morale', m: atkMorale },
-    { reason: 'consecrated-ground', m: _consecPenalty },
-    { reason: 'sanctuary-wards', m: atkSanct },
-    { reason: 'orders', m: atkOrd },
-    { reason: 'home-ground', m: atkHomeBonusP },
-  ];
-  const _pDefFM: AForceWideModifierOfASide[] = [
-    { reason: 'fanaticism', m: defFanMult },
-    { reason: 'defenders-position', m: defBonus },
-    { reason: 'duel-morale', m: defMorale },
-    { reason: 'discoveries', m: defDiscBonus },
-    { reason: 'sanctuary-wards', m: defSanct },
-    { reason: 'orders', m: defOrd },
-  ];
-  const _gA: { grid?: BattleGrid } = {},
-    _gD: { grid?: BattleGrid } = {};
-  finishSide(atkRows, pvpFront, atkFlankPvp, _pAtkFM, {
-    terrain: pvpTerrain,
-    tac: atkTact,
-    enemy: defRows,
-    enemyTac: defTact,
-    out: _gA,
-  });
-  finishSide(defRows, pvpFront, defFlankPvp, _pDefFM, {
-    terrain: pvpTerrain,
-    tac: defTact,
-    enemy: atkRows,
-    enemyTac: atkTact,
-    out: _gD,
-  });
-  // 2026-10-11 Battle lines III: the better-explored side picks the width and lines up second; the
-  // commanders then shift their lines, one swap per Tactical level (a defender without a realm, a
-  // wanderer on its own ground, knows it fully). finishSide's grids are replaced by the deploy's.
-  const _explA = (prov.exploredBy?.[String(atk.player)] ?? 0) || 0,
-    _explD = def.player == null ? 100 : (prov.exploredBy?.[String(def.player)] ?? 0) || 0;
-  const _dep = battleDeploy(atkRows, defRows, {
-    terrain: pvpTerrain,
-    roll: pvpFront,
-    tacA: atkTact,
-    tacD: defTact,
-    flankA: atkFlankPvp,
-    flankD: defFlankPvp,
-    scout: battleScout(_explA, _explD),
-  });
-  _gA.grid = _dep.gA;
-  _gD.grid = _dep.gD;
-  pvpFront = _dep.W;
-  // Who each company fought, for the fate lines (2026-10-12, Toby): read now, while the rows carry the deploy's facing.
-  // Each enemy side as the clauses name it (plan P1-12d28: a side's record; the prose writes the label): its commander's
-  // plain name, " (wandering)" cut, never "X's leaderless host".
-  const _facedA = battleFacedClauses(_dep.gA, {
-      heroName: (def.name || defName || '').replace(' (wandering)', ''),
-      leaderless: false,
-    }),
-    _facedD = battleFacedClauses(_dep.gD, {
-      heroName: (atk.name || atkName || '').replace(' (wandering)', ''),
-      leaderless: false,
-    });
-  // (the deploy faces both grids)
-  const theAttackersFace = _gA.grid.face,
-    theDefendersFace = _gD.grid.face;
-  if (!theAttackersFace || !theDefendersFace)
-    throw new TypeError("Cannot read properties of undefined (reading 'total')");
-  const atkBaseStr = theAttackersFace.total,
-    defBaseStr = theDefendersFace.total;
-  narrate(narrative, battleWidthLine(pvpTerrain, pvpFront));
-  narrate(narrative, battleScoutLine(_dep, atkSide, defSide, _explA, _explD));
-  {
-    const _mv = battleMovesLine(_dep, atkSide, defSide);
-    if (_mv) narrate(narrative, _mv);
-  }
-  narrateAll(narrative, [...battleGridLines(defSide, _gD.grid, true), ...battleGridLines(atkSide, _gA.grid, false)]);
-  // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's
-  // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.
-  // Item 9: fortune of battle — one swing, applied as a pair of luck multipliers (see
-  // battleFortune).
-  const _fortP = battleFortune();
-  const atkDice = _fortP.atk,
-    defDice = _fortP.def;
-  const atkStr = atkBaseStr * atkDice;
-  const defStr = defBaseStr * defDice;
-  // Phantasmal Armies lasts only until the end of the next battle the hero is in — clear it now.
-  [atk, def].forEach((x: HeroInABattle | null | undefined) => {
-    if (!x) return;
-    const rx: HeroInABattle | undefined = G.characters[x.id];
-    if (rx) delete rx._phantasmalBonus;
-    delete x._phantasmalBonus;
-  });
-
-  // ── STAT BLOCK ── 2026-09-23b: a three-stage strength LADDER per side (see ladderLines) replaces
-  // the old "(incl. …)" list, which omitted every per-unit modifier (Dwarven Bulwark, kinship,
-  // terrain, the Druid creature bond, arrows) and listed Tactical as army-wide though flyers and
-  // fleets never get it. The Whole-force list below MUST mirror atkBaseStr / defBaseStr above —
-  // the harness asserts lineTotal × Π(m) === baseStr for both sides.
-  narrate(narrative, { kind: "the battle's statistics begin" });
-  narrateAll(
-    narrative,
-    ladderLines('attacker', atkSide, atkRows, pvpFront, atkFlankPvp, _pAtkFM, atkBaseStr, {
-      grid: _gA.grid,
-      tact:
-        pvpIsLand && atkTactBonus > 1
-          ? {
-              mult: tacMulted(atkTactBonus, atk),
-              reason: { kind: 'tactical at its level', level: atkTact, multiplier: tacMulted(atkTactBonus, atk) },
-            }
-          : null,
-    }),
-  );
-  narrateAll(
-    narrative,
-    ladderLines('defender', defSide, defRows, pvpFront, defFlankPvp, _pDefFM, defBaseStr, {
-      grid: _gD.grid,
-      tact:
-        pvpIsLand && defTactBonus > 1
-          ? {
-              mult: tacMulted(defTactBonus, def),
-              reason: { kind: 'tactical at its level', level: defTact, multiplier: tacMulted(defTactBonus, def) },
-            }
-          : null,
-    }),
-  );
-  narrate(narrative, {
-    kind: 'the fortune of the battle',
-    atkLabel: atkSide,
-    defLabel: defSide,
-    atkBase: atkBaseStr,
-    defBase: defBaseStr,
-    fortune: theFortuneAsTheLineTellsIt(_fortP),
-  });
-
-  const won = atkStr >= defStr;
-  // ORC — Raiders' Muster (2026-10-11, Toby): an orcish province that sees an orc win this turn gains a
-  // Goblin Horde at turn's end (the end-of-turn pass reads the flag).
-  {
-    const _wp = won ? atk.player : def.player;
-    if (
-      _wp != null &&
-      doesTheWinnersRaceFlagTheProvinceItWonABattleIn(G.players[_wp]?.race, { theProvincesRace: prov.race })
-    )
-      prov._raidersMuster = G.turn;
-  }
-  // Tactical gain deferred to the end of the battle narrative — see the return below.
-  const _rollTacticalGainPvP = prov.terrain !== 'sea';
-  const _rollNavalGainPvP = prov.terrain === 'sea'; // sea-battle winner trains Naval (mirrors Tactical on land)
-  // the primal units' rows, read by any unit's type
-  const primalDefsPvP: Readonly<Partial<Record<string, unknown>>> = PRIMAL_ARMY_DEFS_P;
-  const _rollDruidGainPvP = [...atkArmies, ...defArmies].some(
-    (a: ArmyInABattle | null | undefined) => a && primalDefsPvP[a.type],
-  ); // primal (Creature/Monster) units on EITHER side: both commanders may train Druid — winner full, loser half (2026-09-21)
-  const margin = Math.abs(atkStr - defStr);
-  const totalStrPvP = Math.max(1, atkStr + defStr);
+    _dep,
+    _facedA,
+    _facedD,
+    atkBaseStr,
+    defBaseStr,
+    _fortP,
+    won,
+    _rollTacticalGainPvP,
+    _rollNavalGainPvP,
+    _rollDruidGainPvP,
+    margin,
+    totalStrPvP,
+  } = theLinesTheFortuneAndTheResult;
   const margRatioPvP = margin / totalStrPvP;
   const _bandPvP = battleMarginBand(margRatioPvP);
   if (!_bandPvP) throw new TypeError("Cannot read properties of undefined (reading 'max')"); // (the bands' table is never empty)
