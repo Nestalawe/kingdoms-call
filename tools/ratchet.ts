@@ -1284,7 +1284,7 @@ export function battleNumbersInTheBots(codeFiles: readonly (readonly [file: stri
   return n;
 }
 
-// The sight rules' numbers written in the engine's code (Run 3e, sight's part, from #SIGHT_PR; the ratchet's paragraph
+// The sight rules' numbers written in the engine's code (Run 3e, sight's part, from #811; the ratchet's paragraph
 // of docs/architecture/the-toolchain-the-checks-and-the-harness.md): economyNumbersByFunction's rule (each number
 // other than 0, not a literal type nor an element's index) in the sight functions THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE
 // lists (armySizeBand, enemyCharVisibleTo and nearSpiedProvIds in src/engine/sight/, spotEnemyInOwnedProvince and
