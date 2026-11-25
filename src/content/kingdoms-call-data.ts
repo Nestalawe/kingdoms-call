@@ -15451,6 +15451,79 @@ export const KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS = {
   theMostTimesTheyScaleTo: 2.5,
 } as const;
 
+// ── THE BATTLE GRID'S TABLES (moved here from the engine's battle/lines.ts as they were, B-06ay2) ────
+// The engine reads each by its old name there (BATTLE_FRONT_RANGE, BATTLE_FACING, BATTLE_LINE_MULTS,
+// BATTLE_LINE_MULTS_FLANK, BATTLE_RANGED_IN_FRONT, BATTLE_FLYER_BEYOND_CAP, BATTLE_FLYER_CAP_MIN, BATTLE_FLANK_TAC_CAP,
+// BATTLE_LINEUP_MAX); the battle-lines guide is the comment above BATTLE_FRONT_RANGE in lines.ts.
+// The front the ground allows, rolled fresh for each battle and the same for both sides: the fewest and the most units
+// (a ground the table doesn't hold reads the plain's).
+export const KC_EACH_GROUNDS_BATTLE_FRONT_ITS_FEWEST_AND_MOST_UNITS = {
+  plain: [6, 8],
+  desert: [6, 8],
+  sea: [8, 10],
+  forest: [4, 6],
+  jungle: [4, 6],
+  mountain: [2, 4],
+} satisfies Record<string, [fewest: number, most: number]>;
+// Who faces whom: a front unit's matchup with the enemy unit in its column (my role → the enemy's → multiplier), a
+// second-line ranged unit shooting the enemy front unit opposite, a wider front's units wrapping round the enemy line's
+// end and the end unit struck from the side, a flank rider riding free, and a turned flank's second-line ranged units.
+export const KC_WHO_FACES_WHOM_IN_THE_BATTLE_LINE_AND_THE_FACTOR_IT_GIVES = {
+  front: { cav: { arc: 1.25, foot: 0.85 }, foot: { cav: 1.15, arc: 1.25 } }, // anything unlisted is ×1 (foot v foot, cav v cav, a ranged unit caught in the front…)
+  back: { foot: 1.25, cav: 0.75 }, // shooting the enemy front unit opposite; ranged v ranged ×1
+  wrap: 1.2,
+  sideHit: 0.9,
+  freeFlank: 1.3,
+  turned: 0.75,
+};
+// The lines' factors and limits: the four lines behind the flanks (the front, the second line, the reserve, the deep
+// reserve), and the same under Flanking Tactics where its data row carries no `lines`; a ranged unit that steps into
+// the front; a flyer beyond the enemy's ground units in line plus their flyers, and the fewest that cap allows; the
+// Tactical levels the flanks and the line-up's swaps count; the most swaps the side that scouted makes at the line-up.
+export const KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS = {
+  theFourLinesFactors: [1, 0.5, 0.25, 0.125], // front · second line (not shooting over) · reserve · deep reserve
+  theFourLinesFactorsUnderFlankingTactics: [1, 0.75, 0.5, 0.25], // sd09's fallback if its data row carries no `lines`
+  aRangedUnitInTheFront: 0.75,
+  aFlyerBeyondTheCap: 0.5,
+  theFewestFlyersTheCapAllows: 2,
+  theMostTacticalLevelsTheFlanksAndTheLineUpCount: 5,
+  theMostSwapsAtTheLineUp: 30,
+} as const;
+
+// ── THE BATTLE'S SINGLE FACTORS (moved here from the engine's battle files as they were, B-06ay2) ────
+// A pre-battle volley (terrain-and-unit-strength.ts, missileShotDamage and applyMissileHit): 30% of the firing unit's
+// base strength (10 when no unit is named), +10% per level of the commander's Archery; a winged rider takes it twice
+// over; a target loses at most 40% of its base strength to volleys (doubled for a winged rider: missileCap). In the
+// battle, the commander's Archery lifts every missile unit he leads +5% a level (ladder.ts). The engine reads them by
+// MISSILE_SHOT_PCT, MISSILE_ARCH_PER_LVL, MISSILE_CAP_FRACTION and ARCHERY_MISSILE_PCT.
+export const KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE = {
+  theShareOfTheShootersStrengthAVolleyStrikes: 0.3,
+  theRiseEachLevelOfTheCommandersArcheryGivesAVolley: 0.1,
+  theMostShareOfItsStrengthATargetLosesToVolleys: 0.4, // 2026-10-11 (Toby): volleys 20% → 30%
+  theStrengthOfAShooterNoUnitIsNamedFor: 10,
+  theTimesAWingedRiderIsHit: 2,
+  theRiseEachLevelOfTheCommandersArcheryGivesHisMissileUnits: 0.05,
+} as const;
+// What a unit fights at, beside the ground's table: every unit enters the melee with at least this share of its
+// strength, whatever the pre-battle damage (PREBATTLE_STR_FLOOR); a non-flying land unit at sea (SEA_LAND_PENALTY,
+// roughly one quality tier lower); at sea, a force of land units its flyers carry and no hull, the carried land units
+// and the humanoid flyers carrying them (SEA_AIRBORNE_LAND_PENALTY, SEA_AIRBORNE_FLYER_PENALTY); and the most a unit
+// keeps under Illusory Terrain, at least a 15% cut (illusoryTerrainMult).
+export const KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN = {
+  theLeastShareAfterThePreBattleDamage: 0.25,
+  aLandUnitAtSea: 0.75,
+  aLandUnitCarriedAtSeaByFlyers: 0.25,
+  aHumanoidFlyerCarryingThem: 0.5,
+  theMostUnderIllusoryTerrain: 0.85,
+} as const;
+// A beaten neutral guard's survivors, each time a guard loses a battle (hosts-gained-in-a-province.ts,
+// erodeGuardSurvivors): each breaks away as mercenaries at this chance (GUARD_FLIGHT_CHANCE); of those who hold their
+// ground, each is bloodied down a quality tier at this chance (GUARD_DEMOTE_CHANCE).
+export const KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES = {
+  theChanceEachFleesAsMercenaries: 0.35,
+  theChanceEachThatHoldsLosesATier: 0.5,
+} as const;
+
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;

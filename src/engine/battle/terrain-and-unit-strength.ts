@@ -1,4 +1,9 @@
-import { KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND, KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE,
+  KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND,
+  KC_QUALITY_UP,
+  KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN,
+} from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
@@ -119,7 +124,10 @@ export function illusoryTerrainMult(armyType: string) {
     const m = terrainMod(armyType, t);
     if (m < worst) worst = m;
   }
-  return Math.min(0.85, worst);
+  return Math.min(
+    KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.theMostUnderIllusoryTerrain,
+    worst,
+  );
 }
 
 // Module-level base unit strength (type × quality), independent of terrain/druid/temporary
@@ -143,16 +151,21 @@ export function bestCurseSkill(turnContext: TurnContext, hero: Character) {
 // × the firing unit's own ability (Woodland Volley, Bombardment, Raiders' Volley), rounded, minimum 1.
 // Winged riders take double and are shot first. What a TARGET can lose is capped: 40% of its own
 // base strength (80% for a winged rider; Ironwood Crossbows' Punch Through lifts both to 55% / 90% — see
-// missileCap). The 25% pre-battle floor below still applies on top.
-export const MISSILE_SHOT_PCT = 0.3,
-  MISSILE_ARCH_PER_LVL = 0.1,
-  MISSILE_CAP_FRACTION = 0.4; // 2026-10-11 (Toby): volleys 20% → 30%
+// missileCap). The 25% pre-battle floor below still applies on top. The figures are content's row (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE, B-06ay2).
+export const MISSILE_SHOT_PCT =
+    KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theShareOfTheShootersStrengthAVolleyStrikes,
+  MISSILE_ARCH_PER_LVL =
+    KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theRiseEachLevelOfTheCommandersArcheryGivesAVolley,
+  MISSILE_CAP_FRACTION =
+    KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theMostShareOfItsStrengthATargetLosesToVolleys;
 export function missileShotDamage(
   firer: Army | null | undefined,
   archSkill: number | null | undefined,
   dmgMult: number | null | undefined,
 ) {
-  const fs = firer ? unitBaseStrength(firer) : 10;
+  const fs = firer
+    ? unitBaseStrength(firer)
+    : KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theStrengthOfAShooterNoUnitIsNamedFor;
   return Math.max(
     1,
     Math.round(
@@ -164,8 +177,10 @@ export function missileShotDamage(
 // MAGIC and primal army strikes pour into _tempStrReduction with no cap of their own, so a unit hit
 // by several effects (e.g. Spiritwrack + Fireball + Choking Spores + arrows) could be softened to
 // zero before the real fighting began. This floor guarantees every unit still enters the melee with
-// at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away.
-export const PREBATTLE_STR_FLOOR = 0.25;
+// at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away. Content's row
+// (KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN, B-06ay2).
+export const PREBATTLE_STR_FLOOR =
+  KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.theLeastShareAfterThePreBattleDamage;
 // Subtract a unit's pre-battle damage from a strength figure, never below PREBATTLE_STR_FLOOR of it.
 // Two steps, as before: this battle's damage, then any all-turn reduction.
 export function applyPrebattleDamage(army: ArmyInABattle, str: number) {
@@ -192,7 +207,7 @@ export function applyMissileHit(
   if (why !== null) return { dmg: 0, isFly: false, capped: false, immune: true, why };
   const isFly = FLYING_TYPES.has(target.type);
   let dmg = missileShotDamage(firer, archSkill, opts.dmgMult); // the SHOOTER's strength decides the hit
-  if (isFly) dmg = dmg * 2; // archers are especially good against winged riders — double damage
+  if (isFly) dmg = dmg * KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theTimesAWingedRiderIsHit; // archers are especially good against winged riders — double damage
   // What the target does to the shot, after a flyer's double (Thick Hide: half, rounded up): the registry's stage.
   const afterTheTarget = theDamageOfAShotAfterItsTarget({ theTargetsType: target.type }, dmg);
   dmg = afterTheTarget.damage;
@@ -209,8 +224,9 @@ export function applyMissileHit(
 }
 
 // Sea penalty for non-flying land units fighting in sea provinces ×0.75 = roughly one quality tier
-// lower
-export const SEA_LAND_PENALTY = 0.75;
+// lower (content's row: KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN, B-06ay2)
+export const SEA_LAND_PENALTY =
+  KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aLandUnitAtSea;
 
 export function isAirborneAtSea(force: readonly ForceUnit[] | null | undefined) {
   const f = (force ?? []).filter((a): a is ArmyInABattle => Boolean(a));

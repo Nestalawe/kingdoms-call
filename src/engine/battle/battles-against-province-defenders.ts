@@ -1,6 +1,7 @@
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS,
+  KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN,
   KC_UNIT_CLASS,
   PRIMAL_ARMY_DEFS_P,
   SPELL_DEFS_P,
@@ -162,9 +163,12 @@ export const CARRYON_DEATH_STEP = KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_R
 // (neither flying nor naval) and NO naval unit at all — the land units can only be there because the
 // flyers carried them. Carried land units then fight at ×0.25 and the carrying humanoid flyers at
 // ×0.5
-// (applied in armStr). Module-level so both battle paths and the narrative lines can share it.
-export const SEA_AIRBORNE_LAND_PENALTY = 0.25,
-  SEA_AIRBORNE_FLYER_PENALTY = 0.5;
+// (applied in armStr). Module-level so both battle paths and the narrative lines can share it. Content's row
+// (B-06ay2).
+export const SEA_AIRBORNE_LAND_PENALTY =
+    KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aLandUnitCarriedAtSeaByFlyers,
+  SEA_AIRBORNE_FLYER_PENALTY =
+    KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aHumanoidFlyerCarryingThem;
 
 // Simple combat resolve
 // ── ARMY BATTLE NARRATIVE ENGINE ────
