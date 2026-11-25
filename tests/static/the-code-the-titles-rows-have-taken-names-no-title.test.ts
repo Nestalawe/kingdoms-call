@@ -75,6 +75,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength) (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength) (B-06bj: combatVsChar's casualties, rout and end, moved)",
+  ],
+  [
     'src/engine/battle/battles-against-province-defenders.ts',
     'combatVsNPC',
     "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength)",

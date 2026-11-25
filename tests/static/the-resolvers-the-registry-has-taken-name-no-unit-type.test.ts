@@ -96,6 +96,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
     "P1-19j, the rout (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
   ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "P1-19j, the rout (B-06bj: combatVsChar's casualties, rout and end, moved)",
+  ],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', 'P1-19j, the rout'],
   [
     'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',

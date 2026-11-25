@@ -70,6 +70,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19n, the battles' items (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bj: combatVsChar's casualties, rout and end, moved)",
+  ],
+  [
     'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
     'applyPreBattleArchery',
     "P1-19n, the battles' items",
@@ -238,7 +243,7 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   // the ladder's reason for an Evil realm's Terror ({ kind: 'terror', multiplier }), not the combat item's use
   armStr: ['terror'],
   // an Evil realm's doctrine after a decisive win, `(encounterPlan.evilMode || 'terror') === 'terror'`, not the use
-  combatVsChar: ['terror', 'terror'],
+  theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes: ['terror', 'terror'], // combatVsChar's, moved (B-06bj)
   theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders: ['terror', 'terror'], // combatVsNPC's, moved (B-06bd)
   // the kind of source the portals colour a skill's bonus by ({ kind: 'aura' }), not the Crown of Command's key
   skillBonusBreakdown: ['aura'],

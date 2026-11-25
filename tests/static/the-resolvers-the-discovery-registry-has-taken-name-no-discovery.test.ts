@@ -98,7 +98,6 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",
-    THE_EVIL_DOCTRINE_IN_A_BATTLE,
   ],
   [
     'src/engine/battle/the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts',
@@ -119,6 +118,12 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
     'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bj: combatVsChar's casualties, rout and end, moved)",
+    THE_EVIL_DOCTRINE_IN_A_BATTLE,
   ],
   [
     'src/engine/battle/best-commander.ts',

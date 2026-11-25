@@ -81,6 +81,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19u, battle magic between heroes (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "P1-19u, battle magic between heroes (B-06bj: combatVsChar's casualties, rout and end, moved)",
+  ],
+  [
     'src/engine/magic/pre-battle-spell-choice.ts',
     'battleSpellUseful',
     'P1-19u, a battle spell has something to strike',
