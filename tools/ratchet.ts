@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, the world's making's numbers and lists, the engine's naming of a race, a temper, an order's kind and a relation, the battles' and personal combat's numbers in the engine and in the bots, the portal's naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, the world's making's numbers and lists, the engine's naming of a race, a temper, an order's kind and a relation, the battles' and personal combat's numbers in the engine and in the bots, the sight rules' numbers, the portal's naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -1284,6 +1284,27 @@ export function battleNumbersInTheBots(codeFiles: readonly (readonly [file: stri
   return n;
 }
 
+// The sight rules' numbers written in the engine's code (Run 3e, sight's part: #SIGHT_PR, the toolchain's guide):
+// economyNumbersByFunction's rule (each number other than 0, not a literal type nor an element's index) in the sight
+// functions THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE lists: the size band of an army, whether a realm knows a hero, the
+// provinces next to a spy's, a lurker's contest in a realm's own province, and what a spy's success brings. Which
+// provinces and heroes a realm knows are sets, not numbers, so no count sees them. A listed function a row empties
+// stays in the list at 0, so a number moved out of the list can't hide:
+// tests/static/the-code-the-sight-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts holds
+// the functions the rows have taken, and those at 0 from the start, at 0 each, and fails on a listed file or function
+// the code no longer has.
+/** The engine's sight functions sightNumbersInEngine counts. */
+export const THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE: readonly (readonly [file: string, fn: string])[] = [
+  ['src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts', 'armySizeBand'],
+  ['src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts', 'enemyCharVisibleTo'],
+  ['src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts', 'nearSpiedProvIds'],
+  ['src/engine/heroes/fame-and-consecration.ts', 'spotEnemyInOwnedProvince'],
+  ['src/engine/espionage/what-a-spy-learns.ts', 'applySpySuccess'],
+];
+/** The sight rules' numbers in the engine's functions listed (above). */
+export const sightNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  economyNumbersIn(THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE, codeFiles);
+
 // The player portal's naming of an alignment (Run 3e, the portal's alignment rules): alignmentChecksByFunction's rule
 // (a string naming one of KC_ALIGNMENTS, anywhere but a literal type) in the files of src/ui/, src/views/ and
 // src/shared/, where the portal and the views restate an alignment's rule (a realm of none reads as Neutral, the beasts'
@@ -1405,6 +1426,7 @@ export function measure(): Counts {
     battleNumbersInEngine: battleNumbersInEngine(codeFiles),
     personalCombatNumbersInEngine: personalCombatNumbersInEngine(codeFiles),
     battleNumbersInTheBots: battleNumbersInTheBots(codeFiles),
+    sightNumbersInEngine: sightNumbersInEngine(codeFiles),
     alignmentChecksOutsideTheEngine: alignmentChecksOutsideTheEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),
