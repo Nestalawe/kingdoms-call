@@ -36,6 +36,11 @@
 // fronts' widths are written and read in one stage file (n8-to-n10-…, B-06bc), so they stay its own lets; the rest are
 // values once their stage is done; n5-to-n7 and n11-to-n13 declare none a later stage reads. The objects the stages
 // share (the narrative, the two hosts, the province, the commanders) are handed on as they are, never copied.
+import {
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
+  KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST,
+} from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import { theHullAUnitSinksBeforeTheBattle } from '../../rules/the-registry-of-content-effects.ts';
 import {
@@ -145,9 +150,9 @@ export function theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(
     const spellLvl = effStat(turnContext, c, school);
     if (spellLvl >= 1) {
       const castChance = Math.min(
-        95,
+        KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theMost,
         SPELL_CAST_BASE +
-          spellLvl * 10 +
+          spellLvl * KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theRiseEachSchoolLevelGives +
           magicL8CastBonus(c) +
           whatARealmsDiscoveriesAddToACastersChance(theAttackersRealm, { theSchool: school, whereHeCasts: 'battle' }),
       ); // cast discoveries · 2026-09-11: base 30
@@ -395,8 +400,15 @@ export function theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(
       : effStat(turnContext, defHero, 'tactical') +
         theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, defHero, title))
     : 0;
-  if (defHero?._curseHalveStat === 'tactical') defTactLvl = Math.floor(defTactLvl / 2); // LEVEL 6+ PERK — Grand Tactician
-  const defTactBonus = defTactLvl > 0 ? Math.min(2.0, 1 + defTactLvl * 0.2) : 1; // cap ×2.0
+  if (defHero?._curseHalveStat === 'tactical')
+    defTactLvl = Math.floor(defTactLvl / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
+  const defTactBonus =
+    defTactLvl > 0
+      ? Math.min(
+          KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
+          1 + defTactLvl * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
+        )
+      : 1; // cap ×2.0
   // (The army and defender counts once kept here, read by nothing, went with P1-10b24.)
 
   // ════

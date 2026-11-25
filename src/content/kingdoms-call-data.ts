@@ -15524,6 +15524,69 @@ export const KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES = {
   theChanceEachThatHoldsLosesATier: 0.5,
 } as const;
 
+// ── A BATTLE'S SHARED FACTORS (moved here from the battle against a province's defenders' stages as they were,
+// B-06be) ────
+// Each row is named for its rule, not for one battle: the battle against a province's defenders reads them (its stage
+// files, src/engine/battle/the-battle-against-the-defenders/), and the battle between heroes writes the same figures.
+// A commander's Tactical lifts his host 1 + this much a level (his titles' levels counted), to at most this many times;
+// at Tactical 8 (the third tier of its mastery) the units of a host he loses with die or disband at this share of their
+// chances. His Naval lifts the fleets and sea-beasts he leads 1 + this much a level, with no cap.
+export const KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE = {
+  theRiseEachLevelOfTacticalGivesHisHost: 0.2,
+  theMostTimesTacticalLiftsHisHost: 2.0,
+  theMasteryTierOfTacticalThatSparesALosingHost: 3,
+  theShareOfALosingUnitsChancesToDieOrDisbandItLeaves: 0.5,
+  theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts: 0.2,
+} as const;
+// A Cursed commander's skill (the battle magic's mark, `_curseHalveStat`) counts in a battle as his level divided by
+// this, rounded down.
+export const KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE = {
+  theNumberItIsDividedBy: 2,
+} as const;
+// Decided once a battle, before it is fought: each unit of a commander with Tactical 6 (the first tier of its mastery),
+// and each unit of a commander who carries the War Drum, fights a quality tier higher at this chance.
+export const KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE = {
+  underACommanderWithTactical6: 0.1,
+  underTheWarDrum: 0.2,
+} as const;
+// The defenders' edge: the side that holds the ground fights at this many times its strength (Siege discoveries cut
+// it, a realm's own-ground discoveries raise it); this many times again for a realm that holds its home province; and
+// a realm's host retaking its home province from another fights at this many times. A province's own defenders know
+// their ground fully: this share of it, as a percentage, explored, when the two sides line up.
+export const KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE = {
+  theDefendersEdge: 1.25,
+  aRealmHoldingItsHomeProvince: 1.2,
+  aRealmRetakingItsHomeProvince: 1.5,
+  theShareOfTheirGroundAProvincesOwnDefendersHaveExplored: 100,
+} as const;
+// The mastery orders' factors on a host's strength in a battle: a Grand Stratagem (Tactical 9) unfolded this turn, and
+// a host storming ashore in a raid on the coast.
+export const KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE = {
+  aGrandStratagem: 1.2,
+  aRaidOnTheCoastStormingAshore: 1.25,
+} as const;
+// A spell's cast chance (beside the engine's SPELL_CAST_BASE, the discoveries and the mastery's bonus): this much a
+// level of its school, and at most this much, as percentages.
+export const KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST = {
+  theRiseEachSchoolLevelGives: 10,
+  theMost: 95,
+} as const;
+// The factor on a unit's chance to gain experience in a battle, by its quality tier in KC_QUALITY_TIERS' order (Green,
+// Average, Veteran, Crack, Elite): the higher the tier, the harder it is to improve.
+export const KC_THE_FACTOR_EACH_QUALITY_TIER_GIVES_A_UNITS_CHANCE_TO_GAIN_EXPERIENCE_IN_A_BATTLE = [
+  1.5, 1.0, 0.6, 0.3, 0,
+] as const satisfies readonly [green: number, average: number, veteran: number, crack: number, elite: number];
+// A battle's casualties beyond its margin band: a battle won by more than this margin is decisive or worse (an Evil
+// victor's Terror spreads); each unit with nowhere to retreat is cut down at this chance; a province's defenders who
+// hold it die at this share of the winner's death chance; and a beaten side's commander learns Druid at this share of
+// the chance.
+export const KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS = {
+  theMarginABattleIsDecisiveAbove: 0.3,
+  theChanceEachUnitWithNowhereToRetreatIsCutDown: 0.15,
+  theShareOfTheWinnersDeathChanceAProvincesDefendersTakeWhenTheyHold: 0.5,
+  theShareOfTheChanceTheBeatenSidesCommanderLearnsDruidAt: 0.5,
+} as const;
+
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;

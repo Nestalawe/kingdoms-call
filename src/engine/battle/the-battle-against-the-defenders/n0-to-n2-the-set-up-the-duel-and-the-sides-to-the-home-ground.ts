@@ -12,7 +12,13 @@
 // file of the first stage that writes it, n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts
 // (B-06ba).
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
-import { KC_UNIT_CLASS } from '../../../content/kingdoms-call-data.ts';
+import {
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
+  KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE,
+  KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
+  KC_UNIT_CLASS,
+} from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import { theDefendersFortificationsAfterTheCommandersItems } from '../../rules/the-registry-of-magic-item-effects.ts';
 import {
@@ -101,8 +107,10 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
       _drum = activeItems(c).some((it: AnItemAsTheWarDrumReadsIt | null | undefined) => it?.drumTierUp);
     c.armies.forEach((a: AUnitInTheBattleAgainstTheDefenders | null | undefined) => {
       if (a) {
-        a._tacUp = _tac && kcRng() < 0.1;
-        a._drumUp = _drum && kcRng() < 0.2;
+        a._tacUp =
+          _tac &&
+          kcRng() < KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE.underACommanderWithTactical6;
+        a._drumUp = _drum && kcRng() < KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE.underTheWarDrum;
       }
     });
   }
@@ -325,8 +333,12 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
       ? 0
       : effStat(turnContext, c, 'tactical') +
         theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, c, title));
-  if (c._curseHalveStat === 'tactical') tactSkill = Math.floor(tactSkill / 2); // LEVEL 6+ PERK — Grand Tactician
-  const tactBonus = Math.min(2.0, 1 + tactSkill * 0.2); // Tactical battle bonus hard-capped at ×2.0 (incl. titles)
+  if (c._curseHalveStat === 'tactical')
+    tactSkill = Math.floor(tactSkill / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
+  const tactBonus = Math.min(
+    KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
+    1 + tactSkill * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
+  ); // Tactical battle bonus hard-capped at ×2.0 (incl. titles)
   // Tactical only applies to land armies (not flying or naval) per AK 4.1.1 Tactical only applies
   // in land provinces AND to land units
   const isLandBattle = prov.terrain !== 'sea';
@@ -340,7 +352,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
 
   // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
   // bonus
-  let defBonus = 1.25; // sd03 Siege Engines is now an ordinary `siege` effect (below)
+  let defBonus: number = KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.theDefendersEdge; // sd03 Siege Engines is now an ordinary `siege` effect (below)
   {
     const _sg = whatARealmsDiscoveriesAddToASiege(theAttackersRealm, {
       theAttackersUnits: asItsGuardReadsIt(c.armies) ?? [],
@@ -411,8 +423,12 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
       });
     }
   } // defOwn discoveries
-  const homeBonus = isHome ? 1.2 : 1;
-  const atkHomeBonus = atkHome ? 1.5 : 1;
+  const homeBonus = isHome
+    ? KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.aRealmHoldingItsHomeProvince
+    : 1;
+  const atkHomeBonus = atkHome
+    ? KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.aRealmRetakingItsHomeProvince
+    : 1;
 
   // Calculate strengths with some narrative
   const MISSILE_ARMIES = new Set(KC_UNIT_CLASS.missile);
@@ -421,8 +437,11 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   const archSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'archery');
   const archMissileBonus = 1 + archSkillAtk * ARCHERY_MISSILE_PCT; // 2026-09-23b (Toby): Archery lifts missile units +5%/level · sd07 Fire Arrows is a `unitStr` missile effect (armStr)
   let navalSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'naval');
-  if (c._curseHalveStat === 'naval') navalSkillAtk = Math.floor(navalSkillAtk / 2); // Curse (battle magic) can wither Naval command
-  const navalFleetBonus = 1 + navalSkillAtk * 0.2;
+  if (c._curseHalveStat === 'naval')
+    navalSkillAtk = Math.floor(navalSkillAtk / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // Curse (battle magic) can wither Naval command
+  const navalFleetBonus =
+    1 +
+    navalSkillAtk * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   const _provCoastal = provIsCoastal(G, prov); // Sea Giants' Tidal Might
   const playerAlign = theAlignmentARealmReadsAs(theAttackersRealm?.alignment);
   return {

@@ -7,6 +7,11 @@
 // it: N12 writes a winning garrison's dead, N13 reads both loss counts. It declares no let a stage after it reads, so
 // the state gains no field. The battle proof (tools/proof/README.md, section 8) finds N11's, N12's and N13's anchors in
 // this file; nothing above N11's draws a die.
+import {
+  KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS,
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_THE_FACTOR_EACH_QUALITY_TIER_GIVES_A_UNITS_CHANCE_TO_GAIN_EXPERIENCE_IN_A_BATTLE,
+} from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import { aForceHoldsTheSeaLanes } from '../../rules/the-registry-of-content-effects.ts';
 import { theBeatenForceMayRetreatByTheCommandersItems } from '../../rules/the-registry-of-magic-item-effects.ts';
@@ -102,12 +107,16 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   const margRatio = Math.abs(margin) / totalStr;
   const _band = battleMarginBand(margRatio);
   if (!_band) throw new TypeError("Cannot read properties of undefined (reading 'max')"); // (the bands' table is never empty)
-  const isDecisive = _band.max > 0.3; // decisive, crushing or annihilating
+  const isDecisive =
+    _band.max >
+    KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theMarginABattleIsDecisiveAbove; // decisive, crushing or annihilating
   // Severity label for narrative
   const severity = _band.slug;
 
   // XP tier multipliers — higher tiers harder to improve
-  const xpMult = QUALITY_TIERS.map((_, i) => [1.5, 1.0, 0.6, 0.3, 0][i]);
+  const xpMult = QUALITY_TIERS.map(
+    (_, i) => KC_THE_FACTOR_EACH_QUALITY_TIER_GIVES_A_UNITS_CHANCE_TO_GAIN_EXPERIENCE_IN_A_BATTLE[i],
+  );
   function xpChance(baseChance: number, quality: string) {
     const i = QUALITY_TIERS.indexOf(quality);
     return baseChance * (xpMult[i] ?? 0);
@@ -127,7 +136,11 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
 
   // Steel Armour discovery: -15% death chance
   const steelMultOf = (a: AUnitInTheBattleAgainstTheDefenders) => discDeathMult(turnContext, c.player, a, 'atk'); // per-unit deathRed discoveries (sd05 Steel Armour now one of them)
-  const tacMultNPC = perkTier(c, 'tactical') >= 3 ? 0.5 : 1; // TACTICAL L8: on a LOSS, c's units half as likely to die/disband
+  const tacMultNPC =
+    perkTier(c, 'tactical') >=
+    KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMasteryTierOfTacticalThatSparesALosingHost
+      ? KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theShareOfALosingUnitsChancesToDieOrDisbandItLeaves
+      : 1; // TACTICAL L8: on a LOSS, c's units half as likely to die/disband
   // Military Discipline discovery: +20% XP gain chance
   const milMultOf = (a: AUnitInTheBattleAgainstTheDefenders) => 1 + discPromo(turnContext, c.player, a); // per-unit promo discoveries (sd06 Military Discipline now one of them)
 
@@ -323,7 +336,10 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
         });
         _trapped.forEach((a) => {
           // (Skyward Retreat retired with the unit abilities, 2026-10-11: the Eagles roll like anyone.)
-          if (kcRng() < 0.15) {
+          if (
+            kcRng() <
+            KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theChanceEachUnitWithNowhereToRetreatIsCutDown
+          ) {
             a._died = true;
             narrate(narrative, {
               kind: "a unit's fate in the battle",
@@ -386,7 +402,11 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
     });
     // Log fate of each defender (some may have died in the fighting even in a win)
     defenders.forEach((a) => {
-      if (kcRng() < winDeathChance * 0.5) {
+      if (
+        kcRng() <
+        winDeathChance *
+          KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theShareOfTheWinnersDeathChanceAProvincesDefendersTakeWhenTheyHold
+      ) {
         // defenders take lighter casualties when they win
         a._defDied = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
@@ -533,7 +553,10 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
           .forEach((a) => {
             // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11: theirs are
             // Stoop on the Horses and Eyes of the Forest.)
-            if (kcRng() < 0.15) {
+            if (
+              kcRng() <
+              KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theChanceEachUnitWithNowhereToRetreatIsCutDown
+            ) {
               narrate(narrative, {
                 kind: "a unit's fate in the battle",
                 itsSideWon: false,
@@ -614,7 +637,17 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   // too — Tactical (Naval at sea) at the small frequent-action rate. A general slain in it learns nothing.
   if (!won) trySkillGain(turnContext, c, prov.terrain === 'sea' ? 'naval' : 'tactical', SKILLGAIN_COMMON, narrative);
   if (_rollNavalGain) trySkillGain(turnContext, c, 'naval', SKILLGAIN_STD, narrative); // Naval: won a sea battle
-  if (_rollDruidGain) trySkillGain(turnContext, c, 'druid', SKILLGAIN_STD, narrative, won ? 1 : 0.5); // Druid: fought beside or against primal armies (loser at half chance)
+  if (_rollDruidGain)
+    trySkillGain(
+      turnContext,
+      c,
+      'druid',
+      SKILLGAIN_STD,
+      narrative,
+      won
+        ? 1
+        : KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theShareOfTheChanceTheBeatenSidesCommanderLearnsDruidAt,
+    ); // Druid: fought beside or against primal armies (loser at half chance)
   // 2026-09-26 (Toby): the NEUTRAL commander takes the mirror of those rolls — a chieftain who
   // holds his province learns Tactical (or Naval at sea) exactly as a player's general would, and
   // Druid on the same winner-full / loser-half terms. `won` is the ATTACKER's result, so the
@@ -631,7 +664,17 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
         SKILLGAIN_COMMON,
         narrative,
       ); // a beaten chieftain who lives (batch item 11)
-    if (_rollDruidGain) trySkillGain(turnContext, neutralGuardHero, 'druid', SKILLGAIN_STD, narrative, !won ? 1 : 0.5);
+    if (_rollDruidGain)
+      trySkillGain(
+        turnContext,
+        neutralGuardHero,
+        'druid',
+        SKILLGAIN_STD,
+        narrative,
+        !won
+          ? 1
+          : KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theShareOfTheChanceTheBeatenSidesCommanderLearnsDruidAt,
+      );
   }
   // a one-line result that onlookers (a char present but not fighting) may see instead of the
   // full blow-by-blow. The caller can override with a fuller "seized/held" line where it knows

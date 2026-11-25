@@ -8,7 +8,13 @@
 // alone, so they stay its own lets and the battle's state (its type and table in n3-to-n4-…) gains no field. The battle
 // proof (tools/proof/README.md, section 8) finds N8's, N9's and N10's anchors in this file; nothing above N8's draws a
 // die.
-import { PRIMAL_ARMY_DEFS_P } from '../../../content/kingdoms-call-data.ts';
+import {
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
+  KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
+  KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE,
+  PRIMAL_ARMY_DEFS_P,
+} from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import {
   theAlignmentASideFightsUnder,
@@ -212,8 +218,11 @@ export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstT
   // the defending commander's Naval lifts the fleets / sea-beasts they lead — land or sea —
   // exactly as the attacker's does.
   let navalSkillDef = defHero ? effStat(turnContext, defHero, 'naval') : 0;
-  if (defHero?._curseHalveStat === 'naval') navalSkillDef = Math.floor(navalSkillDef / 2);
-  const defNavalFleetBonus = 1 + navalSkillDef * 0.2;
+  if (defHero?._curseHalveStat === 'naval')
+    navalSkillDef = Math.floor(navalSkillDef / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const defNavalFleetBonus =
+    1 +
+    navalSkillDef * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   let defLineWidth = terrainFront;
   // the defenders' Flanking Tactics come from the province OWNER (a player garrison) or the
   // defending commander's realm — previously hard-coded ×0.5 whatever discoveries they held.
@@ -273,11 +282,11 @@ export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstT
   let atkOrdN = 1;
   const defOrdN = 1;
   if (c._grandStratagemTurn === G.turn) {
-    atkOrdN *= 1.2;
+    atkOrdN *= KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE.aGrandStratagem;
     narrate(narrative, { kind: 'the attacker unfolds a grand stratagem against the defenders', cName: atkSide });
   }
   if (raidLandedHere(turnContext, c, prov)) {
-    atkOrdN *= 1.25;
+    atkOrdN *= KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE.aRaidOnTheCoastStormingAshore;
     narrate(narrative, {
       kind: 'the attacker storms ashore in a raid on the coast against the defenders',
       cName: atkSide,
@@ -391,7 +400,8 @@ export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstT
   // commanders then shift their lines, one swap per Tactical level. The ground's own defenders (a
   // neutral guard, a standing garrison) know it fully. finishSide's grids are replaced by the deploy's.
   const _explA = (prov.exploredBy?.[String(c.player)] ?? 0) || 0,
-    _explD = 100;
+    _explD =
+      KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.theShareOfTheirGroundAProvincesOwnDefendersHaveExplored;
   const _dep = battleDeploy(armiesWithStr, defsWithStr, {
     terrain: prov.terrain,
     roll: terrainFront,
