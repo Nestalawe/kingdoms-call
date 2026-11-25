@@ -63,12 +63,12 @@ test('no sight function is listed twice, and each is in src/engine/ outside its 
 // the economy's rule leaves out only 0), and the ratchet fails on it; one in a function the list doesn't name, in the
 // same file, doesn't (the checks above keep a listed function from being emptied that way).
 test.for([
-  [THE_SIGHT_RULES, 'armySizeBand', 5, 1],
-  [THE_SIGHT_RULES, 'nearSpiedProvIds', 1, 1],
-  ['src/engine/heroes/fame-and-consecration.ts', 'spotEnemyInOwnedProvince', 5, 1],
-  ['src/engine/espionage/what-a-spy-learns.ts', 'applySpySuccess', 5, 1],
-  [THE_SIGHT_RULES, 'aPlantedSightRule', 5, 0],
-] as const)('a %s planted in %s, in %s, raises sightNumbersInEngine by %i', ([file, fn, number, rise]) => {
+  [THE_SIGHT_RULES, 5, 'armySizeBand', 1],
+  [THE_SIGHT_RULES, 1, 'nearSpiedProvIds', 1],
+  ['src/engine/heroes/fame-and-consecration.ts', 5, 'spotEnemyInOwnedProvince', 1],
+  ['src/engine/espionage/what-a-spy-learns.ts', 5, 'applySpySuccess', 1],
+  [THE_SIGHT_RULES, 5, 'aPlantedSightRule', 0],
+] as const)('%s: a %i planted in %s raises sightNumbersInEngine by %i', ([file, number, fn, rise]) => {
   const files = theCodeFiles();
   const onTheTree = sightNumbersInEngine(files);
   expect(onTheTree, 'sightNumbersInEngine on the tree as it is').toBe(readBaseline()['sightNumbersInEngine']);
