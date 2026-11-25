@@ -134,7 +134,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
   not by a second module-level `const` (`tests/unit/engine-purity.test.ts` watches the engine's module-level names). A
   key that may be `undefined` is read as JavaScript reads it, `table[String(key)]`; an element by an index that may be
   missing (`SEASONS[s[0]]`), through `(p) => (p === undefined ? undefined : SEASONS[p])`.
-- **A literal table keyed by a closed set** gains `satisfies Record<…>` (`TERRAIN_MODS` by unit type: a misspelt unit
+- **A literal table keyed by a closed set** gains `satisfies Record<…>` (`UNIT_SHORT` by unit type: a unit left out
   fails `tsc`; `PC_SPELL_SCHOOL_MAP` by school, so its values keep their literal types and index a fighter's schools).
   A table of pairs takes a tuple (`readonly [utility: number, combat: number]`), and so does a table of rows (the
   minor titles' bonuses, `readonly [key: AMinorTitlesSlug, skills: readonly string[], …]`). A list of rows whose order

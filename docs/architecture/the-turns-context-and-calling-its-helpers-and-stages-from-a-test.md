@@ -57,8 +57,9 @@ makes the checks that come before any order. In order:
 - a Forced March becomes a Move that may slip past a battle;
 - a spell item's Use Item becomes a Cast Spell, handed to `resolveCastSpellOrder` as its last argument (`_itemCast`).
 
-Then the `switch` hands the order to its own function in `engine/orders/`. Which function and which module each
-order's is: the module map and a search for `resolve<Order>Order`.
+Then the hero orders' registry (`engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts`,
+an entry for each kind but Forced March's, keyed by its row's key) hands the order to its own function in
+`engine/orders/`. Which function and which module each order's is: its entry, or a search for `resolve<Order>Order`.
 
 ## A lifted helper takes the turn's context first
 
@@ -88,10 +89,10 @@ A helper lifted out of `resolveTurn` that reads the turn's state takes `turnCont
   changes one, or swaps `G`, changes the context's too (`battle-faced-turn`'s `setG` did, until P1-08i3; `npc-parity`'s
   `setPhase` did, until P1-08g moved it down).
 - An order taken out of `processOrder` (since P1-08j1: the Move, `resolveMoveOrder`; since P1-08j2 the explore and
-  search orders; since P1-08j3 recruiting, hiring and the realm's works; since P1-08j4 research and practice; since P1-08j5 items and armies; since P1-08j6 espionage; since P1-08j7 Cast Spell; since P1-08j8 the war orders) takes, after the context, the values `processOrder` works out before its `switch` that the order
-  reads, in the order they're declared there (the Move's `c, ph, _fmSlip, target, prov, player`; Explore's only
-  `c, prov`). So the calls differ from order to order. The case is the call and `break`, and a `return` in the order
-  ends it, as the case's own `break` did: nothing follows the `switch`. Keep the call in step with the function: two
+  search orders; since P1-08j3 recruiting, hiring and the realm's works; since P1-08j4 research and practice; since P1-08j5 items and armies; since P1-08j6 espionage; since P1-08j7 Cast Spell; since P1-08j8 the war orders) takes, after the context, the values `processOrder` works out before it hands the order on that the
+  order reads, in the order they're declared there (the Move's `c, ph, _fmSlip, target, prov, player`; Explore's only
+  `c, prov`). So the calls differ from order to order. The order's entry in the registry takes
+  them from what `processOrder` hands it and makes the call, and nothing follows it. Keep the call in step with the function: two
   arguments swapped (`prov` and `player`, or `target` and `extra`) pass `no-undef` and every check but a test that
   plays the order (`scenario/move-orders-in-a-whole-turn`, `scenario/explore-and-search-orders-in-a-whole-turn`,
   `scenario/recruit-hire-and-realm-works-orders-in-a-whole-turn`, `scenario/research-and-practice-orders-in-a-whole-turn`,

@@ -44,13 +44,13 @@ function theExploreLines(n: number): readonly string[] {
   return Array<string>(n).fill('explore');
 }
 
-/** The type of a march's lines and of an ally's order the unify rolls read, `'move'`, and of the lines of what the
- *  march maps, `'explore'`: the words of the kinds of a march's and an explorer's discoveries, but no discovery's
- *  (resolveMoveOrder, 34 and 2 times, in the order written). */
+/** The type of a march's lines, `'move'`, and of the lines of what the march maps, `'explore'`: the words of the
+ *  kinds of a march's and an explorer's discoveries, but no discovery's (resolveMoveOrder, 32 and 2 times, in the
+ *  order written; an ally's order the unify rolls read is the Move row's key since B-06ap). */
 const THE_MARCHS_LINES_AND_ORDERS: readonly string[] = [
   ...Array<string>(23).fill('move'),
   'explore',
-  ...Array<string>(11).fill('move'),
+  ...Array<string>(9).fill('move'),
   'explore',
 ];
 /** Each function the discoveries' registry has taken, by its file, from the row that took it, with the strings in it
@@ -68,6 +68,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'combatVsNPC',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",
     THE_EVIL_DOCTRINE_IN_A_BATTLE,
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06az: combatVsNPC's set-up, duel and sides, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts',
+    'theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
   ],
   [
     'src/engine/battle/battles-between-heroes.ts',

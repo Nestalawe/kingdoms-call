@@ -1,4 +1,7 @@
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE,
+  KC_UNIT_CLASS,
+} from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { ARMY_SPEED_MASTER } from '../army-tables.ts';
 import { BATTLE_LINE_MULTS, battleLineTotal, flankLineMults } from './lines.ts';
@@ -167,8 +170,10 @@ export function ladderLines(
 // ARCHERY IN ARMY BATTLES (2026-09-23b, Toby): the commander's Archery lifts every missile unit he
 // leads by +5% per level (Archery 5 = +25%; items count, as with every effStat). Until today the
 // rulebook and DEV_LOG said "no strength bonus" while both battle paths quietly applied +10%/level —
-// the NPC path even carried a comment claiming the bonus had been removed. One constant now.
-export const ARCHERY_MISSILE_PCT = 0.05;
+// the NPC path even carried a comment claiming the bonus had been removed. One constant now: content's row
+// (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE, B-06ay2).
+export const ARCHERY_MISSILE_PCT =
+  KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theRiseEachLevelOfTheCommandersArcheryGivesHisMissileUnits;
 // DRUID MASTERY (2026-09-24, Toby): its three constants are in engine/rules-on-plain-values/, with its sum (plan P1-11b2).
 // UNDEAD — undying fanaticism (2026-09-23b, Toby): a host with skeletal units in it, led by the Undead
 // KING in person ×1.5, by any other Undead commander ×1.3 (was ×1.3 / ×1.2). Whole force, no roll.

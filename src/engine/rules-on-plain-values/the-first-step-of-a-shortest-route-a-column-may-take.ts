@@ -4,6 +4,7 @@ import {
   canEnterTerrain,
 } from './where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import type { AColumnAsTheTerrainTestsReadIt } from './where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 
 // ── The first step of a shortest route a column may take (plan P1-11e7) ────
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
@@ -80,7 +81,7 @@ export function aProvinceIsSafePassageForARealmsColumn(
   anArmedNeutralGuardStandsThere: () => boolean,
 ): boolean {
   if (theOwner === theRealm) return true;
-  if (theOwner != null) return theRelation() === 'allied';
+  if (theOwner != null) return theRelation() === THE_STATES_TWO_REALMS_STAND_IN.allied;
   return !anArmedNeutralGuardStandsThere();
 }
 

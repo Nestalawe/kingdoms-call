@@ -24,9 +24,123 @@ import {
 } from '../../tools/ratchet.ts';
 import { everyStringIn, TOP } from '../lib/the-strings-a-function-of-the-code-holds.ts';
 
-/** Each function (or a file's top level) the relation rows have taken, by its file, from the row that took it. Empty
- *  until the family's first row: each adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+const THE_HOME = 'src/engine/realms/relations-and-captures.ts';
+const THE_KEY_AND_THE_ENTRY =
+  'src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
+const FAME = 'src/engine/heroes/fame-and-consecration.ts';
+const STRATEGY = 'src/engine/bots/strategy.ts';
+const WAR = 'src/engine/bots/war.ts';
+const BOT_DIPLOMACY = 'src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts';
+const MISSIONS = 'src/engine/bots/missions.ts';
+const SPECIALISTS = 'src/engine/bots/specialists.ts';
+const SPELLCRAFT = 'src/engine/bots/spellcraft.ts';
+const PHASE_ONE = 'src/engine/bots/phase-one.ts';
+const DIPLOMACY =
+  'src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts';
+/** Each function (or a file's top level) the relation rows have taken, by its file, from the row that took it: each
+ *  row adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  [THE_KEY_AND_THE_ENTRY, 'theStateThePairsEntryHolds', "B-06aq, a pair's entry: Neutral the content's"],
+  [THE_HOME, 'relationBetween', "B-06aq, the reader: the entry's reader and the content's Neutral"],
+  [THE_HOME, 'areEnemies', "B-06aq, at war: the content's state"],
+  [THE_HOME, 'areAllied', "B-06aq, allied: the content's state"],
+  [FAME, 'relOfReport', "B-06aq, the report's copy: the entry's reader"],
+  [FAME, 'spotEnemyInOwnedProvince', "B-06aq, an ally: the content's state"],
+  ['src/engine/bots/intel.ts', 'botRelationRaw', "B-06aq, the bots' copy: the entry's reader"],
+  ['src/engine/titles/reckoning.ts', 'alliedBloc', "B-06aq, the Reckoning's copy: the entry's reader"],
+  [
+    'src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts',
+    'enemyCharVisibleTo',
+    "B-06aq, at war: the content's state",
+  ],
+  ['src/engine/turn/intrusion-warnings.ts', 'generateIntrusionNotifications', "B-06aq, at war: the content's state"],
+  ['src/engine/turn/log-line-helpers.ts', 'telRealmSnapshot', "B-06aq, at war and allied: the content's states"],
+  [DIPLOMACY, 'validDecl', "B-06ar, a declaration and the small game's limit: the ladder's row"],
+  [
+    DIPLOMACY,
+    'diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings',
+    "B-06ar, each step: the ladder's row",
+  ],
+  [DIPLOMACY, '_tellOffered', "B-06ar, the overture's kind: the ladder's row"],
+  [
+    'src/engine/turn/before-the-first-phase-war-without-warning-research-choices-messages-move-pools-and-default-defend.ts',
+    'warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovalsAndMessages',
+    "B-06ar, war without warning: the ladder's war",
+  ],
+  [
+    'src/engine/turn/set-up-the-turns-start-repairs-and-the-merge-of-the-realms-orders.ts',
+    'mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPlans',
+    "B-06ar, a declaration refused at the safe start: the Treat and the ladder's war",
+  ],
+  [
+    'src/engine/turn/after-the-phases-stand-offs-the-dead-graves-couriers-mass-healing-cowards-and-location-names.ts',
+    'afterThePhasesStandOffsTheDeadGravesCouriersMassHealingCowardsAndLocationNames',
+    "B-06ar, an ally healed: the content's state",
+  ],
+  [
+    'src/engine/rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts',
+    'aProvinceIsSafePassageForARealmsColumn',
+    "B-06ar, an ally's ground: the content's state",
+  ],
+  [
+    'src/engine/rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts',
+    'aColumnIsTurnedBackAtANeutralRealmsBorder',
+    "B-06ar, a Neutral realm's border: the content's state",
+  ],
+  [STRATEGY, 'botPassable', "B-06au, an ally's ground: the content's state"],
+  [STRATEGY, 'botUnderAttack', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botDefenceNeed', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botEnemyChars', "B-06au, a foe's hero: the content's state"],
+  [STRATEGY, 'botEnemyHostsIn', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botInContact', "B-06au, a foe's ground: the content's state"],
+  [STRATEGY, 'botAtWar', "B-06au, at war: the content's state"],
+  [STRATEGY, 'botMaxEnemyStack', "B-06au, a foe's host: the content's state"],
+  [STRATEGY, 'botNavalEnemyCoast', "B-06au, a foe's coast: the content's state"],
+  [STRATEGY, 'botHasMetPlayers', "B-06au, a pair's entry not Neutral: the content's state"],
+  [STRATEGY, 'botNearbyThreat', "B-06au, a hero not allied: the content's state"],
+  [STRATEGY, 'botIsEdge', "B-06au, a foe's ground: the content's state"],
+  [STRATEGY, 'openCount', "B-06au, a foe's ground: the content's state"],
+  [STRATEGY, 'botUpdateIntel', "B-06au, an ally's intel and a foe's hero: the content's states"],
+  [WAR, 'botHeardBattle', "B-06au, an ally's battle: the content's state"],
+  [WAR, 'botWarBook', "B-06au, at war: the content's state"],
+  [WAR, 'botWarAssess', "B-06au, allies, wars and Neutral: the content's states"],
+  [WAR, 'botPlanAssaults', "B-06au, a foe's host: the content's state"],
+  [WAR, 'isPinnedOrNeeded', "B-06au, a foe's ground: the content's state"],
+  ['src/engine/bots/intel.ts', 'botMutualFoe', "B-06au, an ally at war: the content's states"],
+  [
+    BOT_DIPLOMACY,
+    'botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim',
+    "B-06au, the bots' diplomacy: the readers, the Treat and the ladder's war",
+  ],
+  [MISSIONS, 'botInfiltrateTarget', "B-06av, a foe's land and its depth: the content's state"],
+  [MISSIONS, 'botAllyNear', "B-06av, an ally's hero: the content's state"],
+  [MISSIONS, 'botRememberedHostAt', "B-06av, a foe's host remembered: the content's state"],
+  [MISSIONS, 'botLairCandidates', "B-06av, a lair on ground not allied: the content's state"],
+  [MISSIONS, 'botSeaStrike', "B-06av, an ally's waters: the content's state"],
+  [MISSIONS, 'consider', "B-06av, a foe's coast: the content's state"],
+  [MISSIONS, 'winnable', "B-06av, a foe's ground: the content's state"],
+  [MISSIONS, 'passable', "B-06av, an ally's ground and waters: the content's state"],
+  [MISSIONS, 'botMasteryPre', "B-06av, a foe's ground and hero: the content's state"],
+  [MISSIONS, 'botDuelStance', "B-06av, a foe's hero: the content's state"],
+  [SPECIALISTS, 'botRoamOrders', "B-06av, ground not allied: the content's state"],
+  [SPECIALISTS, 'botSpyOrders', "B-06av, a hero not allied, an ally's, a foe's: the content's states"],
+  [SPECIALISTS, 'hostile', "B-06av, a realm not allied, at war: the content's states"],
+  [SPECIALISTS, 'botThiefOrders', "B-06av, a foe's ground: the content's state"],
+  [SPECIALISTS, 'botLairTarget', "B-06av, ground not allied: the content's state"],
+  [SPECIALISTS, 'botRoleWork', "B-06av, a foe's hero and ground: the content's state"],
+  [SPECIALISTS, 'botMageOrders', "B-06av, a foe's host remembered: the content's state"],
+  [SPECIALISTS, 'botHomeThreat', "B-06av, a foe's host: the content's state"],
+  [SPECIALISTS, 'botScanTargets', "B-06av, a foe's host, an ally's land, a foe's ground: the content's states"],
+  [SPECIALISTS, 'botDistantStrike', "B-06av, a foe's ground: the content's state"],
+  [SPELLCRAFT, 'enemyRel', "B-06av, at war: the content's state"],
+  [SPELLCRAFT, 'botRaidTarget', "B-06av, a foe's ground: the content's state"],
+  [SPELLCRAFT, 'botHuntTarget', "B-06av, a foe's hero: the content's state"],
+  [SPELLCRAFT, 'botSpyTarget', "B-06av, ground not allied, a foe's: the content's states"],
+  ['src/engine/bots/movement.ts', 'runBotMovement', "B-06av, an ally's ground, a foe's: the content's states"],
+  [PHASE_ONE, 'botSafeStep', "B-06av, an ally's ground: the content's state"],
+  [PHASE_ONE, 'runBotPhaseOne', "B-06av, a foe's ground: the content's state"],
+  [PHASE_ONE, 'isEnemyChar', "B-06av, a hero not allied: the content's state"],
+];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
 const isARelation = (word: string): boolean => RELATION_VOCABULARY.has(word);

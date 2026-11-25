@@ -1,3 +1,5 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import {
   KC_CARRIER_BERTHS,
   KC_THE_POOR_SEAS_BEASTS_DEALT_TURN_ABOUT_WITH_THEIR_RACE_TAGS,
@@ -315,7 +317,7 @@ export function botInfiltrateTarget(G: GameState, pi: number, c: Character, scho
     const b = botBelief(G, pi, X);
     if (!b) continue;
     if (b.owner === pi) continue;
-    const enemyLand = b.owner != null && botRelationRaw(G, pi, b.owner) === 'enemy';
+    const enemyLand = b.owner != null && botRelationRaw(G, pi, b.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar;
     if (b.owner != null && !enemyLand) continue; // never an ally's or a at-peace crown's land
     if (school === 'necromancy' && !gravesKnown(X)) continue; // no dead here that this realm knows of
     if (!botProvUndefended(G, X, pi)) continue;
@@ -325,7 +327,7 @@ export function botInfiltrateTarget(G: GameState, pi: number, c: Character, scho
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, X, i);
       const no = botBelievedOwner(G, pi, N);
-      if (N && no != null && no !== pi && botRelationRaw(G, pi, no) === 'enemy') depth++;
+      if (N && no != null && no !== pi && botRelationRaw(G, pi, no) === THE_STATES_TWO_REALMS_STAND_IN.atWar) depth++;
     }
     const sc = (b.tax || 0) * 2 + depth * 4 + (enemyLand ? 10 : 0) + Math.min(3, graveCount(X)) * 2 - d * 3;
     if (!best || sc > best.sc) best = { P: X, d, sc };
@@ -802,7 +804,7 @@ export function botAllyNear(G: GameState, pi: number, X: Province | null | undef
       e.player != null &&
       e.player !== pi &&
       theUnitsWithGapsOf(e).length >= 3 &&
-      botRelationRaw(G, pi, e.player) === 'allied' &&
+      botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.allied &&
       botSeesChar(G, pi, e)
     ))
       return false;
@@ -829,7 +831,12 @@ export function botRememberedHostAt(G: GameState, pi: number, provId: number, on
     strength = 0;
   const turn = G.turn || 0;
   Object.entries(I.generals).forEach(([k, r]) => {
-    if (r.provId !== provId || turn - r.turn > 3 || botRelationRaw(G, pi, r.player) !== 'enemy') return;
+    if (
+      r.provId !== provId ||
+      turn - r.turn > 3 ||
+      botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar
+    )
+      return;
     if (onlyOf != null && r.player !== onlyOf) return;
     const e = theCharactersOf(G).find((x) => x?.id === +k);
     if (!e?.alive) return;
@@ -861,7 +868,7 @@ export function botLairCandidates(G: GameState, pi: number, c: Character, maxD: 
   theProvincesOf(G).forEach((X) => {
     if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) return;
     const bo = botBelievedOwner(G, pi, X);
-    if (bo != null && bo !== pi && botRelationRaw(G, pi, bo) !== 'allied') return;
+    if (bo != null && bo !== pi && botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.allied) return;
     const features: readonly (ProvinceFeature | null | undefined)[] = asItsGuardReadsIt(X.features) ?? [];
     features.forEach((f, li) => {
       if (!f || f.cleared || f.ritualSite || !featDiscovered(f, pi)) return;
@@ -1300,7 +1307,7 @@ export function botSeaStrike(
         if (sc == null) return;
       } else {
         if (botFleetOnly(c.armies)) return; // 2026-09-28: bare hulls cannot land — they claim and clear water
-        if (bo != null && botRelationRaw(G, pi, bo) !== 'enemy') return;
+        if (bo != null && botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) return;
         if (!botKnows(G, pi, N.id)) return;
         const ec = botEnemyChars(G, N, pi);
         let tStr = botTargetDefence(G, pi, N) + (bo == null ? ec.force * BOT_DEF_BONUS : 0);
@@ -1334,7 +1341,7 @@ export function botSeaStrike(
           // sail ON through waters that will not stop the fleet: ours, an ally's, or unowned and undefended (a guarded sea may be the target, never the road)
           if (
             N.owner === pi ||
-            (N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied') ||
+            (N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied) ||
             (N.owner == null && !(asItsGuardReadsIt(N.neutralDefenders) ?? []).length)
           )
             next.push(N);
@@ -1402,7 +1409,7 @@ export function botAirStrike(
   const top: { best: AnAirTarget | null } = { best: null };
   const winnable = (N: Province) => {
     const bo = N.owner;
-    if (bo === pi || (bo != null && botRelationRaw(G, pi, bo) !== 'enemy')) return null;
+    if (bo === pi || (bo != null && botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.atWar)) return null;
     if (!botKnows(G, pi, N.id)) return null;
     const ec = botEnemyChars(G, N, pi);
     let tStr = botTargetDefence(G, pi, N) + (bo == null ? ec.force * BOT_DEF_BONUS : 0);
@@ -1432,8 +1439,8 @@ export function botAirStrike(
     N.terrain === 'sea'
       ? N.owner == null
         ? !(asItsGuardReadsIt(N.neutralDefenders) ?? []).length
-        : N.owner === pi || botRelationRaw(G, pi, N.owner) === 'allied'
-      : N.owner === pi || (N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied');
+        : N.owner === pi || botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied
+      : N.owner === pi || (N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied);
   while (q.length && depth < maxHops) {
     const next: Province[] = [];
     depth++;
@@ -1510,7 +1517,7 @@ export function botMasteryPre(
           N.terrain === 'sea' &&
           N.owner != null &&
           N.owner !== pi &&
-          botRelationRaw(G, pi, N.owner) === 'enemy' &&
+          botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar &&
           N._blockadeTurn !== G.turn,
       )
       .sort((a, b) => (b.tax || 0) - (a.tax || 0))[0];
@@ -1524,7 +1531,7 @@ export function botMasteryPre(
           e.player != null &&
           e.player !== pi &&
           !theUnitsWithGapsOf(e).length &&
-          botRelationRaw(G, pi, e.player) === 'enemy' &&
+          botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar &&
           e._invisTurn !== G.turn &&
           (!e.isKing || c.isKing),
       )
@@ -1577,7 +1584,7 @@ export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: A
       e.player != null &&
       e.player !== pi &&
       theUnitsWithGapsOf(e).length &&
-      botRelationRaw(G, pi, e.player) === 'enemy'
+      botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
     ))
       continue;
     const r = I.generals[e.id];
@@ -1741,7 +1748,7 @@ export function botOrderLocs(G: GameState, c: Character) {
   for (let p = 0; p < 5; p++) {
     out.push(cur ? cur.id : null);
     const x = o[p];
-    if (x?.action === 'move' && cur) {
+    if (x?.action === THE_HERO_ORDERS.move.key && cur) {
       const N: Province | null | undefined = theTargetAsWords(x).startsWith('dir:')
         ? botNeighbourProv(G, cur, BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4)))
         : G.world.provinces[+x.target];
@@ -1753,9 +1760,9 @@ export function botOrderLocs(G: GameState, c: Character) {
 export function botTeachFree(G: GameState, pi: number, m: Character, p: number) {
   const k = (theTurnsOrders(G)[m.id] ?? [])[p];
   if (!k) return true;
-  if (k.action === 'practice')
+  if (k.action === THE_HERO_ORDERS.practice.key)
     return !/drill the host|drill the fleet|lead the host cleanly/.test(k.desc || '') && !botIsTeach(k);
-  return k.action === 'defend' && p > 0 && !botNearbyThreat(G, pi, m);
+  return k.action === THE_HERO_ORDERS.defend.key && p > 0 && !botNearbyThreat(G, pi, m);
 }
 export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRoles) {
   const res = botTurnCache(G).teach ?? {}; // mentorId → {phase: skill}
@@ -1764,22 +1771,22 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
   const mine = theCharactersOf(G).filter((x): x is Character => Boolean(x?.alive && x.player === pi && !x._isHeir));
   const king = mine.find((x) => x.isKing) ?? null;
   const BUSY = new Set<string>([
-    'search',
-    'hunt_rumours',
-    'hire',
-    'encounter',
-    'cast_spell',
-    'rest',
-    'assassinate',
-    'sabotage',
-    'steal',
-    'spy',
-    'research',
+    THE_HERO_ORDERS.search.key,
+    THE_HERO_ORDERS.hunt_rumours.key,
+    THE_HERO_ORDERS.hire.key,
+    THE_HERO_ORDERS.encounter.key,
+    THE_HERO_ORDERS.cast_spell.key,
+    THE_HERO_ORDERS.rest.key,
+    THE_HERO_ORDERS.assassinate.key,
+    THE_HERO_ORDERS.sabotage.key,
+    THE_HERO_ORDERS.steal.key,
+    THE_HERO_ORDERS.spy.key,
+    THE_HERO_ORDERS.research.key,
     THE_ALIGNMENT_ORDERS.consecrate.key,
-    'chart_unknown',
-    'leave_army',
-    'recruit',
-    'pickup_army',
+    THE_HERO_ORDERS.chart_unknown.key,
+    THE_HERO_ORDERS.leave_army.key,
+    THE_HERO_ORDERS.recruit.key,
+    THE_HERO_ORDERS.pickup_army.key,
   ]);
   const slayers = mine.filter(
     (c) =>
@@ -1822,11 +1829,13 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       const free = [0, 1, 2, 3, 4].map(
         (p) =>
           botTeachFree(G, pi, m, p) ||
-          (m.isKing && mo[p]?.action === 'practice' && /drill the host|lead the host cleanly/.test(mo[p].desc || '')),
+          (m.isKing &&
+            mo[p]?.action === THE_HERO_ORDERS.practice.key &&
+            /drill the host|lead the host cleanly/.test(mo[p].desc || '')),
       );
       // the KING's recruit phase can be handed to a hero standing with him who has that phase spare
       const helper = [0, 1, 2, 3, 4].map((p) => {
-        if (!m.isKing || mo[p]?.action !== 'recruit') return null;
+        if (!m.isKing || mo[p]?.action !== THE_HERO_ORDERS.recruit.key) return null;
         return (
           mine.find(
             (h) =>
@@ -1899,7 +1908,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       let kEnd: Province | null | undefined = G.world.provinces[kl[4] ?? -1];
       {
         const x = ko[4];
-        if (x?.action === 'move' && kEnd) {
+        if (x?.action === THE_HERO_ORDERS.move.key && kEnd) {
           const N: Province | null | undefined = theTargetAsWords(x).startsWith('dir:')
             ? botNeighbourProv(G, kEnd, BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4)))
             : G.world.provinces[+x.target];

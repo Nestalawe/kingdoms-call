@@ -4,6 +4,8 @@
 // every kind the ordering reads.
 // - normaliseAction: every order name in PHASE_ACTION_MAP gives its action, whatever its case and spacing; anything
 //   else, or no order, is Defend. Each alignment order's name as the form writes it gives its key (staged).
+//   Since B-06al (the map built from the hero orders' rows), staged: the map holds each name and its kind as it did
+//   before the rows, written here, in the same order.
 // - buildPhaseIntents: one intent for each hero who may act this phase (alive, a realm's, not hired or charmed this
 //   phase or later), with its order's action; only a Move has a destination, and a Move to a province is a step to a
 //   neighbour (the province itself when it is next door).
@@ -252,7 +254,128 @@ function stage(p: Phase) {
 const theTurnsLinesInWords = engine.theTurnsLinesInWords as unknown as (log: unknown) => { gmLog: Line[] };
 const lines = (tc: TurnContext) => theTurnsLinesInWords(tc.turnLog).gmLog;
 
+/** Every name the turn reads an order by and the kind it reads as, in the map's order, written here as the map held
+ *  them before the hero orders' rows (B-06al) built it, so the rows give the same names, kinds and order. */
+const THE_NAMES_THE_TURN_READS_AND_THEIR_KINDS_BEFORE_THE_ROWS: readonly (readonly [name: string, kind: string])[] = [
+  ['move', 'move'],
+  ['explore', 'explore'],
+  ['explore province', 'explore'],
+  ['search', 'search'],
+  ['search lair', 'search'],
+  ['search feature', 'search'],
+  ['hunting rumours', 'hunt_rumours'],
+  ['hunt rumours', 'hunt_rumours'],
+  ['hunt_rumours', 'hunt_rumours'],
+  ['recruit', 'recruit'],
+  ['recruit armies', 'recruit'],
+  ['hire', 'hire'],
+  ['hire hero', 'hire'],
+  ['release', 'release'],
+  ['release hero', 'release'],
+  ['dismiss hero', 'release'],
+  ['leave_army', 'leave_army'],
+  ['leave/transfer army', 'leave_army'],
+  ['leave army', 'leave_army'],
+  ['transfer army', 'leave_army'],
+  ['disband_army', 'disband_army'],
+  ['disband army', 'disband_army'],
+  ['disband', 'disband_army'],
+  ['pickup_army', 'pickup_army'],
+  ['pick up army', 'pickup_army'],
+  ['pick_up_army', 'pickup_army'],
+  ['give_item', 'give_item'],
+  ['give item', 'give_item'],
+  ['give magic item', 'give_item'],
+  ['send_item', 'give_item'],
+  ['send item', 'give_item'],
+  ['send magic item', 'give_item'],
+  ['cast_spell', 'cast_spell'],
+  ['cast spell', 'cast_spell'],
+  ['spy', 'spy'],
+  ['practice', 'practice'],
+  ['practice skill', 'practice'],
+  ['practice ability', 'practice'],
+  ['research', 'research'],
+  ['research discovery', 'research'],
+  ['defend', 'defend'],
+  ['rest', 'rest'],
+  ['rest & heal', 'rest'],
+  ['rest and heal', 'rest'],
+  ['consecrate', 'consecrate'],
+  ['consecrate province', 'consecrate'],
+  ['call_to_arms', 'call_to_arms'],
+  ['call to arms', 'call_to_arms'],
+  ['broker', 'broker'],
+  ['harvest_field', 'harvest_field'],
+  ['harvest the field', 'harvest_field'],
+  ['rite', 'rite'],
+  ['perform rite', 'rite'],
+  ['awaken the wild', 'awaken_wild'],
+  ['awaken_wild', 'awaken_wild'],
+  ['call from the pit', 'call_pit'],
+  ['call_pit', 'call_pit'],
+  ['encounter', 'encounter'],
+  ['encounter character', 'encounter'],
+  ['steal', 'steal'],
+  ['steal item', 'steal'],
+  ['steal from character', 'steal'],
+  ['use_item', 'use_item'],
+  ['use item', 'use_item'],
+  ['use magic item', 'use_item'],
+  ['equip_items', 'equip_items'],
+  ['equip items', 'equip_items'],
+  ['equip', 'equip_items'],
+  ['equip item', 'equip_items'],
+  ['pursue', 'encounter'],
+  ['pursue character', 'encounter'],
+  ['sabotage', 'sabotage'],
+  ['forced march', 'forced_march'],
+  ['forced_march', 'forced_march'],
+  ['grand heist', 'grand_heist'],
+  ['grand_heist', 'grand_heist'],
+  ['awaken grove', 'awaken_grove'],
+  ['awaken_grove', 'awaken_grove'],
+  ['chart the unknown', 'chart_unknown'],
+  ['chart_unknown', 'chart_unknown'],
+  ['discover lost ruin', 'discover_ruin'],
+  ['discover_ruin', 'discover_ruin'],
+  ['blockade', 'blockade'],
+  ['research breakthrough', 'research_breakthrough'],
+  ['research_breakthrough', 'research_breakthrough'],
+  ['assassinate', 'assassinate'],
+  ['vanish', 'vanish'],
+  ['challenge', 'challenge'],
+  ['rampage', 'rampage'],
+  ['rain of arrows', 'rain_of_arrows'],
+  ['rain_of_arrows', 'rain_of_arrows'],
+  ["sniper's mark", 'snipers_mark'],
+  ['snipers mark', 'snipers_mark'],
+  ['snipers_mark', 'snipers_mark'],
+  ['feigned retreat', 'feigned_retreat'],
+  ['feigned_retreat', 'feigned_retreat'],
+  ['grand stratagem', 'grand_stratagem'],
+  ['grand_stratagem', 'grand_stratagem'],
+  ['lightning advance', 'lightning_advance'],
+  ['lightning_advance', 'lightning_advance'],
+  ['raid the coast', 'raid_coast'],
+  ['raid_coast', 'raid_coast'],
+  ['wild calling', 'wild_calling'],
+  ['wild_calling', 'wild_calling'],
+  ['grand design', 'grand_design'],
+  ['grand_design', 'grand_design'],
+];
+
 describe('normaliseAction', () => {
+  test('the map holds each name and its kind as before the rows, in the same order', () => {
+    const entries = Object.entries(PHASE_ACTION_MAP);
+    expect(
+      entries.map(([name]) => name),
+      "the map's names, in its order",
+    ).toEqual(THE_NAMES_THE_TURN_READS_AND_THEIR_KINDS_BEFORE_THE_ROWS.map(([name]) => name));
+    for (const [name, kind] of THE_NAMES_THE_TURN_READS_AND_THEIR_KINDS_BEFORE_THE_ROWS)
+      expect(PHASE_ACTION_MAP[name], `the kind the name ${name} reads as`).toBe(kind);
+  });
+
   test('every order name in the map gives its action, whatever its case and spacing', () => {
     const names = Object.keys(PHASE_ACTION_MAP);
     expect(names.length).toBeGreaterThan(40);

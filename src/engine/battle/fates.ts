@@ -1,3 +1,4 @@
+import { KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { QUALITY_TIERS, demoteOrDisband } from '../army-tables.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
@@ -239,11 +240,9 @@ export function rollUnitFates(
 }
 
 // ── BATTLE RESULT MARGIN BANDS ────
-// margRatio = |winner − loser| ÷ (winner + loser). Six bands replace the old three (narrow <10%,
-// clear 10–30%, decisive >30%): the middle three keep their exact old numbers; Pyrrhic splits off
-// the bottom of Narrow, Crushing and Annihilating split off the top of Decisive. Every band keeps
-// at least 1% winner death and 1% loser XP (a rout still costs the victor something, and even a
-// shattered army learns). Used by BOTH the NPC (combatVsNPC) and hero-vs-hero (combatVsChar) paths.
+// The six bands of a battle's margin (|winner − loser| ÷ (winner + loser)) and each side's chances in them are content's
+// table (KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM, B-06ay1): BATTLE_MARGIN_BANDS is that list. Used by
+// BOTH the NPC (combatVsNPC) and hero-vs-hero (combatVsChar) paths.
 /** One margin band: its slug (the severity a battle's outcome line tells: P1-12d20, the words are the prose's), the
  *  margin it runs up to, and its chances. */
 interface AMarginBand {
@@ -255,14 +254,7 @@ interface AMarginBand {
   loseXP: number;
   loseDemote: number;
 }
-export const BATTLE_MARGIN_BANDS: readonly AMarginBand[] = [
-  { slug: 'pyrrhic', max: 0.04, winDeath: 0.15, loseDeath: 0.12, winXP: 0.6, loseXP: 0.2, loseDemote: 0.05 },
-  { slug: 'narrow', max: 0.1, winDeath: 0.12, loseDeath: 0.12, winXP: 0.5, loseXP: 0.12, loseDemote: 0.1 },
-  { slug: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.18, winXP: 0.3, loseXP: 0.06, loseDemote: 0.2 },
-  { slug: 'decisive', max: 0.55, winDeath: 0.01, loseDeath: 0.35, winXP: 0.15, loseXP: 0.02, loseDemote: 0.3 },
-  { slug: 'crushing', max: 0.75, winDeath: 0.01, loseDeath: 0.5, winXP: 0.08, loseXP: 0.01, loseDemote: 0.45 },
-  { slug: 'annihilating', max: 9, winDeath: 0.01, loseDeath: 0.6, winXP: 0.05, loseXP: 0.01, loseDemote: 0.55 },
-];
+export const BATTLE_MARGIN_BANDS: readonly AMarginBand[] = KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM;
 export function battleMarginBand(margRatio: number) {
   const r = Math.max(0, margRatio || 0);
   return BATTLE_MARGIN_BANDS.find((b) => r < b.max) ?? BATTLE_MARGIN_BANDS[BATTLE_MARGIN_BANDS.length - 1];

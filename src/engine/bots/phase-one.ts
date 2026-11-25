@@ -1,4 +1,6 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import {
   BOT_DEF_BONUS,
@@ -76,6 +78,28 @@ function theAttackAt<Attack>(atk: readonly Attack[], n: number): Attack {
   return a;
 }
 
+// The bots' own sets of the hero orders (B-06as): each a list of the orders' rows' keys, as the pass has always read it.
+/** The errands that keep an unarmed hero beside an enemy host on purpose, so the evacuation (V) leaves him there: a
+ *  Steal, a Spy, an Encounter, a Challenge, a Grand Heist, an Assassinate and a Sabotage. */
+const theErrandsThatKeepAnUnarmedBotHeroBesideAnEnemyHostOnPurpose: readonly string[] = [
+  THE_HERO_ORDERS.steal.key,
+  THE_HERO_ORDERS.spy.key,
+  THE_HERO_ORDERS.encounter.key,
+  THE_HERO_ORDERS.challenge.key,
+  THE_HERO_ORDERS.grand_heist.key,
+  THE_HERO_ORDERS.assassinate.key,
+  THE_HERO_ORDERS.sabotage.key,
+];
+/** The errands that keep a hero at a general's side from carrying a feint (T3) or a second front (S): a Steal, a Spy,
+ *  an Encounter, a Challenge and a Hire. */
+const theErrandsThatKeepABotHeroFromAFeintOrASecondFront: readonly string[] = [
+  THE_HERO_ORDERS.steal.key,
+  THE_HERO_ORDERS.spy.key,
+  THE_HERO_ORDERS.encounter.key,
+  THE_HERO_ORDERS.challenge.key,
+  THE_HERO_ORDERS.hire.key,
+];
+
 // ══ PHASE-ONE PASS (2026-09-29, Toby: "use phase 1 orders wisely") ═════════════════════════════════
 // Engine facts it relies on: within a phase every NON-MOVING order (recruit, hand-over, cast,
 // challenge…) resolves before anyone's Move, the Defend step sits between the two, a host caught on a
@@ -113,8 +137,11 @@ export function botOrderDest(G: GameState, cur: Province | null | undefined, o: 
 export function botIsFiller(o: AnOrderAsThePassReadsIt) {
   return (
     !o ||
-    (o.action === 'defend' && o.desc !== 'Watch') ||
-    ((o.action === 'practice' || o.action === 'explore' || o.action === 'research') && !botIsTeach(o))
+    (o.action === THE_HERO_ORDERS.defend.key && o.desc !== 'Watch') ||
+    ((o.action === THE_HERO_ORDERS.practice.key ||
+      o.action === THE_HERO_ORDERS.explore.key ||
+      o.action === THE_HERO_ORDERS.research.key) &&
+      !botIsTeach(o))
   );
 }
 // FLOOD PINS (2026-09-29, Toby: flood to slow the enemy, and to lock a host in place while we strike
@@ -221,7 +248,7 @@ export function botSafeStep(G: GameState, pi: number, P: Province, awayFrom: Pro
     const N = botNeighbourProv(G, P, i);
     if (!N || N.terrain === 'sea' || theFloodOn(N)) continue;
     const own = N.owner === pi,
-      ally = N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied';
+      ally = N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied;
     if (!own && !ally) continue;
     if (botEnemyHostsIn(G, pi, N).length) continue;
     let near = 0;
@@ -301,12 +328,15 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         const P = G.world.provinces[c.location];
         if (!P || !theUnitsOf(c).length || P._battleUnresolved) return;
         const first = o[0];
-        if (first?.action === 'move' && !(first.desc || '').startsWith('Advance')) return; // already marching somewhere on purpose
+        if (first?.action === THE_HERO_ORDERS.move.key && !(first.desc || '').startsWith('Advance')) return; // already marching somewhere on purpose
         let mineStr = 0;
         botVisibleCharsIn(G, pi, P).forEach((x) => {
           if (x.player === pi) mineStr += botBattleForce(G, x, null, P.terrain, {});
         });
-        const onEnemy = P.owner != null && P.owner !== pi && botRelationRaw(G, pi, P.owner) === 'enemy',
+        const onEnemy =
+            P.owner != null &&
+            P.owner !== pi &&
+            botRelationRaw(G, pi, P.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar,
           here = botEnemyHostsIn(G, pi, P);
         if (onEnemy || here.length) {
           // A1
@@ -440,13 +470,11 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
             (x) =>
               x &&
               (BOT_P1.strike.has(x.target) ||
-                ['steal', 'spy', 'encounter', 'challenge', 'grand_heist', 'assassinate', 'sabotage'].includes(
-                  x.action,
-                )),
+                theErrandsThatKeepAnUnarmedBotHeroBesideAnEnemyHostOnPurpose.includes(x.action)),
           )
         )
           return; // there on purpose
-        if (o[0]?.action === 'move') return;
+        if (o[0]?.action === THE_HERO_ORDERS.move.key) return;
         const here = botEnemyHostsIn(G, pi, P).filter((e) => e._invisTurn !== G.turn);
         let danger = here.length > 0;
         if (!danger && c.isKing) {
@@ -506,7 +534,14 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
         if (end < 0) end = 5;
         if (end === 0 && /^(Attack|Assault|Lightning strike)/.test(o[0]?.desc ?? '')) return; // striking first outranks mustering
-        if (o.slice(0, end).some((x) => x && (x.action === 'recruit' || x.action === 'pickup_army'))) return;
+        if (
+          o
+            .slice(0, end)
+            .some(
+              (x) => x && (x.action === THE_HERO_ORDERS.recruit.key || x.action === THE_HERO_ORDERS.pickup_army.key),
+            )
+        )
+          return;
         const toks = botUnderTheEmergencyLevy(L, () =>
           botFieldRecruitTokens(G, pi, c, P, L).filter(
             (t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? '') || c._botRole === 'admiral',
@@ -526,7 +561,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       .forEach((c) => {
         let cur = G.world.provinces[c.location];
         (turnOrders[c.id] ?? []).forEach((o) => {
-          if (o?.action === 'move') {
+          if (o?.action === THE_HERO_ORDERS.move.key) {
             const N = botOrderDest(G, cur, o);
             if (N) {
               entered.add(N.id);
@@ -542,7 +577,11 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
     mine.forEach((c) => {
       const o = thePlanOf(turnOrders, c.id);
       o.forEach((x, i) => {
-        if (x?.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && entered.has(Number(x.extra)))
+        if (
+          x?.action === THE_HERO_ORDERS.cast_spell.key &&
+          x.target === theNameOfTheSpell('flood') &&
+          entered.has(Number(x.extra))
+        )
           o[i] = hold();
       });
     });
@@ -555,10 +594,18 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       const X = G.world.provinces[Xid];
       if (!X) return;
       const first = o[0];
-      if (first?.action === 'cast_spell' && first.target === theNameOfTheSpell('flood') && Number(first.extra) === Xid)
+      if (
+        first?.action === THE_HERO_ORDERS.cast_spell.key &&
+        first.target === theNameOfTheSpell('flood') &&
+        Number(first.extra) === Xid
+      )
         return;
       o.forEach((x, i) => {
-        if (x?.action === 'cast_spell' && x.target === theNameOfTheSpell('flood') && Number(x.extra) === Xid)
+        if (
+          x?.action === THE_HERO_ORDERS.cast_spell.key &&
+          x.target === theNameOfTheSpell('flood') &&
+          Number(x.extra) === Xid
+        )
           o[i] = hold();
       });
       const lim = botSchoolLimit(Number(asItsGuardReadsIt(k.skills)?.elemental) || 0),
@@ -567,11 +614,11 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           theNameOfTheSpell('earthquake'),
           theNameOfTheSpell('elemental-summon'),
         ]);
-      let n = o.filter((x) => x?.action === 'cast_spell' && EL.has(x.target)).length;
+      let n = o.filter((x) => x?.action === THE_HERO_ORDERS.cast_spell.key && EL.has(x.target)).length;
       for (let i = 4; i >= 0 && n >= lim; i--) {
         const x = o[i];
         if (
-          x?.action === 'cast_spell' &&
+          x?.action === THE_HERO_ORDERS.cast_spell.key &&
           EL.has(x.target) &&
           !(x.target === theNameOfTheSpell('flood') && pins.has(Number(x.extra)))
         ) {
@@ -603,7 +650,13 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       const out: { N: Province; i: number }[] = [];
       let cur: Province | null | undefined = G.world.provinces[g.location];
       (turnOrders[g.id] ?? []).forEach((x, i) => {
-        if (!x || !BOT_P1.reloc.has(x.action) || x.action === 'encounter' || x.action === 'pursue') return;
+        if (
+          !x ||
+          !BOT_P1.reloc.has(x.action) ||
+          x.action === THE_HERO_ORDERS.encounter.key ||
+          x.action === THE_HERO_ORDERS.pursue.key
+        )
+          return;
         const N = botOrderDest(G, cur, x);
         if (!N) return;
         if (/^(Attack|Assault|Lightning strike)/.test(x.desc || '')) out.push({ N, i });
@@ -612,7 +665,8 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       return out;
     };
     const castsOf = (k: Character, school: string, spells: ReadonlySet<string>) =>
-      (turnOrders[k.id] ?? []).filter((x) => x?.action === 'cast_spell' && spells.has(x.target)).length;
+      (turnOrders[k.id] ?? []).filter((x) => x?.action === THE_HERO_ORDERS.cast_spell.key && spells.has(x.target))
+        .length;
     const SCH: Readonly<Record<'illusory' | 'necromancy', ReadonlySet<string>>> = {
       illusory: new Set([
         theNameOfTheSpell('illusory-terrain'),
@@ -646,7 +700,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               if (lv < 1) return false;
               if (
                 (turnOrders[m.id] ?? []).some(
-                  (x) => x?.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id,
+                  (x) => x?.action === THE_HERO_ORDERS.cast_spell.key && x.target === spell && Number(x.extra) === N.id,
                 )
               )
                 return true; // already on it
@@ -655,9 +709,13 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
             if (!k) return;
             softened.add(spell + ':' + N.id);
             const o = thePlanOf(turnOrders, k.id);
-            if (o.some((x) => x?.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id)) {
+            if (
+              o.some(
+                (x) => x?.action === THE_HERO_ORDERS.cast_spell.key && x.target === spell && Number(x.extra) === N.id,
+              )
+            ) {
               const i = o.findIndex(
-                (x) => x?.action === 'cast_spell' && x.target === spell && Number(x.extra) === N.id,
+                (x) => x?.action === THE_HERO_ORDERS.cast_spell.key && x.target === spell && Number(x.extra) === N.id,
               );
               const x = o[i];
               o.splice(i, 1);
@@ -676,17 +734,17 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         if (skillLevel(g, 'march') >= 7) {
           const atk = attacksOf(g);
           const o = thePlanOf(turnOrders, g.id);
-          if (atk.length >= 2 && !o.some((x) => x?.action === 'forced_march')) {
+          if (atk.length >= 2 && !o.some((x) => x?.action === THE_HERO_ORDERS.forced_march.key)) {
             let j = -1;
             for (let i = theAttackAt(atk, 0).i + 1; i < theAttackAt(atk, atk.length - 1).i; i++) {
-              if (o[i]?.action === 'move') {
+              if (o[i]?.action === THE_HERO_ORDERS.move.key) {
                 j = i;
                 break;
               }
             }
             if (j < 0) j = theAttackAt(atk, 1).i; // no march between them: the second assault itself goes in as a forced march
             const oj = o[j];
-            if (j >= 0 && oj?.action === 'move')
+            if (j >= 0 && oj?.action === THE_HERO_ORDERS.move.key)
               o[j] = { ...oj, action: 'forced_march', desc: 'Forced March — ' + (oj.desc || 'march') };
           }
         }
@@ -708,40 +766,44 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       if (end < 0) end = 5;
       const isEnemyChar = (id: string) => {
         const e = (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x) && x.id === Number(id));
-        return e?.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) !== 'allied';
+        return (
+          e?.player != null &&
+          e.player !== pi &&
+          botRelationRaw(G, pi, e.player) !== THE_STATES_TWO_REALMS_STAND_IN.allied
+        );
       };
       const urgency = (x: AnOrderAsThePassReadsIt) => {
         if (!x) return 0;
         const a = x.action;
-        if (a === 'cast_spell' && x.target === theNameOfTheSpell('invisibility')) return 5; // the cloak stays ahead of the strikes it covers
-        if (a === 'cast_spell' && BOT_P1.strike.has(x.target))
+        if (a === THE_HERO_ORDERS.cast_spell.key && x.target === theNameOfTheSpell('invisibility')) return 5; // the cloak stays ahead of the strikes it covers
+        if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.strike.has(x.target))
           return x.target === theNameOfTheSpell('charm') && !isEnemyChar(x.extra) ? 1 : 5; // a wanderer's Charm is a hire
-        if (a === 'challenge') return 5;
-        if (a === 'steal' && x.target !== 'garrison') return 5;
+        if (a === THE_HERO_ORDERS.challenge.key) return 5;
+        if (a === THE_HERO_ORDERS.steal.key && x.target !== 'garrison') return 5;
         if (contact) {
-          if (a === 'recruit' && !theTargetAsWords(x).includes('to:garrison')) return 4;
+          if (a === THE_HERO_ORDERS.recruit.key && !theTargetAsWords(x).includes('to:garrison')) return 4;
           if (
-            a === 'pickup_army' ||
+            a === THE_HERO_ORDERS.pickup_army.key ||
             a === THE_ALIGNMENT_ORDERS['harvest-the-field'].key ||
             a === THE_ALIGNMENT_ORDERS['perform-rite'].key
           )
             return 4;
-          if (a === 'leave_army' && leaderIds.has(Number(x.extra))) return 4;
-          if (a === 'cast_spell' && BOT_P1.gainSpell.has(x.target)) return 4;
+          if (a === THE_HERO_ORDERS.leave_army.key && leaderIds.has(Number(x.extra))) return 4;
+          if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.gainSpell.has(x.target)) return 4;
         }
         if (
-          a === 'recruit' &&
+          a === THE_HERO_ORDERS.recruit.key &&
           theTargetAsWords(x).includes('to:garrison') &&
           P.owner === pi &&
           (hostsHere.length || hostsAdj)
         )
           return 4;
         if (nearby) {
-          if (a === 'cast_spell' && BOT_P1.guard.has(x.target)) return 3;
-          if (a === 'feigned_retreat') return 3;
-          if (a === 'defend' && x.desc === 'Watch') return 3;
+          if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.guard.has(x.target)) return 3;
+          if (a === THE_HERO_ORDERS.feigned_retreat.key) return 3;
+          if (a === THE_HERO_ORDERS.defend.key && x.desc === 'Watch') return 3;
         }
-        if (a === 'hire') return 1;
+        if (a === THE_HERO_ORDERS.hire.key) return 1;
         return 0;
       };
       const block = o.slice(0, end).map((x, i) => ({ x, i, u: urgency(x) }));
@@ -788,7 +850,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               !pinCasters.has(h.id) &&
               (asItsGuardReadsIt(h.hp) ?? (h.maxHp || 20)) >= (h.maxHp || 20) * 0.7 &&
               !(turnOrders[h.id] ?? []).some(
-                (x) => x && ['steal', 'spy', 'encounter', 'challenge', 'hire'].includes(x.action),
+                (x) => x && theErrandsThatKeepABotHeroFromAFeintOrASecondFront.includes(x.action),
               ),
           );
           if (!hero) return;
@@ -863,7 +925,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
             t1: Province | null = null;
           for (const x of o) {
             if (!x) continue;
-            if (x.action === 'move') {
+            if (x.action === THE_HERO_ORDERS.move.key) {
               const N = botOrderDest(G, cur, x);
               if (!N) break;
               if (/^(Attack|Assault)/.test(x.desc || '')) {
@@ -883,7 +945,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               !pinCasters.has(h.id) &&
               (asItsGuardReadsIt(h.hp) ?? (h.maxHp || 20)) >= (h.maxHp || 20) * 0.7 &&
               !(turnOrders[h.id] ?? []).some(
-                (x) => x && ['steal', 'spy', 'encounter', 'challenge', 'hire'].includes(x.action),
+                (x) => x && theErrandsThatKeepABotHeroFromAFeintOrASecondFront.includes(x.action),
               ),
           );
           if (!hero) return;
@@ -902,7 +964,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               N.id === t1?.id
             )
               continue;
-            if (N.owner != null && botRelationRaw(G, pi, N.owner) !== 'enemy') continue;
+            if (N.owner != null && botRelationRaw(G, pi, N.owner) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
             const d = botTargetDefence(G, pi, N) + botEnemyChars(G, N, pi).force * BOT_DEF_BONUS;
             const sc = (N.tax || 0) * 2 + (N.owner != null ? 8 : 0) - d / 4;
             if (!best || sc > best.sc) best = { N, i, d, sc };
@@ -942,7 +1004,9 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           if (!botPutSpring(o, lv)) return;
           const li = o.indexOf(lv);
           const ho = turnOrders[hero.id] ?? [];
-          const keepCasts = ho.filter((x, i) => x?.action === 'cast_spell' && BOT_P1.strike.has(x.target) && i < 3);
+          const keepCasts = ho.filter(
+            (x, i) => x?.action === THE_HERO_ORDERS.cast_spell.key && BOT_P1.strike.has(x.target) && i < 3,
+          );
           const out: AnOrderAsThePassReadsIt[] = [...keepCasts];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(best.i, (best.d > 0 ? 'Attack ' : 'Advance on ') + best.N.name + ' (second front)'));

@@ -18,6 +18,11 @@ import {
   type ThePhasesIntents,
 } from './phase-intents-and-dependency-ordering.ts';
 import { normaliseAction } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
+import {
+  anOrderActsAfterTheOrdersThatStayPut,
+  anOrderActsInTheMovesTier,
+} from '../rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import type { TurnContext, TurnOrder } from './context.ts';
 import {
   reconcileProvinceCharacters,
@@ -181,7 +186,7 @@ export function pinAndReactToPhaseIntents(turnContext: TurnContext, ph: number, 
   // other orders are left untouched.
   intents.forEach((it) => {
     if (it.cancelled) return;
-    if (it.action !== 'move' && it.action !== 'pursue' && it.action !== 'encounter') return; // an Encounter chase is a relocating order
+    if (!anOrderActsInTheMovesTier(it.action)) return; // an Encounter chase is a relocating order (the Moves' tier)
     if (!it.leadsArmy) return;
     const here = G.world.provinces[it.fromId];
     // a character fought their one battle for the phase if EITHER their province is still
@@ -219,7 +224,7 @@ export function pinAndReactToPhaseIntents(turnContext: TurnContext, ph: number, 
     turnOrders[pinnedsId] ??= [null, null, null, null, null];
     const _pinDesc = it.cancelReason === 'battleLocked' ? 'Locked in ongoing battle' : 'Defend (held in place)';
     turnOrders[pinnedsId][ph] = { action: 'defend', target: '', extra: '', desc: _pinDesc, _pinned: true };
-    it.action = 'defend';
+    it.action = THE_HERO_ORDERS.defend.key;
     it.toId = null;
     it.dest = null;
   });
@@ -232,7 +237,7 @@ export function pinAndReactToPhaseIntents(turnContext: TurnContext, ph: number, 
   // marker if this pre-activation already spent it). Pinned/rewritten orders, characters with no
   // order at all (which default to Defend only in name), and live pursuits are left alone.
   intents.forEach((it) => {
-    if (it.cancelled || it.action !== 'defend' || !it.order || it.order._pinned) return;
+    if (it.cancelled || it.action !== THE_HERO_ORDERS.defend.key || !it.order || it.order._pinned) return;
     const c = asItsGuardReadsIt(it.c);
     if (!c || !c.alive || c.player == null) return;
     if (c._pursuit?.active) return;
@@ -256,7 +261,7 @@ export function pinAndReactToPhaseIntents(turnContext: TurnContext, ph: number, 
       desc: 'Defend (arrived early)',
       _pinned: true,
     };
-    it.action = 'defend';
+    it.action = THE_HERO_ORDERS.defend.key;
     it.toId = null;
     it.dest = null;
   });
@@ -301,8 +306,7 @@ export function resolvePhaseOrdersInTwoTiersAroundTheDefendStep(
   sorted.forEach((c) => {
     if (turnContext._tier0Open) {
       const _a = normaliseAction((turnOrders[c.id] ?? [])[ph]);
-      if (_a === 'move' || _a === 'pursue' || _a === 'encounter' || _a === 'defend' || c._pursuit?.active)
-        flushDefendStep();
+      if (anOrderActsAfterTheOrdersThatStayPut(_a) || c._pursuit?.active) flushDefendStep(); // the Moves' tier or the Defend's
     }
     turnContext._combatSkillProv = null; // between independent actors, no battle-series context is active
     // A live pursuit suspends this character's other orders until the chase resolves.
@@ -377,7 +381,7 @@ export function endPhaseSkillRisesFallenCommandersAndProvinceMemory(
     const nxt = (turnOrders[c.id] ?? [])[ph + 1];
     if (!nxt) return;
     const a = normaliseAction(nxt);
-    if (a === 'move' || a === 'pursue' || a === 'encounter') c._defend.active = false; // a later Encounter cancels a standing Defend
+    if (anOrderActsInTheMovesTier(a)) c._defend.active = false; // a later Encounter (the Moves' tier) cancels a standing Defend
   });
 
   // Generate intrusion notifications for this phase

@@ -1,3 +1,4 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { armySizeBand } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import {
@@ -61,7 +62,7 @@ export function generateIntrusionNotifications(turnContext: TurnContext, ph: num
           inOwnedProv &&
           !targetCharProvs.has(ac.location) &&
           !(ac.armies ?? []).length &&
-          relOfReport(G, targetPi, actingPi) === 'enemy' &&
+          relOfReport(G, targetPi, actingPi) === THE_STATES_TWO_REALMS_STAND_IN.atWar &&
           !spotEnemyInOwnedProvince(turnContext.G, targetPi, acProv, ac, G.turn + 1)
         )
           return;

@@ -28,6 +28,9 @@
 // gives two shares of its fights, never more than all; for any bot realms every pass is handed exactly those, in the
 // plan's order. Planted faults: in the PR (P1-08l2). Then the Spring orders pass (`runBotPhaseOne`) called directly: a
 // bot host in contact ranks Harvest the Field and Perform Rite, by the order's key, ahead of slower orders (P1-21f).
+// Then the same pass on the hero orders' rows' keys (B-06as): the bots' march set (Lightning Advance in it, KD-468), a
+// filler, each order a host in contact ranks ahead, the errands that keep an unarmed hero beside an enemy host, a march
+// that keeps a hero from the evacuation and the triage, the march a Master of March forces, and a softener's castings.
 // Then the intel and the setup on what no matrix game hands them (P1-10b40): a game's slot and setup as the GM's page
 // reads them, a realm's name once its pool is used, the alignments' spread beside humans, the weights for any
 // difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field. Then the strategy's
@@ -35,7 +38,8 @@
 // or a field, the musters of an admiral, a flying general and a host, a garrison, a hire and the kinds a province raises.
 // Then the Spring orders pass on what no matrix game hands it (P1-10b42), with a case aimed at each fault the night
 // run's mutation session found unguarded (P1-21j): the empire's width, a feint past a visiting host, the forced march
-// at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit.
+// at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit;
+// and no feint nor second front for a hero busy with an errand (B-06as).
 // Then the spellcraft on what no matrix game hands it (P1-10b43): the single best cast, the titles a realm with no
 // standings chases, the ratings and a guardian weighed on a hero lacking a field, a lair, a march, a path, a quarry, a
 // cast plan, the cross-training, the actions pass, a spy's target and the practice fallback on a world lacking a list.
@@ -47,6 +51,16 @@
 // no matrix game hands them (P1-10b48): no bots, no map, no orders listed, a teaching phase kept, a holder with no
 // fallback, a muster for the host, the study's two page hooks; a cast of no school, a hire of no hero, a hand-over
 // trimmed, a capped practice refilled; the drill on a unit of no known quality and the cast limit with no characters.
+// Then the bots' other passes on the hero orders' rows' keys (B-06at): the economy's spare phase (a garrison's surplus
+// taken up), the muster orders the actions pass keeps and the Defends it fills, a comrade free to train beside, a
+// cloak already cast, the king teaching in his host's drill, a Challenge the mastery pass hands a hero (stood in), and
+// a companion casting for his general's attack and following his march (the assaults stood in).
+// Then the bots' relations on the content's states (B-06au), each state and a pair with no entry: an ally's ground
+// passable, an ally's battle heard, a common foe, a province on the edge, the biggest foe's host in sight, a war judged
+// for peace and a Neutral pair for war, a third realm's alliances and wars weighed, and a crown met (a blank: KD-469);
+// then the same for the missions, the specialists, the spellcraft and the first phase (B-06av): an ally's host near, a
+// foe's host by the home, a step to safety, a raid's target, a lair's candidates, a roam, a general remembered by a spy
+// and by a mage (the casts stood in), and a hunter's quarry.
 import fc from 'fast-check';
 import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
@@ -110,6 +124,11 @@ const thePlansAndCombatants = await import('../../src/engine/personal-combat/spe
 const theTerrain = await import('../../src/engine/battle/terrain-and-unit-strength.ts');
 const { COMBAT_ONLY_TACTICS } = await import('../../src/engine/army-tables.ts');
 const { ARMY_UNIT_NAMES } = await import('../../src/content/kingdoms-call-data.ts');
+const { THE_HERO_ORDERS } =
+  await import('../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts');
+const { THE_STATES_TWO_REALMS_STAND_IN } =
+  await import('../../src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts');
+const { theNameOfTheSpell } = await import('../../src/engine/bots/the-name-of-a-spell-by-its-slug.ts');
 const { BOT_SKILL_BUILD, _usedBotKingdomNames } = theBotsSetUp;
 /** Each function of the engine's a test here calls by its name, the export of the module that defines it. */
 const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
@@ -175,6 +194,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botResurrectErrands: theBotsMovement.botResurrectErrands,
   runBotMovement: theBotsMovement.runBotMovement,
   botPins: theBotsPhaseOne.botPins,
+  botSafeStep: theBotsPhaseOne.botSafeStep,
   runBotPhaseOne: theBotsPhaseOne.runBotPhaseOne,
   botConfigFor: theBotsSetUp.botConfigFor,
   botKingdomName: theBotsSetUp.botKingdomName,
@@ -250,6 +270,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botHomeId: theBotsStrategy.botHomeId,
   botInContact: theBotsStrategy.botInContact,
   botIsBotPlayer: theBotsStrategy.botIsBotPlayer,
+  botIsEdge: theBotsStrategy.botIsEdge,
   botIsFighter: theBotsStrategy.botIsFighter,
   botIsTeach: theBotsStrategy.botIsTeach,
   botLairRating: theBotsStrategy.botLairRating,
@@ -261,6 +282,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botMoveOrder: theBotsStrategy.botMoveOrder,
   botNearbyThreat: theBotsStrategy.botNearbyThreat,
   botNeedsSlayer: theBotsStrategy.botNeedsSlayer,
+  botPassable: theBotsStrategy.botPassable,
   botPracticeSkill: theBotsStrategy.botPracticeSkill,
   botRaiseTargets: theBotsStrategy.botRaiseTargets,
   botRecruitCmdr: theBotsStrategy.botRecruitCmdr,
@@ -274,6 +296,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botUpdateIntel: theBotsStrategy.botUpdateIntel,
   botUpkeep: theBotsStrategy.botUpkeep,
   botCanFly: theBotsWar.botCanFly,
+  botHeardBattle: theBotsWar.botHeardBattle,
   botIsLoadedFleet: theBotsWar.botIsLoadedFleet,
   botOwnPower: theBotsWar.botOwnPower,
   botPlanAssaults: theBotsWar.botPlanAssaults,
@@ -791,6 +814,170 @@ describe('The Spring orders pass: what a host in contact does first', () => {
       'defend',
       'defend',
     ]);
+  });
+});
+
+// ── The Spring orders pass reads the hero orders' rows (B-06as) ──────────────────────────────────────────────────
+// The pass compares each order with its row's key (THE_HERO_ORDERS), and keeps the bots' own sets of them as they
+// were: what they count as a march (BOT_P1.reloc: Lightning Advance in it, KD-468), what keeps an unarmed hero beside
+// an enemy host, and what keeps a hero from a feint or a second front. Each case is aimed at one read: a key swapped
+// for another kind's turns it red. The matrix's games give the bots no such plans.
+describe("The Spring orders pass reads the hero orders' rows (B-06as)", () => {
+  const runBotPhaseOne = fn('runBotPhaseOne');
+  const botIsFiller = theBotsPhaseOne.botIsFiller as unknown as (o: Raw | null) => boolean;
+  const BOT_P1 = theBotsStrategy.BOT_P1;
+  const anOrder = (action: string, target = '', extra = '', desc = ''): Raw => ({ action, target, extra, desc });
+  const hold = (desc = 'Hold'): Raw => anOrder(THE_HERO_ORDERS.defend.key, '', '', desc);
+  const plans = (b: Board) => b.G.turnOrders as unknown as Record<number, Raw[]>;
+  const actions = (b: Board, id: number) =>
+    must(plans(b)[id], 'his orders').map((o) => `${String(o['action'])}|${String(o['target'])}|${String(o['desc'])}`);
+  test("what the bots count as a march: Move, Pursue, Encounter, Forced March and Lightning Advance, by the rows' keys; two of them stay put by the rule (KD-468, answer 133)", () => {
+    expect([...BOT_P1.reloc]).toEqual(['move', 'pursue', 'encounter', 'forced_march', 'lightning_advance']);
+    const rows: Readonly<Record<string, { readonly tier: number }>> = THE_HERO_ORDERS;
+    expect([...BOT_P1.reloc].filter((k) => rows[k]?.tier !== 1)).toEqual(['forced_march', 'lightning_advance']);
+  });
+  test("a filler: a Defend but a Watch, a Practice, an Explore and a Research that teach no one, by the rows' keys", () => {
+    expect(
+      [
+        hold(),
+        hold('Watch'),
+        anOrder('practice', 'melee'),
+        anOrder('explore'),
+        anOrder('research'),
+        anOrder('rest'),
+        anOrder('move', 'dir:NW'),
+        null,
+      ].map(botIsFiller),
+    ).toEqual([true, false, true, true, true, false, false, true]);
+  });
+  /** A bot host on realm 0's ground, at war with it, so in contact; his plan `before` his own orders. */
+  const ranked = (
+    order: Raw,
+    before: readonly Raw[] = [hold(), hold()],
+    more: (b: Board, h: Character) => void = () => undefined,
+  ) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(b.X, 0);
+    const h = standAHero(b, { player: 1, at: b.X, troops: 1 });
+    plans(b)[h.id] = [...before, order, ...[hold(), hold(), hold()]].slice(0, 5);
+    more(b, h);
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    return actions(b, h.id);
+  };
+  test.for([
+    ['a cast of Invisibility', anOrder('cast_spell', theNameOfTheSpell('invisibility'))],
+    ['a strike: a cast of Curse', anOrder('cast_spell', theNameOfTheSpell('curse'))],
+    ['a Challenge', anOrder('challenge')],
+    ['a Steal of an item', anOrder('steal', 'item')],
+    ['a Recruit for his host', anOrder('recruit', 'Men-at-Arms|1')],
+    ['a Pick Up Army', anOrder('pickup_army')],
+    ['a summoning: a cast of Elemental Summon', anOrder('cast_spell', theNameOfTheSpell('elemental-summon'))],
+    ['guard magic: a cast of Oratory', anOrder('cast_spell', theNameOfTheSpell('oratory'))],
+    ['a Feigned Retreat', anOrder('feigned_retreat')],
+    ['the Watch', hold('Watch')],
+  ] as const)('a bot host in contact puts %s ahead of the orders written before it', ([, order]) => {
+    expect(ranked(order)[0]).toBe(`${String(order['action'])}|${String(order['target'])}|${String(order['desc'])}`);
+  });
+  test('a Hire ranks above a Defend, below a Challenge', () => {
+    expect(ranked(anOrder('challenge'), [hold(), anOrder('hire')])).toEqual([
+      'challenge||',
+      'hire||',
+      'defend||Hold',
+      'defend||Hold',
+      'defend||Hold',
+    ]);
+  });
+  test('a hand-over to a leader of the realm ranks ahead, for a host in contact', () => {
+    const got = ranked(anOrder('leave_army', 'all'), [hold(), hold()], (b, h) => {
+      const order = must(plans(b)[h.id]?.[2], 'the hand-over');
+      order['extra'] = String(must((fn('botRoles')(b.G, 1) as { leaders: number[] }).leaders[0], 'a leader'));
+    });
+    expect(got[0]).toBe('leave_army|all|');
+  });
+  test('a Recruit for the garrison of our own ground, with an enemy host there, ranks ahead', () => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(b.X, 1);
+    standAHero(b, { player: 0, at: b.X, troops: 2 });
+    const h = standAHero(b, { player: 1, at: b.X });
+    plans(b)[h.id] = [hold(), hold(), anOrder('recruit', 'Men-at-Arms|1,to:garrison'), hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    expect(actions(b, h.id)[0]).toBe('recruit|Men-at-Arms|1,to:garrison|');
+  });
+  /** An unarmed bot hero beside an enemy host, with a way out to our own ground: his plan after the muster stage. */
+  const evacuated = (errand: Raw | null, first: Raw = hold()) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(must(b.ring1[0], 'a neighbour'), 1);
+    standAHero(b, { player: 0, at: b.X, troops: 2 });
+    const h = standAHero(b, { player: 1, at: b.X });
+    plans(b)[h.id] = [first, errand ?? hold(), hold(), hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'muster');
+    return actions(b, h.id)[0];
+  };
+  test('an unarmed hero beside an enemy host, with no errand there, leaves', () => {
+    expect(evacuated(null)).toMatch(/^move\|dir:/);
+  });
+  test.for(['steal', 'spy', 'encounter', 'challenge', 'grand_heist', 'assassinate', 'sabotage'])(
+    'an unarmed hero beside an enemy host stays there on purpose for his %s',
+    (action) => {
+      expect(evacuated(anOrder(action)), action).toBe('defend||Hold');
+    },
+  );
+  test('an unarmed hero beside an enemy host whose first order is a march keeps it', () => {
+    expect(evacuated(null, anOrder('move', 'dir:NW', '', 'Scout'))).toBe('move|dir:NW|Scout');
+  });
+  /** An outmatched bot host beside an enemy host, with a way out to our own ground: his plan after the muster stage. */
+  const triaged = (first: Raw) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    b.own(must(b.ring1[0], 'a neighbour'), 1);
+    standAHero(b, { player: 0, at: b.X, troops: 12 });
+    const h = standAHero(b, { player: 1, at: b.X, troops: 1 });
+    plans(b)[h.id] = [first, hold(), hold(), hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'muster');
+    return actions(b, h.id)[0];
+  };
+  test('an outmatched host withdraws, but not when his first order is a march of his own', () => {
+    expect([triaged(hold()), triaged(anOrder('move', 'dir:NW', '', 'Scout'))]).toEqual([
+      expect.stringMatching(/^move\|dir:\w+\|Withdraw from /),
+      'move|dir:NW|Scout',
+    ]);
+  });
+  /** A Master of March's plan after the Spring stage: two attacks, and what he writes between and after them. */
+  const marched = (second: Raw, third: Raw) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const g = standAHero(b, { player: 1, at: b.X, troops: 3, skills: { melee: 2, tactical: 2, march: 7, spy: 0 } });
+    plans(b)[g.id] = [anOrder('move', 'dir:E', '', 'Attack the first'), second, third, hold(), hold()];
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    return actions(b, g.id).slice(0, 3);
+  };
+  test('a Master of March forces the march between his two attacks, and no other once he has a Forced March', () => {
+    expect([
+      marched(anOrder('move', 'dir:E', '', 'March on'), anOrder('move', 'dir:E', '', 'Attack the second')),
+      marched(anOrder('move', 'dir:E', '', 'Attack the second'), anOrder('forced_march', 'dir:E', '', 'March on')),
+    ]).toEqual([
+      [
+        'move|dir:E|Attack the first',
+        'forced_march|dir:E|Forced March \u2014 March on',
+        'move|dir:E|Attack the second',
+      ],
+      ['move|dir:E|Attack the first', 'move|dir:E|Attack the second', 'forced_march|dir:E|March on'],
+    ]);
+  });
+  /** A caster of Illusory Magic beside a general's target, with `casts` already in his plan: whether the Spring stage
+   *  writes him an Illusory Terrain to soften the target, as it does if his school has a casting to spare. */
+  const softened = (casts: readonly Raw[]) => {
+    const { b } = fresh(() => ({ bots: [1] }));
+    const N = must(b.ring1[0], 'a neighbour');
+    b.own(N, 0);
+    const g = standAHero(b, { player: 1, at: b.X, troops: 3 });
+    plans(b)[g.id] = [anOrder('move', String(N.id), '', 'Attack ' + N.name), hold(), hold(), hold(), hold()];
+    const m = standAHero(b, { player: 1, at: b.X, skills: { illusory: 1 } });
+    plans(b)[m.id] = [...casts, hold(), hold(), hold(), hold(), hold()].slice(0, 5);
+    runBotPhaseOne(b.G, new Set([1]), 'order');
+    return actions(b, m.id).some((o) => o.startsWith(`cast_spell|${theNameOfTheSpell('illusory-terrain')}|`));
+  };
+  test("a caster softens a general's target unless his school's castings this turn are spent", () => {
+    const invisibility = anOrder('cast_spell', theNameOfTheSpell('invisibility'), '', 'Cloak');
+    expect([softened([]), softened([invisibility])]).toEqual([true, false]);
   });
 });
 
@@ -2056,6 +2243,16 @@ describe('The Spring orders pass on what no matrix game hands it (P1-10b42)', ()
       '[[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:SE|Reinforce Hero # in the battle for Wide Waters","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:NW|undefined","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]],[["-","-","-","-","-"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["move|dir:SE|Reinforce Hero # in the battle for Wide Waters","defend||Hold","defend||Hold","defend||Hold","defend||Hold"],["defend||Hold","defend||Hold","defend||Hold","defend||Hold","defend||Hold"]]]',
     );
   });
+  // B-06as: the errands that keep the hero at the general's side from a feint or a second front, by the rows' keys
+  test.for(['steal', 'spy', 'encounter', 'challenge', 'hire'])(
+    'no feint nor second front is handed to a hero at the general’s side busy with a %s',
+    (action) => {
+      const [general] = feint((b, _g, hero) => {
+        plans(b)[hero.id] = [hold(), { action, target: '', extra: '', desc: '' }, hold(), hold(), hold()];
+      });
+      expect(must(general, 'his plan')[0], action).toMatch(/^move\|/);
+    },
+  );
   test('a feint: a unit to a hero at the general’s side, to draw the enemy host off his target', () => {
     expect(
       JSON.stringify([
@@ -3695,5 +3892,573 @@ describe('The economy and the order hygiene on what no matrix game hands them (P
     ).toBe(
       '[["none","no hook"],["none","no hook"],["none","no hook"],[{},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"}]},1],[{"1":[{"action":"practice","target":"melee","extra":"","desc":"Practice Melee (teach Oswin)"},{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"},{"action":"explore","target":"","extra":"","desc":"Explore Hold0"}]},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"},{"action":"defend","target":"","extra":"","desc":"Hold"}]},"no hook"],[{"1":[{"action":"recruit","target":"Militia|3","extra":"","desc":"Recruit 3 units (for the host)"},null,null,null,null],"2":[{"action":"move","target":"99","extra":"","desc":"move"},null,null,null,null],"3":[{"action":"practice","target":"melee","extra":"","desc":"practice"},null,null,null,null]},"no hook"]]',
     );
+  });
+});
+
+// ── The bots' other passes read the hero orders' rows (B-06at) ─────────────────────────────────────────────────────
+// The economy, the actions pass, the cross-training, the cloak, the slayers' school and the movement compare each
+// order with its row's key (THE_HERO_ORDERS), and keep the bots' own sets of them as they were: the orders that leave a hero a phase
+// to spare, the orders that leave him free to train beside a comrade, and the muster orders the actions pass keeps.
+// Each case is aimed at one read: a key swapped for another kind's turns it red.
+describe("The bots' other passes read the hero orders' rows (B-06at)", () => {
+  /** A world of two realms, at war, and the lists named; its map a row of three, as wide as named. */
+  const aWorld = (lists: Record<string, unknown> = {}): Raw => ({
+    turn: 3,
+    relations: { '0-1': 'enemy' },
+    players: [{ gold: 40, alignment: 'Good' }, {}],
+    turnOrders: {},
+    ...lists,
+    world: { cols: 3, rows: 1, ...(lists['world'] ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const aRow = (fields: readonly Record<string, unknown>[]) =>
+    fields.map((f, i) => aProvince({ id: i, col: i, name: `Hold${String(i)}`, ...f }));
+  const hero = (fields: Record<string, unknown> = {}) => ({
+    id: 1,
+    name: 'Wren',
+    player: 0,
+    alive: true,
+    location: 0,
+    maxHp: 20,
+    hp: 20,
+    skills: {},
+    ...fields,
+  });
+  const order = (action: string, target = '', desc = action) => ({ action, target, extra: '', desc });
+  /** Each phase of a plan as `action|target`, a gap as `-`. */
+  const asWords = (plan: unknown) =>
+    (plan as readonly (Raw | null)[]).map((o) => (o ? `${String(o['action'])}|${String(o['target'])}` : '-'));
+  const garrison = (n: number) =>
+    Array.from({ length: n }, () => ({ type: 'Militia', quality: 'Average', race: 'Human' }));
+
+  /** The economy on one hero of the bot realm 0 and his plan, each province named holding a garrison of four (its
+   *  surplus three at the capital, four beyond). */
+  const theEconomysPlan = (plan: readonly unknown[], more: Record<string, unknown> = {}, lands = [0]) => {
+    const G = aWorld({
+      characters: [hero(more)],
+      turnOrders: { 1: [...plan] },
+      world: { provinces: aRow([0, 1, 2].map((i) => (lands.includes(i) ? { garrisonArmies: garrison(4) } : {}))) },
+    });
+    fn('runBotEconomy')(G, new Set([0]));
+    return asWords((G['turnOrders'] as Record<number, unknown>)[1]);
+  };
+  test.for([
+    ['a Practice', order(THE_HERO_ORDERS.practice.key, 'melee')],
+    ['a Defend', order(THE_HERO_ORDERS.defend.key)],
+    ['a Research', order(THE_HERO_ORDERS.research.key)],
+    ['an Explore', order(THE_HERO_ORDERS.explore.key)],
+  ] as const)(
+    "the economy's spare phase: %s leaves a hero the first phase to take up a garrison's surplus",
+    ([, o]) => {
+      expect(theEconomysPlan([o, o, null, null, null])[0], 'the first phase').toBe('pickup_army|g:0,g:1,g:2');
+    },
+  );
+  test("the economy's spare phase: a Rest and a teaching Practice are not spare", () => {
+    const rest = order('rest');
+    const teach = order(THE_HERO_ORDERS.practice.key, 'melee', 'Practice Melee (teach Oswin)');
+    expect(theEconomysPlan([rest, null, null, null, null]).slice(0, 2), 'a Rest').toEqual([
+      'rest|',
+      'pickup_army|g:0,g:1,g:2',
+    ]);
+    expect(theEconomysPlan([teach, null, null, null, null]).slice(0, 2), 'a teaching Practice').toEqual([
+      'practice|melee',
+      'pickup_army|g:0,g:1,g:2',
+    ]);
+  });
+  test("the economy's spare phase: a march carries the hero to the garrison, a Pick Up Army already written ends it", () => {
+    const march = order(THE_HERO_ORDERS.move.key, 'dir:E');
+    const hold = order(THE_HERO_ORDERS.defend.key);
+    expect(theEconomysPlan([march, hold, null, null, null], {}, [1]).slice(0, 2), 'a march east').toEqual([
+      'move|dir:E',
+      'pickup_army|g:0,g:1,g:2,g:3',
+    ]);
+    const pickup = order(THE_HERO_ORDERS.pickup_army.key, 'g:0');
+    expect(theEconomysPlan([pickup, hold, null, null, null]).slice(0, 2), 'a Pick Up Army first').toEqual([
+      'pickup_army|g:0',
+      'defend|',
+    ]);
+  });
+
+  /** The actions pass on one wounded hero of the bot realm 0 and his plan: a plan it may fill is filled with Rest. */
+  const theActionsPlan = (plan: readonly unknown[]) => {
+    const G = aWorld({
+      characters: [hero({ hp: 5 })],
+      turnOrders: { 1: [...plan] },
+      world: { provinces: [aProvince()] },
+    });
+    fn('runBotActions')(G, new Set([0]));
+    return asWords((G['turnOrders'] as Record<number, unknown>)[1]);
+  };
+  test.for([
+    ['a Hire', THE_HERO_ORDERS.hire.key],
+    ['a Recruit', THE_HERO_ORDERS.recruit.key],
+    ['a Leave Army', THE_HERO_ORDERS.leave_army.key],
+  ] as const)('the actions pass keeps %s, a muster order, and fills the phases after it', ([, kind]) => {
+    expect(theActionsPlan([order(kind, 'x'), null, null, null, null])).toEqual([
+      `${kind}|x`,
+      'rest|',
+      'rest|',
+      'rest|',
+      'rest|',
+    ]);
+  });
+  test('the actions pass fills a Defend, and leaves a plan with any other order as it is', () => {
+    const hold = order(THE_HERO_ORDERS.defend.key);
+    expect(theActionsPlan([hold, hold, null, null, null]), 'Defends').toEqual([
+      'rest|',
+      'rest|',
+      'rest|',
+      'rest|',
+      'rest|',
+    ]);
+    expect(theActionsPlan([order(THE_HERO_ORDERS.explore.key), null, null, null, null]), 'an Explore').toEqual([
+      'explore|',
+      '-',
+      '-',
+      '-',
+      '-',
+    ]);
+  });
+
+  /** The skill a hero of Sage 1 trains beside a comrade whose plan is `plan`: `sage`, or null for no partner. */
+  const crossTrains = (plan: readonly unknown[]) =>
+    fn('botCrossTrainSkill')(
+      aWorld({
+        turnOrders: { 2: [...plan] },
+        characters: [null, hero({ skills: { sage: 1 } }), hero({ id: 2, name: 'Oswin' })],
+      }),
+      hero({ skills: { sage: 1 } }),
+      0,
+    );
+  test.for([
+    ['a Defend', THE_HERO_ORDERS.defend.key],
+    ['a Practice', THE_HERO_ORDERS.practice.key],
+    ['a Research', THE_HERO_ORDERS.research.key],
+    ['a Hire', THE_HERO_ORDERS.hire.key],
+    ['a Recruit', THE_HERO_ORDERS.recruit.key],
+    ['a Leave Army', THE_HERO_ORDERS.leave_army.key],
+  ] as const)('the cross-training: a comrade whose plan is %s is free to train beside', ([, kind]) => {
+    expect(crossTrains([order(kind), null, null, null, null])).toBe('sage');
+  });
+  test('the cross-training: a comrade who marches or explores is no partner', () => {
+    expect(crossTrains([order(THE_HERO_ORDERS.move.key, 'dir:E'), null, null, null, null]), 'a Move').toBe(null);
+    expect(crossTrains([order(THE_HERO_ORDERS.explore.key), null, null, null, null]), 'an Explore').toBe(null);
+  });
+
+  /** The movement on a court of four of the bot realm 0, each of Melee 7 (a king and three heroes), the mastery pass
+   *  (botMasteryPre, stood in) handing each hero who asks it `handed`: the heroes' plans, and how often it was asked. */
+  const theCourtHanded = (handed: Raw) => {
+    const mastery = vi.spyOn(theBotsMissions, 'botMasteryPre').mockReturnValue(handed as never);
+    try {
+      const G = aWorld({
+        characters: [0, 1, 2, 3].map((i) =>
+          hero({ id: i + 1, name: `Hold${String(i)}`, isKing: i === 0, skills: { melee: 7 } }),
+        ),
+        world: { provinces: aRow([{}, {}, {}]) },
+      });
+      fn('runBotMovement')(G, new Set([0]), {});
+      return { plans: G['turnOrders'] as Record<number, unknown>, asked: mastery.mock.calls.length };
+    } finally {
+      mastery.mockRestore();
+    }
+  };
+  test("the movement: a hero at full health takes up a Challenge the mastery pass hands him, by the Challenge row's key", () => {
+    const challenge = theCourtHanded(order(THE_HERO_ORDERS.challenge.key, '9'));
+    expect(challenge.asked, 'the mastery pass asked').toBeGreaterThan(0);
+    expect(asWords(challenge.plans[4]), 'his plan').toEqual([
+      'challenge|9',
+      'defend|',
+      'explore|',
+      'explore|',
+      'explore|',
+    ]);
+    const retreat = theCourtHanded(order(THE_HERO_ORDERS.feigned_retreat.key, '9'));
+    expect(retreat.asked, 'the mastery pass asked').toBeGreaterThan(0);
+    expect(asWords(retreat.plans[4])[0], 'another order handed').not.toBe('feigned_retreat|9');
+  });
+  test("the movement: a companion casts for his general's attack and follows his march, by the Move row's key", () => {
+    // The general's plan is the assaults' (botPlanAssaults, stood in): an attack east, then a Defend.
+    const assaults = vi
+      .spyOn(theBotsWar, 'botPlanAssaults')
+      .mockImplementation((G: Raw, _pi: number, _chars: unknown, assigned: Set<number>) => {
+        (G['turnOrders'] as Record<number, unknown>)[1] = [
+          order(THE_HERO_ORDERS.move.key, 'dir:E', 'Attack Hold1'),
+          order(THE_HERO_ORDERS.defend.key),
+          null,
+          null,
+          null,
+        ];
+        assigned.add(1);
+      });
+    const casts = vi.spyOn(theBotsSpellcraft, 'botCastPlan');
+    try {
+      const G = aWorld({
+        characters: [
+          hero({ name: 'Gerd', armies: garrison(4), skills: { tactical: 3 } }),
+          hero({ id: 2, name: 'Mira', skills: { white: 2 } }),
+          hero({ id: 3, name: 'Aldric', isKing: true }),
+          hero({ id: 4, name: 'Tamsin' }),
+        ],
+        world: { provinces: aRow([{}, {}, {}]) },
+      });
+      fn('runBotMovement')(G, new Set([0]), {});
+      expect(assaults, 'the assaults asked').toHaveBeenCalled();
+      expect(asWords((G['turnOrders'] as Record<number, unknown>)[2]), "the companion's plan").toEqual([
+        'cast_spell|Bless Province',
+        'move|dir:E',
+        'practice|white',
+        'practice|white',
+        'practice|white',
+      ]);
+      const forTheCompanion = casts.mock.calls.filter((c) => (c[2] as Raw)['id'] === 2);
+      expect(
+        forTheCompanion.map((c) => ((c[4] as Raw | null)?.['fighting'] as Raw | null)?.['id'] ?? null),
+        'the general he casts for',
+      ).toEqual([1]);
+    } finally {
+      assaults.mockRestore();
+      casts.mockRestore();
+    }
+  });
+  test('the cloak: a hero already casting Invisibility casts no second one', () => {
+    const cloak = order(THE_HERO_ORDERS.cast_spell.key, theNameOfTheSpell('invisibility'));
+    const cloakPre = (pre: readonly unknown[]) =>
+      asWords(fn('botCloakPre')(aWorld(), 0, hero({ skills: { illusory: 1 } }), pre, aProvince({ id: 1, owner: 1 })));
+    expect(cloakPre([cloak]), 'cloaked').toEqual([`cast_spell|${theNameOfTheSpell('invisibility')}`]);
+    expect(cloakPre([null]), 'not yet').toEqual(['-', `cast_spell|${theNameOfTheSpell('invisibility')}`]);
+  });
+
+  test("the slayers' school: the king teaches in his host's drill phases, not in his fleet's", () => {
+    const king = hero({ isKing: true, skills: { melee: 6, archery: 4 } });
+    const slayer = hero({ id: 2, name: 'Oswin', _botRole: 'slayer', skills: { melee: 1 } });
+    const school = (desc: string) => {
+      const drill = order(THE_HERO_ORDERS.practice.key, 'tactical', desc);
+      const recruit = order(THE_HERO_ORDERS.recruit.key, 'Militia,to:9');
+      const G = aWorld({
+        characters: [king, slayer],
+        turnOrders: { 1: [drill, recruit, recruit, recruit, recruit] },
+        world: { provinces: aRow([{}, {}]) },
+      });
+      fn('botRunSlayerSchool')(G, 0, { leaders: [] });
+      return asWords((G['turnOrders'] as Record<number, unknown>)[1])[0];
+    };
+    expect(school('Practice Tactical (drill the host)'), 'a drill').toBe('practice|melee');
+    expect(school('Practice Tactical (drill the fleet)'), 'a fleet drill').toBe('practice|tactical');
+  });
+});
+
+// ── The bots' relations read the content's states (B-06au) ───────────────────────────────────────────────────────────
+// Each check of how two realms stand in the bots' strategy, war and intel compares the bots' reader's answer with the
+// content's state: a case for each the matrix's games decide one way on every turn they reach it.
+describe("The bots' relations read the content's states (B-06au, B-06av)", () => {
+  const { atWar, allied, neutral } = THE_STATES_TWO_REALMS_STAND_IN;
+  /** Each state a pair can stand in, and a pair with no entry. */
+  const EACH = [atWar, allied, neutral, null] as const;
+  /** Realms 0 and 1 standing as named (no entry for null), and the lists named; its map a row of three. */
+  const aWorld = (state: string | null, lists: Record<string, unknown> = {}): Raw => ({
+    turn: 3,
+    players: [{}, {}, {}],
+    characters: [],
+    ...lists,
+    relations: { ...(state == null ? {} : { '0-1': state }), ...(lists['relations'] ?? {}) },
+    world: { cols: 3, rows: 1, ...(lists['world'] ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const aRow = (owners: readonly (number | null)[]) =>
+    owners.map((owner, i) => aProvince({ id: i, col: i, name: `Hold${String(i)}`, owner }));
+  const byState = (f: (state: string | null) => unknown) => EACH.map((s) => `${String(s)}: ${JSON.stringify(f(s))}`);
+
+  test("an ally's ground is passable, and no other realm's", () => {
+    const theirGround = aProvince({ owner: 1 });
+    expect(byState((s) => fn('botPassable')(aWorld(s), 0, theirGround))).toEqual([
+      'enemy: false',
+      'allied: true',
+      'neutral: false',
+      'null: false',
+    ]);
+  });
+  test('a battle an ally fought is heard, on either side, and a battle of a realm at war or at peace is not', () => {
+    const news = (a: number, d: number) => ({ a, d, p: null, w: true, t: 3 });
+    expect(byState((s) => fn('botHeardBattle')(aWorld(s), 0, news(1, 2)))).toEqual([
+      'enemy: false',
+      'allied: true',
+      'neutral: false',
+      'null: false',
+    ]);
+    expect(
+      byState((s) => fn('botHeardBattle')(aWorld(s), 0, news(2, 1))),
+      'the ally defending',
+    ).toEqual(['enemy: false', 'allied: true', 'neutral: false', 'null: false']);
+  });
+  test('a common foe is an ally’s enemy, and no other realm', () => {
+    const G = (ally: string, foe: string) => aWorld(ally, { relations: { '1-2': foe } });
+    expect(
+      EACH.flatMap((a) =>
+        EACH.map((b) => `${String(a)}/${String(b)}: ${String(fn('botMutualFoe')(G(a ?? '', b ?? ''), 0, 2))}`),
+      ),
+    ).toEqual(
+      EACH.flatMap((a) => EACH.map((b) => `${String(a)}/${String(b)}: ${String(a === allied && b === atWar)}`)),
+    );
+  });
+  test("a province on the edge borders a foe's ground or ground no realm holds, and not an ally's or a Neutral's", () => {
+    const G = (s: string | null) => aWorld(s, { world: { provinces: aRow([0, 1, 0]) } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        return fn('botIsEdge')(W, 0, ((W['world'] as Raw)['provinces'] as readonly Raw[])[0]);
+      }),
+    ).toEqual(['enemy: true', 'allied: false', 'neutral: false', 'null: false']);
+    const unheld = aWorld(allied, { world: { provinces: aRow([0, null, 0]) } });
+    expect(
+      fn('botIsEdge')(unheld, 0, ((unheld['world'] as Raw)['provinces'] as readonly Raw[])[0]),
+      'ground no realm holds',
+    ).toBe(true);
+  });
+  test("a host in the realm's land: a foe's attacks, any not allied's threatens, and the biggest in sight is a foe's", () => {
+    const theirHost = { id: 2, alive: true, player: 1, location: 0, armies: [{}, {}] };
+    const G = (s: string | null) =>
+      aWorld(s, { characters: [theirHost], world: { provinces: [aProvince({ characters: [2] })] } });
+    expect(
+      byState((s) => fn('botUnderAttack')(G(s), 0)),
+      'under attack',
+    ).toEqual(['enemy: true', 'allied: false', 'neutral: false', 'null: false']);
+    const myHero = { id: 1, alive: true, player: 0, location: 0 };
+    const beside = (s: string | null) =>
+      aWorld(s, {
+        characters: [myHero, theirHost],
+        world: { provinces: [aProvince({ characters: [1, 2] })] },
+      });
+    expect(
+      byState((s) => fn('botNearbyThreat')(beside(s), 0, myHero)),
+      'a threat nearby: any host not allied',
+    ).toEqual(['enemy: true', 'allied: false', 'neutral: true', 'null: true']);
+    expect(byState((s) => fn('botMaxEnemyStack')(G(s), 0))).toEqual(['enemy: 2', 'allied: 0', 'neutral: 0', 'null: 0']);
+  });
+  test('a war of twenty turns, outmatched, is judged for peace; a Neutral pair is not judged at war', () => {
+    const G = (s: string | null) => aWorld(s, { turn: 20, players: [{ _botWar: { 1: { since: 0 } } }, {}, {}] });
+    expect(byState((s) => (fn('botWarAssess')(G(s), 0, 1, null) as Raw)['decision'])).toEqual([
+      'enemy: "peace"',
+      'allied: null',
+      'neutral: null',
+      'null: null',
+    ]);
+  });
+  test('a Neutral pair, the bot the stronger, is judged for war; a pair at war or allied is not', () => {
+    const myHost = {
+      id: 1,
+      alive: true,
+      player: 0,
+      location: 0,
+      armies: [{ type: 'Militia', quality: 'Average', race: 'Human' }],
+    };
+    const G = (s: string | null) =>
+      aWorld(s, { characters: [myHost], world: { provinces: [aProvince({ characters: [1] })] } });
+    expect(byState((s) => (fn('botWarAssess')(G(s), 0, 1, null) as Raw)['decision'])).toEqual([
+      'enemy: null',
+      'allied: null',
+      'neutral: "war"',
+      'null: "war"',
+    ]);
+  });
+  test("a third realm's alliances weigh on the war, and its wars burden the bot", () => {
+    const myHost = {
+      id: 1,
+      alive: true,
+      player: 0,
+      location: 0,
+      armies: [{ type: 'Militia', quality: 'Average', race: 'Human' }],
+    };
+    const G = (withMe: string | null, withThem: string | null) =>
+      aWorld(neutral, {
+        characters: [myHost],
+        world: { provinces: [aProvince({ characters: [1] })] },
+        relations: { ...(withMe == null ? {} : { '0-2': withMe }), ...(withThem == null ? {} : { '1-2': withThem }) },
+      });
+    const weigh = (withMe: string | null, withThem: string | null) => {
+      const r = fn('botWarAssess')(G(withMe, withThem), 0, 1, null) as Raw;
+      return `${String(withMe)}/${String(withThem)}: ${String(r['ratio'])} ${JSON.stringify(r['opp'])}`;
+    };
+    expect(EACH.flatMap((a) => EACH.map((b) => weigh(a, b)))).toEqual([
+      'enemy/enemy: 1.9166666666666667 []',
+      'enemy/allied: 1.1979166666666667 []',
+      'enemy/neutral: 1.9166666666666667 []',
+      'enemy/null: 1.9166666666666667 []',
+      'allied/enemy: 2.766666666666667 ["ally at war with them"]',
+      'allied/allied: 2.766666666666667 []',
+      'allied/neutral: 2.766666666666667 []',
+      'allied/null: 2.766666666666667 []',
+      'neutral/enemy: 2.1666666666666665 []',
+      'neutral/allied: 1.3541666666666667 []',
+      'neutral/neutral: 2.1666666666666665 []',
+      'neutral/null: 2.1666666666666665 []',
+      'null/enemy: 2.1666666666666665 []',
+      'null/allied: 1.3541666666666667 []',
+      'null/neutral: 2.1666666666666665 []',
+      'null/null: 2.1666666666666665 []',
+    ]);
+  });
+  test('a realm has met another crown by a pair of realms not Neutral, a blank entry among them (KD-469)', () => {
+    const met = (entry: string | null) => fn('botHasMetPlayers')(aWorld(entry), 0);
+    expect([...EACH, ''].map((s) => `${String(s)}: ${String(met(s))}`)).toEqual([
+      'enemy: true',
+      'allied: true',
+      'neutral: false',
+      'null: false',
+      ': true',
+    ]);
+  });
+  // B-06av: the missions, the specialists, the spellcraft and the first phase.
+  /** A host of realm 1 (`units` companies of Militia) and a hero of realm 0 beside it, in province 0. */
+  const aHostSeen = (units: number) => [
+    { id: 1, alive: true, player: 0, location: 0 },
+    {
+      id: 2,
+      alive: true,
+      player: 1,
+      location: 0,
+      armies: Array.from({ length: units }, () => ({ type: 'Militia', quality: 'Average', race: 'Human' })),
+    },
+  ];
+  test("an ally's host of three companies is near, and no other realm's", () => {
+    const G = (s: string | null) => aWorld(s, { characters: aHostSeen(3), world: { provinces: aRow([0, 1, 0]) } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        return fn('botAllyNear')(W, 0, ((W['world'] as Raw)['provinces'] as readonly Raw[])[0]);
+      }),
+    ).toEqual(['enemy: false', 'allied: true', 'neutral: false', 'null: false']);
+  });
+  test("a host by the realm's home threatens it only when the realm is at war with its own", () => {
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: aHostSeen(2),
+        players: [{ homeProvinceId: 0 }, {}, {}],
+        world: { provinces: aRow([0, 1, 0]) },
+      });
+    expect(byState((s) => (fn('botHomeThreat')(G(s), 0) as Raw | null)?.['provId'] ?? null)).toEqual([
+      'enemy: 0',
+      'allied: null',
+      'neutral: null',
+      'null: null',
+    ]);
+  });
+  test("a step to safety is the realm's own ground or an ally's, and not a Neutral's nor a foe's", () => {
+    const G = (s: string | null) => aWorld(s, { world: { provinces: aRow([1, 0, 1]) } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        const P = ((W['world'] as Raw)['provinces'] as readonly Raw[])[1];
+        return ((fn('botSafeStep')(W, 0, P, null) as Raw | null)?.['N'] as Raw | undefined)?.['id'] ?? null;
+      }),
+    ).toEqual(['enemy: null', 'allied: 0', 'neutral: null', 'null: null']);
+  });
+  test("a raid's target is a foe's ground, and no other realm's", () => {
+    const G = (s: string | null) =>
+      aWorld(s, { world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 1, tax: 5 })] } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        const from = ((W['world'] as Raw)['provinces'] as readonly Raw[])[0];
+        return ((fn('botRaidTarget')(W, 0, from, 3) as Raw | null)?.['P'] as Raw | undefined)?.['id'] ?? null;
+      }),
+    ).toEqual(['enemy: 1', 'allied: null', 'neutral: null', 'null: null']);
+  });
+  test("a lair's candidates: on an ally's ground, and not on a foe's nor a Neutral's", () => {
+    const hero = { id: 1, player: 0, alive: true, location: 0, skills: { melee: 6 }, items: [] };
+    const den = { name: 'Den', monster: { power: 'Weak' }, discovered: true, cleared: false };
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: [hero],
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 1, features: [den] })] },
+      });
+    expect(byState((s) => (fn('botLairCandidates')(G(s), 0, hero, 4) as readonly unknown[]).length)).toEqual([
+      'enemy: 0',
+      'allied: 1',
+      'neutral: 0',
+      'null: 0',
+    ]);
+  });
+  test("a hero roams to an ally's ground he has not visited, and to no other realm's (he scouts instead)", () => {
+    const hero = { id: 1, player: 0, alive: true, location: 0 };
+    const G = (s: string | null) => aWorld(s, { characters: [hero], world: { provinces: aRow([0, 1, 1]) } });
+    expect(
+      byState((s) => {
+        const orders = fn('botRoamOrders')(G(s), 0, hero, []) as readonly { desc?: string }[] | null;
+        return (orders?.[0]?.desc ?? '').startsWith('Roam to');
+      }),
+    ).toEqual(['enemy: false', 'allied: true', 'neutral: false', 'null: false']);
+  });
+  /** Realm 0's memory of a general of realm 1 (id 2, two companies) seen in province 1 this turn. */
+  const aGeneralRemembered = [
+    { _botIntel: { generals: { 2: { player: 1, provId: 1, turn: 3, units: 2, strength: 8 } }, heroes: {} } },
+    {},
+    {},
+  ];
+  test("a spy's target weighs a general remembered there only when his realm is at war with the spy's", () => {
+    const spy = { id: 1, player: 0, alive: true, location: 0 };
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: [spy],
+        players: aGeneralRemembered,
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 2 })] },
+      });
+    expect(byState((s) => (fn('botSpyTarget')(G(s), 0, spy, 3) as Raw | null)?.['sc'] ?? null)).toEqual([
+      'enemy: 12',
+      'allied: 7',
+      'neutral: 7',
+      'null: 7',
+    ]);
+  });
+  test("a mage closes on a general remembered within reach only when his realm is at war with the mage's", () => {
+    const mage = { id: 1, player: 0, alive: true, location: 0, skills: { necromancy: 2 } };
+    const general = { id: 2, player: 1, alive: true, location: 1 };
+    const G = (s: string | null) =>
+      aWorld(s, {
+        characters: [mage, general],
+        players: aGeneralRemembered,
+        world: { provinces: [aProvince(), aProvince({ id: 1, col: 1, owner: 2 })] },
+      });
+    const casts = vi.spyOn(theBotsSpellcraft, 'botCastPlan').mockReturnValue([]);
+    try {
+      expect(
+        byState((s) => {
+          casts.mockClear();
+          fn('botMageOrders')(G(s), 0, mage, []);
+          return casts.mock.calls.filter((c) => (c[3] as Raw | null)?.['id'] === 1).length;
+        }),
+        "the casts planned on the general's province (the stand-in asked)",
+      ).toEqual(['enemy: 1', 'allied: 0', 'neutral: 0', 'null: 0']);
+    } finally {
+      casts.mockRestore();
+    }
+  });
+  test("a hunter's quarry in sight is a foe's hero, and no other realm's", () => {
+    const hunter = { id: 1, player: 0, alive: true, location: 0, skills: { melee: 9, archery: 9 }, maxHp: 40 };
+    const quarry = { id: 2, player: 1, alive: true, location: 0, skills: {} };
+    const G = (s: string | null) => aWorld(s, { characters: [hunter, quarry], world: { provinces: aRow([0, 1, 0]) } });
+    expect(
+      byState(
+        (s) =>
+          ((fn('botHuntTarget')(G(s), 0, hunter, 3, null) as Raw | null)?.['e'] as Raw | undefined)?.['id'] ?? null,
+      ),
+    ).toEqual(['enemy: 2', 'allied: null', 'neutral: null', 'null: null']);
   });
 });

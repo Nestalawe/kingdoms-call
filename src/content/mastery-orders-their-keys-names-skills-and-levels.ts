@@ -5,7 +5,9 @@
 // set of the masteries' keys (MASTERY_ORDER_KEYS) and the prose's labels (MASTERY_ORDER_LABEL, src/views/prose/the-
 // words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts) are built from these rows, and so are the
 // player page's (L79_ORDERS, src/ui/player/l79-orders.ts: each order's name, skill and level; the form's
-// target and hint are its own). The engine checks each row's key is a kind of order (army-tables.ts). Each resolver
+// target and hint are its own). Each row joins its hero order's row by key (THE_HERO_ORDERS, src/content/the-hero-
+// orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts: the names the turn reads it by, its tier), and
+// the engine checks each row's key is a kind of order (army-tables.ts). Each resolver
 // reads its level here (P1-11d11: `skillLevel(c, …) < THE_MASTERY_ORDERS.<key>.level`); tests/unit/order-dispatch-called-
 // directly.test.ts pins each level as a number, a hero one level below each and one at it.
 import type { KC_SKILLS } from './kingdoms-call-data.ts';

@@ -18,7 +18,7 @@
 // 2026-10-13 (Toby, Creatures and Monsters I): the wild roster as decided (tests/lib/primal-decided.ts) — a
 // Druid-4 beast about 2.6–2.75 strength a gold, a Druid-5 beast 2.4–2.6, because a realm's own-race troops
 // carry a ×1.44 kinship no beast gets; every flyer moves 5, no walker slower than 2. Terrain is written ONCE,
-// in the GM portal's TERRAIN_MODS; the always-on terrain multipliers these units used to carry on top are gone.
+// in KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND; the always-on terrain multipliers these units used to carry are gone.
 export const PRIMAL_ARMY_DEFS_P = {
   // ── Druid 4 — Land ──
   'Stone Giants': {
@@ -15115,8 +15115,9 @@ export const KC_UNIT_TYPE = {
 // tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts compiles copies of this file, each with a
 // unit left out.
 //   THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES   humanoid units only
-// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS) get theirs
-// when their files lose their ts-nocheck line: a `satisfies` checks nothing in a file with it (plan P1-10, Decision 6).
+//   KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND   every unit type but the elementals in the woods' rows, and four flyers
+//                        fewer in the open grounds' (unit types only in the sea's row)
+// The views' own table keyed by unit type (UNIT_SHORT) ends in its own `satisfies`.
 export type UnitType = keyof typeof KC_UNIT_TYPE;
 /** The wild's units, a Druid's or a monster's: PRIMAL_ARMY_DEFS_P's. */
 export type PrimalUnitType = keyof typeof PRIMAL_ARMY_DEFS_P;
@@ -15125,6 +15126,403 @@ export type ElementalUnitType =
   'Air Elemental' | 'Fire Elemental' | 'Earth Elemental' | 'Water Elemental' | 'Darkness Elemental';
 /** The realms' own troops and fleets: every unit type that is neither primal nor an elemental. */
 export type HumanoidUnitType = Exclude<UnitType, PrimalUnitType | ElementalUnitType>;
+/** The units a woods' row of the ground's table (forest, jungle) names: every unit type but the elementals. */
+type UnitTypeAWoodsRowNames = Exclude<UnitType, ElementalUnitType>;
+/** The units an open ground's row of the ground's table (plain, desert, mountain) names: a woods' row's but four
+ *  flyers, which fight at ×1 there by terrainMod's fallback. */
+type UnitTypeAnOpenGroundsRowNames = Exclude<
+  UnitTypeAWoodsRowNames,
+  'Eagle Riders' | 'Gnomish Gyrocopters' | 'Wyvern Riders' | 'Thunderbirds'
+>;
+
+// ── TERRAIN STRENGTH MODIFIERS ────
+// Applied to individual army unit strength during battle resolution. Flyers (every KC_UNIT_CLASS.aerial
+// unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in
+// forest and jungle (2026-10-12, Toby item 19; they had been terrain-immune). Naval units: no terrain
+// effect anywhere — and the Naval skill lifts them on land too.
+// The table moved here from the engine's battle file as it was (B-06ax); the engine's TERRAIN_MODS is this object,
+// and terrainMod reads it there (a unit or a ground with no cell: ×1). Each row ends in `satisfies` on the units it
+// lists: the woods' rows every unit type but the elementals; the open grounds' rows (the plain, the desert, the
+// mountain) those but four flyers too (Eagle Riders, Gnomish Gyrocopters, Wyvern Riders, Thunderbirds); the sea's row
+// unit types only (the land units' ×0.75 there is the sea penalty's, not this table's).
+export const KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND = {
+  // NAVAL UNITS FIGHT AT FULL STRENGTH IN EVERY PROVINCE, land or sea — the old ×0.60 "beached
+  // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
+  // terrainMod() short-circuits them like flyers. Sea Giants' Tidal Might is now a coastal-land
+  // bonus (see unitAbilityMult).
+  // 2026-10-11 (Toby, the army roster): human line foot and longbows ×1.1 on the plain; Forest Wardens
+  // no longer suffer in the open (×1.0 plain, ×0.9 desert) and are ×1.1 rather than ×1.2 in the woods;
+  // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
+  // ×1.1 (Guard, Crossbows, Guns).
+  // tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds every cell to the decided roster.
+  plain: {
+    'Men-at-Arms': 1.1,
+    'Stag Riders': 1.1,
+    'Ironhoof Rams': 1.0,
+    'Black Arrows': 1.0,
+    'Shieldwall Levies': 1.1,
+    'Free Lances': 1.15,
+    'Gilded Lances': 1.15,
+    'Yeoman Longbows': 1.1,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.0,
+    'Forest Wardens': 1.0,
+    'Shadow Archers': 0.9,
+    'Dwarven Guard': 0.9,
+    'Ironwood Crossbows': 1.0,
+    'Mountain Guns': 0.85,
+    'Dwarf Garrison': 0.9,
+    'Warg Riders': 1.1,
+    'Orc Berserkers': 1.0,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 1.0,
+    'Elven Garrison': 1.0,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 1.0,
+    'Stone Giants': 0.9,
+    'Forest Ents': 0.9,
+    'Cave Trolls': 1.0,
+    'Manticore Pride': 1.0,
+    'Basilisk Brood': 0.9,
+    'Titan Warbeasts': 1.1,
+    'Crimson Rocs': 1.0,
+    'Elder Dragons': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 1.0,
+    'Great Bears': 1.0,
+    'Unicorn Herd': 1.1,
+    'Mammoth Host': 1.1,
+    'Great Turtles': 1.0,
+  },
+  desert: {
+    'Men-at-Arms': 1.0,
+    'Stag Riders': 1.0,
+    'Ironhoof Rams': 0.9,
+    'Black Arrows': 1.0,
+    'Shieldwall Levies': 1.0,
+    'Free Lances': 1.15,
+    'Gilded Lances': 1.15,
+    'Yeoman Longbows': 0.9,
+    'Human Garrison': 0.9,
+    'Elven Bowmen': 0.8,
+    'Forest Wardens': 0.9,
+    'Shadow Archers': 0.85,
+    'Dwarven Guard': 0.9,
+    'Ironwood Crossbows': 1.0,
+    'Mountain Guns': 0.85,
+    'Dwarf Garrison': 0.85,
+    'Warg Riders': 1.1,
+    'Orc Berserkers': 1.05,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 0.9,
+    'Elven Garrison': 0.85,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 1.0,
+    'Stone Giants': 0.9,
+    'Forest Ents': 0.75,
+    'Cave Trolls': 0.85,
+    'Manticore Pride': 1.0,
+    'Basilisk Brood': 1.1,
+    'Titan Warbeasts': 1.1,
+    'Crimson Rocs': 1.0,
+    'Elder Dragons': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 0.85,
+    'Great Bears': 0.8,
+    'Unicorn Herd': 1.0,
+    'Mammoth Host': 0.85,
+    'Great Turtles': 1.0,
+  },
+  forest: {
+    'Men-at-Arms': 0.9,
+    'Stag Riders': 1.1,
+    'Ironhoof Rams': 0.9,
+    'Black Arrows': 0.9,
+    'Shieldwall Levies': 0.9,
+    'Free Lances': 0.75,
+    'Gilded Lances': 0.75,
+    'Yeoman Longbows': 0.85,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.15,
+    'Forest Wardens': 1.1,
+    'Shadow Archers': 1.1,
+    'Dwarven Guard': 0.9,
+    'Ironwood Crossbows': 0.9,
+    'Mountain Guns': 0.8,
+    'Dwarf Garrison': 0.9,
+    'Warg Riders': 0.9,
+    'Orc Berserkers': 1.1,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 1.0,
+    'Elven Garrison': 1.1,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 0.75,
+    'Stone Giants': 0.9,
+    'Forest Ents': 1.15,
+    'Cave Trolls': 1.1,
+    'Manticore Pride': 0.75,
+    'Basilisk Brood': 1.0,
+    'Titan Warbeasts': 0.8,
+    'Crimson Rocs': 0.75,
+    'Elder Dragons': 0.75,
+    'Eagle Riders': 0.75,
+    'Wyvern Riders': 0.75,
+    'Gnomish Gyrocopters': 0.75,
+    Thunderbirds: 0.75, // item 19: flyers in the woods
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 1.05,
+    'Great Bears': 1.1,
+    'Unicorn Herd': 1.1,
+    'Mammoth Host': 0.8,
+    'Great Turtles': 1.0,
+  },
+  jungle: {
+    'Men-at-Arms': 0.85,
+    'Stag Riders': 1.0,
+    'Ironhoof Rams': 0.85,
+    'Black Arrows': 0.9,
+    'Shieldwall Levies': 0.85,
+    'Free Lances': 0.7,
+    'Gilded Lances': 0.7,
+    'Yeoman Longbows': 0.8,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.1,
+    'Forest Wardens': 1.1,
+    'Shadow Archers': 1.1,
+    'Dwarven Guard': 0.85,
+    'Ironwood Crossbows': 0.85,
+    'Mountain Guns': 0.75,
+    'Dwarf Garrison': 0.85,
+    'Warg Riders': 0.8,
+    'Orc Berserkers': 1.05,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 1.0,
+    'Elven Garrison': 1.1,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 0.75,
+    'Stone Giants': 0.8,
+    'Forest Ents': 1.15,
+    'Cave Trolls': 1.05,
+    'Manticore Pride': 0.75,
+    'Basilisk Brood': 1.1,
+    'Titan Warbeasts': 0.75,
+    'Crimson Rocs': 0.75,
+    'Elder Dragons': 0.75,
+    'Eagle Riders': 0.75,
+    'Wyvern Riders': 0.75,
+    'Gnomish Gyrocopters': 0.75,
+    Thunderbirds: 0.75, // item 19: flyers in the woods
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 1.1,
+    'Great Bears': 1.0,
+    'Unicorn Herd': 0.9,
+    'Mammoth Host': 0.75,
+    'Great Turtles': 1.0,
+  },
+  mountain: {
+    'Men-at-Arms': 0.9,
+    'Stag Riders': 0.85,
+    'Ironhoof Rams': 1.0,
+    'Black Arrows': 0.9,
+    'Shieldwall Levies': 0.9,
+    'Free Lances': 0.75,
+    'Gilded Lances': 0.75,
+    'Yeoman Longbows': 1.0,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.0,
+    'Forest Wardens': 0.85,
+    'Shadow Archers': 1.0,
+    'Dwarven Guard': 1.1,
+    'Ironwood Crossbows': 1.1,
+    'Mountain Guns': 1.1,
+    'Dwarf Garrison': 1.15,
+    'Warg Riders': 0.8,
+    'Orc Berserkers': 0.9,
+    'Goblin Horde': 0.9,
+    'Orc Garrison': 0.9,
+    'Elven Garrison': 0.9,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 1.0,
+    'Stone Giants': 1.15,
+    'Forest Ents': 0.9,
+    'Cave Trolls': 1.15,
+    'Manticore Pride': 1.0,
+    'Basilisk Brood': 0.9,
+    'Titan Warbeasts': 0.8,
+    'Crimson Rocs': 1.0,
+    'Elder Dragons': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 0.9,
+    'Great Bears': 1.1,
+    'Unicorn Herd': 0.85,
+    'Mammoth Host': 1.0,
+    'Great Turtles': 1.0,
+  },
+  sea: {
+    // All land armies penalised in sea — ×0.75 (applied separately as seaLandPenalty) Naval units
+    // are full strength. Flying at full strength. Individual modifiers here are mostly 1.0 since
+    // the sea penalty is applied globally.
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Great Turtles': 1.0,
+    // Flying fight fine at sea
+    'Eagle Riders': 1.0,
+    'Wyvern Riders': 1.0,
+    'Gnomish Gyrocopters': 1.0,
+    'Elder Dragons': 1.0,
+    'Crimson Rocs': 1.0,
+    Thunderbirds: 1.0,
+  },
+} satisfies {
+  plain: Record<UnitTypeAnOpenGroundsRowNames, number>;
+  desert: Record<UnitTypeAnOpenGroundsRowNames, number>;
+  forest: Record<UnitTypeAWoodsRowNames, number>;
+  jungle: Record<UnitTypeAWoodsRowNames, number>;
+  mountain: Record<UnitTypeAnOpenGroundsRowNames, number>;
+  sea: Partial<Record<UnitType, number>>;
+}; // a unit left out of a row that must list it, a misspelt unit or a ground no row names fails tsc
+
+// ── BATTLE RESULT MARGIN BANDS ────
+// margRatio = |winner − loser| ÷ (winner + loser). Six bands replace the old three (narrow <10%,
+// clear 10–30%, decisive >30%): the middle three keep their exact old numbers; Pyrrhic splits off
+// the bottom of Narrow, Crushing and Annihilating split off the top of Decisive. Every band keeps
+// at least 1% winner death and 1% loser XP (a rout still costs the victor something, and even a
+// shattered army learns). Used by BOTH the NPC (combatVsNPC) and hero-vs-hero (combatVsChar) paths.
+// The table moved here from the engine's battle/fates.ts as it was (B-06ay1); the engine's BATTLE_MARGIN_BANDS is this
+// list, and battleMarginBand reads it there (each slug one of the severities a battle's outcome line tells). The
+// rulebook's table of the bands ("How a Battle Is Fought") is held to it by a static test.
+export const KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM = [
+  { slug: 'pyrrhic', max: 0.04, winDeath: 0.15, loseDeath: 0.12, winXP: 0.6, loseXP: 0.2, loseDemote: 0.05 },
+  { slug: 'narrow', max: 0.1, winDeath: 0.12, loseDeath: 0.12, winXP: 0.5, loseXP: 0.12, loseDemote: 0.1 },
+  { slug: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.18, winXP: 0.3, loseXP: 0.06, loseDemote: 0.2 },
+  { slug: 'decisive', max: 0.55, winDeath: 0.01, loseDeath: 0.35, winXP: 0.15, loseXP: 0.02, loseDemote: 0.3 },
+  { slug: 'crushing', max: 0.75, winDeath: 0.01, loseDeath: 0.5, winXP: 0.08, loseXP: 0.01, loseDemote: 0.45 },
+  { slug: 'annihilating', max: 9, winDeath: 0.01, loseDeath: 0.6, winXP: 0.05, loseXP: 0.01, loseDemote: 0.55 },
+] as const;
+// A battle that carries on round after round in the same province grows deadlier for BOTH sides: each side's death
+// chances scale by 1 + this step for each carried-over round (prov._carryOnRounds, 0 for the opening clash), to at
+// most this many times. Moved here from the engine's battle file as they were (B-06ay1); the engine reads them by its
+// CARRYON_DEATH_STEP and CARRYON_DEATH_CAP names, and the rulebook's "+35% per carried-over round, to ×2.5" is held to
+// them by a static test.
+export const KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS = {
+  theStepEachCarriedOverRoundAdds: 0.35,
+  theMostTimesTheyScaleTo: 2.5,
+} as const;
+
+// ── THE BATTLE GRID'S TABLES (moved here from the engine's battle/lines.ts as they were, B-06ay2) ────
+// The engine reads each by its old name there (BATTLE_FRONT_RANGE, BATTLE_FACING, BATTLE_LINE_MULTS,
+// BATTLE_LINE_MULTS_FLANK, BATTLE_RANGED_IN_FRONT, BATTLE_FLYER_BEYOND_CAP, BATTLE_FLYER_CAP_MIN, BATTLE_FLANK_TAC_CAP,
+// BATTLE_LINEUP_MAX); the battle-lines guide is the comment above BATTLE_FRONT_RANGE in lines.ts.
+// The front the ground allows, rolled fresh for each battle and the same for both sides: the fewest and the most units
+// (a ground the table doesn't hold reads the plain's).
+export const KC_EACH_GROUNDS_BATTLE_FRONT_ITS_FEWEST_AND_MOST_UNITS = {
+  plain: [6, 8],
+  desert: [6, 8],
+  sea: [8, 10],
+  forest: [4, 6],
+  jungle: [4, 6],
+  mountain: [2, 4],
+} satisfies Record<string, [fewest: number, most: number]>;
+// Who faces whom: a front unit's matchup with the enemy unit in its column (my role → the enemy's → multiplier), a
+// second-line ranged unit shooting the enemy front unit opposite, a wider front's units wrapping round the enemy line's
+// end and the end unit struck from the side, a flank rider riding free, and a turned flank's second-line ranged units.
+export const KC_WHO_FACES_WHOM_IN_THE_BATTLE_LINE_AND_THE_FACTOR_IT_GIVES = {
+  front: { cav: { arc: 1.25, foot: 0.85 }, foot: { cav: 1.15, arc: 1.25 } }, // anything unlisted is ×1 (foot v foot, cav v cav, a ranged unit caught in the front…)
+  back: { foot: 1.25, cav: 0.75 }, // shooting the enemy front unit opposite; ranged v ranged ×1
+  wrap: 1.2,
+  sideHit: 0.9,
+  freeFlank: 1.3,
+  turned: 0.75,
+};
+// The lines' factors and limits: the four lines behind the flanks (the front, the second line, the reserve, the deep
+// reserve), and the same under Flanking Tactics where its data row carries no `lines`; a ranged unit that steps into
+// the front; a flyer beyond the enemy's ground units in line plus their flyers, and the fewest that cap allows; the
+// Tactical levels the flanks and the line-up's swaps count; the most swaps the side that scouted makes at the line-up.
+export const KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS = {
+  theFourLinesFactors: [1, 0.5, 0.25, 0.125], // front · second line (not shooting over) · reserve · deep reserve
+  theFourLinesFactorsUnderFlankingTactics: [1, 0.75, 0.5, 0.25], // sd09's fallback if its data row carries no `lines`
+  aRangedUnitInTheFront: 0.75,
+  aFlyerBeyondTheCap: 0.5,
+  theFewestFlyersTheCapAllows: 2,
+  theMostTacticalLevelsTheFlanksAndTheLineUpCount: 5,
+  theMostSwapsAtTheLineUp: 30,
+} as const;
+
+// ── THE BATTLE'S SINGLE FACTORS (moved here from the engine's battle files as they were, B-06ay2) ────
+// A pre-battle volley (terrain-and-unit-strength.ts, missileShotDamage and applyMissileHit): 30% of the firing unit's
+// base strength (10 when no unit is named), +10% per level of the commander's Archery; a winged rider takes it twice
+// over; a target loses at most 40% of its base strength to volleys (doubled for a winged rider: missileCap). In the
+// battle, the commander's Archery lifts every missile unit he leads +5% a level (ladder.ts). The engine reads them by
+// MISSILE_SHOT_PCT, MISSILE_ARCH_PER_LVL, MISSILE_CAP_FRACTION and ARCHERY_MISSILE_PCT.
+export const KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE = {
+  theShareOfTheShootersStrengthAVolleyStrikes: 0.3,
+  theRiseEachLevelOfTheCommandersArcheryGivesAVolley: 0.1,
+  theMostShareOfItsStrengthATargetLosesToVolleys: 0.4, // 2026-10-11 (Toby): volleys 20% → 30%
+  theStrengthOfAShooterNoUnitIsNamedFor: 10,
+  theTimesAWingedRiderIsHit: 2,
+  theRiseEachLevelOfTheCommandersArcheryGivesHisMissileUnits: 0.05,
+} as const;
+// What a unit fights at, beside the ground's table: every unit enters the melee with at least this share of its
+// strength, whatever the pre-battle damage (PREBATTLE_STR_FLOOR); a non-flying land unit at sea (SEA_LAND_PENALTY,
+// roughly one quality tier lower); at sea, a force of land units its flyers carry and no hull, the carried land units
+// and the humanoid flyers carrying them (SEA_AIRBORNE_LAND_PENALTY, SEA_AIRBORNE_FLYER_PENALTY); and the most a unit
+// keeps under Illusory Terrain, at least a 15% cut (illusoryTerrainMult).
+export const KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN = {
+  theLeastShareAfterThePreBattleDamage: 0.25,
+  aLandUnitAtSea: 0.75,
+  aLandUnitCarriedAtSeaByFlyers: 0.25,
+  aHumanoidFlyerCarryingThem: 0.5,
+  theMostUnderIllusoryTerrain: 0.85,
+} as const;
+// A beaten neutral guard's survivors, each time a guard loses a battle (hosts-gained-in-a-province.ts,
+// erodeGuardSurvivors): each breaks away as mercenaries at this chance (GUARD_FLIGHT_CHANCE); of those who hold their
+// ground, each is bloodied down a quality tier at this chance (GUARD_DEMOTE_CHANCE).
+export const KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES = {
+  theChanceEachFleesAsMercenaries: 0.35,
+  theChanceEachThatHoldsLosesATier: 0.5,
+} as const;
 
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.

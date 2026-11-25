@@ -1,4 +1,5 @@
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
@@ -654,7 +655,8 @@ export function advancePursuit(turnContext: TurnContext, c: Character, ph: numbe
     if (quarry.isKing && !c.isKing) {
       const turnOrders: TheTurnsOrdersAsTheChaseReadsThem = G.turnOrders;
       const _their = (turnOrders[quarry.id] ?? [])[ph];
-      const _mutual = normaliseAction(_their) === 'encounter' && parseInt(String(_their?.target)) === c.id;
+      const _mutual =
+        normaliseAction(_their) === THE_HERO_ORDERS.encounter.key && parseInt(String(_their?.target)) === c.id;
       if (!_mutual) {
         emit(turnContext, {
           type: 'system',

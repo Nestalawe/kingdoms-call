@@ -8,9 +8,14 @@
 // level can't run a function. Every game reaches the search, but a fault planted in a shared function moves every
 // caller at once, so these cases pin its answers: a route round a sea, an edge closed to ships, the caller's filter,
 // the order of the neighbours and the depth of 40. tests/unit/routes-and-distances.test.ts checks the engine's
-// callers (in the vm) as properties.
+// callers (in the vm) as properties. Beside it, aProvinceIsSafePassageForARealmsColumn (the far march's filter): the
+// realm's own ground, an ally's, and unowned ground with no armed guard are safe passage; a Neutral realm's, a foe's
+// and a guarded wild are not (B-06ar: an ally's is the relations' content state).
 import { expect, test } from 'vitest';
-import { theFirstStepOfAShortestRouteAColumnMayTake } from '../../src/engine/rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts';
+import {
+  aProvinceIsSafePassageForARealmsColumn,
+  theFirstStepOfAShortestRouteAColumnMayTake,
+} from '../../src/engine/rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts';
 
 interface Province {
   readonly id: number;
@@ -153,4 +158,39 @@ test('a route of 40 steps is found; one of 41 is not', () => {
     fortyOneSteps: null,
     oneStep: { first: 1, depth: 0 },
   });
+});
+
+test("a province is safe passage on the realm's own ground, an ally's and an unguarded wild; not a Neutral realm's, a foe's or a guarded wild", () => {
+  const asked: string[] = [];
+  const passage = (owner: number | null, relation: string, guarded: boolean) =>
+    aProvinceIsSafePassageForARealmsColumn(
+      0,
+      owner,
+      () => {
+        asked.push('relation');
+        return relation;
+      },
+      () => {
+        asked.push('guard');
+        return guarded;
+      },
+    );
+  expect(
+    [
+      passage(0, 'enemy', true),
+      passage(1, 'allied', true),
+      passage(1, 'neutral', false),
+      passage(1, 'enemy', false),
+      passage(null, 'enemy', false),
+      passage(null, 'allied', true),
+    ],
+    "its own, an ally's, a Neutral realm's, a foe's, an unguarded wild, a guarded wild",
+  ).toEqual([true, true, false, false, true, false]);
+  expect(asked, "the relation asked only of another realm's ground, the guard only of the wild").toEqual([
+    'relation',
+    'relation',
+    'relation',
+    'guard',
+    'guard',
+  ]);
 });

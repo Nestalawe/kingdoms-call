@@ -51,6 +51,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/battles-between-heroes.ts', 'combatVsChar', "P1-19n, the battles' items"],
   ['src/engine/battle/battles-between-heroes.ts', 'applyPreBattleArchery', "P1-19n, the battles' items"],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', "P1-19n, the battles' items"],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders',
+    "P1-19n, the battles' items (B-06az: combatVsNPC's set-up, duel and sides, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts',
+    'theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19n, the battles' items (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
+  ],
   ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten', "P1-19n, the battles' items"],
   [
     'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
@@ -206,7 +216,8 @@ const READS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = 
   // by P1-19n). The Ember Rune's
   // `.emberTwo` went with the spells family's first row (P1-19u: "strength: a hero's items change his battle spell")
   combatVsChar: ['.drumTierUp'],
-  combatVsNPC: ['.drumTierUp'],
+  // combatVsNPC's own went with its set-up (B-06az)
+  theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders: ['.drumTierUp'],
 };
 
 /** The checks of an item's effect a taken function still holds, by the function, each left to a later step: none since

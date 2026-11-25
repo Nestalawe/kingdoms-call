@@ -4,6 +4,7 @@
 // cast ends here": no skill gain) and its end `return true;` ("the spell is worked"). The table in the-action-
 // spells-the-cast-spell-order-works-by-slug.ts finds each by its slug.
 import { shuffleP } from '../../battle/fortune.ts';
+import { THE_HERO_ORDERS } from '../../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { noteGraveIntel } from '../../graves.ts';
 import { claimWandererName } from '../../heroes/fame-and-consecration.ts';
 import { getNeighborsP } from '../../world/map-helpers.ts';
@@ -254,7 +255,7 @@ export function workResurrect({ turnContext, G, c, ph, extra, prov, player }: Th
       const slots = G.turnOrders[deadHero.id] ?? [null, null, null, null, null];
       let applied = 0;
       pend.orders.forEach((o, pi2) => {
-        if (pi2 > ph && o?.action && o.action !== 'Defend' && o.action !== 'defend') {
+        if (pi2 > ph && o?.action && o.action !== 'Defend' && o.action !== THE_HERO_ORDERS.defend.key) {
           slots[pi2] = o;
           applied++;
         }

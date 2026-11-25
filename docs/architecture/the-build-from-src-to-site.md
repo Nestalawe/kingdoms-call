@@ -111,8 +111,9 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     `tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts`).
   - **In the engine:** `TurnContext`, the turn's context (every field `resolveTurn` adds), in
     `engine/turn/context.ts`; `LogLine`, a line of the GM's log, in the events file; `OrderKind`, the 48 kinds an
-    order's action reads as, beside `PHASE_ACTION_MAP` (`engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`):
-    `processOrder` reads an order's action as one, so a kind with no case in its switch fails to compile. Each
+    order's action reads as, beside `PHASE_ACTION_MAP` (`engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`;
+    both built from the hero orders' rows in content):
+    `processOrder` reads an order's action as one, so a kind with no resolver in the hero orders' registry fails to compile. Each
     of these files is freed of its ts-nocheck line, so TypeScript checks these types and the map's `satisfies`, and
     every freed file that reads them is checked against them; where their reads disagreed with `TurnContext`, the
     type was corrected (a line's `targets` may hold null: callers pass `[c.player]`). Beside them in
@@ -123,8 +124,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     `sight/heroes-in-sight-features-discovered-and-army-size-bands.ts`, `UnitAbilityContext` in `battle/strength.ts`,
     `UnitFateOptions` and `ABattleLinesTier` in `battle/fates.ts`, `ArmStrContext`, what a caller tells `armStr` of the
     battle, and `CommandMultiplier`, a command-stage multiplier a ladder row applies, in
-    `battle/terrain-and-unit-strength.ts`, whose terrain table, `TERRAIN_MODS`, ends in
-    `satisfies Record<string, Partial<Record<UnitType, number>>>`, so a misspelt unit fails to compile);
+    `battle/terrain-and-unit-strength.ts`, whose terrain table, `TERRAIN_MODS`, is content's
+    `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND`, whose rows end in `satisfies` on the units each lists, so a unit left out fails to compile);
     `battle/lines.ts` declares the battle grid's: `BattleRow` (a unit's row as the grid takes it, and the marks the grid
     stamps on it, `_g` and `_faced`), `GridCell` (a placed unit: its row, its part in the line, its strength),
     `GridUnit` (a unit as it was scored), `BattleGridCells` (a side's grid as placed) and `BattleGrid` (the same grid

@@ -1,7 +1,7 @@
 // Every unit, order and effect the content names is in every table that must list it (`content-complete`, plan step
 // P1-10z). The compiler already refuses a unit left out of a table keyed by unit type
-// (static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts) and an order kind with no case in the orders' switch
-// (static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts). This test checks at run time what
+// (static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts) and an order kind with no resolver in the hero
+// orders' registry (static/an-order-kind-with-no-resolver-in-the-hero-orders-registry-fails-to-compile.test.ts). This test checks at run time what
 // types can't: a name written as a plain string in one table (a list, a cell, a content row, a page's list, the books)
 // that must be in another. Nothing throws when one is missed: the rule meant for it reaches nothing, the order reads
 // as Defend, the book is silent. The tables, each with why it must list the names:

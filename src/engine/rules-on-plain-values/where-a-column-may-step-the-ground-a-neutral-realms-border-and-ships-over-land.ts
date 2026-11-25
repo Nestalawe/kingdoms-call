@@ -1,5 +1,6 @@
 import { SEA_TYPES } from './units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import type { UnitOfAType } from './units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 
 // ── Where a column may step: the ground it enters, a neutral realm's border, ships over land ────
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
@@ -42,7 +43,7 @@ export function aColumnIsTurnedBackAtANeutralRealmsBorder(
     theProvincesOwner != null &&
     theProvincesOwner !== theMarchersRealm &&
     theCompaniesHeLeads > 0 &&
-    theRelationBetweenThem === 'neutral'
+    theRelationBetweenThem === THE_STATES_TWO_REALMS_STAND_IN.neutral
   );
 }
 

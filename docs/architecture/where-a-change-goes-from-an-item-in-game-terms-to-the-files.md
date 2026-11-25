@@ -43,7 +43,7 @@ a hint by its words or its function's name, not by the file's name.
 | Sight: who sees whom, spotting, what a province shows | `sight/`, and `src/views/what-each-realm-may-see-of-the-world.ts` |
 | The warnings of a rival's hero in your land | `turn/intrusion-warnings.ts` |
 | Spies: what a spy learns | `espionage/`, and the espionage orders in `orders/` |
-| Relations between realms, captures | `realms/` |
+| Relations between realms, captures | `realms/`; the three states and the Treat in `src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts`, the diplomacy ladder (each declaration's step, the overture's kind, the small game's alliance limit) in `src/content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts`, and the key of a pair and its entry's one reader in `rules-on-plain-values/how-two-realms-stand-…` |
 | The turn's steps: the new turn, the phases, Early Winter, after the phases, diplomacy and victory | `turn/` |
 | The world and the map | `world/` |
 | Bots | `bots/` |
@@ -91,7 +91,9 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 ### A battle's or a fight's rule
 
 - **Where:** `src/engine/battle/` (a battle between armies) or `src/engine/personal-combat/` (heroes and guardians
-  fighting). The cast chance and the lairs' grades are in `src/engine/chances-and-lair-grades.ts`.
+  fighting). The cast chance and the lairs' grades are in `src/engine/chances-and-lair-grades.ts`. The battle against
+  a province's defenders (`combatVsNPC`) calls its stages from `src/engine/battle/the-battle-against-the-defenders/`
+  as they move there; the file of the attacker's pre-battle phases types the state the stages share and lists it.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).
@@ -101,12 +103,14 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 ### An order
 
 - **Where:** `src/engine/orders/`, one file a family of orders, each file's name listing its orders. The checks before
-  a hero's order, and the switch that picks its resolver, are in
-  `src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`. A new kind of order goes into
-  `OrderKind`, and its names into `PHASE_ACTION_MAP`
-  (`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`); the switch fails to
-  compile until the kind has its case
-  (`tests/static/an-order-kind-with-no-case-in-the-orders-switch-fails-to-compile.test.ts`). An alignment order is one
+  a hero's order are in `src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts`, and the
+  registry that picks its resolver beside it
+  (`src/engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts`). A new kind of order is a row of
+  `THE_HERO_ORDERS` (`src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts`: its
+  key, its names, its tier), from which `OrderKind` and `PHASE_ACTION_MAP` are built
+  (`src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts`); the registry fails to
+  compile until the kind has its entry
+  (`tests/static/an-order-kind-with-no-resolver-in-the-hero-orders-registry-fails-to-compile.test.ts`). An alignment order is one
   row of `src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`, and a mastery order one row of
   `src/content/mastery-orders-their-keys-names-skills-and-levels.ts`.
 - **What a realm sends:** its shape is `src/schemas/orders-a-realm-submits.ts`; the player's form is in `src/ui/player/`.

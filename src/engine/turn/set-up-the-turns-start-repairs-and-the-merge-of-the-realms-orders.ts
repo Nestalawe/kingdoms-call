@@ -6,6 +6,8 @@ import { noteServedRealm } from '../heroes/charms-and-neutrals.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { TurnContext, TurnOrder } from './context.ts';
 import type { Character, GameState, Province, Realm, SkillLevels } from '../../schemas/saved-game-state.ts';
+import { THE_TREAT_DECLARATION } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { THE_DIPLOMACY_LADDER } from '../../content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts';
 
 // ── THE SET-UP: THE TURN'S START REPAIRS AND THE MERGE OF THE REALMS' ORDERS (plan P1-08k7: two stages taken out of
 // the start of resolveTurn's own body; P1-08n: two lines of it before them) ──────────────────────────────────────────
@@ -378,7 +380,8 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
           // declared — the declarations are discarded and the realm is told why.
           if (safeStartLocked(G, expectedTurnToRun)) {
             const stancesSent: readonly unknown[] = Object.values(diplomacySent);
-            if (stancesSent.some((v) => v === 'treat' || v === 'enemy')) safeStartRefused.push(gp.player_index);
+            if (stancesSent.some((v) => v === THE_TREAT_DECLARATION || v === THE_DIPLOMACY_LADDER.aWarIsDeclaredAs))
+              safeStartRefused.push(gp.player_index);
           } else declarationsAsSent[gp.player_index] = diplomacySent;
         }
         // RESEARCH CHOICE: which of each pending pair to keep ({key: discoveryId}); honoured only when

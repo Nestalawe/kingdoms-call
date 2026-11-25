@@ -1,3 +1,4 @@
+import { KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { demoteOrDisband } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
@@ -707,11 +708,12 @@ export function resolveUnitGainInProvince(
 // ── Erosion of a beaten neutral guard's SURVIVORS ────
 // Applied every time a guard loses a battle, not just the first. Each survivor either breaks away
 // as mercenaries, drops a quality tier, or — if already Green — disbands entirely (no graves:
-// nobody died, the unit simply ceased to exist).
-export const GUARD_FLIGHT_CHANCE = 0.35;
+// nobody died, the unit simply ceased to exist). The two chances are content's row
+// (KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES, B-06ay2).
+export const GUARD_FLIGHT_CHANCE = KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES.theChanceEachFleesAsMercenaries;
 // Of the survivors who hold their ground (don't flee), only SOME are bloodied down a quality
 // tier; the rest fight on unbowed.
-export const GUARD_DEMOTE_CHANCE = 0.5;
+export const GUARD_DEMOTE_CHANCE = KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES.theChanceEachThatHoldsLosesATier;
 // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
 // Since P1-12d27 each survivor's line is one kind, a beaten guard's surviving unit's fate (its event's), its fate a
 // slug, the disbanding among them.

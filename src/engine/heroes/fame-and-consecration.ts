@@ -1,3 +1,5 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { theStateThePairsEntryHolds } from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { homeFounderOf } from '../grand-design.ts';
 import { hexDistP } from '../world/map-helpers.ts';
 import {
@@ -171,10 +173,8 @@ export function relOfReport(
   a: number | null | undefined,
   b: number | null | undefined,
 ) {
-  if (a == null || b == null || a === b) return 'neutral';
-  const k = a < b ? `${String(a)}-${String(b)}` : `${String(b)}-${String(a)}`;
-  const rel = gs.relations?.[k] ?? '';
-  return rel || 'neutral';
+  if (a == null || b == null || a === b) return THE_STATES_TWO_REALMS_STAND_IN.neutral;
+  return theStateThePairsEntryHolds(gs.relations, a, b);
 }
 // Deterministic 0..1 roll so the same (turn, viewer, enemy, province) always resolves the same way
 // — the map is built once, but this keeps a GM preview and the saved report identical, and re-rolls
@@ -218,7 +218,8 @@ export function spotEnemyInOwnedProvince(
   (prov.characters ?? []).forEach((cid) => {
     const f = gs.characters[cid];
     if (!f || !f.alive || f.player == null) return;
-    const friendly = f.player === viewerPi || relOfReport(gs, viewerPi, f.player) === 'allied';
+    const friendly =
+      f.player === viewerPi || relOfReport(gs, viewerPi, f.player) === THE_STATES_TWO_REALMS_STAND_IN.allied;
     if (friendly) friendlySpy = Math.max(friendlySpy, Number(f.skills?.spy) || 0);
   });
   friendlySpy = Math.min(5, friendlySpy);

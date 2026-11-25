@@ -16,6 +16,7 @@ import {
 } from './events-and-their-audiences.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { normaliseAction } from '../rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import type { HeroInABattle } from '../army-tables.ts';
 import type { Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext, TurnOrder } from './context.ts';
@@ -105,7 +106,7 @@ export function buildPhaseIntents(turnContext: TurnContext, ph: number): Map<num
     const order = (turnOrders[c.id] ?? [])[ph] ?? null;
     const action = normaliseAction(order);
     const leadsArmy = (asItsGuardReadsIt(c.armies) ?? []).length > 0;
-    const dest = action === 'move' ? intendedDestination(turnContext, c, order) : null;
+    const dest = action === THE_HERO_ORDERS.move.key ? intendedDestination(turnContext, c, order) : null;
     intents.set(c.id, {
       c,
       id: c.id,
@@ -130,7 +131,7 @@ export function isHostileInvasion(
   it: APhaseIntent | null | undefined,
 ): boolean {
   const { G, seaMovePoints, movePoints } = turnContext;
-  if (!it || it.cancelled || it.action !== 'move' || !it.leadsArmy || !it.dest) return false;
+  if (!it || it.cancelled || it.action !== THE_HERO_ORDERS.move.key || !it.leadsArmy || !it.dest) return false;
   const d = it.dest;
   // a column with NO movement left in the pool this march would draw on is not an invasion — the
   // move case will refuse it ("no movement points remaining"). Counting it sent a general on
@@ -180,7 +181,7 @@ export function phaseDependencies(
           toId: it.toId,
           order: it.order,
           theHeroHisOrderHandsTo:
-            it.action === 'give_item' || it.action === 'leave_army'
+            it.action === THE_HERO_ORDERS.give_item.key || it.action === THE_HERO_ORDERS.leave_army.key
               ? (orderCharRef(G, it.order?.extra)?.id ?? null)
               : null,
           theHeroHePursues: it.c._pursuit?.active ? it.c._pursuit.targetId : null,
@@ -241,7 +242,7 @@ export function applyMoveInterlocks(turnContext: TurnContext, ph: number, intent
   const cmp = phaseInitCompare(turnContext, ph);
 
   list.forEach((def) => {
-    if (def.cancelled || def.action !== 'move' || !def.leadsArmy || !def.dest) return;
+    if (def.cancelled || def.action !== THE_HERO_ORDERS.move.key || !def.leadsArmy || !def.dest) return;
     // Which hostile forces are arriving in the province this general is standing in?
     const incoming = invasions.filter(
       (inv) => inv.id !== def.id && inv.player !== def.player && inv.toId === def.fromId && !inv.cancelled,

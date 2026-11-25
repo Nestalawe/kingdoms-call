@@ -38,6 +38,141 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'botRaceTerrainMult',
     "B-06ah, the kin's factors from the kin rule's content, the gifts' from their rows",
   ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'TERRAIN_MODS',
+    "B-06ax, the ground's table: content's (KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND), the same object",
+  ],
+  [
+    'src/engine/battle/fates.ts',
+    'BATTLE_MARGIN_BANDS',
+    "B-06ay1, the margin bands: content's (KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM), the same list",
+  ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'CARRYON_DEATH_STEP',
+    "B-06ay1, the carry-on's step: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS)",
+  ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'CARRYON_DEATH_CAP',
+    "B-06ay1, the carry-on's cap: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_FRONT_RANGE',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_FACING',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_LINE_MULTS',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_LINE_MULTS_FLANK',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_RANGED_IN_FRONT',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_FLYER_BEYOND_CAP',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_FLYER_CAP_MIN',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_FLANK_TAC_CAP',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/lines.ts',
+    'BATTLE_LINEUP_MAX',
+    "B-06ay2, the battle grid: content's rows (the front's range, who faces whom, the lines' factors and limits)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'MISSILE_SHOT_PCT',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'MISSILE_ARCH_PER_LVL',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'MISSILE_CAP_FRACTION',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'missileShotDamage',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'applyMissileHit',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'PREBATTLE_STR_FLOOR',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'SEA_LAND_PENALTY',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'illusoryTerrainMult',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'SEA_AIRBORNE_LAND_PENALTY',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/battles-against-province-defenders.ts',
+    'SEA_AIRBORNE_FLYER_PENALTY',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/ladder.ts',
+    'ARCHERY_MISSILE_PCT',
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+  ],
+  [
+    'src/engine/battle/hosts-gained-in-a-province.ts',
+    'GUARD_FLIGHT_CHANCE',
+    "B-06ay2, a beaten guard's survivors: content's row (KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES)",
+  ],
+  [
+    'src/engine/battle/hosts-gained-in-a-province.ts',
+    'GUARD_DEMOTE_CHANCE',
+    "B-06ay2, a beaten guard's survivors: content's row (KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES)",
+  ],
+  [
+    'src/engine/battle/strength.ts',
+    '_MISSILE_CAP_FRAC',
+    "B-06ba (the review's 2), the volleys' cap: content's row, the one MISSILE_CAP_FRACTION reads (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -83,7 +218,7 @@ test('the battles count reads src/engine/battle/ and two units files, personal c
   expect(
     [
       'src/engine/battle/battles-against-province-defenders.ts',
-      'src/engine/battle/the-battle-against-defenders/s01-the-set-up.ts',
+      'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
       'src/engine/battle/the-facts-a-battles-lines-record.ts',
       'src/engine/units/sea-lift-stranding-and-retreats.ts',
       'src/engine/units/movement-pools.ts',

@@ -3,7 +3,9 @@
 // reaches. The matrix proves the others (both sets, every realm's report identical); these are proved here, each on the
 // value it had before (worked out by the file as it was, with its ts-nocheck line):
 // - a ground that is missing (terrainMod), a volley with no damage multiplier or no options, arrows at an armoured hull
-//   or a shell (no matrix game shoots at Dwarf Ironclads or Great Turtles);
+//   or a shell (no matrix game shoots at Dwarf Ironclads or Great Turtles); since B-06ay2, which moved their figures to
+//   content, a volley no shooting unit is named for (as one of strength 10), and Illusory Terrain on a unit no land
+//   ground weakens (at most ×0.85);
 // - a force carried over the sea by its flyers, and one with a hull among it (the sea penalty each unit then takes);
 // - a force or a leader that is missing, a gap in a force, or a leader whose race is '' (the airborne test, kinship's
 //   line, a coastal province, a hero's kinship);
@@ -35,6 +37,7 @@ import {
   applyMissileHit,
   armStr,
   finishSide,
+  illusoryTerrainMult,
   isAirborneAtSea,
   kinNarrative,
   ladderRow,
@@ -103,6 +106,14 @@ describe('the ground and the volleys', () => {
     expect(applyMissileHit(without, 2, firer)).toEqual(applyMissileHit(withNone, 2, firer, {}));
     expect(without).toEqual(withNone);
     expect(without._archeryRed).toBeGreaterThan(0);
+  });
+  test('a volley no shooting unit is named for strikes as one of strength 10', () => {
+    expect(missileShotDamage(null, 0, 1), '30% of 10').toBe(3);
+    expect(missileShotDamage(undefined, 2, 1), '30% of 10, +10% for each of 2 levels of Archery, rounded').toBe(4);
+  });
+  test('Illusory Terrain cuts a unit no land ground weakens to ×0.85, and one the woods weaken to their ×0.75', () => {
+    expect(illusoryTerrainMult('Galleon Fleet'), 'a fleet, ×1 on every ground').toBe(0.85);
+    expect(illusoryTerrainMult('Eagle Riders'), 'a winged rider, ×0.75 under the trees').toBe(0.75);
   });
   test('arrows do not tell against an armoured hull or a shell, and leave no mark', () => {
     const firer = unit('Yeoman Longbows');

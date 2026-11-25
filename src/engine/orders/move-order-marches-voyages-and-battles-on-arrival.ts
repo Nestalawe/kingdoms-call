@@ -1,4 +1,5 @@
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS as ROWS } from '../../content/unit-abilities-their-names-numbers-and-words.ts';
 import { kcRng } from '../rng.ts';
 import { carrierBerths } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
@@ -828,7 +829,7 @@ export function resolveMoveOrder(
       // "prov:<id>" target, the bots save "move" with a bare id. The raw comparison matched
       // only the bots, so allied contingents of a HUMAN realm never unified — and the Good
       // realm's Banner of Fellowship had nothing to modify.
-      if (!allyOrder || normaliseAction(allyOrder) !== 'move') return;
+      if (!allyOrder || normaliseAction(allyOrder) !== THE_HERO_ORDERS.move.key) return;
       const allyDest = intendedDestination(turnContext, ally, allyOrder);
       if (allyDest?.id !== toProv.id) return;
       // Roll contingent unify chance based on March skill and distance
@@ -1234,7 +1235,7 @@ export function resolveMoveOrder(
         if (!ally.alive || ally.id === c.id || ally.player !== c.player) return;
         if ((asItsGuardReadsIt(ally.armies) ?? []).length === 0) return;
         const allyOrder = asItsGuardReadsIt(G.turnOrders)?.[ally.id]?.[ph];
-        if (!allyOrder || normaliseAction(allyOrder) !== 'move') return; // see the note on the NPC-side unify above
+        if (!allyOrder || normaliseAction(allyOrder) !== THE_HERO_ORDERS.move.key) return; // see the note on the NPC-side unify above
         {
           const _aDest = intendedDestination(turnContext, ally, allyOrder);
           if (_aDest?.id !== toProv.id) return;

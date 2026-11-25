@@ -5,7 +5,9 @@
 // events-and-their-audiences.ts (plan P1-12a2), beside emit, the one door into the GM's log. At the end, the
 // telemetry's two snapshots of a realm, its situation and its orders (telRealmSnapshot, telOrdersFor: moved from
 // src/views/turn-report.ts in plan P1-12b1, so the engine imports no view), which read no turn context.
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { emit, recordForTheStatistics } from './events-and-their-audiences.ts';
+import { THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { relOfReport } from '../heroes/fame-and-consecration.ts';
 import { consecratedIds } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
@@ -309,8 +311,8 @@ export function telRealmSnapshot(gs: TheStateAsTheTelemetryReadsIt | null | unde
   (gs.players ?? []).forEach((o, oi) => {
     if (oi === pi || !o) return;
     const r = relOfReport(gs, pi, oi);
-    if (r === 'enemy') rel.enemies.push(oi);
-    else if (r === 'allied') rel.allies.push(oi);
+    if (r === THE_STATES_TWO_REALMS_STAND_IN.atWar) rel.enemies.push(oi);
+    else if (r === THE_STATES_TWO_REALMS_STAND_IN.allied) rel.allies.push(oi);
   });
   const explored = provs.filter((p) => p && Array.isArray(p.visitedBy) && p.visitedBy.includes(pi)).length;
   const legNames = typeof LEGENDARY_NAMES_P !== 'undefined' ? LEGENDARY_NAMES_P : new Set();
@@ -370,8 +372,10 @@ export function telOrdersFor(
       king: !!c.isKing,
       ph: [0, 1, 2, 3, 4].map((i): APhaseAsTheOrdersRecordHoldsIt => {
         const o = slots[i];
-        if (!o) return { a: 'defend' };
-        const r: APhaseAsTheOrdersRecordHoldsIt = { a: ((o.action ?? '') || 'defend').toLowerCase() };
+        if (!o) return { a: THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS };
+        const r: APhaseAsTheOrdersRecordHoldsIt = {
+          a: ((o.action ?? '') || THE_KIND_A_BLANK_OR_UNKNOWN_ORDER_READS_AS).toLowerCase(),
+        };
         if (o.target != null && o.target !== '') r.t = String(o.target).slice(0, 80);
         if (o.extra != null && o.extra !== '') r.x = String(o.extra).slice(0, 80);
         if (o.desc) r.d = o.desc.slice(0, 140);

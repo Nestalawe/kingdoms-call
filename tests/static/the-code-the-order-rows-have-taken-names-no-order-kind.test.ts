@@ -2,14 +2,16 @@
 // each function (or file's top level) the family's rows have taken holds no check of an order by its kind (a kind of
 // OrderKind, the alignment orders' aside, or `'pursue'`): compared with an order's action, a `case` of a switch on
 // one, a list of kinds, a default kind or an action assigned, or a value of the kinds' own table. It reads the order's
-// row instead. Each row adds what it takes to TAKEN, which is empty until the first of them. With them, the ratchet's
-// two counts of those checks outside src/engine/rules/, in the engine and in the bots (tools/ratchet.ts's
-// orderKindChecksInEngine and orderKindChecksInTheBots, by their helper orderKindChecksByFunction), so both only fall:
-// the helper counts each check planted, and none of an order written (`action: 'move'`), a line's kind
-// (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of another sense (a bot's role `'spy'`, a
-// duel's stance `'challenge'`), a name being bound to an order's kind in its own function only.
+// row instead. Each row adds what it takes to TAKEN (B-06al the first; B-06ao processOrder, its switch gone for the
+// registry; B-06ap the last outside the bots, so the engine's count is 0; B-06as the bots' Spring pass and their march
+// set; B-06at the rest of the bots, so the bots' count is 0 too). With them, the ratchet's two counts of those checks outside src/engine/rules/, in the engine and in the bots
+// (tools/ratchet.ts's orderKindChecksInEngine and orderKindChecksInTheBots, by their helper
+// orderKindChecksByFunction), so both only fall: the helper counts each check planted, and none of an order written
+// (`action: 'move'`), a line's kind (`type: 'move'`), a skill handed to a call, a mixed list, or a comparison of
+// another sense (a bot's role `'spy'`, a duel's stance `'challenge'`), a name being bound to an order's kind in its
+// own function only.
 //
-// Level 0 (static): the files' syntax trees and OrderKind as its file writes it; nothing runs.
+// Level 0 (static): the files' syntax trees and the hero orders' rows as content writes them; nothing runs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from 'vitest';
@@ -24,15 +26,121 @@ import {
   readBaseline,
   THE_ORDER_KINDS_FILE,
   theCodeFiles,
-  theOrderKinds,
 } from '../../tools/ratchet.ts';
+import { THE_HERO_ORDERS } from '../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 
 /** The top level of a file: what no function holds. */
 const TOP = '(top)';
+/** The phase's order (B-06am): the tiers and who must act first, the phase's intents, and the phase's stages. */
+const THE_ORDER_TIERS_FILE =
+  'src/engine/rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
+const THE_PHASE_INTENTS_FILE = 'src/engine/turn/phase-intents-and-dependency-ordering.ts';
+const THE_PHASE_STAGES_FILE = 'src/engine/turn/phase-stages-start-intents-and-reactions-orders-in-two-tiers-and-end.ts';
+/** The dispatch (B-06an the checks before an order, B-06ao the registry it hands an order to). */
+const THE_ORDER_DISPATCH_FILE = 'src/engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+const THE_ORDER_RESOLVERS_REGISTRY_FILE =
+  'src/engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts';
+/** The last outside the bots (B-06ap): the move order, a ride-out, a chase, a cast's slot, the removed orders, the
+ *  pre-orders of a hire, a charm and a rising, and the telemetry's record of a phase. */
+const THE_MOVE_ORDER_FILE = 'src/engine/orders/move-order-marches-voyages-and-battles-on-arrival.ts';
+const THE_RIDE_OUTS_FILE = 'src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts';
+const THE_PURSUITS_FILE = 'src/engine/heroes/pursuits-and-the-catch-roll.ts';
+const THE_CAST_SPELL_FILE =
+  'src/engine/orders/cast-spell-order-white-psychic-illusory-elemental-and-necromancy-spells.ts';
+const THE_REALM_WORKS_FILE =
+  'src/engine/orders/realm-works-orders-consecration-muster-broker-the-wild-and-grand-design.ts';
+const THE_HIRE_FILE = 'src/engine/orders/recruit-and-hire-orders-companies-mercenaries-and-heroes.ts';
+const THE_PSYCHIC_SPELLS_FILE =
+  'src/engine/orders/spells/psychic-spells-the-cast-spell-order-works-and-the-charms-backlash.ts';
+const THE_WHITE_MAGIC_FILE = 'src/engine/orders/spells/white-magic-spells-the-cast-spell-order-works.ts';
+const THE_LOG_LINE_HELPERS_FILE = 'src/engine/turn/log-line-helpers.ts';
+/** The bots, 1 of 2 (B-06as): the Spring pass, and the bots' tuning of it (BOT_P1). */
+const THE_BOTS_SPRING_PASS_FILE = 'src/engine/bots/phase-one.ts';
+const THE_BOTS_STRATEGY_FILE = 'src/engine/bots/strategy.ts';
+/** The bots, 2 of 2 (B-06at): the economy and the order hygiene, the spellcraft and the fill of a plan, the missions,
+ *  the movement and the specialists. */
+const THE_BOTS_ECONOMY_FILE = 'src/engine/bots/economy.ts';
+const THE_BOTS_SPELLCRAFT_FILE = 'src/engine/bots/spellcraft.ts';
+const THE_BOTS_MISSIONS_FILE = 'src/engine/bots/missions.ts';
+const THE_BOTS_MOVEMENT_FILE = 'src/engine/bots/movement.ts';
+const THE_BOTS_SPECIALISTS_FILE = 'src/engine/bots/specialists.ts';
 
-/** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it. Empty
- *  until the family's first row: each adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+/** Each function (or a file's top level) the order rows have taken, by its file, from the row that took it: each row
+ *  adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  [THE_ORDER_KINDS_FILE, TOP, "B-06al, the turn's names for the orders: PHASE_ACTION_MAP"],
+  [THE_ORDER_KINDS_FILE, 'normaliseAction', "B-06al, a blank or unknown order's kind"],
+  [THE_ORDER_TIERS_FILE, 'theTierAnOrderActsIn', "B-06am, the tier an order acts in: its row's"],
+  [THE_ORDER_TIERS_FILE, 'theHeroesWhoMustActFirstInAPhase', "B-06am, who must act first: the rows' keys"],
+  [THE_ORDER_TIERS_FILE, 'tgtArrivingHere', "B-06am, a comrade marching in: the Move row's key"],
+  [THE_PHASE_INTENTS_FILE, 'buildPhaseIntents', "B-06am, a march's destination: the Move row's key"],
+  [THE_PHASE_INTENTS_FILE, 'isHostileInvasion', "B-06am, an invasion is a Move: its row's key"],
+  [THE_PHASE_INTENTS_FILE, 'phaseDependencies', "B-06am, the hero a hand-over goes to: the rows' keys"],
+  [THE_PHASE_INTENTS_FILE, 'applyMoveInterlocks', "B-06am, a pinned march: the Move row's key"],
+  [THE_PHASE_STAGES_FILE, 'pinAndReactToPhaseIntents', "B-06am, the battle lock and a Defend: the tier, the row's key"],
+  [
+    THE_PHASE_STAGES_FILE,
+    'resolvePhaseOrdersInTwoTiersAroundTheDefendStep',
+    "B-06am, the Defend step's flush: the tier",
+  ],
+  [THE_PHASE_STAGES_FILE, 'endPhaseSkillRisesFallenCommandersAndProvinceMemory', 'B-06am, a watch ended: the tier'],
+  [
+    THE_ORDER_DISPATCH_FILE,
+    'processOrder',
+    "B-06an, the checks before an order: its row's fields; B-06ao, the dispatch: the registry",
+  ],
+  [THE_ORDER_RESOLVERS_REGISTRY_FILE, TOP, "B-06ao, each kind's resolver: keyed by its row's key"],
+  [THE_MOVE_ORDER_FILE, 'resolveMoveOrder', "B-06ap, an ally's march joined: the Move row's key"],
+  [THE_RIDE_OUTS_FILE, 'runReinforcementArrivals', "B-06ap, a march that reinforces: the Move row's key"],
+  [THE_PURSUITS_FILE, 'advancePursuit', "B-06ap, a king hunting back: the Encounter row's key"],
+  [THE_CAST_SPELL_FILE, 'resolveCastSpellOrder', "B-06ap, the casts so far: the Cast Spell row's key"],
+  [
+    THE_REALM_WORKS_FILE,
+    'resolveRemovedAwakenTheWildAndCallFromThePitOrders',
+    "B-06ap, the removed orders: Call from the Pit's row's key",
+  ],
+  [THE_HIRE_FILE, 'landHirePreOrders', "B-06ap, the hire's pre-orders but a Defend: its row's key"],
+  [THE_PSYCHIC_SPELLS_FILE, '_applyCharmOrders', "B-06ap, the charm's pre-orders but a Defend: its row's key"],
+  [THE_WHITE_MAGIC_FILE, 'workResurrect', "B-06ap, the rising's pre-orders but a Defend: its row's key"],
+  [THE_LOG_LINE_HELPERS_FILE, 'telOrdersFor', 'B-06ap, a blank phase in the telemetry: the default kind'],
+  [THE_BOTS_STRATEGY_FILE, TOP, "B-06as, what the bots count as a march (BOT_P1.reloc): the rows' keys, the bots' set"],
+  [
+    THE_BOTS_SPRING_PASS_FILE,
+    'botIsFiller',
+    "B-06as, a filler order: the Defend's, Practice's, Explore's, Research's keys",
+  ],
+  [THE_BOTS_SPRING_PASS_FILE, 'runBotPhaseOne', "B-06as, the Spring pass: the rows' keys, the bots' errands named"],
+  [THE_BOTS_SPRING_PASS_FILE, 'attacksOf', "B-06as, a general's attacks: no Encounter nor Pursue, by the rows' keys"],
+  [THE_BOTS_SPRING_PASS_FILE, 'castsOf', "B-06as, a caster's casts of a school: the Cast Spell row's key"],
+  [THE_BOTS_SPRING_PASS_FILE, 'urgency', "B-06as, the urgency of an order before the first march: the rows' keys"],
+  [THE_BOTS_STRATEGY_FILE, 'botIsTeach', "B-06at, a teaching phase: the Practice row's key"],
+  [THE_BOTS_ECONOMY_FILE, TOP, "B-06at, a phase to spare: the rows' keys, the bots' set"],
+  [THE_BOTS_ECONOMY_FILE, 'runBotEconomy', "B-06at, the economy's musters, pick-ups and teaching: the rows' keys"],
+  [THE_BOTS_ECONOMY_FILE, 'isIdle', "B-06at, an idle hero's plan: the Defend row's key"],
+  [THE_BOTS_ECONOMY_FILE, 'filler', "B-06at, a spare phase: the rows' keys, the bots' set"],
+  [THE_BOTS_ECONOMY_FILE, 'locs', "B-06at, where a plan's marches go: the Move row's key"],
+  [
+    THE_BOTS_ECONOMY_FILE,
+    'runBotOrderHygiene',
+    "B-06at, the order hygiene's casts, drills, hires, hand-overs: the rows' keys",
+  ],
+  [THE_BOTS_ECONOMY_FILE, 'isPr', "B-06at, a drill: the Practice row's key"],
+  [THE_BOTS_ECONOMY_FILE, 'free', "B-06at, a free phase: the Defend row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, TOP, "B-06at, free to train beside a comrade: the rows' keys, the bots' set"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'botPlannedAttackTarget', "B-06at, a planned attack's march: the Move row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'botCrossTrainSkill', "B-06at, a training partner: the bots' set of the rows' keys"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'runBotActions', "B-06at, the muster orders kept: the rows' keys"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'isFillable', "B-06at, a plan with phases to fill: the Defend row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'overlay', "B-06at, a phase the overlay fills: the Defend row's key"],
+  [THE_BOTS_SPELLCRAFT_FILE, 'botFillOrders', "B-06at, a plan that moves: the Move and Encounter rows' keys"],
+  [THE_BOTS_MISSIONS_FILE, 'botOrderLocs', "B-06at, where a plan's marches go: the Move row's key"],
+  [THE_BOTS_MISSIONS_FILE, 'botTeachFree', "B-06at, a phase free to teach: the Practice and Defend rows' keys"],
+  [THE_BOTS_MISSIONS_FILE, 'botRunSlayerSchool', "B-06at, the slayers' school: the rows' keys"],
+  [THE_BOTS_MOVEMENT_FILE, 'runBotMovement', "B-06at, the movement's marches and challenges: the rows' keys"],
+  [THE_BOTS_SPECIALISTS_FILE, 'botTrainOrders', "B-06at, a mentor who moves: the Move and Encounter rows' keys"],
+  [THE_BOTS_SPECIALISTS_FILE, 'botScholarOrders', "B-06at, a king who stays: the Move row's key"],
+  [THE_BOTS_SPECIALISTS_FILE, 'botCloakPre', "B-06at, a cloak already cast: the Cast Spell row's key"],
+];
 
 test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {
   const counts = orderKindChecksByFunction(file, fs.readFileSync(path.join(ROOT, file), 'utf8'));
@@ -40,18 +148,18 @@ test.for(TAKEN)('%s: %s checks no order by its kind (%s)', ([file, fn]) => {
   expect(counts.get(fn) ?? 0, `${fn}'s checks of an order's kind (the ratchet's helper)`).toBe(0);
 });
 
-// The words are OrderKind's own, read from its file: every kind but the five alignment orders' keys (their rows give
-// them, and alignmentOrderChecksInEngine counts them), and 'pursue', a saved name the turn still reads.
-test("the vocabulary is OrderKind's kinds less the alignment orders' keys, and 'pursue'", () => {
-  const kinds = theOrderKinds(fs.readFileSync(path.join(ROOT, THE_ORDER_KINDS_FILE), 'utf8'));
-  expect(kinds.length, "OrderKind's members").toBe(48);
+// The words are the hero orders' rows' keys (content): every kind of order but the five alignment orders' (their rows
+// give them, and alignmentOrderChecksInEngine counts them), and Pursue's row, a saved name the turn still reads.
+test("the vocabulary is the hero orders' rows' keys less the alignment orders' keys, Pursue's among them", () => {
+  const keys = Object.values(THE_HERO_ORDERS).map((row): string => row.key);
+  expect(keys.length, "the hero orders' rows: OrderKind's 48 kinds and Pursue's").toBe(49);
   expect(
-    [...ALIGNMENT_ORDER_VOCABULARY].filter((k) => !kinds.includes(k)),
+    [...ALIGNMENT_ORDER_VOCABULARY].filter((k) => !keys.includes(k)),
     "the alignment orders' keys",
   ).toEqual([]);
-  expect([...ORDER_KIND_VOCABULARY]).toEqual([...kinds.filter((k) => !ALIGNMENT_ORDER_VOCABULARY.has(k)), 'pursue']);
+  expect([...ORDER_KIND_VOCABULARY]).toEqual(keys.filter((k) => !ALIGNMENT_ORDER_VOCABULARY.has(k)));
   expect(ORDER_KIND_VOCABULARY.size).toBe(44);
-  expect(() => theOrderKinds('export type Other = string;')).toThrow(/no "type OrderKind/);
+  expect(ORDER_KIND_VOCABULARY.has('pursue'), "Pursue's row").toBe(true);
 });
 
 // The helper finds what it counts, and only that: each form planted in one function (an arrow given to a name counts
@@ -60,6 +168,7 @@ test("the ratchet's helper counts each check of an order's kind, and none of ano
   const planted = `
     type Kind = 'move' | 'rest';
     export const BUSY = ['practice', 'research'];
+    export const BESIDE_A_KEY = ['practice', X.key, 'research'], NOT_A_LIST = [X.key, 'move'], MIXED = ['spy', X.key, 'scholar'];
     export const MAP = { 'explore province': 'explore' };
     export function planted(o: { action?: string }, it: { action: string }, skill: (s: string) => number) {
       const a = o.action;
@@ -73,7 +182,7 @@ test("the ratchet's helper counts each check of an order's kind, and none of ano
     export function botRoleWork(role: string) { switch (role) { case 'spy': return 1; } return role === 'hire'; }
     export const inner = (o: { action?: string }) => \`move\` === o.action;`;
   expect(Object.fromEntries(orderKindChecksByFunction('src/engine/planted.ts', planted))).toEqual({
-    [TOP]: 2,
+    [TOP]: 4,
     planted: 7,
     theTierAnOrderActsIn: 1,
     botRoleWork: 0,

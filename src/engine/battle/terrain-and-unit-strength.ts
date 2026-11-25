@@ -1,10 +1,14 @@
-import { KC_QUALITY_UP } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE,
+  KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND,
+  KC_QUALITY_UP,
+  KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN,
+} from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   theFactorARealmsAlignmentStrengthensAUnitByItsReignOfFear,
   theFactorARealmsAlignmentStrengthensAUnitInTheWildBy,
 } from '../rules/the-registry-of-alignment-abilities.ts';
-import type { UnitType } from '../../content/kingdoms-call-data.ts';
 import { battleGrid } from './lines.ts';
 import {
   AERIAL_TYPES,
@@ -90,281 +94,9 @@ export interface CommandMultiplier {
 // ladder built from them (ladderRow, finishSide). bestCurseSkill, druidMasteryGain, armStr and ladderRow take the
 // turn's context first (src/engine/turn/context.ts); the rest read no turn state.
 // ── TERRAIN STRENGTH MODIFIERS ────
-// Applied to individual army unit strength during battle resolution. Flyers (every KC_UNIT_CLASS.aerial
-// unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in
-// forest and jungle (2026-10-12, Toby item 19; they had been terrain-immune). Naval units: no terrain
-// effect anywhere — and the Naval skill lifts them on land too.
-export const TERRAIN_MODS = {
-  // NAVAL UNITS FIGHT AT FULL STRENGTH IN EVERY PROVINCE, land or sea — the old ×0.60 "beached
-  // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
-  // terrainMod() short-circuits them like flyers. Sea Giants' Tidal Might is now a coastal-land
-  // bonus (see unitAbilityMult).
-  // 2026-10-11 (Toby, the army roster): human line foot and longbows ×1.1 on the plain; Forest Wardens
-  // no longer suffer in the open (×1.0 plain, ×0.9 desert) and are ×1.1 rather than ×1.2 in the woods;
-  // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
-  // ×1.1 (Guard, Crossbows, Guns).
-  // tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds every cell to the decided roster.
-  plain: {
-    'Men-at-Arms': 1.1,
-    'Stag Riders': 1.1,
-    'Ironhoof Rams': 1.0,
-    'Black Arrows': 1.0,
-    'Shieldwall Levies': 1.1,
-    'Free Lances': 1.15,
-    'Gilded Lances': 1.15,
-    'Yeoman Longbows': 1.1,
-    'Human Garrison': 1.0,
-    'Elven Bowmen': 1.0,
-    'Forest Wardens': 1.0,
-    'Shadow Archers': 0.9,
-    'Dwarven Guard': 0.9,
-    'Ironwood Crossbows': 1.0,
-    'Mountain Guns': 0.85,
-    'Dwarf Garrison': 0.9,
-    'Warg Riders': 1.1,
-    'Orc Berserkers': 1.0,
-    'Goblin Horde': 1.0,
-    'Orc Garrison': 1.0,
-    'Elven Garrison': 1.0,
-    'Galleon Fleet': 1.0,
-    'Corsair Fleet': 1.0,
-    'Elven Galleys': 1.0,
-    'Dwarf Ironclads': 1.0,
-    'Orcish Longships': 1.0,
-    'Whale Cohort': 1.0,
-    'Shark Shoals': 1.0,
-    'Noble Griffons': 1.0,
-    'Stone Giants': 0.9,
-    'Forest Ents': 0.9,
-    'Cave Trolls': 1.0,
-    'Manticore Pride': 1.0,
-    'Basilisk Brood': 0.9,
-    'Titan Warbeasts': 1.1,
-    'Crimson Rocs': 1.0,
-    'Elder Dragons': 1.0,
-    'Sea Giants': 1.0,
-    'Eldritch Kraken': 1.0,
-    'Dread Hydras': 1.0,
-    'Great Bears': 1.0,
-    'Unicorn Herd': 1.1,
-    'Mammoth Host': 1.1,
-    'Great Turtles': 1.0,
-  },
-  desert: {
-    'Men-at-Arms': 1.0,
-    'Stag Riders': 1.0,
-    'Ironhoof Rams': 0.9,
-    'Black Arrows': 1.0,
-    'Shieldwall Levies': 1.0,
-    'Free Lances': 1.15,
-    'Gilded Lances': 1.15,
-    'Yeoman Longbows': 0.9,
-    'Human Garrison': 0.9,
-    'Elven Bowmen': 0.8,
-    'Forest Wardens': 0.9,
-    'Shadow Archers': 0.85,
-    'Dwarven Guard': 0.9,
-    'Ironwood Crossbows': 1.0,
-    'Mountain Guns': 0.85,
-    'Dwarf Garrison': 0.85,
-    'Warg Riders': 1.1,
-    'Orc Berserkers': 1.05,
-    'Goblin Horde': 1.0,
-    'Orc Garrison': 0.9,
-    'Elven Garrison': 0.85,
-    'Galleon Fleet': 1.0,
-    'Corsair Fleet': 1.0,
-    'Elven Galleys': 1.0,
-    'Dwarf Ironclads': 1.0,
-    'Orcish Longships': 1.0,
-    'Whale Cohort': 1.0,
-    'Shark Shoals': 1.0,
-    'Noble Griffons': 1.0,
-    'Stone Giants': 0.9,
-    'Forest Ents': 0.75,
-    'Cave Trolls': 0.85,
-    'Manticore Pride': 1.0,
-    'Basilisk Brood': 1.1,
-    'Titan Warbeasts': 1.1,
-    'Crimson Rocs': 1.0,
-    'Elder Dragons': 1.0,
-    'Sea Giants': 1.0,
-    'Eldritch Kraken': 1.0,
-    'Dread Hydras': 0.85,
-    'Great Bears': 0.8,
-    'Unicorn Herd': 1.0,
-    'Mammoth Host': 0.85,
-    'Great Turtles': 1.0,
-  },
-  forest: {
-    'Men-at-Arms': 0.9,
-    'Stag Riders': 1.1,
-    'Ironhoof Rams': 0.9,
-    'Black Arrows': 0.9,
-    'Shieldwall Levies': 0.9,
-    'Free Lances': 0.75,
-    'Gilded Lances': 0.75,
-    'Yeoman Longbows': 0.85,
-    'Human Garrison': 1.0,
-    'Elven Bowmen': 1.15,
-    'Forest Wardens': 1.1,
-    'Shadow Archers': 1.1,
-    'Dwarven Guard': 0.9,
-    'Ironwood Crossbows': 0.9,
-    'Mountain Guns': 0.8,
-    'Dwarf Garrison': 0.9,
-    'Warg Riders': 0.9,
-    'Orc Berserkers': 1.1,
-    'Goblin Horde': 1.0,
-    'Orc Garrison': 1.0,
-    'Elven Garrison': 1.1,
-    'Galleon Fleet': 1.0,
-    'Corsair Fleet': 1.0,
-    'Elven Galleys': 1.0,
-    'Dwarf Ironclads': 1.0,
-    'Orcish Longships': 1.0,
-    'Whale Cohort': 1.0,
-    'Shark Shoals': 1.0,
-    'Noble Griffons': 0.75,
-    'Stone Giants': 0.9,
-    'Forest Ents': 1.15,
-    'Cave Trolls': 1.1,
-    'Manticore Pride': 0.75,
-    'Basilisk Brood': 1.0,
-    'Titan Warbeasts': 0.8,
-    'Crimson Rocs': 0.75,
-    'Elder Dragons': 0.75,
-    'Eagle Riders': 0.75,
-    'Wyvern Riders': 0.75,
-    'Gnomish Gyrocopters': 0.75,
-    Thunderbirds: 0.75, // item 19: flyers in the woods
-    'Sea Giants': 1.0,
-    'Eldritch Kraken': 1.0,
-    'Dread Hydras': 1.05,
-    'Great Bears': 1.1,
-    'Unicorn Herd': 1.1,
-    'Mammoth Host': 0.8,
-    'Great Turtles': 1.0,
-  },
-  jungle: {
-    'Men-at-Arms': 0.85,
-    'Stag Riders': 1.0,
-    'Ironhoof Rams': 0.85,
-    'Black Arrows': 0.9,
-    'Shieldwall Levies': 0.85,
-    'Free Lances': 0.7,
-    'Gilded Lances': 0.7,
-    'Yeoman Longbows': 0.8,
-    'Human Garrison': 1.0,
-    'Elven Bowmen': 1.1,
-    'Forest Wardens': 1.1,
-    'Shadow Archers': 1.1,
-    'Dwarven Guard': 0.85,
-    'Ironwood Crossbows': 0.85,
-    'Mountain Guns': 0.75,
-    'Dwarf Garrison': 0.85,
-    'Warg Riders': 0.8,
-    'Orc Berserkers': 1.05,
-    'Goblin Horde': 1.0,
-    'Orc Garrison': 1.0,
-    'Elven Garrison': 1.1,
-    'Galleon Fleet': 1.0,
-    'Corsair Fleet': 1.0,
-    'Elven Galleys': 1.0,
-    'Dwarf Ironclads': 1.0,
-    'Orcish Longships': 1.0,
-    'Whale Cohort': 1.0,
-    'Shark Shoals': 1.0,
-    'Noble Griffons': 0.75,
-    'Stone Giants': 0.8,
-    'Forest Ents': 1.15,
-    'Cave Trolls': 1.05,
-    'Manticore Pride': 0.75,
-    'Basilisk Brood': 1.1,
-    'Titan Warbeasts': 0.75,
-    'Crimson Rocs': 0.75,
-    'Elder Dragons': 0.75,
-    'Eagle Riders': 0.75,
-    'Wyvern Riders': 0.75,
-    'Gnomish Gyrocopters': 0.75,
-    Thunderbirds: 0.75, // item 19: flyers in the woods
-    'Sea Giants': 1.0,
-    'Eldritch Kraken': 1.0,
-    'Dread Hydras': 1.1,
-    'Great Bears': 1.0,
-    'Unicorn Herd': 0.9,
-    'Mammoth Host': 0.75,
-    'Great Turtles': 1.0,
-  },
-  mountain: {
-    'Men-at-Arms': 0.9,
-    'Stag Riders': 0.85,
-    'Ironhoof Rams': 1.0,
-    'Black Arrows': 0.9,
-    'Shieldwall Levies': 0.9,
-    'Free Lances': 0.75,
-    'Gilded Lances': 0.75,
-    'Yeoman Longbows': 1.0,
-    'Human Garrison': 1.0,
-    'Elven Bowmen': 1.0,
-    'Forest Wardens': 0.85,
-    'Shadow Archers': 1.0,
-    'Dwarven Guard': 1.1,
-    'Ironwood Crossbows': 1.1,
-    'Mountain Guns': 1.1,
-    'Dwarf Garrison': 1.15,
-    'Warg Riders': 0.8,
-    'Orc Berserkers': 0.9,
-    'Goblin Horde': 0.9,
-    'Orc Garrison': 0.9,
-    'Elven Garrison': 0.9,
-    'Galleon Fleet': 1.0,
-    'Corsair Fleet': 1.0,
-    'Elven Galleys': 1.0,
-    'Dwarf Ironclads': 1.0,
-    'Orcish Longships': 1.0,
-    'Whale Cohort': 1.0,
-    'Shark Shoals': 1.0,
-    'Noble Griffons': 1.0,
-    'Stone Giants': 1.15,
-    'Forest Ents': 0.9,
-    'Cave Trolls': 1.15,
-    'Manticore Pride': 1.0,
-    'Basilisk Brood': 0.9,
-    'Titan Warbeasts': 0.8,
-    'Crimson Rocs': 1.0,
-    'Elder Dragons': 1.0,
-    'Sea Giants': 1.0,
-    'Eldritch Kraken': 1.0,
-    'Dread Hydras': 0.9,
-    'Great Bears': 1.1,
-    'Unicorn Herd': 0.85,
-    'Mammoth Host': 1.0,
-    'Great Turtles': 1.0,
-  },
-  sea: {
-    // All land armies penalised in sea — ×0.75 (applied separately as seaLandPenalty) Naval units
-    // are full strength. Flying at full strength. Individual modifiers here are mostly 1.0 since
-    // the sea penalty is applied globally.
-    'Galleon Fleet': 1.0,
-    'Corsair Fleet': 1.0,
-    'Elven Galleys': 1.0,
-    'Dwarf Ironclads': 1.0,
-    'Orcish Longships': 1.0,
-    'Whale Cohort': 1.0,
-    'Shark Shoals': 1.0,
-    'Sea Giants': 1.0,
-    'Eldritch Kraken': 1.0,
-    'Great Turtles': 1.0,
-    // Flying fight fine at sea
-    'Eagle Riders': 1.0,
-    'Wyvern Riders': 1.0,
-    'Gnomish Gyrocopters': 1.0,
-    'Elder Dragons': 1.0,
-    'Crimson Rocs': 1.0,
-    Thunderbirds: 1.0,
-  },
-} satisfies Record<string, Partial<Record<UnitType, number>>>; // a misspelt or missing unit's name fails tsc
+// Each unit type's factor on each ground is content's table (KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND, B-06ax):
+// TERRAIN_MODS is the same object, not a copy, so terrainMod and the tests read one table. DO NOT re-inline a copy.
+export const TERRAIN_MODS = KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND;
 
 // Returns terrain modifier for a given army type in given terrain
 export function terrainMod(armyType: string, terrain: string | null | undefined) {
@@ -392,7 +124,10 @@ export function illusoryTerrainMult(armyType: string) {
     const m = terrainMod(armyType, t);
     if (m < worst) worst = m;
   }
-  return Math.min(0.85, worst);
+  return Math.min(
+    KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.theMostUnderIllusoryTerrain,
+    worst,
+  );
 }
 
 // Module-level base unit strength (type × quality), independent of terrain/druid/temporary
@@ -416,16 +151,21 @@ export function bestCurseSkill(turnContext: TurnContext, hero: Character) {
 // × the firing unit's own ability (Woodland Volley, Bombardment, Raiders' Volley), rounded, minimum 1.
 // Winged riders take double and are shot first. What a TARGET can lose is capped: 40% of its own
 // base strength (80% for a winged rider; Ironwood Crossbows' Punch Through lifts both to 55% / 90% — see
-// missileCap). The 25% pre-battle floor below still applies on top.
-export const MISSILE_SHOT_PCT = 0.3,
-  MISSILE_ARCH_PER_LVL = 0.1,
-  MISSILE_CAP_FRACTION = 0.4; // 2026-10-11 (Toby): volleys 20% → 30%
+// missileCap). The 25% pre-battle floor below still applies on top. The figures are content's row (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE, B-06ay2).
+export const MISSILE_SHOT_PCT =
+    KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theShareOfTheShootersStrengthAVolleyStrikes,
+  MISSILE_ARCH_PER_LVL =
+    KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theRiseEachLevelOfTheCommandersArcheryGivesAVolley,
+  MISSILE_CAP_FRACTION =
+    KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theMostShareOfItsStrengthATargetLosesToVolleys;
 export function missileShotDamage(
   firer: Army | null | undefined,
   archSkill: number | null | undefined,
   dmgMult: number | null | undefined,
 ) {
-  const fs = firer ? unitBaseStrength(firer) : 10;
+  const fs = firer
+    ? unitBaseStrength(firer)
+    : KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theStrengthOfAShooterNoUnitIsNamedFor;
   return Math.max(
     1,
     Math.round(
@@ -437,8 +177,10 @@ export function missileShotDamage(
 // MAGIC and primal army strikes pour into _tempStrReduction with no cap of their own, so a unit hit
 // by several effects (e.g. Spiritwrack + Fireball + Choking Spores + arrows) could be softened to
 // zero before the real fighting began. This floor guarantees every unit still enters the melee with
-// at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away.
-export const PREBATTLE_STR_FLOOR = 0.25;
+// at least this fraction of its (druid/terrain-adjusted) strength — no unit is ever softened away. Content's row
+// (KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN, B-06ay2).
+export const PREBATTLE_STR_FLOOR =
+  KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.theLeastShareAfterThePreBattleDamage;
 // Subtract a unit's pre-battle damage from a strength figure, never below PREBATTLE_STR_FLOOR of it.
 // Two steps, as before: this battle's damage, then any all-turn reduction.
 export function applyPrebattleDamage(army: ArmyInABattle, str: number) {
@@ -465,7 +207,7 @@ export function applyMissileHit(
   if (why !== null) return { dmg: 0, isFly: false, capped: false, immune: true, why };
   const isFly = FLYING_TYPES.has(target.type);
   let dmg = missileShotDamage(firer, archSkill, opts.dmgMult); // the SHOOTER's strength decides the hit
-  if (isFly) dmg = dmg * 2; // archers are especially good against winged riders — double damage
+  if (isFly) dmg = dmg * KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theTimesAWingedRiderIsHit; // archers are especially good against winged riders — double damage
   // What the target does to the shot, after a flyer's double (Thick Hide: half, rounded up): the registry's stage.
   const afterTheTarget = theDamageOfAShotAfterItsTarget({ theTargetsType: target.type }, dmg);
   dmg = afterTheTarget.damage;
@@ -482,8 +224,9 @@ export function applyMissileHit(
 }
 
 // Sea penalty for non-flying land units fighting in sea provinces ×0.75 = roughly one quality tier
-// lower
-export const SEA_LAND_PENALTY = 0.75;
+// lower (content's row: KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN, B-06ay2)
+export const SEA_LAND_PENALTY =
+  KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aLandUnitAtSea;
 
 export function isAirborneAtSea(force: readonly ForceUnit[] | null | undefined) {
   const f = (force ?? []).filter((a): a is ArmyInABattle => Boolean(a));
@@ -646,10 +389,15 @@ export function armStr(
     // fight at QUARTER strength (×0.25, not the usual ×0.75 for troops aboard ships), and the
     // humanoid flyers doing the carrying fight at HALF strength (×0.5). Primal winged beasts
     // (AERIAL_TYPES) carry nothing and keep full strength. A pure-flyer force (nothing carried)
-    // is unaffected.
+    // is unaffected. The two figures are content's row (SEA_AIRBORNE_FLYER_PENALTY and SEA_AIRBORNE_LAND_PENALTY, the
+    // report's lines read the same).
     if (terrain === 'sea' && ctx && isAirborneAtSea(ctx.force)) {
-      if (FLYING_TYPES.has(army.type)) sp = 0.5;
-      else if (!AERIAL_TYPES.has(army.type) && !SEA_TYPES.has(army.type)) sp = 0.25;
+      if (FLYING_TYPES.has(army.type))
+        sp =
+          KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aHumanoidFlyerCarryingThem;
+      else if (!AERIAL_TYPES.has(army.type) && !SEA_TYPES.has(army.type))
+        sp =
+          KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aLandUnitCarriedAtSeaByFlyers;
     }
     if (
       sp < 1 &&

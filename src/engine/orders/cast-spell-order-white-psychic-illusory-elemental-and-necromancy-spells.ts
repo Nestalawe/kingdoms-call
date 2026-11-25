@@ -1,4 +1,5 @@
 import { SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { actionSpellsAHeroMayCastInASchoolEachTurnWithTheCastsHisTitlesAdd } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import {
   aCharmedHeroWillNotTurnThisSpellOnHisLord,
@@ -139,7 +140,7 @@ export function resolveCastSpellOrder(
     // Grand Cathedral's free Bless was not free either. An order the engine REFUSED before it
     // was ever worked (_castNotWorked) costs no slot.
     const _castsSoFar = (G.turnOrders[c.id] ?? []).slice(0, ph).filter((o) => {
-      if (!o || normaliseAction(o) !== 'cast_spell') return false;
+      if (!o || normaliseAction(o) !== THE_HERO_ORDERS.cast_spell.key) return false;
       if (o._castNotWorked) return false; // never left the caster's lips
       if (theSpellCostsNoCastingSlot(o.target, { theCastersRealmHasAGrandCathedral: _divCath })) return false; // a Grand Cathedral's Bless never consumes a slot
       return spellDefs[o.target]?.school === _school;

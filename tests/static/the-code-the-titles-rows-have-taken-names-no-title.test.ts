@@ -60,6 +60,16 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders',
+    "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength) (B-06az: combatVsNPC's set-up, duel and sides, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts',
+    'theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength) (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
+  ],
+  [
     'src/engine/battle/terrain-and-unit-strength.ts',
     'armStr',
     "B-06k, the ladder's words for the commander's minor titles' army perks, by the perk his title's row names",

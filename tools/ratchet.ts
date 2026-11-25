@@ -28,6 +28,11 @@ import {
   TITLE_DEFS,
 } from '../src/content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { THE_HERO_ORDERS } from '../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
+import {
+  THE_STATES_TWO_REALMS_STAND_IN,
+  THE_TREAT_DECLARATION,
+} from '../src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 export const BASELINE_FILE = path.join(ROOT, 'tests', 'ratchet.json');
@@ -1040,15 +1045,16 @@ export const temperChecksByFunction = (file: string, text: string): Map<string, 
 export const temperChecksInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
   theTotalOf(temperChecksByFunction, countsUnitNameChecks, codeFiles);
 
-// The engine's checks of an order by its kind (Run 3b, the hero orders): a string naming a kind of order (OrderKind's
-// members, read from its file's syntax tree, but the five alignment orders' keys, which their rows give and
-// alignmentOrderChecksInEngine counts, and with `'pursue'`, a saved name the turn still reads) that the code (a)
+// The engine's checks of an order by its kind (Run 3b, the hero orders): a string naming a kind of order (the hero
+// orders' rows' keys, in content: OrderKind's kinds, and `'pursue'`, a saved name the turn still reads, but the five
+// alignment orders' keys, which their rows give and alignmentOrderChecksInEngine counts) that the code (a)
 // compares (===, !==, ==, !=) with an order's kind: an expression ending `action` (`o.action`, `_action`), a call of
 // normaliseAction, or a name the function binds to one (`const a = o.action`, or a parameter of a function whose name
-// says Order); (b) is a `case` of a switch over one; (c) is an element of an array literal of two or more strings, every
-// one a kind (a list of kinds); (d) gives as a default (`|| 'defend'`) or assigns to an action (`o.action = 'rest'`); or
-// (e) is a value of the kinds' own table (PHASE_ACTION_MAP). Counted by syntax tree in the files of src/engine/ outside
-// src/engine/rules/; orderKindChecksInTheBots counts the same in src/engine/bots/, and orderKindChecksInEngine the rest,
+// says Order); (b) is a `case` of a switch over one; (c) is an element of an array literal whose strings, two or more,
+// are all kinds, any other element not a string (a list of kinds, a row's key beside them or not); (d) gives as a
+// default (`|| 'defend'`) or assigns to an action (`o.action = 'rest'`); or (e) is a value of the kinds' own table
+// (PHASE_ACTION_MAP). Counted by syntax tree in the files of src/engine/ outside src/engine/rules/;
+// orderKindChecksInTheBots counts the same in src/engine/bots/, and orderKindChecksInEngine the rest,
 // as the economy's two counts are split. Not counted, each for its sense: an order the code writes (`action: 'move'`, a
 // bot's or a hire's pre-order), a line's kind (`type: 'move'`), a skill or a line's split handed to a call (`'spy'`),
 // a list that mixes kinds with roles, skills or stances, and a comparison or switch over anything else (a duel's stance
@@ -1058,26 +1064,13 @@ export const temperChecksInEngine = (codeFiles: readonly (readonly [file: string
 /** The file that declares OrderKind and PHASE_ACTION_MAP. */
 export const THE_ORDER_KINDS_FILE =
   'src/engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';
-/** OrderKind's members, in the order written, read from the syntax tree of its file's `type OrderKind = 'a' | 'b'`. */
-export function theOrderKinds(text: string): string[] {
-  const source = ts.createSourceFile(THE_ORDER_KINDS_FILE, text, ts.ScriptTarget.Latest, true);
-  for (const statement of source.statements) {
-    if (!ts.isTypeAliasDeclaration(statement) || statement.name.text !== 'OrderKind') continue;
-    const union = statement.type;
-    if (!ts.isUnionTypeNode(union)) break;
-    return union.types.flatMap((t) =>
-      ts.isLiteralTypeNode(t) && ts.isStringLiteral(t.literal) ? [t.literal.text] : [],
-    );
-  }
-  throw new Error(`${THE_ORDER_KINDS_FILE}: no "type OrderKind = '…' | '…'" found. The ratchet reads its kinds.`);
-}
-/** Every kind of order the count reads (above). */
-export const ORDER_KIND_VOCABULARY: ReadonlySet<string> = new Set([
-  ...theOrderKinds(fs.readFileSync(path.join(ROOT, THE_ORDER_KINDS_FILE), 'utf8')).filter(
-    (kind) => !ALIGNMENT_ORDER_VOCABULARY.has(kind),
-  ),
-  'pursue',
-]);
+/** Every kind of order the count reads (above): the hero orders' rows' keys (content, THE_HERO_ORDERS: OrderKind's
+ *  kinds and Pursue's row), but the alignment orders'. */
+export const ORDER_KIND_VOCABULARY: ReadonlySet<string> = new Set(
+  Object.values(THE_HERO_ORDERS)
+    .map((row): string => row.key)
+    .filter((kind) => !ALIGNMENT_ORDER_VOCABULARY.has(kind)),
+);
 /** The text of an expression that is an order's kind: one ending `action`, or a call of normaliseAction. */
 const AN_ORDERS_KIND = /(\.|^)_?action$|^normaliseAction\(|^\(?\(?\w+\.action \?\? ''\)/;
 /** The names a function binds to an order's kind, anywhere in it (its nested functions' too): a variable given an
@@ -1121,8 +1114,15 @@ function isAnOrderKindCheck(
   if (ts.isBinaryExpression(p) && COMPARISONS.has(p.operatorToken.kind))
     return isAnOrdersKind(p.left === node || p.left.getText() === node.getText() ? p.right : p.left);
   if (ts.isCaseClause(p)) return isAnOrdersKind(p.parent.parent.expression);
-  if (ts.isArrayLiteralExpression(p))
-    return p.elements.length > 1 && p.elements.every((e) => ts.isStringLiteral(e) && ORDER_KIND_VOCABULARY.has(e.text));
+  if (ts.isArrayLiteralExpression(p)) {
+    // a list of kinds: its string literals all kinds, two or more of them, any other element not a string (a row's
+    // key beside them hides none)
+    const theWords = p.elements.filter(
+      (e): e is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
+        ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e),
+    );
+    return theWords.length > 1 && theWords.every((e) => ORDER_KIND_VOCABULARY.has(e.text));
+  }
   if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.BarBarToken) return true;
   if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken)
     return isAnOrdersKind(p.left) || p.left.getText().includes('action');
@@ -1191,8 +1191,12 @@ export const orderKindChecksInTheBots = (codeFiles: readonly (readonly [file: st
 // strings are a `'neutral'` of another sense, listed so that the count can reach 0: a battle's kind and a death's cause.
 // tests/static/the-code-the-relation-rows-have-taken-names-no-relation.test.ts holds the functions the rows have taken
 // at 0 each, with relationChecksByFunction.
-/** The words of the relations' count. */
-export const RELATION_VOCABULARY: ReadonlySet<string> = new Set(['enemy', 'allied', 'neutral', 'treat']);
+/** The words of the relations' count: the three states two realms stand in and the Treat declaration, from the
+ *  content. */
+export const RELATION_VOCABULARY: ReadonlySet<string> = new Set<string>([
+  ...Object.values(THE_STATES_TWO_REALMS_STAND_IN),
+  THE_TREAT_DECLARATION,
+]);
 /** The two `'neutral'`s that are no relation (above). */
 export const THE_RELATION_WORDS_THAT_ARE_NOT_A_RELATION: readonly AWordThatIsNotTheCountsWord[] = [
   [

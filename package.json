@@ -32,6 +32,7 @@
     "proof:gm-logs": "tsx tools/proof/the-gm-logs-compared.ts",
     "proof:two-engines": "tsx tools/proof/the-two-engines-compared.ts",
     "proof:worlds": "tsx tools/proof/the-worlds-making-compared.ts",
+    "proof:battles": "tsx tools/proof/the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts",
     "proof:tours": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/proof/the-changed-lines-no-tour-reaches.ts"
   },
   "devDependencies": {

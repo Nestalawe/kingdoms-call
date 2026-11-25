@@ -1,4 +1,9 @@
-import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_EACH_GROUNDS_BATTLE_FRONT_ITS_FEWEST_AND_MOST_UNITS,
+  KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS,
+  KC_UNIT_CLASS,
+  KC_WHO_FACES_WHOM_IN_THE_BATTLE_LINE_AND_THE_FACTOR_IT_GIVES,
+} from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { UNIT_BASE_STR, unitTypeOf } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { theWeightsADiscoveryGivesTheLinesBehindTheFront } from '../rules/the-registry-of-discovery-effects.ts';
@@ -157,27 +162,22 @@ export type BattleGrid = BattleGridCells & { units: GridUnit[]; total: number; f
 // At sea the hulls and sea-beasts take the front before any carried land unit, and there are no
 // flanks. Columns fill strongest-in-the-centre, so the grid a report prints is the grid that was
 // scored. Who faces whom is then read off the two grids (battleFacing, below the print helpers).
+// The grid's tables and limits are content's rows (B-06ay2): each name below is its row, or a figure of it.
 /** A ground's front: the fewest and the most units it allows. */
 type AGroundsFrontRange = [fewest: number, most: number];
-export const BATTLE_FRONT_RANGE = {
-  plain: [6, 8],
-  desert: [6, 8],
-  sea: [8, 10],
-  forest: [4, 6],
-  jungle: [4, 6],
-  mountain: [2, 4],
-} satisfies Record<string, AGroundsFrontRange>;
+export const BATTLE_FRONT_RANGE = KC_EACH_GROUNDS_BATTLE_FRONT_ITS_FEWEST_AND_MOST_UNITS;
 /** The same table, read by any terrain: one it doesn't hold reads the plain's. */
 const FRONT_RANGE_ON: Readonly<Record<string, AGroundsFrontRange | undefined>> = BATTLE_FRONT_RANGE;
 export const BATTLE_FLANK_TERRAINS: ReadonlySet<string | null> = new Set(['plain', 'desert']);
 /** The multipliers of the four lines behind the flanks: the front, the second line, the reserve, the deep reserve. */
 type TheLinesMultipliers = readonly [front: number, second: number, reserve: number, deepReserve: number];
-export const BATTLE_LINE_MULTS: TheLinesMultipliers = [1, 0.5, 0.25, 0.125]; // front · second line (not shooting over) · reserve · deep reserve
-export const BATTLE_LINE_MULTS_FLANK: TheLinesMultipliers = [1, 0.75, 0.5, 0.25]; // sd09's fallback if its data row carries no `lines`
-export const BATTLE_RANGED_IN_FRONT = 0.75,
-  BATTLE_FLYER_BEYOND_CAP = 0.5,
-  BATTLE_FLYER_CAP_MIN = 2,
-  BATTLE_FLANK_TAC_CAP = 5;
+export const BATTLE_LINE_MULTS: TheLinesMultipliers = KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS.theFourLinesFactors; // front · second line (not shooting over) · reserve · deep reserve
+export const BATTLE_LINE_MULTS_FLANK: TheLinesMultipliers =
+  KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS.theFourLinesFactorsUnderFlankingTactics; // sd09's fallback if its data row carries no `lines`
+export const BATTLE_RANGED_IN_FRONT = KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS.aRangedUnitInTheFront,
+  BATTLE_FLYER_BEYOND_CAP = KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS.aFlyerBeyondTheCap,
+  BATTLE_FLYER_CAP_MIN = KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS.theFewestFlyersTheCapAllows,
+  BATTLE_FLANK_TAC_CAP = KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS.theMostTacticalLevelsTheFlanksAndTheLineUpCount;
 // Own copies of the three class lists the grid reads (each consumer builds its own, see the data file).
 export const GRID_FLY_TYPES = new Set(KC_UNIT_CLASS.aerial),
   GRID_CAV_TYPES = new Set(KC_UNIT_CLASS.cavalry),
@@ -467,14 +467,8 @@ export function battleGridLines(
 // strength; the ladder's "Who faces whom" stage names them, and every row is stamped _faced for the
 // report. Both fronts are centred blocks, so a column inside the enemy's span always has an enemy in
 // it. The matchup abilities of single unit types come with the Unit abilities PR.
-export const BATTLE_FACING = {
-  front: { cav: { arc: 1.25, foot: 0.85 }, foot: { cav: 1.15, arc: 1.25 } }, // anything unlisted is ×1 (foot v foot, cav v cav, a ranged unit caught in the front…)
-  back: { foot: 1.25, cav: 0.75 }, // shooting the enemy front unit opposite; ranged v ranged ×1
-  wrap: 1.2,
-  sideHit: 0.9,
-  freeFlank: 1.3,
-  turned: 0.75,
-};
+// The table is content's (KC_WHO_FACES_WHOM_IN_THE_BATTLE_LINE_AND_THE_FACTOR_IT_GIVES, B-06ay2), the same object.
+export const BATTLE_FACING = KC_WHO_FACES_WHOM_IN_THE_BATTLE_LINE_AND_THE_FACTOR_IT_GIVES;
 /** A facing table (BATTLE_FACING.front): my role → the enemy's → the multiplier. */
 type AFacingTable = Readonly<Record<string, Readonly<Record<string, number | undefined>> | undefined>>;
 export const faceMult = (t: AFacingTable | null | undefined, a: string, b: string) => {
@@ -915,7 +909,7 @@ function theWholeArmyABattlesGridHolds(a: ArmyInABattle | AUnitAnEstimateWeighs)
 // front unit stands with nobody opposite only once every enemy front unit already has someone opposite it.
 // Every swap is judged with both sides faced (battleFacing), as the mover would see it, and only an improving
 // swap is made. Nothing here is random.
-export const BATTLE_LINEUP_MAX = 30;
+export const BATTLE_LINEUP_MAX = KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS.theMostSwapsAtTheLineUp;
 export function battleScout(explAtk: number | null | undefined, explDef: number | null | undefined): 'atk' | 'def' {
   return (Number(explAtk) || 0) > (Number(explDef) || 0) ? 'atk' : 'def';
 }

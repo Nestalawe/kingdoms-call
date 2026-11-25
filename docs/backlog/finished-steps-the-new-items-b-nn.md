@@ -9,9 +9,10 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 
 ## B-06, T7: the rules pulled out
 
-B-06 is open; its foundations and the alignments are finished: Run 1 (the economy, then the Reckoning and the titles),
-Run 2a (world generation) and Run 2b (the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows). The tranche's plan,
-its counts and its risks: #711.
+B-06 is open; its foundations, the alignments, the races and the tempers are finished: Run 1 (the economy, then the
+Reckoning and the titles), Run 2a (world generation), Run 2b (the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows)
+and Run 3a (the races and the tempers, B-06ac to B-06ak). The tranche's plan, its counts and its risks: #711; Run 3's:
+#756.
 
 - B-06a: #711 The ratchet counts the economy and the titles, B-06's lettered rows, the KD- rows found by the scoping, B-20 and the bots' worth hook
 - B-06b: #712 The economy's prices in content: the price table, the fallback 2g and the skeleton's 1g, through one price rule and one wage rule
@@ -52,6 +53,15 @@ its counts and its risks: #711.
 - P1-19bb7: #753 The bots, 2 of 4: their creed orders and the rules they share read the alignment abilities' rows
 - P1-19bb8: #754 The bots, 3 of 4: their worth of the alignment abilities' rows, the bots' worth hook's third kind
 - P1-19bb9: #755 The bots, 4 of 4: their tuning and their dark war keyed by the alignment abilities, not the creeds' names
+- B-06ac: #757 A company or province of no race reads as Human, and the wild's race is Primal: two content constants and one helper, not words in the engine
+- B-06ad: #759 The world's making names no race: its race words, each race's heartland, the home fleets and a name's fallback race read content
+- B-06ae: #760 The race gifts, 1 of 2: each battle gift a row of content (Woodland Mastery, Bulwark, Raiders' Muster, War-spoils), the battles ask their runner
+- B-06af: #761 The race gifts, 2 of 2: Quick learners, Drillmasters, Iron constitution, Mithril and Homeward Flight are rows of content, with their numbers
+- B-06ag: #762 The race tables move to content verbatim: each unit's race, the humanoid set, a Call to Arms garrison by race, and an old save's race words
+- B-06ah: #763 The bots name no race: their fallbacks ask the race constants, their terrain estimate asks the gifts' rows, and their race tuning is a weight of kind raceGift
+- B-06ai: #764 The tempers' rules on their rows: a hero of no temper fights as Brave, the auto plan's two behaviours, a commander's duel stance and terror's courage by temper
+- B-06aj: #765 The bots name no temper: their duel rating and their war bar weigh a hero's temper as weights of kind temper
+- B-06ak: #766 The player portal's races and tempers read content: the beasts' classes, the race words and tags, the practice note, Call to Arms' target and a hero of no temper
 - The fix Run 1 found on the way, its known-defect row deleted: #720 The registry compile test: a test and a program for each registry, every planted copy and expected error as it was
 
 ## The other new items

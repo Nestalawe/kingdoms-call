@@ -1,3 +1,4 @@
+import { KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
 import { FLYING_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
@@ -71,7 +72,10 @@ export function abilityMissileUnits(
 // ability may push the limit (Punch Through: the registry's "the softening limit"); a unit immune to volleys (Armoured
 // Hulls, Shell Wall: "may be shot at") is never worth a shot. A unit at the cap gains nothing from more shots, so the
 // target pool skips it (kept in this scope so missileTargetPool sees it).
-export const _MISSILE_CAP_FRAC = 0.4; // mirrors MISSILE_CAP_FRACTION (kept local to this module scope) — 2026-09-24: 30% → 40% (80% winged)
+// The cap's share is content's row, the one MISSILE_CAP_FRACTION reads (read here from content, a leaf, as
+// terrain-and-unit-strength.ts imports this file) — 2026-09-24: 30% → 40% (80% winged).
+export const _MISSILE_CAP_FRAC =
+  KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theMostShareOfItsStrengthATargetLosesToVolleys;
 export function missileCap(target: ArmyInABattle, firer: ForceUnit): number {
   const baseStr = unitBaseStrength(target);
   const isFly = FLYING_TYPES.has(target.type);

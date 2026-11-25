@@ -54,6 +54,7 @@ import {
 import { compactDeclaration } from '../lib/source.ts';
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+const REGISTRY = 'engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts';
 
 const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -747,21 +748,21 @@ describe('Discover Lost Ruin, called directly', () => {
   });
 });
 
-/** A case's text as written, for a pattern (each character a pattern reads otherwise, escaped). */
-const asWritten = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-test('every order of the family is a function of its own, and processOrder only calls it', () => {
-  // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
-  const src = compactDeclaration(DISPATCH, 'processOrder');
-  for (const [theCase, name] of [
-    ["'explore'", 'resolveExploreOrder'],
-    ["THE_ALIGNMENT_ORDERS['perform-rite'].key", 'resolvePerformRiteOrder'],
-    ["'hunt_rumours'", 'resolveHuntingRumoursOrder'],
-    ["'search'", 'resolveSearchLairOrder'],
-    ["'chart_unknown'", 'resolveChartTheUnknownOrder'],
-    ["'discover_ruin'", 'resolveDiscoverLostRuinOrder'],
+test("every order of the family is a function of its own, and its entry in the hero orders' registry only calls it", () => {
+  // read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a); processOrder hands an order to its
+  // kind's entry (B-06ao), keyed by its row's key
+  const dispatch = compactDeclaration(DISPATCH, 'processOrder');
+  const src = compactDeclaration(REGISTRY, 'THE_REGISTRY_OF_THE_HERO_ORDERS_RESOLVERS');
+  for (const [key, name] of [
+    ['explore', 'resolveExploreOrder'],
+    ['rite', 'resolvePerformRiteOrder'],
+    ['hunt_rumours', 'resolveHuntingRumoursOrder'],
+    ['search', 'resolveSearchLairOrder'],
+    ['chart_unknown', 'resolveChartTheUnknownOrder'],
+    ['discover_ruin', 'resolveDiscoverLostRuinOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case ${asWritten(theCase)}:${name}\\(turnContext,c[^)]*\\);break;`));
+    expect(src).toMatch(new RegExp(`[{,]${key}:\\(\\{[^}]*\\}\\)=>\\{${name}\\(turnContext,c[^)]*\\);\\}`));
+    expect(dispatch).not.toContain(`${name}(`);
   }
 });

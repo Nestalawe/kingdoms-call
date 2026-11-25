@@ -59,6 +59,7 @@ import {
 import { compactDeclaration } from '../lib/source.ts';
 
 const DISPATCH = 'engine/orders/order-dispatch-the-checks-before-a-hero-order-and-the-switch.ts';
+const REGISTRY = 'engine/orders/the-registry-of-the-hero-orders-each-kinds-resolver-keyed-by-its-row.ts';
 
 const engine = await loadTheEngineOnItsModules({ seed: Number(process.env['KC_SEED']) >>> 0 || 1 });
 quietEngineLog(engine);
@@ -1092,31 +1093,37 @@ describe('Grand Design, called directly', () => {
   });
 });
 
-/** A case's text as written, for a pattern (each character a pattern reads otherwise, escaped). */
-const asWritten = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-test('every order of the family is a function of its own, processOrder only calls it, and landHirePreOrders is top-level', () => {
-  // processOrder is top-level since P1-08j9; read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a)
-  const src = compactDeclaration(DISPATCH, 'processOrder');
+test("every order of the family is a function of its own, its entry in the hero orders' registry only calls it, and landHirePreOrders is top-level", () => {
+  // read in one layout whatever the file's (tests/lib/source.ts, plan P1-09a); processOrder hands an order to its
+  // kind's entry (B-06ao), keyed by its row's key
+  const dispatch = compactDeclaration(DISPATCH, 'processOrder');
+  const src = compactDeclaration(REGISTRY, 'THE_REGISTRY_OF_THE_HERO_ORDERS_RESOLVERS');
   const turn = compactDeclaration('engine/run-turn.ts', 'resolveTurn');
-  for (const [theCase, name] of [
-    ["'recruit'", 'resolveRecruitArmiesOrder'],
-    ["'hire'", 'resolveHireHeroOrder'],
-    ['THE_ALIGNMENT_ORDERS.consecrate.key', 'resolveConsecrateOrder'],
-    ["THE_ALIGNMENT_ORDERS['call-to-arms'].key", 'resolveCallToArmsOrder'],
-    ['THE_ALIGNMENT_ORDERS.broker.key', 'resolveBrokerOrder'],
-    ["'call_pit'", 'resolveRemovedAwakenTheWildAndCallFromThePitOrders'],
-    ["THE_ALIGNMENT_ORDERS['harvest-the-field'].key", 'resolveHarvestTheFieldOrder'],
-    ["'awaken_grove'", 'resolveAwakenGroveOrder'],
-    ["'wild_calling'", 'resolveWildCallingOrder'],
-    ["'grand_design'", 'resolveGrandDesignOrder'],
+  for (const [key, name] of [
+    ['recruit', 'resolveRecruitArmiesOrder'],
+    ['hire', 'resolveHireHeroOrder'],
+    ['consecrate', 'resolveConsecrateOrder'],
+    ['call_to_arms', 'resolveCallToArmsOrder'],
+    ['broker', 'resolveBrokerOrder'],
+    ['harvest_field', 'resolveHarvestTheFieldOrder'],
+    ['awaken_grove', 'resolveAwakenGroveOrder'],
+    ['wild_calling', 'resolveWildCallingOrder'],
+    ['grand_design', 'resolveGrandDesignOrder'],
   ] as const) {
     expect(typeof fn(name)).toBe('function');
-    expect(src).toMatch(new RegExp(`case ${asWritten(theCase)}:${name}\\(turnContext,c[^)]*\\);break;`));
+    expect(src).toMatch(new RegExp(`[{,]${key}:\\(\\{[^}]*\\}\\)=>\\{${name}\\(turnContext,c[^)]*\\);\\}`));
+    expect(dispatch).not.toContain(`${name}(`);
   }
-  expect(src).toContain("case 'awaken_wild':case 'call_pit':resolveRemovedAwakenTheWildAndCallFromThePitOrders(");
+  // Awaken the Wild and Call from the Pit share one entry, as they shared one case
+  expect(src).toContain(
+    'awaken_wild:theRemovedAwakenTheWildAndCallFromThePitOrders,call_pit:theRemovedAwakenTheWildAndCallFromThePitOrders,',
+  );
+  expect(compactDeclaration(REGISTRY, 'theRemovedAwakenTheWildAndCallFromThePitOrders')).toMatch(
+    /^const theRemovedAwakenTheWildAndCallFromThePitOrders=\(\{turnContext,c,action\}\)=>\{resolveRemovedAwakenTheWildAndCallFromThePitOrders\(turnContext,c,action\);\};$/,
+  );
+  expect(dispatch).not.toContain('resolveRemovedAwakenTheWildAndCallFromThePitOrders(');
   expect(typeof fn('landHirePreOrders')).toBe('function');
-  for (const s of [src, turn]) {
+  for (const s of [dispatch, turn]) {
     expect(s).not.toContain('function landHirePreOrders');
     expect(s).not.toContain('HUMANOID_RACES_SG=');
   }

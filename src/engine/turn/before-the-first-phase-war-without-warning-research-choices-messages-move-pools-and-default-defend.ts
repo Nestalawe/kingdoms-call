@@ -9,7 +9,10 @@ import { TITLES_PUBLIC_FROM_TURN, TITLE_PERKS_ENABLED } from '../titles/perks.ts
 import { computeMinorTitles, computeStandings } from '../titles/reckoning.ts';
 import { telOrdersFor } from './log-line-helpers.ts';
 import { DISC_BY_ID, theWonderServesTheRealm } from '../discoveries.ts';
-import { relKeyOf } from '../realms/relations-and-captures.ts';
+import {
+  relKeyOf,
+  theStateThePairsEntryHolds,
+} from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { setMovePool } from '../units/movement-pools.ts';
 import { warFrontThreats } from '../battle/war-fronts-and-enemy-stand-offs.ts';
 import {
@@ -23,6 +26,8 @@ import {
   doesAnAlignmentDeclareWarWithoutWarningAsTheDead,
 } from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
 import type { TurnContext } from './context.ts';
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { THE_DIPLOMACY_LADDER } from '../../content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts';
 import type { Dispatch } from '../../schemas/orders-a-realm-submits.ts';
 import type { Character, GameState, Realm } from '../../schemas/saved-game-state.ts';
 import type { ADiscoverysRow } from '../../content/discovery-effects-their-kinds-numbers-and-words.ts';
@@ -164,11 +169,11 @@ export function warWithoutWarningTitlesHeldSafeStartAndStaleOrderLinesGmRemovals
       if (!pa || !doesAnAlignmentDeclareWarWithoutWarning(pa.alignment)) continue; // their rows (P1-19ax2)
       const decl = diploDeclarations[a] ?? {};
       for (let b = 0; b < _npW; b++) {
-        if (b === a || decl[b] !== 'enemy') continue;
+        if (b === a || decl[b] !== THE_DIPLOMACY_LADDER.aWarIsDeclaredAs) continue;
         if (!(asItsGuardReadsIt(pa._encountered) ?? []).includes(b)) continue;
         const key = relKeyOf(a, b);
-        if (((G.relations[key] ?? '') || 'neutral') === 'enemy') continue;
-        G.relations[key] = 'enemy';
+        if (theStateThePairsEntryHolds(G.relations, a, b) === THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
+        G.relations[key] = THE_DIPLOMACY_LADDER.aWarMovesThePairTo;
         emit(turnContext, {
           type: 'system',
           fact: {

@@ -101,7 +101,8 @@ const theBotsPhaseOne = await import('../../src/engine/bots/phase-one.ts');
 const theBotsEconomy = await import('../../src/engine/bots/economy.ts');
 const theBotsSpellcraft = await import('../../src/engine/bots/spellcraft.ts');
 const theReckoning = await import('../../src/engine/titles/reckoning.ts');
-const theRelations = await import('../../src/engine/realms/relations-and-captures.ts');
+const theKeyOfAPairOfRealms =
+  await import('../../src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts');
 const theMovePools = await import('../../src/engine/units/movement-pools.ts');
 const theCombatHelpers = await import('../../src/engine/personal-combat/helpers.ts');
 const theNames = await import('../../src/engine/names.ts');
@@ -225,7 +226,8 @@ const THE_FUNCTIONS_STOOD_IN = {
     standInFor(theReckoning.runBotReckoning, vi.spyOn(theReckoning, 'runBotReckoning'), make),
   botResearchPick: (make: AStandIn) =>
     standInFor(theBotsMissions.botResearchPick, vi.spyOn(theBotsMissions, 'botResearchPick'), make),
-  relKeyOf: (make: AStandIn) => standInFor(theRelations.relKeyOf, vi.spyOn(theRelations, 'relKeyOf'), make),
+  relKeyOf: (make: AStandIn) =>
+    standInFor(theKeyOfAPairOfRealms.relKeyOf, vi.spyOn(theKeyOfAPairOfRealms, 'relKeyOf'), make),
   computeStandings: (make: AStandIn) =>
     standInFor(theReckoning.computeStandings, vi.spyOn(theReckoning, 'computeStandings'), make),
   computeMinorTitles: (make: AStandIn) =>

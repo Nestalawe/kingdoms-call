@@ -8,8 +8,9 @@ import type { TheFactOfTheOrderDispatchsLine } from '../../engine/orders/the-fac
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { MASTERY_ORDER_LABEL } from './the-words-of-a-unit-a-list-of-items-a-hit-point-rise-and-a-mastery-order.ts';
 
-/** The alignment orders' keys, from the content's rows (plan P1-13g: each reader builds its lookups from the rows; the
- *  engine's own set, ALIGNMENT_ORDER_KEYS, checks each key is a kind of order): the rites a charmed hero won't perform. */
+/** The alignment orders' keys, from the content's rows (plan P1-13g: each reader builds its lookups from the rows;
+ *  army-tables.ts' ALIGNMENT_ORDER_KEYS, which only the tests read, holds each key to a kind of order at compile time):
+ *  the rites a charmed hero won't perform. */
 const THE_KEYS_OF_THE_ALIGNMENT_ORDERS = new Set<string>(Object.values(THE_ALIGNMENT_ORDERS).map((order) => order.key));
 
 /** A key's words in a table of the engine's words (the masteries', the skills' names), or undefined when it has

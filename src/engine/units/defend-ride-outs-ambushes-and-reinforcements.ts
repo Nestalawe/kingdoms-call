@@ -1,4 +1,5 @@
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
+import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { markProvinceCombat } from '../bots/intel.ts';
@@ -933,7 +934,7 @@ export function runReinforcementArrivals(turnContext: TurnContext, ph: number, i
 
   [...intents.values()].forEach((it) => {
     if (!asItsGuardReadsIt(it.c) || asItsGuardReadsIt(it.c.alive) === false) return; // 2026-09-21: `intents` is the STAGE-1 snapshot — never march a commander who has since fallen
-    if (it.cancelled || it.action !== 'move' || !it.leadsArmy || !it.dest) return;
+    if (it.cancelled || it.action !== THE_HERO_ORDERS.move.key || !it.leadsArmy || !it.dest) return;
     const P = it.dest;
     if (!invadedProvIds.has(P.id)) return;
     if (P.owner !== it.player) return; // only reinforcing your OWN ground
