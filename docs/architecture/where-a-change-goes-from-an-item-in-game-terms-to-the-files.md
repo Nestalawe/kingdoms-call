@@ -103,8 +103,11 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   it: a stage added, moved or reworded changes its entry there (a unit test holds the list to the code; the battle
   proof reads it). A battle's figures (the margin bands, the battle grid's tables,
   the defender's edge and home, Tactical and Naval, the experience factors, ...) are rows of
-  `src/content/kingdoms-call-data.ts`, each named for its rule, not for one battle (both battles read the shared ones):
-  a figure changes in its row.
+  `src/content/kingdoms-call-data.ts`, each named for its rule, not for one battle (both battles, a host's strength
+  `armStr` and the best commander's score read the shared ones): a figure changes in its row. The numbers left in
+  `battle/`'s code are structure (a percentage, a rounding, a midpoint, a tiny margin, a list's length). Battle rules
+  written outside `battle/` still hold their own: `units/movement.ts` (`tacMulted`, the pursuits, the Shield Fort),
+  `magic/pre-battle-spell-choice.ts`, `chances-and-lair-grades.ts`, and the sea lift's `seaLiftOfAColumn`.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).
