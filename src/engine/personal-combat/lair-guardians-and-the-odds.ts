@@ -300,7 +300,7 @@ export function resolveEncounter(
     hp: theFight.theHpOfTheStandInGuardianOfALairWithNone,
     power: '',
     minG: 1,
-    maxG: theFight.theMostGradeOfTheStandInGuardian,
+    maxG: theFight.theMostGoldOfTheStandInGuardiansHoard,
   };
   const narrative: NarrativeLine[] = [];
   const startHp = c.hp || theFight.theHpAHeroOfNoneIsReadAsEnteringWith;

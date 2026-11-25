@@ -12,8 +12,8 @@
 //   guardian is fought by a stand-in of 10 HP; a hero of no HP is read as entering with 10; the line names the first 6
 //   actions of the guardian's plan; a guardian whose record holds no HP has 10 as the rumour stages him, as the line
 //   tells his wounds and as he heals (KC_A_LAIR_GUARDIANS_FIGHT,
-//   KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT). The stand-in's grades, up to 3, are read by no fight: no
-//   case;
+//   KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT). The stand-in's hoard of at most 3 gold (maxG) is read by
+//   no fight: no case;
 // - a cast is 30%, 10% a level, at most 95%; 95% against a guardian weak to the school; a bolt's dice count the level
 //   to 5 (KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT);
 // - a guardian's heal of no figure mends 3 to 8; one that ignores all armour adds 3 to each blow; one that names a flee

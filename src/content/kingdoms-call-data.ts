@@ -15876,14 +15876,14 @@ export const KC_A_GUARDIANS_HIDDEN_TRAITS_IN_PERSONAL_COMBAT = {
   theRoundsToReachMeleeAtAPaceTheTableHoldsNot: 3,
 } as const;
 // A lair guardian's fight (resolveEncounter, simulateLairOdds): it runs at most this many rounds; a lair whose record
-// holds no guardian is fought by a stand-in of this many HP and of grades up to this; a hero of no HP (or 0) is read as
-// entering with this many when his wounds are counted; the guardian's plan the line names is its first this many
-// actions; the rumour of a lair's odds stages this many fights (RUMOUR_SIM_FIGHTS). A guardian whose record holds no HP
+// holds no guardian is fought by a stand-in of this many HP whose hoard holds at most this much gold (maxG, which no
+// fight reads); a hero of no HP (or 0) is read as entering with this many when his wounds are counted; the guardian's
+// plan the line names is its first this many actions; the rumour of a lair's odds stages this many fights (RUMOUR_SIM_FIGHTS). A guardian whose record holds no HP
 // has KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT's.
 export const KC_A_LAIR_GUARDIANS_FIGHT = {
   theMostRoundsItRuns: 20,
   theHpOfTheStandInGuardianOfALairWithNone: 10,
-  theMostGradeOfTheStandInGuardian: 3,
+  theMostGoldOfTheStandInGuardiansHoard: 3,
   theHpAHeroOfNoneIsReadAsEnteringWith: 10,
   theActionsOfTheGuardiansPlanTheLineNames: 6,
   theFightsTheRumourOfALairsOddsStages: 300,
