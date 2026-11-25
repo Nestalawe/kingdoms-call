@@ -18,8 +18,10 @@
 // `unit/xp-naval-passenger.test.ts`: `rollNavalVoyage` called directly on the engine's modules (P1-14m; the bare `vm`
 // from P1-08c; before, a code-anchor test that ran a turn first) (batch 2026-10-14)
 import '../lib/the-whole-engine.ts';
+import fs from 'node:fs';
+import path from 'node:path';
 import { afterAll, expect, test } from 'vitest';
-import { callsTo, pageScripts } from '../lib/source.ts';
+import { SRC, callsTo, pageScripts } from '../lib/source.ts';
 import {
   aFreshTurnsContextOnTheWorld,
   botWorld,
@@ -33,16 +35,23 @@ import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 // Every experience roll for Naval in the GM portal's code, read by its syntax tree (tests/lib/source.ts, plan P1-09a:
 // the lines of the built page were matched until then), as the function it is made in and what it is handed: the
 // battles' rolls (won or lost, at sea), the Naval 7/9 orders' (Blockade, Raid the Coast) and rollNavalVoyage's own.
+// The battle against a province's defenders makes its rolls in its last stage's file (B-06bd), which the page's entry
+// doesn't name (KD-457), so its stages' files are read beside the page's.
+const THE_STAGES_OF_THE_BATTLE_AGAINST_THE_DEFENDERS = 'engine/battle/the-battle-against-the-defenders';
+const THE_STAGES_FILES = fs
+  .readdirSync(path.join(SRC, THE_STAGES_OF_THE_BATTLE_AGAINST_THE_DEFENDERS))
+  .sort()
+  .map((f) => `${THE_STAGES_OF_THE_BATTLE_AGAINST_THE_DEFENDERS}/${f}`);
 const NAVAL_ROLLS = [
   "combatVsChar(turnContext,won?atk:def,'naval',SKILLGAIN_STD,narrative)",
   "combatVsChar(turnContext,won?def:atk,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
-  "combatVsNPC(turnContext,c,'naval',SKILLGAIN_STD,narrative)",
-  "combatVsNPC(turnContext,c,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
-  "combatVsNPC(turnContext,neutralGuardHero,'naval',SKILLGAIN_STD,narrative)",
-  "combatVsNPC(turnContext,neutralGuardHero,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
   "resolveBlockadeOrder(turnContext,c,'naval',SKILLGAIN_STD)",
   "resolveRaidTheCoastOrder(turnContext,c,'naval',SKILLGAIN_STD)",
   "rollNavalVoyage(turnContext,c,'naval',base)",
+  "theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(turnContext,c,'naval',SKILLGAIN_STD,narrative)",
+  "theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(turnContext,c,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
+  "theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(turnContext,neutralGuardHero,'naval',SKILLGAIN_STD,narrative)",
+  "theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(turnContext,neutralGuardHero,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
 ];
 // It reads every file of the GM page by its syntax tree: under a second here, 3 to 5 s on a CI runner (2.2 s on #169's,
 // 4.9 s on #171's), so it has time enough of its own, as the source test's every-file checks do (Vitest's default, 5 s,
@@ -51,7 +60,7 @@ const EVERY_FILE_MS = timeLimitGivenAsANumber(60_000).timeout;
 test(
   'no voyage rolls Naval outside rollNavalVoyage',
   () => {
-    const rolls = pageScripts('kingdoms-call-gm-portal.html')
+    const rolls = [...pageScripts('kingdoms-call-gm-portal.html'), ...THE_STAGES_FILES]
       .flatMap((f) => callsTo(f, 'trySkillGain'))
       .filter((c) => c.args.slice(2, 3).some((a) => a.includes("'naval'")))
       .map((c) => `${String(c.within)}(${c.args.join(',')})`)
