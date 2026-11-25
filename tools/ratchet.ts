@@ -1050,10 +1050,11 @@ export const temperChecksInEngine = (codeFiles: readonly (readonly [file: string
 // alignment orders' keys, which their rows give and alignmentOrderChecksInEngine counts) that the code (a)
 // compares (===, !==, ==, !=) with an order's kind: an expression ending `action` (`o.action`, `_action`), a call of
 // normaliseAction, or a name the function binds to one (`const a = o.action`, or a parameter of a function whose name
-// says Order); (b) is a `case` of a switch over one; (c) is an element of an array literal of two or more strings, every
-// one a kind (a list of kinds); (d) gives as a default (`|| 'defend'`) or assigns to an action (`o.action = 'rest'`); or
-// (e) is a value of the kinds' own table (PHASE_ACTION_MAP). Counted by syntax tree in the files of src/engine/ outside
-// src/engine/rules/; orderKindChecksInTheBots counts the same in src/engine/bots/, and orderKindChecksInEngine the rest,
+// says Order); (b) is a `case` of a switch over one; (c) is an element of an array literal whose strings, two or more,
+// are all kinds, any other element not a string (a list of kinds, a row's key beside them or not); (d) gives as a
+// default (`|| 'defend'`) or assigns to an action (`o.action = 'rest'`); or (e) is a value of the kinds' own table
+// (PHASE_ACTION_MAP). Counted by syntax tree in the files of src/engine/ outside src/engine/rules/;
+// orderKindChecksInTheBots counts the same in src/engine/bots/, and orderKindChecksInEngine the rest,
 // as the economy's two counts are split. Not counted, each for its sense: an order the code writes (`action: 'move'`, a
 // bot's or a hire's pre-order), a line's kind (`type: 'move'`), a skill or a line's split handed to a call (`'spy'`),
 // a list that mixes kinds with roles, skills or stances, and a comparison or switch over anything else (a duel's stance
@@ -1113,8 +1114,15 @@ function isAnOrderKindCheck(
   if (ts.isBinaryExpression(p) && COMPARISONS.has(p.operatorToken.kind))
     return isAnOrdersKind(p.left === node || p.left.getText() === node.getText() ? p.right : p.left);
   if (ts.isCaseClause(p)) return isAnOrdersKind(p.parent.parent.expression);
-  if (ts.isArrayLiteralExpression(p))
-    return p.elements.length > 1 && p.elements.every((e) => ts.isStringLiteral(e) && ORDER_KIND_VOCABULARY.has(e.text));
+  if (ts.isArrayLiteralExpression(p)) {
+    // a list of kinds: its string literals all kinds, two or more of them, any other element not a string (a row's
+    // key beside them hides none)
+    const theWords = p.elements.filter(
+      (e): e is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
+        ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e),
+    );
+    return theWords.length > 1 && theWords.every((e) => ORDER_KIND_VOCABULARY.has(e.text));
+  }
   if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.BarBarToken) return true;
   if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken)
     return isAnOrdersKind(p.left) || p.left.getText().includes('action');

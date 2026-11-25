@@ -168,6 +168,7 @@ test("the ratchet's helper counts each check of an order's kind, and none of ano
   const planted = `
     type Kind = 'move' | 'rest';
     export const BUSY = ['practice', 'research'];
+    export const BESIDE_A_KEY = ['practice', X.key, 'research'], NOT_A_LIST = [X.key, 'move'], MIXED = ['spy', X.key, 'scholar'];
     export const MAP = { 'explore province': 'explore' };
     export function planted(o: { action?: string }, it: { action: string }, skill: (s: string) => number) {
       const a = o.action;
@@ -181,7 +182,7 @@ test("the ratchet's helper counts each check of an order's kind, and none of ano
     export function botRoleWork(role: string) { switch (role) { case 'spy': return 1; } return role === 'hire'; }
     export const inner = (o: { action?: string }) => \`move\` === o.action;`;
   expect(Object.fromEntries(orderKindChecksByFunction('src/engine/planted.ts', planted))).toEqual({
-    [TOP]: 2,
+    [TOP]: 4,
     planted: 7,
     theTierAnOrderActsIn: 1,
     botRoleWork: 0,

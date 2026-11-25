@@ -1771,22 +1771,22 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
   const mine = theCharactersOf(G).filter((x): x is Character => Boolean(x?.alive && x.player === pi && !x._isHeir));
   const king = mine.find((x) => x.isKing) ?? null;
   const BUSY = new Set<string>([
-    'search',
-    'hunt_rumours',
-    'hire',
-    'encounter',
-    'cast_spell',
-    'rest',
-    'assassinate',
-    'sabotage',
-    'steal',
-    'spy',
-    'research',
+    THE_HERO_ORDERS.search.key,
+    THE_HERO_ORDERS.hunt_rumours.key,
+    THE_HERO_ORDERS.hire.key,
+    THE_HERO_ORDERS.encounter.key,
+    THE_HERO_ORDERS.cast_spell.key,
+    THE_HERO_ORDERS.rest.key,
+    THE_HERO_ORDERS.assassinate.key,
+    THE_HERO_ORDERS.sabotage.key,
+    THE_HERO_ORDERS.steal.key,
+    THE_HERO_ORDERS.spy.key,
+    THE_HERO_ORDERS.research.key,
     THE_ALIGNMENT_ORDERS.consecrate.key,
-    'chart_unknown',
-    'leave_army',
-    'recruit',
-    'pickup_army',
+    THE_HERO_ORDERS.chart_unknown.key,
+    THE_HERO_ORDERS.leave_army.key,
+    THE_HERO_ORDERS.recruit.key,
+    THE_HERO_ORDERS.pickup_army.key,
   ]);
   const slayers = mine.filter(
     (c) =>
