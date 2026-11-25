@@ -15821,7 +15821,8 @@ export const KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT = {
   theLeast: 5,
   theMost: 95,
 } as const;
-// A guardian's rebirth (pcFreeStrike): felled, he rises once with this share of his most HP, rounded, and at least this.
+// A guardian's rebirth (pcFreeStrike, and resolvePersonalCombat's two, a fighter felled by his foe's action or by his
+// own): felled, he rises once with this share of his most HP, rounded, and at least this.
 export const KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT = {
   theShareOfHisMostHpHeRisesWith: 0.4,
   theLeastHpHeRisesWith: 5,

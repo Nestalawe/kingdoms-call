@@ -75,11 +75,16 @@ const facts = (narrative: readonly NarrativeLine[]): AFact[] =>
 /** The lines of a kind. */
 const ofKind = (narrative: readonly NarrativeLine[], kind: string) =>
   facts(narrative).filter((l) => l['kind'] === kind);
-/** A hero of the world, copied, of no items, titles or magic, with the skills and fields given. */
+/** A hero of the world, copied, of no items, titles, magic or curses and of the temper "None", with the skills and
+ *  fields given: every field these rules read pinned, so no case's outcome hangs on the world's hero. */
 function aHero(skills: Record<string, number>, over: Staged = {}): Character {
   const theHero: Staged = {
     ...clone(pc.base),
     items: [],
+    temper: 'None',
+    _curses: [],
+    _curseHalveStat: null,
+    _druidNegated: false,
     skills: { ...Object.fromEntries(Object.keys(pc.base.skills).map((k) => [k, 0])), ...skills },
     ...over,
   };
