@@ -55,6 +55,9 @@
 // taken up), the muster orders the actions pass keeps and the Defends it fills, a comrade free to train beside, a
 // cloak already cast, the king teaching in his host's drill, a Challenge the mastery pass hands a hero (stood in), and
 // a companion casting for his general's attack and following his march (the assaults stood in).
+// Then the bots' relations on the content's states (B-06au), each state and a pair with no entry: an ally's ground
+// passable, an ally's battle heard, a common foe, a province on the edge, the biggest foe's host in sight, a war judged
+// for peace and a Neutral pair for war, a third realm's alliances and wars weighed, and a crown met (a blank: KD-469).
 import fc from 'fast-check';
 import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
@@ -120,6 +123,8 @@ const { COMBAT_ONLY_TACTICS } = await import('../../src/engine/army-tables.ts');
 const { ARMY_UNIT_NAMES } = await import('../../src/content/kingdoms-call-data.ts');
 const { THE_HERO_ORDERS } =
   await import('../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts');
+const { THE_STATES_TWO_REALMS_STAND_IN } =
+  await import('../../src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts');
 const { theNameOfTheSpell } = await import('../../src/engine/bots/the-name-of-a-spell-by-its-slug.ts');
 const { BOT_SKILL_BUILD, _usedBotKingdomNames } = theBotsSetUp;
 /** Each function of the engine's a test here calls by its name, the export of the module that defines it. */
@@ -261,6 +266,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botHomeId: theBotsStrategy.botHomeId,
   botInContact: theBotsStrategy.botInContact,
   botIsBotPlayer: theBotsStrategy.botIsBotPlayer,
+  botIsEdge: theBotsStrategy.botIsEdge,
   botIsFighter: theBotsStrategy.botIsFighter,
   botIsTeach: theBotsStrategy.botIsTeach,
   botLairRating: theBotsStrategy.botLairRating,
@@ -272,6 +278,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botMoveOrder: theBotsStrategy.botMoveOrder,
   botNearbyThreat: theBotsStrategy.botNearbyThreat,
   botNeedsSlayer: theBotsStrategy.botNeedsSlayer,
+  botPassable: theBotsStrategy.botPassable,
   botPracticeSkill: theBotsStrategy.botPracticeSkill,
   botRaiseTargets: theBotsStrategy.botRaiseTargets,
   botRecruitCmdr: theBotsStrategy.botRecruitCmdr,
@@ -285,6 +292,7 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botUpdateIntel: theBotsStrategy.botUpdateIntel,
   botUpkeep: theBotsStrategy.botUpkeep,
   botCanFly: theBotsWar.botCanFly,
+  botHeardBattle: theBotsWar.botHeardBattle,
   botIsLoadedFleet: theBotsWar.botIsLoadedFleet,
   botOwnPower: theBotsWar.botOwnPower,
   botPlanAssaults: theBotsWar.botPlanAssaults,
@@ -4141,5 +4149,176 @@ describe("The bots' other passes read the hero orders' rows (B-06at)", () => {
     };
     expect(school('Practice Tactical (drill the host)'), 'a drill').toBe('practice|melee');
     expect(school('Practice Tactical (drill the fleet)'), 'a fleet drill').toBe('practice|tactical');
+  });
+});
+
+// ── The bots' relations read the content's states (B-06au) ───────────────────────────────────────────────────────────
+// Each check of how two realms stand in the bots' strategy, war and intel compares the bots' reader's answer with the
+// content's state: a case for each the matrix's games decide one way on every turn they reach it.
+describe("The bots' relations read the content's states (B-06au)", () => {
+  const { atWar, allied, neutral } = THE_STATES_TWO_REALMS_STAND_IN;
+  /** Each state a pair can stand in, and a pair with no entry. */
+  const EACH = [atWar, allied, neutral, null] as const;
+  /** Realms 0 and 1 standing as named (no entry for null), and the lists named; its map a row of three. */
+  const aWorld = (state: string | null, lists: Record<string, unknown> = {}): Raw => ({
+    turn: 3,
+    players: [{}, {}, {}],
+    characters: [],
+    ...lists,
+    relations: { ...(state == null ? {} : { '0-1': state }), ...(lists['relations'] ?? {}) },
+    world: { cols: 3, rows: 1, ...(lists['world'] ?? {}) },
+  });
+  const aProvince = (fields: Record<string, unknown> = {}) => ({
+    id: 0,
+    row: 0,
+    col: 0,
+    owner: 0,
+    terrain: 'plains',
+    name: 'Ashford',
+    tax: 1,
+    ...fields,
+  });
+  const aRow = (owners: readonly (number | null)[]) =>
+    owners.map((owner, i) => aProvince({ id: i, col: i, name: `Hold${String(i)}`, owner }));
+  const byState = (f: (state: string | null) => unknown) => EACH.map((s) => `${String(s)}: ${JSON.stringify(f(s))}`);
+
+  test("an ally's ground is passable, and no other realm's", () => {
+    const theirGround = aProvince({ owner: 1 });
+    expect(byState((s) => fn('botPassable')(aWorld(s), 0, theirGround))).toEqual([
+      'enemy: false',
+      'allied: true',
+      'neutral: false',
+      'null: false',
+    ]);
+  });
+  test('a battle an ally fought is heard, on either side, and a battle of a realm at war or at peace is not', () => {
+    const news = (a: number, d: number) => ({ a, d, p: null, w: true, t: 3 });
+    expect(byState((s) => fn('botHeardBattle')(aWorld(s), 0, news(1, 2)))).toEqual([
+      'enemy: false',
+      'allied: true',
+      'neutral: false',
+      'null: false',
+    ]);
+    expect(
+      byState((s) => fn('botHeardBattle')(aWorld(s), 0, news(2, 1))),
+      'the ally defending',
+    ).toEqual(['enemy: false', 'allied: true', 'neutral: false', 'null: false']);
+  });
+  test('a common foe is an ally’s enemy, and no other realm', () => {
+    const G = (ally: string, foe: string) => aWorld(ally, { relations: { '1-2': foe } });
+    expect(
+      EACH.flatMap((a) =>
+        EACH.map((b) => `${String(a)}/${String(b)}: ${String(fn('botMutualFoe')(G(a ?? '', b ?? ''), 0, 2))}`),
+      ),
+    ).toEqual(
+      EACH.flatMap((a) => EACH.map((b) => `${String(a)}/${String(b)}: ${String(a === allied && b === atWar)}`)),
+    );
+  });
+  test("a province on the edge borders a foe's ground or ground no realm holds, and not an ally's or a Neutral's", () => {
+    const G = (s: string | null) => aWorld(s, { world: { provinces: aRow([0, 1, 0]) } });
+    expect(
+      byState((s) => {
+        const W = G(s);
+        return fn('botIsEdge')(W, 0, ((W['world'] as Raw)['provinces'] as readonly Raw[])[0]);
+      }),
+    ).toEqual(['enemy: true', 'allied: false', 'neutral: false', 'null: false']);
+    const unheld = aWorld(allied, { world: { provinces: aRow([0, null, 0]) } });
+    expect(
+      fn('botIsEdge')(unheld, 0, ((unheld['world'] as Raw)['provinces'] as readonly Raw[])[0]),
+      'ground no realm holds',
+    ).toBe(true);
+  });
+  test("a host in the realm's land: a foe's attacks, any not allied's threatens, and the biggest in sight is a foe's", () => {
+    const theirHost = { id: 2, alive: true, player: 1, location: 0, armies: [{}, {}] };
+    const G = (s: string | null) =>
+      aWorld(s, { characters: [theirHost], world: { provinces: [aProvince({ characters: [2] })] } });
+    expect(
+      byState((s) => fn('botUnderAttack')(G(s), 0)),
+      'under attack',
+    ).toEqual(['enemy: true', 'allied: false', 'neutral: false', 'null: false']);
+    const myHero = { id: 1, alive: true, player: 0, location: 0 };
+    const beside = (s: string | null) =>
+      aWorld(s, {
+        characters: [myHero, theirHost],
+        world: { provinces: [aProvince({ characters: [1, 2] })] },
+      });
+    expect(
+      byState((s) => fn('botNearbyThreat')(beside(s), 0, myHero)),
+      'a threat nearby: any host not allied',
+    ).toEqual(['enemy: true', 'allied: false', 'neutral: true', 'null: true']);
+    expect(byState((s) => fn('botMaxEnemyStack')(G(s), 0))).toEqual(['enemy: 2', 'allied: 0', 'neutral: 0', 'null: 0']);
+  });
+  test('a war of twenty turns, outmatched, is judged for peace; a Neutral pair is not judged at war', () => {
+    const G = (s: string | null) => aWorld(s, { turn: 20, players: [{ _botWar: { 1: { since: 0 } } }, {}, {}] });
+    expect(byState((s) => (fn('botWarAssess')(G(s), 0, 1, null) as Raw)['decision'])).toEqual([
+      'enemy: "peace"',
+      'allied: null',
+      'neutral: null',
+      'null: null',
+    ]);
+  });
+  test('a Neutral pair, the bot the stronger, is judged for war; a pair at war or allied is not', () => {
+    const myHost = {
+      id: 1,
+      alive: true,
+      player: 0,
+      location: 0,
+      armies: [{ type: 'Militia', quality: 'Average', race: 'Human' }],
+    };
+    const G = (s: string | null) =>
+      aWorld(s, { characters: [myHost], world: { provinces: [aProvince({ characters: [1] })] } });
+    expect(byState((s) => (fn('botWarAssess')(G(s), 0, 1, null) as Raw)['decision'])).toEqual([
+      'enemy: null',
+      'allied: null',
+      'neutral: "war"',
+      'null: "war"',
+    ]);
+  });
+  test("a third realm's alliances weigh on the war, and its wars burden the bot", () => {
+    const myHost = {
+      id: 1,
+      alive: true,
+      player: 0,
+      location: 0,
+      armies: [{ type: 'Militia', quality: 'Average', race: 'Human' }],
+    };
+    const G = (withMe: string | null, withThem: string | null) =>
+      aWorld(neutral, {
+        characters: [myHost],
+        world: { provinces: [aProvince({ characters: [1] })] },
+        relations: { ...(withMe == null ? {} : { '0-2': withMe }), ...(withThem == null ? {} : { '1-2': withThem }) },
+      });
+    const weigh = (withMe: string | null, withThem: string | null) => {
+      const r = fn('botWarAssess')(G(withMe, withThem), 0, 1, null) as Raw;
+      return `${String(withMe)}/${String(withThem)}: ${String(r['ratio'])} ${JSON.stringify(r['opp'])}`;
+    };
+    expect(EACH.flatMap((a) => EACH.map((b) => weigh(a, b)))).toEqual([
+      'enemy/enemy: 1.9166666666666667 []',
+      'enemy/allied: 1.1979166666666667 []',
+      'enemy/neutral: 1.9166666666666667 []',
+      'enemy/null: 1.9166666666666667 []',
+      'allied/enemy: 2.766666666666667 ["ally at war with them"]',
+      'allied/allied: 2.766666666666667 []',
+      'allied/neutral: 2.766666666666667 []',
+      'allied/null: 2.766666666666667 []',
+      'neutral/enemy: 2.1666666666666665 []',
+      'neutral/allied: 1.3541666666666667 []',
+      'neutral/neutral: 2.1666666666666665 []',
+      'neutral/null: 2.1666666666666665 []',
+      'null/enemy: 2.1666666666666665 []',
+      'null/allied: 1.3541666666666667 []',
+      'null/neutral: 2.1666666666666665 []',
+      'null/null: 2.1666666666666665 []',
+    ]);
+  });
+  test('a realm has met another crown by a pair of realms not Neutral, a blank entry among them (KD-469)', () => {
+    const met = (entry: string | null) => fn('botHasMetPlayers')(aWorld(entry), 0);
+    expect([...EACH, ''].map((s) => `${String(s)}: ${String(met(s))}`)).toEqual([
+      'enemy: true',
+      'allied: true',
+      'neutral: false',
+      'null: false',
+      ': true',
+    ]);
   });
 });
