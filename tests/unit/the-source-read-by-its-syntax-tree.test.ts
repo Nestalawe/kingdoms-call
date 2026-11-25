@@ -134,7 +134,15 @@ describe('each helper gives the same answer on both layouts', () => {
         ).map(compactCode),
     ],
     ['entriesOf', (o) => entriesOf('content/unit-abilities-their-names-numbers-and-words.ts', 'UNIT_ABILITIES', o)],
-    ['callsTo', (o) => callsTo('engine/battle/battles-between-heroes.ts', 'trySkillGain', o)],
+    [
+      'callsTo',
+      (o) =>
+        callsTo(
+          'engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+          'trySkillGain',
+          o,
+        ),
+    ],
     [
       'compactDeclaration',
       (o) =>

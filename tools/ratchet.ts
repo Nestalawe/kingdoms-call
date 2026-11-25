@@ -1200,8 +1200,8 @@ export const RELATION_VOCABULARY: ReadonlySet<string> = new Set<string>([
 /** The two `'neutral'`s that are no relation (above). */
 export const THE_RELATION_WORDS_THAT_ARE_NOT_A_RELATION: readonly AWordThatIsNotTheCountsWord[] = [
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
-    'combatVsNPC',
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
     'neutral',
     "the battle's kind: a battle against a province's neutral defenders",
   ],

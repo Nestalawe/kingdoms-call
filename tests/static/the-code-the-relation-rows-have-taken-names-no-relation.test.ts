@@ -189,9 +189,11 @@ test("the ratchet's helper counts each relation, a literal type's and a key's as
     planted: 4,
     inner: 1,
   });
-  const theBattle = 'src/engine/battle/battles-against-province-defenders.ts';
-  const twice = "export function combatVsNPC() { return 'neutral' + 'neutral' + 'enemy'; }";
-  expect(relationChecksByFunction(theBattle, twice).get('combatVsNPC'), 'one neutral let through, not two').toBe(2);
+  const theBattle =
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts';
+  const theStage = 'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders';
+  const twice = `export function ${theStage}() { return 'neutral' + 'neutral' + 'enemy'; }`;
+  expect(relationChecksByFunction(theBattle, twice).get(theStage), 'one neutral let through, not two').toBe(2);
 });
 
 // The count on the tree is the ratchet's baseline; a relation planted in an engine function raises it by one, in the

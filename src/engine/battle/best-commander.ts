@@ -1,4 +1,8 @@
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
+import {
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
+} from '../../content/kingdoms-call-data.ts';
 import { battleFrontWidth, battleLineTotal } from './lines.ts';
 import { tacMulted } from '../units/movement.ts';
 import {
@@ -57,11 +61,23 @@ export function commandScore(
     ? 0
     : effStat(turnContext, cand, 'tactical') +
       theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, cand, title));
-  if (cand._curseHalveStat === 'tactical') tact = Math.floor(tact / 2);
-  const tacB = terrain === 'sea' ? 1 : tacMulted(Math.min(2.0, 1 + tact * 0.2), cand);
+  if (cand._curseHalveStat === 'tactical')
+    tact = Math.floor(tact / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const tacB =
+    terrain === 'sea'
+      ? 1
+      : tacMulted(
+          Math.min(
+            KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
+            1 + tact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
+          ),
+          cand,
+        );
   let nav = effStat(turnContext, cand, 'naval');
-  if (cand._curseHalveStat === 'naval') nav = Math.floor(nav / 2);
-  const navB = 1 + nav * 0.2;
+  if (cand._curseHalveStat === 'naval')
+    nav = Math.floor(nav / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const navB =
+    1 + nav * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   const _coast = provIsCoastal(G, prov);
   const rows = pooled
     .filter((a): a is ArmyInABattle => Boolean(a))

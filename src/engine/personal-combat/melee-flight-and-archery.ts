@@ -2,6 +2,14 @@ import { kcRng } from '../rng.ts';
 import { temperOf } from '../world/tables.ts';
 import { PC_MAX_LINGER_ROUNDS, pcPushDot } from './helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
+import {
+  KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT,
+  KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT,
+  KC_AN_ARROW_IN_PERSONAL_COMBAT,
+  KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT,
+  KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT,
+  KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT,
+} from '../../content/kingdoms-call-data.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { whatARealmsDiscoveriesAddToAFightersAim } from '../rules/the-registry-of-discovery-effects.ts';
 import { pcFoeCat } from '../titles/perks.ts';
@@ -99,7 +107,9 @@ export function pcTryCounter(
   chan: string,
 ) {
   if (!hero || !foe || hero.hp <= 0 || foe.hp <= 0) return;
-  const _perk = hero.perkCounter ? 0.5 : 0;
+  const _perk = hero.perkCounter
+    ? KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT.theChanceACounterattackStrikes
+    : 0;
   const _temper = chan === 'melee' ? temperOf(hero.temper).riposte || 0 : 0;
   const _chance = Math.max(_perk, _temper);
   if (_chance <= 0) return;
@@ -243,20 +253,26 @@ export function pcMeleeStrike(
 // Both now call pcAttemptFlee.
 // base 30% · vs a SLOW monster +25 / vs a FAST one −15 · + temper fleeMod ·
 // + fleeBonus (Invisibility, Smoke Bomb, Potion of Fleetness) − fleePenalty (Undertow Curse) ·
-// Charm doubles · clamped 5–95.
+// Charm doubles · clamped 5–95. Its figures are content's row (KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT, B-06bo).
 // A FAILED escape turns the runner's back: the foe takes a bonus free melee attack. Only one flee
 // attempt per combatant per round — an action-phase attempt suppresses the end-of-round
 // break-off, so nobody eats two free strikes in one round.
 export function pcFleeChance(actor: AFighterInAPersonalCombat, foe: AFighterInAPersonalCombat) {
-  const spd = foe.kind === 'monster' ? pcSpeedOf(foe) : 2;
+  const theRow = KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT;
+  const thePace = KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT.theSpeedOfAGuardianByHisPace;
+  const spd = foe.kind === 'monster' ? pcSpeedOf(foe) : theRow.theSpeedAHeroFoeIsReadAt;
   let chance =
-    30 +
-    (spd === 1 ? 25 : spd === 3 ? -15 : 0) +
+    theRow.theChanceBeforeTheFoesPace +
+    (spd === thePace.slow
+      ? theRow.theRiseAgainstASlowGuardian
+      : spd === thePace.fast
+        ? -theRow.theFallAgainstAFastGuardian
+        : 0) +
     temperOf(actor.temper).fleeMod +
     (actor.status.fleeBonus || 0) -
     (actor.status.fleePenalty || 0);
-  if (actor.status.fleeDoubled) chance *= 2; // Charm combat effect
-  return Math.max(5, Math.min(95, dispFloor(chance)));
+  if (actor.status.fleeDoubled) chance *= theRow.theTimesACharmRaisesIt; // Charm combat effect
+  return Math.max(theRow.theLeast, Math.min(theRow.theMost, dispFloor(chance)));
 }
 export function pcFreeStrike(
   turnContext: TurnContext,
@@ -301,7 +317,10 @@ export function pcFreeStrike(
       });
     if (foe.hp <= 0 && foe._rebirth) {
       foe._rebirth = false;
-      foe.hp = Math.max(5, Math.round(foe.maxHp * 0.4));
+      foe.hp = Math.max(
+        KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT.theLeastHpHeRisesWith,
+        Math.round(foe.maxHp * KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT.theShareOfHisMostHpHeRisesWith),
+      );
       narrate(narrative, {
         kind: 'the foe bursts into ash then blazes back to life',
         foeName: foe.name,
@@ -349,7 +368,11 @@ export function pcAdvanceOrStrike(
   if (state.range !== 'melee') {
     //a FAST guardian closes two range slots in one advance (spell → melee at once);
     // everyone else, slow guardians included, closes one — slowness is no penalty to advancing.
-    const _steps = actor.kind === 'monster' && pcSpeedOf(actor) >= 3 ? 2 : 1;
+    const _steps =
+      actor.kind === 'monster' &&
+      pcSpeedOf(actor) >= KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT.theSpeedOfAGuardianByHisPace.fast
+        ? KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT.theRangesAFastGuardianClosesInOneAdvance
+        : 1;
     const _from = state.range;
     const _to = pcRangeStep(state.range, _steps);
     if (_to === undefined) return; // (made sure: pcRangeStep keeps its index within the three ranges)
@@ -414,7 +437,7 @@ export function pcAdvanceOrStrike(
 // same points on Melee (measured: equal-level archer duel win rate fell 8.5% → 0.3% across
 // levels 1–5). Archers also pay a positioning tax melee never does: a failed advance or a failed
 // withdrawal consumes the whole Fire action.
-export const ARCHERY_VOLLEY_AT = 3; // arrows per Fire action becomes 2 at this skill level
+export const ARCHERY_VOLLEY_AT = KC_AN_ARROW_IN_PERSONAL_COMBAT.theArcheryAVolleyNeeds; // arrows per Fire action becomes 2 at this skill level (content's row, KC_AN_ARROW_IN_PERSONAL_COMBAT, B-06bo)
 // ARCHERY FIELDCRAFT and the PARTING SHOT. Measured, the bow's whole problem was positioning, not
 // damage — every fight opens at spell range, closing to bow range is a 60% roll and breaking out
 // of a melee a 40% one, and a failed roll eats the entire action. A fully-trained Bow got 4 shots
@@ -428,11 +451,16 @@ export const ARCHERY_VOLLEY_AT = 3; // arrows per Fire action becomes 2 at this 
 // Bow vs Stone Golem 85% → 99%, vs Sea Wyrm 81% → 100%; Blade / Sword & bow / Archmage figures unchanged.
 export const ARCHERY_PARTING_SHOT: ASwitchTurnedOnOrOff = true; // typed a switch, so its test still reads it when it is off
 export function pcVolleySize(cbt: Pick<AFighterInAPersonalCombat, 'archery'>) {
-  return (cbt.archery || 0) >= ARCHERY_VOLLEY_AT ? 2 : 1;
+  return (cbt.archery || 0) >= ARCHERY_VOLLEY_AT ? KC_AN_ARROW_IN_PERSONAL_COMBAT.theArrowsInAVolley : 1;
 }
 export function pcArrowDamage(cbt: Pick<AFighterInAPersonalCombat, 'archery' | 'archeryRaw'>) {
   const _ask = cbt.archeryRaw ?? (cbt.archery || 0);
-  return rng(1, 3) + Math.ceil(_ask / 2);
+  return (
+    rng(
+      KC_AN_ARROW_IN_PERSONAL_COMBAT.theLeastAnArrowsBaseRoll,
+      KC_AN_ARROW_IN_PERSONAL_COMBAT.theMostAnArrowsBaseRoll,
+    ) + Math.ceil(_ask / KC_AN_ARROW_IN_PERSONAL_COMBAT.theNumberHisArcheryIsDividedByForWhatItAdds)
+  );
 } // Sept 2026 redesign: was floor(Archery/3); raw skill (1–9) for characters · 2026-10-14 (Toby item 20): base 1–3, was 2–5
 export function pcFireShot(
   turnContext: TurnContext,
@@ -519,11 +547,24 @@ export function pcFireOne(
       });
     // ARCHERY L6 (Impalement): 50% chance a hit lodges, bleeding the foe 1-3 each round — capped
     // at three rounds.
-    if (dealt && actor.perkImpale && foe.hp > 0 && kcRng() < 0.5) {
-      const _imp = pcPushDot(foe, rng(1, 3), PC_MAX_LINGER_ROUNDS, {
-        kind: "an archer's impaling arrow",
-        archerName: actor.name,
-      });
+    if (
+      dealt &&
+      actor.perkImpale &&
+      foe.hp > 0 &&
+      kcRng() < KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT.theChanceAnArrowImpales
+    ) {
+      const _imp = pcPushDot(
+        foe,
+        rng(
+          KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT.theLeastAnImpalingArrowBleedsARound,
+          KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT.theMostAnImpalingArrowBleedsARound,
+        ),
+        PC_MAX_LINGER_ROUNDS,
+        {
+          kind: "an archer's impaling arrow",
+          archerName: actor.name,
+        },
+      );
       // (pcPushDot gives none only for a foe of no status, whose line below threw before: it throws here)
       if (!_imp) throw new TypeError("Cannot read properties of null (reading 'dmg')");
       narrate(narrative, {
@@ -536,7 +577,12 @@ export function pcFireOne(
     }
     // ARCHERY L8 (Trueshot): 50% chance the shot finds a vital — the foe's next attack
     // automatically fails.
-    if (dealt && actor.perkTrueshot && foe.hp > 0 && kcRng() < 0.5) {
+    if (
+      dealt &&
+      actor.perkTrueshot &&
+      foe.hp > 0 &&
+      kcRng() < KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT.theChanceATrueshotFindsAVitalPoint
+    ) {
       foe.status.nextAttackFails = (foe.status.nextAttackFails || 0) + 1;
       narrate(narrative, { kind: "a fighter's shot strikes a vital point", actorName: actor.name, foeName: foe.name });
     }

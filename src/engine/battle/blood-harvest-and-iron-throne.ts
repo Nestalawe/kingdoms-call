@@ -1,4 +1,5 @@
 import { THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { KC_THE_WONDERS_FIGURES_IN_A_BATTLE } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { theWonderServesTheRealm } from '../discoveries.ts';
@@ -66,7 +67,7 @@ export function ironThroneRaise(
   // real id; flush at turn end.
   let _r = 0;
   deadUnits.forEach((u) => {
-    if (u && !u._isSkeletal && kcRng() < 0.2) {
+    if (u && !u._isSkeletal && kcRng() < KC_THE_WONDERS_FIGURES_IN_A_BATTLE.theChanceTheIronThroneRaisesEachSlainUnit) {
       G._pendingRises ??= [];
       G._pendingRises.push({
         charId: winnerChar.id,

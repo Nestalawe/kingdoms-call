@@ -9,10 +9,12 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 
 ## B-06, T7: the rules pulled out
 
-B-06 is open; its foundations, the alignments, the races and the tempers are finished: Run 1 (the economy, then the
-Reckoning and the titles), Run 2a (world generation), Run 2b (the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows)
-and Run 3a (the races and the tempers, B-06ac to B-06ak). The tranche's plan, its counts and its risks: #711; Run 3's:
-#756.
+B-06 is open; its foundations, the alignments, the races, the tempers, the hero orders and diplomacy are finished,
+and the battles' first rows: Run 1 (the economy, then the Reckoning and the titles), Run 2a (world generation), Run 2b
+(the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows), Run 3a (the races and the tempers, B-06ac to B-06ak), Run 3b
+(the hero orders and diplomacy, B-06al to B-06av) and Run 3c's first rows (the battle proof, the battles' tables and
+the first two cuts of the battle against the defenders, B-06aw to B-06ba). The tranche's plan, its counts and its
+risks: #711; Run 3's: #756.
 
 - B-06a: #711 The ratchet counts the economy and the titles, B-06's lettered rows, the KD- rows found by the scoping, B-20 and the bots' worth hook
 - B-06b: #712 The economy's prices in content: the price table, the fallback 2g and the skeleton's 1g, through one price rule and one wage rule
@@ -62,6 +64,24 @@ and Run 3a (the races and the tempers, B-06ac to B-06ak). The tranche's plan, it
 - B-06ai: #764 The tempers' rules on their rows: a hero of no temper fights as Brave, the auto plan's two behaviours, a commander's duel stance and terror's courage by temper
 - B-06aj: #765 The bots name no temper: their duel rating and their war bar weigh a hero's temper as weights of kind temper
 - B-06ak: #766 The player portal's races and tempers read content: the beasts' classes, the race words and tags, the practice note, Call to Arms' target and a hero of no temper
+- B-06al: #768 The hero orders' rows in content: each order's key, the names the turn reads and its tier, and the order kinds built from them
+- B-06am: #770 The phase's order by row: the tier an order acts in, the phase stages' flushes and the intents read each order's row
+- B-06an: #771 The checks before a hero's order read his order's row: a seized hero's refusals, once a turn, a newly joined hero's mastery, the battle lock and the remaps
+- B-06ao: #772 The hero orders' dispatch as a registry: each order's resolver keyed by its row, checked by the compiler, and the switch gone
+- B-06ap: #773 The hero orders' last names in the engine: the move, ride-outs, pursuits, a default Defend and the hire pre-orders read the orders' rows
+- B-06aq: #774 How two realms stand has one reader: the relation's copies ask relationBetween, the four states are content constants, the key is written once
+- B-06ar: #775 The diplomacy ladder in a row: a mutual Treat's step, a war's step, the overture's kind and the small game's alliance limit, one content number
+- B-06as: #776 The bots' orders, 1 of 2: their first phase's urgency, attacks and filler read the hero orders' rows, the bots' sets kept
+- B-06at: #777 The bots' orders, 2 of 2: their economy, spells, strategy, missions, movement and specialists read the hero orders' rows
+- B-06au: #778 The bots' relations, 1 of 2: their strategy, wars, diplomacy and intel ask how two realms stand, not the states' words
+- B-06av: #779 The bots' relations, 2 of 2: their missions, specialists, spells, movement and first phase ask how two realms stand
+- B-06aw: #780 The battle-by-battle proof: each staged battle gives the same lines, the same world after and the same dice by stage as the base
+- B-06ax: #781 The ground's table in content: each company's strength on each ground (TERRAIN_MODS), copied as it is
+- B-06aw2: #782 The battle proof, its fixes: it compares what a battle writes to the turn, stages a landing and a slain commander as the engine does, and finds each side's stages wherever they move
+- B-06ay1: #783 The battle's margin bands and carry-on in parameter rows, a static test holding them to the rulebook's table
+- B-06ay2: #784 The battle grid's tables and the battle's single constants in parameter rows
+- B-06az: #785 The battle against a province's defenders split by stage, 1 of 5: the set-up to the sides, and the state the stages share
+- B-06ba: #786 The battle against a province's defenders split by stage, 2 of 5: the attacker's pre-battle phases, and the battle's state typed
 - The fix Run 1 found on the way, its known-defect row deleted: #720 The registry compile test: a test and a program for each registry, every planted copy and expected error as it was
 
 ## The other new items

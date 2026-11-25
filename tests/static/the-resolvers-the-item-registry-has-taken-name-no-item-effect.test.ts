@@ -49,7 +49,36 @@ import {
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/terrain-and-unit-strength.ts', 'armStr', "P1-19m, the commander's items"],
   ['src/engine/battle/battles-between-heroes.ts', 'combatVsChar', "P1-19n, the battles' items"],
-  ['src/engine/battle/battles-between-heroes.ts', 'applyPreBattleArchery', "P1-19n, the battles' items"],
+  [
+    'src/engine/battle/the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bf: combatVsChar's set-up, duel and sides, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bg: combatVsChar's magic and army spells, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
+    'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bj: combatVsChar's casualties, rout and end, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'applyPreBattleArchery',
+    "P1-19n, the battles' items",
+  ],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', "P1-19n, the battles' items"],
   [
     'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
@@ -60,6 +89,21 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/battle/the-battle-against-the-defenders/n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts',
     'theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders',
     "P1-19n, the battles' items (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts',
+    'theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19n, the battles' items (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n8-to-n10-the-grounds-notes-the-lines-fortune-and-the-result.ts',
+    'theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders',
+    "P1-19n, the battles' items (B-06bc: combatVsNPC's lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
+    "P1-19n, the battles' items (B-06bd: combatVsNPC's casualties, rout and end, moved)",
   ],
   ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten', "P1-19n, the battles' items"],
   [
@@ -199,8 +243,8 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   // the ladder's reason for an Evil realm's Terror ({ kind: 'terror', multiplier }), not the combat item's use
   armStr: ['terror'],
   // an Evil realm's doctrine after a decisive win, `(encounterPlan.evilMode || 'terror') === 'terror'`, not the use
-  combatVsChar: ['terror', 'terror'],
-  combatVsNPC: ['terror', 'terror'],
+  theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes: ['terror', 'terror'], // combatVsChar's, moved (B-06bj)
+  theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders: ['terror', 'terror'], // combatVsNPC's, moved (B-06bd)
   // the kind of source the portals colour a skill's bonus by ({ kind: 'aura' }), not the Crown of Command's key
   skillBonusBreakdown: ['aura'],
   // the armour slot the Mithril suit is worn in (`return 'armour'`), not an armour's stat
@@ -215,9 +259,9 @@ const READS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = 
   // `.drumTierUp`: the War Drum's chance to lift a unit a tier, which no row of the items family takes (KD-037, found
   // by P1-19n). The Ember Rune's
   // `.emberTwo` went with the spells family's first row (P1-19u: "strength: a hero's items change his battle spell")
-  combatVsChar: ['.drumTierUp'],
-  // combatVsNPC's own went with its set-up (B-06az)
+  // combatVsNPC's own went with its set-up (B-06az), combatVsChar's with its (B-06bf)
   theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders: ['.drumTierUp'],
+  theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes: ['.drumTierUp'],
 };
 
 /** The checks of an item's effect a taken function still holds, by the function, each left to a later step: none since

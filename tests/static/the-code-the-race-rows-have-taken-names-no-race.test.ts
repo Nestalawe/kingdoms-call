@@ -138,9 +138,49 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts',
+    'theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n8-to-n10-the-grounds-notes-the-lines-fortune-and-the-result.ts',
+    'theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bc: combatVsNPC's lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bd: combatVsNPC's casualties, rout and end, moved)",
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "B-06ae, Raiders' Muster's flag, from the race gifts' runner",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bf: combatVsChar's set-up, duel and sides, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bg: combatVsChar's magic and army spells, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
+    'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bj: combatVsChar's casualties, rout and end, moved)",
   ],
   [
     'src/engine/units/drill-and-spoils.ts',

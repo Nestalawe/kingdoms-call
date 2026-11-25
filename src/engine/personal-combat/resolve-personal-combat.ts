@@ -1,4 +1,9 @@
 import { kcRng } from '../rng.ts';
+import {
+  KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT,
+  KC_A_PERSONAL_COMBATS_ROUNDS_WARD_INITIATIVE_SECOND_WIND_AND_MERCY,
+  KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
+} from '../../content/kingdoms-call-data.ts';
 import { temperOf } from '../world/tables.ts';
 import { activeItems, hasItemBase, settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { applyItemMaxHp, transferableItems } from './helpers.ts';
@@ -157,7 +162,8 @@ export function resolvePersonalCombat(
 ): HowAPersonalCombatEnds {
   const { G } = turnContext;
   opts = opts ?? {};
-  const maxRounds = (opts.maxRounds ?? 0) || 20;
+  const theFightsFigures = KC_A_PERSONAL_COMBATS_ROUNDS_WARD_INITIATIVE_SECOND_WIND_AND_MERCY;
+  const maxRounds = (opts.maxRounds ?? 0) || theFightsFigures.theMostRoundsOfAFightWhoseCallerNamesNone;
   const narrative: NarrativeLine[] = [];
   A._foeCat = pcFoeCat(B);
   B._foeCat = pcFoeCat(A); // 2026-09-10 armour: nature-keyed wards (Serpent-Scale / Grave-Iron) read the striker's kind
@@ -193,9 +199,10 @@ export function resolvePersonalCombat(
     const myHero = me ? asItsGuardReadsIt<AHeroAsTheFightReadsHim>(me.ref) : null;
     if (me?.kind !== 'character' || !myHero || myHero._druidNegated) return 0;
     if (foe?.kind !== 'monster' || !_PC_BEAST_CATS.has(foe.cat ?? '')) return 0;
-    let lvl = Math.min(5, effStat(turnContext, myHero, 'druid'));
-    if (myHero._curseHalveStat === 'druid') lvl = Math.floor(lvl / 2);
-    return lvl >= 3 ? lvl : 0;
+    let lvl = Math.min(theFightsFigures.theLevelOfDruidTheWardCountsTo, effStat(turnContext, myHero, 'druid'));
+    if (myHero._curseHalveStat === 'druid')
+      lvl = Math.floor(lvl / theFightsFigures.theNumberACursedDruidsLevelIsDividedBy);
+    return lvl >= theFightsFigures.theLeastLevelOfDruidThatWardsAgainstABeast ? lvl : 0;
   };
   A.druidBeastWard = _wardOf(A, B);
   B.druidBeastWard = _wardOf(B, A);
@@ -238,8 +245,10 @@ export function resolvePersonalCombat(
       aDruidBeastWard: B.druidBeastWard,
     });
   // Initiative: speed first, then raw martial skill; ties broken at random.
-  const initA = pcSpeedOf(A) * 10 + (A.melee || 0) + (A.archery || 0) + kcRng();
-  const initB = pcSpeedOf(B) * 10 + (B.melee || 0) + (B.archery || 0) + kcRng();
+  const initA =
+    pcSpeedOf(A) * theFightsFigures.theWeightOfSpeedInTheInitiative + (A.melee || 0) + (A.archery || 0) + kcRng();
+  const initB =
+    pcSpeedOf(B) * theFightsFigures.theWeightOfSpeedInTheInitiative + (B.melee || 0) + (B.archery || 0) + kcRng();
   const first = initA >= initB ? A : B,
     second = first === A ? B : A;
   narrate(narrative, { kind: 'one fighter has the initiative', firstName: first.name });
@@ -444,7 +453,10 @@ export function resolvePersonalCombat(
       // Rebirth (Phoenix and kin): a banked resurrection is spent the moment it falls.
       if (foe.hp <= 0 && foe._rebirth) {
         foe._rebirth = false;
-        foe.hp = Math.max(5, Math.round(foe.maxHp * 0.4));
+        foe.hp = Math.max(
+          KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT.theLeastHpHeRisesWith,
+          Math.round(foe.maxHp * KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT.theShareOfHisMostHpHeRisesWith),
+        );
         narrate(narrative, {
           kind: 'the foe bursts into ash then blazes back to life',
           foeName: foe.name,
@@ -453,7 +465,10 @@ export function resolvePersonalCombat(
       }
       if (actor.hp <= 0 && actor._rebirth) {
         actor._rebirth = false;
-        actor.hp = Math.max(5, Math.round(actor.maxHp * 0.4));
+        actor.hp = Math.max(
+          KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT.theLeastHpHeRisesWith,
+          Math.round(actor.maxHp * KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT.theShareOfHisMostHpHeRisesWith),
+        );
         narrate(narrative, {
           kind: 'the foe bursts into ash then blazes back to life',
           foeName: actor.name,
@@ -470,10 +485,17 @@ export function resolvePersonalCombat(
     for (const cbt of [A, B]) {
       const tt = temperOf(cbt.temper);
       if (!tt.secondWind || cbt._secondWindUsed || cbt.hp <= 0) continue;
-      if (cbt.hp / (cbt.maxHp || 20) >= tt.fleeAt + 0.05) continue;
+      if (
+        cbt.hp / (cbt.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) >=
+        tt.fleeAt + theFightsFigures.theShareAboveHisFlightASecondWindWaitsFor
+      )
+        continue;
       cbt._secondWindUsed = true;
-      const back = Math.max(1, Math.round((cbt.maxHp || 20) * tt.secondWind));
-      cbt.hp = Math.min(cbt.maxHp || 20, cbt.hp + back);
+      const back = Math.max(
+        1,
+        Math.round((cbt.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) * tt.secondWind),
+      );
+      cbt.hp = Math.min(cbt.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE, cbt.hp + back);
       narrate(narrative, {
         kind: 'a fighter finds their second wind and fights on',
         cbtName: cbt.name,
@@ -494,7 +516,7 @@ export function resolvePersonalCombat(
         const foe = cbt === A ? B : A;
         if (foe.hp <= 0) continue;
         const tt = temperOf(cbt.temper);
-        const ratio = cbt.hp / (cbt.maxHp || 20);
+        const ratio = cbt.hp / (cbt.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE);
         // Even a Berserk has a breaking point — it is just a very late and unreliable one.
         const wants = ratio < tt.fleeAt && !(tt.losingOnly && cbt.hp >= foe.hp);
         if (cbt._fleeAttempted) continue; // already tried (and failed) to flee as this round's action
@@ -541,8 +563,9 @@ export function resolvePersonalCombat(
     if (cbt.hp <= 0 && cbt.kind === 'character' && temperOf(cbt.temper).mercy && !state.fledBy && !cbt._begged) {
       const theFoesHero = asItsGuardReadsIt<AHeroAsTheMercyReadsHim>(foe.ref);
       const foeAlign = (foe.alignment ?? '') || (theFoesHero?.alignment ?? '');
-      // the ladder's mercy, by the foe's own alignment (P1-19av2); one of none, 50
-      const mercy = theChanceAFoeOfThisAlignmentSparesAPlea(foeAlign) ?? 50;
+      // the ladder's mercy, by the foe's own alignment (P1-19av2); one of none, the fight's row's (B-06bp)
+      const mercy =
+        theChanceAFoeOfThisAlignmentSparesAPlea(foeAlign) ?? theFightsFigures.theChanceAFoeOfNoAlignmentSparesAPlea;
       const _r = kcRng() * 100,
         _granted = _r < mercy,
         _shown = Math.floor(_r) + 1; // same odds as ever; shown as a d100

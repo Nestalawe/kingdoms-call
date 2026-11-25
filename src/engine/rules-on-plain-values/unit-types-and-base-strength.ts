@@ -2,7 +2,12 @@
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
 // (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
 // share them (P1-11a).
-import { KC_UNIT_BASE_STR, KC_UNIT_Q_MULT, KC_UNIT_TYPE } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD,
+  KC_UNIT_BASE_STR,
+  KC_UNIT_Q_MULT,
+  KC_UNIT_TYPE,
+} from '../../content/kingdoms-call-data.ts';
 
 /** A unit as these rules read it: its type, and its quality (none reads as Average). */
 export interface UnitOfATypeAndQuality {
@@ -22,5 +27,8 @@ export function unitTypeOf(armyType: string): string {
 export const UNIT_BASE_STR: Record<string, number> = { ...KC_UNIT_BASE_STR };
 export const UNIT_Q_MULT: Record<string, number> = { ...KC_UNIT_Q_MULT };
 export function unitBaseStrength(army: UnitOfATypeAndQuality): number {
-  return (UNIT_BASE_STR[army.type] || 4) * (UNIT_Q_MULT[army.quality || 'Average'] || 2);
+  return (
+    (UNIT_BASE_STR[army.type] || KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD.theBaseStrength) *
+    (UNIT_Q_MULT[army.quality || 'Average'] || KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD.theQualitysFactor)
+  );
 }

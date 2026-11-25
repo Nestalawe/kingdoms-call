@@ -212,9 +212,9 @@ export const THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS = {
   // pcMonsterCombatant merges after them): Legendary 20%. The rulebook: "every Legendary guardian also carries its
   // grade's own 20% hit cap".
   theCapOfEachGrade: { Legendary: 20 },
-  // a guardian's regeneration and drain at full strength for the first 4 rounds, at half to the 8th, then spent
-  // (pcSustainMult's PC_SUSTAIN_FULL_ROUNDS and PC_SUSTAIN_HALF_ROUNDS; a hero's are never spent)
-  theSustainsFade: { theRoundsAtFullStrength: 4, theRoundsAtHalfStrength: 8 },
+  // a guardian's regeneration and drain at full strength for the first 4 rounds, at half (the share here) to the 8th,
+  // then spent (pcSustainMult's PC_SUSTAIN_FULL_ROUNDS and PC_SUSTAIN_HALF_ROUNDS; a hero's are never spent)
+  theSustainsFade: { theRoundsAtFullStrength: 4, theRoundsAtHalfStrength: 8, theShareAtHalfStrength: 0.5 },
   // a ward of 100 turns every stun, or every tick of a lingering harm: the words write the stun ward's in words, and the
   // rulebook both as "all"
   aFullWard: { value: 100, theRulebookWritesIt: 'all' },

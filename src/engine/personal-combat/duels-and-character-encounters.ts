@@ -1,4 +1,5 @@
 import { kcRng } from '../rng.ts';
+import { KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES } from '../../content/kingdoms-call-data.ts';
 import { isLegendaryItem } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { activeItems, settleTheItemsAHeroGained } from '../items/equipment.ts';
 import { transferableItems } from './helpers.ts';
@@ -79,7 +80,7 @@ export function magicItemsLine(
 // has a DUEL_FLEE_DROP chance of dropping one magic item in the scramble; the character who held
 // the field keeps it. Mithril never drops (granted relic). Both ends are resolved on the REAL
 // character records since fights are often fought on pooled copies. Returns the item or null.
-export const DUEL_FLEE_DROP = 0.5; // 2026-09-10 item 2: raised 30% → 50%; the same odds apply to a flight from a lair guardian (lairFleeItemDrop)
+export const DUEL_FLEE_DROP = KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theChanceAHeroWhoFleesDropsAnItem; // 2026-09-10 item 2: raised 30% → 50%; the same odds apply to a flight from a lair guardian (lairFleeItemDrop)
 export function duelFleeItemDrop(
   turnContext: TurnContext,
   runnerCbt: AFighterAsTheSpoilsReadHim | null | undefined,
@@ -168,7 +169,10 @@ export function resolveDuel(
   ]); // item 6
   let res: ReturnType<typeof resolvePersonalCombat>;
   try {
-    res = resolvePersonalCombat(turnContext, A, B, { maxRounds: 20, heldFieldWins: true });
+    res = resolvePersonalCombat(turnContext, A, B, {
+      maxRounds: KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theMostRoundsADuelRuns,
+      heldFieldWins: true,
+    });
   } finally {
     turnContext._duelFoes = null;
   } // a duel's field held is a win (preBattleDuel awards it)
@@ -240,12 +244,15 @@ export function resolveCharVsChar(
   if (Array.isArray(atkTactics) && atkTactics.length) A.tactics = atkTactics.slice();
   if (Array.isArray(defTactics) && defTactics.length) B.tactics = defTactics.slice();
 
-  const res = resolvePersonalCombat(turnContext, A, B, { maxRounds: 20 });
+  const res = resolvePersonalCombat(turnContext, A, B, {
+    maxRounds: KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theMostRoundsAnEncounterRuns,
+  });
   narrateAll(narrative, res.narrative);
 
   // A successful Steal in a character encounter is a pickpocketing of the victim's treasury.
   // THIEF L8: a master thief's own purse cannot be picked.
-  const _pickProof = (x: Character) => perkTier(x, 'thief') >= 3;
+  const _pickProof = (x: Character) =>
+    perkTier(x, 'thief') >= KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theMasteryTierOfThiefThatKeepsHisPurse;
   if (res.stoleBy === A && def.player !== null && atk.player !== null && _pickProof(def)) {
     narrate(narrative, {
       kind: "the attacker goes for the defender's purse and comes away with nothing",
@@ -260,7 +267,13 @@ export function resolveCharVsChar(
     });
   } else if (res.stoleBy === A && def.player !== null && atk.player !== null) {
     const purse = (G.players[def.player]?.gold ?? 0) || 0;
-    const stolen = Math.min(purse, rng(1, 5));
+    const stolen = Math.min(
+      purse,
+      rng(
+        KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theLeastGoldAStealLifts,
+        KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theMostGoldAStealLifts,
+      ),
+    );
     if (stolen > 0) {
       // a purse above nothing is a realm's; for none, the TypeError its read throws
       const theRobbedRealm = G.players[def.player];
@@ -284,7 +297,13 @@ export function resolveCharVsChar(
       });
   } else if (res.stoleBy === B && atk.player !== null && def.player !== null) {
     const purse = (G.players[atk.player]?.gold ?? 0) || 0;
-    const stolen = Math.min(purse, rng(1, 5));
+    const stolen = Math.min(
+      purse,
+      rng(
+        KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theLeastGoldAStealLifts,
+        KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theMostGoldAStealLifts,
+      ),
+    );
     if (stolen > 0) {
       // a purse above nothing is a realm's; for none, the TypeError its read throws
       const theRobbedRealm = G.players[atk.player];
@@ -315,11 +334,14 @@ export function resolveCharVsChar(
     defKilled = false;
   if (atkHp <= 0) {
     narrate(narrative, { kind: 'the attacker is overwhelmed', atkName: atk.name });
-    atkKilled = atk.isKing ? false : kcRng() < 0.3;
+    atkKilled = atk.isKing ? false : kcRng() < KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theChanceAFelledHeroIsSlain;
   }
   if (defHp <= 0) {
     narrate(narrative, { kind: 'the defender is overcome', defName: def.name });
-    defKilled = !def.isKing && def.player !== null && kcRng() < 0.3;
+    defKilled =
+      !def.isKing &&
+      def.player !== null &&
+      kcRng() < KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES.theChanceAFelledHeroIsSlain;
   }
 
   return { atkHp, defHp, atkKilled, defKilled, narrative };

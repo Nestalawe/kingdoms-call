@@ -12,6 +12,7 @@ import {
 } from '../turn/events-and-their-audiences.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { seaPenalty, terrainMod } from './terrain-and-unit-strength.ts';
+import { KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR } from '../../content/kingdoms-call-data.ts';
 import type { Quality } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -182,7 +183,11 @@ export function terrainNoteList(force: Army[] | null | undefined, terrain: strin
   (force || []).forEach((a) => {
     if (!a || a._phantom) return;
     const combined = terrainMod(a.type, terrain) * seaPenalty(a.type, terrain);
-    if (combined < 0.85 || combined > 1.05) marked.push({ unitType: a.type, multiplier: combined });
+    if (
+      combined < KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR.below ||
+      combined > KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR.above
+    )
+      marked.push({ unitType: a.type, multiplier: combined });
   });
   return marked.length ? marked : null;
 }

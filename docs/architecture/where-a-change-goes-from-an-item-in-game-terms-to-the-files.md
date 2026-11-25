@@ -92,8 +92,26 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 
 - **Where:** `src/engine/battle/` (a battle between armies) or `src/engine/personal-combat/` (heroes and guardians
   fighting). The cast chance and the lairs' grades are in `src/engine/chances-and-lair-grades.ts`. The battle against
-  a province's defenders (`combatVsNPC`) calls its stages from `src/engine/battle/the-battle-against-the-defenders/`
-  as they move there; the file of the attacker's pre-battle phases types the state the stages share and lists it.
+  a province's defenders (`combatVsNPC`) calls its five stages in order, each a file of
+  `src/engine/battle/the-battle-against-the-defenders/`; the file of the attacker's pre-battle phases types the state
+  the stages share and lists each let's writer and readers by stage file. The battle between heroes (`combatVsChar`)
+  calls its five stages in order, each a file of `src/engine/battle/the-battle-between-heroes/` (the command stage's
+  builders, which two stages share, are a file of their own there); the set-up's file types the battle's own state and
+  lists each let's writer and readers by stage file. Each battle's stage functions, with their stages (N0 to N13, H0 to H10:
+  their ids, names in game terms and anchors), are listed in the order they run in
+  `src/engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts`, and each battle takes its functions from
+  it: a stage added, moved or reworded changes its entry there (a unit test holds the list to the code; the battle
+  proof reads it). A battle's figures (the margin bands, the battle grid's tables,
+  the defender's edge and home, Tactical and Naval, the experience factors, ...) are rows of
+  `src/content/kingdoms-call-data.ts`, each named for its rule, not for one battle (both battles, a host's strength
+  `armStr` and the best commander's score read the shared ones): a figure changes in its row. The numbers left in
+  `battle/`'s code are structure (a percentage, a rounding, a midpoint, a tiny margin, a list's length). Battle rules
+  written outside `battle/` still hold their own: `units/movement.ts` (`tacMulted`, the pursuits, the Shield Fort),
+  `magic/pre-battle-spell-choice.ts`, `chances-and-lair-grades.ts`, and the sea lift's `seaLiftOfAColumn`. A
+  personal combat's figures are rows there too (to-hit, a blow, a hit taken, courage, the duels, speed, the plans, a
+  flight, an arrow, a guardian's hidden traits and powers, a lair's fight, a spell's cast, the initiative and mercy);
+  the numbers left in `personal-combat/`'s code are structure (a percentage, the figures a power's words name, the
+  last range's index, a loop's guard, the count of a plea's lines).
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).

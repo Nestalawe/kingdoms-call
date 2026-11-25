@@ -81,7 +81,10 @@ export function missileCap(target: ArmyInABattle, firer: ForceUnit): number {
   const isFly = FLYING_TYPES.has(target.type);
   const capFraction =
     theSofteningLimitOfAShooter({ theShootersType: firer?.type, theTargetFlies: isFly }) ??
-    (isFly ? _MISSILE_CAP_FRAC * 2 : _MISSILE_CAP_FRAC);
+    (isFly
+      ? _MISSILE_CAP_FRAC *
+        KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE.theTimesTheMostAWingedRiderLosesIsRaised
+      : _MISSILE_CAP_FRAC);
   return Math.max(1, Math.floor(baseStr * capFraction));
 }
 /** Why every shot glances off a unit (its immunity to volleys, whatever the shooters see), or null: the one answer

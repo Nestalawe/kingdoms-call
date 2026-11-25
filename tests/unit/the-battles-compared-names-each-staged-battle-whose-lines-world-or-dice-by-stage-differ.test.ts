@@ -1,12 +1,14 @@
 // The battle proof (tools/proof/the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts,
-// npm run proof:battles), its stage list (the-stages-of-the-two-battles-and-the-lines-that-open-them.ts) and its worker
+// npm run proof:battles), its stage list's reader (the-stages-of-the-two-battles-and-the-lines-that-open-them.ts, which
+// reads src/engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts) and its worker
 // (one-staged-battle-fought-on-a-side-in-a-fresh-process.ts):
 // - a draw's stage is the last anchor above the line of the innermost frame whose file holds one there, whichever file
 //   of the side's src/engine/ holds it; a helper's frame, or a line above a file's first anchor, passes to its caller;
 //   so a stage moved into another file, or two stages in one file, keep their names; an anchor of two lines is
 //   matched whatever its indentation;
-// - a stage whose anchor a side holds nowhere, or in two places, stops the proof, and every stage of the list is found
-//   once in src/ as it is now, each battle's in order;
+// - a stage whose anchor a side holds nowhere, or in two places, stops the proof, and every stage of src/'s list is
+//   found once in src/ as it is now (the list's own file aside), each battle's in order; a tree with no list of its
+//   own (a base from before B-06bl) is read with this tree's;
 // - two sides' battles differ on the lines, the world, the turn's log or another field of the turn's context, the dice
 //   in all or one stage's dice, or a throw (both throwing alike is the same), each named by its stream;
 // - the grid: every ground, both battles, the defender led and leaderless, from land, a landing and a raid on the
@@ -16,8 +18,8 @@
 // - identical on a copy whose two fortune stages moved into a file of their own (the split rows' kind of move);
 // - red on three faults planted in a copy of src/: an extra draw at the end of the battle between heroes' fortune
 //   stage; the fortune's swing the statistics record rounded to hundredths, not thousandths (only the turn's context
-//   differs, the dice the same); and the army spells and the archery of the battle between heroes swapped (the lines
-//   differ; each draw still counts under the stage whose text holds it).
+//   differs, the dice the same); and the magic and army spells and the archery of the battle between heroes swapped
+//   (the lines differ; each draw still counts under the stage whose text holds it).
 // Level 1 (unit): it runs the tool's functions on made-up frames and battles, and the worker on a few cases of this
 // tree and of copies. Static can't: it runs code and processes.
 import { execFile } from 'node:child_process';
@@ -49,7 +51,8 @@ import {
   type AStageOfABattle,
   NO_STAGE,
   THE_BATTLES,
-  THE_BATTLES_STAGES,
+  THE_BATTLES_STAGES_LIST,
+  theBattlesStagesListedAt,
   theBattlesStagesOfASide,
   theBattlesStagesOfTheSideAt,
   theStageOfADraw,
@@ -61,11 +64,11 @@ const WORKER = path.join(ROOT, 'tools/proof/one-staged-battle-fought-on-a-side-i
 describe("a draw's stage", () => {
   const at = (f: string) => path.join(SRC, 'engine/battle', f);
   const stages: readonly AStageOfABattle[] = [
-    { battle: 'against the defenders', stage: 'N0', what: '', anchors: ['export function combatVsNPC('] },
-    { battle: 'against the defenders', stage: 'N1', what: '', anchors: ['// A'] },
-    { battle: 'against the defenders', stage: 'N2', what: '', anchors: ['// B'] },
-    { battle: 'between heroes', stage: 'H0', what: '', anchors: ['export function combatVsChar('] },
-    { battle: 'between heroes', stage: 'H1', what: '', anchors: ['// C\nz();'] },
+    { battle: 'against the defenders', stage: 'N0', what: '', anchor: 'export function combatVsNPC(' },
+    { battle: 'against the defenders', stage: 'N1', what: '', anchor: '// A' },
+    { battle: 'against the defenders', stage: 'N2', what: '', anchor: '// B' },
+    { battle: 'between heroes', stage: 'H0', what: '', anchor: 'export function combatVsChar(' },
+    { battle: 'between heroes', stage: 'H1', what: '', anchor: '// C\nz();' },
   ];
   const frame = (functionName: string, file: string, lineNumber: number) => ({
     functionName,
@@ -124,26 +127,37 @@ describe("a draw's stage", () => {
     expect(theStageOfADraw([frame('aHelperAboveIt', 'cut/h1.ts', 1), fromPvp], side)).toBe('H0');
   });
 
-  test('a stage whose anchor a side holds nowhere, or in two places, stops the proof; another text of it is found', () => {
-    const gone = [{ battle: 'between heroes', stage: 'H9', what: '', anchors: ['// gone'] }] as const;
+  test('a stage whose anchor a side holds nowhere, or in two places, stops the proof', () => {
+    const gone = [{ battle: 'between heroes', stage: 'H9', what: '', anchor: '// gone' }] as const;
     expect(() => theBattlesStagesOfASide(base, gone)).toThrow(/H9's anchor "\/\/ gone" is in no file/);
-    const rewritten = [{ ...gone[0], anchors: ['// gone', '// C'] }];
-    expect(theBattlesStagesOfASide(base, rewritten).byFile.get(at('pvp.ts'))).toEqual([{ stage: 'H9', line: 2 }]);
     const twice = new Map([...base, [at('another.ts'), '// A']]);
     expect(() => theBattlesStagesOfASide(twice, stages)).toThrow(
       /N1's anchor is in 2 places \(npc\.ts:3, another\.ts:1\)/,
     );
   });
 
-  test("every stage of the list is found once in this tree's src/, each battle's in its order", () => {
+  test("every stage of src/'s list is found once in this tree's src/, each battle's in its order", () => {
     const here = theBattlesStagesOfTheSideAt(SRC);
+    const listedHere = theBattlesStagesListedAt(SRC);
     const found = [...here.byFile.values()].flat();
-    expect(found.map((s) => s.stage).sort()).toEqual(THE_BATTLES_STAGES.map((s) => s.stage).sort());
+    expect(found.map((s) => s.stage).sort()).toEqual(listedHere.map((s) => s.stage).sort());
+    expect(here.byFile.has(path.join(SRC, THE_BATTLES_STAGES_LIST.file)), "the list's own file holds no stage").toBe(
+      false,
+    );
     for (const b of THE_BATTLES) {
-      const listed = THE_BATTLES_STAGES.filter((s) => s.battle === b).map((s) => s.stage);
+      const listed = listedHere.filter((s) => s.battle === b).map((s) => s.stage);
       const [file] = [...here.byFile].find(([, starts]) => starts.some((s) => s.stage === listed[0])) ?? [];
       const inTheFile = (here.byFile.get(file ?? '') ?? []).map((s) => s.stage).filter((s) => listed.includes(s));
       expect(inTheFile, `the battle ${b}'s anchors in its order`).toEqual(listed.filter((s) => inTheFile.includes(s)));
+    }
+  });
+
+  test("a tree with no list of its own (a base from before B-06bl) is read with this tree's list", () => {
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-a-tree-with-no-list-'));
+    try {
+      expect(theBattlesStagesListedAt(bare)).toEqual(theBattlesStagesListedAt(SRC));
+    } finally {
+      fs.rmSync(bare, { recursive: true, force: true });
     }
   });
 });
@@ -300,13 +314,20 @@ function aPlantedCopy(plant: APlant): string {
   return copy;
 }
 
-const ARMY_SPELLS = [
-  '  applyArmyBattleSpells(atk, atkArmies, defArmies, narrative);',
-  '  if (!_atkLA) applyArmyBattleSpells(def, defArmies, atkArmies, narrative);',
-].join('\n');
+/** The battle between heroes' magic and army spells (H3) and its archery, Flak and Breach (H4), each its stage's call:
+ *  each stage's text is in a file of its own (B-06bg, B-06bh), so the swap moves the two calls, which combatVsChar makes
+ *  one after the other. */
+const MAGIC_AND_ARMY_SPELLS =
+  '  bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(turnContext, atk, def, theSetUp);';
 const ARCHERY = [
-  '  applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);',
-  '  if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);',
+  '  const theArcheryFlakAndBreach = bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(',
+  '    turnContext,',
+  '    atk,',
+  '    def,',
+  '    prov,',
+  '    theSetUp,',
+  '    theSetUp.pvpFront,',
+  '  );',
 ].join('\n');
 /** The two battles' fortune, each stage's text as it is, moved into a file of their own: one file holding two stages,
  *  each battle calling its own (an import may stand anywhere at a module's top level). */
@@ -331,17 +352,18 @@ const THE_FORTUNE_MOVED: APlant = {
       new: '  const _fort = theFortuneOfTheBattleAgainstTheDefenders();',
     },
     {
-      // (combatVsNPC's own head: the line check above it moved to a file of its own, B-06ba)
-      old: 'export function combatVsNPC(',
-      new: "import { theFortuneOfTheBattleAgainstTheDefenders } from './the-fortune-of-both-battles-moved.ts';\nexport function combatVsNPC(",
+      // (the head of the stage the fortune's text is in, the-battle-against-the-defenders/n8-to-n10-…, since B-06bc)
+      old: 'export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders(',
+      new: "import { theFortuneOfTheBattleAgainstTheDefenders } from '../the-fortune-of-both-battles-moved.ts';\nexport function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders(",
     },
     {
       old: [...PVP_FORTUNE, '  const _fortP = battleFortune();'].join('\n'),
       new: '  const _fortP = theFortuneOfTheBattleBetweenHeroes();',
     },
     {
-      old: 'function theLineTheBattleBetweenHeroesWrites<',
-      new: "import { theFortuneOfTheBattleBetweenHeroes } from './the-fortune-of-both-battles-moved.ts';\nfunction theLineTheBattleBetweenHeroesWrites<",
+      // (the head of the stage the fortune's text is in, the-battle-between-heroes/h5-to-h7-…, since B-06bi)
+      old: 'export function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(',
+      new: "import { theFortuneOfTheBattleBetweenHeroes } from '../the-fortune-of-both-battles-moved.ts';\nexport function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(",
     },
   ],
   adds: {
@@ -362,7 +384,15 @@ const THE_FORTUNE_MOVED: APlant = {
 const PLANTS: readonly APlant[] = [
   {
     name: "an extra draw at the end of the battle between heroes' fortune",
-    edits: [{ old: '  // ── STAT BLOCK ── 2026-09-23b', new: '  kcRng();\n  // ── STAT BLOCK ── 2026-09-23b' }],
+    edits: [
+      // (the fortune's stage, the-battle-between-heroes/h5-to-h7-…, since B-06bi, reads no die of its own: the draw
+      // brings its import)
+      {
+        old: 'export function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(',
+        new: "import { kcRng } from '../../rng.ts';\nexport function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes(",
+      },
+      { old: '  // ── STAT BLOCK ── 2026-09-23b', new: '  kcRng();\n  // ── STAT BLOCK ── 2026-09-23b' },
+    ],
   },
   {
     name: "the battle between heroes' swing in its statistics record rounded to hundredths (no draw)",
@@ -374,11 +404,11 @@ const PLANTS: readonly APlant[] = [
     ],
   },
   {
-    name: 'the army spells and the archery of the battle between heroes swapped',
+    name: 'the magic and army spells and the archery of the battle between heroes swapped',
     edits: [
-      { old: ARMY_SPELLS, new: '  // the army spells, moved' },
-      { old: ARCHERY, new: ARMY_SPELLS },
-      { old: '  // the army spells, moved', new: ARCHERY },
+      { old: MAGIC_AND_ARMY_SPELLS, new: '  // the magic and army spells, moved' },
+      { old: ARCHERY, new: MAGIC_AND_ARMY_SPELLS },
+      { old: '  // the magic and army spells, moved', new: ARCHERY },
     ],
   },
 ];

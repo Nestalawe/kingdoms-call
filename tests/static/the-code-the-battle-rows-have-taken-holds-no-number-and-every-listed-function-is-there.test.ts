@@ -49,14 +49,14 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06ay1, the margin bands: content's (KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM), the same list",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts',
     'CARRYON_DEATH_STEP',
-    "B-06ay1, the carry-on's step: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS)",
+    "B-06ay1, the carry-on's step: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS) (B-06bd: moved from combatVsNPC's file)",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts',
     'CARRYON_DEATH_CAP',
-    "B-06ay1, the carry-on's cap: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS)",
+    "B-06ay1, the carry-on's cap: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS) (B-06bd: moved from combatVsNPC's file)",
   ],
   [
     'src/engine/battle/lines.ts',
@@ -144,14 +144,14 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-strength-a-host-carried-over-the-sea-by-flyers-keeps.ts',
     'SEA_AIRBORNE_LAND_PENALTY',
-    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion) (B-06bc: moved from combatVsNPC's file)",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-strength-a-host-carried-over-the-sea-by-flyers-keeps.ts',
     'SEA_AIRBORNE_FLYER_PENALTY',
-    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion) (B-06bc: moved from combatVsNPC's file)",
   ],
   [
     'src/engine/battle/ladder.ts',
@@ -172,6 +172,256 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/battle/strength.ts',
     '_MISSILE_CAP_FRAC',
     "B-06ba (the review's 2), the volleys' cap: content's row, the one MISSILE_CAP_FRACTION reads (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
+    'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
+    "B-06bk, the battle between heroes' numbers: content's rows (Sanctuary's, the mastery orders', the defenders' ground explored)",
+  ],
+  [
+    'src/engine/battle/best-commander.ts',
+    'commandScore',
+    "B-06bm, the best commander's score: the shared rows (KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE, KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/battle/battle-report-lines-and-force-markers.ts',
+    'terrainNoteList',
+    "B-06bm, the ground's note: content's row (KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR)",
+  ],
+  [
+    'src/engine/battle/blood-harvest-and-iron-throne.ts',
+    'ironThroneRaise',
+    "B-06bm, the Iron Throne's chance: content's row (KC_THE_WONDERS_FIGURES_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/battle/pre-battle-duels.ts',
+    'preBattleDuel',
+    "B-06bm, a pre-battle duel's figures: content's row (KC_A_PRE_BATTLE_DUELS_FIGURES)",
+  ],
+  [
+    'src/engine/battle/strength.ts',
+    'missileCap',
+    "B-06bm, a winged rider's volley cap: content's row (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts',
+    'runDefendAmbush',
+    "B-06bm, a lone defender's ambush: content's row (KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS)",
+  ],
+  [
+    'src/engine/units/sea-lift-stranding-and-retreats.ts',
+    'seaLiftShortfall',
+    "B-06bm, the stranding's half-berths and Naval's mastery: content's rows (KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM, KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_MELEE_HIT_BASE',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_MELEE_HIT_PER_LVL',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_SKILL_CAP',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_PER_LVL_ABOVE',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_MAX',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_MIN',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcMeleeDamage',
+    "B-06bn, a blow's damage: content's row (KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcStunWard',
+    "B-06bn, a full ward: the guardian perks' row (THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.aFullWard)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcStunTurned',
+    "B-06bn, a full ward: the guardian perks' row (THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.aFullWard)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_BASE',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_PER_LVL',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_MIN',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_MAX',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_BY_POWER',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcCourageChance',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcSustainMult',
+    "B-06bn, the sustain's fade: the guardian perks' row (THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.theSustainsFade)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_WEAK_MULT',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_DMG_FLOOR_FRACTION',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_MAX_LINGER_ROUNDS',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_PEN_FADE_MIN',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/duels-and-character-encounters.ts',
+    'DUEL_FLEE_DROP',
+    "B-06bn, a duel's and a hero's encounter's figures: content's row (KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES)",
+  ],
+  [
+    'src/engine/personal-combat/duels-and-character-encounters.ts',
+    'resolveDuel',
+    "B-06bn, a duel's and a hero's encounter's figures: content's row (KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES)",
+  ],
+  [
+    'src/engine/personal-combat/duels-and-character-encounters.ts',
+    'resolveCharVsChar',
+    "B-06bn, a duel's and a hero's encounter's figures: content's row (KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcSpeedOf',
+    "B-06bo, a fighter's speed: content's row (KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'ARCHERY_FIELDCRAFT_PCT',
+    "B-06bo, a change of range: content's row (KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcMoveCheck',
+    "B-06bo, a change of range: content's row (KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'autoEncounterPlan',
+    "B-06bo, the plan of a hero with no orders: content's row (KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcCharCombatant',
+    "B-06bo, a hero's hit points and his mastery perks: content's rows (KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT, KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT, KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcMonsterCombatant',
+    "B-06bo, a guardian's hit points: content's row (KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcFleeChance',
+    "B-06bo, a flight: content's rows (KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT, KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcFreeStrike',
+    "B-06bo, a guardian's rebirth: content's row (KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcAdvanceOrStrike',
+    "B-06bo, a fast guardian's advance: content's rows (KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT, KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'ARCHERY_VOLLEY_AT',
+    "B-06bo, an arrow: content's row (KC_AN_ARROW_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcVolleySize',
+    "B-06bo, an arrow: content's row (KC_AN_ARROW_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcArrowDamage',
+    "B-06bo, an arrow: content's row (KC_AN_ARROW_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcFireOne',
+    "B-06bo, the mastery perks: content's row (KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcTemperFallback',
+    "B-06bo, the most HP of a fighter whose record holds none: content's row (KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcCombatItemWanted',
+    "B-06bo, the most HP of a fighter whose record holds none: content's row (KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcUseCombatItem',
+    "B-06bo, the most HP of a fighter whose record holds none: content's row (KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
+  [
+    'src/engine/personal-combat/lair-guardians-and-the-odds.ts',
+    'monsterTraits',
+    "B-06bp, a guardian's hidden traits: content's row (KC_A_GUARDIANS_HIDDEN_TRAITS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/lair-guardians-and-the-odds.ts',
+    'RUMOUR_SIM_FIGHTS',
+    "B-06bp, a lair guardian's fight: content's row (KC_A_LAIR_GUARDIANS_FIGHT)",
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'pcCastCombatSpell',
+    "B-06bp, a combat spell's cast: content's rows (KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT, KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
   ],
 ];
 

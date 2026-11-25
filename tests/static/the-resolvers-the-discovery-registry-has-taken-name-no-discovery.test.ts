@@ -59,7 +59,7 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
   ['src/engine/discoveries.ts', 'discUnitMult', "P1-19aa, a realm's discoveries strengthen a unit"],
   ['src/engine/discoveries.ts', 'dragonTamed', "P1-19aa, a realm's discoveries let a beast follow without its Druid"],
   [
-    'src/engine/battle/battles-between-heroes.ts',
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
     'applyPreBattleMagic',
     "P1-19aa, a realm's discoveries add to a caster's chance",
   ],
@@ -67,7 +67,6 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/battle/battles-against-province-defenders.ts',
     'combatVsNPC',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",
-    THE_EVIL_DOCTRINE_IN_A_BATTLE,
   ],
   [
     'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
@@ -80,9 +79,50 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts',
+    'theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n8-to-n10-the-grounds-notes-the-lines-fortune-and-the-result.ts',
+    'theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bc: combatVsNPC's lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bd: combatVsNPC's casualties, rout and end, moved)",
+    THE_EVIL_DOCTRINE_IN_A_BATTLE,
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bf: combatVsChar's set-up, duel and sides, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bg: combatVsChar's magic and army spells, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
+    'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bi: combatVsChar's Sanctuary, mastery orders, lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bj: combatVsChar's casualties, rout and end, moved)",
     THE_EVIL_DOCTRINE_IN_A_BATTLE,
   ],
   [

@@ -1,3 +1,8 @@
+import {
+  KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA,
+  KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM,
+  KC_THE_WORTH_A_BEATEN_HOST_SETS_ON_THE_GROUND_IT_FALLS_BACK_TO,
+} from '../../content/kingdoms-call-data.ts';
 import { carrierBerths } from '../rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts';
 import {
   AERIAL_TYPES,
@@ -90,10 +95,21 @@ export function seaLiftShortfall(
 ): number {
   const counted = (armies ?? []).filter((a): a is UnitOfAType => !!a && !a._phantom);
   if (getSeaCapability(counted, leadChar) !== 'land') return 0;
-  const capOf = (a: UnitOfAType) => (BOT_LIGHT_ARMIES.has(a.type) ? 1 : 2); // half-hulls: light foot 1, everything else 2
+  const capOf = (a: UnitOfAType) =>
+    BOT_LIGHT_ARMIES.has(a.type)
+      ? KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theHalfBerthsALightFootUnitTakes
+      : KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theHalfBerthsAnyOtherLandUnitTakes; // half-hulls: light foot 1, everything else 2
   const land = counted.filter((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type));
-  let hull2 = counted.reduce((s, a) => s + carrierBerths(a), 0) * 2; // half-berths: a turtle offers two berths (Island Back)
-  if (leadChar && perkTier(leadChar, 'naval') >= 3) hull2 *= 2;
+  let hull2 =
+    counted.reduce((s, a) => s + carrierBerths(a), 0) *
+    KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theHalfBerthsEachBerthHolds; // half-berths: a turtle offers two berths (Island Back)
+  if (
+    leadChar &&
+    perkTier(leadChar, 'naval') >=
+      KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA.theMasteryTierOfNavalThatWaivesTheSeasPenaltyAndDoublesHisBerths
+  )
+    hull2 *=
+      KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA.theTimesNavalsMasteryRaisesWhatEachBerthCarries;
   const must = land.filter((a) => !isAirCarriable(a)),
     lift = land.filter((a) => isAirCarriable(a));
   const mustNeed = must.reduce((s, a) => s + capOf(a), 0);
@@ -108,7 +124,12 @@ export function seaLiftShortfall(
       else byAir++;
     });
   const flyLift = counted.filter((a) => FLYING_TYPES.has(a.type)).length;
-  return Math.max(1, Math.max(0, mustNeed - hull2) * 1000 + Math.max(0, byAir - flyLift));
+  return Math.max(
+    1,
+    Math.max(0, mustNeed - hull2) *
+      KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theUnitsAHalfBerthShortWeighsAs +
+      Math.max(0, byAir - flyLift),
+  );
 }
 // The land units to put ashore so the rest can be carried: repeatedly the WEAKEST land unit whose
 // removal actually reduces the shortfall (fallback: the weakest outright). Never flyers or hulls.
@@ -301,7 +322,14 @@ export function retreatValue(
   const pl = ch?.player != null ? (asItsGuardReadsIt(G.players) ?? [])[ch.player] : null;
   const home = pl?.homeProvinceId === p.id ? 1 : 0;
   const garrison = (asItsGuardReadsIt(p.garrisonArmies) ?? []).length > 0 ? 1 : 0;
-  return (p.tax || 0) * 1000 + own * 400 + home * 200 + garrison * 100 + (1 - (p.id || 0) / 1e6);
+  const worth = KC_THE_WORTH_A_BEATEN_HOST_SETS_ON_THE_GROUND_IT_FALLS_BACK_TO;
+  return (
+    (p.tax || 0) * worth.eachGoldOfItsTax +
+    own * worth.itsRealmsOwnGround +
+    home * worth.itsRealmsHomeProvince +
+    garrison * worth.aGarrisonStandingThere +
+    (1 - (p.id || 0) / 1e6)
+  );
 }
 // Best of a list of candidate retreat provinces (null when the list is empty).
 export function bestRetreat(

@@ -15493,7 +15493,8 @@ export const KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS = {
 // ── THE BATTLE'S SINGLE FACTORS (moved here from the engine's battle files as they were, B-06ay2) ────
 // A pre-battle volley (terrain-and-unit-strength.ts, missileShotDamage and applyMissileHit): 30% of the firing unit's
 // base strength (10 when no unit is named), +10% per level of the commander's Archery; a winged rider takes it twice
-// over; a target loses at most 40% of its base strength to volleys (doubled for a winged rider: missileCap). In the
+// over; a target loses at most 40% of its base strength to volleys (this many times that for a winged rider:
+// missileCap). In the
 // battle, the commander's Archery lifts every missile unit he leads +5% a level (ladder.ts). The engine reads them by
 // MISSILE_SHOT_PCT, MISSILE_ARCH_PER_LVL, MISSILE_CAP_FRACTION and ARCHERY_MISSILE_PCT.
 export const KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE = {
@@ -15503,6 +15504,7 @@ export const KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE = {
   theStrengthOfAShooterNoUnitIsNamedFor: 10,
   theTimesAWingedRiderIsHit: 2,
   theRiseEachLevelOfTheCommandersArcheryGivesHisMissileUnits: 0.05,
+  theTimesTheMostAWingedRiderLosesIsRaised: 2,
 } as const;
 // What a unit fights at, beside the ground's table: every unit enters the melee with at least this share of its
 // strength, whatever the pre-battle damage (PREBATTLE_STR_FLOOR); a non-flying land unit at sea (SEA_LAND_PENALTY,
@@ -15522,6 +15524,402 @@ export const KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND
 export const KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES = {
   theChanceEachFleesAsMercenaries: 0.35,
   theChanceEachThatHoldsLosesATier: 0.5,
+} as const;
+
+// ── A BATTLE'S SHARED FACTORS (moved here from the battle against a province's defenders' stages as they were,
+// B-06be) ────
+// Each row is named for its rule, not for one battle: the battle against a province's defenders reads them (its stage
+// files, src/engine/battle/the-battle-against-the-defenders/), and so does the battle between heroes (its stage files,
+// src/engine/battle/the-battle-between-heroes/, B-06bk).
+// A commander's Tactical lifts his host 1 + this much a level (his titles' levels counted), to at most this many times;
+// at Tactical 8 (the third tier of its mastery) the units of a host he loses with die or disband at this share of their
+// chances. His Naval lifts the fleets and sea-beasts he leads 1 + this much a level, with no cap.
+export const KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE = {
+  theRiseEachLevelOfTacticalGivesHisHost: 0.2,
+  theMostTimesTacticalLiftsHisHost: 2.0,
+  theMasteryTierOfTacticalThatSparesALosingHost: 3,
+  theShareOfALosingUnitsChancesToDieOrDisbandItLeaves: 0.5,
+  theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts: 0.2,
+} as const;
+// A Cursed commander's skill (the battle magic's mark, `_curseHalveStat`) counts in a battle as his level divided by
+// this, rounded down.
+export const KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE = {
+  theNumberItIsDividedBy: 2,
+} as const;
+// Decided once a battle, before it is fought: each unit of a commander with Tactical 6 (the first tier of its mastery),
+// and each unit of a commander who carries the War Drum, fights a quality tier higher at this chance.
+export const KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE = {
+  underACommanderWithTactical6: 0.1,
+  underTheWarDrum: 0.2,
+} as const;
+// The defenders' edge: the side that holds the ground fights at this many times its strength (Siege discoveries cut
+// it, a realm's own-ground discoveries raise it); this many times again for a realm that holds its home province; and
+// a realm's host retaking its home province from another fights at this many times. A province's own defenders (and,
+// in the battle between heroes, a defending hero of no realm) know their ground fully: this share of it, as a
+// percentage, explored, when the two sides line up.
+export const KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE = {
+  theDefendersEdge: 1.25,
+  aRealmHoldingItsHomeProvince: 1.2,
+  aRealmRetakingItsHomeProvince: 1.5,
+  theShareOfTheirGroundAProvincesOwnDefendersHaveExplored: 100,
+} as const;
+// The mastery orders' factors on a host's strength in a battle: a Grand Stratagem (Tactical 9) unfolded this turn, a
+// host storming ashore in a raid on the coast, and a defender's Feigned Retreat sprung this turn (the battle between
+// heroes alone: a province's defenders never feign one).
+export const KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE = {
+  aGrandStratagem: 1.2,
+  aRaidOnTheCoastStormingAshore: 1.25,
+  aFeignedRetreat: 1.25,
+} as const;
+// A spell's cast chance (beside the engine's SPELL_CAST_BASE, the discoveries and the mastery's bonus): this much a
+// level of its school, and at most this much, as percentages.
+export const KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST = {
+  theRiseEachSchoolLevelGives: 10,
+  theMost: 95,
+} as const;
+// The factor on a unit's chance to gain experience in a battle, by its quality tier in KC_QUALITY_TIERS' order (Green,
+// Average, Veteran, Crack, Elite): the higher the tier, the harder it is to improve.
+export const KC_THE_FACTOR_EACH_QUALITY_TIER_GIVES_A_UNITS_CHANCE_TO_GAIN_EXPERIENCE_IN_A_BATTLE = [
+  1.5, 1.0, 0.6, 0.3, 0,
+] as const satisfies readonly [green: number, average: number, veteran: number, crack: number, elite: number];
+// A battle's casualties beyond its margin band: a battle won by more than this margin is decisive or worse (an Evil
+// victor's Terror spreads); each unit with nowhere to retreat is cut down at this chance; a province's defenders who
+// hold it die at this share of the winner's death chance; and a beaten side's commander learns Druid at this share of
+// the chance.
+export const KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS = {
+  theMarginABattleIsDecisiveAbove: 0.3,
+  theChanceEachUnitWithNowhereToRetreatIsCutDown: 0.15,
+  theShareOfTheWinnersDeathChanceAProvincesDefendersTakeWhenTheyHold: 0.5,
+  theShareOfTheChanceTheBeatenSidesCommanderLearnsDruidAt: 0.5,
+} as const;
+
+// ── THE BATTLE BETWEEN HEROES' OWN FACTORS (moved here from its stages as they were, B-06bk) ────
+// Sanctuary (White 7): in the province its caster warded this turn, each side that isn't the caster's realm fights at
+// this many times its strength.
+export const KC_THE_STRENGTH_A_SANCTUARYS_WARDS_LEAVE_THE_CASTERS_ENEMIES_IN_A_BATTLE = {
+  theFactorOnEachSideNotTheCastersRealm: 0.75,
+} as const;
+// A beaten host that is still the stronger once the battle's losses are counted stays on the field at a chance of its
+// strength over the victor's, less 1, and at most this.
+export const KC_THE_CHANCE_A_BEATEN_HOST_STILL_THE_STRONGER_STAYS_ON_THE_FIELD = {
+  theMost: 0.75,
+} as const;
+
+// ── A HOST'S STRENGTH, THE BEST COMMANDER, THE RIDE-OUTS AND THE SEA LIFT: THEIR FACTORS (moved here from the battles'
+// smaller files as they were, B-06bm) ────
+// A unit of a type the strength table doesn't hold has this base strength, and a quality the quality table doesn't hold
+// this factor (Average's): a host's strength (armStr), the strength ladder's base and unitBaseStrength read them.
+export const KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD = {
+  theBaseStrength: 4,
+  theQualitysFactor: 2,
+} as const;
+// A commander's March and Naval at their mastery's third tier (level 8): March raises each bonus the ground gives the
+// units he leads (its part above ×1) this many times and waives the ground's penalties; Naval waives the sea's penalty
+// on the land units he leads, and each berth of his hulls carries this many times what it did. getSeaCapability
+// (units/movement-pools.ts) and seaLiftOfAColumn (the rule the Move notice asks) write the same tier and doubling.
+export const KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA = {
+  theMasteryTierOfMarchThatDoublesTheGroundsBonuses: 3,
+  theTimesMarchsMasteryRaisesEachBonusOfTheGround: 2,
+  theMasteryTierOfNavalThatWaivesTheSeasPenaltyAndDoublesHisBerths: 3,
+  theTimesNavalsMasteryRaisesWhatEachBerthCarries: 2,
+} as const;
+// The Wonders' figures in a battle: the Standing Stones (the Pagan Grand Design) lift each unit of the realm they serve
+// this many times when it defends forest, jungle or mountain; the Iron Throne of Skulls (the Evil one) raises each unit
+// slain in a battle its realm wins, but a skeleton, as a skeleton of the victor's at this chance.
+export const KC_THE_WONDERS_FIGURES_IN_A_BATTLE = {
+  theStandingStonesOnTheDefendersForestJungleOrMountain: 1.25,
+  theChanceTheIronThroneRaisesEachSlainUnit: 0.2,
+} as const;
+// A pre-battle duel: the host of a demoralised commander (beaten in the duel, or shamed for refusing it) fights at this
+// many times its strength; a hero who escapes the duel's killing blow is left with his most HP divided by this, rounded
+// (the deaths of heroes, heroes/hero-death-and-leaderless-hosts.ts, write the same).
+export const KC_A_PRE_BATTLE_DUELS_FIGURES = {
+  theStrengthOfADemoralisedCommandersHost: 0.8,
+  theNumberHisMostHpIsDividedByForAHeroWhoEscapesTheKillingBlow: 2,
+} as const;
+// The ground's note on a battle's lines names each unit whose factor on the ground (the sea's penalty with it) is below
+// this or above this (terrainNoteList).
+export const KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR = {
+  below: 0.85,
+  above: 1.05,
+} as const;
+// A lone defender's ambush on a Defend ride-out (runDefendAmbush) lands at this chance in percent, this much more a
+// level of his Spycraft, to at most this; divided by this, rounded down, when his quarry leads an army.
+export const KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS = {
+  theChanceWithNoSpycraft: 10,
+  theRiseEachLevelOfSpycraftGives: 9,
+  theMost: 90,
+  theNumberItIsDividedByWhenHisQuarryLeadsAnArmy: 2,
+} as const;
+// A column's sea lift as the stranding counts it (seaLiftShortfall), in half-berths: each berth holds this many, a light
+// foot unit takes this many and any other land unit this many (seaLiftOfAColumn counts the same in whole berths, 0.5 and
+// 1); and the shortfall counts each half-berth short for the units only a hull can take as this many of the units
+// beyond what the flyers can lift.
+export const KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM = {
+  theHalfBerthsEachBerthHolds: 2,
+  theHalfBerthsALightFootUnitTakes: 1,
+  theHalfBerthsAnyOtherLandUnitTakes: 2,
+  theUnitsAHalfBerthShortWeighsAs: 1000,
+} as const;
+// Where a beaten host falls back when it has a choice (retreatValue): each province scores this much for each gold of
+// its tax, and this much more for its realm's own ground, for its realm's home province and for a garrison already
+// standing there (the province's number breaks a tie); the highest wins.
+export const KC_THE_WORTH_A_BEATEN_HOST_SETS_ON_THE_GROUND_IT_FALLS_BACK_TO = {
+  eachGoldOfItsTax: 1000,
+  itsRealmsOwnGround: 400,
+  itsRealmsHomeProvince: 200,
+  aGarrisonStandingThere: 100,
+} as const;
+
+// ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS, COURAGE AND THE DUELS, THEIR FIGURES (moved here from the engine's personal
+// combat files as they were, B-06bn) ────
+// A blow's or an arrow's chance to hit, in percent (pcSkillHitPct, pcHitChance and pcArrowHitChance): this much with no
+// skill, this much more a level of the striker's own Melee (or Archery) up to the level named, this much more a level
+// above it; the chance after every modifier at most this (less the defender's guard) and at least this. The engine
+// reads them by PC_MELEE_HIT_BASE, PC_MELEE_HIT_PER_LVL, PC_HIT_SKILL_CAP, PC_HIT_PER_LVL_ABOVE, PC_HIT_MAX and
+// PC_HIT_MIN; the join form's temper descriptions state the most (Cautious's).
+export const KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT = {
+  theChanceWithNoSkill: 30,
+  theRiseEachLevelGivesToTheLevelNamed: 10,
+  theLevelTheFullRiseStopsAt: 5,
+  theRiseEachLevelAboveItGives: 5,
+  theMost: 80,
+  theLeast: 5,
+} as const;
+// A blow's damage (pcMeleeDamage): a hero (or a guardian of a grade GUARDIAN_MELEE_BASE doesn't hold) rolls from the
+// least to the most here, and adds his Melee divided by this, rounded up (a guardian adds his whole Melee); a striker
+// whose blows are halved deals his blow divided by this, rounded down.
+export const KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT = {
+  theLeastAHerosBaseRoll: 1,
+  theMostAHerosBaseRoll: 3,
+  theNumberAHerosMeleeIsDividedByForWhatItAdds: 2,
+  theNumberAHalvedBlowIsDividedBy: 2,
+} as const;
+// A hit taken (pcTakeHit): a Druid's beast ward divides a natural creature's blow by this, rounded; a master
+// swordsman's Parry turns a melee blow at this chance, by 1 to his Melee divided by this (rounded down); Elemental
+// Armour takes off the least to the most here.
+export const KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT = {
+  theNumberADruidsBeastWardDividesABeastsBlowBy: 2,
+  theChanceAParryTurnsABlow: 0.5,
+  theNumberHisMeleeIsDividedByForTheMostAParryTurns: 2,
+  theLeastElementalArmourTakesOff: 1,
+  theMostElementalArmourTakesOff: 3,
+} as const;
+// A fighter whose record holds no most HP (or 0) is read as having this many (pcTakeHit's wards, damage ceiling and
+// second wind, and pcRoundStart's regeneration and healing).
+export const KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE = 20;
+// The courage test against a terror (pcCourageChance): the chance in percent that a fighter breaks is this, more the
+// terror's rise for its grade, less this much a level of his better raw Melee or Archery, less this much a level of his
+// White Magic (counted to the levels named), more his temper's; rounded, to at least this and at most this. The engine
+// reads them by PC_TERROR_BASE, PC_TERROR_PER_LVL, PC_TERROR_MIN, PC_TERROR_MAX and PC_TERROR_BY_POWER.
+export const KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR = {
+  theChanceBeforeHisNerve: 55,
+  theFallEachLevelOfHisBetterMartialSkillGives: 5,
+  theLeast: 10,
+  theMost: 70,
+  theRiseByTheTerrorsGrade: { Weak: 0, Moderate: 0, Powerful: 5, Legendary: 15 },
+  theFallEachLevelOfWhiteMagicGives: 5,
+  theLevelsOfWhiteMagicCounted: 2,
+} as const;
+// A guardian's weakness, the damage floor and the lingering harms (helpers.ts): a weakness met multiplies the harm by
+// this (PC_WEAK_MULT); no stack of reductions takes a landed blow below this share of it (PC_DMG_FLOOR_FRACTION); a
+// lingering harm lasts at most this many rounds (PC_MAX_LINGER_ROUNDS), and a to-hit penalty fades each round by at
+// least this, or the penalty divided by those rounds, rounded up (PC_PEN_FADE_MIN).
+export const KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT = {
+  theTimesAWeaknessMetRaisesTheHarm: 2,
+  theLeastShareOfALandedBlowTheReductionsLeave: 0.5,
+  theMostRoundsALingeringHarmLasts: 3,
+  theLeastAToHitPenaltyFadesARound: 5,
+} as const;
+// A duel and a hero's encounter with another (duels-and-character-encounters.ts): a hero who flees one drops a magic
+// item at this chance (DUEL_FLEE_DROP: a flight from a lair guardian reads it too); a duel and an encounter run at most
+// these rounds; a hero of the Thief's mastery tier named keeps his purse; a Steal lifts the least to the most gold
+// here; a felled hero who is no king is slain at this chance (else he yields).
+export const KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES = {
+  theChanceAHeroWhoFleesDropsAnItem: 0.5,
+  theMostRoundsADuelRuns: 20,
+  theMostRoundsAnEncounterRuns: 20,
+  theMasteryTierOfThiefThatKeepsHisPurse: 3,
+  theLeastGoldAStealLifts: 1,
+  theMostGoldAStealLifts: 5,
+  theChanceAFelledHeroIsSlain: 0.3,
+} as const;
+
+// ── PERSONAL COMBAT: SPEED, ENCOUNTER PLANS, MELEE, FLIGHT, ARCHERY AND TACTICS, THEIR FIGURES (moved here from the
+// engine's personal combat files as they were, B-06bo) ────
+// A fighter's speed (pcSpeedOf), which decides who acts first and who can change range: a guardian's by his pace (a pace
+// the table holds not, or none, is read as this); a hero's this, more his bonus; no fighter at all, this. The flight and
+// the advance read a slow and a fast guardian by the pace table.
+export const KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT = {
+  theSpeedOfAGuardianByHisPace: { fast: 3, medium: 2, slow: 1 },
+  theSpeedOfAGuardianOfAPaceTheTableHoldsNot: 2,
+  theSpeedOfAHeroBeforeHisBonus: 2,
+  theSpeedOfNoFighter: 2,
+} as const;
+// A change of range (pcMoveCheck, pcAdvanceOrStrike): breaking away from melee is this chance against a foe of his own
+// speed, this much more (or less) a step of speed he has over the foe, more his temper's; advancing to firing range is
+// this chance at the speed named, this much more a step above it (a slow guardian advances as if of the speed named
+// here); a hero adds this much a level of his raw Archery to both (Fieldcraft, ARCHERY_FIELDCRAFT_PCT); the chance is
+// at least this and at most this. A fast guardian closes this many ranges in one advance.
+export const KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT = {
+  theChanceToBreakAwayFromAFoeOfHisOwnSpeed: 40,
+  theChangeEachStepOfSpeedGivesABreakAway: 15,
+  theChanceToAdvanceAtTheSpeedNamed: 60,
+  theRiseEachStepOfSpeedGivesAnAdvance: 15,
+  theSpeedAnAdvanceIsMeasuredFrom: 2,
+  theSpeedASlowGuardianAdvancesAt: 2,
+  theRiseEachLevelOfHisRawArcheryGives: 5,
+  theLeast: 10,
+  theMost: 90,
+  theRangesAFastGuardianClosesInOneAdvance: 2,
+} as const;
+// The plan of a hero with no orders (autoEncounterPlan): this many actions; a wary hero fills his blows to this many,
+// keeping the last for his flight; an archer at least as good with the bow as the blade opens with this many shots (a
+// Berserk with one).
+export const KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS = {
+  theActionsOfHisPlan: 6,
+  theActionsAWaryHeroFillsWithBlows: 5,
+  theShotsAnArcherOpensWith: 3,
+} as const;
+// A fighter's hit points as he enters a fight (pcCharCombatant, pcMonsterCombatant): the unkillable wanderer at none
+// enters with his most HP divided by this, rounded; a guardian whose record holds no HP (or 0) has this many.
+export const KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT = {
+  theNumberAWandererAtNoneHasHisMostHpDividedBy: 2,
+  theMostHpOfAGuardianWhoseRecordHoldsNone: 10,
+} as const;
+// The mastery perks of Melee and Archery (pcCharCombatant, pcTryCounter, pcFireOne): Counterattack from Melee's mastery
+// tier named (Melee 8), a riposte at this chance when a foe misses; an arrow that hits impales at this chance (Archery
+// 6), bleeding the least to the most here each round; Trueshot from Archery's mastery tier named (Archery 8), at this
+// chance the foe's next attack fails.
+export const KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT = {
+  theMasteryTierOfMeleeThatCounterattacks: 3,
+  theChanceACounterattackStrikes: 0.5,
+  theChanceAnArrowImpales: 0.5,
+  theLeastAnImpalingArrowBleedsARound: 1,
+  theMostAnImpalingArrowBleedsARound: 3,
+  theMasteryTierOfArcheryThatTakesTrueshot: 3,
+  theChanceATrueshotFindsAVitalPoint: 0.5,
+} as const;
+// A guardian's plan (pcMonsterPlan, pcAct): his plan holds this many actions, his heals the last of them (at least one
+// action before them); he looses a shot when his plan reaches a multiple of this (if he has a ranged attack) and uses
+// his next power at a multiple of this; a power whose record names no chance is used at this chance in percent.
+export const KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT = {
+  theActionsOfHisPlanHisHealsTheLastOfThem: 12,
+  theActionsBetweenHisShots: 4,
+  theActionsBetweenHisPowers: 3,
+  theChanceInPercentHeUsesAPowerWhoseRecordNamesNone: 50,
+} as const;
+// A flight (pcFleeChance): this chance in percent, this much more against a slow guardian and this much less against a
+// fast one (a hero foe is read at the speed named here), more his temper's and his bonus, less his penalty; a Charm
+// multiplies it by this; at least this and at most this.
+export const KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT = {
+  theChanceBeforeTheFoesPace: 30,
+  theRiseAgainstASlowGuardian: 25,
+  theFallAgainstAFastGuardian: 15,
+  theSpeedAHeroFoeIsReadAt: 2,
+  theTimesACharmRaisesIt: 2,
+  theLeast: 5,
+  theMost: 95,
+} as const;
+// A guardian's rebirth (pcFreeStrike, and resolvePersonalCombat's two, a fighter felled by his foe's action or by his
+// own): felled, he rises once with this share of his most HP, rounded, and at least this.
+export const KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT = {
+  theShareOfHisMostHpHeRisesWith: 0.4,
+  theLeastHpHeRisesWith: 5,
+} as const;
+// An arrow (pcVolleySize, pcArrowDamage): from this much Archery a Fire action looses this many arrows
+// (ARCHERY_VOLLEY_AT); an arrow rolls from the least to the most here, and adds the archer's Archery divided by this,
+// rounded up.
+export const KC_AN_ARROW_IN_PERSONAL_COMBAT = {
+  theArcheryAVolleyNeeds: 3,
+  theArrowsInAVolley: 2,
+  theLeastAnArrowsBaseRoll: 1,
+  theMostAnArrowsBaseRoll: 3,
+  theNumberHisArcheryIsDividedByForWhatItAdds: 2,
+} as const;
+// A parley, a theft and a scouting (pcAct; the parley and the scouting are switched off, PARLEY_ENABLED and
+// SCOUT_ENABLED): a parley's chance in percent is this, more this a level of Druid; a theft's is this, more this a
+// level of Thief (counted to the level named), more his bonus, less the guardian's grade's penalty, at least this and
+// at most this; a scouting lifts this much of his to-hit penalty a level of Explorer, and names at most this many of
+// the guardian's powers.
+export const KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT = {
+  theChanceOfAParleyWithNoDruid: 20,
+  theRiseEachLevelOfDruidGivesAParley: 15,
+  theChanceOfATheftBeforeHisSkill: 50,
+  theRiseEachLevelOfThiefGivesATheft: 10,
+  theLevelsOfThiefCounted: 5,
+  theLeastChanceOfATheft: 5,
+  theMostChanceOfATheft: 95,
+  thePenaltyEachLevelOfExplorerLiftsAScouting: 5,
+  theMostPowersAScoutingNames: 4,
+} as const;
+
+// ── PERSONAL COMBAT: LAIR GUARDIANS, COMBAT SPELLS, A GUARDIAN'S POWERS AND THE FIGHT ITSELF, THEIR FIGURES (moved here
+// from the engine's personal combat files as they were, B-06bp) ────
+// A guardian's hidden traits (monsterTraits), never shown to a player: each approach (melee, archery, spell) starts at
+// ×1, and his kind adds to it: an undead this much to a spell and takes this much off an arrow; a fiend this much to a
+// spell; a flyer this much to an arrow; an armoured guardian takes this much off a blade and adds this much to a spell;
+// a beast (not undead) adds this much to a blade. (What his perks turn and his weakness then cap each at ×1.) Each is
+// then held from the least to the most here. An archer's window, the rounds before a guardian reaches melee, is by his
+// pace, and a pace the table holds not is read as this.
+export const KC_A_GUARDIANS_HIDDEN_TRAITS_IN_PERSONAL_COMBAT = {
+  theRiseAnUndeadsSpellTakes: 0.5,
+  theFallAnUndeadsArrowTakes: 0.3,
+  theRiseAFiendsSpellTakes: 0.3,
+  theRiseAFlyersArrowTakes: 0.4,
+  theFallAnArmouredGuardiansBladeTakes: 0.2,
+  theRiseAnArmouredGuardiansSpellTakes: 0.3,
+  theRiseABeastsBladeTakes: 0.1,
+  theLeastOfEachApproach: 0.4,
+  theMostOfEachApproach: 1.8,
+  theRoundsToReachMeleeByHisPace: { fast: 2, medium: 3, slow: 4 },
+  theRoundsToReachMeleeAtAPaceTheTableHoldsNot: 3,
+} as const;
+// A lair guardian's fight (resolveEncounter, simulateLairOdds): it runs at most this many rounds; a lair whose record
+// holds no guardian is fought by a stand-in of this many HP whose hoard holds at most this much gold (maxG, which no
+// fight reads); a hero of no HP (or 0) is read as entering with this many when his wounds are counted; the guardian's
+// plan the line names is its first this many actions; the rumour of a lair's odds stages this many fights (RUMOUR_SIM_FIGHTS). A guardian whose record holds no HP
+// has KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT's.
+export const KC_A_LAIR_GUARDIANS_FIGHT = {
+  theMostRoundsItRuns: 20,
+  theHpOfTheStandInGuardianOfALairWithNone: 10,
+  theMostGoldOfTheStandInGuardiansHoard: 3,
+  theHpAHeroOfNoneIsReadAsEnteringWith: 10,
+  theActionsOfTheGuardiansPlanTheLineNames: 6,
+  theFightsTheRumourOfALairsOddsStages: 300,
+} as const;
+// A combat spell cast in personal combat (pcCastCombatSpell): its effects count the caster's school to this level (the
+// chance to cast counts it whole); the chance is the cast base (SPELL_CAST_BASE), more this a level, the mastery's
+// bonus and the realm's discoveries, at most this; against a guardian weak to the school it is this.
+export const KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT = {
+  theLevelItsEffectsCountTo: 5,
+  theRiseEachLevelOfHisSchoolGives: 10,
+  theMostChanceOfACast: 95,
+  theChanceOfACastAgainstAGuardianWeakToItsSchool: 95,
+} as const;
+// A guardian's power (pcMonsterSpecial), read from its words: one that heals with no figure named mends the least to
+// the most here; one that ignores all armour adds this much to every blow its foe takes; one that names a flee chance
+// takes this much off its foe's chance to flee. (The figures its words name, as "hits twice", "heals half", "loses 3
+// rounds" and "halves current hp", are read as the words say.)
+export const KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT = {
+  theLeastAHealOfNoFigureMends: 3,
+  theMostAHealOfNoFigureMends: 8,
+  theDamageABlowGainsAgainstAFoeWhoseArmourIsIgnored: 3,
+  theFallInHisFoesChanceToFlee: 30,
+} as const;
+// The fight itself (resolvePersonalCombat): one whose caller names no most rounds runs this many; a hero of Druid at
+// least this (counted to this level, divided by this under a curse that halves his Druid) wards himself against a
+// natural creature; the initiative is a fighter's speed times this, more his Melee and Archery as he fights (a hero's
+// capped, pcSkillCap) and a die; a temper's second wind comes only below his flight's share of his most HP more this;
+// a foe of no alignment spares a plea at this chance in percent.
+export const KC_A_PERSONAL_COMBATS_ROUNDS_WARD_INITIATIVE_SECOND_WIND_AND_MERCY = {
+  theMostRoundsOfAFightWhoseCallerNamesNone: 20,
+  theLeastLevelOfDruidThatWardsAgainstABeast: 3,
+  theLevelOfDruidTheWardCountsTo: 5,
+  theNumberACursedDruidsLevelIsDividedBy: 2,
+  theWeightOfSpeedInTheInitiative: 10,
+  theShareAboveHisFlightASecondWindWaitsFor: 0.05,
+  theChanceAFoeOfNoAlignmentSparesAPlea: 50,
 } as const;
 
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his

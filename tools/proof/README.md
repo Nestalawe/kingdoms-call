@@ -287,16 +287,19 @@ a plan (the commanders cast only what they pick for themselves). Unit cases stag
 **A draw's stage** is read from its call stack, with no mark in `src/`
 ([the-stages-of-the-two-battles-and-the-lines-that-open-them.ts](the-stages-of-the-two-battles-and-the-lines-that-open-them.ts)).
 Each stage (N0 to N13 against the defenders, H0 to H10 between heroes) has an anchor, the text of the line that opens
-it, found once in whichever file of the side's own `src/engine/` holds it. A draw belongs to the stage whose anchor is
-the last above the line of the innermost frame whose file holds one there. A frame with none above it (a helper such as
-the duel, the fates, fortune or a rule's effect, or a function above its file's first anchor) passes the draw to its
-caller. So **a split row needs no edit here**: a stage moved into another file keeps its name, and a cut function that
-holds three stages' text counts their draws as three stages, as the base does. A draw counts under the stage whose text
-holds the code that draws it (a helper nested in a stage is that stage's wherever it is called from). An anchor of two
-lines is matched line by line, the indentation aside. A row that rewrites an anchor's own line adds the new text to the
-stage's `anchors` (the base still holds the old). A stage a side holds nowhere, or in two places, stops the proof. The
-list stays there until each battle's stage list is in `src/` (B-06bl). On B-06ax's base every stage but N2, N10, N11,
-H5, H7 and H8 draws on the grid.
+it. **The stages and their anchors are read from their list in `src/`**
+(`src/engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts`, by its syntax tree): each side reads its own
+tree's list (a base from before B-06bl, with none, reads this tree's), and finds each anchor once in whichever file of
+its own `src/engine/` holds it, the list's file aside. A draw belongs to the stage whose anchor is the last above the
+line of the innermost frame whose file holds one there. A frame with none above it (a helper such as the duel, the
+fates, fortune or a rule's effect, or a function above its file's first anchor) passes the draw to its caller. So **a
+split row needs no edit here**: a stage moved into another file keeps its name, and a cut function that holds three
+stages' text counts their draws as three stages, as the base does. A draw counts under the stage whose text holds the
+code that draws it (a helper nested in a stage is that stage's wherever it is called from). An anchor of two lines is
+matched line by line, the indentation aside. A row that rewrites an anchor's own line changes its entry in the list
+(the base's list holds the old); it is proved against its parent branch, since a base with no list reads this tree's
+and stops on the rewritten anchor. A stage a side holds nowhere, or in two places, stops the proof. On B-06ax's base
+every stage but N2, N10, N11, H5, H7 and H8 draws on the grid.
 
 **Red on planted faults** (the unit test makes each in a copy of `src/`, finding its text in whichever file holds it,
 and fights four cases from the tree and from the copy):
@@ -304,9 +307,9 @@ and fights four cases from the tree and from the copy):
 | Made in the copy | What the tool shows |
 |---|---|
 | Both battles' fortune stages moved, their text as it is, into one new file, each battle calling its own | every case the same (the new file holds N9 and H6) |
-| One extra `kcRng()` at the end of the battle between heroes' fortune (H6) | `H6's dice (1 → 2)` in all 8 streams; the battles against the defenders the same |
+| One extra `kcRng()` at the end of the battle between heroes' fortune (H6), with its import (the stage's own file) | `H6's dice (1 → 2)` in all 8 streams; the battles against the defenders the same |
 | The battle between heroes' swing in its statistics record rounded to hundredths (no draw) | only `the turn's context (_tel)`: the lines, the world and the dice the same |
-| The army spells and the archery of the battle between heroes swapped (H3, H4) | the lines differ; each draw still counts under its own stage's text |
+| The magic and army spells and the archery of the battle between heroes swapped (H3, H4: the two stages' calls) | the lines differ; each draw still counts under its own stage's text |
 
 A plant whose text a later row moves into another file is still found; one whose text a row rewrites stops the test,
 naming the plant to update.

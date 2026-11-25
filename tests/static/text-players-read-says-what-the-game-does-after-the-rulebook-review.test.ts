@@ -28,7 +28,7 @@ import {
   SAGE_DISCOVERIES_P,
   TITLE_DEFS,
 } from '../../src/content/kingdoms-call-data.ts';
-import { CARRYON_DEATH_STEP } from '../../src/engine/battle/battles-against-province-defenders.ts';
+import { CARRYON_DEATH_STEP } from '../../src/engine/battle/the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
 import { readPage, sitePath } from '../lib/boot.ts';
 import { compactOf, compactPage, initializersOf, pageScripts, pageStrings, pageText } from '../lib/source.ts';

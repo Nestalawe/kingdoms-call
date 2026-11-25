@@ -4,6 +4,11 @@ import { SKILL_LABELS } from '../army-tables.ts';
 import { activeItems, hasItemBase } from '../items/equipment.ts';
 import { PC_SPELL_SCHOOL_MAP, PC_WEAK_MULT, pcDeferEffect, pcLearnWeakness, pcPushDot } from './helpers.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
+import {
+  KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT,
+  KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT,
+  KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
+} from '../../content/kingdoms-call-data.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { pcFoeCat, skillLevel } from '../titles/perks.ts';
 import { SPELL_CAST_BASE, magicL8CastBonus } from '../chances-and-lair-grades.ts';
@@ -110,7 +115,8 @@ export function pcCastCombatSpell(
     return false;
   }
   const lvl = caster.school[school] || 0;
-  const lvlEff = Math.min(lvl, 5); // every EFFECT scales with caster level capped at 5 (cast chance still uses the full level)
+  const theCast = KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT;
+  const lvlEff = Math.min(lvl, theCast.theLevelItsEffectsCountTo); // every EFFECT scales with caster level capped at 5 (cast chance still uses the full level)
   if (lvl < 1) {
     narrate(narrative, {
       kind: 'the caster cannot cast a spell without its skill',
@@ -150,11 +156,11 @@ export function pcCastCombatSpell(
   const theCastersHeroOrGuardianAsGuarded = asItsGuardReadsIt(theCastersHeroOrGuardian);
   const wx = _wkSch ? PC_WEAK_MULT : 1;
   const _castBase = _wkSch
-    ? 95
+    ? theCast.theChanceOfACastAgainstAGuardianWeakToItsSchool
     : Math.min(
-        95,
+        theCast.theMostChanceOfACast,
         PC_CAST_BASE +
-          lvl * 10 +
+          lvl * theCast.theRiseEachLevelOfHisSchoolGives +
           magicL8CastBonus(theCastersHeroOrGuardian) +
           (caster.player != null
             ? whatARealmsDiscoveriesAddToACastersChance(G.players[caster.player], {
@@ -221,7 +227,7 @@ export function pcCastCombatSpell(
     theLevelCountedTo5: lvlEff,
     theWeaknessFactor: wx,
     theTargetIsWeakToTheSchool: _wkSch,
-    theCastersMaximumHp: caster.maxHp || 20,
+    theCastersMaximumHp: caster.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
     theTarget: {
       maxHp: target.maxHp,
       isUndeadOrAFiend: target.isUndead || pcFoeCat(target) === 'fiend',
@@ -563,7 +569,11 @@ export function pcMonsterSpecial(
   else {
     const hm = /(?:regains|gains)\s*\+?(\d+)\s*HP/i.exec(eff);
     if (hm) heal = parseInt(String(hm[1]));
-    else if (/heal|regenerat/i.test(eff)) heal = rng(3, 8);
+    else if (/heal|regenerat/i.test(eff))
+      heal = rng(
+        KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT.theLeastAHealOfNoFigureMends,
+        KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT.theMostAHealOfNoFigureMends,
+      );
   }
   // a guardian may mend itself ONCE in the whole combat, whichever ability does it and however
   // many healing abilities it has. The plan already appends each heal once and only at the tail,
@@ -694,7 +704,10 @@ export function pcMonsterSpecial(
       actorStatusAbsorb: actor.status.absorb,
     });
   }
-  if (/ignores all armour/i.test(eff)) foe.status.incomingDmgBonus = (foe.status.incomingDmgBonus || 0) + 3;
+  if (/ignores all armour/i.test(eff))
+    foe.status.incomingDmgBonus =
+      (foe.status.incomingDmgBonus || 0) +
+      KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT.theDamageABlowGainsAgainstAFoeWhoseArmourIsIgnored;
   // ── Halving (Sept 2026: replaced Finger of Death's 10% instant kill) — a chance to cut the
   // foe's CURRENT HP in half.
   const hv = /(\d+)% halves current hp/i.exec(eff);
@@ -736,7 +749,8 @@ export function pcMonsterSpecial(
     }
   }
   if (/flee chance/i.test(eff)) {
-    foe.status.fleePenalty = (foe.status.fleePenalty || 0) + 30;
+    foe.status.fleePenalty =
+      (foe.status.fleePenalty || 0) + KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT.theFallInHisFoesChanceToFlee;
     narrate(narrative, { kind: 'the foe feels dragged towards the creature', foeName: foe.name });
   }
   // ── Rebirth (Phoenix) — banked, spent if the creature is felled ──
