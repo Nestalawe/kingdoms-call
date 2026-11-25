@@ -87,7 +87,9 @@ always (even at 0, and when a fervour wins); against a province's defenders the 
 **The Druid waiver** (Druidic Creatures, Evil Monsters: two rows, no number) is read by `druidNeedWaivedByAlignment`
 in `src/engine/rules-on-plain-values/`, which the player portal shares and which may import only `src/content`: it
 reads the rows' alignments, the realm's or the leader's own (Decision G), and their entries have no stage (the
-registry's unit test lists them).
+registry's unit test lists them). The player portal reads two more rows from `src/content` itself (B-06bs): the order
+form's Research forecast adds Neutral's scholars' points for a realm of the row's alignment, and the report screen's
+guide to the beasts names Home of the Wild's and Savage Fury's factors for a realm of each row's alignment.
 
 **Who may give an order** (P1-19aw2, `alignment-abilities/who-may-give-an-alignment-order.ts`): Decision H reverses
 P1-19's Decision 2 (no registry entry for an order).
