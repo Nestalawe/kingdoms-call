@@ -23,6 +23,9 @@
 //   kingdom only while it stands (the order form counts its free Bless Province), never in another realm's report.
 // - (P1-11z2) the unit-strength effects of its own discoveries, in its report's kingdom for the army card's
 //   strength (R-135): its own, in the order it holds them, no other kind's, and never another realm's.
+// - (B-06bx) the reads that ask the alignments' rows, for a realm of each creed and of none: the province part only
+//   some creeds read, in its view and its report (and the report's own ask, whatever its view holds), and its books'
+//   three Wonders.
 // Level 1 (unit): the function is called on a world made in the test, on the engine's modules; no turn runs.
 // refactor-only: P1-12b4 adds the function (the base has none), and P1-12b5 its second part; each case is red on a
 // sight fault planted in it.
@@ -57,7 +60,9 @@
 // stands (sited and held, or raised before Wonders were sited), in its books and in its report's kingdom, and nothing
 // there once lapsed, before it is raised, for another alignment's Wonder, or in another realm's report. P1-11z2's: the
 // unit-strength effects of its own discoveries in its report's kingdom (its own, in the order it holds them, no other
-// kind's, an empty list with none), and never another realm's. Level 1 because the function is called on a
+// kind's, an empty list with none), and never another realm's. B-06bx's: for a realm of each creed and of none, the
+// province part only some creeds read (`THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ`), in its view and its report's map,
+// and the report's own ask of it on a view that holds it; and its books' three Wonders, raised and held. Level 1 because the function is called on a
 // world made in the test; the every-realm half of `npm run balance` checks the report built from it. Each case is red
 // on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5, one or more cases each); several of
 // P1-12b5's change no report, because the report's own sections still ask the same of what they read: only this test
@@ -752,6 +757,49 @@ describe("whether realm 0's Grand Cathedral stands (P1-23ad: the order form coun
     expect(cathedral(['gd'], { heldBy: 1 })).toEqual(none); // the province it stands in taken
     expect(cathedral([])).toEqual(none);
     expect(cathedral(['gd'], { alignment: 'Good' })).toEqual(none); // the Free City Charter
+  });
+});
+
+// B-06bx: the view's and the report's reads of the alignments' rows, for a realm of each creed and of none. The world
+// is made by hand (no die is cast and no seed reaches it): realm 0's alignment is the one given, and its discoveries.
+describe("realm 0's view and report ask the alignments' rows as they asked a creed's name (B-06bx), for each creed and none", () => {
+  const CREEDS = ['Divine', 'Good', 'Druidic', 'Neutral', 'Pagan', 'Evil', 'Undead', '', undefined] as const;
+  /** The world with realm 0 of the alignment given (an empty one, or no value, for a realm of none), holding the
+   *  discoveries given, its Wonder sited in its capital, 7, which it holds. */
+  const ofTheCreed = (ids: readonly string[], alignment: string | undefined): GameState => {
+    const state = worldWithDiscoveries(ids);
+    const s = state as unknown as { players: Record<string, unknown>[] };
+    Object.assign(s.players[0] ?? {}, { alignment, gdProvinceId: 7 });
+    return state;
+  };
+  /** Whether the province part only some creeds read is in realm 0's view of province 5, and in its report's map. */
+  const thePart = (view: PlayerView) => ({
+    inTheView: 'terror' in province(view, 5),
+    inTheReport: (
+      buildTurnReport(view).worldMeta as { provinces: ({ id: number; terror?: unknown } | null)[] }
+    ).provinces.some((r) => r?.id === 5 && r.terror !== undefined),
+  });
+
+  test.for(CREEDS)("a realm of '%s': the view's province part, and the report's reading of it, as before", (a) => {
+    const view = playerView(ofTheCreed([], a), 0, itsLines);
+    expect(thePart(view), `realm 0 of '${String(a)}'`).toEqual({ inTheView: a === 'Evil', inTheReport: a === 'Evil' });
+  });
+
+  test.for(CREEDS)("a realm of '%s': the report asks the row itself, whatever part its view holds", (a) => {
+    const view = playerView(ofTheCreed([], 'Evil'), 0, itsLines);
+    const asIfOfTheCreed = Object.assign({}, view, { me: Object.assign({}, view.me, { alignment: a }) });
+    expect(thePart(asIfOfTheCreed), `the report of a realm of '${String(a)}'`).toEqual({
+      inTheView: true,
+      inTheReport: a === 'Evil',
+    });
+  });
+
+  test.for(CREEDS)("a realm of '%s' that raised its Wonder and holds it: the books' three Wonders, as before", (a) => {
+    expect(playerView(ofTheCreed(['gd'], a), 0, itsLines).books.wonderBlesses, `the books of '${String(a)}'`).toEqual({
+      Good: a === 'Good',
+      Druidic: a === 'Druidic',
+      Divine: a === 'Divine',
+    });
   });
 });
 
