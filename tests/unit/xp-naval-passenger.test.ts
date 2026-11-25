@@ -35,16 +35,19 @@ import { timeLimitGivenAsANumber } from '../lib/time-limits.ts';
 // Every experience roll for Naval in the GM portal's code, read by its syntax tree (tests/lib/source.ts, plan P1-09a:
 // the lines of the built page were matched until then), as the function it is made in and what it is handed: the
 // battles' rolls (won or lost, at sea), the Naval 7/9 orders' (Blockade, Raid the Coast) and rollNavalVoyage's own.
-// The battle against a province's defenders makes its rolls in its last stage's file (B-06bd), which the page's entry
-// doesn't name (KD-457), so its stages' files are read beside the page's.
-const THE_STAGES_OF_THE_BATTLE_AGAINST_THE_DEFENDERS = 'engine/battle/the-battle-against-the-defenders';
-const THE_STAGES_FILES = fs
-  .readdirSync(path.join(SRC, THE_STAGES_OF_THE_BATTLE_AGAINST_THE_DEFENDERS))
-  .sort()
-  .map((f) => `${THE_STAGES_OF_THE_BATTLE_AGAINST_THE_DEFENDERS}/${f}`);
+// Each battle makes its rolls in its last stage's file (B-06bd, B-06bj), which the page's entry doesn't name (KD-457),
+// so the two battles' stages' files are read beside the page's.
+const THE_STAGES_OF_THE_TWO_BATTLES = [
+  'engine/battle/the-battle-against-the-defenders',
+  'engine/battle/the-battle-between-heroes',
+];
+const THE_STAGES_FILES = THE_STAGES_OF_THE_TWO_BATTLES.flatMap((folder) =>
+  fs
+    .readdirSync(path.join(SRC, folder))
+    .sort()
+    .map((f) => `${folder}/${f}`),
+);
 const NAVAL_ROLLS = [
-  "combatVsChar(turnContext,won?atk:def,'naval',SKILLGAIN_STD,narrative)",
-  "combatVsChar(turnContext,won?def:atk,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
   "resolveBlockadeOrder(turnContext,c,'naval',SKILLGAIN_STD)",
   "resolveRaidTheCoastOrder(turnContext,c,'naval',SKILLGAIN_STD)",
   "rollNavalVoyage(turnContext,c,'naval',base)",
@@ -52,6 +55,8 @@ const NAVAL_ROLLS = [
   "theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(turnContext,c,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
   "theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(turnContext,neutralGuardHero,'naval',SKILLGAIN_STD,narrative)",
   "theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(turnContext,neutralGuardHero,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
+  "theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(turnContext,won?atk:def,'naval',SKILLGAIN_STD,narrative)",
+  "theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(turnContext,won?def:atk,prov.terrain==='sea'?'naval':'tactical',SKILLGAIN_COMMON,narrative)",
 ];
 // It reads every file of the GM page by its syntax tree: under a second here, 3 to 5 s on a CI runner (2.2 s on #169's,
 // 4.9 s on #171's), so it has time enough of its own, as the source test's every-file checks do (Vitest's default, 5 s,
