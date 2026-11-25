@@ -62,11 +62,11 @@
 // unit-strength effects of its own discoveries in its report's kingdom (its own, in the order it holds them, no other
 // kind's, an empty list with none), and never another realm's. B-06bx's: for a realm of each creed and of none, the
 // province part only some creeds read (`THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ`), in its view and its report's map,
-// and the report's own ask of it on a view that holds it; and its books' three Wonders, raised and held. Level 1 because the function is called on a
-// world made in the test; the every-realm half of `npm run balance` checks the report built from it. Each case is red
-// on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5, one or more cases each); several of
-// P1-12b5's change no report, because the report's own sections still ask the same of what they read: only this test
-// sees what the view holds beyond what the report reads
+// and the report's own ask of it on a view that holds it; and its books' three Wonders, raised and held. Level 1
+// because the function is called on a world made in the test; the every-realm half of `npm run balance` checks the
+// report built from it. Each case is red on a sight fault planted in the view (16 plants in P1-12b4, 19 in P1-12b5,
+// one or more cases each); several of P1-12b5's change no report, because the report's own sections still ask the
+// same of what they read: only this test sees what the view holds beyond what the report reads
 import { describe, expect, test } from 'vitest';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import {
