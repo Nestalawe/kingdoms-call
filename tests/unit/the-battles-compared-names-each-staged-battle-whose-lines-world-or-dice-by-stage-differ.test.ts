@@ -331,8 +331,9 @@ const THE_FORTUNE_MOVED: APlant = {
       new: '  const _fort = theFortuneOfTheBattleAgainstTheDefenders();',
     },
     {
-      old: 'function theLineThisCopyOfTheBattleWrites<',
-      new: "import { theFortuneOfTheBattleAgainstTheDefenders } from './the-fortune-of-both-battles-moved.ts';\nfunction theLineThisCopyOfTheBattleWrites<",
+      // (combatVsNPC's own head: the line check above it moved to a file of its own, B-06ba)
+      old: 'export function combatVsNPC(',
+      new: "import { theFortuneOfTheBattleAgainstTheDefenders } from './the-fortune-of-both-battles-moved.ts';\nexport function combatVsNPC(",
     },
     {
       old: [...PVP_FORTUNE, '  const _fortP = battleFortune();'].join('\n'),
