@@ -15909,9 +15909,9 @@ export const KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT = {
 } as const;
 // The fight itself (resolvePersonalCombat): one whose caller names no most rounds runs this many; a hero of Druid at
 // least this (counted to this level, divided by this under a curse that halves his Druid) wards himself against a
-// natural creature; the initiative is a fighter's speed times this, more his raw Melee and Archery and a die; a temper's
-// second wind comes only below his flight's share of his most HP more this; a foe of no alignment spares a plea at this
-// chance in percent.
+// natural creature; the initiative is a fighter's speed times this, more his Melee and Archery as he fights (a hero's
+// capped, pcSkillCap) and a die; a temper's second wind comes only below his flight's share of his most HP more this;
+// a foe of no alignment spares a plea at this chance in percent.
 export const KC_A_PERSONAL_COMBATS_ROUNDS_WARD_INITIATIVE_SECOND_WIND_AND_MERCY = {
   theMostRoundsOfAFightWhoseCallerNamesNone: 20,
   theLeastLevelOfDruidThatWardsAgainstABeast: 3,
