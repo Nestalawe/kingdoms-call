@@ -99,7 +99,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   builders, which two stages share, are a file of their own there); the set-up's file types the battle's own state and
   lists each let's writer and readers by stage file. A battle's figures (the margin bands, the battle grid's tables,
   the defender's edge and home, Tactical and Naval, the experience factors, ...) are rows of
-  `src/content/kingdoms-call-data.ts`, each named for its rule, not for one battle: a figure changes in its row.
+  `src/content/kingdoms-call-data.ts`, each named for its rule, not for one battle (both battles read the shared ones):
+  a figure changes in its row.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).
