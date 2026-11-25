@@ -90,7 +90,7 @@ tranche's plan, its counts and its risks: #711; Run 3's: #756.
 | B-06bv | The turn's sight rules read their numbers from content's rows (`armySizeBand`, `spotEnemyInOwnedProvince`, `applySpySuccess`), each named for its rule in a file of their own; sight's count falls to 0. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: a change to a sight rule's number is a change to its row | Phase 1 | Small | ✓ | 🟦 | #812 | Sight's rows' first, after B-06bq |
 | B-06bw | The turn's report and the bots read one sight rule, each copy kept exactly as it is, with a unit test on a staged world that holds each copy. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: the report's and the bots' sight rule in one place, held by a test | Phase 1 | Medium | ✓ | 🟦 | #813 | Sight |
 | B-06bx | The views' last creed checks ask the alignments' rows (a table beside them, and the Wonders' rows); the portal's count of creed checks is 0. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: as B-06br | Phase 1 | Small | ✓ | 🟦 | #814 | Sight |
-| B-06by | The views' own hex neighbours ask the engine's neighbour rule, a test first that both agree on the map's wrapped edge. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: one rule for which provinces are neighbours, the views too | Phase 1 | Small | ✓ | ⬜ | – | After B-06bx; sight's rows' last |
+| B-06by | The views' own hex neighbours ask the engine's neighbour rule, a test first that both agree on the map's wrapped edge. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: one rule for which provinces are neighbours, the views too | Phase 1 | Small | ✓ | 🟦 | #815 | After B-06bx; sight's rows' last |
 
 ## Not yet assessed
 
