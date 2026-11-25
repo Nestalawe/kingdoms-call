@@ -1,3 +1,4 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
 import type {
@@ -174,7 +175,8 @@ export function botCastPlan(
     out.push({ action: 'cast_spell', target: spell, extra: extra == null ? '' : String(extra), desc });
     return true;
   };
-  const enemyRel = (j: number | null | undefined) => j != null && j !== pi && botRelationRaw(G, pi, j) === 'enemy';
+  const enemyRel = (j: number | null | undefined) =>
+    j != null && j !== pi && botRelationRaw(G, pi, j) === THE_STATES_TWO_REALMS_STAND_IN.atWar;
   // targets are drawn from what this realm can see. charsIn goes through botVisibleCharsIn (so a
   // cloaked or unspotted hero is not picked as a target at all, rather than being targeted and
   // fizzling), and a neighbouring province is only a spell target if the realm has at least scouted
@@ -410,7 +412,8 @@ export function botRaidTarget(
     if (!P || P.terrain === 'sea') return;
     if (!botKnows(G, pi, P.id)) return;
     const b = botBelief(G, pi, P);
-    if (b?.owner == null || b.owner === pi || botRelationRaw(G, pi, b.owner) !== 'enemy') return;
+    if (b?.owner == null || b.owner === pi || botRelationRaw(G, pi, b.owner) !== THE_STATES_TWO_REALMS_STAND_IN.atWar)
+      return;
     const chars = botVisibleCharsIn(G, pi, P).filter((x) => x.player === b.owner);
     const value = (b.tax || 0) + chars.reduce((s, e) => s + (e.isKing ? 12 : 6) + theUnitsOf(e).length * 2, 0);
     if (value < 4) return;
@@ -491,7 +494,13 @@ export function botHuntTarget(
   const cands: AQuarry[] = [];
   const I = botEnemyIntel(G, pi);
   theCharactersOf(G).forEach((e) => {
-    if (!(e?.alive && e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy')) return;
+    if (!(
+      e?.alive &&
+      e.player != null &&
+      e.player !== pi &&
+      botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+    ))
+      return;
     // a quarry must be one this realm can SEE right now — the same rule that builds a human's
     // Encounter Character dropdown (enemyCharVisibleTo). Bots were hunting heroes across the map by
     // reading their true position out of the game state.
@@ -1095,7 +1104,7 @@ export function botSpyTarget(
   theProvincesOf(G).forEach((X) => {
     if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) return;
     const bo = botBelievedOwner(G, pi, X);
-    if (bo == null || bo === pi || botRelationRaw(G, pi, bo) === 'allied') return;
+    if (bo == null || bo === pi || botRelationRaw(G, pi, bo) === THE_STATES_TWO_REALMS_STAND_IN.allied) return;
     const d = X.id === from.id ? 0 : botPathLenAny(G, from, X.id, maxD);
     if (d == null) return;
     const b = botBelief(G, pi, X);
@@ -1105,7 +1114,8 @@ export function botSpyTarget(
     {
       const I = botEnemyIntel(G, pi);
       Object.values(I.generals).forEach((r) => {
-        if (botRelationRaw(G, pi, r.player) !== 'enemy' || (G.turn || 0) - r.turn > 3) return;
+        if (botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar || (G.turn || 0) - r.turn > 3)
+          return;
         if (r.provId === X.id) gen += 5;
         else
           for (let i = 0; i < 6; i++) {
@@ -1125,7 +1135,7 @@ export function botSpyTarget(
     const sc =
       (Number(b?.tax) || 0) +
       (home ? 4 : 0) +
-      (botRelationRaw(G, pi, bo) === 'enemy' ? 6 : 0) +
+      (botRelationRaw(G, pi, bo) === THE_STATES_TWO_REALMS_STAND_IN.atWar ? 6 : 0) +
       staleness * 2 -
       d * 2 +
       gen +

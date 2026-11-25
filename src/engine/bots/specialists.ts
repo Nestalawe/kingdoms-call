@@ -1,3 +1,4 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.ts';
 import { GRAND_HEIST_RICH_TAX } from '../items/tiers-and-hoards.ts';
@@ -536,7 +537,7 @@ export function botRoamOrders(G: GameState, pi: number, c: Character, pre: reado
   for (const X of theProvincesOf(G)) {
     if (!X || X.terrain === 'sea' || X.id === P.id || !botKnows(G, pi, X.id)) continue;
     const bo = botBelievedOwner(G, pi, X);
-    if (bo != null && bo !== pi && botRelationRaw(G, pi, bo) !== 'allied') continue;
+    if (bo != null && bo !== pi && botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.allied) continue;
     if ((asItsGuardReadsIt(X.visitedBy) ?? []).includes(pi)) continue;
     const d = botPathLenAny(G, P, X.id, 5);
     if (d == null) continue;
@@ -581,7 +582,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
           e.alive &&
           e.player != null &&
           e.player !== pi &&
-          botRelationRaw(G, pi, e.player) !== 'allied' &&
+          botRelationRaw(G, pi, e.player) !== THE_STATES_TWO_REALMS_STAND_IN.allied &&
           botSkillsUnknown(G, pi, e) &&
           e._invisTurn !== G.turn,
       )
@@ -611,13 +612,17 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
       if ((G.turn || 0) - r.turn > 2) continue;
       const e = theCharactersOf(G).find((x) => x?.id === +k);
       if (!e || !e.alive || !botSkillsUnknown(G, pi, e)) continue;
-      if (botRelationRaw(G, pi, r.player) === 'allied') continue;
+      if (botRelationRaw(G, pi, r.player) === THE_STATES_TWO_REALMS_STAND_IN.allied) continue;
       if (r.provId === c.location) continue;
       const X = theProvinceAt(G, r.provId);
       if (!X) continue;
       const d = botPathLenAny(G, P, X.id, 3);
       if (d == null || d + pre.length > 3) continue;
-      const sc = r.units * 2 + (r.isKing ? 6 : 0) + (botRelationRaw(G, pi, r.player) === 'enemy' ? 5 : 0) - d * 2;
+      const sc =
+        r.units * 2 +
+        (r.isKing ? 6 : 0) +
+        (botRelationRaw(G, pi, r.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar ? 5 : 0) -
+        d * 2;
       if (!best || sc > best.sc) best = { e, X, d, sc };
     }
     if (best) {
@@ -683,8 +688,8 @@ export function botStealTarget(G: GameState, pi: number, c: Character, maxD: num
   const hostile = (j: number | null | undefined) =>
     j != null &&
     j !== pi &&
-    botRelationRaw(G, pi, j) !== 'allied' &&
-    (botRelationRaw(G, pi, j) === 'enemy' || !botAlignFriendly(G, pi, j));
+    botRelationRaw(G, pi, j) !== THE_STATES_TWO_REALMS_STAND_IN.allied &&
+    (botRelationRaw(G, pi, j) === THE_STATES_TWO_REALMS_STAND_IN.atWar || !botAlignFriendly(G, pi, j));
   for (const e of theCharactersOf(G)) {
     if (!(e && e.alive && e.player != null && hostile(e.player) && botSeesChar(G, pi, e))) continue;
     if (e._invisTurn === G.turn) continue;
@@ -717,7 +722,7 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
     for (const X of theProvincesOf(G)) {
       if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) continue;
       const bo = botBelievedOwner(G, pi, X);
-      if (bo == null || bo === pi || botRelationRaw(G, pi, bo) !== 'enemy') continue;
+      if (bo == null || bo === pi || botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
       const home = theRealmsOf(G)[bo]?.homeProvinceId === X.id;
       const b = botBelief(G, pi, X);
       if (!home && (Number(b?.tax) || 0) < GRAND_HEIST_RICH_TAX) continue;
@@ -813,7 +818,7 @@ export function botLairTarget(G: GameState, pi: number, c: Character, maxD: numb
   for (const X of theProvincesOf(G)) {
     if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) continue;
     const bo = botBelievedOwner(G, pi, X);
-    if (bo != null && bo !== pi && botRelationRaw(G, pi, bo) !== 'allied') continue;
+    if (bo != null && bo !== pi && botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.allied) continue;
     const li = botBeatableLairIn(G, c, X);
     if (li < 0) continue;
     const d = X.id === from.id ? 0 : botPathLen(G, pi, from, X.id, true);
@@ -901,7 +906,13 @@ export function botRoleWork(
       if (lvl >= 9) {
         const P = G.world.provinces[c.location];
         const mark = botVisibleCharsIn(G, pi, P)
-          .filter((e) => e.alive && e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy')
+          .filter(
+            (e) =>
+              e.alive &&
+              e.player != null &&
+              e.player !== pi &&
+              botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar,
+          )
           .sort((a, b) => (b.isKing ? 1 : 0) - (a.isKing ? 1 : 0))[0];
         if (mark) {
           const out = [
@@ -917,7 +928,7 @@ export function botRoleWork(
         for (const X of theProvincesOf(G)) {
           if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) continue;
           const bo = botBelievedOwner(G, pi, X);
-          if (bo == null || bo === pi || botRelationRaw(G, pi, bo) !== 'enemy') continue;
+          if (bo == null || bo === pi || botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
           const b = botBelief(G, pi, X);
           const v = (Number(b?.tax) || 0) + (theRealmsOf(G)[bo]?.homeProvinceId === X.id ? 3 : 0);
           if (!best || v > best.v) best = { X, v };
@@ -1011,7 +1022,8 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     const I = botEnemyIntel(G, pi);
     let bestG: { readonly X: Province; readonly d: number; readonly sc: number; readonly e: Character } | null = null;
     for (const [k, r] of Object.entries(I.generals)) {
-      if ((G.turn || 0) - r.turn > 2 || botRelationRaw(G, pi, r.player) !== 'enemy') continue;
+      if ((G.turn || 0) - r.turn > 2 || botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar)
+        continue;
       const e = theCharactersOf(G).find((x) => x?.id === +k && x.alive);
       if (e?.location !== r.provId) continue;
       const X = theProvinceAt(G, r.provId);
@@ -1377,7 +1389,7 @@ export function botHomeThreat(G: GameState, pi: number) {
       e.player != null &&
       e.player !== pi &&
       theUnitsWithGapsOf(e).length &&
-      botRelationRaw(G, pi, e.player) === 'enemy'
+      botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
     ))
       continue;
     if (!botSeesChar(G, pi, e)) continue; // only a host we can see
@@ -1453,7 +1465,11 @@ export function botScanTargets(
     // terrain and ownership, never the column standing on it.
     let enemyForceInN = 0;
     for (const e of botVisibleCharsIn(G, pi, N)) {
-      if (e.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) === 'enemy')
+      if (
+        e.player != null &&
+        e.player !== pi &&
+        botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+      )
         enemyForceInN += botEffForce(G, e, undefined);
     }
     if (enemyForceInN > maxThreat) {
@@ -1471,14 +1487,14 @@ export function botScanTargets(
       }
       continue;
     }
-    if (N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied') continue; // an ally's land is not a target
+    if (N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied) continue; // an ally's land is not a target
     let targetStr: number,
       enemyTarget = false;
     const ec = botEnemyChars(G, N, pi);
     if (N.owner == null) {
       targetStr = botTargetDefence(G, pi, N) + ec.force * BOT_DEF_BONUS;
     } else {
-      if (botRelationRaw(G, pi, N.owner) !== 'enemy') continue;
+      if (botRelationRaw(G, pi, N.owner) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
       targetStr = botTargetDefence(G, pi, N);
       enemyTarget = true;
     }
@@ -1530,7 +1546,7 @@ export function botScanTargets(
             K.terrain !== 'sea' &&
             K.owner != null &&
             K.owner !== pi &&
-            botRelationRaw(G, pi, K.owner) === 'enemy'
+            botRelationRaw(G, pi, K.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar
           ) {
             score += 40 + T.rivalBias * 2;
             break;
@@ -1631,7 +1647,7 @@ export function botDistantStrike(
           // a staging province may be an ALLY's, whose far side is two hops past our own border and
           // may never have been seen. Unmapped ground is not a target.
           if (!botKnows(G, pi, X.id)) continue;
-          if (X.owner != null && botRelationRaw(G, pi, X.owner) !== 'enemy') continue;
+          if (X.owner != null && botRelationRaw(G, pi, X.owner) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
           const ec = botEnemyChars(G, X, pi);
           let tStr: number,
             enemyTarget = false;

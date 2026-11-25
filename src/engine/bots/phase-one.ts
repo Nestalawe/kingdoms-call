@@ -1,3 +1,4 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -247,7 +248,7 @@ export function botSafeStep(G: GameState, pi: number, P: Province, awayFrom: Pro
     const N = botNeighbourProv(G, P, i);
     if (!N || N.terrain === 'sea' || theFloodOn(N)) continue;
     const own = N.owner === pi,
-      ally = N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied';
+      ally = N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied;
     if (!own && !ally) continue;
     if (botEnemyHostsIn(G, pi, N).length) continue;
     let near = 0;
@@ -332,7 +333,10 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         botVisibleCharsIn(G, pi, P).forEach((x) => {
           if (x.player === pi) mineStr += botBattleForce(G, x, null, P.terrain, {});
         });
-        const onEnemy = P.owner != null && P.owner !== pi && botRelationRaw(G, pi, P.owner) === 'enemy',
+        const onEnemy =
+            P.owner != null &&
+            P.owner !== pi &&
+            botRelationRaw(G, pi, P.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar,
           here = botEnemyHostsIn(G, pi, P);
         if (onEnemy || here.length) {
           // A1
@@ -762,7 +766,11 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       if (end < 0) end = 5;
       const isEnemyChar = (id: string) => {
         const e = (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x) && x.id === Number(id));
-        return e?.player != null && e.player !== pi && botRelationRaw(G, pi, e.player) !== 'allied';
+        return (
+          e?.player != null &&
+          e.player !== pi &&
+          botRelationRaw(G, pi, e.player) !== THE_STATES_TWO_REALMS_STAND_IN.allied
+        );
       };
       const urgency = (x: AnOrderAsThePassReadsIt) => {
         if (!x) return 0;
@@ -956,7 +964,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               N.id === t1?.id
             )
               continue;
-            if (N.owner != null && botRelationRaw(G, pi, N.owner) !== 'enemy') continue;
+            if (N.owner != null && botRelationRaw(G, pi, N.owner) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
             const d = botTargetDefence(G, pi, N) + botEnemyChars(G, N, pi).force * BOT_DEF_BONUS;
             const sc = (N.tax || 0) * 2 + (N.owner != null ? 8 : 0) - d / 4;
             if (!best || sc > best.sc) best = { N, i, d, sc };

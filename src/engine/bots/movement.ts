@@ -1,3 +1,4 @@
+import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -592,7 +593,7 @@ export function runBotMovement(
               if (!N || N.terrain === 'sea') break;
               const safe =
                 N.owner === pi ||
-                (N.owner != null && botRelationRaw(G, pi, N.owner) === 'allied') ||
+                (N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied) ||
                 (follow.length === 0 && (asItsGuardReadsIt(o.desc) ?? '').startsWith('Advance')) ||
                 (follow.length === 0 &&
                   /^(Attack|Assault)/.test(o.desc || '') &&
@@ -673,7 +674,9 @@ export function runBotMovement(
                   dest = N;
                 }
                 const inEnemy =
-                  dest.owner != null && dest.owner !== pi && botRelationRaw(G, pi, dest.owner) === 'enemy';
+                  dest.owner != null &&
+                  dest.owner !== pi &&
+                  botRelationRaw(G, pi, dest.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar;
                 const cloak =
                   inEnemy && (Number(theSkillsOf(c).illusory) || 0) >= 1 && pre.length + mv.length < 5
                     ? [
@@ -698,7 +701,7 @@ export function runBotMovement(
               const mine = new Set((G.players[pi]?.discoveries ?? []).map((d) => d.id));
               let bestK: { hid: number; d: number; name: string } | null = null;
               for (const [j, pl] of theRealmsOf(G).entries()) {
-                if (!pl || j === pi || botRelationRaw(G, pi, j) !== 'enemy') continue;
+                if (!pl || j === pi || botRelationRaw(G, pi, j) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
                 if (!(pl.discoveries ?? []).some((d) => !mine.has(d.id))) continue;
                 const hid = pl.homeProvinceId;
                 const H = G.world.provinces[hid];
@@ -748,7 +751,7 @@ export function runBotMovement(
               e.player !== pi &&
               !e.isKing &&
               !theUnitsWithGapsOf(e).length &&
-              botRelationRaw(G, pi, e.player) === 'enemy' &&
+              botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar &&
               e._invisTurn !== G.turn,
           );
           if (sneak) {
