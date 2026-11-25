@@ -16,8 +16,8 @@
 // - identical on a copy whose two fortune stages moved into a file of their own (the split rows' kind of move);
 // - red on three faults planted in a copy of src/: an extra draw at the end of the battle between heroes' fortune
 //   stage; the fortune's swing the statistics record rounded to hundredths, not thousandths (only the turn's context
-//   differs, the dice the same); and the army spells and the archery of the battle between heroes swapped (the lines
-//   differ; each draw still counts under the stage whose text holds it).
+//   differs, the dice the same); and the magic and army spells and the archery of the battle between heroes swapped
+//   (the lines differ; each draw still counts under the stage whose text holds it).
 // Level 1 (unit): it runs the tool's functions on made-up frames and battles, and the worker on a few cases of this
 // tree and of copies. Static can't: it runs code and processes.
 import { execFile } from 'node:child_process';
@@ -300,10 +300,10 @@ function aPlantedCopy(plant: APlant): string {
   return copy;
 }
 
-const ARMY_SPELLS = [
-  '  applyArmyBattleSpells(atk, atkArmies, defArmies, narrative);',
-  '  if (!_atkLA) applyArmyBattleSpells(def, defArmies, atkArmies, narrative);',
-].join('\n');
+/** The battle between heroes' magic and army spells (H3), its stage's call: the stage's text is in a file of its own
+ *  since B-06bg, so the swap moves its call, which combatVsChar makes just above the archery's. */
+const MAGIC_AND_ARMY_SPELLS =
+  '  bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(turnContext, atk, def, theSetUp);';
 const ARCHERY = [
   '  applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);',
   '  if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);',
@@ -340,8 +340,9 @@ const THE_FORTUNE_MOVED: APlant = {
       new: '  const _fortP = theFortuneOfTheBattleBetweenHeroes();',
     },
     {
-      old: 'function theLineTheBattleBetweenHeroesWrites<',
-      new: "import { theFortuneOfTheBattleBetweenHeroes } from './the-fortune-of-both-battles-moved.ts';\nfunction theLineTheBattleBetweenHeroesWrites<",
+      // (a head of combatVsChar's file, where the fortune's text still is: its first helper moved with H3, B-06bg)
+      old: 'function theOutcomeLineAt(',
+      new: "import { theFortuneOfTheBattleBetweenHeroes } from './the-fortune-of-both-battles-moved.ts';\nfunction theOutcomeLineAt(",
     },
   ],
   adds: {
@@ -374,11 +375,11 @@ const PLANTS: readonly APlant[] = [
     ],
   },
   {
-    name: 'the army spells and the archery of the battle between heroes swapped',
+    name: 'the magic and army spells and the archery of the battle between heroes swapped',
     edits: [
-      { old: ARMY_SPELLS, new: '  // the army spells, moved' },
-      { old: ARCHERY, new: ARMY_SPELLS },
-      { old: '  // the army spells, moved', new: ARCHERY },
+      { old: MAGIC_AND_ARMY_SPELLS, new: '  // the magic and army spells, moved' },
+      { old: ARCHERY, new: MAGIC_AND_ARMY_SPELLS },
+      { old: '  // the magic and army spells, moved', new: ARCHERY },
     ],
   },
 ];
