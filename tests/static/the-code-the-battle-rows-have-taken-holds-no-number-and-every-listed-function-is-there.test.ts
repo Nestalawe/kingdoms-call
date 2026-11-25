@@ -144,14 +144,14 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-strength-a-host-carried-over-the-sea-by-flyers-keeps.ts',
     'SEA_AIRBORNE_LAND_PENALTY',
-    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion) (B-06bc: moved from combatVsNPC's file)",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-strength-a-host-carried-over-the-sea-by-flyers-keeps.ts',
     'SEA_AIRBORNE_FLYER_PENALTY',
-    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion)",
+    "B-06ay2, the battle's single factors: content's rows (a volley and Archery; a unit's strength after the damage, at sea, under the illusion) (B-06bc: moved from combatVsNPC's file)",
   ],
   [
     'src/engine/battle/ladder.ts',

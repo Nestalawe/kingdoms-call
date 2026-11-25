@@ -75,6 +75,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength) (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n8-to-n10-the-grounds-notes-the-lines-fortune-and-the-result.ts',
+    'theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders',
+    "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength) (B-06bc: combatVsNPC's lines, fortune and result, moved)",
+  ],
+  [
     'src/engine/battle/terrain-and-unit-strength.ts',
     'armStr',
     "B-06k, the ladder's words for the commander's minor titles' army perks, by the perk his title's row names",

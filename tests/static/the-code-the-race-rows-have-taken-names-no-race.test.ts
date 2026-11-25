@@ -143,6 +143,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n8-to-n10-the-grounds-notes-the-lines-fortune-and-the-result.ts',
+    'theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06bc: combatVsNPC's lines, fortune and result, moved)",
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "B-06ae, Raiders' Muster's flag, from the race gifts' runner",

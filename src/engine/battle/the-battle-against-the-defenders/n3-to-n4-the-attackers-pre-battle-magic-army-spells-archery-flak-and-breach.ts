@@ -31,10 +31,10 @@
 // | `defLineWidth` | N8 (twice) | N8, N10 |
 // | `atkOrdN` | N8 | N8 |
 //
-// So the state the stages share by reference: the defenders' two loss counts (from N4 to the end), and the two fronts'
-// widths (N8 to N10) join it from the row that cuts across them; the rest are values once their stage is done. The
-// objects the stages share (the narrative, the two hosts, the province, the commanders) are handed on as they are,
-// never copied.
+// So the state the stages share by reference: the defenders' two loss counts (from N4 to the end); the two fronts'
+// widths (N8 to N10) are written and read in one stage (n8-to-n10-…, B-06bc), so they stay its own lets; the rest are
+// values once their stage is done. The objects the stages share (the narrative, the two hosts, the province, the
+// commanders) are handed on as they are, never copied.
 import { kcRng } from '../../rng.ts';
 import { theHullAUnitSinksBeforeTheBattle } from '../../rules/the-registry-of-content-effects.ts';
 import {
