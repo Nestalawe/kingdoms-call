@@ -15424,6 +15424,33 @@ export const KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND = {
   sea: Partial<Record<UnitType, number>>;
 }; // a unit left out of a row that must list it, a misspelt unit or a ground no row names fails tsc
 
+// ── BATTLE RESULT MARGIN BANDS ────
+// margRatio = |winner − loser| ÷ (winner + loser). Six bands replace the old three (narrow <10%,
+// clear 10–30%, decisive >30%): the middle three keep their exact old numbers; Pyrrhic splits off
+// the bottom of Narrow, Crushing and Annihilating split off the top of Decisive. Every band keeps
+// at least 1% winner death and 1% loser XP (a rout still costs the victor something, and even a
+// shattered army learns). Used by BOTH the NPC (combatVsNPC) and hero-vs-hero (combatVsChar) paths.
+// The table moved here from the engine's battle/fates.ts as it was (B-06ay1); the engine's BATTLE_MARGIN_BANDS is this
+// list, and battleMarginBand reads it there (each slug one of the severities a battle's outcome line tells). The
+// rulebook's table of the bands ("How a Battle Is Fought") is held to it by a static test.
+export const KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM = [
+  { slug: 'pyrrhic', max: 0.04, winDeath: 0.15, loseDeath: 0.12, winXP: 0.6, loseXP: 0.2, loseDemote: 0.05 },
+  { slug: 'narrow', max: 0.1, winDeath: 0.12, loseDeath: 0.12, winXP: 0.5, loseXP: 0.12, loseDemote: 0.1 },
+  { slug: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.18, winXP: 0.3, loseXP: 0.06, loseDemote: 0.2 },
+  { slug: 'decisive', max: 0.55, winDeath: 0.01, loseDeath: 0.35, winXP: 0.15, loseXP: 0.02, loseDemote: 0.3 },
+  { slug: 'crushing', max: 0.75, winDeath: 0.01, loseDeath: 0.5, winXP: 0.08, loseXP: 0.01, loseDemote: 0.45 },
+  { slug: 'annihilating', max: 9, winDeath: 0.01, loseDeath: 0.6, winXP: 0.05, loseXP: 0.01, loseDemote: 0.55 },
+] as const;
+// A battle that carries on round after round in the same province grows deadlier for BOTH sides: each side's death
+// chances scale by 1 + this step for each carried-over round (prov._carryOnRounds, 0 for the opening clash), to at
+// most this many times. Moved here from the engine's battle file as they were (B-06ay1); the engine reads them by its
+// CARRYON_DEATH_STEP and CARRYON_DEATH_CAP names, and the rulebook's "+35% per carried-over round, to ×2.5" is held to
+// them by a static test.
+export const KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS = {
+  theStepEachCarriedOverRoundAdds: 0.35,
+  theMostTimesTheyScaleTo: 2.5,
+} as const;
+
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;

@@ -1,5 +1,10 @@
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
-import { KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS,
+  KC_UNIT_CLASS,
+  PRIMAL_ARMY_DEFS_P,
+  SPELL_DEFS_P,
+} from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
 import {
@@ -148,9 +153,10 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 // and the battle spells of special units.
 // a battle that carries on round after round in the same province grows deadlier for BOTH sides.
 // prov._carryOnRounds counts the carry-ons (0 for the opening clash); death chances scale by 1 +
-// CARRYON_DEATH_STEP per round, capped at CARRYON_DEATH_CAP×.
-export const CARRYON_DEATH_STEP = 0.35,
-  CARRYON_DEATH_CAP = 2.5;
+// CARRYON_DEATH_STEP per round, capped at CARRYON_DEATH_CAP×: content's row
+// (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS, B-06ay1).
+export const CARRYON_DEATH_STEP = KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS.theStepEachCarriedOverRoundAdds,
+  CARRYON_DEATH_CAP = KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS.theMostTimesTheyScaleTo;
 
 // a force at sea is AIRBORNE when it contains at least one land unit
 // (neither flying nor naval) and NO naval unit at all — the land units can only be there because the

@@ -28,6 +28,7 @@ import {
   SAGE_DISCOVERIES_P,
   TITLE_DEFS,
 } from '../../src/content/kingdoms-call-data.ts';
+import { CARRYON_DEATH_STEP } from '../../src/engine/battle/battles-against-province-defenders.ts';
 import { RECKONING_MIN_TURN, TITLES_PUBLIC_FROM_TURN } from '../../src/engine/titles/perks.ts';
 import { readPage, sitePath } from '../lib/boot.ts';
 import { compactOf, compactPage, initializersOf, pageScripts, pageStrings, pageText } from '../lib/source.ts';
@@ -156,7 +157,8 @@ describe('the rulebooks after the review: each sentence says what the game does'
   );
 
   test('carry-on casualties add 35% a round', timeLimitForTheWork({ everyFileReads: 1 }), () => {
-    expect(num('CARRYON_DEATH_STEP'), "the engine's carry-on step").toBe(0.35);
+    // the engine's step, as it reads it from the carry-on's content row (B-06ay1)
+    expect(CARRYON_DEATH_STEP, "the engine's carry-on step").toBe(0.35);
     expect(RW, 'the losing side’s step no longer says ×1.35 a round').not.toContain('×1.35 for every carry-on round');
     expect(RW, 'the losing side’s step says +35% a round').toContain('+35% for every carry-on round');
   });
