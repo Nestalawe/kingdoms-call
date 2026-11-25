@@ -20,7 +20,7 @@ trial on four planted faults (plan P1-16a).
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the tests send a page's client, to compare base with branch | the tests' own time |
 | `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
 | `npm run proof:worlds -- --base <ref>` | Whether each seed makes the same world with the same dice, stage by stage, base against branch | about 8 minutes (2,560 cases; `--seeds 8`, 100 s) |
-| `npm run proof:battles -- --base <ref>` | Whether each staged battle writes the same lines, leaves the same world and draws the same dice, stage by stage, base against branch | about 70 s (440 cases, 8 dice streams each; `--cases 40`, 6 s) |
+| `npm run proof:battles -- --base <ref>` | Whether each staged battle writes the same lines and the same to the turn's context, leaves the same world and draws the same dice, stage by stage, base against branch | about 2 minutes (672 cases, 8 dice streams each; `--cases 40`, 8 s) |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
@@ -259,37 +259,53 @@ this working tree, each in a fresh process of its own
 The worker imports the side's own `tests/lib/a-battle-called-directly.ts` on its own `src/` as they are, makes the world
 from seed 1, stages the battle on it once, and fights it from that staging with each of 8 fixed dice streams (900 to
 907), lending the dice a counting stream (`kcRng.use`). For each stream it compares the battle's lines in words, the
-sha256 of the world after (with who won), the dice drawn in all and the dice drawn by stage. It exits 1 when any case
-differs, and names each with its stream and what differs (`stream 903: H6's dice (1 → 2)`). Options: `--cases N` (N
-cases spread over the grid, for a quick look), `--jobs N`.
+sha256 of the world after (with who won), what the battle wrote to the turn's context (the turn's log entry by entry;
+every other field but the world and the distance cache by its hash: the statistics' facts, `battleCommanders`,
+`_duelFoes`, `_deferredSkillLogs` and the rest), the dice drawn in all and the dice drawn by stage. It exits 1 when any
+case differs, and names each with its stream and what differs (`stream 903: H6's dice (1 → 2)`, `the turn's context
+(_tel)`). Options: `--cases N` (N cases spread over the grid, for a quick look), `--jobs N`.
 
-**The grid** (440 cases): the ground (plain, forest, mountain, desert, sea) × the battle (against a province's
+**The grid** (672 cases): the ground (plain, forest, mountain, desert, sea) × the battle (against a province's
 defenders, `combatVsNPC`; between heroes, `combatVsChar`, the two realms at war on a province of the defender's) × the
-defender (led: a neutral guard, or the defending king, with Tactical, Archery and Naval 2, Druid 2, Elemental 3 and
-Necromancy 2, challenged to a duel; leaderless: no guard, or a king of no such skill) × where the attacker comes from
-(land; or sea, a landing on a land field) × 11 sets of armies (foot, missiles, flyers, beasts under a Druid short,
-skeletal companies, Monsters under Evil, Dwarven Guard, corsairs, whales, fleets, an outmatched attacker). Not on the
-grid: a realm's garrison holding a province with no hero, the mastery orders' flags, Sanctuary, Consecrate, Illusory
-Terrain, Terror, Phantasmal Armies, a carried-on battle, items, discoveries, Tactical 6's and the War Drum's draws, and a
-spell named in a plan (the commanders cast only what they pick for themselves). A unit case stages those.
+defender × where the attacker comes from × 13 sets of armies (foot, missiles, flyers, beasts under a Druid short,
+skeletal companies, Monsters under Evil, Dwarven Guard, corsairs, whales, fleets, reavers, Tactical 6 and the War Drum,
+an outmatched attacker). On a sea field only the sets whose two hosts each hold a ship or a sea beast (corsairs, whales,
+fleets, reavers). Each commander has Tactical, Archery and Naval 2, Druid 2, Elemental 3 and Necromancy 2, as the set
+changes them.
+- **The defender**: led (a neutral guard, or the defending king, challenged to a duel); or leaderless, each battle's
+  own sense of it: no guard against the defenders, and between heroes a host whose commander is already dead
+  (`alive` false, as after a fall in an earlier phase: his skills gone, "…'s leaderless host").
+- **Where the attacker comes from**: land; a landing, as the Move order makes one (`_attackedFrom` the sea beside the
+  field, `_seaLandingAt` this turn, and Reaver Crews' `_amphibiousAssault` when Orcish Longships carry him); or a
+  landing that raids the coast (Naval 9's `_raidCoastTurn` this turn). On a sea field, the sea beside it.
+
+Not on the grid: a realm's garrison holding a province with no hero, the mastery orders' flags, Sanctuary, Consecrate,
+Illusory Terrain, Terror, Phantasmal Armies, a carried-on battle, discoveries, a land host at sea, and a spell named in
+a plan (the commanders cast only what they pick for themselves). A unit case stages those.
 
 **A draw's stage** is read from its call stack, with no mark in `src/`
-([the-stages-of-the-two-battles-and-the-lines-that-open-them.ts](the-stages-of-the-two-battles-and-the-lines-that-open-them.ts)):
-the innermost frame that is a stage's own function, or else the battle's own frame, whose line falls between two of its
-stages' anchors (N0 to N13 against the defenders, H0 to H10 between heroes; a helper draws under the stage whose line
-called it). **The list is kept there until each battle's stage list is in `src/`** (B-06bl): a split row (B-06az on)
-gives each stage it moves its `fn:`, the name of the function the stage now is, and keeps its anchor for the base. A
-stage found on a side by neither stops the proof, and the unit test checks that every stage is found in the tree as it
-is. On the base of B-06aw every stage but N2, N10, N11, H0, H5, H7 and H8 draws on the grid (those draw nothing there).
+([the-stages-of-the-two-battles-and-the-lines-that-open-them.ts](the-stages-of-the-two-battles-and-the-lines-that-open-them.ts)).
+Each stage (N0 to N13 against the defenders, H0 to H10 between heroes) has an anchor, the text of the line that opens
+it, found once in whichever file of the side's own `src/engine/` holds it. A draw belongs to the stage whose anchor is
+the last above the line of the innermost frame whose file holds one there. A frame with none above it (a helper such as
+the duel, the fates, fortune or a rule's effect, or a function above its file's first anchor) passes the draw to its
+caller. So **a split row needs no edit here**: a stage moved into another file keeps its name, and a cut function that
+holds three stages' text counts their draws as three stages, as the base does. A draw counts under the stage whose text
+holds the code that draws it (a helper nested in a stage is that stage's wherever it is called from). An anchor of two
+lines is matched line by line, the indentation aside. A row that rewrites an anchor's own line adds the new text to the
+stage's `anchors` (the base still holds the old). A stage a side holds nowhere, or in two places, stops the proof. The
+list stays there until each battle's stage list is in `src/` (B-06bl). On B-06ax's base every stage but N2, N10, N11,
+H5, H7 and H8 draws on the grid.
 
-**Red on planted faults** (the unit test plants each in a copy of `src/`, finding its text in whichever file holds it,
-and fights three cases from the tree and from the copy):
+**Red on planted faults** (the unit test makes each in a copy of `src/`, finding its text in whichever file holds it,
+and fights four cases from the tree and from the copy):
 
-| Planted fault | What the tool shows |
+| Made in the copy | What the tool shows |
 |---|---|
-| One extra `kcRng()` at the end of the battle between heroes' fortune (H6) | `H6's dice (1 → 2)` in all 8 streams of the battle between heroes; the battles against the defenders the same |
-| The clear band's death chance for the beaten, 0.18 made 0.9 (no draw) | the world after differs |
-| The army spells and the archery of the battle between heroes swapped (H3, H4) | H3's and H4's dice move; the battles against the defenders the same |
+| Both battles' fortune stages moved, their text as it is, into one new file, each battle calling its own | every case the same (the new file holds N9 and H6) |
+| One extra `kcRng()` at the end of the battle between heroes' fortune (H6) | `H6's dice (1 → 2)` in all 8 streams; the battles against the defenders the same |
+| The battle between heroes' swing in its statistics record rounded to hundredths (no draw) | only `the turn's context (_tel)`: the lines, the world and the dice the same |
+| The army spells and the archery of the battle between heroes swapped (H3, H4) | the lines differ; each draw still counts under its own stage's text |
 
 A plant whose text a later row moves into another file is still found; one whose text a row rewrites stops the test,
 naming the plant to update.
