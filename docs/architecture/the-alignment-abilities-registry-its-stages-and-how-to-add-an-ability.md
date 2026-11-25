@@ -168,8 +168,11 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   `rules-on-plain-values/` (the battles, a commander's score, a hero's hire, the Broker's and the Charm's wage, the
   Wonder, the heir); a hero's name of an alignment with no name pools is drawn from its pools. The bots ask it too
   (P1-19bb6: their estimates, their hires and `botAlignOf`); a bot with no alignment left to take is dealt the
-  constant, and an alignment with no first skills of its own takes the constant's. No game holds a realm of none:
-  unit cases hold the constant and the bots' reads.
+  constant, and an alignment with no first skills of its own takes the constant's. The player portal and the
+  reports' views ask the helper too (B-06br: turn zero's set-up, the order form's Perform Rite and Hire Hero fields,
+  a raised or charmed hero's card, the report screen, the ledger's hire wage, the views' two hire wages and a fallen
+  hero in the turn report), and the join form falls back to the constant when the alignment chosen is taken. No game holds a realm
+  of none: unit and page cases hold the constant, the bots' reads and the portal's.
 - **The risen dead's race** is `THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS` ('Undead'), a constant beside the rows
   (P1-19bb2): every raising (Harvest the Field, the Necromancy spells, the Iron Throne, an Undead king's skeletal
   company) makes its units of it, and Control Undead finds the dead by it. It is a unit's race, not an alignment. The
