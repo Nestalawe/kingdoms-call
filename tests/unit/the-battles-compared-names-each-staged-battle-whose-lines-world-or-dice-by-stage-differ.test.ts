@@ -1,12 +1,14 @@
 // The battle proof (tools/proof/the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts,
-// npm run proof:battles), its stage list (the-stages-of-the-two-battles-and-the-lines-that-open-them.ts) and its worker
+// npm run proof:battles), its stage list's reader (the-stages-of-the-two-battles-and-the-lines-that-open-them.ts, which
+// reads src/engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts) and its worker
 // (one-staged-battle-fought-on-a-side-in-a-fresh-process.ts):
 // - a draw's stage is the last anchor above the line of the innermost frame whose file holds one there, whichever file
 //   of the side's src/engine/ holds it; a helper's frame, or a line above a file's first anchor, passes to its caller;
 //   so a stage moved into another file, or two stages in one file, keep their names; an anchor of two lines is
 //   matched whatever its indentation;
-// - a stage whose anchor a side holds nowhere, or in two places, stops the proof, and every stage of the list is found
-//   once in src/ as it is now, each battle's in order;
+// - a stage whose anchor a side holds nowhere, or in two places, stops the proof, and every stage of src/'s list is
+//   found once in src/ as it is now (the list's own file aside), each battle's in order; a tree with no list of its
+//   own (a base from before B-06bl) is read with this tree's;
 // - two sides' battles differ on the lines, the world, the turn's log or another field of the turn's context, the dice
 //   in all or one stage's dice, or a throw (both throwing alike is the same), each named by its stream;
 // - the grid: every ground, both battles, the defender led and leaderless, from land, a landing and a raid on the
@@ -49,7 +51,8 @@ import {
   type AStageOfABattle,
   NO_STAGE,
   THE_BATTLES,
-  THE_BATTLES_STAGES,
+  THE_BATTLES_STAGES_LIST,
+  theBattlesStagesListedAt,
   theBattlesStagesOfASide,
   theBattlesStagesOfTheSideAt,
   theStageOfADraw,
@@ -61,11 +64,11 @@ const WORKER = path.join(ROOT, 'tools/proof/one-staged-battle-fought-on-a-side-i
 describe("a draw's stage", () => {
   const at = (f: string) => path.join(SRC, 'engine/battle', f);
   const stages: readonly AStageOfABattle[] = [
-    { battle: 'against the defenders', stage: 'N0', what: '', anchors: ['export function combatVsNPC('] },
-    { battle: 'against the defenders', stage: 'N1', what: '', anchors: ['// A'] },
-    { battle: 'against the defenders', stage: 'N2', what: '', anchors: ['// B'] },
-    { battle: 'between heroes', stage: 'H0', what: '', anchors: ['export function combatVsChar('] },
-    { battle: 'between heroes', stage: 'H1', what: '', anchors: ['// C\nz();'] },
+    { battle: 'against the defenders', stage: 'N0', what: '', anchor: 'export function combatVsNPC(' },
+    { battle: 'against the defenders', stage: 'N1', what: '', anchor: '// A' },
+    { battle: 'against the defenders', stage: 'N2', what: '', anchor: '// B' },
+    { battle: 'between heroes', stage: 'H0', what: '', anchor: 'export function combatVsChar(' },
+    { battle: 'between heroes', stage: 'H1', what: '', anchor: '// C\nz();' },
   ];
   const frame = (functionName: string, file: string, lineNumber: number) => ({
     functionName,
@@ -124,26 +127,37 @@ describe("a draw's stage", () => {
     expect(theStageOfADraw([frame('aHelperAboveIt', 'cut/h1.ts', 1), fromPvp], side)).toBe('H0');
   });
 
-  test('a stage whose anchor a side holds nowhere, or in two places, stops the proof; another text of it is found', () => {
-    const gone = [{ battle: 'between heroes', stage: 'H9', what: '', anchors: ['// gone'] }] as const;
+  test('a stage whose anchor a side holds nowhere, or in two places, stops the proof', () => {
+    const gone = [{ battle: 'between heroes', stage: 'H9', what: '', anchor: '// gone' }] as const;
     expect(() => theBattlesStagesOfASide(base, gone)).toThrow(/H9's anchor "\/\/ gone" is in no file/);
-    const rewritten = [{ ...gone[0], anchors: ['// gone', '// C'] }];
-    expect(theBattlesStagesOfASide(base, rewritten).byFile.get(at('pvp.ts'))).toEqual([{ stage: 'H9', line: 2 }]);
     const twice = new Map([...base, [at('another.ts'), '// A']]);
     expect(() => theBattlesStagesOfASide(twice, stages)).toThrow(
       /N1's anchor is in 2 places \(npc\.ts:3, another\.ts:1\)/,
     );
   });
 
-  test("every stage of the list is found once in this tree's src/, each battle's in its order", () => {
+  test("every stage of src/'s list is found once in this tree's src/, each battle's in its order", () => {
     const here = theBattlesStagesOfTheSideAt(SRC);
+    const listedHere = theBattlesStagesListedAt(SRC);
     const found = [...here.byFile.values()].flat();
-    expect(found.map((s) => s.stage).sort()).toEqual(THE_BATTLES_STAGES.map((s) => s.stage).sort());
+    expect(found.map((s) => s.stage).sort()).toEqual(listedHere.map((s) => s.stage).sort());
+    expect(here.byFile.has(path.join(SRC, THE_BATTLES_STAGES_LIST.file)), "the list's own file holds no stage").toBe(
+      false,
+    );
     for (const b of THE_BATTLES) {
-      const listed = THE_BATTLES_STAGES.filter((s) => s.battle === b).map((s) => s.stage);
+      const listed = listedHere.filter((s) => s.battle === b).map((s) => s.stage);
       const [file] = [...here.byFile].find(([, starts]) => starts.some((s) => s.stage === listed[0])) ?? [];
       const inTheFile = (here.byFile.get(file ?? '') ?? []).map((s) => s.stage).filter((s) => listed.includes(s));
       expect(inTheFile, `the battle ${b}'s anchors in its order`).toEqual(listed.filter((s) => inTheFile.includes(s)));
+    }
+  });
+
+  test("a tree with no list of its own (a base from before B-06bl) is read with this tree's list", () => {
+    const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'kc-a-tree-with-no-list-'));
+    try {
+      expect(theBattlesStagesListedAt(bare)).toEqual(theBattlesStagesListedAt(SRC));
+    } finally {
+      fs.rmSync(bare, { recursive: true, force: true });
     }
   });
 });

@@ -25,8 +25,9 @@ export interface AStageReadFromTheList {
   file: string;
 }
 
-/** The text of a string property of an object literal, or undefined. */
-function stringProperty(o: ts.ObjectLiteralExpression, name: string): string | undefined {
+/** The text of a string property of an object literal, or undefined (the battles' stage lists' reader reads with it
+ *  too: tools/proof/the-stages-of-the-two-battles-and-the-lines-that-open-them.ts). */
+export function stringProperty(o: ts.ObjectLiteralExpression, name: string): string | undefined {
   for (const p of o.properties)
     if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === name)
       if (ts.isStringLiteral(p.initializer) || ts.isNoSubstitutionTemplateLiteral(p.initializer))
@@ -34,14 +35,14 @@ function stringProperty(o: ts.ObjectLiteralExpression, name: string): string | u
   return undefined;
 }
 /** The identifier an object literal's property holds, or undefined. */
-function identifierProperty(o: ts.ObjectLiteralExpression, name: string): string | undefined {
+export function identifierProperty(o: ts.ObjectLiteralExpression, name: string): string | undefined {
   for (const p of o.properties)
     if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === name)
       if (ts.isIdentifier(p.initializer)) return p.initializer.text;
   return undefined;
 }
 /** The expression under any `as const` and `satisfies` around it. */
-function unwrapped(e: ts.Expression): ts.Expression {
+export function unwrapped(e: ts.Expression): ts.Expression {
   let at = e;
   while (ts.isAsExpression(at) || ts.isSatisfiesExpression(at) || ts.isParenthesizedExpression(at)) at = at.expression;
   return at;

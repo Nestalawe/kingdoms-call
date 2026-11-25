@@ -1,191 +1,106 @@
 // The stages of the two battles, as the battle proof counts their dice by stage (the-battles-compared-each-staged-
 // battle-its-lines-its-world-and-its-dice-by-stage.ts; tools/proof/README.md, section 8): the battle against a
-// province's defenders (combatVsNPC) and the battle between heroes (combatVsChar). A draw's stage is read from its call
-// stack, with no mark in src/. Each stage has an anchor: the text of the line that opens it (a comment, mostly), found
-// once in whichever file of the side's src/engine/ holds it, so each side reads its own tree and a stage keeps its name
-// wherever a split row moves its text. A draw belongs to the stage whose anchor is the last above it in the innermost
-// frame's file; a frame whose file holds no anchor above it (a helper: the duel, the fates, fortune, a rule's effect, or
-// a function above a file's first anchor) passes the draw to the frame that called it. So a cut function that holds
-// three stages' text counts their draws as three stages, as the base's one function does.
+// province's defenders (combatVsNPC) and the battle between heroes (combatVsChar). Their list is in src/
+// (src/engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts, the one home of their ids, names and
+// anchors), read here from its syntax tree, not run, so the proof loads no engine but its worker's side's. Each side
+// reads its own tree's list; a side whose tree has none (a base from before B-06bl) reads this tree's, its anchors
+// found in its own files. A draw's stage is read from its call stack, with no mark in src/. Each stage's anchor (the
+// text of the line that opens it) is found once in whichever file of the side's src/engine/ holds it (the list's own
+// file aside), so a stage keeps its name wherever a split row moves its text. A draw belongs to the stage whose anchor
+// is the last above it in the innermost frame's file; a frame whose file holds no anchor above it (a helper: the duel,
+// the fates, fortune, a rule's effect, or a function above a file's first anchor) passes the draw to the frame that
+// called it. So a cut function that holds three stages' text counts their draws as three stages, as one function does.
 //
 // An anchor of more than one line is matched line by line, each line's leading spaces aside (a moved stage is indented
-// anew). A row that rewrites an anchor's own line adds its new text to `anchors` (the base still holds the old). A stage
-// whose anchor a side holds nowhere, or in two places, stops the proof, so a stale list can't count its dice as
-// another's. The list is kept here until each battle's own stage list is in src/ (B-06bl).
+// anew). A row that rewrites an anchor's own line changes its entry in src/'s list (the base's list holds the old). A
+// stage whose anchor a side holds nowhere, or in two places, stops the proof, so a stale list can't count its dice as
+// another's.
 import fs from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
+import {
+  identifierProperty,
+  stringProperty,
+  unwrapped,
+} from '../the-worlds-makings-stages-read-from-their-list-in-src.ts';
+
+/** This tree's root. */
+const ROOT = path.resolve(import.meta.dirname, '../..');
 
 /** The two battles and the function each is called by. */
 export const THE_BATTLES = ['against the defenders', 'between heroes'] as const;
 export type ABattle = (typeof THE_BATTLES)[number];
 
+/** The battles' stage list's file, from a tree's src/, and each battle's constant in it. */
+export const THE_BATTLES_STAGES_LIST = {
+  file: 'engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts',
+  names: {
+    'against the defenders': 'THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN',
+    'between heroes': 'THE_BATTLE_BETWEEN_HEROES_STAGES_IN_THE_ORDER_THEY_RUN',
+  },
+} as const satisfies { file: string; names: Record<ABattle, string> };
+
 /** One stage of a battle: its id (N0… for the battle against the defenders, H0… for the battle between heroes), what
- *  it fights in game terms, and its anchor: the text of the line that opens it (lines apart by "\n"), with any other
- *  text the line has had on a side. */
+ *  it fights in game terms, and its anchor: the text of the line that opens it (lines apart by "\n"). */
 export interface AStageOfABattle {
   battle: ABattle;
   stage: string;
   what: string;
-  anchors: readonly string[];
+  anchor: string;
+}
+/** A stage as the list in src/ holds it: the stage, and the name of the stage function its code is in, with that
+ *  function's file (from the tree's src/). */
+export interface AStageOfABattleReadFromTheList extends AStageOfABattle {
+  fn: string;
+  file: string;
 }
 
-/** The stages of both battles, each battle's in the order it fights them. */
-export const THE_BATTLES_STAGES: readonly AStageOfABattle[] = [
-  {
-    battle: 'against the defenders',
-    stage: 'N0',
-    what: 'the set-up: the negations, the tiers that fight, the deploy line, Terror',
-    anchors: ['export function combatVsNPC('],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N1',
-    what: 'the duel before the battle',
-    anchors: ['// ── Duel before battle ──'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N2',
-    what: "the sides: a slain commander, Tactical, the defender's edge and Siege, Righteous Defence, the items at the walls, home",
-    anchors: ["// The attacker's side as the facts hold it (plan P1-12d23)"],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N3',
-    what: "the attacker's pre-battle magic and army spells",
-    anchors: ['// PRE-BATTLE PHASE 1: MAGIC Hero casts first'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N4',
-    what: "the attacker's archery, Flak and Breach",
-    anchors: ['// PRE-BATTLE PHASE 2: ARCHERY Each attacker'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N5',
-    what: "the defenders' commander's pre-battle magic",
-    anchors: ['// DEFENDER PRE-BATTLE PHASES'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N6',
-    what: "the defenders' archery",
-    anchors: ['// DEFENDER ARCHERY — 2026-09-24'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N7',
-    what: "the defenders' army spells",
-    anchors: ['// DEFENDER ARMY SPELLS:'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N8',
-    what: "the terrain's notes and the battle lines, every multiplier",
-    anchors: ['// ── TERRAIN MODIFIER NOTES ──'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N9',
-    what: 'the fortune of battle',
-    anchors: ['// Roll with variance — each side rolls'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N10',
-    what: 'the stat block and the result',
-    anchors: ['// ── STAT BLOCK (visible to GM'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N11',
-    what: 'the casualty bands and the carry-on',
-    anchors: ['// ── MARGIN-BASED CASUALTY SYSTEM ──'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N12',
-    what: "the fates and the rout's three stages",
-    anchors: ['// UNIT ABILITIES vs NEUTRAL GUARDS'],
-  },
-  {
-    battle: 'against the defenders',
-    stage: 'N13',
-    what: 'the end: the spells lifted, the skills learned',
-    anchors: [
-      '// Battle-magic strength reductions last only for this battle\n[\n...(asItsGuardReadsIt(c.armies) ?? []),',
-    ],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H0',
-    what: "the set-up and the titles' merit tally",
-    anchors: ['export function combatVsChar('],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H1',
-    what: 'the duel before the battle',
-    anchors: ['// ── DUEL BEFORE BATTLE (Adventurer Kings rules) ──'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H2',
-    what: "Righteous Defence, the zeal, Consecrate's seizure, home and the front",
-    anchors: ['// GOOD — Righteous Defence: +10% when a Good player'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H3',
-    what: "both sides' pre-battle magic and army spells",
-    anchors: ['// PRE-BATTLE PHASE 1: MAGIC (both sides)'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H4',
-    what: "both sides' archery, Flak and Breach",
-    anchors: ['// PRE-BATTLE PHASE 2: ARCHERY (both sides)'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H5',
-    what: "Sanctuary, the mastery orders, Consecrate's sickness, Tactical and the lines",
-    anchors: ['// WHITE L7 — Sanctuary: enemies of the warding caster'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H6',
-    what: 'the fortune of battle',
-    anchors: ['// Dice basis unified with the NPC path'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H7',
-    what: 'the stat block and the result',
-    anchors: ['// ── STAT BLOCK ── 2026-09-23b'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H8',
-    what: 'the casualty bands and the carry-on',
-    anchors: ['const margRatioPvP = margin / totalStrPvP;'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H9',
-    what: 'the fates, the rout and the aftermath',
-    anchors: ['// ── UNIT ABILITIES: casualty & retreat ──'],
-  },
-  {
-    battle: 'between heroes',
-    stage: 'H10',
-    what: 'the end: the spells lifted, the skills learned',
-    anchors: [
-      '// Battle-magic strength reductions last only for this battle\n[...(asItsGuardReadsIt(atk.armies) ?? []), ...(asItsGuardReadsIt(def.armies) ?? [])]',
-    ],
-  },
-];
+/** The stages the list's text holds, each battle's in its order (the battle against the defenders' first). */
+export function theBattlesStagesTheListsTextHolds(text: string): AStageOfABattleReadFromTheList[] {
+  const file = THE_BATTLES_STAGES_LIST.file;
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const importedFrom = new Map<string, string>();
+  const lists = new Map<string, ts.ArrayLiteralExpression>();
+  for (const s of source.statements) {
+    if (ts.isImportDeclaration(s) && ts.isStringLiteral(s.moduleSpecifier)) {
+      const named = s.importClause?.namedBindings;
+      if (named && ts.isNamedImports(named))
+        for (const e of named.elements)
+          importedFrom.set(e.name.text, path.posix.join(path.posix.dirname(file), s.moduleSpecifier.text));
+    }
+    if (ts.isVariableStatement(s))
+      for (const d of s.declarationList.declarations) {
+        const init = d.initializer && unwrapped(d.initializer);
+        if (ts.isIdentifier(d.name) && init && ts.isArrayLiteralExpression(init)) lists.set(d.name.text, init);
+      }
+  }
+  return THE_BATTLES.flatMap((battle) => {
+    const name = THE_BATTLES_STAGES_LIST.names[battle];
+    const list = lists.get(name);
+    if (!list) throw new Error(`${file} declares no array ${name}`);
+    return list.elements.map((e, i) => {
+      const o = ts.isObjectLiteralExpression(e) ? e : undefined;
+      const stage = o && stringProperty(o, 'stage');
+      const what = o && stringProperty(o, 'inGameTerms');
+      const anchor = o && stringProperty(o, 'anchor');
+      const fn = o && identifierProperty(o, 'heldIn');
+      const fnsFile = fn === undefined ? undefined : importedFrom.get(fn);
+      if (stage === undefined || what === undefined || anchor === undefined || fn === undefined || !fnsFile)
+        throw new Error(
+          `${file}, ${name}'s entry ${String(i)}: not { stage: '<id>', inGameTerms: '<words>', anchor: '<text>', heldIn: <a function imported by name> }`,
+        );
+      return { battle, stage, what, anchor, fn, file: fnsFile };
+    });
+  });
+}
+
+/** The stages the list of the tree whose src/ is `src` holds; this tree's when that tree has none (a base from before
+ *  B-06bl, whose own files are searched for this list's anchors). */
+export function theBattlesStagesListedAt(src: string): AStageOfABattleReadFromTheList[] {
+  const own = path.join(src, THE_BATTLES_STAGES_LIST.file);
+  const list = fs.existsSync(own) ? own : path.join(ROOT, 'src', THE_BATTLES_STAGES_LIST.file);
+  return theBattlesStagesTheListsTextHolds(fs.readFileSync(list, 'utf8'));
+}
 
 /** The key of a draw no stage claims: made in no file that holds an anchor above it. */
 export const NO_STAGE = 'outside';
@@ -207,17 +122,17 @@ function whereTheAnchorStarts(lines: readonly string[], anchor: string): number[
   );
 }
 
-/** Each stage's start on a side whose files are `files` (full path → text). Throws on a stage whose anchors the files
+/** Each stage's start on a side whose files are `files` (full path → text). Throws on a stage whose anchor the files
  *  hold nowhere, or in more than one place (the list needs its row's update). */
 export function theBattlesStagesOfASide(
   files: ReadonlyMap<string, string>,
-  stages: readonly AStageOfABattle[] = THE_BATTLES_STAGES,
+  stages: readonly AStageOfABattle[],
 ): TheBattlesStagesOfASide {
   const byFile = new Map<string, { stage: string; line: number }[]>();
   const lined = [...files].map(([file, text]) => ({ file, lines: text.split('\n') }));
   for (const s of stages) {
     const at = lined.flatMap(({ file, lines }) =>
-      s.anchors.flatMap((a) => whereTheAnchorStarts(lines, a).map((line) => ({ file, line }))),
+      whereTheAnchorStarts(lines, s.anchor).map((line) => ({ file, line })),
     );
     const one = at[0];
     if (at.length > 1)
@@ -226,7 +141,7 @@ export function theBattlesStagesOfASide(
       );
     if (!one)
       throw new Error(
-        `stage ${s.stage}'s anchor "${(s.anchors[0] ?? '').split('\n')[0] ?? ''}" is in no file of the side's src/engine/: update tools/proof/the-stages-of-the-two-battles-and-the-lines-that-open-them.ts`,
+        `stage ${s.stage}'s anchor "${s.anchor.split('\n')[0] ?? ''}" is in no file of the side's src/engine/: update its entry in src/${THE_BATTLES_STAGES_LIST.file}`,
       );
     byFile.set(one.file, [...(byFile.get(one.file) ?? []), { stage: s.stage, line: one.line }]);
   }
@@ -262,8 +177,13 @@ const theFilesUnder = (dir: string): string[] =>
       e.isDirectory() ? theFilesUnder(path.join(dir, e.name)) : e.name.endsWith('.ts') ? [path.join(dir, e.name)] : [],
     );
 
-/** The stages of the side whose src/ is `src`, read from its own src/engine/. */
+/** The stages of the side whose src/ is `src`: its list's (or this tree's, theBattlesStagesListedAt), each found in
+ *  its own src/engine/, the list's file aside (its text holds every anchor). */
 export function theBattlesStagesOfTheSideAt(src: string): TheBattlesStagesOfASide {
-  const files = theFilesUnder(path.join(src, 'engine'));
-  return theBattlesStagesOfASide(new Map(files.map((f) => [f, fs.readFileSync(f, 'utf8')])));
+  const theList = path.join(src, THE_BATTLES_STAGES_LIST.file);
+  const files = theFilesUnder(path.join(src, 'engine')).filter((f) => f !== theList);
+  return theBattlesStagesOfASide(
+    new Map(files.map((f) => [f, fs.readFileSync(f, 'utf8')])),
+    theBattlesStagesListedAt(src),
+  );
 }
