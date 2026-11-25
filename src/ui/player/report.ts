@@ -6,6 +6,7 @@ import {
   dispFloor,
   itemUsableBy,
   skillFameLabelM,
+  theAlignmentARealmReadsAs,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import { thePagesDb } from './startup.ts';
@@ -557,7 +558,7 @@ export function renderReportView(report: TheReportAsTheReportScreenReadsIt) {
   const armyWages = (kingdom.armyWages ?? 0) || 0;
   const heroWages = (kingdom.heroWages ?? 0) || 0;
   const netIncome = taxIncome - armyWages - heroWages;
-  const playerAlignment = (kingdom.alignment ?? '') || 'Neutral';
+  const playerAlignment = theAlignmentARealmReadsAs(kingdom.alignment);
 
   const ALIGNMENT_SUMMARIES: Readonly<Partial<Record<string, string>>> = {
     Divine: `Your realm walks in the light of the divine. All heroes recover twice as much HP when they Rest (60% of maximum HP rather than the usual 30%). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING works the blessing in person, the province yields a full 100% more. Should any of your characters — king or hero — fall, divine grace will return them to life after one full turn in death, restored to half health but stripped of armies and items — but ONLY upon consecrated ground: they rise in the nearest consecrated province you still hold, and the miracle spends that province's consecration. If the realm holds no consecrated province when the time comes, the grace is lost (a fallen king is then succeeded by an heir). Consecrate: your king may sanctify owned provinces, up to his White skill level at once (not the home province or its neighbours, and never two side by side — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and it is where your fallen are restored. Guard it: a consecrated province that is captured loses its consecration at once, and each unit of the army that takes it has a 50% chance to gain an experience level. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,

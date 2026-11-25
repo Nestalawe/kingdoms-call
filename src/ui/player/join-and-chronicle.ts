@@ -9,6 +9,7 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
+import { THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { thePagesDb } from './startup.ts';
 import { GUARD_POWER_COLORS_P } from './items-and-heroes.ts';
 import { show } from './init.ts';
@@ -82,7 +83,7 @@ export async function showJoinGame(
     if (UNIQUE_ALIGNS.includes(opt.value) && takenAlignments.has(opt.value)) {
       opt.disabled = true;
       opt.text = `${opt.value} (taken)`;
-      if (alignSel.value === opt.value) alignSel.value = 'Neutral';
+      if (alignSel.value === opt.value) alignSel.value = THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS;
       warningParts.push(opt.value);
     } else {
       opt.disabled = false;

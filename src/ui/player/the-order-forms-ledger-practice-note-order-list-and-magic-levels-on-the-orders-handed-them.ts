@@ -18,6 +18,7 @@ import {
   dispFloor,
   heroHireWage,
   isAHeroAQuickLearnerByHisRaceAndHisRealms,
+  theAlignmentARealmReadsAs,
   theAlignmentOrdersByTheNameTheFormWrites,
   theChanceAHeroPractisingAloneRaisesHisSkill,
   theHostLeadersCut,
@@ -384,7 +385,7 @@ export function heroHireWageOfP(
 ): number | null | undefined {
   if (h && Object.prototype.hasOwnProperty.call(h, 'hireWage')) return h.hireWage;
   // (a hero's alignment that isn't words, or none, is no alignment the table holds, as '' is: the same price)
-  return heroHireWage((report?.kingdom?.alignment ?? '') || 'Neutral', h?.alignment ?? '');
+  return heroHireWage(theAlignmentARealmReadsAs(report?.kingdom?.alignment), h?.alignment ?? '');
 }
 
 // ── TREASURY LEDGER (2026-09-23, Toby item 6; from orders-form.ts) ────

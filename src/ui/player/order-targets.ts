@@ -25,6 +25,7 @@ import {
   whyAKingMayNotConsecrateAProvince,
   aBloodOfferingMayTakeTheCompany,
   theCompaniesABloodOfferingGivesAndRaises,
+  theAlignmentARealmReadsAs,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import { L79_ORDERS } from './l79-orders.ts';
@@ -1347,7 +1348,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
       if (
         !aRealmOfThisCreedMayGiveTheAlignmentOrder(
           theAlignmentOrdersRow('Perform Rite'),
-          (report.kingdom?.alignment ?? '') || 'Neutral',
+          theAlignmentARealmReadsAs(report.kingdom?.alignment),
         )
       )
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan realms keep the old rites" disabled>`;
@@ -1678,7 +1679,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         // Alignment-distance pricing: wage = 2g +1g per 2 spectrum steps between the hero's
         // alignment and YOUR KINGDOM's. Divine and Undead crowns cannot hire one another
         // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
-        const kAlign = (report.kingdom?.alignment ?? '') || 'Neutral';
+        const kAlign = theAlignmentARealmReadsAs(report.kingdom?.alignment);
         const wage = heroHireWageOfP(h, report);
         if (wage == null)
           return kcHtml`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;

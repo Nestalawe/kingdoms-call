@@ -35,7 +35,8 @@
 // join form; a force's row's kind and its colour of six hex digits: the Chronicle draws a force's rows by them; the price
 // of a company of a type, since B-06b: the treasury ledger prices a company the report's table prices at nothing;
 // whether a race is the wild's and the wild's sub-race of a beast, and whether a hero is a quick learner, since B-06ak:
-// Call to Arms' field, the beasts' classes and the Practice Skill note ask them).
+// Call to Arms' field, the beasts' classes and the Practice Skill note ask them; the alignment a realm reads as, its own or
+// a realm of none's, since B-06br: the order form's fields, the pre-order cards, the ledger and the report ask it).
 // tests/static/the-player-portal-reaches-the-engine-only-through-src-shared.test.ts checks this file and the portal's
 // own files.
 export { gameMetaOf } from '../engine/rules-on-plain-values/a-games-settings-read-from-its-row.ts';
@@ -143,6 +144,7 @@ export {
   doesAnAlignmentConquerByADoctrine,
   doesAnAlignmentDeclareWarWithoutWarning,
 } from '../engine/rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
+export { theAlignmentARealmReadsAs } from '../engine/rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 export { theAlignmentsOnlyOneRealmAGameMayHold } from '../engine/rules-on-plain-values/the-world-each-creed-is-made-in-its-wild-country-its-first-skills-and-one-realm-a-game.ts';
 export { theLevelAHerosSkillCountsAt } from '../engine/rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 export { normaliseAction } from '../engine/rules-on-plain-values/the-kind-of-order-each-name-of-an-order-reads-as.ts';

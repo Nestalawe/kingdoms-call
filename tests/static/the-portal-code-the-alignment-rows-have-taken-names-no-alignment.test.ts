@@ -2,12 +2,12 @@
 // player portal's alignment rules): each function (or file's top level) of src/ui/, src/views/ or src/shared/ the
 // family's rows have taken holds no string naming an alignment (`'Neutral'`, `'Undead'`), whatever the code does with
 // the name (compared, a `case`, a lookup, a list, a map's value, a literal type, or in a function nested inside). It
-// reads the alignment's row or content's constant instead. Each row adds what it takes to TAKEN, which is empty until
-// the first of them. With them, the ratchet's count of the alignments the portal, the views and the shared rules name
-// (tools/ratchet.ts's alignmentChecksOutsideTheEngine, by its helper alignmentChecksOutsideTheEngineByFunction), so
-// that count only falls: the helper counts each alignment planted there, and none in the engine. Its one listed
-// exception (the map's label of the relation "neutral") is still in its function, and lets only one string through.
-// Not seen: an alignment's rule written in prose or in a page's HTML.
+// reads the alignment's row or content's constant instead. Each row adds what it takes to TAKEN. With them, the
+// ratchet's count of the alignments the portal, the views and the shared rules name (tools/ratchet.ts's
+// alignmentChecksOutsideTheEngine, by its helper alignmentChecksOutsideTheEngineByFunction), so that count only falls:
+// the helper counts each alignment planted there, and none in the engine. Its one listed exception (the map's label of
+// the relation "neutral") is still in its function, and lets only one string through. Not seen: an alignment's rule
+// written in prose or in a page's HTML.
 //
 // Level 0 (static): the files' syntax trees and content's list of alignments as written; nothing runs.
 import fs from 'node:fs';
@@ -27,8 +27,21 @@ import {
 import { everyStringIn, TOP } from '../lib/the-strings-a-function-of-the-code-holds.ts';
 
 /** Each function (or a file's top level) of the portal, the views or the shared rules the alignment rows have taken,
- *  by its file, from the row that took it. Empty until the family's first row: each adds what it takes. */
-const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [];
+ *  by its file, from the row that took it: each row adds what it takes. */
+const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
+  ['src/ui/gm/turn-zero.ts', 'runTurn0', 'B-06br'],
+  ['src/ui/player/join-and-chronicle.ts', 'showJoinGame', 'B-06br'],
+  ['src/ui/player/pre-orders.ts', 'injectResurrectOrders', 'B-06br'],
+  ['src/ui/player/pre-orders.ts', 'injectCharmOrders', 'B-06br'],
+  [
+    'src/ui/player/the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts',
+    'heroHireWageOfP',
+    'B-06br',
+  ],
+  ['src/views/turn-report.ts', 'buildTurnReport', 'B-06br'],
+  ['src/views/what-each-realm-may-see-of-the-world.ts', 'otherHeroAsSeen', 'B-06br'],
+  ['src/views/what-each-realm-may-see-of-the-world.ts', 'provinceAsSeen', 'B-06br'],
+];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
 const isAnAlignment = (word: string): boolean => ALIGNMENT_VOCABULARY.has(word);
