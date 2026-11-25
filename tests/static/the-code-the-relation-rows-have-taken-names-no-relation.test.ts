@@ -31,6 +31,10 @@ const FAME = 'src/engine/heroes/fame-and-consecration.ts';
 const STRATEGY = 'src/engine/bots/strategy.ts';
 const WAR = 'src/engine/bots/war.ts';
 const BOT_DIPLOMACY = 'src/engine/bots/bot-diplomacy-treats-and-wars-by-alignment-the-grudge-and-a-reckoning-claim.ts';
+const MISSIONS = 'src/engine/bots/missions.ts';
+const SPECIALISTS = 'src/engine/bots/specialists.ts';
+const SPELLCRAFT = 'src/engine/bots/spellcraft.ts';
+const PHASE_ONE = 'src/engine/bots/phase-one.ts';
 const DIPLOMACY =
   'src/engine/turn/diplomacy-resolution-and-victory-the-reckoning-elimination-concession-and-the-announcement.ts';
 /** Each function (or a file's top level) the relation rows have taken, by its file, from the row that took it: each
@@ -108,6 +112,34 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim',
     "B-06au, the bots' diplomacy: the readers, the Treat and the ladder's war",
   ],
+  [MISSIONS, 'botInfiltrateTarget', "B-06av, a foe's land and its depth: the content's state"],
+  [MISSIONS, 'botAllyNear', "B-06av, an ally's hero: the content's state"],
+  [MISSIONS, 'botRememberedHostAt', "B-06av, a foe's host remembered: the content's state"],
+  [MISSIONS, 'botLairCandidates', "B-06av, a lair on ground not allied: the content's state"],
+  [MISSIONS, 'botSeaStrike', "B-06av, an ally's waters: the content's state"],
+  [MISSIONS, 'consider', "B-06av, a foe's coast: the content's state"],
+  [MISSIONS, 'winnable', "B-06av, a foe's ground: the content's state"],
+  [MISSIONS, 'passable', "B-06av, an ally's ground and waters: the content's state"],
+  [MISSIONS, 'botMasteryPre', "B-06av, a foe's ground and hero: the content's state"],
+  [MISSIONS, 'botDuelStance', "B-06av, a foe's hero: the content's state"],
+  [SPECIALISTS, 'botRoamOrders', "B-06av, ground not allied: the content's state"],
+  [SPECIALISTS, 'botSpyOrders', "B-06av, a hero not allied, an ally's, a foe's: the content's states"],
+  [SPECIALISTS, 'hostile', "B-06av, a realm not allied, at war: the content's states"],
+  [SPECIALISTS, 'botThiefOrders', "B-06av, a foe's ground: the content's state"],
+  [SPECIALISTS, 'botLairTarget', "B-06av, ground not allied: the content's state"],
+  [SPECIALISTS, 'botRoleWork', "B-06av, a foe's hero and ground: the content's state"],
+  [SPECIALISTS, 'botMageOrders', "B-06av, a foe's host remembered: the content's state"],
+  [SPECIALISTS, 'botHomeThreat', "B-06av, a foe's host: the content's state"],
+  [SPECIALISTS, 'botScanTargets', "B-06av, a foe's host, an ally's land, a foe's ground: the content's states"],
+  [SPECIALISTS, 'botDistantStrike', "B-06av, a foe's ground: the content's state"],
+  [SPELLCRAFT, 'enemyRel', "B-06av, at war: the content's state"],
+  [SPELLCRAFT, 'botRaidTarget', "B-06av, a foe's ground: the content's state"],
+  [SPELLCRAFT, 'botHuntTarget', "B-06av, a foe's hero: the content's state"],
+  [SPELLCRAFT, 'botSpyTarget', "B-06av, ground not allied, a foe's: the content's states"],
+  ['src/engine/bots/movement.ts', 'runBotMovement', "B-06av, an ally's ground, a foe's: the content's states"],
+  [PHASE_ONE, 'botSafeStep', "B-06av, an ally's ground: the content's state"],
+  [PHASE_ONE, 'runBotPhaseOne', "B-06av, a foe's ground: the content's state"],
+  [PHASE_ONE, 'isEnemyChar', "B-06av, a hero not allied: the content's state"],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
