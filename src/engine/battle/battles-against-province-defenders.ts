@@ -5,12 +5,8 @@ import {
   SPELL_DEFS_P,
 } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
-import {
-  theBeatenForceMayRetreatByTheCommandersItems,
-  theStrongestUnitsAHerosItemsLetHisFireballStrike,
-  theVolleysTheCommandersItemsLoose,
-} from '../rules/the-registry-of-magic-item-effects.ts';
+import { aForceHoldsTheSeaLanes } from '../rules/the-registry-of-content-effects.ts';
+import { theBeatenForceMayRetreatByTheCommandersItems } from '../rules/the-registry-of-magic-item-effects.ts';
 import {
   whatABattleSpellDoesBeforeTheBattle,
   whatAUnitsStrikeMayDoBeforeTheBattle,
@@ -23,7 +19,7 @@ import {
   theFactorConsecratedGroundWeakensAnAttackersHostBy,
   theFervourOfASide,
 } from '../rules/the-registry-of-alignment-abilities.ts';
-import { BATTLE_MAGIC_SPELL_NAMES, QUALITY_TIERS } from '../army-tables.ts';
+import { QUALITY_TIERS } from '../army-tables.ts';
 import { battleMarginBand, rollUnitFates } from './fates.ts';
 import {
   battleDeploy,
@@ -66,25 +62,17 @@ import { activeItems } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
-import { applyWraithTouch, clearPhantomCopies, getNeighborsP } from '../world/map-helpers.ts';
+import { clearPhantomCopies, getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
-import {
-  SPELL_CAST_BASE,
-  guardCastChance,
-  magicL8CastBonus,
-  primalStrikeItemBonus,
-} from '../chances-and-lair-grades.ts';
+import { guardCastChance, primalStrikeItemBonus } from '../chances-and-lair-grades.ts';
 import { discDeathMult, discPromo } from '../discoveries.ts';
 import {
   doARealmsDiscoveriesWeightTheLinesBehindTheFront,
-  whatARealmsDiscoveriesAddToACastersChance,
   whatARealmsDiscoveriesAddToASidesFanaticism,
   whatARealmsDiscoveriesAddToTheWholeArmy,
 } from '../rules/the-registry-of-discovery-effects.ts';
 import { telSpell } from '../turn/log-line-helpers.ts';
 import { noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
-import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
-import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { doesTheWinnersRaceFlagTheProvinceItWonABattleIn } from '../rules/the-registry-of-the-race-gifts.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import {
@@ -132,6 +120,8 @@ import {
   type AUnitInTheBattleAgainstTheDefenders,
   theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders,
 } from './the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts';
+import { theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders } from './the-battle-against-the-defenders/n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts';
+import { theLineThisCopyOfTheBattleWrites } from './the-battle-against-the-defenders/the-line-a-copy-of-the-battle-writes.ts';
 
 // ── BATTLES AGAINST A PROVINCE'S DEFENDERS (plan P1-08g: lifted out of resolveTurn) ────
 // A host's battle against the defenders of a province that no hero of a realm holds: its neutral defenders, a local
@@ -166,21 +156,6 @@ export const LOSE_VERBS = ['is repulsed by', 'retreats before', 'cannot break', 
 /** A province beside the beaten as the corsairs' look for water reads it (a gap among them is no water). */
 type AProvinceAsTheCorsairsLookForWater = { readonly terrain: string } | null | undefined;
 
-/** The line the registry names for what a battle spell or a unit's strike does, read as one of the kinds this copy of
- *  the battle writes there with the facts it hands: the registry's tables name one line for each copy and each outcome,
- *  so it is always one of them; for any other, a TypeError. */
-function theLineThisCopyOfTheBattleWrites<Line extends string>(line: string, ...lines: readonly Line[]): Line {
-  const theLine = lines.find((l) => l === line);
-  if (theLine === undefined) throw new TypeError(`a line this copy of the battle doesn't write: ${line}`);
-  return theLine;
-}
-
-/** The commander a battle spell strikes: the registry names an outcome on a commander only where one was handed it, so
- *  there is one; for none, a TypeError, as the first write to him threw. */
-function theCommanderTheSpellStrikesIsThere(hero: HeroInABattle | null): asserts hero is HeroInABattle {
-  if (!hero) throw new TypeError("Cannot set properties of null (setting '_tacticalHalved')");
-}
-
 export function combatVsNPC(
   turnContext: TurnContext,
   c: HeroInABattle,
@@ -189,6 +164,7 @@ export function combatVsNPC(
 ) {
   // The set-up, the duel and the sides (B-06az: the-battle-against-the-defenders/, its first stage), to the home ground
   // and the commander's Archery and Naval: what the later stages read, each final there.
+  const theSetUp = theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(turnContext, c, prov, neutralGuardHero);
   const {
     G,
     theAttackerAsTheGuardsReadHim,
@@ -218,389 +194,11 @@ export function combatVsNPC(
     navalFleetBonus,
     _provCoastal,
     playerAlign,
-  } = theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(turnContext, c, prov, neutralGuardHero);
-  // ════
-  // PRE-BATTLE PHASE 1: MAGIC Hero casts first CA: spell from their encounter plan that is
-  // relevant to army combat (hits provinces/armies)
-  // ════
-  const BATTLE_MAGIC_SPELLS = new Set(BATTLE_MAGIC_SPELL_NAMES);
-  applyWraithTouch(armies, defenders, narrative);
-  applyWraithTouch(defenders, armies, narrative); // Wraith's Touch
-  if (theAttackerAsTheGuardsReadHim) ensureEncounterPlan(turnContext, c); // bots/NPCs get an auto battle-magic plan so they cast when attacking
-  const heroTactics = c.encounterPlan?.tactics ?? [];
-  const heroPick = pickBattleSpell(turnContext, heroTactics, c, defHero, defenders);
-  if (heroPick && !atkCmdrSlain) {
-    const spellName = heroPick.spellName;
-    // (a spell picked from a school's useful spells is one of them: the pick falls in a list just found not empty)
-    if (spellName === undefined) throw new TypeError('a battle spell picked from an empty list');
-    const school = heroPick.school;
-    const spellLvl = effStat(turnContext, c, school);
-    if (spellLvl >= 1) {
-      const castChance = Math.min(
-        95,
-        SPELL_CAST_BASE +
-          spellLvl * 10 +
-          magicL8CastBonus(c) +
-          whatARealmsDiscoveriesAddToACastersChance(theAttackersRealm, { theSchool: school, whereHeCasts: 'battle' }),
-      ); // cast discoveries · 2026-09-11: base 30
-      const castRoll = d100();
-      telSpell(turnContext, c, spellName, school, spellLvl, castChance, castRoll, 'battle');
-      narrate(narrative, {
-        kind: 'the attacker casts a spell before the battle against the defenders',
-        cName: atkSide,
-        spellName,
-        schoolLabel: (skillLabels[school] ?? '') || school,
-        spellLevel: spellLvl,
-        castChance,
-        castRoll,
-      });
-      if (castRoll <= castChance) {
-        // pre-battle magic no longer trains the school. Casting into a battle is not the same
-        // test as casting in a duel, and it was the cheapest experience in the game — one order,
-        // no risk, a roll every battle. In-duel casting (pcCastCombatSpell) still trains.
-        // What the spell does is the spells' registry's (plan P1-19u); this copy draws where it drew, applies it and
-        // writes its line.
-        const done = whatABattleSpellDoesBeforeTheBattle(spellName, {
-          theCopy: 'a hero against the guards',
-          theCastersLevel: spellLvl,
-          theEnemysUnits: defenders.map((d) => ({
-            type: d.type || '',
-            race: d.race,
-            isSkeletal: !!d._isSkeletal,
-            baseStrength: unitBaseStrength(d),
-            isAMissileUnit: MISSILE_ARMIES.has(d.type),
-          })),
-          theEnemyCommander: defHero
-            ? {
-                tactical: effStat(turnContext, defHero, 'tactical'),
-                theSkillACurseWithers: bestCurseSkill(turnContext, defHero),
-              }
-            : null,
-          atSea: prov.terrain === 'sea',
-          theStrongestUnitsTheCastersItemsLetAFireballStrike: theAttackerAsTheGuardsReadHim
-            ? theStrongestUnitsAHerosItemsLetHisFireballStrike(activeItems(c))
-            : null,
-        });
-        // a defender the spell strikes, by his place in the list handed it
-        const theDefenderStruck = (s: AnEnemyUnitStruck) => {
-          const d = defenders[s.theUnit];
-          if (!d) throw new TypeError('a battle spell struck a unit not among the defenders');
-          return d;
-        };
-        const strike = (s: AnEnemyUnitStruck) => {
-          const d = theDefenderStruck(s);
-          d._tempStrReduction = (Number(d._tempStrReduction) || 0) + s.theStrengthItLoses;
-        };
-        switch (done?.kind) {
-          case 'the strongest units lose strength':
-            done.theUnitsStruck.forEach(strike);
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(done.theLine, "a fireball engulfs the defenders' strongest units"),
-              fireballHitUnitNames: done.theUnitsStruck.map((s) => {
-                const d = theDefenderStruck(s);
-                return d.unitName || d.type;
-              }),
-            });
-            break;
-          case 'units drawn at random lose strength': {
-            const theLoss = new Map(
-              defenders.map((d, i): [AUnitInTheBattleAgainstTheDefenders, number | undefined] => [
-                d,
-                done.theStrengthEachWouldLose[i],
-              ]),
-            );
-            const picks = shuffleP(defenders).slice(0, done.howMany);
-            picks.forEach((d) => {
-              d._tempStrReduction = (Number(d._tempStrReduction) || 0) + Number(theLoss.get(d));
-            });
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(done.theLine, 'a lightning bolt sears the defending units'),
-              unitCount: done.howMany,
-            });
-            break;
-          }
-          case 'the undead lose strength':
-            done.theUnitsStruck.forEach(strike);
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(done.theLine, 'a holy symbol sears the defending undead'),
-              undeadUnitCount: done.theUnitsStruck.length,
-            });
-            break;
-          case 'the missile units lose strength':
-            done.theUnitsStruck.forEach(strike);
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(done.theLine, "spiritwrack halves the defenders' missile units"),
-              missileUnitCount: done.theUnitsStruck.length,
-            });
-            break;
-          case "the enemy commander's Tactical is cut":
-            theCommanderTheSpellStrikesIsThere(defHero);
-            defHero._tacticalHalved = true;
-            defHero._tacticalMult = done.theMultiplier;
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(
-                done.theLine,
-                "a telekinetic storm scatters the enemy commander's formations",
-              ),
-              enemyCommanderName: { heroName: defHero.name, leaderless: false },
-            });
-            break;
-          case "the enemy commander's Tactical is marked, with none to cut":
-            theCommanderTheSpellStrikesIsThere(defHero);
-            defHero._tacticalHalved = true;
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(
-                done.theLine,
-                'a telekinetic storm finds no tactical command to disrupt',
-              ),
-              enemyCommanderName: { heroName: defHero.name, leaderless: false },
-            });
-            break;
-          case "the enemy commander's Druid is negated":
-            theCommanderTheSpellStrikesIsThere(defHero);
-            defHero._druidNegated = true;
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(
-                done.theLine,
-                "a psychic blast severs the enemy commander's bond with his beasts",
-              ),
-              enemyCommanderName: { heroName: defHero.name, leaderless: false },
-            });
-            break;
-          case "the enemy commander's skill is withered":
-            theCommanderTheSpellStrikesIsThere(defHero);
-            defHero._curseHalveStat = done.theSkill;
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(done.theLine, "a curse withers the enemy commander's skill"),
-              enemyCommanderName: { heroName: defHero.name, leaderless: false },
-              cursedSkill: defHero._curseHalveStat,
-            });
-            break;
-          case 'an undead unit drawn at random defects': {
-            const pick = done.theUndead[Math.floor(kcRng() * done.theUndead.length)];
-            const [unit] = defenders.splice(Number(pick), 1);
-            if (!unit) throw new TypeError('an undead unit drawn among the defenders is not there');
-            armies.push(unit);
-            const rc = G.characters[c.id];
-            if (rc) {
-              rc.armies = asItsGuardReadsIt(rc.armies) ?? [];
-              rc.armies.push(unit);
-            }
-            narrate(narrative, {
-              kind: theLineThisCopyOfTheBattleWrites(
-                done.theLine,
-                "control undead turns a defending undead unit to the attacker's side",
-              ),
-              turnedUnitName: unit.unitName || unit.type,
-              cName: atkSide,
-            });
-            break;
-          }
-          case 'nothing to strike':
-            if (done.theLine)
-              narrate(narrative, {
-                kind: theLineThisCopyOfTheBattleWrites(
-                  done.theLine,
-                  'a telekinetic storm finds no command among leaderless defenders',
-                  'a psychic blast finds no commander among the defenders',
-                  'a curse finds no commander among leaderless defenders',
-                  'control undead finds no undead among the defenders',
-                  'a holy symbol finds no undead among the defenders',
-                  'spiritwrack finds no missile troops among the defenders',
-                ),
-              });
-            break;
-        }
-        // NOTE: the magic-school skill-up is handled ONCE by trySkillGain(c, school, …, narrative)
-        // above.
-      } else {
-        narrate(narrative, { kind: "the attacker's spell before the battle fizzles" });
-      }
-    }
-  }
-
-  // Pre-battle magic: special army spells (Wyvern Riders, etc. + all primal armies)
-  const druIdLvlMag = atkCmdrSlain ? 0 : effStat(turnContext, c, 'druid');
-  armies.forEach((atk) => {
-    // What the unit's strike may do is the spells' registry's (plan P1-19v): its strikes are its type's, in the
-    // content's tables; its chance 30% + 10% per Druid level (the winged riders' one in two). This copy draws where it
-    // drew, rolls its chance, applies the blow and writes its lines.
-    const may = whatAUnitsStrikeMayDoBeforeTheBattle({
-      theCopy: "a hero's units against the guards",
-      theUnitsType: atk.type,
-      theEnemyHasAUnit: defenders.length > 0,
-      theDruidLevel: druIdLvlMag || 0,
-      whatTheCommandersItemsAdd: () => primalStrikeItemBonus(atkCmdrSlain ? null : c),
-    });
-    if (!may) return;
-    const sp = may.theStrikes[Math.floor(kcRng() * may.theStrikes.length)];
-    if (!sp) throw new TypeError("a unit's strike picked from an empty list"); // (the registry hands at least one)
-    const armySpellChance = may.theChance;
-    const armySpellRoll = d100();
-    if (armySpellRoll > armySpellChance && may.theLineIfItMisses) {
-      narrate(narrative, {
-        kind: theLineThisCopyOfTheBattleWrites(may.theLineIfItMisses, "a unit's power gathers but never strikes"),
-        unitName: atk.unitName || atk.type,
-        powerName: sp.name,
-        strikeChancePct: armySpellChance,
-        druidLevel: druIdLvlMag,
-      });
-    }
-    if (armySpellRoll <= armySpellChance) {
-      narrate(narrative, {
-        kind: theLineThisCopyOfTheBattleWrites(may.theLineIfItStrikes, 'a unit uses its power in battle'),
-        unitName: atk.unitName || atk.type,
-        powerName: sp.name,
-        powerFlavour: sp.flavour,
-      });
-      if (sp.theBlow.reaches === 'every enemy unit') {
-        const dmg = rng(Number(sp.theBlow.theDamage[0]), Number(sp.theBlow.theDamage[1]));
-        defenders.forEach((d) => {
-          d._tempStrReduction = (Number(d._tempStrReduction) || 0) + dmg;
-        });
-        narrate(narrative, {
-          kind: theLineThisCopyOfTheBattleWrites(sp.theBlow.theLine, "a unit's power hits every defending unit"),
-          powerName: sp.name,
-          unitCount: defenders.length,
-          damage: dmg,
-        });
-      } else {
-        const d = defenders[Math.floor(kcRng() * defenders.length)];
-        if (!d) throw new TypeError("a unit's strike fell on no defender"); // (the registry strikes only where there is one)
-        const dmg = rng(Number(sp.theBlow.theDamage[0]), Number(sp.theBlow.theDamage[1]));
-        d._tempStrReduction = (Number(d._tempStrReduction) || 0) + dmg;
-        narrate(narrative, {
-          kind: theLineThisCopyOfTheBattleWrites(sp.theBlow.theLine, "a unit's power hits one unit of the other side"),
-          powerName: sp.name,
-          struckUnitName: d.unitName || d.type,
-          damage: dmg,
-        });
-      }
-    }
-  });
-
-  // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr
-  // below)
-  let defTactLvl = defHero
-    ? defHero._tacticalNegated
-      ? 0
-      : effStat(turnContext, defHero, 'tactical') +
-        theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, defHero, title))
-    : 0;
-  if (defHero?._curseHalveStat === 'tactical') defTactLvl = Math.floor(defTactLvl / 2); // LEVEL 6+ PERK — Grand Tactician
-  const defTactBonus = defTactLvl > 0 ? Math.min(2.0, 1 + defTactLvl * 0.2) : 1; // cap ×2.0
-  // (The army and defender counts once kept here, read by nothing, went with P1-10b24.)
-
-  // ════
-  // PRE-BATTLE PHASE 2: ARCHERY Each attacker missile unit fires at a random defender Quiver of
-  // Many Arrows = 2 volleys per unit
-  // ════
-  // the items' registry's "volley: the commander adds volleys" (plan P1-19n: the Quivers)
-  const _itemVolleys = theVolleysTheCommandersItemsLoose(activeItems(c));
-  const hasQuiver = _itemVolleys.theLines.includes('each missile unit looses two volleys instead of one');
-  const _manyArrows = _itemVolleys.theLines.includes('each missile unit looses one more shot'); // one extra shot per missile unit
-  applyFlakScreen(armies, defenders, { heroName: c.name, leaderless: false }, narrative);
-  // PRIMAL — Breach and Swamp: whale cohorts roll a hull over before a shot is fired. The rule registry's
-  // "fate: a hull is sunk before the battle" picks the hull, with the dice it is handed (plan P1-19i).
-  // 2026-09-23d: defenders lost OUTSIDE the `_died` flag — hulls sunk here (spliced out of the list)
-  // and units a WINNING garrison loses (`_defDied`, cleared before return) — are counted into
-  // these so the returned defLost is the true figure (it pays merit when the attacker wins).
-  let _npcSunkLost = 0,
-    _npcDefWinLost = 0;
-  (function () {
-    armies.forEach((a: AUnitInTheBattleAgainstTheDefenders | null | undefined) => {
-      if (!a) return;
-      const hulls = defenders.filter(
-        (d: AUnitInTheBattleAgainstTheDefenders | null | undefined) => d && SEA_TYPES.has(d.type) && !d._sunk,
-      );
-      const at = theHullAUnitSinksBeforeTheBattle({ unitType: a.type, theEnemyHullsAfloat: hulls, theDice: kcRng });
-      if (at === null) return;
-      const t = hulls[at];
-      if (!t) throw new TypeError('a hull sunk that is not afloat'); // (the registry picks one of the hulls handed)
-      t._sunk = true;
-      narrate(narrative, {
-        kind: 'a whale cohort sinks a defending ship before a shot is fired',
-        targetUnitName: t.unitName || t.type,
-        targetUnitType: t.type,
-      });
-    });
-    if (defenders.some((a) => a._sunk)) {
-      const lost = defenders.filter((a) => a._sunk);
-      _npcSunkLost += lost.filter(
-        (a: AUnitInTheBattleAgainstTheDefenders | null | undefined) => a && !a._phantom,
-      ).length; // 2026-09-23d: spliced out below, so counted here for defLost
-      recordBattleGraves(turnContext, prov, lost);
-      // (a gap in the list has thrown in the test above, so each is a unit here)
-      for (let i = defenders.length - 1; i >= 0; i--) if (defenders[i]?._sunk) defenders.splice(i, 1);
-      if (defHero)
-        defHero.armies = (asItsGuardReadsIt(defHero.armies) ?? []).filter(
-          (a: AUnitInTheBattleAgainstTheDefenders) => !a._sunk,
-        );
-      prov.neutralDefenders = (asItsGuardReadsIt(prov.neutralDefenders) ?? []).filter(
-        (a: AUnitInTheBattleAgainstTheDefenders) => !a._sunk,
-      );
-    }
-  })();
-  {
-    const _eyes = eyesOfTheForestLine(defenders, prov.terrain, armies, atkSide);
-    if (_eyes) narrate(narrative, _eyes);
-  } // ELF — Eyes of the Forest
-  const missileAtk = archeryBlockedBy(defenders, prov.terrain, armies) ? [] : abilityMissileUnits(armies, prov.terrain);
-  if (archeryBlockedBy(defenders, prov.terrain, armies) && armies.some((a) => MISSILE_ARMIES.has(a.type)))
-    narrate(narrative, { kind: "the hero's archers find no target among the forest wardens", heroName: atkSide });
-  if (missileAtk.length > 0 && defenders.length > 0) {
-    narrate(narrative, {
-      kind: "the attacker's archery volley begins",
-      missileUnitCount: missileAtk.length,
-      doubleVolleys: hasQuiver,
-      oneMoreShot: _manyArrows,
-    });
-    const volleys = _itemVolleys.theVolleys;
-    let totalArrowDmg = 0;
-    missileAtk.forEach((atk) => {
-      for (let v = 0; v < volleys; v++) {
-        // Archers loose at the enemy's flyers first if any are present (double damage vs flyers);
-        // otherwise they target a random front-row defender.
-        const pool = missileTargetPool(defenders, 0, atk, armies); // winged riders first, else any random target not yet at its cap (Eyes of the Forest reads the shooters' force)
-        if (!pool.length) break;
-        const target = pool[Math.floor(kcRng() * pool.length)];
-        if (!target) throw new TypeError('a volley loosed at no target'); // (the pool has just been found not empty)
-        const dmgMult = missileDamageMult(atk, armies, prov.terrain, target, true);
-        const hit = applyMissileHit(target, archSkillAtk, atk, { dmgMult });
-        totalArrowDmg += hit.dmg;
-        if (hit.immune)
-          narrate(narrative, {
-            kind: 'a unit fires at its target and the shot glances off',
-            shooterName: atk.unitName || atk.type,
-            targetUnitName: target.unitName || target.type,
-            whyTheShotGlances: hit.why,
-          });
-        else if (hit.dmg > 0)
-          narrate(narrative, {
-            kind: 'a unit fires at its target and weakens it',
-            shooterName: atk.unitName || atk.type,
-            targetUnitName: target.unitName || target.type,
-            damage: hit.dmg,
-            againstAFlyer: hit.isFly,
-            thickHideHalvesIt: hit.thickHide,
-            shootersUnitType: atk.type,
-            shootersAbilityMultiplier: dmgMult,
-            softenedToTheLimit: hit.capped,
-          });
-        else
-          narrate(narrative, {
-            kind: "an attacking unit's target is already softened as far as arrows allow",
-            shooterName: atk.unitName || atk.type,
-            targetUnitName: target.unitName || target.type,
-          });
-      }
-    });
-    narrate(narrative, {
-      kind: "the attacker's archery volley's total",
-      totalDamage: totalArrowDmg,
-      arrowSofteningCapPct: dispFloor(MISSILE_CAP_FRACTION * 100),
-    });
-  }
+  } = theSetUp;
+  // The attacker's pre-battle phases (B-06ba: the-battle-against-the-defenders/, its second stage), his magic and army
+  // spells, then his archery, Flak and Breach: what the later stages read, and the battle's state, made there.
+  const { BATTLE_MAGIC_SPELLS, defTactLvl, defTactBonus, theBattlesState } =
+    theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp);
 
   // ════
   // DEFENDER PRE-BATTLE PHASES — neutral guard heroes and their armies fight back with magic,
@@ -1689,7 +1287,7 @@ export function combatVsNPC(
       });
     const defSurv = defenders.filter((a) => !a._defDied);
     const defLost = defenders.filter((a) => a._defDied);
-    _npcDefWinLost = defLost.filter(
+    theBattlesState._npcDefWinLost = defLost.filter(
       (a: AUnitInTheBattleAgainstTheDefenders | null | undefined) => a && !a._phantom,
     ).length;
     if (defLost.length > 0) recordBattleGraves(turnContext, prov, defLost);
@@ -1931,8 +1529,8 @@ export function combatVsNPC(
     _telDefLost =
       defenders.filter((a: AUnitInTheBattleAgainstTheDefenders | null | undefined) => a && a._died && !a._phantom)
         .length +
-      _npcSunkLost +
-      _npcDefWinLost;
+      theBattlesState._npcSunkLost +
+      theBattlesState._npcDefWinLost;
   try {
     recordForTheStatistics(turnContext, {
       kind: 'a battle fought, for the statistics',

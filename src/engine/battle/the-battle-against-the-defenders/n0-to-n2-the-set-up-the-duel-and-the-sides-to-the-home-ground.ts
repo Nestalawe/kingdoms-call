@@ -8,33 +8,9 @@
 // above N1's (the tiers that fight, the attack's verb) have no anchor above them here, so they count under the caller's
 // line, N0, as they did.
 //
-// The battle's state, shared by its stages as B-06az to B-06bd move them into this folder, one stage a row, each called
-// from combatVsNPC where its text stood (its units' marks are the type below; it lives here, the first stage's file,
-// until a stage file holds the state itself: a file of types alone is in no page's bundle).
-//
-// What a stage hands on: each value a later stage reads and no stage writes after it is handed on as a value, returned
-// by its stage and taken by combatVsNPC under the same name (the set-up's thirty or so, its lets tactSkill, defBonus and
-// navalSkillAtk among them, each final there). The lets a later stage still writes are the battle's state, and are
-// never copied by value into a stage that a later stage reads after it changes. The giant's lets, by the battle proof's
-// stages (tools/proof/README.md, section 8), who writes each and who reads it:
-//
-// | let | written in | read in |
-// |---|---|---|
-// | `_npcDuel` | N1 | N1 (the duel's result, local to the set-up) |
-// | `tactSkill` | N2 | N2, N8 |
-// | `defBonus` | N2 | N8 |
-// | `navalSkillAtk` | N2 | N2, N8 |
-// | `defTactLvl` | N3 | N3, N8 |
-// | `_npcSunkLost` | N4 (Breach and Swamp's hulls) | N13 (the defenders' losses handed back) |
-// | `_npcDefWinLost` | N4 (declared), N12 (a winning garrison's dead) | N13 |
-// | `lineWidth` | N8 (twice: the front, the scout) | N8, N10 |
-// | `navalSkillDef` | N8 | N8 |
-// | `defLineWidth` | N8 (twice) | N8, N10 |
-// | `atkOrdN` | N8 | N8 |
-//
-// So the state the stages share by reference, from the row that cuts across it: the defenders' two loss counts (from
-// N4 to the end) and the two fronts' widths (N8 to N10); the rest are values once their stage is done. The objects the
-// stages share (the narrative, the two hosts, the province, the commanders) are handed on as they are, never copied.
+// The battle's state, the lets its stages share (who writes each and who reads it), is written with its type in the
+// file of the first stage that writes it, n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts
+// (B-06ba).
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_UNIT_CLASS } from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
