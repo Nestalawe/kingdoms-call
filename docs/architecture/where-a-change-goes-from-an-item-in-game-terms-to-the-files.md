@@ -112,6 +112,13 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   flight, an arrow, a guardian's hidden traits and powers, a lair's fight, a spell's cast, the initiative and mercy);
   the numbers left in `personal-combat/`'s code are structure (a percentage, the figures a power's words name, the
   last range's index, a loop's guard, the count of a plea's lines).
+- **The bots' estimate of a battle** (`bots/intel.ts`: `botBattleForce`, `botGuessDefence`, `botMarginFor`,
+  `BOT_DEF_BONUS`, `botDruidShortfall`) reads the shared rows where its figure is the battle's (Tactical's and Naval's
+  rise, Tactical's most, the defender's edge, a Druid shortfall's step: `KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT`,
+  which `strengthLeftByADruidShortfall` reads too). The rest is the bots' own (B-06bq): the `battleStrength` kind of
+  the bots' weights, a point of a host's strength, holds the levels of Tactical and Naval they weigh (each to 5, where
+  the battle differs: KD-477), their guess at a defence they can't see (a unit's strength, the tax bands, a rival's
+  factor) and their attack margin's floors, ease and stake. For example, a bot weighs a Naval 7 admiral's fleet at ×2.0.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).
