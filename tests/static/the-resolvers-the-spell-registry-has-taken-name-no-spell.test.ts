@@ -47,6 +47,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19u, battle magic against the guards and the guards' commander's (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts',
+    'theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19u, battle magic against the guards and the guards' commander's (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
+  ],
+  [
     'src/engine/magic/pre-battle-spell-choice.ts',
     'battleSpellUseful',
     'P1-19u, a battle spell has something to strike',

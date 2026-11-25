@@ -80,6 +80,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts',
+    'theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",

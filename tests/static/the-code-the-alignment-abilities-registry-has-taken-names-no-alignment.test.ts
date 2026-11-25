@@ -123,6 +123,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19bb1, a realm of none: the attacker's alignment, from the content's constant (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts',
+    'theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19bb1, a realm of none: the attacker's alignment, from the content's constant (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "P1-19bb1, a realm of none: each side's alignment, from the content's constant",

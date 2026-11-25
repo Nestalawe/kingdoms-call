@@ -61,6 +61,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders',
     "P1-19n, the battles' items (B-06ba: combatVsNPC's attacker's pre-battle phases, moved)",
   ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts',
+    'theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders',
+    "P1-19n, the battles' items (B-06bb: combatVsNPC's defenders' pre-battle phases, moved)",
+  ],
   ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten', "P1-19n, the battles' items"],
   [
     'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
