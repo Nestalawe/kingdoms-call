@@ -297,7 +297,8 @@ split row needs no edit here**: a stage moved into another file keeps its name, 
 stages' text counts their draws as three stages, as the base does. A draw counts under the stage whose text holds the
 code that draws it (a helper nested in a stage is that stage's wherever it is called from). An anchor of two lines is
 matched line by line, the indentation aside. A row that rewrites an anchor's own line changes its entry in the list
-(the base's list holds the old). A stage a side holds nowhere, or in two places, stops the proof. On B-06ax's base
+(the base's list holds the old); it is proved against its parent branch, since a base with no list reads this tree's
+and stops on the rewritten anchor. A stage a side holds nowhere, or in two places, stops the proof. On B-06ax's base
 every stage but N2, N10, N11, H5, H7 and H8 draws on the grid.
 
 **Red on planted faults** (the unit test makes each in a copy of `src/`, finding its text in whichever file holds it,
