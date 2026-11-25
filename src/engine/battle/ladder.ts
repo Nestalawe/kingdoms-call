@@ -1,5 +1,6 @@
 import {
   KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE,
+  KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD,
   KC_UNIT_CLASS,
 } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
@@ -79,7 +80,9 @@ export function ladderLines(
     postSum = 0;
   rows.forEach((r) => {
     const a = r.a || {};
-    base += (UNIT_BASE_STR[a.type] || 4) * (UNIT_Q_MULT[a.quality || 'Average'] || 2);
+    base +=
+      (UNIT_BASE_STR[a.type] || KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD.theBaseStrength) *
+      (UNIT_Q_MULT[a.quality || 'Average'] || KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD.theQualitysFactor);
     unitSum += r._u != null ? r._u : r.base;
     cmdSum += r._cmdS != null ? r._cmdS : r.base;
     preSum += r._fPre != null ? r._fPre : r.base;

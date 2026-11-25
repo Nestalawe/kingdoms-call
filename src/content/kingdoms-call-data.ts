@@ -15493,7 +15493,8 @@ export const KC_THE_BATTLE_LINES_FACTORS_AND_LIMITS = {
 // ── THE BATTLE'S SINGLE FACTORS (moved here from the engine's battle files as they were, B-06ay2) ────
 // A pre-battle volley (terrain-and-unit-strength.ts, missileShotDamage and applyMissileHit): 30% of the firing unit's
 // base strength (10 when no unit is named), +10% per level of the commander's Archery; a winged rider takes it twice
-// over; a target loses at most 40% of its base strength to volleys (doubled for a winged rider: missileCap). In the
+// over; a target loses at most 40% of its base strength to volleys (this many times that for a winged rider:
+// missileCap). In the
 // battle, the commander's Archery lifts every missile unit he leads +5% a level (ladder.ts). The engine reads them by
 // MISSILE_SHOT_PCT, MISSILE_ARCH_PER_LVL, MISSILE_CAP_FRACTION and ARCHERY_MISSILE_PCT.
 export const KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE = {
@@ -15503,6 +15504,7 @@ export const KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE = {
   theStrengthOfAShooterNoUnitIsNamedFor: 10,
   theTimesAWingedRiderIsHit: 2,
   theRiseEachLevelOfTheCommandersArcheryGivesHisMissileUnits: 0.05,
+  theTimesTheMostAWingedRiderLosesIsRaised: 2,
 } as const;
 // What a unit fights at, beside the ground's table: every unit enters the melee with at least this share of its
 // strength, whatever the pre-battle damage (PREBATTLE_STR_FLOOR); a non-flying land unit at sea (SEA_LAND_PENALTY,
@@ -15601,6 +15603,72 @@ export const KC_THE_STRENGTH_A_SANCTUARYS_WARDS_LEAVE_THE_CASTERS_ENEMIES_IN_A_B
 // strength over the victor's, less 1, and at most this.
 export const KC_THE_CHANCE_A_BEATEN_HOST_STILL_THE_STRONGER_STAYS_ON_THE_FIELD = {
   theMost: 0.75,
+} as const;
+
+// ── A HOST'S STRENGTH, THE BEST COMMANDER, THE RIDE-OUTS AND THE SEA LIFT: THEIR FACTORS (moved here from the battles'
+// smaller files as they were, B-06bm) ────
+// A unit of a type the strength table doesn't hold has this base strength, and a quality the quality table doesn't hold
+// this factor (Average's): a host's strength (armStr), the strength ladder's base and unitBaseStrength read them.
+export const KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD = {
+  theBaseStrength: 4,
+  theQualitysFactor: 2,
+} as const;
+// A commander's March and Naval at their mastery's third tier (level 8): March raises each bonus the ground gives the
+// units he leads (its part above ×1) this many times and waives the ground's penalties; Naval waives the sea's penalty
+// on the land units he leads, and each berth of his hulls carries this many times what it did. getSeaCapability
+// (units/movement-pools.ts) and seaLiftOfAColumn (the rule the Move notice asks) write the same tier and doubling.
+export const KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA = {
+  theMasteryTierOfMarchThatDoublesTheGroundsBonuses: 3,
+  theTimesMarchsMasteryRaisesEachBonusOfTheGround: 2,
+  theMasteryTierOfNavalThatWaivesTheSeasPenaltyAndDoublesHisBerths: 3,
+  theTimesNavalsMasteryRaisesWhatEachBerthCarries: 2,
+} as const;
+// The Wonders' figures in a battle: the Standing Stones (the Pagan Grand Design) lift each unit of the realm they serve
+// this many times when it defends forest, jungle or mountain; the Iron Throne of Skulls (the Evil one) raises each unit
+// slain in a battle its realm wins, but a skeleton, as a skeleton of the victor's at this chance.
+export const KC_THE_WONDERS_FIGURES_IN_A_BATTLE = {
+  theStandingStonesOnTheDefendersForestJungleOrMountain: 1.25,
+  theChanceTheIronThroneRaisesEachSlainUnit: 0.2,
+} as const;
+// A pre-battle duel: the host of a demoralised commander (beaten in the duel, or shamed for refusing it) fights at this
+// many times its strength; a hero who escapes the duel's killing blow is left with his most HP divided by this, rounded
+// (the deaths of heroes, heroes/hero-death-and-leaderless-hosts.ts, write the same).
+export const KC_A_PRE_BATTLE_DUELS_FIGURES = {
+  theStrengthOfADemoralisedCommandersHost: 0.8,
+  theNumberHisMostHpIsDividedByForAHeroWhoEscapesTheKillingBlow: 2,
+} as const;
+// The ground's note on a battle's lines names each unit whose factor on the ground (the sea's penalty with it) is below
+// this or above this (terrainNoteList).
+export const KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR = {
+  below: 0.85,
+  above: 1.05,
+} as const;
+// A lone defender's ambush on a Defend ride-out (runDefendAmbush) lands at this chance in percent, this much more a
+// level of his Spycraft, to at most this; divided by this, rounded down, when his quarry leads an army.
+export const KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS = {
+  theChanceWithNoSpycraft: 10,
+  theRiseEachLevelOfSpycraftGives: 9,
+  theMost: 90,
+  theNumberItIsDividedByWhenHisQuarryLeadsAnArmy: 2,
+} as const;
+// A column's sea lift as the stranding counts it (seaLiftShortfall), in half-berths: each berth holds this many, a light
+// foot unit takes this many and any other land unit this many (seaLiftOfAColumn counts the same in whole berths, 0.5 and
+// 1); and the shortfall counts each half-berth short for the units only a hull can take as this many of the units
+// beyond what the flyers can lift.
+export const KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM = {
+  theHalfBerthsEachBerthHolds: 2,
+  theHalfBerthsALightFootUnitTakes: 1,
+  theHalfBerthsAnyOtherLandUnitTakes: 2,
+  theUnitsAHalfBerthShortWeighsAs: 1000,
+} as const;
+// Where a beaten host falls back when it has a choice (retreatValue): each province scores this much for each gold of
+// its tax, and this much more for its realm's own ground, for its realm's home province and for a garrison already
+// standing there (the province's number breaks a tie); the highest wins.
+export const KC_THE_WORTH_A_BEATEN_HOST_SETS_ON_THE_GROUND_IT_FALLS_BACK_TO = {
+  eachGoldOfItsTax: 1000,
+  itsRealmsOwnGround: 400,
+  itsRealmsHomeProvince: 200,
+  aGarrisonStandingThere: 100,
 } as const;
 
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his

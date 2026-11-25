@@ -178,6 +178,41 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
     "B-06bk, the battle between heroes' numbers: content's rows (Sanctuary's, the mastery orders', the defenders' ground explored)",
   ],
+  [
+    'src/engine/battle/best-commander.ts',
+    'commandScore',
+    "B-06bm, the best commander's score: the shared rows (KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE, KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/battle/battle-report-lines-and-force-markers.ts',
+    'terrainNoteList',
+    "B-06bm, the ground's note: content's row (KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR)",
+  ],
+  [
+    'src/engine/battle/blood-harvest-and-iron-throne.ts',
+    'ironThroneRaise',
+    "B-06bm, the Iron Throne's chance: content's row (KC_THE_WONDERS_FIGURES_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/battle/pre-battle-duels.ts',
+    'preBattleDuel',
+    "B-06bm, a pre-battle duel's figures: content's row (KC_A_PRE_BATTLE_DUELS_FIGURES)",
+  ],
+  [
+    'src/engine/battle/strength.ts',
+    'missileCap',
+    "B-06bm, a winged rider's volley cap: content's row (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts',
+    'runDefendAmbush',
+    "B-06bm, a lone defender's ambush: content's row (KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS)",
+  ],
+  [
+    'src/engine/units/sea-lift-stranding-and-retreats.ts',
+    'seaLiftShortfall',
+    "B-06bm, the stranding's half-berths and Naval's mastery: content's rows (KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM, KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');

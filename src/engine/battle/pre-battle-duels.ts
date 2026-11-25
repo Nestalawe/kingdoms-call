@@ -1,3 +1,4 @@
+import { KC_A_PRE_BATTLE_DUELS_FIGURES } from '../../content/kingdoms-call-data.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { isVanished } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { awardKillXP, awardWinHp } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -33,7 +34,7 @@ export function preBattleDuel(
   narrative: NarrativeLine[],
 ) {
   const { _botPlayerIdx, G } = turnContext;
-  const DUEL_MORALE_PENALTY = 0.8;
+  const DUEL_MORALE_PENALTY = KC_A_PRE_BATTLE_DUELS_FIGURES.theStrengthOfADemoralisedCommandersHost;
   let atkMorale = 1,
     defMorale = 1;
   if (!atk || !def) return { atkMorale, defMorale };
@@ -106,7 +107,15 @@ export function preBattleDuel(
       narrate(narrative, _garrethEscapeLine(realLoser));
       // this path left him at 0 HP (every other escape path clamps it), so his NEXT encounter
       // ended before round 1 on the hp<=0 check and printed the escape line without a fight.
-      const _gHp = Math.max(1, realLoser.maxHp ? Math.round(realLoser.maxHp / 2) : 1);
+      const _gHp = Math.max(
+        1,
+        realLoser.maxHp
+          ? Math.round(
+              realLoser.maxHp /
+                KC_A_PRE_BATTLE_DUELS_FIGURES.theNumberHisMostHpIsDividedByForAHeroWhoEscapesTheKillingBlow,
+            )
+          : 1,
+      );
       if (realLoser.hp == null || realLoser.hp <= 0) realLoser.hp = _gHp;
       const theLoserAsGuarded: { readonly hp?: number | null | undefined } = loser; // a battle's copy may hold none
       if (loser !== realLoser && (theLoserAsGuarded.hp == null || theLoserAsGuarded.hp <= 0)) loser.hp = realLoser.hp;

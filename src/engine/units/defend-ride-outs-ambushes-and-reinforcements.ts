@@ -1,4 +1,5 @@
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
+import { KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS } from '../../content/kingdoms-call-data.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { _escapesTheEnd, _garrethEscapeLine } from '../names.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
@@ -740,9 +741,16 @@ export function runDefendAmbush(turnContext: TurnContext, ph: number): void {
     // Spy-scaled ambush chance. Base 10% + 9%/Spy level (a master scout ~90%). Halved against a
     // commander leading an army — his guards make a lone strike far harder to land.
     const spy = effStat(turnContext, c, 'spy');
-    let chance = Math.min(90, 10 + spy * 9);
+    let chance = Math.min(
+      KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS.theMost,
+      KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS.theChanceWithNoSpycraft +
+        spy * KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS.theRiseEachLevelOfSpycraftGives,
+    );
     const guarded = (asItsGuardReadsIt(quarry.armies) ?? []).length > 0;
-    if (guarded) chance = Math.floor(chance / 2);
+    if (guarded)
+      chance = Math.floor(
+        chance / KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS.theNumberItIsDividedByWhenHisQuarryLeadsAnArmy,
+      );
     const roll = d100();
     const targetsPi = [c.player, quarry.player].filter((x) => x != null);
     emit(turnContext, {

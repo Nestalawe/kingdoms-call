@@ -1,8 +1,12 @@
 import {
+  KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA,
+  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
   KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE,
   KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND,
   KC_QUALITY_UP,
   KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN,
+  KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD,
+  KC_THE_WONDERS_FIGURES_IN_A_BATTLE,
 } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
@@ -287,7 +291,8 @@ export function druidMasteryGain(
   const none = { gain: 0, lvl: 0, min: 0 };
   if (!heroChar || !army || !theDruidMasteryLiftsAUnitOfThisType(army.type, army._isSkeletal)) return none;
   let lvl = heroChar._druidNegated ? 0 : effStat(turnContext, heroChar, 'druid') || 0;
-  if (heroChar._curseHalveStat === 'druid') lvl = Math.floor(lvl / 2);
+  if (heroChar._curseHalveStat === 'druid')
+    lvl = Math.floor(lvl / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
   lvl = druidLevelTheMasteryCounts(lvl);
   const waived =
     druidNeedWaivedByAlignment(army.type, playerAlignment, heroChar.alignment) ||
@@ -346,7 +351,9 @@ export function armStr(
     if (army._drumUp) _w.push('war-drum');
     _tr.push({ reason: { kind: 'it fights at another quality', quality: effQuality, liftedBy: _w } });
   }
-  const baseStr = (ARMY_STR[army.type] ?? 4) * (Q_MULT[effQuality] ?? 2);
+  const baseStr =
+    (ARMY_STR[army.type] ?? KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD.theBaseStrength) *
+    (Q_MULT[effQuality] ?? KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD.theQualitysFactor);
   // Apply Druid penalty
   let str = baseStr;
   if (heroChar) {
@@ -410,13 +417,23 @@ export function armStr(
       sp < 1 &&
       terrain === 'sea' &&
       heroChar &&
-      (perkTier(heroChar, 'naval') >= 3 ||
+      (perkTier(heroChar, 'naval') >=
+        KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA.theMasteryTierOfNavalThatWaivesTheSeasPenaltyAndDoublesHisBerths ||
         theSeasPenaltyIsWaivedByTheCommandersItems({ unitType: army.type }, activeItems(heroChar)))
     )
       sp = 1.0; // NAVAL L8 / the commander's items (the Tide-Caller's Horn): land units led at sea take no penalty
     let _tmod = terrainMod(army.type, terrain);
-    if (heroChar && perkTier(heroChar, 'march') >= 3) {
-      _tmod = _tmod > 1 ? 1 + (_tmod - 1) * 2 : Math.max(1, _tmod);
+    if (
+      heroChar &&
+      perkTier(heroChar, 'march') >=
+        KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA.theMasteryTierOfMarchThatDoublesTheGroundsBonuses
+    ) {
+      _tmod =
+        _tmod > 1
+          ? 1 +
+            (_tmod - 1) *
+              KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA.theTimesMarchsMasteryRaisesEachBonusOfTheGround
+          : Math.max(1, _tmod);
     } // MARCH L8: terrain bonuses doubled, no terrain penalties
     if (army._laNoTerrain && _tmod > 1) _tmod = 1; // MARCH L9 Lightning Advance: the ambushed side gets no terrain bonus
     let terrainMultFinal = _tmod * sp;
@@ -450,7 +467,7 @@ export function armStr(
       ctx?.isAttacker === false &&
       (terrain === 'forest' || terrain === 'jungle' || terrain === 'mountain')
     ) {
-      str = Math.round(str * 1.25);
+      str = Math.round(str * KC_THE_WONDERS_FIGURES_IN_A_BATTLE.theStandingStonesOnTheDefendersForestJungleOrMountain);
       if (_tr) _tr.push({ reason: { kind: 'the standing stones' } });
     }
   }
