@@ -109,7 +109,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   written outside `battle/` still hold their own: `units/movement.ts` (`tacMulted`, the pursuits, the Shield Fort),
   `magic/pre-battle-spell-choice.ts`, `chances-and-lair-grades.ts`, and the sea lift's `seaLiftOfAColumn`. A
   personal combat's chance to hit, a blow's damage, a hit taken, courage, a weakness, the damage floor, the lingering
-  harms and the duels' figures are rows there too (`personal-combat/`'s other files still hold their own).
+  harms, the duels, speed, a change of range, the plans, the mastery perks, a flight, a rebirth, an arrow and a theft
+  are rows there too (its lair guardians, combat spells and `resolve-personal-combat.ts` still hold their own).
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).
