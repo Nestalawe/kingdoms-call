@@ -15853,6 +15853,74 @@ export const KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT = {
   theMostPowersAScoutingNames: 4,
 } as const;
 
+// ── PERSONAL COMBAT: LAIR GUARDIANS, COMBAT SPELLS, A GUARDIAN'S POWERS AND THE FIGHT ITSELF, THEIR FIGURES (moved here
+// from the engine's personal combat files as they were, B-06bp) ────
+// A guardian's hidden traits (monsterTraits), never shown to a player: each approach (melee, archery, spell) starts at
+// ×1, and his kind adds to it: an undead this much to a spell and takes this much off an arrow; a fiend this much to a
+// spell; a flyer this much to an arrow; an armoured guardian takes this much off a blade and adds this much to a spell;
+// a beast (not undead) adds this much to a blade. (What his perks turn and his weakness then cap each at ×1.) Each is
+// then held from the least to the most here. An archer's window, the rounds before a guardian reaches melee, is by his
+// pace, and a pace the table holds not is read as this.
+export const KC_A_GUARDIANS_HIDDEN_TRAITS_IN_PERSONAL_COMBAT = {
+  theRiseAnUndeadsSpellTakes: 0.5,
+  theFallAnUndeadsArrowTakes: 0.3,
+  theRiseAFiendsSpellTakes: 0.3,
+  theRiseAFlyersArrowTakes: 0.4,
+  theFallAnArmouredGuardiansBladeTakes: 0.2,
+  theRiseAnArmouredGuardiansSpellTakes: 0.3,
+  theRiseABeastsBladeTakes: 0.1,
+  theLeastOfEachApproach: 0.4,
+  theMostOfEachApproach: 1.8,
+  theRoundsToReachMeleeByHisPace: { fast: 2, medium: 3, slow: 4 },
+  theRoundsToReachMeleeAtAPaceTheTableHoldsNot: 3,
+} as const;
+// A lair guardian's fight (resolveEncounter, simulateLairOdds): it runs at most this many rounds; a lair whose record
+// holds no guardian is fought by a stand-in of this many HP and of grades up to this; a hero of no HP (or 0) is read as
+// entering with this many when his wounds are counted; the guardian's plan the line names is its first this many
+// actions; the rumour of a lair's odds stages this many fights (RUMOUR_SIM_FIGHTS). A guardian whose record holds no HP
+// has KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT's.
+export const KC_A_LAIR_GUARDIANS_FIGHT = {
+  theMostRoundsItRuns: 20,
+  theHpOfTheStandInGuardianOfALairWithNone: 10,
+  theMostGradeOfTheStandInGuardian: 3,
+  theHpAHeroOfNoneIsReadAsEnteringWith: 10,
+  theActionsOfTheGuardiansPlanTheLineNames: 6,
+  theFightsTheRumourOfALairsOddsStages: 300,
+} as const;
+// A combat spell cast in personal combat (pcCastCombatSpell): its effects count the caster's school to this level (the
+// chance to cast counts it whole); the chance is the cast base (SPELL_CAST_BASE), more this a level, the mastery's
+// bonus and the realm's discoveries, at most this; against a guardian weak to the school it is this.
+export const KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT = {
+  theLevelItsEffectsCountTo: 5,
+  theRiseEachLevelOfHisSchoolGives: 10,
+  theMostChanceOfACast: 95,
+  theChanceOfACastAgainstAGuardianWeakToItsSchool: 95,
+} as const;
+// A guardian's power (pcMonsterSpecial), read from its words: one that heals with no figure named mends the least to
+// the most here; one that ignores all armour adds this much to every blow its foe takes; one that names a flee chance
+// takes this much off its foe's chance to flee. (The figures its words name, as "hits twice", "heals half", "loses 3
+// rounds" and "halves current hp", are read as the words say.)
+export const KC_A_GUARDIANS_POWER_IN_PERSONAL_COMBAT = {
+  theLeastAHealOfNoFigureMends: 3,
+  theMostAHealOfNoFigureMends: 8,
+  theDamageABlowGainsAgainstAFoeWhoseArmourIsIgnored: 3,
+  theFallInHisFoesChanceToFlee: 30,
+} as const;
+// The fight itself (resolvePersonalCombat): one whose caller names no most rounds runs this many; a hero of Druid at
+// least this (counted to this level, divided by this under a curse that halves his Druid) wards himself against a
+// natural creature; the initiative is a fighter's speed times this, more his raw Melee and Archery and a die; a temper's
+// second wind comes only below his flight's share of his most HP more this; a foe of no alignment spares a plea at this
+// chance in percent.
+export const KC_A_PERSONAL_COMBATS_ROUNDS_WARD_INITIATIVE_SECOND_WIND_AND_MERCY = {
+  theMostRoundsOfAFightWhoseCallerNamesNone: 20,
+  theLeastLevelOfDruidThatWardsAgainstABeast: 3,
+  theLevelOfDruidTheWardCountsTo: 5,
+  theNumberACursedDruidsLevelIsDividedBy: 2,
+  theWeightOfSpeedInTheInitiative: 10,
+  theShareAboveHisFlightASecondWindWaitsFor: 0.05,
+  theChanceAFoeOfNoAlignmentSparesAPlea: 50,
+} as const;
+
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;

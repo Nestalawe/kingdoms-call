@@ -14,6 +14,11 @@ import { pcArmourMerge, transferableItems } from './helpers.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { aCopyMadeThroughJson } from '../rules-on-plain-values/a-copy-made-through-json-and-typed-as-its-original.ts';
 import { d100 } from '../dice-and-army-names.ts';
+import {
+  KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT,
+  KC_A_GUARDIANS_HIDDEN_TRAITS_IN_PERSONAL_COMBAT,
+  KC_A_LAIR_GUARDIANS_FIGHT,
+} from '../../content/kingdoms-call-data.ts';
 import { pushBattlecry } from '../battle/battle-report-lines-and-force-markers.ts';
 import {
   autoEncounterPlan,
@@ -100,26 +105,27 @@ export function monsterTraits(m: AGuardianAsItsTraitsAreRead) {
     cat === 'construct' ||
     /knight|basilisk|rock|stone|gargoyle|ironclad|carapace|turtle|crab|colossus|mummif/.test(n);
   const beast = cat === 'beast' || cat === 'vermin';
+  const theTraits = KC_A_GUARDIANS_HIDDEN_TRAITS_IN_PERSONAL_COMBAT;
   // Sept 2026 guardian balance pass: the melee swings were the main driver of tier outliers
   // (armoured giants and constructs at ×0.65 melee were effectively 50% tougher than their HP;
   // beasts at ×1.2 were paper). Narrowed to ×0.8 / ×1.1; the spell and arrow swings keep their
   // flavour.
   if (undead) {
-    mods.spell += 0.5;
-    mods.archery -= 0.3;
+    mods.spell += theTraits.theRiseAnUndeadsSpellTakes;
+    mods.archery -= theTraits.theFallAnUndeadsArrowTakes;
   } // magic-vulnerable, arrows pass through bone
   if (demon) {
-    mods.spell += 0.3;
+    mods.spell += theTraits.theRiseAFiendsSpellTakes;
   } // holy/magic bites deeper (Holy Symbol also ×1.5)
   if (flyer) {
-    mods.archery += 0.4;
+    mods.archery += theTraits.theRiseAFlyersArrowTakes;
   } // shot out of the sky
   if (armoured) {
-    mods.melee -= 0.2;
-    mods.spell += 0.3;
+    mods.melee -= theTraits.theFallAnArmouredGuardiansBladeTakes;
+    mods.spell += theTraits.theRiseAnArmouredGuardiansSpellTakes;
   } // blades turn aside; magic ignores armour
   if (beast && !undead) {
-    mods.melee += 0.1;
+    mods.melee += theTraits.theRiseABeastsBladeTakes;
   } // soft-bodied, blades bite
   // 2026-10-08 (Toby item 4): A GUARDIAN NEVER RESISTS AND IS WEAK TO THE SAME THING, and what is
   // on its card wins. These hidden multipliers are never shown to a player, so where one pushes
@@ -138,11 +144,13 @@ export function monsterTraits(m: AGuardianAsItsTraitsAreRead) {
     if (kind === 'school') mods.spell = Math.max(1, mods.spell);
   }
   const approaches: readonly (keyof typeof mods)[] = ['melee', 'archery', 'spell']; // the order `for (k in mods)` read
-  for (const k of approaches) mods[k] = Math.max(0.4, Math.min(1.8, mods[k]));
+  for (const k of approaches)
+    mods[k] = Math.max(theTraits.theLeastOfEachApproach, Math.min(theTraits.theMostOfEachApproach, mods[k]));
   const pacifiable = beast && !undead && !demon;
-  // the table read by any speed; it holds no 0, so `?? 3` gives what `|| 3` gave
-  const closeRoundsBySpeed: Readonly<Partial<Record<string, number>>> = { fast: 2, medium: 3, slow: 4 };
-  const closeRounds = closeRoundsBySpeed[(m.speed ?? '') || 'medium'] ?? 3;
+  // the table read by any speed; it holds no 0, so `??` gives what `||` gave (its figures: content's row, B-06bp)
+  const closeRoundsBySpeed: Readonly<Partial<Record<string, number>>> = theTraits.theRoundsToReachMeleeByHisPace;
+  const closeRounds =
+    closeRoundsBySpeed[(m.speed ?? '') || 'medium'] ?? theTraits.theRoundsToReachMeleeAtAPaceTheTableHoldsNot;
   return { mods, pacifiable, closeRounds };
 }
 
@@ -217,7 +225,7 @@ export function pcBuildGuardian(
 // ids no live character carries. The two writes that reach OUTSIDE the refs are guarded here:
 // `_pcSimulating` mutes trySkillGain, and pcLearnWeakness's realm-level record is snapshotted and
 // restored, so a weakness that happens to bite in the sandbox teaches the realm nothing.
-export const RUMOUR_SIM_FIGHTS = 300;
+export const RUMOUR_SIM_FIGHTS = KC_A_LAIR_GUARDIANS_FIGHT.theFightsTheRumourOfALairsOddsStages;
 // (`_pcSimulating` itself is declared beside trySkillGain, above every call site, so it can never be read in its TDZ.)
 export function simulateLairOdds(
   turnContext: TurnContext,
@@ -246,7 +254,9 @@ export function simulateLairOdds(
       hc.id = `rumour_sim_${String(i)}`; // no live character carries this id
       hc.encounterPlan = { tactics: ownPlan ?? autoEncounterPlan(turnContext, hc), duelStance: 'accept', _auto: true };
       const mc = aCopyMadeThroughJson(m0);
-      mc._hpFull ??= (mc.hp ?? 0) || 10;
+      mc._hpFull ??=
+        (mc.hp ?? 0) ||
+        KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT.theMostHpOfAGuardianWhoseRecordHoldsNone;
       mc.hp = mc._hpFull;
       const hero = pcCharCombatant(turnContext, hc);
       const tactics = hc.encounterPlan.tactics;
@@ -254,7 +264,12 @@ export function simulateLairOdds(
       hero.tactics = tactics.slice();
       hero._vsGuardian = true;
       const mon = pcBuildGuardian(turnContext, feature, mc, []);
-      const res = asItsGuardReadsIt(resolvePersonalCombat(turnContext, hero, mon, { maxRounds: 20, feature }));
+      const res = asItsGuardReadsIt(
+        resolvePersonalCombat(turnContext, hero, mon, {
+          maxRounds: KC_A_LAIR_GUARDIANS_FIGHT.theMostRoundsItRuns,
+          feature,
+        }),
+      );
       ran++;
       if (res?.winner === hero && !res.fledBy && !res.parley && !res.stoleBy) wins++;
     }
@@ -279,9 +294,16 @@ export function resolveEncounter(
   player: unknown,
 ) {
   const { G } = turnContext;
-  const m: ALairsGuardian = feature.monster ?? { name: 'creature', hp: 10, power: '', minG: 1, maxG: 3 };
+  const theFight = KC_A_LAIR_GUARDIANS_FIGHT;
+  const m: ALairsGuardian = feature.monster ?? {
+    name: 'creature',
+    hp: theFight.theHpOfTheStandInGuardianOfALairWithNone,
+    power: '',
+    minG: 1,
+    maxG: theFight.theMostGradeOfTheStandInGuardian,
+  };
   const narrative: NarrativeLine[] = [];
-  const startHp = c.hp || 10;
+  const startHp = c.hp || theFight.theHpAHeroOfNoneIsReadAsEnteringWith;
   const traits = monsterTraits(m);
 
   // ── Opening description ──
@@ -294,7 +316,9 @@ export function resolveEncounter(
   const monsterPower = m.power ?? '';
   // Describe the creature by its FULL stature, not its current (possibly wounded) health, so the
   // description doesn't shrink just because someone else bloodied it earlier this turn.
-  const monFullHp = m._hpFull ?? ((m.hp ?? 0) || 10);
+  const monFullHp =
+    m._hpFull ??
+    ((m.hp ?? 0) || KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT.theMostHpOfAGuardianWhoseRecordHoldsNone);
   const monHp = m.hp ?? monFullHp;
   narrate(narrative, {
     kind: 'within lurks the guardian blocking the path',
@@ -327,10 +351,13 @@ export function resolveEncounter(
     mName: m.name,
     monSpeedName: mon.speedName,
     monFightsAtRange: pcHasRanged(mon),
-    guardianTactics: aListAsTheLineTellsIt(mon.tactics.slice(0, 6)),
+    guardianTactics: aListAsTheLineTellsIt(mon.tactics.slice(0, theFight.theActionsOfTheGuardiansPlanTheLineNames)),
   });
 
-  const res = resolvePersonalCombat(turnContext, hero, mon, { maxRounds: 20, feature });
+  const res = resolvePersonalCombat(turnContext, hero, mon, {
+    maxRounds: KC_A_LAIR_GUARDIANS_FIGHT.theMostRoundsItRuns,
+    feature,
+  });
   narrateAll(narrative, res.narrative);
 
   // ── Outcome ──
@@ -413,7 +440,8 @@ export function resolveEncounter(
   // between searches in a turn — each challenger faces the creature whole.
   if (!won) {
     // m is the lair's guardian or the stand-in above: never missing
-    m._hpFull ??= (m.hp ?? 0) || 10;
+    m._hpFull ??=
+      (m.hp ?? 0) || KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT.theMostHpOfAGuardianWhoseRecordHoldsNone;
     m.hp = m._hpFull;
     const theGuardiansHp = asItsGuardReadsIt(res.bHp);
     if (theGuardiansHp != null && theGuardiansHp < mon.maxHp - (Number(mon._hpItemBonus) || 0))

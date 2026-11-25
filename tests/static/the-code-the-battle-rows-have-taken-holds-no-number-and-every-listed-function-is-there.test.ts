@@ -408,6 +408,21 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'pcUseCombatItem',
     "B-06bo, the most HP of a fighter whose record holds none: content's row (KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
   ],
+  [
+    'src/engine/personal-combat/lair-guardians-and-the-odds.ts',
+    'monsterTraits',
+    "B-06bp, a guardian's hidden traits: content's row (KC_A_GUARDIANS_HIDDEN_TRAITS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/lair-guardians-and-the-odds.ts',
+    'RUMOUR_SIM_FIGHTS',
+    "B-06bp, a lair guardian's fight: content's row (KC_A_LAIR_GUARDIANS_FIGHT)",
+  ],
+  [
+    'src/engine/personal-combat/combat-spells-and-guardian-abilities.ts',
+    'pcCastCombatSpell',
+    "B-06bp, a combat spell's cast: content's rows (KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT, KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
