@@ -20,6 +20,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { ROOT } from '../../tools/build.ts';
+import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import {
   aSpreadOf,
   compareTheBattles,
@@ -299,38 +300,46 @@ const THE_PLANTS_CASES: readonly ABattleCase[] = [
   },
 ];
 
-test('this tree twice gives the same answer, every draw in a stage; red on each of three planted faults', async () => {
-  const copies = PLANTS.map(aPlantedCopy);
-  try {
-    const fight = (root: string) => Promise.all(THE_PLANTS_CASES.map((c) => aCaseFoughtAt(root, c)));
-    const [first, again, ...planted] = await Promise.all([fight(ROOT), fight(ROOT), ...copies.map(fight)]);
-    const what = (sides: ACaseFought[] | undefined) =>
-      THE_PLANTS_CASES.map((_, i) => whatDiffersInACase(first[i] ?? { threw: '' }, sides?.[i] ?? { threw: '' }));
-    expect(what(again), 'this tree against itself').toEqual([[], [], []]);
-    for (const c of first) {
-      if ('threw' in c) throw new Error(`a case threw: ${c.threw}`);
-      for (const b of Object.values(c.byStream)) {
-        if ('threw' in b) throw new Error(`a battle threw: ${b.threw}`);
-        expect(Object.keys(b.byStage), 'every draw in a stage').not.toContain(NO_STAGE);
-        expect(Object.values(b.byStage).reduce((x, y) => x + y, 0)).toBe(b.draws);
+test(
+  'this tree twice gives the same answer, every draw in a stage; red on each of three planted faults',
+  // three copies of src/ made and removed, and fifteen cases fought in processes of their own, side by side
+  timeLimitForTheWork({ everyFileReads: 6, toolRuns: 1 }),
+  async () => {
+    const copies = PLANTS.map(aPlantedCopy);
+    try {
+      const fight = (root: string) => Promise.all(THE_PLANTS_CASES.map((c) => aCaseFoughtAt(root, c)));
+      const [first, again, ...planted] = await Promise.all([fight(ROOT), fight(ROOT), ...copies.map(fight)]);
+      const what = (sides: ACaseFought[] | undefined) =>
+        THE_PLANTS_CASES.map((_, i) => whatDiffersInACase(first[i] ?? { threw: '' }, sides?.[i] ?? { threw: '' }));
+      expect(what(again), 'this tree against itself').toEqual([[], [], []]);
+      for (const c of first) {
+        if ('threw' in c) throw new Error(`a case threw: ${c.threw}`);
+        for (const b of Object.values(c.byStream)) {
+          if ('threw' in b) throw new Error(`a battle threw: ${b.threw}`);
+          expect(Object.keys(b.byStage), 'every draw in a stage').not.toContain(NO_STAGE);
+          expect(Object.values(b.byStage).reduce((x, y) => x + y, 0)).toBe(b.draws);
+        }
       }
+      const [extraDraw, band, swapped] = planted.map(what);
+      expect(
+        extraDraw?.[0]?.filter((w) => w.endsWith("H6's dice (1 → 2)")),
+        `${PLANTS[0]?.name ?? ''}: H6's dice in every stream`,
+      ).toHaveLength(THE_DICE_STREAMS.length);
+      expect(extraDraw?.[1], `${PLANTS[0]?.name ?? ''}: the battle against the defenders untouched`).toEqual([]);
+      expect(
+        band?.flat().filter((w) => w.includes('the world (')).length,
+        `${PLANTS[1]?.name ?? ''}: a world after differs`,
+      ).toBeGreaterThan(0);
+      expect(
+        swapped?.[0]?.filter((w) => /H3's dice|H4's dice/.test(w)).length,
+        `${PLANTS[2]?.name ?? ''}: H3's and H4's dice move`,
+      ).toBeGreaterThan(0);
+      expect(swapped?.slice(1), `${PLANTS[2]?.name ?? ''}: the battle against the defenders untouched`).toEqual([
+        [],
+        [],
+      ]);
+    } finally {
+      for (const copy of copies) fs.rmSync(copy, { recursive: true, force: true });
     }
-    const [extraDraw, band, swapped] = planted.map(what);
-    expect(
-      extraDraw?.[0]?.filter((w) => w.endsWith("H6's dice (1 → 2)")),
-      `${PLANTS[0]?.name ?? ''}: H6's dice in every stream`,
-    ).toHaveLength(THE_DICE_STREAMS.length);
-    expect(extraDraw?.[1], `${PLANTS[0]?.name ?? ''}: the battle against the defenders untouched`).toEqual([]);
-    expect(
-      band?.flat().filter((w) => w.includes('the world (')).length,
-      `${PLANTS[1]?.name ?? ''}: a world after differs`,
-    ).toBeGreaterThan(0);
-    expect(
-      swapped?.[0]?.filter((w) => /H3's dice|H4's dice/.test(w)).length,
-      `${PLANTS[2]?.name ?? ''}: H3's and H4's dice move`,
-    ).toBeGreaterThan(0);
-    expect(swapped?.slice(1), `${PLANTS[2]?.name ?? ''}: the battle against the defenders untouched`).toEqual([[], []]);
-  } finally {
-    for (const copy of copies) fs.rmSync(copy, { recursive: true, force: true });
-  }
-}, 120_000);
+  },
+);
