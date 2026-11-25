@@ -5,8 +5,9 @@
 // the battle drew (Lightning Bolt's units, Control Undead's unit), applies it and writes the line the effect names. Each
 // copy writes its own lines; the rule is one for all three (R-126: Lightning Bolt counts the level to 5, and Telekinetic
 // Storm halves only a Tactical the commander has, and not at sea). Until P1-19u they were written inline in
-// applyPreBattleMagic (src/engine/battle/battles-between-heroes.ts), twice in combatVsNPC
-// (src/engine/battle/battles-against-province-defenders.ts) and in battleSpellUseful
+// applyPreBattleMagic (now in src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-
+// spells.ts), twice in combatVsNPC (now its stages n3-to-n4-… and n5-to-n7-… in src/engine/battle/the-battle-against-
+// the-defenders/) and in battleSpellUseful
 // (src/engine/magic/pre-battle-spell-choice.ts).
 import {
   SPELL_EFFECTS_THE_REGISTRY_HOLDS as ROWS,

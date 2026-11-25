@@ -48,8 +48,8 @@ A **spell's effect** is one row in `src/content/spell-effects-their-names-number
   casts.
 - **The pre-battle strikes** (P1-19v, `spells/a-units-strike-before-an-army-battle.ts`). `strength`'s **a unit strikes
   before the battle**, asked after battle magic by the battle code's three copies: a hero's units' between two heroes'
-  hosts (`combatVsChar`'s `applyArmyBattleSpells`), a hero's units' against a province's neutral guards, and the
-  guards' own units' against him (both in `combatVsNPC`). The strikes are each unit's, in the content's tables (a
+  hosts (`applyArmyBattleSpells`, in the battle between heroes' stage `h3-…`), a hero's units' against a province's
+  neutral guards, and the guards' own units' against him (the defenders' battle's stages `n3-to-n4-…` and `n5-to-n7-…`). The strikes are each unit's, in the content's tables (a
   winged rider's in `BATTLE_ARMY_SPELLS`, else a beast's `spells` that deal damage, in `PRIMAL_ARMY_DEFS_P`), not a
   spell's, so no entry holds them: one effect casts them all, and its runner, `whatAUnitsStrikeMayDoBeforeTheBattle`,
   is the registry's. It is handed the copy, the unit's type, whether the other side has a unit, the commander's Druid

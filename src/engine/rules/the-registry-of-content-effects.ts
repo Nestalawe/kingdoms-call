@@ -423,8 +423,8 @@ export interface AFlyerHarried {
   readonly theStrengthItLoses: number;
 }
 
-/** What the stage "a hull is sunk before the battle" hands an effect (both battles: combatVsChar's
- *  applyBreachAndSwamp, and combatVsNPC): a unit of the force, the enemy's hulls still afloat (its units that move by
+/** What the stage "a hull is sunk before the battle" hands an effect (both battles: applyBreachAndSwamp in the battle
+ *  between heroes' stage h4-…, and the battle against the defenders' stage n3-to-n4-…): a unit of the force, the enemy's hulls still afloat (its units that move by
  *  sea and aren't sunk yet), in the force's order, and the dice (an effect draws only when it acts and a hull is
  *  afloat, as the battle code did). */
 export interface AUnitAndTheEnemyHullsAfloat {
@@ -1058,8 +1058,9 @@ export interface TheChangeAnItemMakesToABattleSpell {
 // magic. The strikes are each unit's, in the content's tables (P1-19l's Choice 2); one effect casts them all. ──
 
 /** Which of the battle code's three copies of the pre-battle strikes asks: a hero's units' between two heroes' hosts
- *  (combatVsChar's applyArmyBattleSpells, each side), a hero's units' against a province's neutral guards, or the
- *  guards' own units' against him (both in combatVsNPC). Each copy keeps its own roll and writes its own lines. */
+ *  (applyArmyBattleSpells in the battle between heroes' stage h3-…, each side), a hero's units' against a province's
+ *  neutral guards, or the guards' own units' against him (the battle against the defenders' stages n3-to-n4-… and
+ *  n5-to-n7-…). Each copy keeps its own roll and writes its own lines. */
 export type ACopyOfThePreBattleStrikes =
   'between heroes' | "a hero's units against the guards" | "the guards' units against a hero";
 

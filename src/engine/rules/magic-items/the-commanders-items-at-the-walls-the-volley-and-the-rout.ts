@@ -2,8 +2,9 @@
 // volleys", "fate: the commander's riders run the beaten down on any ground" and "fate: the beaten force may retreat"
 // (plan P1-19n): each with its numbers from the content's row; the items' runners (the-registry-of-magic-item-
 // effects.ts) find which effects a commander's active items carry and apply them, in each stage's order. Until P1-19n
-// they were written inline in the two battles (src/engine/battle/battles-between-heroes.ts and battles-against-
-// province-defenders.ts) and in the rout's handed answer (src/engine/units/movement.ts), in this order.
+// they were written inline in the two battles (now their stages: the walls in h0-to-h2-… and n0-to-n2-…, the volley in
+// h4-… and n3-to-n4-…, the retreat in n11-to-n13-…, in src/engine/battle/the-battle-between-heroes/ and
+// the-battle-against-the-defenders/) and in the rout's handed answer (src/engine/units/movement.ts), in this order.
 import { MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS as ROWS } from '../../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import type { MagicItemEffectSlug } from '../../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';

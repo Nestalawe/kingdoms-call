@@ -4,8 +4,9 @@
 // PRIMAL_ARMY_DEFS_P that deal damage: P1-19l's Choice 2), so one effect casts them all; the chance is the content's
 // (THE_CHANCE_OF_A_STRIKE_BEFORE_THE_BATTLE). It returns what the strike may do: the resolver draws the strike, rolls
 // its chance as its copy rolls it, draws the unit struck and the damage, applies it and writes the line the effect
-// names. Until P1-19v the three copies were written inline in combatVsChar's applyArmyBattleSpells (src/engine/battle/
-// battles-between-heroes.ts) and twice in combatVsNPC (src/engine/battle/battles-against-province-defenders.ts), and the
+// names. Until P1-19v the three copies were written inline in applyArmyBattleSpells (now in src/engine/battle/the-
+// battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts) and twice in combatVsNPC (now its stages
+// n3-to-n4-… and n5-to-n7-… in src/engine/battle/the-battle-against-the-defenders/), and the
 // chance in primalStrikeChance (src/engine/chances-and-lair-grades.ts), which asks theChanceOfAStrikeBeforeTheBattle.
 import { BATTLE_ARMY_SPELLS, KC_UNIT_CLASS, PRIMAL_ARMY_DEFS_P } from '../../../content/kingdoms-call-data.ts';
 import { THE_CHANCE_OF_A_STRIKE_BEFORE_THE_BATTLE as THE_CHANCE } from '../../../content/spell-effects-their-names-numbers-and-words.ts';

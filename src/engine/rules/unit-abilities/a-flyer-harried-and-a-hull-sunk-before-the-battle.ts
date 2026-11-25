@@ -1,7 +1,8 @@
 // The unit abilities that act on the enemy before the battle (plan P1-19i): a flyer is harried before the battle (a
 // stage of strength, in applyFlakScreen, src/engine/battle/strength.ts) and a hull is sunk before the battle (a stage of
-// fate, in both battles: combatVsChar's applyBreachAndSwamp, src/engine/battle/battles-between-heroes.ts, and
-// combatVsNPC, src/engine/battle/battles-against-province-defenders.ts). Each is handed what its stage hands it (the
+// fate, in both battles: applyBreachAndSwamp, in src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-
+// flak-and-breach.ts, and the attackers' breach, in src/engine/battle/the-battle-against-the-defenders/n3-to-n4-the-
+// attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts). Each is handed what its stage hands it (the
 // registry's stage types), the dice among it, and returns its pick: it changes nothing, and the battle code marks the
 // unit and writes the line. Its numbers come from the content's row. Each draws its dice where the battle code drew
 // them before the registry took it, the same count in the same order: none when nothing is left to pick. The runners

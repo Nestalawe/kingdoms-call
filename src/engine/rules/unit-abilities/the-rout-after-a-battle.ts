@@ -1,8 +1,9 @@
 // The unit abilities at the three stages of the rout after a battle (plan P1-19j), each a stage of fate: the beaten
 // force holds (Shield Fort, with Deep Halls: shieldFortHolds, src/engine/units/movement.ts), the winner runs the beaten
 // down (Ride Them Down, Run Them Down, the Manticores' pursuit and Feeding Frenzy, in the battle code's order:
-// pursuitsOfTheBeaten and rideThemDownBonus, the same file, for the rout of combatVsChar,
-// src/engine/battle/battles-between-heroes.ts, and combatVsNPC, src/engine/battle/battles-against-province-defenders.ts),
+// pursuitsOfTheBeaten and rideThemDownBonus, the same file, for the rout of both battles, src/engine/battle/the-battle-
+// between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts and src/engine/battle/the-battle-against-the-
+// defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts),
 // and a force holds the sea lanes (the Corsair Fleet's Cut the Line, between heroes, and Keep the Sea Lanes, against
 // neutral guards: both battles' retreat). Each is handed what its stage hands it (the registry's stage types) and
 // returns a value: whether the force holds, its pursuit, or whether it holds the sea lanes; it changes nothing, and the

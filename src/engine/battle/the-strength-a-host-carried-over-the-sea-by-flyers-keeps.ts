@@ -1,6 +1,6 @@
 // The strength a host carried over the sea by its flyers keeps, read by both battle paths (the battle against a
-// province's defenders' lines, the-battle-against-the-defenders/n8-to-n10-…, and combatVsChar in
-// battle/battles-between-heroes.ts), moved here as it was from combatVsNPC's file (B-06bc) once a stage file read it:
+// province's defenders' lines, the-battle-against-the-defenders/n8-to-n10-…, and the battle between heroes' archery,
+// the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts), moved here as it was from combatVsNPC's file (B-06bc) once a stage file read it:
 // combatVsNPC's file imports its stages, so a stage can't import it back. It draws no die; this file holds no stage's
 // anchor (tools/proof/README.md, section 8).
 import { KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN } from '../../content/kingdoms-call-data.ts';
