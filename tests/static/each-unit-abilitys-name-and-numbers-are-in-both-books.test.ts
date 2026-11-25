@@ -7,8 +7,8 @@
 // family's share of plan P3-02's words helper. The abilities a table holds, read by the unit's type (plan P1-19l,
 // Choice 2), are checked the same way from their tables: each pre-battle strike's name and damage range (2–4, with the
 // books' en dash; PRIMAL_ARMY_DEFS_P's spells and BATTLE_ARMY_SPELLS, in content), Island Back's berths
-// (KC_CARRIER_BERTHS: "two land units") and Forest Runners' two cells of TERRAIN_MODS (read by its syntax tree: "×1.1
-// in forest", "no penalty in jungle"). A table's number is matched with what it counts or where it acts, since a bare
+// (KC_CARRIER_BERTHS: "two land units") and Forest Runners' two cells of the ground's table (content's
+// KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND: "×1.1 in forest", "no penalty in jungle"). A table's number is matched with what it counts or where it acts, since a bare
 // "one" or "×1" is in the books' words already ("where a fleet carries one", "×1.1"). The beasts' blurbs-and-rows test
 // names no ability but Purity now. At the end of this file (until P1-14z the old script abilities-words): every
 // humanoid land unit has its blurb and its roster row, UNIT_ABILITIES declares each unit once, the Levies row says
@@ -24,7 +24,7 @@
 // the fix too. Of the tables: the battle report names the Wyvern Riders' strike "Acid Spit Volley", both books "Acid
 // Spit" (parked: one name), checked to be still so; and the rulebook gives Forest Runners' two numbers in its terrain
 // column, not in Forest Runners' words (a known difference: the army roster's words test holds that column to the decided roster, and
-// roster holds TERRAIN_MODS to it), checked to be still so. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes:
+// roster holds the ground's table to it), checked to be still so. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes:
 // plan P1-19j, Choice 4) are a retired unit's,
 // in no book: checked to be still in none, and nothing else. An ability the books give no number (Rooted, Hold the Gate,
 // Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g; the three flank
@@ -32,8 +32,8 @@
 // and its name is checked; a number the books leave out (Driven Before Them's cap, which the units beside them never
 // reach) is checked to be still left out. A number the books write in words (double, half, two, full strength) is matched
 // as a whole word, case aside (the rulebook writes "DOUBLE volley damage").
-// Level 0 (static): the content's rows and tables imported (plain data), TERRAIN_MODS and the player portal's blurbs by
-// their syntax tree (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
+// Level 0 (static): the content's rows and tables imported (plain data), the player portal's blurbs by their syntax
+// tree (tests/lib/source.ts), the rulebook as built (site/); nothing runs.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Every row of the content's unit abilities (the names and numbers the rule registry's effects read, plan P1-19
@@ -53,8 +53,8 @@
 // else. Since P1-19l the abilities a table holds too, read by the unit's type: each pre-battle strike's name and damage
 // range (`2–4`, with the books' en dash; each beast's `spells` in `PRIMAL_ARMY_DEFS_P` and the winged riders'
 // `BATTLE_ARMY_SPELLS`, both in content), Island Back's berths (`KC_CARRIER_BERTHS`, as "two land units") and Forest
-// Runners' forest and jungle cells (`TERRAIN_MODS`, by its syntax tree, as "×1.1 in forest" and "no penalty in
-// jungle"): a table's number is matched with what it counts or where it acts, since a bare "one" or "×1" is in the
+// Runners' forest and jungle cells (the ground's table, `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND`, in content, as
+// "×1.1 in forest" and "no penalty in jungle"): a table's number is matched with what it counts or where it acts, since a bare "one" or "×1" is in the
 // books' words already. Two of these are known and checked to be still so: the table names the Wyvern Riders' strike
 // "Acid Spit Volley", both books "Acid Spit" (parked); the rulebook gives Forest Runners' numbers in its terrain
 // column, not in its words. The abilities the books give no number (Rooted, Hold the Gate, Town Watch, Battering Horns,
@@ -74,12 +74,16 @@
 // checks too: every humanoid land unit's blurb and roster row; each unit declared once in `UNIT_ABILITIES`; the Levies
 // row's Shieldwall needs an archer behind; Shield Fort's "half the front line" in both books; the Goblin Horde row's
 // other orc foot; the four retired abilities (Massed Volley, Shock of the Charge, Skyward Retreat, the Wyverns' Dread)
-// on neither book's page. Level 0: the content's rows and tables are plain data, `TERRAIN_MODS` and the books are
-// read; nothing runs. TypeScript, in `static/`
+// on neither book's page. Level 0: the content's rows and tables are plain data, the blurbs and the books are read;
+// nothing runs. TypeScript, in `static/`
 import fs from 'node:fs';
-import ts from 'typescript';
 import { describe, expect, test } from 'vitest';
-import { BATTLE_ARMY_SPELLS, KC_CARRIER_BERTHS, PRIMAL_ARMY_DEFS_P } from '../../src/content/kingdoms-call-data.ts';
+import {
+  BATTLE_ARMY_SPELLS,
+  KC_CARRIER_BERTHS,
+  KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND,
+  PRIMAL_ARMY_DEFS_P,
+} from '../../src/content/kingdoms-call-data.ts';
 import {
   UNIT_ABILITIES_THE_REGISTRY_HOLDS,
   type ANumberOfAnAbility,
@@ -354,7 +358,7 @@ const NAMES_THE_BOOKS_WRITE_ANOTHER_WAY: Readonly<Record<string, { readonly book
  *  words in the rulebook still leave the numbers out. */
 const NUMBERS_THE_RULEBOOK_WRITES_ELSEWHERE: Readonly<Record<string, string>> = {
   'Forest Runners':
-    "the rulebook gives Forest Runners' numbers in the Stag Riders' terrain column (Forest ×1.1; jungle unlisted, ×1), which the army roster's words test holds to the decided roster and roster holds TERRAIN_MODS to",
+    "the rulebook gives Forest Runners' numbers in the Stag Riders' terrain column (Forest ×1.1; jungle unlisted, ×1), which the army roster's words test holds to the decided roster and roster holds the ground's table to",
 };
 
 /** A strike's damage range as the books write it: `2–4`, with the books' en dash (U+2013). */
@@ -393,28 +397,11 @@ const BEASTS_SPELLS: Readonly<Record<string, readonly AStrike[] | undefined>> = 
 );
 const RIDERS_SPELLS: Readonly<Record<string, readonly AStrike[] | undefined>> = BATTLE_ARMY_SPELLS;
 
-/** The engine's TERRAIN_MODS, read by its syntax tree: a unit's cell on a ground, or undefined. The battle file isn't
- *  loaded (it is the engine's); its initializer is an object literal of grounds, each an object literal of units. */
-const TERRAIN_MODS = entriesOf('engine/battle/terrain-and-unit-strength.ts', 'TERRAIN_MODS');
-function terrainCell(ground: string, unit: string): number | undefined {
-  const row = TERRAIN_MODS.find((e) => e.key === ground)?.value;
-  if (row === undefined) return undefined;
-  const tree = ts.createSourceFile('cell.ts', `(${row})`, ts.ScriptTarget.Latest);
-  const first = tree.statements[0];
-  if (!first || !ts.isExpressionStatement(first) || !ts.isParenthesizedExpression(first.expression)) return undefined;
-  const cells = first.expression.expression;
-  if (!ts.isObjectLiteralExpression(cells)) return undefined;
-  for (const p of cells.properties)
-    if (
-      ts.isPropertyAssignment(p) &&
-      (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) &&
-      p.name.text === unit &&
-      ts.isNumericLiteral(p.initializer)
-    )
-      return Number(p.initializer.text);
-  return undefined;
-}
-const FOREST_RUNNERS = { forest: terrainCell('forest', 'Stag Riders'), jungle: terrainCell('jungle', 'Stag Riders') };
+/** Forest Runners' two cells of the ground's table (content's, plain data). */
+const FOREST_RUNNERS = {
+  forest: KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND.forest['Stag Riders'],
+  jungle: KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND.jungle['Stag Riders'],
+};
 const ISLAND_BACK = KC_CARRIER_BERTHS['Great Turtles'];
 
 const TABLES: readonly AnAbilityATableHolds[] = [
@@ -433,13 +420,13 @@ const TABLES: readonly AnAbilityATableHolds[] = [
     ],
   },
   {
-    table: 'TERRAIN_MODS',
+    table: 'KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND',
     unit: 'Stag Riders',
     name: 'Forest Runners',
     nameInTheTable: 'Forest Runners',
     numbers: [
-      withItsWords({ value: FOREST_RUNNERS.forest ?? NaN, theBooksWriteIt: 'a multiplier' }, 'in forest'),
-      withItsWords({ value: FOREST_RUNNERS.jungle ?? NaN, theBooksWriteIt: 'no penalty' }, 'in jungle'),
+      withItsWords({ value: FOREST_RUNNERS.forest, theBooksWriteIt: 'a multiplier' }, 'in forest'),
+      withItsWords({ value: FOREST_RUNNERS.jungle, theBooksWriteIt: 'no penalty' }, 'in jungle'),
     ],
   },
 ];
@@ -449,8 +436,8 @@ describe("each ability a table holds: its name and numbers in its unit's blurb a
     expect(TABLES.filter((r) => r.table === 'PRIMAL_ARMY_DEFS_P').length).toBeGreaterThan(0);
     expect(TABLES.filter((r) => r.table === 'BATTLE_ARMY_SPELLS').length).toBeGreaterThan(0);
     expect(ISLAND_BACK, "the Great Turtles' berths").toBeTypeOf('number');
-    expect(FOREST_RUNNERS.forest, "the Stag Riders' forest cell of TERRAIN_MODS").toBeTypeOf('number');
-    expect(FOREST_RUNNERS.jungle, "the Stag Riders' jungle cell of TERRAIN_MODS").toBeTypeOf('number');
+    expect(FOREST_RUNNERS.forest, "the Stag Riders' forest cell of the ground's table").toBeTypeOf('number');
+    expect(FOREST_RUNNERS.jungle, "the Stag Riders' jungle cell of the ground's table").toBeTypeOf('number');
   });
 
   test.for(TABLES)("$name ($unit, $table): the player portal's blurb", ({ unit, name, numbers }) => {

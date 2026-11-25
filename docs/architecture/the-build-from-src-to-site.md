@@ -124,8 +124,8 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
     `sight/heroes-in-sight-features-discovered-and-army-size-bands.ts`, `UnitAbilityContext` in `battle/strength.ts`,
     `UnitFateOptions` and `ABattleLinesTier` in `battle/fates.ts`, `ArmStrContext`, what a caller tells `armStr` of the
     battle, and `CommandMultiplier`, a command-stage multiplier a ladder row applies, in
-    `battle/terrain-and-unit-strength.ts`, whose terrain table, `TERRAIN_MODS`, ends in
-    `satisfies Record<string, Partial<Record<UnitType, number>>>`, so a misspelt unit fails to compile);
+    `battle/terrain-and-unit-strength.ts`, whose terrain table, `TERRAIN_MODS`, is content's
+    `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND`, whose rows end in `satisfies` on the units each lists, so a unit left out fails to compile);
     `battle/lines.ts` declares the battle grid's: `BattleRow` (a unit's row as the grid takes it, and the marks the grid
     stamps on it, `_g` and `_faced`), `GridCell` (a placed unit: its row, its part in the line, its strength),
     `GridUnit` (a unit as it was scored), `BattleGridCells` (a side's grid as placed) and `BattleGrid` (the same grid

@@ -18,7 +18,7 @@
 // 2026-10-13 (Toby, Creatures and Monsters I): the wild roster as decided (tests/lib/primal-decided.ts) — a
 // Druid-4 beast about 2.6–2.75 strength a gold, a Druid-5 beast 2.4–2.6, because a realm's own-race troops
 // carry a ×1.44 kinship no beast gets; every flyer moves 5, no walker slower than 2. Terrain is written ONCE,
-// in the GM portal's TERRAIN_MODS; the always-on terrain multipliers these units used to carry on top are gone.
+// in KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND; the always-on terrain multipliers these units used to carry are gone.
 export const PRIMAL_ARMY_DEFS_P = {
   // ── Druid 4 — Land ──
   'Stone Giants': {
@@ -15115,8 +15115,9 @@ export const KC_UNIT_TYPE = {
 // tests/static/a-unit-left-out-of-a-data-table-fails-to-compile.test.ts compiles copies of this file, each with a
 // unit left out.
 //   THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES   humanoid units only
-// The engine's own tables keyed by unit type (UNIT_SHORT, TERRAIN_MODS) get theirs
-// when their files lose their ts-nocheck line: a `satisfies` checks nothing in a file with it (plan P1-10, Decision 6).
+//   KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND   every unit type but the elementals in the woods' rows, and four flyers
+//                        fewer in the open grounds' (unit types only in the sea's row)
+// The views' own table keyed by unit type (UNIT_SHORT) ends in its own `satisfies`.
 export type UnitType = keyof typeof KC_UNIT_TYPE;
 /** The wild's units, a Druid's or a monster's: PRIMAL_ARMY_DEFS_P's. */
 export type PrimalUnitType = keyof typeof PRIMAL_ARMY_DEFS_P;
@@ -15125,6 +15126,303 @@ export type ElementalUnitType =
   'Air Elemental' | 'Fire Elemental' | 'Earth Elemental' | 'Water Elemental' | 'Darkness Elemental';
 /** The realms' own troops and fleets: every unit type that is neither primal nor an elemental. */
 export type HumanoidUnitType = Exclude<UnitType, PrimalUnitType | ElementalUnitType>;
+/** The units a woods' row of the ground's table (forest, jungle) names: every unit type but the elementals. */
+type UnitTypeAWoodsRowNames = Exclude<UnitType, ElementalUnitType>;
+/** The units an open ground's row of the ground's table (plain, desert, mountain) names: a woods' row's but four
+ *  flyers, which fight at ×1 there by terrainMod's fallback. */
+type UnitTypeAnOpenGroundsRowNames = Exclude<
+  UnitTypeAWoodsRowNames,
+  'Eagle Riders' | 'Gnomish Gyrocopters' | 'Wyvern Riders' | 'Thunderbirds'
+>;
+
+// ── TERRAIN STRENGTH MODIFIERS ────
+// Applied to individual army unit strength during battle resolution. Flyers (every KC_UNIT_CLASS.aerial
+// unit: the winged riders and the flying beasts) fight at 1.0 everywhere except under the trees: ×0.75 in
+// forest and jungle (2026-10-12, Toby item 19; they had been terrain-immune). Naval units: no terrain
+// effect anywhere — and the Naval skill lifts them on land too.
+// The table moved here from the engine's battle file as it was (B-06ax); the engine's TERRAIN_MODS is this object,
+// and terrainMod reads it there (a unit or a ground with no cell: ×1). Each row ends in `satisfies` on the units it
+// lists: the woods' rows every unit type but the elementals; the open grounds' rows (the plain, the desert, the
+// mountain) those but four flyers too (Eagle Riders, Gnomish Gyrocopters, Wyvern Riders, Thunderbirds); the sea's row
+// unit types only (the land units' ×0.75 there is the sea penalty's, not this table's).
+export const KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND = {
+  // NAVAL UNITS FIGHT AT FULL STRENGTH IN EVERY PROVINCE, land or sea — the old ×0.60 "beached
+  // fleet" penalty (×0.80 for Sea Giants) is gone; every fleet / sea-beast entry below is 1.0 and
+  // terrainMod() short-circuits them like flyers. Sea Giants' Tidal Might is now a coastal-land
+  // bonus (see unitAbilityMult).
+  // 2026-10-11 (Toby, the army roster): human line foot and longbows ×1.1 on the plain; Forest Wardens
+  // no longer suffer in the open (×1.0 plain, ×0.9 desert) and are ×1.1 rather than ×1.2 in the woods;
+  // Orc Berserkers ×1.0 on the plain; Goblin Horde ×1.0 in the desert; the dwarves' mountain bonus is
+  // ×1.1 (Guard, Crossbows, Guns).
+  // tests/unit/the-engines-tables-give-each-army-unit-as-the-roster-table-decides.test.ts holds every cell to the decided roster.
+  plain: {
+    'Men-at-Arms': 1.1,
+    'Stag Riders': 1.1,
+    'Ironhoof Rams': 1.0,
+    'Black Arrows': 1.0,
+    'Shieldwall Levies': 1.1,
+    'Free Lances': 1.15,
+    'Gilded Lances': 1.15,
+    'Yeoman Longbows': 1.1,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.0,
+    'Forest Wardens': 1.0,
+    'Shadow Archers': 0.9,
+    'Dwarven Guard': 0.9,
+    'Ironwood Crossbows': 1.0,
+    'Mountain Guns': 0.85,
+    'Dwarf Garrison': 0.9,
+    'Warg Riders': 1.1,
+    'Orc Berserkers': 1.0,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 1.0,
+    'Elven Garrison': 1.0,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 1.0,
+    'Stone Giants': 0.9,
+    'Forest Ents': 0.9,
+    'Cave Trolls': 1.0,
+    'Manticore Pride': 1.0,
+    'Basilisk Brood': 0.9,
+    'Titan Warbeasts': 1.1,
+    'Crimson Rocs': 1.0,
+    'Elder Dragons': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 1.0,
+    'Great Bears': 1.0,
+    'Unicorn Herd': 1.1,
+    'Mammoth Host': 1.1,
+    'Great Turtles': 1.0,
+  },
+  desert: {
+    'Men-at-Arms': 1.0,
+    'Stag Riders': 1.0,
+    'Ironhoof Rams': 0.9,
+    'Black Arrows': 1.0,
+    'Shieldwall Levies': 1.0,
+    'Free Lances': 1.15,
+    'Gilded Lances': 1.15,
+    'Yeoman Longbows': 0.9,
+    'Human Garrison': 0.9,
+    'Elven Bowmen': 0.8,
+    'Forest Wardens': 0.9,
+    'Shadow Archers': 0.85,
+    'Dwarven Guard': 0.9,
+    'Ironwood Crossbows': 1.0,
+    'Mountain Guns': 0.85,
+    'Dwarf Garrison': 0.85,
+    'Warg Riders': 1.1,
+    'Orc Berserkers': 1.05,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 0.9,
+    'Elven Garrison': 0.85,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 1.0,
+    'Stone Giants': 0.9,
+    'Forest Ents': 0.75,
+    'Cave Trolls': 0.85,
+    'Manticore Pride': 1.0,
+    'Basilisk Brood': 1.1,
+    'Titan Warbeasts': 1.1,
+    'Crimson Rocs': 1.0,
+    'Elder Dragons': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 0.85,
+    'Great Bears': 0.8,
+    'Unicorn Herd': 1.0,
+    'Mammoth Host': 0.85,
+    'Great Turtles': 1.0,
+  },
+  forest: {
+    'Men-at-Arms': 0.9,
+    'Stag Riders': 1.1,
+    'Ironhoof Rams': 0.9,
+    'Black Arrows': 0.9,
+    'Shieldwall Levies': 0.9,
+    'Free Lances': 0.75,
+    'Gilded Lances': 0.75,
+    'Yeoman Longbows': 0.85,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.15,
+    'Forest Wardens': 1.1,
+    'Shadow Archers': 1.1,
+    'Dwarven Guard': 0.9,
+    'Ironwood Crossbows': 0.9,
+    'Mountain Guns': 0.8,
+    'Dwarf Garrison': 0.9,
+    'Warg Riders': 0.9,
+    'Orc Berserkers': 1.1,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 1.0,
+    'Elven Garrison': 1.1,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 0.75,
+    'Stone Giants': 0.9,
+    'Forest Ents': 1.15,
+    'Cave Trolls': 1.1,
+    'Manticore Pride': 0.75,
+    'Basilisk Brood': 1.0,
+    'Titan Warbeasts': 0.8,
+    'Crimson Rocs': 0.75,
+    'Elder Dragons': 0.75,
+    'Eagle Riders': 0.75,
+    'Wyvern Riders': 0.75,
+    'Gnomish Gyrocopters': 0.75,
+    Thunderbirds: 0.75, // item 19: flyers in the woods
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 1.05,
+    'Great Bears': 1.1,
+    'Unicorn Herd': 1.1,
+    'Mammoth Host': 0.8,
+    'Great Turtles': 1.0,
+  },
+  jungle: {
+    'Men-at-Arms': 0.85,
+    'Stag Riders': 1.0,
+    'Ironhoof Rams': 0.85,
+    'Black Arrows': 0.9,
+    'Shieldwall Levies': 0.85,
+    'Free Lances': 0.7,
+    'Gilded Lances': 0.7,
+    'Yeoman Longbows': 0.8,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.1,
+    'Forest Wardens': 1.1,
+    'Shadow Archers': 1.1,
+    'Dwarven Guard': 0.85,
+    'Ironwood Crossbows': 0.85,
+    'Mountain Guns': 0.75,
+    'Dwarf Garrison': 0.85,
+    'Warg Riders': 0.8,
+    'Orc Berserkers': 1.05,
+    'Goblin Horde': 1.0,
+    'Orc Garrison': 1.0,
+    'Elven Garrison': 1.1,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 0.75,
+    'Stone Giants': 0.8,
+    'Forest Ents': 1.15,
+    'Cave Trolls': 1.05,
+    'Manticore Pride': 0.75,
+    'Basilisk Brood': 1.1,
+    'Titan Warbeasts': 0.75,
+    'Crimson Rocs': 0.75,
+    'Elder Dragons': 0.75,
+    'Eagle Riders': 0.75,
+    'Wyvern Riders': 0.75,
+    'Gnomish Gyrocopters': 0.75,
+    Thunderbirds: 0.75, // item 19: flyers in the woods
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 1.1,
+    'Great Bears': 1.0,
+    'Unicorn Herd': 0.9,
+    'Mammoth Host': 0.75,
+    'Great Turtles': 1.0,
+  },
+  mountain: {
+    'Men-at-Arms': 0.9,
+    'Stag Riders': 0.85,
+    'Ironhoof Rams': 1.0,
+    'Black Arrows': 0.9,
+    'Shieldwall Levies': 0.9,
+    'Free Lances': 0.75,
+    'Gilded Lances': 0.75,
+    'Yeoman Longbows': 1.0,
+    'Human Garrison': 1.0,
+    'Elven Bowmen': 1.0,
+    'Forest Wardens': 0.85,
+    'Shadow Archers': 1.0,
+    'Dwarven Guard': 1.1,
+    'Ironwood Crossbows': 1.1,
+    'Mountain Guns': 1.1,
+    'Dwarf Garrison': 1.15,
+    'Warg Riders': 0.8,
+    'Orc Berserkers': 0.9,
+    'Goblin Horde': 0.9,
+    'Orc Garrison': 0.9,
+    'Elven Garrison': 0.9,
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Noble Griffons': 1.0,
+    'Stone Giants': 1.15,
+    'Forest Ents': 0.9,
+    'Cave Trolls': 1.15,
+    'Manticore Pride': 1.0,
+    'Basilisk Brood': 0.9,
+    'Titan Warbeasts': 0.8,
+    'Crimson Rocs': 1.0,
+    'Elder Dragons': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Dread Hydras': 0.9,
+    'Great Bears': 1.1,
+    'Unicorn Herd': 0.85,
+    'Mammoth Host': 1.0,
+    'Great Turtles': 1.0,
+  },
+  sea: {
+    // All land armies penalised in sea — ×0.75 (applied separately as seaLandPenalty) Naval units
+    // are full strength. Flying at full strength. Individual modifiers here are mostly 1.0 since
+    // the sea penalty is applied globally.
+    'Galleon Fleet': 1.0,
+    'Corsair Fleet': 1.0,
+    'Elven Galleys': 1.0,
+    'Dwarf Ironclads': 1.0,
+    'Orcish Longships': 1.0,
+    'Whale Cohort': 1.0,
+    'Shark Shoals': 1.0,
+    'Sea Giants': 1.0,
+    'Eldritch Kraken': 1.0,
+    'Great Turtles': 1.0,
+    // Flying fight fine at sea
+    'Eagle Riders': 1.0,
+    'Wyvern Riders': 1.0,
+    'Gnomish Gyrocopters': 1.0,
+    'Elder Dragons': 1.0,
+    'Crimson Rocs': 1.0,
+    Thunderbirds: 1.0,
+  },
+} satisfies {
+  plain: Record<UnitTypeAnOpenGroundsRowNames, number>;
+  desert: Record<UnitTypeAnOpenGroundsRowNames, number>;
+  forest: Record<UnitTypeAWoodsRowNames, number>;
+  jungle: Record<UnitTypeAWoodsRowNames, number>;
+  mountain: Record<UnitTypeAnOpenGroundsRowNames, number>;
+  sea: Partial<Record<UnitType, number>>;
+}; // a unit left out of a row that must list it, a misspelt unit or a ground no row names fails tsc
 
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.

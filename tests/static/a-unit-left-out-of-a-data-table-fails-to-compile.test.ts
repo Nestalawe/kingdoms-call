@@ -4,10 +4,13 @@
 // each in the tables named, naming the unit:
 // - a humanoid unit's base strength left out (KC_UNIT_BASE_STR), and an elemental's;
 // - a humanoid unit's price left out (KC_EACH_UNIT_TYPES_PRICE_AND_WAGE, since B-06b);
-// - a new unit type with nothing else written for it (its base strength, its price and its names are missing);
+// - a unit's factor left out of a ground's row that must list it (KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND, since
+//   B-06ax: the woods' rows list every unit type but the elementals, the open grounds' four flyers fewer);
+// - a new unit type with nothing else written for it (its base strength, its price, its names and its factor on each
+//   land ground are missing);
 // - a unit's names left out (ARMY_UNIT_NAMES with PRIMAL_UNIT_NAMES name every unit type);
-// - a primal unit KC_UNIT_TYPE doesn't list (PRIMAL_ARMY_DEFS_P, ARMY_UNIT_NAMES and KC_CARRIER_BERTHS name unit
-//   types only).
+// - a primal unit KC_UNIT_TYPE doesn't list (PRIMAL_ARMY_DEFS_P, ARMY_UNIT_NAMES, KC_CARRIER_BERTHS and each ground's
+//   row name unit types only).
 // The file as it is compiles with no error. Level 0 (static): the compiler reads the copies and nothing runs; a lower
 // level has nothing to read. The data file imports nothing, so each copy compiles on its own (with tsconfig.json's
 // settings), not the whole repository. About 1.6 s here and up to 5 s on CI's runners, so its limit is a minute.
@@ -39,6 +42,11 @@ const PLANTS: Record<string, string> = {
   "Black Arrows' base strength left out": replacedOnce(DATA, "    'Black Arrows': 4,\n", ''),
   "the Darkness Elemental's base strength left out": replacedOnce(DATA, "    'Darkness Elemental': 11,\n", ''),
   "Black Arrows' price left out": replacedOnce(DATA, "    'Black Arrows': 2,\n", ''),
+  "Men-at-Arms' factor on the plain left out": replacedOnce(
+    DATA,
+    "  plain: {\n    'Men-at-Arms': 1.1,\n",
+    '  plain: {\n',
+  ),
   'a new unit type, Planted Pikemen, with nothing else written for it': replacedOnce(
     DATA,
     "  'Black Arrows': 'ranged',\n",
@@ -98,15 +106,20 @@ test(
       "Black Arrows' base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Black Arrows'],
       "the Darkness Elemental's base strength left out": ['TS1360 in KC_UNIT_BASE_STR: Darkness Elemental'],
       "Black Arrows' price left out": ['TS1360 in KC_EACH_UNIT_TYPES_PRICE_AND_WAGE: Black Arrows'],
+      "Men-at-Arms' factor on the plain left out": ['TS2741 in KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND: Men-at-Arms'],
       'a new unit type, Planted Pikemen, with nothing else written for it': [
         'TS1360 in ARMY_UNIT_NAMES: Planted Pikemen',
         'TS1360 in KC_EACH_UNIT_TYPES_PRICE_AND_WAGE: Planted Pikemen',
         'TS1360 in KC_UNIT_BASE_STR: Planted Pikemen',
+        // the plain's, the desert's, the forest's, the jungle's and the mountain's rows
+        ...Array<string>(5).fill('TS2741 in KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND: Planted Pikemen'),
       ],
       "Black Arrows' names left out": ['TS1360 in ARMY_UNIT_NAMES: Black Arrows'],
       'Great Turtles left out of KC_UNIT_TYPE': [
         'TS2353 in ARMY_UNIT_NAMES: Great Turtles',
         'TS2353 in KC_CARRIER_BERTHS: Great Turtles',
+        // each of the six grounds' rows
+        ...Array<string>(6).fill('TS2353 in KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND: Great Turtles'),
         'TS2353 in PRIMAL_ARMY_DEFS_P: Great Turtles',
       ],
     });

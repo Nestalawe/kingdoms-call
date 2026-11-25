@@ -111,10 +111,10 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   reads by the unit's type, and no resolver names them: the 15 pre-battle strikes (each beast's `spells` in
   `PRIMAL_ARMY_DEFS_P`, and the winged riders' Screech Dive and Acid Spit in `BATTLE_ARMY_SPELLS`, beside it in
   `src/content/kingdoms-call-data.ts`), Island Back (the Great Turtles' two berths, `KC_CARRIER_BERTHS`) and
-  Forest Runners (the Stag Riders' forest and jungle cells of `TERRAIN_MODS`, in `battle/terrain-and-unit-strength.ts`).
+  Forest Runners (the Stag Riders' forest and jungle cells of the ground's table, `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND`, in content).
   Their casting is the spells' registry's (P1-19v). The words test reads each table: a strike's name and damage range (`2–4`, with
   the books' en dash), Island Back's count with what it counts ("two land units"), Forest Runners' factors with their
-  ground ("×1.1 in forest", "no penalty in jungle"; `TERRAIN_MODS` by its syntax tree). A bare "one" or "×1" would be
+  ground ("×1.1 in forest", "no penalty in jungle"). A bare "one" or "×1" would be
   in the books' words already ("where a fleet carries one", "×1.1"), so a table's number is matched with its words.
 - **Where the books write an ability**: every unit ability is also in its unit's blurb
   (`UNIT_ABILITIES`, in the content file beside the rows), in the rulebook's roster row and in the battle report's lines;

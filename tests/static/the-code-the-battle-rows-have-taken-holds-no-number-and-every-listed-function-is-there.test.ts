@@ -38,6 +38,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'botRaceTerrainMult',
     "B-06ah, the kin's factors from the kin rule's content, the gifts' from their rows",
   ],
+  [
+    'src/engine/battle/terrain-and-unit-strength.ts',
+    'TERRAIN_MODS',
+    "B-06ax, the ground's table: content's (KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND), the same object",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');

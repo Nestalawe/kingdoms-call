@@ -80,8 +80,8 @@ Guard", one missing from a terrain block fights at ×1 there. When adding (or re
   names), `KC_UNIT_CLASS` (cavalry / missile / lightFoot / flying …), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`,
   `KC_UNIT_BASE_STR`, `KC_EACH_UNIT_TYPES_PRICE_AND_WAGE` (its price, which is also its wage), and a unit of the four
   races its race in `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` (the engine reads it as `ARMY_RACE_OF_TYPE`).
-- GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `DISC_CLS_SETS`,
-  `TERRAIN_MODS` (`engine/battle/terrain-and-unit-strength.ts`) and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
+- The data file's `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND` (its factor on each ground; the engine reads it as `TERRAIN_MODS`).
+- GM portal: `ARMY_SPEED_MASTER`, `UNIT_SHORT`, `DISC_CLS_SETS` and `armStr`'s magic items' `CAV_I` / `INF_I` / `ARCH_I` sets.
 - `src/content/unit-abilities-their-names-numbers-and-words.ts`: the unit's blurb in `UNIT_ABILITIES` (the player
   portal shows it). Player portal: the race blurbs. Rulebook: the roster, home-roster, move-rate and
   kinds-of-unit tables and the light-foot list. The intro's list of kinds.
@@ -97,7 +97,7 @@ that `PRIMAL_ARMY_DEFS_P`, `ARMY_UNIT_NAMES` or `KC_CARRIER_BERTHS` names but `K
 (TS2353). Add the unit to `KC_UNIT_TYPE` first, and the compiler names the data file's tables that still need it.
 The engine's `ARMY_SPEED_MASTER` (`engine/army-tables.ts`) ends in `satisfies Record<HumanoidUnitType, number>` too
 (a primal unit's cost and speed come from `PRIMAL_ARMY_DEFS_P`; the engine reads the price table as `ARMY_COST_MASTER`). The engine's other tables are keyed by any string (`UNIT_SHORT`,
-…), so a unit missing from one still compiles, and `TERRAIN_MODS` and `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` refuse a misspelt unit but not a missing one. The
+…), so a unit missing from one still compiles, and `THE_RACE_OF_EACH_UNIT_TYPE_OF_THE_FOUR_RACES` refuses a misspelt unit but not a missing one; the ground's table refuses both, but in the sea's row. The
 lists above are still the whole job. `tests/static/every-unit-order-and-effect-the-content-names-is-in-every-table-that-must-list-it.test.ts` finds
 what the compiler can't: a name in a class list, a Druid level, a province's cell, a discovery or the wild pools that is no
 unit type, a unit of the four races with no race in `ARMY_RACE_OF_TYPE`, and a unit the rulebook never names.
@@ -107,7 +107,7 @@ first (`tests/unit/the-engines-tables-give-each-beast-as-the-wild-roster-table-d
 `PRIMAL_ARMY_DEFS_P` (the one place a beast's cost, strength, move, sub-race and pre-battle strike are written:
 the master tables and the player portal's speeds are built from it), `PRIMAL_UNIT_NAMES` (28 names),
 `KC_UNIT_CLASS` (`creature` or `monster`, plus `aerial` for a flyer, `cavalry` for a horse, `primalSea` for a
-swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, `TERRAIN_MODS` rows, and the wild pools
+swimmer, `carrier` for a ferry), `KC_UNIT_TYPE`, `KC_DRUID_LEVELS`; the GM portal's `UNIT_SHORT`, the ground's table's rows, and the wild pools
 (`THE_WILD_CREATURES_BY_TERRAIN` / `THE_WILD_MONSTERS_BY_TERRAIN` in
 `src/content/the-worlds-making-its-name-pools-sea-features-wild-beasts-fleets-skill-pools-and-the-bots-realms.ts`, one
 list each, which the province pass, the creed's neighbour and the wild country all read); the player portal's alignment
