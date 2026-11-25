@@ -1,19 +1,25 @@
 // The battle proof (tools/proof/the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts,
 // npm run proof:battles), its stage list (the-stages-of-the-two-battles-and-the-lines-that-open-them.ts) and its worker
 // (one-staged-battle-fought-on-a-side-in-a-fresh-process.ts):
-// - a draw's stage is read from its call stack: the innermost frame of a stage's own function, or else its battle's
-//   frame between two anchors; a frame outside the side's src/ is passed over;
-// - a stage its battle's file holds by neither anchor nor function, or an anchor on two lines, stops the proof, and
-//   every stage of the list is found in src/ as it is now, in order;
-// - two sides' battles differ on the lines, the world, the dice in all or one stage's dice, or a throw (both throwing
-//   alike is the same), each named by its stream;
-// - the grid: every ground, both battles, the defender led and leaderless, from land and from sea, every set of armies;
-// - two cases fought from this tree twice give the same answer, every draw in a stage;
+// - a draw's stage is the last anchor above the line of the innermost frame whose file holds one there, whichever file
+//   of the side's src/engine/ holds it; a helper's frame, or a line above a file's first anchor, passes to its caller;
+//   so a stage moved into another file, or two stages in one file, keep their names; an anchor of two lines is
+//   matched whatever its indentation;
+// - a stage whose anchor a side holds nowhere, or in two places, stops the proof, and every stage of the list is found
+//   once in src/ as it is now, each battle's in order;
+// - two sides' battles differ on the lines, the world, the turn's log or another field of the turn's context, the dice
+//   in all or one stage's dice, or a throw (both throwing alike is the same), each named by its stream;
+// - the grid: every ground, both battles, the defender led and leaderless, from land, a landing and a raid on the
+//   coast, every set of armies (at sea, those the sea carries);
+// - three cases fought from this tree twice give the same answer, every draw in a stage; a dead commander's host is
+//   leaderless, and a landing raids the coast;
+// - identical on a copy whose two fortune stages moved into a file of their own (the split rows' kind of move);
 // - red on three faults planted in a copy of src/: an extra draw at the end of the battle between heroes' fortune
-//   stage, a beaten side's death chance in one casualty band changed (no draw added), and two stages swapped (the
-//   army spells and the archery of the battle between heroes, the nearest swap the code allows).
+//   stage; the fortune's swing the statistics record rounded to hundredths, not thousandths (only the turn's context
+//   differs, the dice the same); and the army spells and the archery of the battle between heroes swapped (the lines
+//   differ; each draw still counts under the stage whose text holds it).
 // Level 1 (unit): it runs the tool's functions on made-up frames and battles, and the worker on a few cases of this
-// tree and of planted copies. Static can't: it runs code and processes.
+// tree and of copies. Static can't: it runs code and processes.
 import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -37,12 +43,13 @@ import {
   type ACaseFought,
   THE_DICE_STREAMS,
   THE_SETS_OF_ARMIES,
+  theSeaCarriesBothHosts,
 } from '../../tools/proof/one-staged-battle-fought-on-a-side-in-a-fresh-process.ts';
 import {
+  type AStageOfABattle,
   NO_STAGE,
   THE_BATTLES,
   THE_BATTLES_STAGES,
-  THE_TWO_BATTLES,
   theBattlesStagesOfASide,
   theBattlesStagesOfTheSideAt,
   theStageOfADraw,
@@ -52,73 +59,92 @@ const SRC = path.join(ROOT, 'src');
 const WORKER = path.join(ROOT, 'tools/proof/one-staged-battle-fought-on-a-side-in-a-fresh-process.ts');
 
 describe("a draw's stage", () => {
-  const npc = ['export function combatVsNPC(', '  // A', '  x();', '  // B', '  y();'].join('\n');
-  const pvp = ['export function combatVsChar(', '  // C', '  z();'].join('\n');
-  const stages = [
-    { battle: 'against the defenders', stage: 'N0', what: '', anchor: 'export function combatVsNPC(' },
-    { battle: 'against the defenders', stage: 'N1', what: '', anchor: '// A' },
-    { battle: 'against the defenders', stage: 'N2', what: '', anchor: '// B', fn: 'theSecondStage' },
-    { battle: 'between heroes', stage: 'H0', what: '', anchor: 'export function combatVsChar(' },
-    { battle: 'between heroes', stage: 'H1', what: '', anchor: '// C' },
-  ] as const;
-  const texts: Record<string, string> = {
-    [THE_TWO_BATTLES['against the defenders'].file]: npc,
-    [THE_TWO_BATTLES['between heroes'].file]: pvp,
-  };
-  const side = theBattlesStagesOfASide((f) => texts[f] ?? '', stages);
-  const NPC_FILE = path.join(ROOT, THE_TWO_BATTLES['against the defenders'].file);
-  const PVP_FILE = path.join(ROOT, THE_TWO_BATTLES['between heroes'].file);
-  const frame = (functionName: string, scriptName: string, lineNumber: number) => ({
+  const at = (f: string) => path.join(SRC, 'engine/battle', f);
+  const stages: readonly AStageOfABattle[] = [
+    { battle: 'against the defenders', stage: 'N0', what: '', anchors: ['export function combatVsNPC('] },
+    { battle: 'against the defenders', stage: 'N1', what: '', anchors: ['// A'] },
+    { battle: 'against the defenders', stage: 'N2', what: '', anchors: ['// B'] },
+    { battle: 'between heroes', stage: 'H0', what: '', anchors: ['export function combatVsChar('] },
+    { battle: 'between heroes', stage: 'H1', what: '', anchors: ['// C\nz();'] },
+  ];
+  const frame = (functionName: string, file: string, lineNumber: number) => ({
     functionName,
-    scriptName,
+    scriptName: at(file),
     lineNumber,
   });
+  // the base: each battle one function in its file; a helper above it
+  const base = new Map([
+    [
+      at('npc.ts'),
+      ['function helper() {}', 'export function combatVsNPC(', '  // A', '  x();', '  // B', '  y();'].join('\n'),
+    ],
+    [at('pvp.ts'), ['export function combatVsChar(', '  // C', '  z();'].join('\n')],
+    [at('fortune.ts'), 'export function battleFortune() {}'],
+  ]);
+  // the branch: N1 and N2 cut into one function of a file of their own (re-indented), and H1's text into another
+  const branch = new Map([
+    [at('npc.ts'), ['export function combatVsNPC(', '  theCut();'].join('\n')],
+    [
+      at('cut/n1-and-n2.ts'),
+      ['export function theCut() {', '    // A', '    x();', '    // B', '    y();', '}'].join('\n'),
+    ],
+    [at('pvp.ts'), ['export function combatVsChar(', '  theFirst();'].join('\n')],
+    [
+      at('cut/h1.ts'),
+      ['function aHelperAboveIt() {}', 'export function theFirst() {', '    // C', '    z();', '}'].join('\n'),
+    ],
+  ]);
 
-  test("each battle's line falls between two of its own anchors; a helper's frame is passed over", () => {
-    expect(side.byBattle['against the defenders'].starts).toEqual([
-      { stage: 'N0', line: 1 },
+  test('the last anchor above the innermost line that has one; a helper passes the draw to its caller', () => {
+    const side = theBattlesStagesOfASide(base, stages);
+    expect(side.byFile.get(at('npc.ts'))).toEqual([
+      { stage: 'N0', line: 2 },
+      { stage: 'N1', line: 3 },
+      { stage: 'N2', line: 5 },
+    ]);
+    const helper = frame('battleFortune', 'fortune.ts', 1);
+    expect(theStageOfADraw([helper, frame('combatVsNPC', 'npc.ts', 4)], side)).toBe('N1');
+    expect(theStageOfADraw([helper, frame('combatVsNPC', 'npc.ts', 6)], side)).toBe('N2');
+    expect(theStageOfADraw([frame('helper', 'npc.ts', 1), frame('combatVsNPC', 'npc.ts', 2)], side)).toBe('N0');
+    expect(theStageOfADraw([helper, frame('combatVsChar', 'pvp.ts', 3)], side)).toBe('H1');
+    expect(theStageOfADraw([helper], side)).toBe(NO_STAGE);
+  });
+
+  test('a stage moved into another file, and two stages in one file, keep their names', () => {
+    const side = theBattlesStagesOfASide(branch, stages);
+    expect(side.byFile.get(at('cut/n1-and-n2.ts'))).toEqual([
       { stage: 'N1', line: 2 },
       { stage: 'N2', line: 4 },
     ]);
-    const helper = frame('battleFortune', path.join(SRC, 'engine/battle/fortune.ts'), 9);
-    expect(theStageOfADraw([helper, frame('combatVsNPC', NPC_FILE, 3)], side, SRC)).toBe('N1');
-    expect(theStageOfADraw([helper, frame('combatVsNPC', NPC_FILE, 5)], side, SRC)).toBe('N2');
-    expect(theStageOfADraw([helper, frame('combatVsChar', PVP_FILE, 3)], side, SRC)).toBe('H1');
-    expect(theStageOfADraw([frame('combatVsChar', PVP_FILE, 1)], side, SRC)).toBe('H0');
+    const caller = frame('combatVsNPC', 'npc.ts', 2);
+    expect(theStageOfADraw([frame('theCut', 'cut/n1-and-n2.ts', 3), caller], side)).toBe('N1');
+    expect(theStageOfADraw([frame('theCut', 'cut/n1-and-n2.ts', 5), caller], side)).toBe('N2');
+    const fromPvp = frame('combatVsChar', 'pvp.ts', 2);
+    expect(theStageOfADraw([frame('theFirst', 'cut/h1.ts', 4), fromPvp], side)).toBe('H1');
+    expect(theStageOfADraw([frame('aHelperAboveIt', 'cut/h1.ts', 1), fromPvp], side)).toBe('H0');
   });
 
-  test("the innermost frame of a stage's own function wins, outside src/ nothing counts", () => {
-    const own = frame('Module.theSecondStage', path.join(SRC, 'engine/battle/n2.ts'), 40);
-    expect(theStageOfADraw([own, frame('combatVsNPC', NPC_FILE, 3)], side, SRC)).toBe('N2');
-    const elsewhere = frame('theSecondStage', path.join(ROOT, 'tools/a-copy.ts'), 40);
-    expect(theStageOfADraw([elsewhere], side, SRC)).toBe(NO_STAGE);
-    expect(theStageOfADraw([frame('combatVsNPC', PVP_FILE, 3)], side, SRC)).toBe(NO_STAGE);
-  });
-
-  test('a stage found by neither anchor nor function, or an anchor on two lines, stops the proof', () => {
-    const gone = [{ battle: 'between heroes', stage: 'H9', what: '', anchor: '// gone' }] as const;
-    expect(() => theBattlesStagesOfASide((f) => texts[f] ?? '', gone)).toThrow(
-      /H9's anchor "\/\/ gone" isn't in src\/engine\/battle\/battles-between-heroes\.ts/,
+  test('a stage whose anchor a side holds nowhere, or in two places, stops the proof; another text of it is found', () => {
+    const gone = [{ battle: 'between heroes', stage: 'H9', what: '', anchors: ['// gone'] }] as const;
+    expect(() => theBattlesStagesOfASide(base, gone)).toThrow(/H9's anchor "\/\/ gone" is in no file/);
+    const rewritten = [{ ...gone[0], anchors: ['// gone', '// C'] }];
+    expect(theBattlesStagesOfASide(base, rewritten).byFile.get(at('pvp.ts'))).toEqual([{ stage: 'H9', line: 2 }]);
+    const twice = new Map([...base, [at('another.ts'), '// A']]);
+    expect(() => theBattlesStagesOfASide(twice, stages)).toThrow(
+      /N1's anchor is in 2 places \(npc\.ts:3, another\.ts:1\)/,
     );
-    const moved = [{ ...gone[0], fn: 'theNinth' }];
-    expect(theBattlesStagesOfASide((f) => texts[f] ?? '', moved).byFunction).toEqual(new Map([['theNinth', 'H9']]));
-    const twice = (f: string) => `${texts[f] ?? ''}\n// A\n// C`;
-    expect(() => theBattlesStagesOfASide(twice, stages)).toThrow(/N1's anchor "\/\/ A" is on 2 lines/);
   });
 
-  test("every stage of the list is found in this tree's src/, in its order", () => {
+  test("every stage of the list is found once in this tree's src/, each battle's in its order", () => {
     const here = theBattlesStagesOfTheSideAt(SRC);
+    const found = [...here.byFile.values()].flat();
+    expect(found.map((s) => s.stage).sort()).toEqual(THE_BATTLES_STAGES.map((s) => s.stage).sort());
     for (const b of THE_BATTLES) {
       const listed = THE_BATTLES_STAGES.filter((s) => s.battle === b).map((s) => s.stage);
-      const found = new Set([...here.byBattle[b].starts.map((s) => s.stage), ...here.byFunction.values()]);
-      expect(
-        listed.filter((s) => !found.has(s)),
-        `the stages of the battle ${b} not found`,
-      ).toEqual([]);
-      const anchored = here.byBattle[b].starts.map((s) => s.stage);
-      expect(anchored, `the battle ${b}'s anchors in its order`).toEqual(listed.filter((s) => anchored.includes(s)));
+      const [file] = [...here.byFile].find(([, starts]) => starts.some((s) => s.stage === listed[0])) ?? [];
+      const inTheFile = (here.byFile.get(file ?? '') ?? []).map((s) => s.stage).filter((s) => listed.includes(s));
+      expect(inTheFile, `the battle ${b}'s anchors in its order`).toEqual(listed.filter((s) => inTheFile.includes(s)));
     }
-    expect(new Set(THE_BATTLES_STAGES.map((s) => s.stage)).size).toBe(THE_BATTLES_STAGES.length);
   });
 });
 
@@ -128,10 +154,12 @@ describe('two sides compared', () => {
     hash: 'a'.repeat(64),
     draws: 10,
     byStage: { N0: 1, N9: 1, N12: 8 },
+    turnLog: ['{"type":"skill"}'],
+    context: { battleCommanders: 'c'.repeat(64), _tel: 'd'.repeat(64) },
     ...over,
   });
 
-  test('the lines, the world alone, one stage alone with the same total, a throw', () => {
+  test("the lines, the world alone, the turn's log, a field of the context, one stage alone with the same total, a throw", () => {
     expect(whatDiffersInABattle(fought(), fought())).toEqual([]);
     expect(whatDiffersInABattle(fought(), fought({ lines: ['⚔ Battle for Testmoor', 'The defenders hold.'] }))).toEqual(
       ['the lines (2 → 2; line 2: "The attackers win." → "The defenders hold.")'],
@@ -150,6 +178,12 @@ describe('two sides compared', () => {
       'the dice in all (10 → 11)',
       "N4's dice (0 → 1)",
     ]);
+    expect(whatDiffersInABattle(fought(), fought({ turnLog: ['{"type":"skill"}', '{"type":"death"}'] }))).toEqual([
+      'the turn\'s log (1 → 2; entry 2:  → {"type":"death"})',
+    ]);
+    expect(
+      whatDiffersInABattle(fought(), fought({ context: { battleCommanders: 'c'.repeat(64), _tel: 'e'.repeat(64) } })),
+    ).toEqual(["the turn's context (_tel)"]);
     expect(whatDiffersInABattle({ threw: 'x' }, { threw: 'x' })).toEqual([]);
     expect(whatDiffersInABattle(fought(), { threw: 'x' })).toEqual(['the base fought, the branch threw "x"']);
   });
@@ -175,20 +209,27 @@ describe('two sides compared', () => {
 });
 
 describe('the grid', () => {
-  test('every ground, both battles, the defender led and not, from land and sea, every set of armies', () => {
+  test('every ground, both battles, the defender led and not, from land, a landing and a raid, every set of armies', () => {
     const cases = theBattleCases();
-    const sets = Object.keys(THE_SETS_OF_ARMIES);
-    expect(cases).toHaveLength(THE_GROUNDS.length * THE_BATTLES.length * 2 * 2 * sets.length);
+    const sets = Object.entries(THE_SETS_OF_ARMIES);
+    const atSea = sets.filter(([, set]) => theSeaCarriesBothHosts(set)).map(([name]) => name);
+    expect(atSea, 'the sets the sea carries').toEqual(['corsairs', 'whales', 'fleets', 'reavers']);
+    const each = THE_BATTLES.length * THE_DEFENDERS.length * WHERE_THE_ATTACKER_COMES_FROM.length;
+    expect(cases).toHaveLength(each * ((THE_GROUNDS.length - 1) * sets.length + atSea.length));
     expect(new Set(cases.map((c) => c.key)).size).toBe(cases.length);
+    expect(cases.filter((c) => c.terrain === 'sea' && !atSea.includes(c.armies))).toEqual([]);
     expect(THE_GROUNDS).toEqual(['plain', 'forest', 'mountain', 'desert', 'sea']);
     expect([THE_DEFENDERS, WHERE_THE_ATTACKER_COMES_FROM]).toEqual([
       ['led', 'leaderless'],
-      ['land', 'sea'],
+      ['land', 'sea', 'sea, raiding the coast'],
     ]);
-    for (const named of ['fleets', 'flyers', 'beasts under a Druid short', 'skeletal companies', 'Monsters under Evil'])
-      expect(sets, `the set "${named}"`).toContain(named);
-    for (const named of ['missiles', 'Dwarven Guard', 'corsairs', 'whales'])
-      expect(sets, `the set "${named}"`).toContain(named);
+    const named = ['fleets', 'flyers', 'beasts under a Druid short', 'skeletal companies', 'Monsters under Evil'];
+    named.push('missiles', 'Dwarven Guard', 'corsairs', 'whales', 'reavers', 'Tactical 6 and the War Drum');
+    for (const n of named)
+      expect(
+        sets.map(([name]) => name),
+        `the set "${n}"`,
+      ).toContain(n);
     expect(THE_DICE_STREAMS).toHaveLength(8);
     const spread = aSpreadOf(cases, 40);
     expect(spread).toHaveLength(40);
@@ -220,6 +261,8 @@ function aCaseFoughtAt(root: string, c: ABattleCase): Promise<ACaseFought> {
 interface APlant {
   name: string;
   edits: { old: string; new: string }[];
+  /** New files of src/engine/battle/ (by name) the plant adds. */
+  adds?: Record<string, string>;
 }
 const filesUnder = (dir: string): string[] =>
   fs
@@ -232,6 +275,8 @@ function aPlantedCopy(plant: APlant): string {
   for (const dir of ['src', 'tests/lib']) fs.cpSync(path.join(ROOT, dir), path.join(copy, dir), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'package.json'), path.join(copy, 'package.json'));
   fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(copy, 'node_modules'), 'dir');
+  for (const [name, text] of Object.entries(plant.adds ?? {}))
+    fs.writeFileSync(path.join(copy, 'src/engine/battle', name), text);
   const files = filesUnder(path.join(copy, 'src/engine')).filter((f) => f.endsWith('.ts'));
   for (const e of plant.edits) {
     const holders = files.filter((f) => fs.readFileSync(f, 'utf8').split(e.old).length === 2);
@@ -254,17 +299,67 @@ const ARCHERY = [
   '  applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);',
   '  if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);',
 ].join('\n');
+/** The two battles' fortune, each stage's text as it is, moved into a file of their own: one file holding two stages,
+ *  each battle calling its own (an import may stand anywhere at a module's top level). */
+const NPC_FORTUNE = [
+  "  // Roll with variance — each side rolls 0 to 70% of the stronger side's POST-multiplier",
+  '  // strength. Dice basis unified with the PvP path: both scale the random swing off the FULL',
+  '  // effective strength each force brings to the field (all multipliers applied), so luck is',
+  '  // proportional to what the armies are actually worth in this battle. Item 9: fortune of battle',
+  '  // — one swing, applied as a pair of luck multipliers (see battleFortune).',
+];
+const PVP_FORTUNE = [
+  "  // Dice basis unified with the NPC path: each side rolls 0 to 70% of the stronger side's",
+  '  // POST-multiplier strength, so luck scales with what the armies are actually worth in battle.',
+  '  // Item 9: fortune of battle — one swing, applied as a pair of luck multipliers (see',
+  '  // battleFortune).',
+];
+const THE_FORTUNE_MOVED: APlant = {
+  name: 'both fortune stages moved into a file of their own',
+  edits: [
+    {
+      old: [...NPC_FORTUNE, '  const _fort = battleFortune();'].join('\n'),
+      new: '  const _fort = theFortuneOfTheBattleAgainstTheDefenders();',
+    },
+    {
+      old: 'function theLineThisCopyOfTheBattleWrites<',
+      new: "import { theFortuneOfTheBattleAgainstTheDefenders } from './the-fortune-of-both-battles-moved.ts';\nfunction theLineThisCopyOfTheBattleWrites<",
+    },
+    {
+      old: [...PVP_FORTUNE, '  const _fortP = battleFortune();'].join('\n'),
+      new: '  const _fortP = theFortuneOfTheBattleBetweenHeroes();',
+    },
+    {
+      old: 'function theLineTheBattleBetweenHeroesWrites<',
+      new: "import { theFortuneOfTheBattleBetweenHeroes } from './the-fortune-of-both-battles-moved.ts';\nfunction theLineTheBattleBetweenHeroesWrites<",
+    },
+  ],
+  adds: {
+    'the-fortune-of-both-battles-moved.ts': [
+      "import { battleFortune } from './fortune.ts';",
+      'export function theFortuneOfTheBattleAgainstTheDefenders() {',
+      ...NPC_FORTUNE.map((l) => `  ${l}`),
+      '    return battleFortune();',
+      '}',
+      'export function theFortuneOfTheBattleBetweenHeroes() {',
+      ...PVP_FORTUNE.map((l) => `  ${l}`),
+      '    return battleFortune();',
+      '}',
+      '',
+    ].join('\n'),
+  },
+};
 const PLANTS: readonly APlant[] = [
   {
     name: "an extra draw at the end of the battle between heroes' fortune",
     edits: [{ old: '  // ── STAT BLOCK ── 2026-09-23b', new: '  kcRng();\n  // ── STAT BLOCK ── 2026-09-23b' }],
   },
   {
-    name: "a beaten side's death chance in the clear band 0.18 made 0.9",
+    name: "the battle between heroes' swing in its statistics record rounded to hundredths (no draw)",
     edits: [
       {
-        old: "slug: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.18,",
-        new: "slug: 'clear', max: 0.3, winDeath: 0.05, loseDeath: 0.9,",
+        old: 'S: Math.round((_fortP.S || 0) * 1000) / 1000,',
+        new: 'S: Math.round((_fortP.S || 0) * 100) / 100,',
       },
     ],
   },
@@ -278,10 +373,10 @@ const PLANTS: readonly APlant[] = [
   },
 ];
 
-/** The cases the plants are fought on: a battle between heroes with archers on both sides, and two battles against
- *  the defenders. */
+/** The cases the copies are fought on: a battle between heroes with flyers, a Wyvern's strike and archers; two battles against the
+ *  defenders; and a raid on the coast against a dead commander's host, its longships carrying Orc Berserkers. */
 const THE_PLANTS_CASES: readonly ABattleCase[] = [
-  { key: 'h', battle: 'between heroes', terrain: 'plain', defender: 'led', from: 'land', armies: 'missiles' },
+  { key: 'h', battle: 'between heroes', terrain: 'plain', defender: 'led', from: 'land', armies: 'flyers' },
   {
     key: 'n',
     battle: 'against the defenders',
@@ -298,43 +393,83 @@ const THE_PLANTS_CASES: readonly ABattleCase[] = [
     from: 'land',
     armies: 'an outmatched attacker',
   },
+  {
+    key: 'r',
+    battle: 'between heroes',
+    terrain: 'plain',
+    defender: 'leaderless',
+    from: 'sea, raiding the coast',
+    armies: 'reavers',
+  },
 ];
 
 test(
-  'this tree twice gives the same answer, every draw in a stage; red on each of three planted faults',
-  // three copies of src/ made and removed, and fifteen cases fought in processes of their own, side by side
-  timeLimitForTheWork({ everyFileReads: 6, toolRuns: 1 }),
+  'this tree twice gives the same answer, every draw in a stage; the same with the fortune moved; red on each of three plants',
+  // four copies of src/ made and removed, and 24 cases fought in processes of their own, side by side
+  timeLimitForTheWork({ everyFileReads: 8, toolRuns: 1 }),
   async () => {
-    const copies = PLANTS.map(aPlantedCopy);
+    const copies = [THE_FORTUNE_MOVED, ...PLANTS].map(aPlantedCopy);
     try {
       const fight = (root: string) => Promise.all(THE_PLANTS_CASES.map((c) => aCaseFoughtAt(root, c)));
-      const [first, again, ...planted] = await Promise.all([fight(ROOT), fight(ROOT), ...copies.map(fight)]);
+      const [first, again, ...copied] = await Promise.all([fight(ROOT), fight(ROOT), ...copies.map(fight)]);
       const what = (sides: ACaseFought[] | undefined) =>
         THE_PLANTS_CASES.map((_, i) => whatDiffersInACase(first[i] ?? { threw: '' }, sides?.[i] ?? { threw: '' }));
-      expect(what(again), 'this tree against itself').toEqual([[], [], []]);
-      for (const c of first) {
+      const none = THE_PLANTS_CASES.map(() => []);
+      expect(what(again), 'this tree against itself').toEqual(none);
+      const battles = first.flatMap((c) => {
         if ('threw' in c) throw new Error(`a case threw: ${c.threw}`);
-        for (const b of Object.values(c.byStream)) {
+        return Object.values(c.byStream).map((b) => {
           if ('threw' in b) throw new Error(`a battle threw: ${b.threw}`);
-          expect(Object.keys(b.byStage), 'every draw in a stage').not.toContain(NO_STAGE);
-          expect(Object.values(b.byStage).reduce((x, y) => x + y, 0)).toBe(b.draws);
-        }
+          return b;
+        });
+      });
+      for (const b of battles) {
+        expect(Object.keys(b.byStage), 'every draw in a stage').not.toContain(NO_STAGE);
+        expect(Object.values(b.byStage).reduce((x, y) => x + y, 0)).toBe(b.draws);
       }
-      const [extraDraw, band, swapped] = planted.map(what);
+      const raid = first[3];
+      const raidLines =
+        raid && 'byStream' in raid ? Object.values(raid.byStream).flatMap((b) => ('lines' in b ? b.lines : [])) : [];
+      expect(
+        raidLines.some((l) => l.includes("'s leaderless host")),
+        "the dead commander's host is leaderless",
+      ).toBe(true);
+      expect(
+        raidLines.some((l) => l.includes('Raid the Coast')),
+        'the landing raids the coast',
+      ).toBe(true);
+      const [moved, extraDraw, rounded, swapped] = copied.map(what);
+      const movedInto = path.join(
+        fs.realpathSync(copies[0] ?? ''),
+        'src/engine/battle/the-fortune-of-both-battles-moved.ts',
+      );
+      expect(
+        theBattlesStagesOfTheSideAt(path.join(fs.realpathSync(copies[0] ?? ''), 'src')).byFile.get(movedInto),
+        'the copy holds both fortune stages in the new file',
+      ).toEqual([
+        { stage: 'N9', line: 3 },
+        { stage: 'H6', line: 11 },
+      ]);
+      expect(moved, `${THE_FORTUNE_MOVED.name}: every case the same, each draw in its own stage`).toEqual(none);
       expect(
         extraDraw?.[0]?.filter((w) => w.endsWith("H6's dice (1 → 2)")),
         `${PLANTS[0]?.name ?? ''}: H6's dice in every stream`,
       ).toHaveLength(THE_DICE_STREAMS.length);
-      expect(extraDraw?.[1], `${PLANTS[0]?.name ?? ''}: the battle against the defenders untouched`).toEqual([]);
+      expect(extraDraw?.slice(1, 3), `${PLANTS[0]?.name ?? ''}: the battles against the defenders untouched`).toEqual([
+        [],
+        [],
+      ]);
+      const roundedOnly = rounded?.[0] ?? [];
+      expect(roundedOnly.length, `${PLANTS[1]?.name ?? ''}: some stream differs`).toBeGreaterThan(0);
       expect(
-        band?.flat().filter((w) => w.includes('the world (')).length,
-        `${PLANTS[1]?.name ?? ''}: a world after differs`,
-      ).toBeGreaterThan(0);
+        roundedOnly.filter((w) => !w.endsWith("the turn's context (_tel)")),
+        `${PLANTS[1]?.name ?? ''}: only the turn's context, the lines, world and dice the same`,
+      ).toEqual([]);
       expect(
-        swapped?.[0]?.filter((w) => /H3's dice|H4's dice/.test(w)).length,
-        `${PLANTS[2]?.name ?? ''}: H3's and H4's dice move`,
+        swapped?.[0]?.filter((w) => w.includes(': the lines (')).length,
+        `${PLANTS[2]?.name ?? ''}: the lines differ`,
       ).toBeGreaterThan(0);
-      expect(swapped?.slice(1), `${PLANTS[2]?.name ?? ''}: the battle against the defenders untouched`).toEqual([
+      expect(swapped?.slice(1, 3), `${PLANTS[2]?.name ?? ''}: the battles against the defenders untouched`).toEqual([
         [],
         [],
       ]);

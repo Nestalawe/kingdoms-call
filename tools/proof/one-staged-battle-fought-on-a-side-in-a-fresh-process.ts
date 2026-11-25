@@ -41,6 +41,9 @@ export interface ASetOfArmies {
   race?: string;
   /** The attacker's Druid (2 unless given): 0 leaves beasts short of a Druid. */
   druid?: number;
+  /** The attacker's Tactical (2 unless given), and the items he carries (none unless given). */
+  tactical?: number;
+  items?: () => unknown[];
 }
 
 const companiesOf = (type: string, n: number, quality: string, race?: string): ACompany[] =>
@@ -72,6 +75,7 @@ export const THE_SETS_OF_ARMIES: Readonly<Record<string, ASetOfArmies>> = {
     ],
     defenders: () => [
       ...companiesOf('Wyvern Riders', 1, 'Average', 'Orcish'),
+      ...companiesOf('Black Arrows', 1, 'Average', 'Orcish'),
       ...companiesOf('Men-at-Arms', 2, 'Average'),
     ],
   },
@@ -135,27 +139,82 @@ export const THE_SETS_OF_ARMIES: Readonly<Record<string, ASetOfArmies>> = {
     ],
     defenders: () => companiesOf('Dwarf Ironclads', 2, 'Average', 'Dwarven'),
   },
+  reavers: {
+    race: 'Orcish',
+    attackers: () => [
+      ...companiesOf('Orcish Longships', 2, 'Veteran', 'Orcish'),
+      ...companiesOf('Orc Berserkers', 2, 'Average', 'Orcish'),
+    ],
+    defenders: () => [...companiesOf('Galleon Fleet', 1, 'Average'), ...companiesOf('Shieldwall Levies', 2, 'Average')],
+  },
+  'Tactical 6 and the War Drum': {
+    tactical: 6,
+    // the item's row as content gives it, carried and equipped
+    items: () => [
+      {
+        id: 9001,
+        name: 'War Drum of the Ancients',
+        effect: { stat: 'tactical', bonus: 1 },
+        drumTierUp: true,
+        tier: 1,
+        equipped: true,
+      },
+    ],
+    attackers: () => [...companiesOf('Men-at-Arms', 4, 'Average'), ...companiesOf('Gilded Lances', 1, 'Average')],
+    defenders: () => [
+      ...companiesOf('Shieldwall Levies', 3, 'Average'),
+      ...companiesOf('Yeoman Longbows', 1, 'Average'),
+    ],
+  },
   'an outmatched attacker': {
     attackers: () => companiesOf('Shieldwall Levies', 1, 'Green'),
     defenders: () => companiesOf('Men-at-Arms', 4, 'Elite'),
   },
 };
 
+/** The ships and sea beasts the sets field (each `naval` in the unit table): one in a host carries the rest at sea. */
+const THE_SHIPS_AND_SEA_BEASTS = new Set([
+  'Galleon Fleet',
+  'Corsair Fleet',
+  'Elven Galleys',
+  'Dwarf Ironclads',
+  'Orcish Longships',
+  'Whale Cohort',
+  'Shark Shoals',
+]);
+/** Whether a set's hosts can both stand on a sea field: each holds a ship or a sea beast to carry the rest. */
+export const theSeaCarriesBothHosts = (set: ASetOfArmies): boolean =>
+  [set.attackers(), set.defenders()].every((host) => host.some((a) => THE_SHIPS_AND_SEA_BEASTS.has(a.type)));
+
 /** One case of the grid: the battle, the ground, the defender led or not, where the attacker comes from, the armies. */
 export interface ABattleCase {
   key: string;
   battle: ABattle;
   terrain: string;
-  /** Against the defenders: a guard leads them, or none does. Between heroes: the defending hero has the skills, or none. */
+  /** Against the defenders: a guard leads them, or none does (the province's own defenders). Between heroes: a
+   *  defending hero leads his host, or his host fights on leaderless, its commander already dead (`alive` false), as
+   *  after a fall in an earlier phase. */
   defender: 'led' | 'leaderless';
-  /** The ground beside the field the attacker comes from: land, or sea (a landing on a land field). */
-  from: 'land' | 'sea';
+  /** The ground the attacker comes from: land; or the sea, a landing as the Move order makes one (`_seaLandingAt`
+   *  this turn, `_attackedFrom` the sea, Reaver Crews' mark when Orcish Longships carry him); or a landing that raids
+   *  the coast (Naval 9's Raid the Coast this turn). On a sea field, the sea beside it. */
+  from: 'land' | 'sea' | 'sea, raiding the coast';
   armies: string;
 }
 
 /** One battle fought on a side: its lines in words, the world after (with who won) as a hash, its dice. */
 export type ABattleFought =
-  { lines: string[]; hash: string; draws: number; byStage: Record<string, number> } | { threw: string };
+  | {
+      lines: string[];
+      hash: string;
+      draws: number;
+      byStage: Record<string, number>;
+      /** What the battle wrote to the turn's context: the turn's log, line by line (as JSON), and every other field of
+       *  the context but the world and the distance cache, each as a hash. */
+      turnLog: string[];
+      context: Record<string, string>;
+    }
+  | { threw: string };
 /** What one side made of a case: each stream's battle, or what the staging threw. */
 export type ACaseFought = { byStream: Record<string, ABattleFought> } | { threw: string };
 
@@ -200,16 +259,16 @@ interface AProvince {
   [key: string]: unknown;
 }
 interface AWorld {
+  turn: number;
   relations: Record<string, string>;
   characters: AHero[];
   players: { race?: string; alignment?: string; [key: string]: unknown }[];
   world: { provinces: AProvince[] };
 }
 
-/** A commander's skills: Tactical, Archery, Naval and Druid at 2 (Druid as the set says), Elemental 3 and Necromancy 2
- *  (a battle spell to pick), or none of them. */
-const skilled = (druid = 2) => ({ tactical: 2, archery: 2, naval: 2, druid, elemental: 3, necromancy: 2 });
-const unskilled = { tactical: 0, archery: 0, naval: 0, druid: 0, elemental: 0, necromancy: 0 };
+/** A commander's skills: Tactical, Archery, Naval and Druid at 2 (Druid and Tactical as the set says), Elemental 3
+ *  and Necromancy 2 (a battle spell to pick). */
+const skilled = (druid = 2, tactical = 2) => ({ tactical, archery: 2, naval: 2, druid, elemental: 3, necromancy: 2 });
 /** A plan that fights in melee every round, with the duel stance given. */
 const inMelee = (duelStance: string) => ({ tactics: ['ME', 'ME', 'ME', 'ME', 'ME'], duelStance });
 
@@ -220,7 +279,7 @@ function theCaseStaged(stager: TheSidesStager, c: ABattleCase) {
   const G = stager.aWorld(THE_WORLDS_SEED);
   const atSea = c.terrain === 'sea';
   const { field, from } = stager.aFieldAndTheGroundBesideIt(G, atSea ? { atSea } : { terrain: c.terrain });
-  if (c.from === 'sea') from.terrain = 'sea';
+  if (c.from !== 'land') from.terrain = 'sea';
   const realm0 = G.players[0];
   if (!realm0) throw new Error('the world has no realm 0');
   realm0.alignment = set.alignment ?? 'Neutral';
@@ -228,8 +287,18 @@ function theCaseStaged(stager: TheSidesStager, c: ABattleCase) {
   const king = (pi: number) => G.characters.find((h) => h.alive && h.isKing && h.player === pi);
   const A = king(0);
   if (!A) throw new Error('the world has no king in realm 0');
-  Object.assign(A, { armies: set.attackers(), skills: { ...A.skills, ...skilled(set.druid) }, items: [] });
-  if (c.from === 'sea' && !atSea) A['_amphibiousAssault'] = true;
+  Object.assign(A, {
+    armies: set.attackers(),
+    skills: { ...A.skills, ...skilled(set.druid, set.tactical) },
+    items: set.items?.() ?? [],
+  });
+  if (c.from !== 'land' && !atSea) {
+    // the Move order's landing (move-order-marches-voyages-and-battles-on-arrival.ts): the mark of the coast he came
+    // ashore on this turn, and Reaver Crews' when Orcish Longships carry him
+    A['_seaLandingAt'] = { turn: G.turn, prov: field.id };
+    if ((A.armies ?? []).some((a) => a.type === 'Orcish Longships')) A['_amphibiousAssault'] = true;
+    if (c.from === 'sea, raiding the coast') A['_raidCoastTurn'] = G.turn;
+  }
   // a led defender is challenged to a duel (and a hero accepts); a leaderless one isn't, and the attacker keeps his own
   // plan (none: the engine's, from his temper)
   if (c.defender === 'led') A['encounterPlan'] = inMelee('challenge');
@@ -246,14 +315,33 @@ function theCaseStaged(stager: TheSidesStager, c: ABattleCase) {
     if (!D) throw new Error('the world has no king in realm 1');
     G.relations['0-1'] = 'enemy';
     stager.own(G, field, 1);
-    const skills = c.defender === 'led' ? skilled() : unskilled;
-    Object.assign(D, { armies: set.defenders(), skills: { ...D.skills, ...skills }, items: [] });
+    Object.assign(D, { armies: set.defenders(), skills: { ...D.skills, ...skilled() }, items: [] });
     if (c.defender === 'led') D['encounterPlan'] = inMelee('accept');
+    else D.alive = false; // fallen in an earlier phase: his host fights on leaderless
     stager.place(G, D, field);
     defId = D.id;
   }
   stager.attackFrom(G, A, from, field);
   return { G, atkId: A.id, fieldId: field.id, guardId, defId };
+}
+
+/** The context's fields as JSON (in a list of one, so undefined writes too): a Map and a Set by their entries, a
+ *  function left out. */
+const asJson = (x: unknown): string =>
+  JSON.stringify([x], (_, v: unknown) =>
+    v instanceof Map ? { map: [...v] } : v instanceof Set ? { set: [...v] } : typeof v === 'function' ? undefined : v,
+  );
+const hashOf = (text: string) => crypto.createHash('sha256').update(text).digest('hex');
+/** The context's fields a battle may write that the proof doesn't compare: the world (hashed apart) and the distance
+ *  cache (filled as the code asks, not a write of the battle's). */
+const NOT_COMPARED = new Set(['G', '_distCache']);
+/** What the battle left in the turn's context `tc`: the turn's log line by line, and each other field's hash. */
+function whatTheContextHolds(tc: unknown): { turnLog: string[]; context: Record<string, string> } {
+  const fields = Object.entries(tc as Record<string, unknown>);
+  const log = fields.find(([k]) => k === 'turnLog')?.[1];
+  const context: Record<string, string> = {};
+  for (const [k, v] of fields) if (!NOT_COMPARED.has(k) && k !== 'turnLog') context[k] = hashOf(asJson(v));
+  return { turnLog: Array.isArray(log) ? log.map(asJson) : [asJson(log)], context };
 }
 
 /** Stages the case with the copy at `root` (resolved: a draw's frames name the files by their real path), and fights
@@ -297,7 +385,6 @@ export async function theCaseFought(root: string, c: ABattleCase, streams = THE_
           lineNumber: f.lineNumber,
         })),
         stages,
-        src,
       );
       byStage[stage] = (byStage[stage] ?? 0) + 1;
       return dice();
@@ -314,7 +401,7 @@ export async function theCaseFought(root: string, c: ABattleCase, streams = THE_
         .createHash('sha256')
         .update(JSON.stringify({ world: G, won: fought.won }))
         .digest('hex');
-      byStream[String(seed)] = { lines: [...fought.words], hash, draws, byStage };
+      byStream[String(seed)] = { lines: [...fought.words], hash, draws, byStage, ...whatTheContextHolds(tc) };
     } catch (e: unknown) {
       byStream[String(seed)] = { threw: (e instanceof Error ? e.message : String(e)).slice(0, 300) };
     } finally {

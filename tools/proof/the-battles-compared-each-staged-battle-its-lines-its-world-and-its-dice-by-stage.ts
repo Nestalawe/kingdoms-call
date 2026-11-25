@@ -1,15 +1,17 @@
-// npm run proof:battles -- --base <ref>: each staged battle, the base against this branch (B-06aw; tools/proof/README.md,
-// section 8): for each case of the grid and each of its dice streams, the same lines in words, the same world after
-// (the sha256 of its JSON, with who won), and the same dice drawn in all and by stage (the-stages-of-the-two-battles-
-// and-the-lines-that-open-them.ts). Each case is staged and fought in a fresh process
+// npm run proof:battles -- --base <ref>: each staged battle, the base against this branch (B-06aw, B-06aw2;
+// tools/proof/README.md, section 8): for each case of the grid and each of its dice streams, the same lines in words,
+// the same world after (the sha256 of its JSON, with who won), the same writes to the turn's context (its log line by
+// line, each other field's hash), and the same dice drawn in all and by stage (the-stages-of-the-two-battles-and-the-
+// lines-that-open-them.ts, each side's stages found in its own tree). Each case is staged and fought in a fresh process
 // (one-staged-battle-fought-on-a-side-in-a-fresh-process.ts), a pool of them over the cores: once from a copy of the
 // base (git archive of where this branch left it: git merge-base <ref> HEAD; node_modules linked) and once from this
 // working tree, as it is now. Each side stages its battles with its own tests/lib/a-battle-called-directly.ts. It exits
 // 1 when any case differs.
 //
 // The grid: the ground (plain, forest, mountain, desert, sea) × the battle (against a province's defenders, between
-// heroes) × the defender (led, leaderless) × where the attacker comes from (land, sea) × the set of armies
-// (THE_SETS_OF_ARMIES), each fought with 8 dice streams.
+// heroes) × the defender (led, leaderless) × where the attacker comes from (land, a landing, a landing that raids the
+// coast) × the set of armies (THE_SETS_OF_ARMIES; at sea, only the sets whose hosts the sea carries), each fought with
+// 8 dice streams.
 //
 // Options: --base REF (default main), --cases N (N cases spread over the grid, for a quick look; all unless given),
 // --jobs N (cases side by side; default one per core).
@@ -25,6 +27,7 @@ import {
   type ACaseFought,
   THE_DICE_STREAMS,
   THE_SETS_OF_ARMIES,
+  theSeaCarriesBothHosts,
 } from './one-staged-battle-fought-on-a-side-in-a-fresh-process.ts';
 import { THE_BATTLES } from './the-stages-of-the-two-battles-and-the-lines-that-open-them.ts';
 
@@ -33,24 +36,26 @@ const WORKER = path.join(import.meta.dirname, 'one-staged-battle-fought-on-a-sid
 /** The grounds of the grid: the four the matrix's land battles see most, and the sea. */
 export const THE_GROUNDS: readonly string[] = ['plain', 'forest', 'mountain', 'desert', 'sea'];
 export const THE_DEFENDERS: readonly ABattleCase['defender'][] = ['led', 'leaderless'];
-export const WHERE_THE_ATTACKER_COMES_FROM: readonly ABattleCase['from'][] = ['land', 'sea'];
+export const WHERE_THE_ATTACKER_COMES_FROM: readonly ABattleCase['from'][] = ['land', 'sea', 'sea, raiding the coast'];
 
-/** Every case of the grid, in its order. */
+/** Every case of the grid, in its order: on a sea field, only the sets whose hosts the sea carries (each holds a ship
+ *  or a sea beast). */
 export function theBattleCases(): ABattleCase[] {
   const cases: ABattleCase[] = [];
   for (const terrain of THE_GROUNDS)
     for (const battle of THE_BATTLES)
       for (const defender of THE_DEFENDERS)
         for (const from of WHERE_THE_ATTACKER_COMES_FROM)
-          for (const armies of Object.keys(THE_SETS_OF_ARMIES))
-            cases.push({
-              key: `${terrain}, the battle ${battle}, the defender ${defender}, from ${from}, ${armies}`,
-              battle,
-              terrain,
-              defender,
-              from,
-              armies,
-            });
+          for (const [armies, set] of Object.entries(THE_SETS_OF_ARMIES))
+            if (terrain !== 'sea' || theSeaCarriesBothHosts(set))
+              cases.push({
+                key: `${terrain}, the battle ${battle}, the defender ${defender}, from ${from}, ${armies}`,
+                battle,
+                terrain,
+                defender,
+                from,
+                armies,
+              });
   return cases;
 }
 
@@ -79,6 +84,16 @@ export function whatDiffersInABattle(base: ABattleFought, branch: ABattleFought)
     );
   }
   if (base.hash !== branch.hash) what.push(`the world (${base.hash.slice(0, 12)} → ${branch.hash.slice(0, 12)})`);
+  const logAt = base.turnLog.findIndex((l, i) => l !== branch.turnLog[i]);
+  if (logAt >= 0 || base.turnLog.length !== branch.turnLog.length) {
+    const i = logAt >= 0 ? logAt : Math.min(base.turnLog.length, branch.turnLog.length);
+    what.push(
+      `the turn's log (${String(base.turnLog.length)} → ${String(branch.turnLog.length)}; entry ${String(i + 1)}: ${(base.turnLog[i] ?? '').slice(0, 80)} → ${(branch.turnLog[i] ?? '').slice(0, 80)})`,
+    );
+  }
+  const fields = [...new Set([...Object.keys(base.context), ...Object.keys(branch.context)])];
+  const changed = fields.filter((f) => base.context[f] !== branch.context[f]);
+  if (changed.length) what.push(`the turn's context (${changed.join(', ')})`);
   if (base.draws !== branch.draws) what.push(`the dice in all (${String(base.draws)} → ${String(branch.draws)})`);
   for (const stage of [...new Set([...Object.keys(base.byStage), ...Object.keys(branch.byStage)])]) {
     const a = base.byStage[stage] ?? 0;
@@ -165,7 +180,7 @@ export function describeTheBattles(
 ): string[] {
   const total = result.same + result.differ.length;
   const out = [
-    `The battles, ${base} against this branch: ${String(result.same)} of ${String(total)} cases identical (each fought with ${String(THE_DICE_STREAMS.length)} dice streams: its lines in words, the world after, its dice in all and by stage).`,
+    `The battles, ${base} against this branch: ${String(result.same)} of ${String(total)} cases identical (each fought with ${String(THE_DICE_STREAMS.length)} dice streams: its lines in words, the world after, the turn's context, its dice in all and by stage).`,
   ];
   for (const d of result.differ.slice(0, 20))
     out.push(
