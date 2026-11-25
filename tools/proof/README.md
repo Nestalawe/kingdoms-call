@@ -20,7 +20,7 @@ trial on four planted faults (plan P1-16a).
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the tests send a page's client, to compare base with branch | the tests' own time |
 | `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
 | `npm run proof:worlds -- --base <ref>` | Whether each seed makes the same world with the same dice, stage by stage, base against branch | about 8 minutes (2,560 cases; `--seeds 8`, 100 s) |
-| `npm run proof:battles -- --base <ref>` | Whether each staged battle writes the same lines and the same to the turn's context, leaves the same world and draws the same dice, stage by stage, base against branch | about 2 minutes (672 cases, 8 dice streams each; `--cases 40`, 8 s) |
+| `npm run proof:battles -- --base <ref>` | Whether each staged battle writes the same lines and the same to the turn's context, leaves the same world and draws the same dice, stage by stage, base against branch | about 2 minutes (672 cases, 8 dice streams each; `--cases 40`, 7 s) |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
