@@ -91,7 +91,9 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
 ### A battle's or a fight's rule
 
 - **Where:** `src/engine/battle/` (a battle between armies) or `src/engine/personal-combat/` (heroes and guardians
-  fighting). The cast chance and the lairs' grades are in `src/engine/chances-and-lair-grades.ts`.
+  fighting). The cast chance and the lairs' grades are in `src/engine/chances-and-lair-grades.ts`. The battle against
+  a province's defenders (`combatVsNPC`) calls its stages from `src/engine/battle/the-battle-against-the-defenders/`
+  as they move there; the first stage's file lists the state the stages share.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).
