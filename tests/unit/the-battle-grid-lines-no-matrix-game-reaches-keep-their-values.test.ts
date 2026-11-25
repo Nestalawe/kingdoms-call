@@ -4,7 +4,8 @@
 // file as it was, with its ts-nocheck line):
 // - a ground the tables don't hold (the front's width, the width line's words): the matrix's provinces hold only the
 //   six grounds the tables name;
-// - Flanking Tactics' lines when the data file's row has no list of four;
+// - Flanking Tactics' lines when the data file's row has no list of four (its fallback's figures since B-06ay2, which
+//   moved them to content);
 // - a row with no unit on it (the grid's place, the grid print's short code), or one whose type no table names;
 // - the grid print's side label when there is none;
 // - a cell or a grid with a part missing (typeOfX, abilityHas), a facing table that is missing, and a shot at a unit
@@ -84,6 +85,7 @@ describe("Flanking Tactics' lines", () => {
     } finally {
       Reflect.set(DISC_BY_ID, 'sd09', sd09);
     }
+    expect(BATTLE_LINE_MULTS_FLANK, "the fallback's four lines, as the engine had them").toEqual([1, 0.75, 0.5, 0.25]);
   });
 });
 
