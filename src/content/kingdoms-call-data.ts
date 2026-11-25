@@ -15572,7 +15572,8 @@ export const KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE = {
   aFeignedRetreat: 1.25,
 } as const;
 // A spell's cast chance (beside the engine's SPELL_CAST_BASE, the discoveries and the mastery's bonus): this much a
-// level of its school, and at most this much, as percentages.
+// level of its school, and at most this much, as percentages. Both battles read it, and so do a hero's cast chance
+// (castChanceFor) and a province's guard's (guardCastChance), in chances-and-lair-grades.ts.
 export const KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST = {
   theRiseEachSchoolLevelGives: 10,
   theMost: 95,
@@ -15616,7 +15617,7 @@ export const KC_THE_STRENGTH_OF_A_UNIT_THE_TABLES_DONT_HOLD = {
 // A commander's March and Naval at their mastery's third tier (level 8): March raises each bonus the ground gives the
 // units he leads (its part above ×1) this many times and waives the ground's penalties; Naval waives the sea's penalty
 // on the land units he leads, and each berth of his hulls carries this many times what it did. getSeaCapability
-// (units/movement-pools.ts) and seaLiftOfAColumn (the rule the Move notice asks) write the same tier and doubling.
+// (units/movement-pools.ts) reads the tier, and seaLiftOfAColumn (the rule the Move notice asks) the doubling.
 export const KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA = {
   theMasteryTierOfMarchThatDoublesTheGroundsBonuses: 3,
   theTimesMarchsMasteryRaisesEachBonusOfTheGround: 2,
@@ -15632,7 +15633,7 @@ export const KC_THE_WONDERS_FIGURES_IN_A_BATTLE = {
 } as const;
 // A pre-battle duel: the host of a demoralised commander (beaten in the duel, or shamed for refusing it) fights at this
 // many times its strength; a hero who escapes the duel's killing blow is left with his most HP divided by this, rounded
-// (the deaths of heroes, heroes/hero-death-and-leaderless-hosts.ts, write the same).
+// (the deaths of heroes read it too: handleHeroDeath, for a vanished hero and the unkillable wanderer).
 export const KC_A_PRE_BATTLE_DUELS_FIGURES = {
   theStrengthOfADemoralisedCommandersHost: 0.8,
   theNumberHisMostHpIsDividedByForAHeroWhoEscapesTheKillingBlow: 2,
@@ -15652,9 +15653,9 @@ export const KC_THE_CHANCE_A_LONE_DEFENDERS_AMBUSH_LANDS = {
   theNumberItIsDividedByWhenHisQuarryLeadsAnArmy: 2,
 } as const;
 // A column's sea lift as the stranding counts it (seaLiftShortfall), in half-berths: each berth holds this many, a light
-// foot unit takes this many and any other land unit this many (seaLiftOfAColumn counts the same in whole berths, 0.5 and
-// 1); and the shortfall counts each half-berth short for the units only a hull can take as this many of the units
-// beyond what the flyers can lift.
+// foot unit takes this many and any other land unit this many (seaLiftOfAColumn reads them in whole berths, each divided
+// by the half-berths a berth holds); and the shortfall counts each half-berth short for the units only a hull can take
+// as this many of the units beyond what the flyers can lift.
 export const KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM = {
   theHalfBerthsEachBerthHolds: 2,
   theHalfBerthsALightFootUnitTakes: 1,
@@ -15669,6 +15670,14 @@ export const KC_THE_WORTH_A_BEATEN_HOST_SETS_ON_THE_GROUND_IT_FALLS_BACK_TO = {
   itsRealmsOwnGround: 400,
   itsRealmsHomeProvince: 200,
   aGarrisonStandingThere: 100,
+} as const;
+
+// ── A SPELL WORKED FROM AN ITEM (moved here from the cast chance's rule as it was, B-06bz) ────
+// A spell worked from an item (castChanceFor, chances-and-lair-grades.ts) counts as at least this level of its school,
+// and is cast at this chance in percent, whatever the hero's own skill.
+export const KC_A_SPELL_WORKED_FROM_AN_ITEM_ITS_CAST_CHANCE_AND_THE_LEAST_LEVEL_IT_COUNTS_AS = {
+  theLeastLevelOfItsSchoolItCountsAs: 3,
+  itsCastChance: 95,
 } as const;
 
 // ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS, COURAGE AND THE DUELS, THEIR FIGURES (moved here from the engine's personal

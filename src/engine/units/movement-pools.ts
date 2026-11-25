@@ -1,3 +1,4 @@
+import { KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA } from '../../content/kingdoms-call-data.ts';
 import { ARMY_SPEED_R } from '../battle/ladder.ts';
 import { marchSpeedBonus, navalSpeedBonus } from './movement.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
@@ -64,7 +65,12 @@ export function getSeaCapability(
 ): PuttingToSea {
   // The rule is seaLiftOfAColumn's (plan P1-11b4 moved the body there, so the player portal's Move notice asks it
   // too); the leader's naval mastery is worked out here. NAVAL L8: one naval hull carries what once needed two.
-  return seaLiftOfAColumn(armies, !!leadChar && perkTier(leadChar, 'naval') >= 3).answer;
+  return seaLiftOfAColumn(
+    armies,
+    !!leadChar &&
+      perkTier(leadChar, 'naval') >=
+        KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA.theMasteryTierOfNavalThatWaivesTheSeasPenaltyAndDoublesHisBerths,
+  ).answer;
 }
 
 // 2026-10-08 (Toby item 14): can this column step from `from` into `to`? canEnterTerrain judges only the

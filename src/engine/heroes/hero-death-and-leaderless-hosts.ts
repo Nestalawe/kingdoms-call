@@ -1,4 +1,5 @@
 import {
+  KC_A_PRE_BATTLE_DUELS_FIGURES,
   KC_THE_SHARE_OF_HIS_TITLE_MERIT_A_FALLEN_HERO_KEEPS,
   KC_UNIT_CLASS,
 } from '../../content/kingdoms-call-data.ts';
@@ -406,7 +407,16 @@ export function handleHeroDeath(
   if (isVanished(turnContext, deadChar)) {
     if (opts) opts.outcome = 'vanished';
     const theHp = asItsGuardReadsIt(deadChar.hp);
-    if (theHp != null && theHp <= 0) deadChar.hp = Math.max(1, deadChar.maxHp ? Math.round(deadChar.maxHp / 2) : 1);
+    if (theHp != null && theHp <= 0)
+      deadChar.hp = Math.max(
+        1,
+        deadChar.maxHp
+          ? Math.round(
+              deadChar.maxHp /
+                KC_A_PRE_BATTLE_DUELS_FIGURES.theNumberHisMostHpIsDividedByForAHeroWhoEscapesTheKillingBlow,
+            )
+          : 1,
+      );
     deadChar.alive = true;
     deadChar.killedThisTurn = false;
     emit(turnContext, {
@@ -425,7 +435,16 @@ export function handleHeroDeath(
   if (_escapesTheEnd(deadChar)) {
     if (opts) opts.outcome = 'escaped';
     const theHp = asItsGuardReadsIt(deadChar.hp);
-    if (theHp != null && theHp <= 0) deadChar.hp = Math.max(1, deadChar.maxHp ? Math.round(deadChar.maxHp / 2) : 1);
+    if (theHp != null && theHp <= 0)
+      deadChar.hp = Math.max(
+        1,
+        deadChar.maxHp
+          ? Math.round(
+              deadChar.maxHp /
+                KC_A_PRE_BATTLE_DUELS_FIGURES.theNumberHisMostHpIsDividedByForAHeroWhoEscapesTheKillingBlow,
+            )
+          : 1,
+      );
     deadChar.alive = true;
     deadChar.killedThisTurn = false;
     emit(turnContext, {
