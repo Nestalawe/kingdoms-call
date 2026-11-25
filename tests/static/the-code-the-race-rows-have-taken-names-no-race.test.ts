@@ -128,6 +128,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06ae, Raiders' Muster's flag, from the race gifts' runner",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders',
+    "B-06ae, Raiders' Muster's flag, from the race gifts' runner (B-06az: combatVsNPC's set-up, duel and sides, moved)",
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "B-06ae, Raiders' Muster's flag, from the race gifts' runner",

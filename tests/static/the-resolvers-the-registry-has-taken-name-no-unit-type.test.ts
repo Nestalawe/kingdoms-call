@@ -74,6 +74,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/battles-between-heroes.ts', 'combatVsChar', 'P1-19j, the rout'],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', 'P1-19j, the rout'],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders',
+    "P1-19j, the rout (B-06az: combatVsNPC's set-up, duel and sides, moved)",
+  ],
+  [
     'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
     'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
     "P1-19k, the turn's end",

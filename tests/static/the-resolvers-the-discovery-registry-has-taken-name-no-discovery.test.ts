@@ -70,6 +70,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     THE_EVIL_DOCTRINE_IN_A_BATTLE,
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06az: combatVsNPC's set-up, duel and sides, moved)",
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",

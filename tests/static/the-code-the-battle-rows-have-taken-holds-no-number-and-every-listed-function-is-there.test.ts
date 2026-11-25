@@ -213,7 +213,7 @@ test('the battles count reads src/engine/battle/ and two units files, personal c
   expect(
     [
       'src/engine/battle/battles-against-province-defenders.ts',
-      'src/engine/battle/the-battle-against-defenders/s01-the-set-up.ts',
+      'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
       'src/engine/battle/the-facts-a-battles-lines-record.ts',
       'src/engine/units/sea-lift-stranding-and-retreats.ts',
       'src/engine/units/movement-pools.ts',
