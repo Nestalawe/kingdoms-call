@@ -61,8 +61,8 @@ const theNeighboursOf = (hex: number): readonly number[] => {
 };
 
 /** A 6 × 4 world (province id = row × 6 + col; the map wraps east to west), every province plain and held by none
- *  but `held`. Realm 0 (Esterhold, Neutral) holds `held` alone; its king stands there. It has visited no other
- *  province, spied none and watches no hero. */
+ *  but `held`. Realm 0 (Esterhold, Neutral) holds `held` alone; its king stands there. Every other list of the
+ *  realm's is empty. */
 function stagedWorld(held: number): GameState {
   const provinces = HEXES.map((id) => ({
     id,
