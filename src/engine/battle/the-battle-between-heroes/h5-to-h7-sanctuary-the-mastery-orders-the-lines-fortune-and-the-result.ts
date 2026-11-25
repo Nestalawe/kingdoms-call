@@ -10,7 +10,12 @@
 // the set-up rolled (nothing changes it before the deploy here), handed on once the deploy has set it. It writes no
 // other `let` of the table in h0-to-h2-…, and the battle's state gains no field. The battle proof
 // (tools/proof/README.md, section 8) finds H5's, H6's and H7's anchors in this file; nothing above H5's draws a die.
-import { PRIMAL_ARMY_DEFS_P } from '../../../content/kingdoms-call-data.ts';
+import {
+  KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
+  KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE,
+  KC_THE_STRENGTH_A_SANCTUARYS_WARDS_LEAVE_THE_CASTERS_ENEMIES_IN_A_BATTLE,
+  PRIMAL_ARMY_DEFS_P,
+} from '../../../content/kingdoms-call-data.ts';
 import { theFactorConsecratedGroundWeakensAnAttackersHostBy } from '../../rules/the-registry-of-alignment-abilities.ts';
 import {
   battleDeploy,
@@ -82,8 +87,14 @@ export function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBatt
   // WHITE L7 — Sanctuary: enemies of the warding caster fight at −25% in the warded province this
   // turn.
   const _sanctBy = theProvinceAsTheGuardsReadIt?._sanctuaryTurn === G.turn ? prov._sanctuaryBy : null;
-  const atkSanct = _sanctBy != null && atk.player !== _sanctBy ? 0.75 : 1;
-  const defSanct = _sanctBy != null && def.player !== _sanctBy ? 0.75 : 1;
+  const atkSanct =
+    _sanctBy != null && atk.player !== _sanctBy
+      ? KC_THE_STRENGTH_A_SANCTUARYS_WARDS_LEAVE_THE_CASTERS_ENEMIES_IN_A_BATTLE.theFactorOnEachSideNotTheCastersRealm
+      : 1;
+  const defSanct =
+    _sanctBy != null && def.player !== _sanctBy
+      ? KC_THE_STRENGTH_A_SANCTUARYS_WARDS_LEAVE_THE_CASTERS_ENEMIES_IN_A_BATTLE.theFactorOnEachSideNotTheCastersRealm
+      : 1;
   if (atkSanct < 1)
     narrate(narrative, {
       kind: "the sanctuary wards of the province sap a side's attackers",
@@ -100,19 +111,19 @@ export function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBatt
   let atkOrd = 1,
     defOrd = 1;
   if (atk._grandStratagemTurn === G.turn) {
-    atkOrd *= 1.2;
+    atkOrd *= KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE.aGrandStratagem;
     narrate(narrative, { kind: 'the attacker unfolds a grand stratagem', atkName: atkSide });
   }
   if (def._grandStratagemTurn === G.turn) {
-    defOrd *= 1.2;
+    defOrd *= KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE.aGrandStratagem;
     narrate(narrative, { kind: 'the defender unfolds a grand stratagem', defName: defSide });
   }
   if (def._feignedRetreatTurn === G.turn) {
-    defOrd *= 1.25;
+    defOrd *= KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE.aFeignedRetreat;
     narrate(narrative, { kind: "the defender's feigned retreat springs shut", defName: defSide });
   }
   if (raidLandedHere(turnContext, atk, prov)) {
-    atkOrd *= 1.25;
+    atkOrd *= KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE.aRaidOnTheCoastStormingAshore;
     narrate(narrative, { kind: 'the attacker storms ashore in a raid on the coast', atkName: atkSide });
   } // 2026-09-23e: only a coast attacked from the sea
   // DIVINE — Consecrate: Undead and Evil hosts sicken on hallowed ground (−15% attacking a
@@ -172,7 +183,10 @@ export function sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBatt
   // commanders then shift their lines, one swap per Tactical level (a defender without a realm, a
   // wanderer on its own ground, knows it fully). finishSide's grids are replaced by the deploy's.
   const _explA = (prov.exploredBy?.[String(atk.player)] ?? 0) || 0,
-    _explD = def.player == null ? 100 : (prov.exploredBy?.[String(def.player)] ?? 0) || 0;
+    _explD =
+      def.player == null
+        ? KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.theShareOfTheirGroundAProvincesOwnDefendersHaveExplored
+        : (prov.exploredBy?.[String(def.player)] ?? 0) || 0;
   const _dep = battleDeploy(atkRows, defRows, {
     terrain: pvpTerrain,
     roll: pvpFront,

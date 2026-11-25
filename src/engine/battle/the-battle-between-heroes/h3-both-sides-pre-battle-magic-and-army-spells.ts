@@ -6,6 +6,7 @@
 // narrative), and declares no value a later stage reads, so it writes no `let` of the table in h0-to-h2-… and the
 // battle's state gains no field. The battle proof (tools/proof/README.md, section 8) finds H3's anchor in this file;
 // nothing above it draws a die.
+import { KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST } from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import { theStrongestUnitsAHerosItemsLetHisFireballStrike } from '../../rules/the-registry-of-magic-item-effects.ts';
 import {
@@ -76,9 +77,9 @@ export function bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(
     const spellLvl = effStat(turnContext, caster, school);
     if (spellLvl < 1) return;
     const castChance = Math.min(
-      95,
+      KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theMost,
       SPELL_CAST_BASE +
-        spellLvl * 10 +
+        spellLvl * KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theRiseEachSchoolLevelGives +
         magicL8CastBonus(caster) +
         whatARealmsDiscoveriesAddToACastersChance(caster.player === null ? undefined : G.players[caster.player], {
           theSchool: school,

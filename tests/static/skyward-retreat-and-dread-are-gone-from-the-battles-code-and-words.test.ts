@@ -71,11 +71,10 @@ describe('Skyward Retreat is gone: Eagle Riders no longer climb out of a trap', 
   test('each of the three no-escape rolls draws its die first, for every trapped unit', () => {
     const rolls = THE_BATTLE_FILES.flatMap(theNoEscapeRollsOf);
     expect(rolls).toHaveLength(3);
-    // the chance is the 15% written in the battle between heroes, and its row's in the battle against a province's
-    // defenders (B-06be: KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS)
+    // the chance is its row's in both battles (B-06be, B-06bk: KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS)
     for (const roll of rolls)
       expect(roll).toMatch(
-        /^if\(kcRng\(\)<(?:0\.15|KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS\.theChanceEachUnitWithNowhereToRetreatIsCutDown)\)\{/,
+        /^if\(kcRng\(\)<KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS\.theChanceEachUnitWithNowhereToRetreatIsCutDown\)\{/,
       );
   });
 });

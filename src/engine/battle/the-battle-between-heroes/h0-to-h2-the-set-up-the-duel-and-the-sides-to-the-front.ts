@@ -38,7 +38,13 @@
 // the stages (the-command-stages-builders-…, B-06bh), made in H4 once Illusory Terrain's two flags, which `_pvpCmd`
 // reads, are set. H4 calls `_pvpRow` and hands it on; H9 calls it. They draw no die.
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
-import { KC_UNIT_CLASS } from '../../../content/kingdoms-call-data.ts';
+import {
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
+  KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE,
+  KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
+  KC_UNIT_CLASS,
+} from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import { theDefendersFortificationsAfterTheCommandersItems } from '../../rules/the-registry-of-magic-item-effects.ts';
 import {
@@ -133,8 +139,11 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
         _drum = activeItems(_ld).some((it: AnItemAsTheWarDrumReadsIt | null | undefined) => it?.drumTierUp);
       _ld.armies.forEach((a: ArmyInABattle | null | undefined) => {
         if (a) {
-          a._tacUp = _tac && kcRng() < 0.1;
-          a._drumUp = _drum && kcRng() < 0.2;
+          a._tacUp =
+            _tac &&
+            kcRng() < KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE.underACommanderWithTactical6;
+          a._drumUp =
+            _drum && kcRng() < KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE.underTheWarDrum;
         }
       });
     }
@@ -204,16 +213,28 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
     ? 0
     : effStat(turnContext, atk, 'tactical') +
       theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, atk, title));
-  if (atk._curseHalveStat === 'tactical') atkTact = Math.floor(atkTact / 2); // LEVEL 6+ PERK — Grand Tactician
+  if (atk._curseHalveStat === 'tactical')
+    atkTact = Math.floor(atkTact / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
   let defTact = def._tacticalNegated
     ? 0
     : effStat(turnContext, def, 'tactical') +
       theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, def, title));
-  if (def._curseHalveStat === 'tactical') defTact = Math.floor(defTact / 2); // LEVEL 6+ PERK — Grand Tactician
+  if (def._curseHalveStat === 'tactical')
+    defTact = Math.floor(defTact / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
   // Tactical bonus only applies in land provinces
   const isPvPSea = prov.terrain === 'sea';
-  let atkTactBonus = isPvPSea ? 1 : Math.min(2.0, 1 + atkTact * 0.2); // cap ×2.0
-  let defTactBonus = isPvPSea ? 1 : Math.min(2.0, 1 + defTact * 0.2); // cap ×2.0
+  let atkTactBonus = isPvPSea
+    ? 1
+    : Math.min(
+        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
+        1 + atkTact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
+      ); // cap ×2.0
+  let defTactBonus = isPvPSea
+    ? 1
+    : Math.min(
+        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
+        1 + defTact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
+      ); // cap ×2.0
 
   // frame how the battle began for PvP too — who advanced, into whose province.
   const _pvpOwnersRealm = prov.owner != null ? G.players[prov.owner] : undefined;
@@ -419,14 +440,18 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
   const _founderP = homeFounderOf(G, prov.id);
   const isHome = _founderP != null && def.player === _founderP && prov.owner === _founderP;
   const atkHomeP = _founderP != null && atk.player === _founderP && prov.owner !== _founderP;
-  const atkHomeBonusP = atkHomeP ? 1.5 : 1;
+  const atkHomeBonusP = atkHomeP
+    ? KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.aRealmRetakingItsHomeProvince
+    : 1;
   if (atkHomeP)
     narrate(narrative, {
       kind: "the attacker fights to win back his realm's capital",
       atkName: atkSide,
       provName: prov.name,
     });
-  let defBonus = 1.25 * (isHome ? 1.2 : 1);
+  let defBonus =
+    KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.theDefendersEdge *
+    (isHome ? KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE.aRealmHoldingItsHomeProvince : 1);
   // sd03 Siege Engines (and the race `siege` discoveries rd09 / ro10) — previously sd03 was
   // honoured only in battles against neutral guards, never in realm-vs-realm battles.
   {
@@ -593,11 +618,15 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
   const defArch = defCmdrSlain ? 0 : effStat(turnContext, def, 'archery');
   const defArchBonus = 1 + defArch * ARCHERY_MISSILE_PCT;
   let atkNav = atkCmdrSlain ? 0 : effStat(turnContext, atk, 'naval');
-  if (atk._curseHalveStat === 'naval') atkNav = Math.floor(atkNav / 2);
-  const atkNavBonus = 1 + atkNav * 0.2;
+  if (atk._curseHalveStat === 'naval')
+    atkNav = Math.floor(atkNav / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const atkNavBonus =
+    1 + atkNav * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   let defNav = defCmdrSlain ? 0 : effStat(turnContext, def, 'naval');
-  if (def._curseHalveStat === 'naval') defNav = Math.floor(defNav / 2);
-  const defNavBonus = 1 + defNav * 0.2;
+  if (def._curseHalveStat === 'naval')
+    defNav = Math.floor(defNav / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const defNavBonus =
+    1 + defNav * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   const atkAlign2 = theAlignmentARealmReadsAs(theAttackersRealm?.alignment);
   const defAlign2 = theAlignmentARealmReadsAs(theDefendersRealm?.alignment);
 

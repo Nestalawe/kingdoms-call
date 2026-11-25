@@ -173,6 +173,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     '_MISSILE_CAP_FRAC',
     "B-06ba (the review's 2), the volleys' cap: content's row, the one MISSILE_CAP_FRACTION reads (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE)",
   ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts',
+    'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes',
+    "B-06bk, the battle between heroes' numbers: content's rows (Sanctuary's, the mastery orders', the defenders' ground explored)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');

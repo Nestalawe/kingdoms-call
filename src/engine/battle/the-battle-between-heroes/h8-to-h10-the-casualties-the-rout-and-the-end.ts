@@ -9,6 +9,13 @@
 // lets it declares (`_stayLo`, `_stayWi`, `_heldField`, `defFriendlyAdj`, `atkFriendlyAdj`) are written and read here
 // alone, so the state gains no field. The battle proof (tools/proof/README.md, section 8) finds H8's, H9's and H10's
 // anchors in this file; nothing above H8's draws a die.
+import {
+  KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS,
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_THE_CHANCE_A_BEATEN_HOST_STILL_THE_STRONGER_STAYS_ON_THE_FIELD,
+  KC_THE_FACTOR_EACH_QUALITY_TIER_GIVES_A_UNITS_CHANCE_TO_GAIN_EXPERIENCE_IN_A_BATTLE,
+} from '../../../content/kingdoms-call-data.ts';
+import { ALIGNMENT_ABILITIES } from '../../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { kcRng } from '../../rng.ts';
 import { aForceHoldsTheSeaLanes } from '../../rules/the-registry-of-content-effects.ts';
 import {
@@ -140,7 +147,9 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   const margRatioPvP = margin / totalStrPvP;
   const _bandPvP = battleMarginBand(margRatioPvP);
   if (!_bandPvP) throw new TypeError("Cannot read properties of undefined (reading 'max')"); // (the bands' table is never empty)
-  const isDecisivePvP = _bandPvP.max > 0.3;
+  const isDecisivePvP =
+    _bandPvP.max >
+    KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theMarginABattleIsDecisiveAbove;
   const severity = _bandPvP.slug;
   narrate(narrative, {
     kind: "the battle's outcome and its margin",
@@ -161,7 +170,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   }
 
   const tiers = QUALITY_TIERS.slice();
-  const xpMultPvP = [1.5, 1.0, 0.6, 0.3, 0];
+  const xpMultPvP: readonly number[] =
+    KC_THE_FACTOR_EACH_QUALITY_TIER_GIVES_A_UNITS_CHANCE_TO_GAIN_EXPERIENCE_IN_A_BATTLE;
   function xpChancePvP(base: number, quality: string) {
     return base * (xpMultPvP[tiers.indexOf(quality)] ?? 0);
   }
@@ -175,8 +185,16 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   const loseDemotePvP = _bandPvP.loseDemote;
   const atkSteelMultOf = (a: ArmyInABattle) => discDeathMult(turnContext, atk.player, a, 'atk'); // per-unit deathRed discoveries (sd05 now one of them)
   const defSteelMultOf = (a: ArmyInABattle) => discDeathMult(turnContext, def.player, a, 'def');
-  const atkTacMult = perkTier(atk, 'tactical') >= 3 ? 0.5 : 1; // TACTICAL L8: on a LOSS, atk's units half as likely to die/disband
-  const defTacMult = perkTier(def, 'tactical') >= 3 ? 0.5 : 1;
+  const atkTacMult =
+    perkTier(atk, 'tactical') >=
+    KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMasteryTierOfTacticalThatSparesALosingHost
+      ? KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theShareOfALosingUnitsChancesToDieOrDisbandItLeaves
+      : 1; // TACTICAL L8: on a LOSS, atk's units half as likely to die/disband
+  const defTacMult =
+    perkTier(def, 'tactical') >=
+    KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMasteryTierOfTacticalThatSparesALosingHost
+      ? KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theShareOfALosingUnitsChancesToDieOrDisbandItLeaves
+      : 1;
   // ── UNIT ABILITIES: casualty & retreat ── The rule registry's three stages of the rout (plan P1-19j): the pursuits
   // each force would make of the beaten as the winner ("fate: the winner runs the beaten down"), whether it holds the
   // sea lanes ("a force holds the sea lanes") and whether it holds when beaten ("the beaten force holds",
@@ -299,7 +317,10 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11.)
   const _noEscapeRoll = (force: readonly ArmyInABattle[] | null | undefined, name: string, narr: NarrativeLine[]) => {
     (force ?? []).forEach((a) => {
-      if (kcRng() < 0.15) {
+      if (
+        kcRng() <
+        KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theChanceEachUnitWithNowhereToRetreatIsCutDown
+      ) {
         a._died = true;
         narrate(narr, {
           kind: "a unit's fate in the battle",
@@ -338,13 +359,13 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   const _atkFanDet = Math.max(
     1,
     atkSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
-    atkEvilMonster ? 1.25 : 1,
+    atkEvilMonster ? ALIGNMENT_ABILITIES['savage-fury'].theNumbers.theStrengthOfTheHost.value : 1,
     atkSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
   );
   const _defFanDet = Math.max(
     1,
     defSkelFanatic ? UNDEAD_SKEL_KING_FAN : 1,
-    defEvilMonster ? 1.25 : 1,
+    defEvilMonster ? ALIGNMENT_ABILITIES['savage-fury'].theNumbers.theStrengthOfTheHost.value : 1,
     defSkelHero ? UNDEAD_SKEL_HERO_FAN : 1,
   );
   const _survStr = (isAtk: boolean) => {
@@ -402,7 +423,10 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
     _stayLo = lo;
     _stayWi = wi;
     if (lo <= wi) return false; // not actually the stronger host — retreat
-    const stayChance = Math.max(0, Math.min(0.75, lo / Math.max(1, wi) - 1));
+    const stayChance = Math.max(
+      0,
+      Math.min(KC_THE_CHANCE_A_BEATEN_HOST_STILL_THE_STRONGER_STAYS_ON_THE_FIELD.theMost, lo / Math.max(1, wi) - 1),
+    );
     return kcRng() < stayChance;
   };
   let _heldField = false; // the beaten side stays on the field (stay / trapped / Deathless / Shield Fort)
@@ -835,7 +859,14 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   ); // batch item 11: the beaten general who lives learns a little
   if (_rollDruidGainPvP) {
     trySkillGain(turnContext, won ? atk : def, 'druid', SKILLGAIN_STD, narrative);
-    trySkillGain(turnContext, won ? def : atk, 'druid', SKILLGAIN_STD, narrative, 0.5);
+    trySkillGain(
+      turnContext,
+      won ? def : atk,
+      'druid',
+      SKILLGAIN_STD,
+      narrative,
+      KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS.theShareOfTheChanceTheBeatenSidesCommanderLearnsDruidAt,
+    );
   } // Druid: winner full, loser half
   // onlooker summary (see combatVsNPC). atkName/defName reflect a slain commander's leaderless
   // host.
