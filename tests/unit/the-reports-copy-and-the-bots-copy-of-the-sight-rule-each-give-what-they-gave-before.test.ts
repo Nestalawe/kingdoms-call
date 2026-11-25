@@ -43,8 +43,9 @@ const army = () => ({ type: 'Shieldwall Levies', quality: 'Average', race: 'Huma
  *  and is named owner of 7 and of 2; its king stands in 7, a hero of its own in 12 (on the west edge), another fell
  *  long ago in 22; it once visited 3; it remembers 10; its record of spied provinces holds 14 this turn and 21 last
  *  turn; it watches realm 1's hero in 19 by Clairvoyance. Realm 1 (Varn) holds 3 and 21; its heroes stand in 19, 13,
- *  15, 20 and 23; a wanderer stands in 17. The two realms are at war; five graves lie in 7, 12, 14, 21 and 0. */
-function stagedWorld(): GameState {
+ *  15, 20 and 23; a wanderer stands in 17. The two realms are at war; five graves lie in 7, 12, 14, 21 and 0. With
+ *  `aHeroNextToItsLand`, a third hero of realm 0 stands in 8, next to 7 and 2. */
+function stagedWorld({ aHeroNextToItsLand = false } = {}): GameState {
   const provinces = Array.from({ length: COLS * ROWS }, (_, id) => ({
     id,
     row: Math.floor(id / COLS),
@@ -81,6 +82,7 @@ function stagedWorld(): GameState {
     hero(6, 1, 20),
     hero(7, 1, 23),
     hero(8, null, 17, { alignment: 'Good' }),
+    ...(aHeroNextToItsLand ? [hero(9, 0, 8)] : []),
   ];
   for (const c of characters) at(c.location).characters.push(c.id);
   Object.assign(at(7), { owner: 0, garrisonArmies: [army()] });
@@ -271,5 +273,17 @@ describe("the bots' copy of the sight rule", () => {
       G.characters.filter((c) => botSeesChar(G, 0, c)).map((c) => c.id),
       "the heroes the bots' copy accounts for",
     ).toEqual([0, 1, 3, 5, 6]);
+  });
+
+  test("the bots' copy gives the sets it gave before with a hero of its own next to its land", () => {
+    const I = botIntel(stagedWorld({ aHeroNextToItsLand: true }), 0);
+    expect(
+      { occupied: [...I.occupied], sight: [...I.sight], border: [...I.border] },
+      "the bots' sets, a hero next to its land",
+    ).toEqual({
+      occupied: [7, 12, 8],
+      sight: [2, 7, 12, 8, 21],
+      border: [1, 3, 6, 13, 14, 11, 17, 23, 18, 9, 15, 16, 20, 22],
+    });
   });
 });
