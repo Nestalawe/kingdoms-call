@@ -67,7 +67,6 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/battle/battles-against-province-defenders.ts',
     'combatVsNPC',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front",
-    THE_EVIL_DOCTRINE_IN_A_BATTLE,
   ],
   [
     'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',
@@ -88,6 +87,12 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/battle/the-battle-against-the-defenders/n8-to-n10-the-grounds-notes-the-lines-fortune-and-the-result.ts',
     'theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bc: combatVsNPC's lines, fortune and result, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bd: combatVsNPC's casualties, rout and end, moved)",
+    THE_EVIL_DOCTRINE_IN_A_BATTLE,
   ],
   [
     'src/engine/battle/battles-between-heroes.ts',

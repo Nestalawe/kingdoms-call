@@ -9,24 +9,32 @@
 // were; two of them could match no code written today (a known defect fixed by P1-14l, "Eleven checks in the old battle,
 // order and report scripts can't fail"): `a.type==='Eagle Riders'){narr.push` (a battle's lines are facts written with narrate now,
 // not strings pushed) and `_wyvAtk?0.15` / `_wyvDef?0.15` (one spelling of one variable). So each rule gets checks
-// that see it however it came back: the two battle files' code names neither unit (a unit's rule is the registry's,
-// src/engine/rules/), every no-escape roll draws its die first for every trapped unit, and each side's fanaticism
+// that see it however it came back: the battle files' code (the two battles', and the stages combatVsNPC calls) names
+// neither unit (a unit's rule is the registry's, src/engine/rules/), every no-escape roll draws its die first for every trapped unit, and each side's fanaticism
 // reads its own force once and the other side's not at all.
 // Level 0 (static): the code read by its syntax tree; nothing runs. A retired rule has no function a unit test could
 // call, and a battle that happened to trap no Eagles, or field no Wyverns, would pass whatever the code said.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Skyward Retreat and Dread are gone (R-095): no line on the GM page says Eagle Riders "climb away over the encircling
-// lines" or troops fight "with one eye on the sky"; neither battle file's code names the Eagle Riders or the Wyvern
+// lines" or troops fight "with one eye on the sky"; no battle file's code (combatVsNPC's stages' too) names the Eagle Riders or the Wyvern
 // Riders; each of the three no-escape rolls draws its die first, for every trapped unit; each side's fanaticism chance
 // reads its own force once and the other side's never; the old scripts' two code patterns are absent too
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test } from 'vitest';
-import { compactCode, compactOf, compactPage, statementsBetween } from '../lib/source.ts';
+import { SRC, compactCode, compactOf, compactPage, statementsBetween } from '../lib/source.ts';
 
 const GM_PAGE = 'kingdoms-call-gm-portal.html';
 const AGAINST_A_PROVINCE = 'engine/battle/battles-against-province-defenders.ts';
+/** The stages combatVsNPC calls, each a file of its own beside it (B-06az to B-06bd), and the check they share. */
+const ITS_STAGES_FOLDER = 'engine/battle/the-battle-against-the-defenders';
+const ITS_STAGES = fs
+  .readdirSync(path.join(SRC, ITS_STAGES_FOLDER))
+  .sort()
+  .map((f) => `${ITS_STAGES_FOLDER}/${f}`);
 const BETWEEN_HEROES = 'engine/battle/battles-between-heroes.ts';
-const THE_BATTLE_FILES = [AGAINST_A_PROVINCE, BETWEEN_HEROES];
+const THE_BATTLE_FILES = [AGAINST_A_PROVINCE, ...ITS_STAGES, BETWEEN_HEROES];
 
 /** The GM page's code (its scripts and the prose its lines are written in), in one canonical layout. */
 const page = compactPage(GM_PAGE);

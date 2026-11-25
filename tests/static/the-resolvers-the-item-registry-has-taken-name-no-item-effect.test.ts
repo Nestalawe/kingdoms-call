@@ -71,6 +71,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders',
     "P1-19n, the battles' items (B-06bc: combatVsNPC's lines, fortune and result, moved)",
   ],
+  [
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
+    "P1-19n, the battles' items (B-06bd: combatVsNPC's casualties, rout and end, moved)",
+  ],
   ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten', "P1-19n, the battles' items"],
   [
     'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
@@ -210,7 +215,7 @@ const WORDS_FOR_SOMETHING_ELSE: Readonly<Record<string, readonly string[]>> = {
   armStr: ['terror'],
   // an Evil realm's doctrine after a decisive win, `(encounterPlan.evilMode || 'terror') === 'terror'`, not the use
   combatVsChar: ['terror', 'terror'],
-  combatVsNPC: ['terror', 'terror'],
+  theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders: ['terror', 'terror'], // combatVsNPC's, moved (B-06bd)
   // the kind of source the portals colour a skill's bonus by ({ kind: 'aura' }), not the Crown of Command's key
   skillBonusBreakdown: ['aura'],
   // the armour slot the Mithril suit is worn in (`return 'armour'`), not an armour's stat

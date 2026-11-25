@@ -6,35 +6,36 @@
 // and its bonus, and the battle's state below. The battle proof (tools/proof/README.md, section 8) finds N3's and N4's
 // anchors in this file; nothing above N3's draws a die.
 //
-// The battle's state, shared by its stages as B-06az to B-06bd move them into this folder, one stage a row, each called
-// from combatVsNPC where its text stood. It is the type below and lives here, the file of the first stage that writes
-// it (Breach's sunk hulls, N4), made where its lets were declared and handed back to combatVsNPC, which hands it on.
+// The battle's state, shared by its five stages (B-06az to B-06bd), each a file of this folder, called in order from
+// combatVsNPC. It is the type below and lives here, the file of the first stage that writes it (Breach's sunk hulls,
+// N4), made where its lets were declared and handed back to combatVsNPC, which hands it on.
 //
 // What a stage hands on: each value a later stage reads and no stage writes after it is handed on as a value, returned
-// by its stage and taken by combatVsNPC under the same name (the set-up's thirty or so, its lets tactSkill, defBonus and
-// navalSkillAtk among them, each final there; defTactLvl, final once N3 is done). The lets a later stage still writes
-// are the battle's state: each is a field of the state object, read and written through it, never copied by value into
-// a stage. The giant's lets, by the battle proof's stages (tools/proof/README.md, section 8), who writes each and who
-// reads it:
+// by its stage in one object, which combatVsNPC hands on as it is and each later stage takes under the same names (the
+// set-up's thirty or so, its lets tactSkill, defBonus and navalSkillAtk among them, each final there; defTactLvl, final
+// once N3 is done; the lines' thirteen, each final in N10). The lets a later stage still writes are the battle's state:
+// each is a field of the state object, read and written through it, never copied by value into a stage. The giant's
+// lets, by stage file (each file named by the stages it holds: n0-to-n2-…, n3-to-n4-…, n5-to-n7-…, n8-to-n10-…,
+// n11-to-n13-…) and by the battle proof's stages (tools/proof/README.md, section 8), who writes each and who reads it:
 //
 // | let | written in | read in |
 // |---|---|---|
-// | `_npcDuel` | N1 | N1 (the duel's result, local to the set-up) |
-// | `tactSkill` | N2 | N2, N8 |
-// | `defBonus` | N2 | N8 |
-// | `navalSkillAtk` | N2 | N2, N8 |
-// | `defTactLvl` | N3 | N3, N8 |
-// | `_npcSunkLost` (the state) | N4 (Breach and Swamp's hulls) | N13 (the defenders' losses handed back) |
-// | `_npcDefWinLost` (the state) | N4 (declared), N12 (a winning garrison's dead) | N13 |
-// | `lineWidth` | N8 (twice: the front, the scout) | N8, N10 |
-// | `navalSkillDef` | N8 | N8 |
-// | `defLineWidth` | N8 (twice) | N8, N10 |
-// | `atkOrdN` | N8 | N8 |
+// | `_npcDuel` | n0-to-n2 (N1) | n0-to-n2 (N1: the duel's result, local to the set-up) |
+// | `tactSkill` | n0-to-n2 (N2) | n0-to-n2 (N2), n8-to-n10 (N8) |
+// | `defBonus` | n0-to-n2 (N2) | n8-to-n10 (N8) |
+// | `navalSkillAtk` | n0-to-n2 (N2) | n0-to-n2 (N2), n8-to-n10 (N8) |
+// | `defTactLvl` | n3-to-n4 (N3) | n3-to-n4 (N3), n8-to-n10 (N8) |
+// | `_npcSunkLost` (the state) | n3-to-n4 (N4: Breach and Swamp's hulls) | n11-to-n13 (N13: the defenders' losses handed back) |
+// | `_npcDefWinLost` (the state) | n3-to-n4 (N4, declared), n11-to-n13 (N12: a winning garrison's dead) | n11-to-n13 (N13) |
+// | `lineWidth` | n8-to-n10 (N8, twice: the front, the scout) | n8-to-n10 (N8, N10) |
+// | `navalSkillDef` | n8-to-n10 (N8) | n8-to-n10 (N8) |
+// | `defLineWidth` | n8-to-n10 (N8, twice) | n8-to-n10 (N8, N10) |
+// | `atkOrdN` | n8-to-n10 (N8) | n8-to-n10 (N8) |
 //
-// So the state the stages share by reference: the defenders' two loss counts (from N4 to the end); the two fronts'
-// widths (N8 to N10) are written and read in one stage (n8-to-n10-…, B-06bc), so they stay its own lets; the rest are
-// values once their stage is done. The objects the stages share (the narrative, the two hosts, the province, the
-// commanders) are handed on as they are, never copied.
+// So the state the stages share by reference: the defenders' two loss counts (from n3-to-n4 to the end); the two
+// fronts' widths are written and read in one stage file (n8-to-n10-…, B-06bc), so they stay its own lets; the rest are
+// values once their stage is done; n5-to-n7 and n11-to-n13 declare none a later stage reads. The objects the stages
+// share (the narrative, the two hosts, the province, the commanders) are handed on as they are, never copied.
 import { kcRng } from '../../rng.ts';
 import { theHullAUnitSinksBeforeTheBattle } from '../../rules/the-registry-of-content-effects.ts';
 import {

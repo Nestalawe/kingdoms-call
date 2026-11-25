@@ -133,6 +133,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19bb1, a realm of none: the attacker's alignment, from the content's constant (B-06bc: combatVsNPC's lines, fortune and result, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
+    "P1-19bb1, a realm of none: the attacker's alignment, from the content's constant (B-06bd: combatVsNPC's casualties, rout and end, moved)",
+  ],
+  [
     'src/engine/battle/battles-between-heroes.ts',
     'combatVsChar',
     "P1-19bb1, a realm of none: each side's alignment, from the content's constant",

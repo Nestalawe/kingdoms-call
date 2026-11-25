@@ -49,14 +49,14 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06ay1, the margin bands: content's (KC_A_BATTLES_MARGIN_BANDS_AND_EACH_SIDES_CHANCES_IN_THEM), the same list",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts',
     'CARRYON_DEATH_STEP',
-    "B-06ay1, the carry-on's step: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS)",
+    "B-06ay1, the carry-on's step: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS) (B-06bd: moved from combatVsNPC's file)",
   ],
   [
-    'src/engine/battle/battles-against-province-defenders.ts',
+    'src/engine/battle/the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts',
     'CARRYON_DEATH_CAP',
-    "B-06ay1, the carry-on's cap: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS)",
+    "B-06ay1, the carry-on's cap: content's row (KC_A_CARRIED_ON_BATTLES_DEATH_CHANCES_BY_ITS_ROUNDS) (B-06bd: moved from combatVsNPC's file)",
   ],
   [
     'src/engine/battle/lines.ts',

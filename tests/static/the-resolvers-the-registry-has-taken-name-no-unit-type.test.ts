@@ -94,6 +94,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19j, the rout (B-06bc: combatVsNPC's lines, fortune and result, moved)",
   ],
   [
+    'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
+    'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
+    "P1-19j, the rout (B-06bd: combatVsNPC's casualties, rout and end, moved)",
+  ],
+  [
     'src/engine/turn/early-winter-charms-fade-taxes-wages-raiders-muster-and-garrison-drill.ts',
     'earlyWinterCharmsFadeTaxesWagesRaidersMusterAndGarrisonDrill',
     "P1-19k, the turn's end",

@@ -114,7 +114,10 @@ import { bloodHarvest, ironThroneRaise } from './blood-harvest-and-iron-throne.t
 import { raidLandedHere } from './raid-the-coast-and-landing-parties.ts';
 import { ensureEncounterPlan } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { magicItemsLine } from '../personal-combat/duels-and-character-encounters.ts';
-import { CARRYON_DEATH_CAP, CARRYON_DEATH_STEP } from './battles-against-province-defenders.ts';
+import {
+  CARRYON_DEATH_CAP,
+  CARRYON_DEATH_STEP,
+} from './the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts';
 import {
   SEA_AIRBORNE_FLYER_PENALTY,
   SEA_AIRBORNE_LAND_PENALTY,
