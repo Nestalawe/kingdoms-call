@@ -95,8 +95,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   a province's defenders (`combatVsNPC`) calls its five stages in order, each a file of
   `src/engine/battle/the-battle-against-the-defenders/`; the file of the attacker's pre-battle phases types the state
   the stages share and lists each let's writer and readers by stage file. The battle between heroes (`combatVsChar`)
-  calls its set-up, duel and sides from `src/engine/battle/the-battle-between-heroes/` (its later stages still stand
-  in it); that file types the battle's own state and lists each let's writer and readers by stage. A battle's figures (the margin bands, the
+  calls its set-up, duel and sides, then both sides' magic and army spells, each a file of
+  `src/engine/battle/the-battle-between-heroes/` (its later stages still stand in it); the set-up's file types the battle's own state and lists each let's writer and readers by stage. A battle's figures (the margin bands, the
   battle grid's tables, the defender's edge and home, Tactical and Naval, the experience factors, ...) are rows of
   `src/content/kingdoms-call-data.ts`, each named for its rule, not for one battle: a figure changes in its row.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
