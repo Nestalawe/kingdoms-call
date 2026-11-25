@@ -14,12 +14,11 @@ const THE_TAX = ALIGNMENT_ABILITIES['consecrated-ground-tax'].theNumbers.theShar
 const THE_UNHOLY_ATTACKERS = ALIGNMENT_ABILITIES['consecrated-ground-weakens-an-unholy-attacker'];
 const THE_SHARE_WEAKER = THE_UNHOLY_ATTACKERS.theNumbers.theShareWeaker.value;
 
-/** Consecrated ground's rules in the Consecrate order's hint: "+50% tax, defenders twice as likely to fight
- *  fanatically, Undead/Evil invaders −15%". */
+/** Consecrated ground's rules in the Consecrate order's hint: its tax, its defenders' zeal, and the creeds of the
+ *  invaders it weakens and by how much. */
 export const CONSECRATED_GROUND_IN_THE_CONSECRATE_HINT = `+${String(THE_TAX)}% tax, defenders twice as likely to fight fanatically, ${THE_UNHOLY_ATTACKERS.theCreedsItActsAgainst.join('/')} invaders −${String(THE_SHARE_WEAKER)}%`;
 
-/** Consecrated ground's rules in a consecrated province's tooltip on the map: "+50% tax, defenders twice as fanatical,
- *  Undead/Evil attackers −15%". */
+/** Consecrated ground's rules in a consecrated province's tooltip on the map, in fewer words than the hint's. */
 export const CONSECRATED_GROUND_IN_THE_MAPS_TOOLTIP = `+${String(THE_TAX)}% tax, defenders twice as fanatical, ${THE_UNHOLY_ATTACKERS.theCreedsItActsAgainst.join('/')} attackers −${String(THE_SHARE_WEAKER)}%`;
 
 const WAR_WITHOUT_WARNING = [
@@ -46,5 +45,5 @@ export const THE_KINGS_FIRST_WHITE_MAGIC = `(${A_DIVINE_KINGS_WHITE.alignment} r
 /** The join form's note on Necromancy: the realms whose king starts with it. */
 export const THE_KINGS_FIRST_NECROMANCY = `(${AN_UNDEAD_KINGS_NECROMANCY.alignment} realms start with Necromancy ${String(AN_UNDEAD_KINGS_NECROMANCY.theNumbers.theLevelsMore.value)})`;
 
-/** The creeds only one realm a game may hold, as the join form's warnings name them: "Divine or Undead". */
+/** The creeds only one realm a game may hold, as the join form's warnings name them: the one "or" the other. */
 export const THE_CREEDS_ONLY_ONE_REALM_A_GAME_MAY_HOLD_IN_WORDS = theAlignmentsOnlyOneRealmAGameMayHold().join(' or ');
