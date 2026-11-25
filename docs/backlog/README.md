@@ -74,7 +74,8 @@ hero orders and diplomacy (B-06al to B-06av), and the battles and personal comba
 [the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out).
 The rest is Run 3e, a stack of its own:
 - the player portal's alignment rules (B-06br to B-06bu, below), then the bots' battle estimate (B-06bq, below);
-- then sight's rows, their own part, last, every row Maintainer ✓, which join with sight's row 0, as does their count.
+- then sight's rows (B-06bv to B-06by, below), their own part, last, every row Maintainer ✓, with their count
+  (`sightNumbersInEngine`).
 
 Each row is one `refactor-only` pull request that keeps the game exactly the same, unless it says otherwise. The
 tranche's plan, its counts and its risks: #711; Run 3's: #756.
@@ -86,6 +87,10 @@ tranche's plan, its counts and its risks: #711; Run 3's: #756.
 | B-06bt | The words that restate an alignment rule read the rows' names and numbers, byte for byte the same: Bless's and Consecrate's hints, the consecrated tooltip, the Diplomacy card's war text, the kings' first skills, one Divine and one Undead realm a game (the join form; the page's options and note held to the rows), the battle lines' words and the realm works' words; a static test anchors each place, and each number written as a word, to its rows. No count (prose). `refactor-only` | Maintainers: a change to an alignment's row changes the words players read about it | Phase 1 | Medium | – | 🟦 | #808 | After B-06bs |
 | B-06bu | The map's relation names (Neutral, Allied, Enemy, in `_ownerLineP`: their names a row of their own beside the states) and the Diplomacy card's badge and buttons read content's relation rows (`THE_STATES_TWO_REALMS_STAND_IN`, `THE_TREAT_DECLARATION`), the words the same; the relation's 'Neutral', the one word the portal's count of creed checks listed as not an alignment, leaves its list (the count stays 5). `refactor-only` | Maintainers: how two realms stand is named in one place, the portal too | Phase 1 | Small | – | 🟦 | #809 | After B-06bt; the portal rows' last, before B-06bq |
 | B-06bq | The bots' battle estimate asks the battle's rows (and a Druid shortfall's new row, which the rule reads too); its tuning is the bots' first version's weights of a new kind, `battleStrength`, the bot's figures kept (KD-477). Maintainer ✓: the bots' estimate of a defence. `refactor-only` | Maintainers: the bots follow a change to a battle without new bot code | Phase 1 | Medium | ✓ | 🟦 | #810 | After B-06bu; T7's battles' last, it reads every battle row |
+| B-06bv | The turn's sight rules read their numbers from content's rows (`armySizeBand`, `spotEnemyInOwnedProvince`, `applySpySuccess`); sight's count falls to 0. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: a change to a sight rule's number is a change to its row | Phase 1 | Small | ✓ | ⬜ | – | Sight's rows' first, after B-06bq |
+| B-06bw | The turn's report and the bots read one sight rule, each copy kept exactly as it is, with a unit test on a staged world that holds each copy. May split in two: the report's copy; the bots' copy. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: the report's and the bots' sight rule in one place, held by a test | Phase 1 | Medium | ✓ | ⬜ | – | After B-06bv |
+| B-06bx | The views' last creed checks ask the alignments' rows; the portal's count of creed checks falls to 0. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: as B-06br | Phase 1 | Small | ✓ | ⬜ | – | After B-06bw |
+| B-06by | The views' own hex neighbours ask the engine's neighbour rule, a test first that both agree on the map's wrapped edge. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: one rule for which provinces are neighbours, the views too | Phase 1 | Small | ✓ | ⬜ | – | After B-06bx; sight's rows' last |
 
 ## Not yet assessed
 

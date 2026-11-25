@@ -1284,15 +1284,16 @@ export function battleNumbersInTheBots(codeFiles: readonly (readonly [file: stri
   return n;
 }
 
-// The sight rules' numbers written in the engine's code (Run 3e, sight's part: #SIGHT_PR, the toolchain's guide):
-// economyNumbersByFunction's rule (each number other than 0, not a literal type nor an element's index) in the sight
-// functions THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE lists: the size band of an army, whether a realm knows a hero, the
-// provinces next to a spy's, a lurker's contest in a realm's own province, and what a spy's success brings. Which
-// provinces and heroes a realm knows are sets, not numbers, so no count sees them. A listed function a row empties
-// stays in the list at 0, so a number moved out of the list can't hide:
+// The sight rules' numbers written in the engine's code (Run 3e, sight's part, from #SIGHT_PR; the ratchet's paragraph
+// of docs/architecture/the-toolchain-the-checks-and-the-harness.md): economyNumbersByFunction's rule (each number
+// other than 0, not a literal type nor an element's index) in the sight functions THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE
+// lists (armySizeBand, enemyCharVisibleTo and nearSpiedProvIds in src/engine/sight/, spotEnemyInOwnedProvince and
+// applySpySuccess), counted by syntax tree. The sight rules' sets of provinces and heroes are not numbers, so no count
+// reads them. The family's rows move the numbers into content's rows, so the count only falls. A listed function a
+// row empties stays in the list at 0, so a number moved out of the list can't hide:
 // tests/static/the-code-the-sight-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts holds
-// the functions the rows have taken, and those at 0 from the start, at 0 each, and fails on a listed file or function
-// the code no longer has.
+// the functions the rows have taken (and the two that hold none from the start) at 0 each, and fails on a listed file
+// or function the code no longer has.
 /** The engine's sight functions sightNumbersInEngine counts. */
 export const THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE: readonly (readonly [file: string, fn: string])[] = [
   ['src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts', 'armySizeBand'],
