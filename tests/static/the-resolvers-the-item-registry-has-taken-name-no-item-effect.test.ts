@@ -54,6 +54,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
     "P1-19n, the battles' items (B-06bf: combatVsChar's set-up, duel and sides, moved)",
   ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bg: combatVsChar's magic and army spells, moved)",
+  ],
   ['src/engine/battle/battles-between-heroes.ts', 'applyPreBattleArchery', "P1-19n, the battles' items"],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', "P1-19n, the battles' items"],
   [

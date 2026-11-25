@@ -30,7 +30,11 @@ import {
 
 /** Each function the spells' registry has taken, by its file, from the row that took it. */
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
-  ['src/engine/battle/battles-between-heroes.ts', 'applyPreBattleMagic', 'P1-19u, battle magic between heroes'],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'applyPreBattleMagic',
+    'P1-19u, battle magic between heroes',
+  ],
   [
     'src/engine/battle/battles-against-province-defenders.ts',
     'combatVsNPC',
@@ -60,6 +64,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/battle/the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts',
     'theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders',
     "P1-19u, battle magic against the guards and the guards' commander's (B-06bd: combatVsNPC's casualties, rout and end, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "P1-19u, battle magic between heroes (B-06bg: combatVsChar's magic and army spells, moved)",
   ],
   [
     'src/engine/magic/pre-battle-spell-choice.ts',

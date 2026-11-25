@@ -148,6 +148,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19bb1, a realm of none: each side's alignment, from the content's constant (B-06bf: combatVsChar's set-up, duel and sides, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "P1-19bb1, a realm of none: each side's alignment, from the content's constant (B-06bg: combatVsChar's magic and army spells, moved)",
+  ],
+  [
     'src/engine/battle/best-commander.ts',
     'commandScore',
     "P1-19bb1, a realm of none: the candidate's realm's alignment, from the content's constant",

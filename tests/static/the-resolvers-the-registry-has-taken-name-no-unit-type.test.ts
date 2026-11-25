@@ -77,6 +77,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
     "P1-19j, the rout (B-06bf: combatVsChar's set-up, duel and sides, moved)",
   ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "P1-19j, the rout (B-06bg: combatVsChar's magic and army spells, moved)",
+  ],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', 'P1-19j, the rout'],
   [
     'src/engine/battle/the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts',

@@ -59,7 +59,7 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
   ['src/engine/discoveries.ts', 'discUnitMult', "P1-19aa, a realm's discoveries strengthen a unit"],
   ['src/engine/discoveries.ts', 'dragonTamed', "P1-19aa, a realm's discoveries let a beast follow without its Druid"],
   [
-    'src/engine/battle/battles-between-heroes.ts',
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
     'applyPreBattleMagic',
     "P1-19aa, a realm's discoveries add to a caster's chance",
   ],
@@ -104,6 +104,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     'src/engine/battle/the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts',
     'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bf: combatVsChar's set-up, duel and sides, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
+    'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bg: combatVsChar's magic and army spells, moved)",
   ],
   [
     'src/engine/battle/best-commander.ts',
