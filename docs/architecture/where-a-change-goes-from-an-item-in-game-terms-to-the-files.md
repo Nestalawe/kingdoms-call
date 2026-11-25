@@ -110,7 +110,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   `magic/pre-battle-spell-choice.ts`, `chances-and-lair-grades.ts`, and the sea lift's `seaLiftOfAColumn`. A
   personal combat's figures are rows there too (to-hit, a blow, a hit taken, courage, the duels, speed, the plans, a
   flight, an arrow, a guardian's hidden traits and powers, a lair's fight, a spell's cast, the initiative and mercy);
-  the numbers left in `personal-combat/`'s code are structure (a percentage, the figures a power's words name).
+  the numbers left in `personal-combat/`'s code are structure (a percentage, the figures a power's words name, the
+  last range's index, a loop's guard, the count of a plea's lines).
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).
