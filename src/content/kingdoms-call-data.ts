@@ -15745,6 +15745,114 @@ export const KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES = {
   theChanceAFelledHeroIsSlain: 0.3,
 } as const;
 
+// ── PERSONAL COMBAT: SPEED, ENCOUNTER PLANS, MELEE, FLIGHT, ARCHERY AND TACTICS, THEIR FIGURES (moved here from the
+// engine's personal combat files as they were, B-06bo) ────
+// A fighter's speed (pcSpeedOf), which decides who acts first and who can change range: a guardian's by his pace (a pace
+// the table holds not, or none, is read as this); a hero's this, more his bonus; no fighter at all, this. The flight and
+// the advance read a slow and a fast guardian by the pace table.
+export const KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT = {
+  theSpeedOfAGuardianByHisPace: { fast: 3, medium: 2, slow: 1 },
+  theSpeedOfAGuardianOfAPaceTheTableHoldsNot: 2,
+  theSpeedOfAHeroBeforeHisBonus: 2,
+  theSpeedOfNoFighter: 2,
+} as const;
+// A change of range (pcMoveCheck, pcAdvanceOrStrike): breaking away from melee is this chance against a foe of his own
+// speed, this much more (or less) a step of speed he has over the foe, more his temper's; advancing to firing range is
+// this chance at the speed named, this much more a step above it (a slow guardian advances as if of the speed named
+// here); a hero adds this much a level of his raw Archery to both (Fieldcraft, ARCHERY_FIELDCRAFT_PCT); the chance is
+// at least this and at most this. A fast guardian closes this many ranges in one advance.
+export const KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT = {
+  theChanceToBreakAwayFromAFoeOfHisOwnSpeed: 40,
+  theChangeEachStepOfSpeedGivesABreakAway: 15,
+  theChanceToAdvanceAtTheSpeedNamed: 60,
+  theRiseEachStepOfSpeedGivesAnAdvance: 15,
+  theSpeedAnAdvanceIsMeasuredFrom: 2,
+  theSpeedASlowGuardianAdvancesAt: 2,
+  theRiseEachLevelOfHisRawArcheryGives: 5,
+  theLeast: 10,
+  theMost: 90,
+  theRangesAFastGuardianClosesInOneAdvance: 2,
+} as const;
+// The plan of a hero with no orders (autoEncounterPlan): this many actions; a wary hero fills his blows to this many,
+// keeping the last for his flight; an archer at least as good with the bow as the blade opens with this many shots (a
+// Berserk with one).
+export const KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS = {
+  theActionsOfHisPlan: 6,
+  theActionsAWaryHeroFillsWithBlows: 5,
+  theShotsAnArcherOpensWith: 3,
+} as const;
+// A fighter's hit points as he enters a fight (pcCharCombatant, pcMonsterCombatant): the unkillable wanderer at none
+// enters with his most HP divided by this, rounded; a guardian whose record holds no HP (or 0) has this many.
+export const KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT = {
+  theNumberAWandererAtNoneHasHisMostHpDividedBy: 2,
+  theMostHpOfAGuardianWhoseRecordHoldsNone: 10,
+} as const;
+// The mastery perks of Melee and Archery (pcCharCombatant, pcTryCounter, pcFireOne): Counterattack from Melee's mastery
+// tier named (Melee 8), a riposte at this chance when a foe misses; an arrow that hits impales at this chance (Archery
+// 6), bleeding the least to the most here each round; Trueshot from Archery's mastery tier named (Archery 8), at this
+// chance the foe's next attack fails.
+export const KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT = {
+  theMasteryTierOfMeleeThatCounterattacks: 3,
+  theChanceACounterattackStrikes: 0.5,
+  theChanceAnArrowImpales: 0.5,
+  theLeastAnImpalingArrowBleedsARound: 1,
+  theMostAnImpalingArrowBleedsARound: 3,
+  theMasteryTierOfArcheryThatTakesTrueshot: 3,
+  theChanceATrueshotFindsAVitalPoint: 0.5,
+} as const;
+// A guardian's plan (pcMonsterPlan, pcAct): this many actions before his heals; he looses a shot when his plan reaches
+// a multiple of this (if he has a ranged attack) and uses his next power at a multiple of this; a power whose record
+// names no chance is used at this chance in percent.
+export const KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT = {
+  theActionsOfHisPlanBeforeHisHeals: 12,
+  theActionsBetweenHisShots: 4,
+  theActionsBetweenHisPowers: 3,
+  theChanceInPercentHeUsesAPowerWhoseRecordNamesNone: 50,
+} as const;
+// A flight (pcFleeChance): this chance in percent, this much more against a slow guardian and this much less against a
+// fast one (a hero foe is read at the speed named here), more his temper's and his bonus, less his penalty; a Charm
+// multiplies it by this; at least this and at most this.
+export const KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT = {
+  theChanceBeforeTheFoesPace: 30,
+  theRiseAgainstASlowGuardian: 25,
+  theFallAgainstAFastGuardian: 15,
+  theSpeedAHeroFoeIsReadAt: 2,
+  theTimesACharmRaisesIt: 2,
+  theLeast: 5,
+  theMost: 95,
+} as const;
+// A guardian's rebirth (pcFreeStrike): felled, he rises once with this share of his most HP, rounded, and at least this.
+export const KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT = {
+  theShareOfHisMostHpHeRisesWith: 0.4,
+  theLeastHpHeRisesWith: 5,
+} as const;
+// An arrow (pcVolleySize, pcArrowDamage): from this much Archery a Fire action looses this many arrows
+// (ARCHERY_VOLLEY_AT); an arrow rolls from the least to the most here, and adds the archer's Archery divided by this,
+// rounded up.
+export const KC_AN_ARROW_IN_PERSONAL_COMBAT = {
+  theArcheryAVolleyNeeds: 3,
+  theArrowsInAVolley: 2,
+  theLeastAnArrowsBaseRoll: 1,
+  theMostAnArrowsBaseRoll: 3,
+  theNumberHisArcheryIsDividedByForWhatItAdds: 2,
+} as const;
+// A parley, a theft and a scouting (pcAct; the parley and the scouting are switched off, PARLEY_ENABLED and
+// SCOUT_ENABLED): a parley's chance in percent is this, more this a level of Druid; a theft's is this, more this a
+// level of Thief (counted to the level named), more his bonus, less the guardian's grade's penalty, at least this and
+// at most this; a scouting lifts this much of his to-hit penalty a level of Explorer, and names at most this many of
+// the guardian's powers.
+export const KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT = {
+  theChanceOfAParleyWithNoDruid: 20,
+  theRiseEachLevelOfDruidGivesAParley: 15,
+  theChanceOfATheftBeforeHisSkill: 50,
+  theRiseEachLevelOfThiefGivesATheft: 10,
+  theLevelsOfThiefCounted: 5,
+  theLeastChanceOfATheft: 5,
+  theMostChanceOfATheft: 95,
+  thePenaltyEachLevelOfExplorerLiftsAScouting: 5,
+  theMostPowersAScoutingNames: 4,
+} as const;
+
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;

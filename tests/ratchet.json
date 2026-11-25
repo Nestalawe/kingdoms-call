@@ -26,7 +26,7 @@
     "orderKindChecksInTheBots": 0,
     "relationChecksInEngine": 0,
     "battleNumbersInEngine": 44,
-    "personalCombatNumbersInEngine": 132,
+    "personalCombatNumbersInEngine": 70,
     "battleNumbersInTheBots": 20,
     "alignmentChecksOutsideTheEngine": 22,
     "eslintSuppressions": 216,

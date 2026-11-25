@@ -14,6 +14,11 @@ import { guardianPassives } from '../heroes/skills-and-hp.ts';
 import { PARLEY_ENABLED, SCOUT_ENABLED, pcDeferEffect, pcLearnWeakness, pcPushDot } from './helpers.ts';
 import { pcFoeCat } from '../titles/perks.ts';
 import { d100, rng } from '../dice-and-army-names.ts';
+import {
+  KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT,
+  KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT,
+  KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
+} from '../../content/kingdoms-call-data.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
 import { SKILLGAIN_COMMON, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
@@ -114,7 +119,7 @@ function aDamageRangeAsTheDiceReadIt(range: readonly number[] | null | undefined
 // the last.
 export function pcTemperFallback(actor: AFighterInAPersonalCombat, foe: AFighterInAPersonalCombat) {
   const tt = temperOf(actor.temper);
-  const ratio = actor.hp / (actor.maxHp || 20);
+  const ratio = actor.hp / (actor.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE);
   // once a character's chosen encounter actions are spent, they DEFAULT to attacking with melee
   // every round. Above their temper's flee threshold they simply fight on…
   if (ratio >= tt.fleeAt) return 'ME';
@@ -152,13 +157,13 @@ export function pcCombatItemWanted(
   state: unknown,
 ) {
   const e: ACombatItemsEffect = it.effect ?? {};
-  const ratio = actor.hp / (actor.maxHp || 20);
+  const ratio = actor.hp / (actor.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE);
   const st: Partial<AFightersStatus> = actor.status ?? {};
   // whether the item's moment has come: its use's effect in the items' registry (plan P1-19s)
   return aFighterReachesForTheCombatItemNow(e, {
     theShareOfHisHpLeft: ratio,
     hisHp: actor.hp,
-    hisMaximumHp: actor.maxHp || 20,
+    hisMaximumHp: actor.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
     hisStatus: st,
     heNeverFlees: actor.neverFlees,
     theFoesKind: () => pcFoeCat(foe),
@@ -225,7 +230,10 @@ export function pcUseCombatItem(
   }
   switch (does.does) {
     case 'restores his hit points': {
-      const h = Math.min(does.theHp, Math.max(0, (actor.maxHp || 20) - actor.hp));
+      const h = Math.min(
+        does.theHp,
+        Math.max(0, (actor.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) - actor.hp),
+      );
       actor.hp += h;
       narrate(narrative, { kind: 'a fighter recovers hit points', who, healed: h, actorHp: dispFloor(actor.hp) });
       break;
@@ -241,7 +249,10 @@ export function pcUseCombatItem(
       break;
     }
     case 'restores his hit points and lifts every lingering harm': {
-      const h = Math.min(does.theHp, Math.max(0, (actor.maxHp || 20) - actor.hp));
+      const h = Math.min(
+        does.theHp,
+        Math.max(0, (actor.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) - actor.hp),
+      );
       actor.hp += h;
       st.dot = [];
       st.hitPenalty = 0;
@@ -306,7 +317,10 @@ export function pcUseCombatItem(
     case 'drains the foe': {
       const d = rng(...aDamageRangeAsTheDiceReadIt(does.theDamageRange));
       const dealt = hurt(d);
-      const h = Math.min(dealt, Math.max(0, (actor.maxHp || 20) - actor.hp));
+      const h = Math.min(
+        dealt,
+        Math.max(0, (actor.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) - actor.hp),
+      );
       actor.hp += h;
       if (h > 0)
         narrate(narrative, {
@@ -594,7 +608,8 @@ export function pcAct(
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
       }
-      const cc = sp.castChance ?? 50;
+      const cc =
+        sp.castChance ?? KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT.theChanceInPercentHeUsesAPowerWhoseRecordNamesNone;
       if (kcRng() * 100 >= cc) {
         narrate(narrative, {
           kind: 'a fighter gathers itself for a power but the moment slips away',
@@ -660,7 +675,11 @@ export function pcAct(
       }
       if (foe.kind === 'monster') {
         const dr = actor.kind === 'character' ? effStat(turnContext, actor.ref, 'druid') : 0;
-        const chance = foe.pacifiable === false ? 0 : 20 + dr * 15;
+        const chance =
+          foe.pacifiable === false
+            ? 0
+            : KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT.theChanceOfAParleyWithNoDruid +
+              dr * KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT.theRiseEachLevelOfDruidGivesAParley;
         const roll = d100();
         narrate(narrative, {
           kind: "a fighter calls for parley with a druid's roll",
@@ -698,7 +717,17 @@ export function pcAct(
       );
       const _tier = (foesGuardian?.power ?? '') || 'Weak';
       const tierPen = STEAL_TIER_PENALTY[_tier] ?? 0; // the table holds no NaN
-      const chance = Math.max(5, Math.min(95, 50 + 10 * Math.min(th, 5) + bonus - tierPen));
+      const theTheft = KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT;
+      const chance = Math.max(
+        theTheft.theLeastChanceOfATheft,
+        Math.min(
+          theTheft.theMostChanceOfATheft,
+          theTheft.theChanceOfATheftBeforeHisSkill +
+            theTheft.theRiseEachLevelOfThiefGivesATheft * Math.min(th, theTheft.theLevelsOfThiefCounted) +
+            bonus -
+            tierPen,
+        ),
+      );
       if (kcRng() * 100 < chance) {
         state.stoleBy = actor;
         narrate(narrative, {
@@ -730,7 +759,7 @@ export function pcAct(
         break;
       }
       const ex = actor.kind === 'character' ? effStat(turnContext, actor.ref, 'explorer') : 0;
-      const b = ex * 5;
+      const b = ex * KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT.thePenaltyEachLevelOfExplorerLiftsAScouting;
       // Scout is no longer a no-op — it reveals what the guardian is worth. It reports the
       // guardian's identity/power and remaining HP, the gold hoard behind it, and the magic-item
       // outlook for clearing it (mirroring the clear-reward ladder by tier). Reading the ground
@@ -774,7 +803,9 @@ export function pcAct(
           curHp,
           fullHp,
           foeDesc: foesGuardian === null ? null : foesGuardian?.desc, // a hero or guardian of none: none, as before
-          spellNames: theNamesAsTheLineTellsThem(spells.slice(0, 4)),
+          spellNames: theNamesAsTheLineTellsThem(
+            spells.slice(0, KC_A_PARLEY_A_THEFT_AND_A_SCOUTING_IN_PERSONAL_COMBAT.theMostPowersAScoutingNames),
+          ),
           passives: theNamesAndDescriptionsAsTheLineTellsThem(guardianPassives(foesGuardian)), // passives are scouted too
           vulnerabilities: { melee: v.melee, archery: v.archery, spell: v.spell },
           weakness: foe.weak ? { name: foe.weak.name, desc: foe.weak.desc } : null,

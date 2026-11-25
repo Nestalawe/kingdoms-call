@@ -328,6 +328,86 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'resolveCharVsChar',
     "B-06bn, a duel's and a hero's encounter's figures: content's row (KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES)",
   ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcSpeedOf',
+    "B-06bo, a fighter's speed: content's row (KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'ARCHERY_FIELDCRAFT_PCT',
+    "B-06bo, a change of range: content's row (KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcMoveCheck',
+    "B-06bo, a change of range: content's row (KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'autoEncounterPlan',
+    "B-06bo, the plan of a hero with no orders: content's row (KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcCharCombatant',
+    "B-06bo, a hero's hit points and his mastery perks: content's rows (KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT, KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT, KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
+  [
+    'src/engine/personal-combat/speed-encounter-plans-and-combatants.ts',
+    'pcMonsterCombatant',
+    "B-06bo, a guardian's hit points: content's row (KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcFleeChance',
+    "B-06bo, a flight: content's rows (KC_THE_CHANCE_A_FIGHTER_FLEES_IN_PERSONAL_COMBAT, KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcFreeStrike',
+    "B-06bo, a guardian's rebirth: content's row (KC_A_GUARDIANS_REBIRTH_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcAdvanceOrStrike',
+    "B-06bo, a fast guardian's advance: content's rows (KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT, KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'ARCHERY_VOLLEY_AT',
+    "B-06bo, an arrow: content's row (KC_AN_ARROW_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcVolleySize',
+    "B-06bo, an arrow: content's row (KC_AN_ARROW_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcArrowDamage',
+    "B-06bo, an arrow: content's row (KC_AN_ARROW_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/melee-flight-and-archery.ts',
+    'pcFireOne',
+    "B-06bo, the mastery perks: content's row (KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcTemperFallback',
+    "B-06bo, the most HP of a fighter whose record holds none: content's row (KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcCombatItemWanted',
+    "B-06bo, the most HP of a fighter whose record holds none: content's row (KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
+  [
+    'src/engine/personal-combat/tactics-combat-items-and-actions.ts',
+    'pcUseCombatItem',
+    "B-06bo, the most HP of a fighter whose record holds none: content's row (KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');

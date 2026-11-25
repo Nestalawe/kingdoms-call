@@ -5,6 +5,15 @@ import { monsterCat } from '../rules-on-plain-values/a-guardians-kind-and-the-la
 import { isAHeroOfTheAlignmentUndeadInPersonalCombat } from '../rules/the-registry-of-alignment-abilities.ts';
 import { activeItems, effTemper } from '../items/equipment.ts';
 import { guardianPassives } from '../heroes/skills-and-hp.ts';
+import {
+  KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT,
+  KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT,
+  KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT,
+  KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT,
+  KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS,
+  KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT,
+  KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
+} from '../../content/kingdoms-call-data.ts';
 import { dedupeItemsByName } from '../rules-on-plain-values/the-level-a-heros-skill-counts-at-and-his-items-each-name-once.ts';
 import { pcArmourMerge, pcArmourOf } from './helpers.ts';
 import { whatAGuardiansGradesCapDoesBesideHisOwn } from '../rules/the-registry-of-guardian-perks.ts';
@@ -96,12 +105,18 @@ interface AnItemAsItsKindIsTested {
 // ── Speed model ────
 // Numeric speed decides who acts first each round and whether a combatant can change range
 // (advance to firing range, or break away from melee to fire).
-// monsters: fast 3 / medium 2 / slow 1 characters: 2 + any bonus
+// monsters: fast 3 / medium 2 / slow 1 characters: 2 + any bonus (their figures are content's row,
+// KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT, B-06bo)
 export function pcSpeedOf(cbt: AFighterAsHisSpeedIsRead | null | undefined) {
-  if (!cbt) return 2;
-  const speeds: Readonly<Partial<Record<string, number>>> = { fast: 3, medium: 2, slow: 1 };
-  if (cbt.kind === 'monster') return (speeds[(cbt.speedName ?? '') || 'medium'] ?? 0) || 2;
-  return 2 + (Number(cbt.speedBonus) || 0);
+  if (!cbt) return KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT.theSpeedOfNoFighter;
+  const speeds: Readonly<Partial<Record<string, number>>> =
+    KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT.theSpeedOfAGuardianByHisPace;
+  if (cbt.kind === 'monster')
+    return (
+      (speeds[(cbt.speedName ?? '') || 'medium'] ?? 0) ||
+      KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT.theSpeedOfAGuardianOfAPaceTheTableHoldsNot
+    );
+  return KC_A_FIGHTERS_SPEED_IN_PERSONAL_COMBAT.theSpeedOfAHeroBeforeHisBonus + (Number(cbt.speedBonus) || 0);
 }
 export function pcHasRanged(cbt: AFighterAsHisSpeedIsRead | null | undefined) {
   if (!cbt) return false;
@@ -115,21 +130,30 @@ export function pcRangeStep(from: string, dir: number) {
 }
 // ARCHERY FIELDCRAFT: each point of a character's raw Archery adds this much to both range checks (melee-flight-and-archery.ts
 // tells the rule, beside the parting shot).
-export const ARCHERY_FIELDCRAFT_PCT = 5;
+export const ARCHERY_FIELDCRAFT_PCT =
+  KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT.theRiseEachLevelOfHisRawArcheryGives;
 // Chance to change range. Advancing into firing range is a test of one's own speed; breaking back
-// out of melee is an opposed contest — a faster foe pins you in place.
+// out of melee is an opposed contest — a faster foe pins you in place. Its figures are content's row
+// (KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT, B-06bo).
 export function pcMoveCheck(actor: AFighterAsHisSpeedIsRead, foe: AFighterAsHisSpeedIsRead, mode: string) {
+  const theRow = KC_THE_CHANCE_A_FIGHTER_CHANGES_RANGE_IN_PERSONAL_COMBAT;
   const a = pcSpeedOf(actor),
     f = pcSpeedOf(foe);
   // a slow guardian is not penalised when ADVANCING to firing range (counts as medium).
-  const aAdv = actor.kind === 'monster' ? Math.max(2, a) : a;
-  let chance = mode === 'withdraw' ? 40 + 15 * (a - f) + temperOf(actor.temper).withdrawMod : 60 + 15 * (aAdv - 2);
+  const aAdv = actor.kind === 'monster' ? Math.max(theRow.theSpeedASlowGuardianAdvancesAt, a) : a;
+  let chance =
+    mode === 'withdraw'
+      ? theRow.theChanceToBreakAwayFromAFoeOfHisOwnSpeed +
+        theRow.theChangeEachStepOfSpeedGivesABreakAway * (a - f) +
+        temperOf(actor.temper).withdrawMod
+      : theRow.theChanceToAdvanceAtTheSpeedNamed +
+        theRow.theRiseEachStepOfSpeedGivesAnAdvance * (aAdv - theRow.theSpeedAnAdvanceIsMeasuredFrom);
   // FIELDCRAFT — a trained archer is good at KEEPING range, not only at shooting from it.
   if (actor.kind === 'character') {
     const _arc = actor.archeryRaw ?? (actor.archery || 0);
     if (_arc > 0) chance += ARCHERY_FIELDCRAFT_PCT * _arc;
   }
-  return Math.max(10, Math.min(90, chance));
+  return Math.max(theRow.theLeast, Math.min(theRow.theMost, chance));
 }
 
 // --- NPC encounter plans ---------------------------------------------------- Neutral guards and
@@ -193,16 +217,26 @@ export function autoEncounterPlan(turnContext: Pick<TurnContext, 'G'>, ch: AHero
   }
   if (arch > 0) {
     // A Berserk charges regardless; everyone else works the bow while the range allows it.
-    const shots = traits.anAutoPlanChargesFiringOnce ? 1 : arch >= melee ? 3 : 1;
+    const shots = traits.anAutoPlanChargesFiringOnce
+      ? 1
+      : arch >= melee
+        ? KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS.theShotsAnArcherOpensWith
+        : 1;
     for (let i = 0; i < shots; i++) plan.push('FI');
   }
-  while (plan.length < (avoids ? 5 : 6)) plan.push('ME');
+  while (
+    plan.length <
+    (avoids
+      ? KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS.theActionsAWaryHeroFillsWithBlows
+      : KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS.theActionsOfHisPlan)
+  )
+    plan.push('ME');
   // A wary NPC keeps an exit in hand — but at the END of the plan, not the start. Duel avoidance
   // is the Duel Stance's job now; putting FL first here would make them bolt from every monster
   // and character encounter on the opening action.
   if (avoids) plan.push('FL');
   // CS: entries lead (battle phase reads them first); the 6-action combat plan follows.
-  return [...battlePlan, ...plan.slice(0, 6)];
+  return [...battlePlan, ...plan.slice(0, KC_THE_ENCOUNTER_PLAN_OF_A_HERO_WITH_NO_ORDERS.theActionsOfHisPlan)];
 }
 // How a commander answers the call to single combat, set per character in the player portal.
 // 'challenge' — rides out and demands a duel 'accept' — will not initiate, but answers a
@@ -279,7 +313,7 @@ export function pcNewStatus(): AFightersStatus {
 export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakesHim) {
   ensureEncounterPlan(turnContext, ch);
   const theHeroAsHisHitPointsAreGuarded: AHeroAsHisHitPointsAreGuarded = ch;
-  const maxHp = ch.maxHp || 20;
+  const maxHp = ch.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE;
   // Rage (AK §2.4): a Berserker shrugs off pain.
   const rg = temperOf(effTemper(ch)).rageHp;
   const rageHp = rg ? rng(rg[0], rg[1]) : 0;
@@ -294,7 +328,13 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakes
     // end it before round 1).
     hp:
       ((theHeroAsHisHitPointsAreGuarded.hp ?? maxHp) <= 0 && _escapesTheEnd(ch)
-        ? Math.max(1, Math.round(maxHp / 2))
+        ? Math.max(
+            1,
+            Math.round(
+              maxHp /
+                KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT.theNumberAWandererAtNoneHasHisMostHpDividedBy,
+            ),
+          )
         : (theHeroAsHisHitPointsAreGuarded.hp ?? maxHp)) + rageHp,
     maxHp: maxHp + rageHp,
     // LEVEL 6+ SKILL PERKS — Champion (melee) / Master Archer (archery): +1 per level past 5.
@@ -367,9 +407,13 @@ export function pcCharCombatant(turnContext: TurnContext, ch: AHeroAsAFightTakes
     // Math.max(raw, effStat+minors) versions above — "+2 Melee" items never reached the damage
     // roll.)
     perkParry: perkTier(ch, 'melee') >= 1, // MELEE L6 — Parry
-    perkCounter: perkTier(ch, 'melee') >= 3, // MELEE L8 — Counterattack
+    perkCounter:
+      perkTier(ch, 'melee') >=
+      KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT.theMasteryTierOfMeleeThatCounterattacks, // MELEE L8 — Counterattack
     perkImpale: perkTier(ch, 'archery') >= 1, // ARCHERY L6 — Impalement
-    perkTrueshot: perkTier(ch, 'archery') >= 3, // ARCHERY L8 — Trueshot
+    perkTrueshot:
+      perkTier(ch, 'archery') >=
+      KC_THE_MASTERY_PERKS_OF_MELEE_AND_ARCHERY_IN_PERSONAL_COMBAT.theMasteryTierOfArcheryThatTakesTrueshot, // ARCHERY L8 — Trueshot
     perkElemArmour: perkTier(ch, 'elemental') >= 1, // ELEMENTAL L6 — Elemental Armour
   };
   pcApplyItemFx(cbt, activeItems(ch)); // weapons / helms / cloaks / rings / amulets with combat riders
@@ -398,7 +442,7 @@ export function pcMonsterPlan(m: Pick<AGuardianAsHisFighterIsBuilt, 'spells' | '
   const heals = all.filter(pcSpecialHealsSelf).map((s) => 'MS:' + s.name);
   const specials = all.filter((s) => !pcSpecialHealsSelf(s)).map((s) => 'MS:' + s.name);
   const ranged = (m.archery ?? 0) > 0 || !!m.ranged;
-  const room = Math.max(1, 12 - heals.length); // leave the tail free for the heals
+  const room = Math.max(1, KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT.theActionsOfHisPlanBeforeHisHeals - heals.length); // leave the tail free for the heals
   const plan: string[] = [];
   const first = specials[0];
   if (first !== undefined) plan.push(first); // there is a first special exactly when the list isn't empty
@@ -408,8 +452,8 @@ export function pcMonsterPlan(m: Pick<AGuardianAsHisFighterIsBuilt, 'spells' | '
     guard = 0;
   while (plan.length < room && guard++ < 40) {
     plan.push('ME');
-    if (ranged && plan.length % 4 === 0) plan.push('FI');
-    if (specials.length && plan.length % 3 === 0) {
+    if (ranged && plan.length % KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT.theActionsBetweenHisShots === 0) plan.push('FI');
+    if (specials.length && plan.length % KC_A_GUARDIANS_PLAN_IN_PERSONAL_COMBAT.theActionsBetweenHisPowers === 0) {
       const next = specials[si % specials.length];
       if (next !== undefined) plan.push(next); // si % length is a place in the list: always there
       si++;
@@ -477,7 +521,9 @@ export function pcMonsterCombatant(m: AGuardianAsHisFighterIsBuilt) {
   // a guardian enters EVERY fight at full health — it heals completely at the end of each combat
   // (see resolveEncounter). _hpFull is the creature's undamaged total; m.hp is only consulted
   // when _hpFull was never set (fresh table creature).
-  const maxHp = m._hpFull ?? ((m.hp ?? 0) || 10);
+  const maxHp =
+    m._hpFull ??
+    ((m.hp ?? 0) || KC_A_FIGHTERS_HIT_POINTS_AS_HE_ENTERS_A_PERSONAL_COMBAT.theMostHpOfAGuardianWhoseRecordHoldsNone);
   const curHp = maxHp;
   const nm = (m.name ?? '') || 'creature';
   const undeadWords = [
