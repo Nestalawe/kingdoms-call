@@ -89,7 +89,11 @@ in `src/engine/rules-on-plain-values/`, which the player portal shares and which
 reads the rows' alignments, the realm's or the leader's own (Decision G), and their entries have no stage (the
 registry's unit test lists them). The player portal reads two more rows from `src/content` itself (B-06bs): the order
 form's Research forecast adds Neutral's scholars' points for a realm of the row's alignment, and the report screen's
-guide to the beasts names Home of the Wild's and Savage Fury's factors for a realm of each row's alignment.
+guide to the beasts names Home of the Wild's and Savage Fury's factors for a realm of each row's alignment. The words that restate a
+creed's rule read its rows too (B-06bt): Bless Province's hint, consecrated ground's tax and cut, war without warning, a
+broken alliance, the kings' first skills and the one Divine and one Undead realm a game in the portal
+(`ui/player/the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts`), the battle lines' and
+the realm works' lines; a number written as a word ("twice") stays, held to its row by a static test.
 
 **Who may give an order** (P1-19aw2, `alignment-abilities/who-may-give-an-alignment-order.ts`): Decision H reverses
 P1-19's Decision 2 (no registry entry for an order).
