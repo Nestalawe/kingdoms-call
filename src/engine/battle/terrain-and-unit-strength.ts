@@ -389,10 +389,15 @@ export function armStr(
     // fight at QUARTER strength (×0.25, not the usual ×0.75 for troops aboard ships), and the
     // humanoid flyers doing the carrying fight at HALF strength (×0.5). Primal winged beasts
     // (AERIAL_TYPES) carry nothing and keep full strength. A pure-flyer force (nothing carried)
-    // is unaffected.
+    // is unaffected. The two figures are content's row (SEA_AIRBORNE_FLYER_PENALTY and SEA_AIRBORNE_LAND_PENALTY, the
+    // report's lines read the same).
     if (terrain === 'sea' && ctx && isAirborneAtSea(ctx.force)) {
-      if (FLYING_TYPES.has(army.type)) sp = 0.5;
-      else if (!AERIAL_TYPES.has(army.type) && !SEA_TYPES.has(army.type)) sp = 0.25;
+      if (FLYING_TYPES.has(army.type))
+        sp =
+          KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aHumanoidFlyerCarryingThem;
+      else if (!AERIAL_TYPES.has(army.type) && !SEA_TYPES.has(army.type))
+        sp =
+          KC_THE_STRENGTH_A_UNIT_KEEPS_AFTER_THE_PRE_BATTLE_DAMAGE_AT_SEA_AND_UNDER_ILLUSORY_TERRAIN.aLandUnitCarriedAtSeaByFlyers;
     }
     if (
       sp < 1 &&

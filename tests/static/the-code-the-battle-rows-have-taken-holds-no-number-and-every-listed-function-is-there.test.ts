@@ -168,6 +168,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'GUARD_DEMOTE_CHANCE',
     "B-06ay2, a beaten guard's survivors: content's row (KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES)",
   ],
+  [
+    'src/engine/battle/strength.ts',
+    '_MISSILE_CAP_FRAC',
+    "B-06ba (the review's 2), the volleys' cap: content's row, the one MISSILE_CAP_FRACTION reads (KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
