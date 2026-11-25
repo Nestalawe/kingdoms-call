@@ -1230,9 +1230,11 @@ export const relationChecksInEngine = (codeFiles: readonly (readonly [file: stri
 // (each number other than 0 and 1, not a literal type nor an element's index), by top-level function and table, in
 // every file of src/engine/battle/ (its folders' too: a stage split out of a battle is counted where it goes) but its
 // facts' files (`the-facts-…`, a line's words), and in the two files of src/engine/units/ the battles' ride-outs and
-// retreats are in. personalCombatNumbersInEngine counts the same in src/engine/personal-combat/ but its facts' file,
-// and battleNumbersInTheBots in the bots' battle estimate, its functions listed (THE_BATTLES_FUNCTIONS_IN_THE_BOTS):
-// a listed function a row empties stays in the list at 0, so a number moved out of the list can't hide.
+// retreats are in, and in the battle rules written in other files of the engine, their functions listed
+// (THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES, B-06bz: each at 0 when it joined). personalCombatNumbersInEngine counts the
+// same in src/engine/personal-combat/ but its facts' file, and battleNumbersInTheBots in the bots' battle estimate, its
+// functions listed (THE_BATTLES_FUNCTIONS_IN_THE_BOTS): a listed function a row empties stays in the list at 0, so a
+// number moved out of the list can't hide.
 // tests/static/the-code-the-battle-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts holds the
 // functions the rows have taken at 0 each, with battleNumbersByFunction, and fails on a listed file or bots' function
 // the code no longer has.
@@ -1266,9 +1268,33 @@ export const THE_BATTLES_FUNCTIONS_IN_THE_BOTS: readonly (readonly [file: string
 export function battleNumbersByFunction(file: string, text: string): Map<string, number> {
   return new Map([...worldMakingCountsByFunction(file, text)].map(([fn, c]): [string, number] => [fn, c.numbers]));
 }
-/** The battles' numbers in the files of src/engine/battle/ but its facts' files, and in the units' two files. */
-export const battleNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
-  theTotalOf(battleNumbersByFunction, countsBattleNumbers, codeFiles);
+/** The battle rules written in the engine's other files, which battleNumbersInEngine counts by function: Tactical's
+ *  lift on a host as Telekinetic Storm leaves it, the rout's pursuits and Shield Fort, whether a battle spell has
+ *  something to strike, the pre-battle strike's chance and its items' bonus, a guard's cast chance, the sea lift and
+ *  whether a column can put to sea. */
+export const THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES: readonly (readonly [file: string, fn: string])[] = [
+  ['src/engine/units/movement.ts', 'tacMulted'],
+  ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten'],
+  ['src/engine/units/movement.ts', 'shieldFortHolds'],
+  ['src/engine/magic/pre-battle-spell-choice.ts', 'battleSpellUseful'],
+  ['src/engine/chances-and-lair-grades.ts', 'primalStrikeItemBonus'],
+  ['src/engine/chances-and-lair-grades.ts', 'primalStrikeChance'],
+  ['src/engine/chances-and-lair-grades.ts', 'guardCastChance'],
+  ['src/engine/rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts', 'seaLiftOfAColumn'],
+  ['src/engine/units/movement-pools.ts', 'getSeaCapability'],
+];
+/** The battles' numbers in the files of src/engine/battle/ but its facts' files, in the units' two files, and in the
+ *  functions listed outside them. */
+export function battleNumbersInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = theTotalOf(battleNumbersByFunction, countsBattleNumbers, codeFiles);
+  for (const [file, text] of codeFiles) {
+    const theFunctions = THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES.filter(([f]) => f === file).map(([, fn]) => fn);
+    if (theFunctions.length === 0) continue;
+    const counts = battleNumbersByFunction(file, text);
+    for (const fn of theFunctions) n += counts.get(fn) ?? 0;
+  }
+  return n;
+}
 /** Personal combat's numbers in the files of src/engine/personal-combat/ but its facts' file. */
 export const personalCombatNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
   theTotalOf(battleNumbersByFunction, countsPersonalCombatNumbers, codeFiles);
