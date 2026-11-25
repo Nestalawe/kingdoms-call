@@ -48,9 +48,13 @@ import {
   encounterUntargetableReason,
   enemyCharVisibleTo,
   featDiscovered,
-  nearSpiedProvIds,
 } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import type { SightContext } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
+import {
+  theProvincesARealmHasVisited,
+  theProvincesInSightNow,
+  theSightContextOfARealm,
+} from '../engine/sight/the-provinces-a-realm-has-in-sight-now-and-those-it-has-visited.ts';
 import { garrisonMoveRate } from '../engine/units/movement.ts';
 import type {
   Army,
@@ -469,9 +473,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
 
   // ── The province sets (each sight rule's) ──
   const ownedProvIds = new Set<number>(player.provinces ?? []);
-  const visitedProvIds = new Set<number>(
-    provinces.filter((p) => (asSaved(p).visitedBy ?? []).includes(realm)).map((p) => p.id),
-  );
+  const visitedProvIds = theProvincesARealmHasVisited(state, realm);
   // next to a province it owns or visited (the order forms list them, for a recruit that fires if it takes one)
   const adjacentProvIds = new Set<number>();
   provinces.forEach((p) => {
@@ -487,7 +489,10 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   });
   const ownCharLocs = new Set<number>(characters.filter((c) => c.alive && c.player === realm).map((c) => c.location));
   const spiedThisTurn = new Set<number>(player._spiedProvincesThisTurn ?? []);
-  const nearSpied = nearSpiedProvIds(state, spiedThisTurn); // D2: seen as if a hero stood there
+  // the sight rule's three sources, as the report reads them (the sight rule's, src/engine/sight/)
+  const sightSources = { owned: ownedProvIds, heroesThere: ownCharLocs, spied: spiedThisTurn };
+  const mapSight = theSightContextOfARealm(state, sightSources);
+  const nearSpied = mapSight.nearSpied; // D2: seen as if a hero stood there
   // next to a province it owns: its borders, watched all turn
   const ownedAdjacentIds = new Set<number>();
   provinces.forEach((p) => {
@@ -513,8 +518,8 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   // realm's discoveries waive the hiring ban", the rule the hire reads)
   const sd31 = doARealmsDiscoveriesWaiveTheHiringBan(me);
 
-  // ── The sight rule's three questions (as each section has always asked it) ──
-  const mapSight: SightContext = { ownedProvIds, ownCharLocs, spiedThisTurn, nearSpied };
+  // ── The sight rule's three questions (as each section has always asked it): the map's (mapSight, above), the hiring
+  // list's and the province intelligence's ──
   const hiringSight: SightContext = { ownedProvIds, ownCharLocs, spiedThisTurn };
   const provinceIntelligenceSight: SightContext = {
     ownedProvIds: new Set(),
@@ -621,7 +626,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   const world = asSaved(state);
   const seenDeadThisTurn = new Set<unknown>(player.seenDeadHeroIds ?? []);
   const deadKnownEver = new Set<unknown>(player.knownDeadHeroIds ?? []);
-  const inSightNow = new Set<unknown>([...ownedProvIds, ...ownCharLocs, ...spiedThisTurn]);
+  const inSightNow = theProvincesInSightNow(sightSources);
   const theDeadItKnowsOf: GraveAsKnown[] = (world.heroGraveyard ?? [])
     .filter((g) => {
       const r = asSaved(g);
