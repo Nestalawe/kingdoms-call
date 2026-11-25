@@ -48,8 +48,8 @@ export interface AStageOfABattle {
   what: string;
   anchor: string;
 }
-/** A stage as the list in src/ holds it: the stage, and the name of the stage function its code is in, with that
- *  function's file (from the tree's src/). */
+/** A stage as the list in src/ holds it: the stage, and the name of the stage function its code is in (the entry it is
+ *  listed under), with that function's file (from the tree's src/). */
 export interface AStageOfABattleReadFromTheList extends AStageOfABattle {
   fn: string;
   file: string;
@@ -78,20 +78,36 @@ export function theBattlesStagesTheListsTextHolds(text: string): AStageOfABattle
     const name = THE_BATTLES_STAGES_LIST.names[battle];
     const list = lists.get(name);
     if (!list) throw new Error(`${file} declares no array ${name}`);
-    return list.elements.map((e, i) => {
+    return list.elements.flatMap((e, i) => {
       const o = ts.isObjectLiteralExpression(e) ? e : undefined;
-      const stage = o && stringProperty(o, 'stage');
-      const what = o && stringProperty(o, 'inGameTerms');
-      const anchor = o && stringProperty(o, 'anchor');
-      const fn = o && identifierProperty(o, 'heldIn');
+      const fn = o && identifierProperty(o, 'run');
       const fnsFile = fn === undefined ? undefined : importedFrom.get(fn);
-      if (stage === undefined || what === undefined || anchor === undefined || fn === undefined || !fnsFile)
+      const stages = o && arrayProperty(o, 'stages');
+      if (fn === undefined || !fnsFile || !stages)
         throw new Error(
-          `${file}, ${name}'s entry ${String(i)}: not { stage: '<id>', inGameTerms: '<words>', anchor: '<text>', heldIn: <a function imported by name> }`,
+          `${file}, ${name}'s entry ${String(i)}: not { run: <a function imported by name>, stages: [<its stages>] }`,
         );
-      return { battle, stage, what, anchor, fn, file: fnsFile };
+      return stages.elements.map((st, j) => {
+        const so = ts.isObjectLiteralExpression(st) ? st : undefined;
+        const stage = so && stringProperty(so, 'stage');
+        const what = so && stringProperty(so, 'inGameTerms');
+        const anchor = so && stringProperty(so, 'anchor');
+        if (stage === undefined || what === undefined || anchor === undefined)
+          throw new Error(
+            `${file}, ${name}'s entry ${String(i)}, its stage ${String(j)}: not { stage: '<id>', inGameTerms: '<words>', anchor: '<text>' }`,
+          );
+        return { battle, stage, what, anchor, fn, file: fnsFile };
+      });
     });
   });
+}
+
+/** The array an object literal's property holds, or undefined. */
+function arrayProperty(o: ts.ObjectLiteralExpression, name: string): ts.ArrayLiteralExpression | undefined {
+  for (const p of o.properties)
+    if (ts.isPropertyAssignment(p) && ts.isIdentifier(p.name) && p.name.text === name)
+      if (ts.isArrayLiteralExpression(p.initializer)) return p.initializer;
+  return undefined;
 }
 
 /** The stages the list of the tree whose src/ is `src` holds; this tree's when that tree has none (a base from before

@@ -229,73 +229,19 @@ the rest bots: every realm a bot; Divine with a naval king and Pagan; Undead and
 naval king, Neutral and Evil. Together they hold every creed, Divine and Undead once a game.
 
 **A draw's stage** is read from its call stack, with no mark in `src/`
-([the-worlds-makings-stages.ts](the-worlds-makings-stages.ts)): the innermost frame that is a stage's own function, or
-else `generateNewGame`'s frame, whose line falls between two stages' anchors (the line that opens each stage, found
-once in `src/engine/world/generate.ts`). The bots' realms' draws count apart, as `bots`. **The stages and their functions are read from their list in `src/`**
-(`src/engine/world/the-worlds-making/the-stages-in-the-order-they-run.ts`, by its syntax tree:
-[the-worlds-makings-stages-read-from-their-list-in-src.ts](../the-worlds-makings-stages-read-from-their-list-in-src.ts)),
-so a new stage needs no edit here; the anchors stay in the table for a base from before the split (B-06v to B-06aa). A
-stage found on a side by neither stops the proof rather than count its dice as another's, and the unit test checks that
-every stage is found in the tree as it is.
-
-**Red on planted faults** (B-06s, each in a planted copy of the tree, the tool's `--base` against the copy unplanted):
-
-| Planted fault | What the tool shows |
-|---|---|
-| One extra `kcRng()` at the end of the coastal shipyards (S13) | 512 of 512 cases red (8 seeds), S13's dice 0 → 1 in each; some, such as seed 1, p2, sea 35%, keep the same world and the same dice in all |
-| A realm's starting gold 20 made 21, no draw | 512 of 512 cases red on the world's hash, the dice the same |
-| The tax floor's 2 made 3; the starting HP 15 made 16 | the same worlds: no world keeps them (KD-454, KD-455) |
-
-**What it can't see:** a value no world keeps (the two above); a path no seed reaches; state beyond one world, which a
-fresh process hides by design. Those need unit cases.
-
-## 8. The battles, battle by battle
-
-The proof of B-06's battle rows (B-06ax on): `npm run proof:battles -- --base <ref>`
-([the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts](the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts)).
-Each case is staged and fought twice, once from a copy of the base (`git archive`, `node_modules` linked) and once from
-this working tree, each in a fresh process of its own
-([one-staged-battle-fought-on-a-side-in-a-fresh-process.ts](one-staged-battle-fought-on-a-side-in-a-fresh-process.ts)).
-The worker imports the side's own `tests/lib/a-battle-called-directly.ts` on its own `src/` as they are, makes the world
-from seed 1, stages the battle on it once, and fights it from that staging with each of 8 fixed dice streams (900 to
-907), lending the dice a counting stream (`kcRng.use`). For each stream it compares the battle's lines in words, the
-sha256 of the world after (with who won), what the battle wrote to the turn's context (the turn's log entry by entry;
-every other field but the world and the distance cache by its hash: the statistics' facts, `battleCommanders`,
-`_duelFoes`, `_deferredSkillLogs` and the rest), the dice drawn in all and the dice drawn by stage. It exits 1 when any
-case differs, and names each with its stream and what differs (`stream 903: H6's dice (1 → 2)`, `the turn's context
-(_tel)`). Options: `--cases N` (N cases spread over the grid, for a quick look), `--jobs N`.
-
-**The grid** (684 cases): the ground (plain, forest, mountain, desert, sea) × the battle (against a province's
-defenders, `combatVsNPC`; between heroes, `combatVsChar`, the two realms at war on a province of the defender's) × the
-defender × where the attacker comes from × 14 sets of armies (foot, missiles, flyers, beasts under a Druid short,
-skeletal companies, Monsters under Evil, Dwarven Guard, corsairs, whales, fleets, reavers, Tactical 6 and the War Drum,
-flyers carrying foot at sea, an outmatched attacker). On a sea field only the sets whose two hosts each hold a ship or a
-sea beast (corsairs, whales, fleets, reavers), and flyers carrying foot, fought at sea only: a land host the air carries
-over open water (`isAirborneAtSea`) against ships, its rout a retreat with no hull. Each commander has Tactical, Archery and Naval 2, Druid 2, Elemental 3 and Necromancy 2, as the set
-changes them.
-- **The defender**: led (a neutral guard, or the defending king, challenged to a duel); or leaderless, each battle's
-  own sense of it: no guard against the defenders, and between heroes a host whose commander is already dead
-  (`alive` false, as after a fall in an earlier phase: his skills gone, "…'s leaderless host").
-- **Where the attacker comes from**: land; a landing, as the Move order makes one (`_attackedFrom` the sea beside the
-  field, `_seaLandingAt` this turn, and Reaver Crews' `_amphibiousAssault` when Orcish Longships carry him); or a
-  landing that raids the coast (Naval 9's `_raidCoastTurn` this turn). On a sea field, the sea beside it.
-
-Not on the grid: a realm's garrison holding a province with no hero, the mastery orders' flags, Sanctuary, Consecrate,
-Illusory Terrain, Terror, Phantasmal Armies, a carried-on battle, discoveries, and a spell named in
-a plan (the commanders cast only what they pick for themselves). Unit cases stage some of these.
-
-**A draw's stage** is read from its call stack, with no mark in `src/`
 ([the-stages-of-the-two-battles-and-the-lines-that-open-them.ts](the-stages-of-the-two-battles-and-the-lines-that-open-them.ts)).
 Each stage (N0 to N13 against the defenders, H0 to H10 between heroes) has an anchor, the text of the line that opens
-it, found once in whichever file of the side's own `src/engine/` holds it. A draw belongs to the stage whose anchor is
-the last above the line of the innermost frame whose file holds one there. A frame with none above it (a helper such as
-the duel, the fates, fortune or a rule's effect, or a function above its file's first anchor) passes the draw to its
-caller. So **a split row needs no edit here**: a stage moved into another file keeps its name, and a cut function that
-holds three stages' text counts their draws as three stages, as the base does. A draw counts under the stage whose text
-holds the code that draws it (a helper nested in a stage is that stage's wherever it is called from). An anchor of two
-lines is matched line by line, the indentation aside. A row that rewrites an anchor's own line adds the new text to the
-stage's `anchors` (the base still holds the old). A stage a side holds nowhere, or in two places, stops the proof. The
-list stays there until each battle's stage list is in `src/` (B-06bl). On B-06ax's base every stage but N2, N10, N11,
+it. The stages and their anchors are the list in `src/engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts`,
+read from its syntax tree: each side reads its own tree's list (a base from before B-06bl, with none, reads this
+tree's), and finds each anchor once in whichever file of its own `src/engine/` holds it, the list's file aside. A draw
+belongs to the stage whose anchor is the last above the line of the innermost frame whose file holds one there. A
+frame with none above it (a helper such as the duel, the fates, fortune or a rule's effect, or a function above its
+file's first anchor) passes the draw to its caller. So **a split row needs no edit here**: a stage moved into another
+file keeps its name, and a cut function that holds three stages' text counts their draws as three stages, as the base
+does. A draw counts under the stage whose text holds the code that draws it (a helper nested in a stage is that
+stage's wherever it is called from). An anchor of two lines is matched line by line, the indentation aside. A row that
+rewrites an anchor's own line changes its entry in the list (the base's list holds the old). A stage a side holds
+nowhere, or in two places, stops the proof. On B-06ax's base every stage but N2, N10, N11,
 H5, H7 and H8 draws on the grid.
 
 **Red on planted faults** (the unit test makes each in a copy of `src/`, finding its text in whichever file holds it,

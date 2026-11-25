@@ -1,14 +1,16 @@
 // Each battle is fought by the stages its list holds (src/engine/battle/the-stages-of-both-battles-in-the-order-they-run.ts,
 // B-06bl), in the list's order:
 // - what the battle proof reads from the list's syntax tree (tools/proof/the-stages-of-the-two-battles-and-the-lines-
-//   that-open-them.ts) is the list as it runs, entry by entry, each entry's function declared in the file it is
+//   that-open-them.ts) is the list as it runs, stage by stage, each stage's function declared in the file it is
 //   imported from;
-// - each battle's ids are N0, N1, … (H0, H1, …) in order;
-// - each entry's anchor is found once in its function's file (the first stage's, the battle's own function's head, in
+// - each battle's ids are N0, N1, … (H0, H1, …) in order, and each stage function is listed once;
+// - each stage's anchor is found once in its function's file (the first stage's, the battle's own function's head, in
 //   the battle's own file), each below the one before it in the same file;
-// - combatVsNPC and combatVsChar call the stage functions of their folders each once, in the list's order;
-// - red on plants: an entry's anchor changed (the proof stops too), two entries swapped, a stage's anchors swapped, a
-//   stage dropped from the list, a battle's two stage calls swapped, and a stage call dropped.
+// - combatVsNPC and combatVsChar take their stage functions from their list as they start, one name a function, each
+//   its function's own name, in the list's order, import none from a stage's folder, and call each once in that order;
+// - red on plants: a stage's anchor changed (the proof stops too), two stages swapped, two stages' anchors swapped, a
+//   stage dropped from the list, two stage functions swapped in the list, two names bound swapped, two stage calls
+//   swapped, and a stage call dropped.
 // Level 1 (unit): it imports the list to compare its functions' names with what the proof reads and the battles' text.
 // Static alone can't: the functions' names are only known by running the list's module.
 import fs from 'node:fs';
@@ -67,30 +69,49 @@ function theAnchorsLines(text: string, anchor: string): number[] {
   }
 }
 
-/** The stage functions a battle's function calls, in its text's order: each call of a name its file imports from the
- *  battle's stage folder. */
-function theStageCallsIn(text: string, battle: ABattle): string[] {
+/** What a battle's file does with its stages: the names its function binds from its list, in the pattern's order; the
+ *  calls it makes to them, in its text's order; and what its file imports from the battle's stage folder. */
+function theStagesIn(
+  text: string,
+  battle: ABattle,
+): { bound: string[]; called: string[]; importedFromAStage: string[] } {
   const { file, fn, folder } = THE_BATTLES_FILES[battle];
+  const theList = THE_BATTLES_STAGES_LIST.names[battle];
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
-  const fromTheFolder = new Set<string>();
+  const importedFromAStage: string[] = [];
   let body: ts.Block | undefined;
   for (const s of source.statements) {
     if (ts.isImportDeclaration(s) && ts.isStringLiteral(s.moduleSpecifier) && s.moduleSpecifier.text.startsWith(folder))
-      for (const e of s.importClause?.namedBindings && ts.isNamedImports(s.importClause.namedBindings)
-        ? s.importClause.namedBindings.elements
-        : [])
-        fromTheFolder.add(e.name.text);
+      importedFromAStage.push(s.moduleSpecifier.text);
     if (ts.isFunctionDeclaration(s) && s.name?.text === fn) body = s.body;
   }
   if (!body) throw new Error(`${file} declares no ${fn}`);
+  // The binding from the list: a statement of the battle's own body (not the module's top level, read as it loads).
+  const bound: string[] = [];
+  for (const s of body.statements)
+    if (ts.isVariableStatement(s))
+      for (const d of s.declarationList.declarations) {
+        if (!d.initializer || !ts.isIdentifier(d.initializer) || d.initializer.text !== theList) continue;
+        if (!ts.isArrayBindingPattern(d.name)) continue;
+        for (const e of d.name.elements) {
+          const run =
+            ts.isBindingElement(e) && ts.isObjectBindingPattern(e.name)
+              ? e.name.elements.find(
+                  (b) => b.propertyName && ts.isIdentifier(b.propertyName) && b.propertyName.text === 'run',
+                )
+              : undefined;
+          bound.push(run && ts.isIdentifier(run.name) ? run.name.text : '(not { run: <a name> })');
+        }
+      }
+  const names = new Set(bound);
   const called: string[] = [];
   const visit = (n: ts.Node): void => {
-    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && fromTheFolder.has(n.expression.text))
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && names.has(n.expression.text))
       called.push(n.expression.text);
     ts.forEachChild(n, visit);
   };
   visit(body);
-  return called;
+  return { bound, called, importedFromAStage };
 }
 
 /** Where the list and the code part: each a line naming the stage or the battle; none when they agree. */
@@ -119,45 +140,60 @@ function whereTheListAndTheCodePart(
         before = { file: where, line };
       }
     });
-    const theFunctions = its.map((s) => s.fn).filter((f, i, all) => all.indexOf(f) === i);
-    const called = theStageCallsIn(text(own.file), battle);
-    if (called.join() !== theFunctions.join())
-      parts.push(`${own.fn} calls ${called.join(', ')}, not the list's ${theFunctions.join(', ')}`);
+    const theFunctions = its.map((s) => s.fn).filter((f, i, all) => i === 0 || all[i - 1] !== f);
+    if (new Set(theFunctions).size !== theFunctions.length)
+      parts.push(`a stage function of the battle ${battle} is listed twice: ${theFunctions.join(', ')}`);
+    const here = theStagesIn(text(own.file), battle);
+    if (here.bound.join() !== theFunctions.join())
+      parts.push(`${own.fn} binds ${here.bound.join(', ')}, not the list's ${theFunctions.join(', ')}`);
+    if (here.called.join() !== theFunctions.join())
+      parts.push(`${own.fn} calls ${here.called.join(', ')}, not the list's ${theFunctions.join(', ')}`);
+    if (here.importedFromAStage.length > 0)
+      parts.push(`${own.file} imports ${here.importedFromAStage.join(', ')} from a stage's file`);
   }
   return parts;
 }
 
 const read = theBattlesStagesTheListsTextHolds(theListsText);
 
-test('what the battle proof reads from the list is the list as it runs, entry by entry', () => {
-  const asItRuns = [
-    ...THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN.map((s) => ({ ...s, battle: THE_BATTLES[0] })),
-    ...THE_BATTLE_BETWEEN_HEROES_STAGES_IN_THE_ORDER_THEY_RUN.map((s) => ({ ...s, battle: THE_BATTLES[1] })),
+test('what the battle proof reads from the list is the list as it runs, stage by stage', () => {
+  const asItRuns = (battle: ABattle, list: readonly { run: { name: string }; stages: readonly object[] }[]) =>
+    list.flatMap(({ run, stages }) => stages.map((st) => ({ battle, ...st, fn: run.name })));
+  const both = [
+    ...asItRuns(THE_BATTLES[0], THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN),
+    ...asItRuns(THE_BATTLES[1], THE_BATTLE_BETWEEN_HEROES_STAGES_IN_THE_ORDER_THEY_RUN),
   ];
-  expect(read.map((s) => [s.battle, s.stage, s.what, s.anchor, s.fn])).toEqual(
-    asItRuns.map((s) => [s.battle, s.stage, s.inGameTerms, s.anchor, s.heldIn.name]),
-  );
+  expect(
+    read.map((s) => ({ battle: s.battle, stage: s.stage, inGameTerms: s.what, anchor: s.anchor, fn: s.fn })),
+  ).toEqual(both);
 });
 
-test("each battle's ids are in order, each anchor once in its function's file below the one before, and each battle calls its stages' functions once each in the list's order", () => {
+test("each battle's ids are in order, each anchor once in its function's file below the one before, and each battle binds and calls its stage functions once each in the list's order", () => {
   expect(whereTheListAndTheCodePart(read, textOf)).toEqual([]);
 });
 
 // Each plant changes the list's text or a battle's as a row could by mistake; the check must part them on it.
-const N3 = theListsText.slice(
-  theListsText.indexOf("  {\n    stage: 'N3',"),
-  theListsText.indexOf("  {\n    stage: 'N4',"),
+const between = (text: string, from: string, to: string) => text.slice(text.indexOf(from), text.indexOf(to));
+const aStage = (id: string) => `      {\n        stage: '${id}',`;
+const aFunction = (fn: string) => `  {\n    run: ${fn},`;
+const N3 = between(theListsText, aStage('N3'), aStage('N4'));
+// (N4 is its function's last stage: its text ends where its function's stages and its entry close)
+const N4 = between(
+  theListsText,
+  aStage('N4'),
+  `    ],\n  },\n${aFunction('theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders')}`,
 );
-const N4 = theListsText.slice(
-  theListsText.indexOf("  {\n    stage: 'N4',"),
-  theListsText.indexOf("  {\n    stage: 'N5',"),
-);
-const H6 = theListsText.slice(
-  theListsText.indexOf("  {\n    stage: 'H6',"),
-  theListsText.indexOf("  {\n    stage: 'H7',"),
-);
+const H6 = between(theListsText, aStage('H6'), aStage('H7'));
+const MAGIC = 'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes';
+const ARCHERY = 'bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes';
+const SANCTUARY = 'sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes';
+const THE_MAGICS_ENTRY = between(theListsText, aFunction(MAGIC), aFunction(ARCHERY));
+const THE_ARCHERYS_ENTRY = between(theListsText, aFunction(ARCHERY), aFunction(SANCTUARY));
+const N3_ANCHOR = "'// PRE-BATTLE PHASE 1: MAGIC Hero casts first'";
+const N4_ANCHOR = "'// PRE-BATTLE PHASE 2: ARCHERY Each attacker'";
 const NPC = THE_BATTLES_FILES['against the defenders'].file;
 const PVP = THE_BATTLES_FILES['between heroes'].file;
+const LIST = THE_BATTLES_STAGES_LIST.file;
 const THE_ATTACKERS_PHASES =
   '  const theAttackersPhases = theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp);';
 const THE_DEFENDERS_PHASES_COMMENT = [
@@ -166,34 +202,58 @@ const THE_DEFENDERS_PHASES_COMMENT = [
 ];
 const THE_DEFENDERS_PHASES =
   '  theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp, theAttackersPhases);';
-const THE_MAGIC = '  bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(turnContext, atk, def, theSetUp);';
+const THE_MAGICS_CALL = `  ${MAGIC}(turnContext, atk, def, theSetUp);`;
 test.for([
   {
     plant: "N6's anchor changed",
-    in: THE_BATTLES_STAGES_LIST.file,
-    old: "'// DEFENDER ARCHERY — 2026-09-24'",
-    new: "'// DEFENDER ARCHERY — 2026-09-25'",
+    in: LIST,
+    edits: [{ old: "'// DEFENDER ARCHERY — 2026-09-24'", new: "'// DEFENDER ARCHERY — 2026-09-25'" }],
   },
-  { plant: 'the entries N3 and N4 swapped', in: THE_BATTLES_STAGES_LIST.file, old: N3 + N4, new: N4 + N3 },
+  { plant: 'the stages N3 and N4 swapped', in: LIST, edits: [{ old: N3 + N4, new: N4 + N3 }] },
   {
     plant: "N3's and N4's anchors swapped, their ids kept",
-    in: THE_BATTLES_STAGES_LIST.file,
-    old: "'// PRE-BATTLE PHASE 1: MAGIC Hero casts first',\n    heldIn: theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders,\n  },\n  {\n    stage: 'N4',\n    inGameTerms: \"the attacker's archery, Flak and Breach\",\n    anchor: '// PRE-BATTLE PHASE 2: ARCHERY Each attacker',",
-    new: "'// PRE-BATTLE PHASE 2: ARCHERY Each attacker',\n    heldIn: theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders,\n  },\n  {\n    stage: 'N4',\n    inGameTerms: \"the attacker's archery, Flak and Breach\",\n    anchor: '// PRE-BATTLE PHASE 1: MAGIC Hero casts first',",
+    in: LIST,
+    edits: [
+      { old: N3_ANCHOR, new: "'(moved)'" },
+      { old: N4_ANCHOR, new: N3_ANCHOR },
+      { old: "'(moved)'", new: N4_ANCHOR },
+    ],
   },
-  { plant: 'the stage H6 dropped from the list', in: THE_BATTLES_STAGES_LIST.file, old: H6, new: '' },
+  { plant: 'the stage H6 dropped from the list', in: LIST, edits: [{ old: H6, new: '' }] },
+  {
+    plant: "the magic's and the archery's stage functions swapped in the battle between heroes' list",
+    in: LIST,
+    edits: [{ old: THE_MAGICS_ENTRY + THE_ARCHERYS_ENTRY, new: THE_ARCHERYS_ENTRY + THE_MAGICS_ENTRY }],
+  },
+  {
+    plant: "combatVsChar's names for the magic and the archery bound swapped",
+    in: PVP,
+    edits: [
+      {
+        old: `    { run: ${MAGIC} },\n    { run: ${ARCHERY} },`,
+        new: `    { run: ${ARCHERY} },\n    { run: ${MAGIC} },`,
+      },
+    ],
+  },
   {
     plant: "combatVsNPC's attacker's and defenders' pre-battle phases' calls swapped",
     in: NPC,
-    old: [THE_ATTACKERS_PHASES, ...THE_DEFENDERS_PHASES_COMMENT, THE_DEFENDERS_PHASES].join('\n'),
-    new: [THE_DEFENDERS_PHASES, ...THE_DEFENDERS_PHASES_COMMENT, THE_ATTACKERS_PHASES].join('\n'),
+    edits: [
+      {
+        old: [THE_ATTACKERS_PHASES, ...THE_DEFENDERS_PHASES_COMMENT, THE_DEFENDERS_PHASES].join('\n'),
+        new: [THE_DEFENDERS_PHASES, ...THE_DEFENDERS_PHASES_COMMENT, THE_ATTACKERS_PHASES].join('\n'),
+      },
+    ],
   },
-  { plant: "combatVsChar's magic and army spells' call dropped", in: PVP, old: THE_MAGIC, new: '' },
-])('the check is red on a plant: $plant', ({ in: file, old, new: planted, plant }) => {
-  const text = textOf(file);
-  expect(old.length > 0 && text.includes(old), `${file} holds the plant's text`).toBe(true);
-  const plantedText = (f: string) => (f === file ? text.replace(old, planted) : textOf(f));
-  const stages = theBattlesStagesTheListsTextHolds(plantedText(THE_BATTLES_STAGES_LIST.file));
+  { plant: "combatVsChar's magic and army spells' call dropped", in: PVP, edits: [{ old: THE_MAGICS_CALL, new: '' }] },
+])('the check is red on a plant: $plant', ({ in: file, edits, plant }) => {
+  let text = textOf(file);
+  for (const e of edits) {
+    expect(e.old.length > 0 && text.includes(e.old), `${file} holds the plant's text ${e.old.slice(0, 60)}`).toBe(true);
+    text = text.replace(e.old, e.new);
+  }
+  const plantedText = (f: string) => (f === file ? text : textOf(f));
+  const stages = theBattlesStagesTheListsTextHolds(plantedText(LIST));
   expect(whereTheListAndTheCodePart(stages, plantedText), plant).not.toEqual([]);
 });
 

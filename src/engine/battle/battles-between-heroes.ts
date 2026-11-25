@@ -1,10 +1,6 @@
 import type { TurnContext } from '../turn/context.ts';
 import type { HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
-import { theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes } from './the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts';
-import { bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes } from './the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts';
-import { bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes } from './the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts';
-import { sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes } from './the-battle-between-heroes/h5-to-h7-sanctuary-the-mastery-orders-the-lines-fortune-and-the-result.ts';
-import { theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes } from './the-battle-between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts';
+import { THE_BATTLE_BETWEEN_HEROES_STAGES_IN_THE_ORDER_THEY_RUN } from './the-stages-of-both-battles-in-the-order-they-run.ts';
 
 // ── BATTLES BETWEEN TWO HEROES' HOSTS (plan P1-08h: lifted out of resolveTurn) ────
 // The army battle between two commanders' hosts in one province (combatVsChar): the duel before it
@@ -20,6 +16,17 @@ export function combatVsChar(
   def: HeroInABattle,
   prov: ProvinceInABattle,
 ) {
+  // The stage functions, from their list (the one home of the stages' order, H0 to H10), read as the battle starts,
+  // not as the module loads (the list's file imports every stage's): one name a function, each its own name, in the
+  // list's order, each called once in that order
+  // (tests/unit/each-battle-is-fought-by-the-stages-its-list-holds-in-the-lists-order.test.ts).
+  const [
+    { run: theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes },
+    { run: bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes },
+    { run: bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes },
+    { run: sanctuaryTheMasteryOrdersTheLinesTheFortuneAndTheResultOfTheBattleBetweenHeroes },
+    { run: theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes },
+  ] = THE_BATTLE_BETWEEN_HEROES_STAGES_IN_THE_ORDER_THEY_RUN;
   // The stages, called in order (B-06bf to B-06bj: the-battle-between-heroes/, a file each), each handed the objects
   // the stages before it returned, as they are. The set-up, the duel and the sides, to the front's width and each
   // commander's Archery and Naval: what the later stages read, each final there but the front's width (the scout's

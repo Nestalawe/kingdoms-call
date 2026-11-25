@@ -1,10 +1,6 @@
 import type { TurnContext } from '../turn/context.ts';
 import type { HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
-import { theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders } from './the-battle-against-the-defenders/n0-to-n2-the-set-up-the-duel-and-the-sides-to-the-home-ground.ts';
-import { theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders } from './the-battle-against-the-defenders/n3-to-n4-the-attackers-pre-battle-magic-army-spells-archery-flak-and-breach.ts';
-import { theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders } from './the-battle-against-the-defenders/n5-to-n7-the-defenders-pre-battle-magic-archery-and-army-spells.ts';
-import { theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders } from './the-battle-against-the-defenders/n8-to-n10-the-grounds-notes-the-lines-fortune-and-the-result.ts';
-import { theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders } from './the-battle-against-the-defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts';
+import { THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN } from './the-stages-of-both-battles-in-the-order-they-run.ts';
 
 // ── BATTLES AGAINST A PROVINCE'S DEFENDERS (plan P1-08g: lifted out of resolveTurn) ────
 // A host's battle against the defenders of a province that no hero of a realm holds: its neutral defenders, a local
@@ -27,6 +23,17 @@ export function combatVsNPC(
   prov: ProvinceInABattle,
   neutralGuardHero: HeroInABattle | null | undefined,
 ) {
+  // The stage functions, from their list (the one home of the stages' order, N0 to N13), read as the battle starts,
+  // not as the module loads (the list's file imports every stage's): one name a function, each its own name, in the
+  // list's order, each called once in that order
+  // (tests/unit/each-battle-is-fought-by-the-stages-its-list-holds-in-the-lists-order.test.ts).
+  const [
+    { run: theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders },
+    { run: theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders },
+    { run: theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders },
+    { run: theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstTheDefenders },
+    { run: theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders },
+  ] = THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN;
   // The set-up, the duel and the sides (B-06az: the-battle-against-the-defenders/, its first stage), to the home ground
   // and the commander's Archery and Naval: what the later stages read, each final there.
   const theSetUp = theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(turnContext, c, prov, neutralGuardHero);
