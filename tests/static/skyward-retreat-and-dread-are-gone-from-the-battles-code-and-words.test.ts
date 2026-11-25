@@ -9,7 +9,7 @@
 // were; two of them could match no code written today (a known defect fixed by P1-14l, "Eleven checks in the old battle,
 // order and report scripts can't fail"): `a.type==='Eagle Riders'){narr.push` (a battle's lines are facts written with narrate now,
 // not strings pushed) and `_wyvAtk?0.15` / `_wyvDef?0.15` (one spelling of one variable). So each rule gets checks
-// that see it however it came back: the battle files' code (the two battles', and the stages combatVsNPC calls) names
+// that see it however it came back: the battle files' code (the two battles', and the stages each calls) names
 // neither unit (a unit's rule is the registry's, src/engine/rules/), every no-escape roll draws its die first for every trapped unit, and each side's fanaticism
 // reads its own force once and the other side's not at all.
 // Level 0 (static): the code read by its syntax tree; nothing runs. A retired rule has no function a unit test could
@@ -17,7 +17,7 @@
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // Skyward Retreat and Dread are gone (R-095): no line on the GM page says Eagle Riders "climb away over the encircling
-// lines" or troops fight "with one eye on the sky"; no battle file's code (combatVsNPC's stages' too) names the Eagle Riders or the Wyvern
+// lines" or troops fight "with one eye on the sky"; no battle file's code (each battle's stages' too) names the Eagle Riders or the Wyvern
 // Riders; each of the three no-escape rolls draws its die first, for every trapped unit; each side's fanaticism chance
 // reads its own force once and the other side's never; the old scripts' two code patterns are absent too
 import fs from 'node:fs';
@@ -34,7 +34,14 @@ const ITS_STAGES = fs
   .sort()
   .map((f) => `${ITS_STAGES_FOLDER}/${f}`);
 const BETWEEN_HEROES = 'engine/battle/battles-between-heroes.ts';
-const THE_BATTLE_FILES = [AGAINST_A_PROVINCE, ...ITS_STAGES, BETWEEN_HEROES];
+/** The stages combatVsChar calls, each a file of its own beside it (B-06bf on); its set-up holds the zeal. */
+const ITS_STAGES_BETWEEN_HEROES_FOLDER = 'engine/battle/the-battle-between-heroes';
+const ITS_STAGES_BETWEEN_HEROES = fs
+  .readdirSync(path.join(SRC, ITS_STAGES_BETWEEN_HEROES_FOLDER))
+  .sort()
+  .map((f) => `${ITS_STAGES_BETWEEN_HEROES_FOLDER}/${f}`);
+const THE_SET_UP_BETWEEN_HEROES = `${ITS_STAGES_BETWEEN_HEROES_FOLDER}/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts`;
+const THE_BATTLE_FILES = [AGAINST_A_PROVINCE, ...ITS_STAGES, BETWEEN_HEROES, ...ITS_STAGES_BETWEEN_HEROES];
 
 /** The GM page's code (its scripts and the prose its lines are written in), in one canonical layout. */
 const page = compactPage(GM_PAGE);
@@ -88,7 +95,14 @@ describe("Dread is gone: Wyverns overhead no longer cut the other side's fanatic
   });
 
   test("each side's fanaticism chance reads its own force once, and the other side's not at all", () => {
-    const fanaticism = compactCode(statementsBetween(BETWEEN_HEROES, 'combatVsChar', '_atkFanPct', 'defFanatic'));
+    const fanaticism = compactCode(
+      statementsBetween(
+        THE_SET_UP_BETWEEN_HEROES,
+        'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
+        '_atkFanPct',
+        'defFanatic',
+      ),
+    );
     const reads = (name: string) => fanaticism.match(new RegExp(`\\b${name}\\b`, 'g'))?.length ?? 0;
     expect(reads('atkArmies')).toBe(1);
     expect(reads('defArmies')).toBe(1);

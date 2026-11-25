@@ -55,6 +55,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
+    "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength) (B-06bf: combatVsChar's set-up, duel and sides, moved)",
+  ],
+  [
     'src/engine/battle/battles-against-province-defenders.ts',
     'combatVsNPC',
     "B-06k, the Strategist's Tactical on each side, to the minor titles' registry (strength)",

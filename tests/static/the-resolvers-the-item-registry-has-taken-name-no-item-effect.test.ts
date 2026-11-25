@@ -49,6 +49,11 @@ import {
 const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/terrain-and-unit-strength.ts', 'armStr', "P1-19m, the commander's items"],
   ['src/engine/battle/battles-between-heroes.ts', 'combatVsChar', "P1-19n, the battles' items"],
+  [
+    'src/engine/battle/the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts',
+    'theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes',
+    "P1-19n, the battles' items (B-06bf: combatVsChar's set-up, duel and sides, moved)",
+  ],
   ['src/engine/battle/battles-between-heroes.ts', 'applyPreBattleArchery', "P1-19n, the battles' items"],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', "P1-19n, the battles' items"],
   [
@@ -230,9 +235,9 @@ const READS_LEFT_TO_A_LATER_STEP: Readonly<Record<string, readonly string[]>> = 
   // `.drumTierUp`: the War Drum's chance to lift a unit a tier, which no row of the items family takes (KD-037, found
   // by P1-19n). The Ember Rune's
   // `.emberTwo` went with the spells family's first row (P1-19u: "strength: a hero's items change his battle spell")
-  combatVsChar: ['.drumTierUp'],
-  // combatVsNPC's own went with its set-up (B-06az)
+  // combatVsNPC's own went with its set-up (B-06az), combatVsChar's with its (B-06bf)
   theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders: ['.drumTierUp'],
+  theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes: ['.drumTierUp'],
 };
 
 /** The checks of an item's effect a taken function still holds, by the function, each left to a later step: none since
