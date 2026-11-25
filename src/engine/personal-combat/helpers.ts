@@ -1,5 +1,8 @@
 import { doesAGiftOfHisRealmsRaceSuitAHeroInMithril } from '../rules/the-registry-of-the-race-gifts.ts';
-import { KC_RUMOUR_COST_BY_POWER } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT,
+  KC_RUMOUR_COST_BY_POWER,
+} from '../../content/kingdoms-call-data.ts';
 import { MITHRIL_ARMOUR } from '../heroes/fame-and-consecration.ts';
 import { _ITEM_ALT_BASE } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { lairRumourKey } from '../rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
@@ -320,7 +323,10 @@ interface TheStateAsTheMithrilPassesReadIt {
 // Thematic by category: every undead guardian is weak to White Magic, fiends likewise or to the
 // Divine/Good; constructs shatter under Elemental force; fey wither under Necromancy or cold
 // dwarven iron; giants are easily deceived; dragons' vast prideful minds open to Psychic magic.
-export const PC_WEAK_MULT = 2;
+// The figures of a weakness, the damage floor and the lingering harms are content's row
+// (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT, B-06bn).
+export const PC_WEAK_MULT =
+  KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT.theTimesAWeaknessMetRaisesTheHarm;
 // the Talk/Parley encounter tactic is withdrawn. Set true to bring it back — see the 'TA' case in
 // pcRunTactic for the full checklist of what else to restore alongside it.
 export const PARLEY_ENABLED: ASwitchTurnedOnOrOff = false;
@@ -335,12 +341,14 @@ export const RUMOUR_COST_BY_POWER = { ...KC_RUMOUR_COST_BY_POWER };
 // No stack of REDUCTIONS may now take a landed attack below HALF of what it would have dealt.
 // Outright PREVENTION is untouched: a mirror image, a first-hit cuirass or a
 // shield block still stops a blow completely — they return before the floor is ever considered.
-export const PC_DMG_FLOOR_FRACTION = 0.5;
+export const PC_DMG_FLOOR_FRACTION =
+  KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT.theLeastShareOfALandedBlowTheReductionsLeave;
 // ── LINGERING EFFECTS ────
 // Nothing that ticks or clings lasts a whole fight any more. Every damage-over-time is clamped to
 // three rounds at the point it is applied (guardian specials, spells, items and Impalement all run
 // through pcPushDot), and a to-hit penalty always burns off inside three rounds however deep it is.
-export const PC_MAX_LINGER_ROUNDS = 3;
+export const PC_MAX_LINGER_ROUNDS =
+  KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT.theMostRoundsALingeringHarmLasts;
 export function pcLingerRounds(n: number | string | null | undefined) {
   n = parseInt(String(n)); // parseInt reads its argument as a string
   if (!Number.isFinite(n) || n < 1) n = 1;
@@ -426,7 +434,8 @@ export function pcPromotePending(cbt: AFighterAsHisStatusIsGuarded | null | unde
 }
 // A to-hit penalty sheds at least a third of itself each round (minimum 5), so even a Legendary
 // dragon's −30% is gone by the third round rather than fading 5% a round for six.
-export const PC_PEN_FADE_MIN = 5;
+export const PC_PEN_FADE_MIN =
+  KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT.theLeastAToHitPenaltyFadesARound;
 export function pcPenaltyFade(pen: number) {
   return Math.max(PC_PEN_FADE_MIN, Math.ceil(pen / PC_MAX_LINGER_ROUNDS));
 }

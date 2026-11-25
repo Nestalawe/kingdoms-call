@@ -15671,6 +15671,80 @@ export const KC_THE_WORTH_A_BEATEN_HOST_SETS_ON_THE_GROUND_IT_FALLS_BACK_TO = {
   aGarrisonStandingThere: 100,
 } as const;
 
+// ── PERSONAL COMBAT: TO-HIT, WOUNDS, STUNS, COURAGE AND THE DUELS, THEIR FIGURES (moved here from the engine's personal
+// combat files as they were, B-06bn) ────
+// A blow's or an arrow's chance to hit, in percent (pcSkillHitPct, pcHitChance and pcArrowHitChance): this much with no
+// skill, this much more a level of the striker's own Melee (or Archery) up to the level named, this much more a level
+// above it; the chance after every modifier at most this (less the defender's guard) and at least this. The engine
+// reads them by PC_MELEE_HIT_BASE, PC_MELEE_HIT_PER_LVL, PC_HIT_SKILL_CAP, PC_HIT_PER_LVL_ABOVE, PC_HIT_MAX and
+// PC_HIT_MIN; the join form's temper descriptions state the most (Cautious's).
+export const KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT = {
+  theChanceWithNoSkill: 30,
+  theRiseEachLevelGivesToTheLevelNamed: 10,
+  theLevelTheFullRiseStopsAt: 5,
+  theRiseEachLevelAboveItGives: 5,
+  theMost: 80,
+  theLeast: 5,
+} as const;
+// A blow's damage (pcMeleeDamage): a hero (or a guardian of a grade GUARDIAN_MELEE_BASE doesn't hold) rolls from the
+// least to the most here, and adds his Melee divided by this, rounded up (a guardian adds his whole Melee); a striker
+// whose blows are halved deals his blow divided by this, rounded down.
+export const KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT = {
+  theLeastAHerosBaseRoll: 1,
+  theMostAHerosBaseRoll: 3,
+  theNumberAHerosMeleeIsDividedByForWhatItAdds: 2,
+  theNumberAHalvedBlowIsDividedBy: 2,
+} as const;
+// A hit taken (pcTakeHit): a Druid's beast ward divides a natural creature's blow by this, rounded; a master
+// swordsman's Parry turns a melee blow at this chance, by 1 to his Melee divided by this (rounded down); Elemental
+// Armour takes off the least to the most here.
+export const KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT = {
+  theNumberADruidsBeastWardDividesABeastsBlowBy: 2,
+  theChanceAParryTurnsABlow: 0.5,
+  theNumberHisMeleeIsDividedByForTheMostAParryTurns: 2,
+  theLeastElementalArmourTakesOff: 1,
+  theMostElementalArmourTakesOff: 3,
+} as const;
+// A fighter whose record holds no most HP (or 0) is read as having this many (pcTakeHit's wards, damage ceiling and
+// second wind, and pcRoundStart's regeneration and healing).
+export const KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE = 20;
+// The courage test against a terror (pcCourageChance): the chance in percent that a fighter breaks is this, more the
+// terror's rise for its grade, less this much a level of his better raw Melee or Archery, less this much a level of his
+// White Magic (counted to the levels named), more his temper's; rounded, to at least this and at most this. The engine
+// reads them by PC_TERROR_BASE, PC_TERROR_PER_LVL, PC_TERROR_MIN, PC_TERROR_MAX and PC_TERROR_BY_POWER.
+export const KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR = {
+  theChanceBeforeHisNerve: 55,
+  theFallEachLevelOfHisBetterMartialSkillGives: 5,
+  theLeast: 10,
+  theMost: 70,
+  theRiseByTheTerrorsGrade: { Weak: 0, Moderate: 0, Powerful: 5, Legendary: 15 },
+  theFallEachLevelOfWhiteMagicGives: 5,
+  theLevelsOfWhiteMagicCounted: 2,
+} as const;
+// A guardian's weakness, the damage floor and the lingering harms (helpers.ts): a weakness met multiplies the harm by
+// this (PC_WEAK_MULT); no stack of reductions takes a landed blow below this share of it (PC_DMG_FLOOR_FRACTION); a
+// lingering harm lasts at most this many rounds (PC_MAX_LINGER_ROUNDS), and a to-hit penalty fades each round by at
+// least this, or the penalty divided by those rounds, rounded up (PC_PEN_FADE_MIN).
+export const KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT = {
+  theTimesAWeaknessMetRaisesTheHarm: 2,
+  theLeastShareOfALandedBlowTheReductionsLeave: 0.5,
+  theMostRoundsALingeringHarmLasts: 3,
+  theLeastAToHitPenaltyFadesARound: 5,
+} as const;
+// A duel and a hero's encounter with another (duels-and-character-encounters.ts): a hero who flees one drops a magic
+// item at this chance (DUEL_FLEE_DROP: a flight from a lair guardian reads it too); a duel and an encounter run at most
+// these rounds; a hero of the Thief's mastery tier named keeps his purse; a Steal lifts the least to the most gold
+// here; a felled hero who is no king is slain at this chance (else he yields).
+export const KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES = {
+  theChanceAHeroWhoFleesDropsAnItem: 0.5,
+  theMostRoundsADuelRuns: 20,
+  theMostRoundsAnEncounterRuns: 20,
+  theMasteryTierOfThiefThatKeepsHisPurse: 3,
+  theLeastGoldAStealLifts: 1,
+  theMostGoldAStealLifts: 5,
+  theChanceAFelledHeroIsSlain: 0.3,
+} as const;
+
 // DRUID needed to lead each unit type without the −20%-per-level shortfall. A commander leads his
 // OWN race's units as if he had Druid 1, so level 1 only bites on a foreign-race humanoid unit.
 // A Druidic realm (or a personally Druidic commander) waives it for creatures; sd40 for tamedFlyer;

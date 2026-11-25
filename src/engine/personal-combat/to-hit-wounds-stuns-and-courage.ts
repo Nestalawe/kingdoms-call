@@ -2,6 +2,13 @@ import { kcRng } from '../rng.ts';
 import { temperOf, theRowOfATemperByItsName } from '../world/tables.ts';
 import { GUARDIAN_MELEE_BASE, PC_HIT_CAP_FRAC } from '../names.ts';
 import { THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS } from '../../content/guardian-perks-their-kinds-numbers-and-words.ts';
+import {
+  KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT,
+  KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT,
+  KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT,
+  KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR,
+  KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
+} from '../../content/kingdoms-call-data.ts';
 import { activeItems, type AHeroAsHisItemsAreRead, type AnItemAsTheSlotsReadIt } from '../items/equipment.ts';
 import {
   PC_DMG_FLOOR_FRACTION,
@@ -117,12 +124,13 @@ type AFighterAsHisRoundStarts = Omit<AFighterInAPersonalCombat, 'status'> & {
 // aura and ward is applied to THAT real figure. Only the FINAL result is clamped, to a hard 80% —
 // so a Melee 6 hero meeting a −15% guardian hits at 75%, not 65%, while a Melee 5 hero meeting
 // the same guardian hits at 65%. No melee or arrow ever exceeds 80%, temper bonuses included.
-export const PC_MELEE_HIT_BASE = 30,
-  PC_MELEE_HIT_PER_LVL = 10,
-  PC_HIT_SKILL_CAP = 5,
-  PC_HIT_PER_LVL_ABOVE = 5,
-  PC_HIT_MAX = 80,
-  PC_HIT_MIN = 5;
+// Their figures are content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT, B-06bn).
+export const PC_MELEE_HIT_BASE = KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT.theChanceWithNoSkill,
+  PC_MELEE_HIT_PER_LVL = KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT.theRiseEachLevelGivesToTheLevelNamed,
+  PC_HIT_SKILL_CAP = KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT.theLevelTheFullRiseStopsAt,
+  PC_HIT_PER_LVL_ABOVE = KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT.theRiseEachLevelAboveItGives,
+  PC_HIT_MAX = KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT.theMost,
+  PC_HIT_MIN = KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT.theLeast;
 // Skill counted for to-hit: the character's RAW level (1–9) where known, else the combatant's
 // stat
 // (guardians carry their melee/archery straight). effStat caps at 5, so meleeRaw is what carries
@@ -189,15 +197,21 @@ export function pcMeleeDamage(attacker: AFighterAsHisBlowIsRead, defender: unkno
   const baseOfGrade: Readonly<Partial<Record<string, readonly number[]>>> = GUARDIAN_MELEE_BASE;
   const _dsk = Math.max(0, (attacker.meleeRaw ?? (attacker.melee || 0)) - (Number(attacker.status?.meleeDown) || 0));
   const _gd = attacker.kind === 'monster';
-  const _base = (_gd ? baseOfGrade[String(attacker.power)] : undefined) ?? [1, 3]; // a guardian's base grows with its tier (each row a list: never falsy)
+  const _base = (_gd ? baseOfGrade[String(attacker.power)] : undefined) ?? [
+    KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT.theLeastAHerosBaseRoll,
+    KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT.theMostAHerosBaseRoll,
+  ]; // a guardian's base grows with its tier (each row a list: never falsy)
   // 2026-10-14 (Toby, item 20): a guardian adds +1 for every level of its Melee; a hero still adds ⌈Melee ÷ 2⌉.
   let dmg = Math.max(
     1,
     rng(Number(_base[0]), Number(_base[1])) +
-      (_gd ? _dsk : Math.ceil(_dsk / 2)) +
+      (_gd
+        ? _dsk
+        : Math.ceil(_dsk / KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT.theNumberAHerosMeleeIsDividedByForWhatItAdds)) +
       temperOf(attacker.temper).meleeDamage,
   );
-  if ((attacker.status?.meleeHalvedRounds ?? 0) > 0) dmg = Math.max(1, Math.floor(dmg / 2));
+  if ((attacker.status?.meleeHalvedRounds ?? 0) > 0)
+    dmg = Math.max(1, Math.floor(dmg / KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT.theNumberAHalvedBlowIsDividedBy));
   // 2026-09-12b: the defender's temper soak MOVED to pcTakeHit. It is a reduction like any other
   // ward, and applying it here put it outside the half-damage floor — a Cautious hero in Mithril
   // was still taking 1-damage hits because the guard had already scraped the blow down before
@@ -230,7 +244,9 @@ export function pcStunWard(t: AFighterAsHisStunWardIsRead) {
   const a = t?.arm;
   if (!a) return 0;
   // his items' refusal, else his perks' chance (the guardian perks' registry, plan P1-19aj)
-  return aFightersWardsRefuseAStunOrATerror(a) ? 100 : theStunWardAGuardiansPerksGiveHim(a).theChance;
+  return aFightersWardsRefuseAStunOrATerror(a)
+    ? THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.aFullWard.value
+    : theStunWardAGuardiansPerksGiveHim(a).theChance;
 }
 // pcStunTurned rolls the ward once and says so when it turns the stun, naming what the daze comes from (its source, a
 // record: plan P1-12d19).
@@ -240,7 +256,7 @@ export function pcStunTurned(
   what: TheSourceOfADaze,
 ) {
   const w = pcStunWard(target);
-  if (!(w >= 100 || (w > 0 && d100() <= w))) return false;
+  if (!(w >= THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.aFullWard.value || (w > 0 && d100() <= w))) return false;
   if (narrative)
     narrate(narrative, {
       kind: 'the target cannot be held',
@@ -278,18 +294,24 @@ export function pcLandStun(
 // warding stun/hold (the Signet of the Sleepless Crown) refuses the grip outright — handled by
 // the caller. The band is 10–70%: nobody is ever immune by statistics alone, and nobody is ever
 // helpless. A Melee 1 novice of Brave temper breaks on 40%; a Melee 9 master with White 2 on 10%.
-export const PC_TERROR_BASE = 55,
-  PC_TERROR_PER_LVL = 5,
-  PC_TERROR_MIN = 10,
-  PC_TERROR_MAX = 70;
-export const PC_TERROR_BY_POWER = { Weak: 0, Moderate: 0, Powerful: 5, Legendary: 15 };
+// Their figures are content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR, B-06bn).
+export const PC_TERROR_BASE = KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR.theChanceBeforeHisNerve,
+  PC_TERROR_PER_LVL = KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR.theFallEachLevelOfHisBetterMartialSkillGives,
+  PC_TERROR_MIN = KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR.theLeast,
+  PC_TERROR_MAX = KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR.theMost;
+export const PC_TERROR_BY_POWER = KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR.theRiseByTheTerrorsGrade;
 export function pcCourageChance(
   foe: AFighterAsTheCourageTestReadsHim,
   actor: AFighterAsTheCourageTestReadsHisFoe | null | undefined,
 ) {
   const terrorOfPower: Readonly<Partial<Record<string, number>>> = PC_TERROR_BY_POWER;
   const nerve = Math.max(foe.meleeRaw ?? (foe.melee || 0), foe.archeryRaw ?? (foe.archery || 0));
-  const faith = 5 * Math.min(2, Number(foe.school?.white) || 0);
+  const faith =
+    KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR.theFallEachLevelOfWhiteMagicGives *
+    Math.min(
+      KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR.theLevelsOfWhiteMagicCounted,
+      Number(foe.school?.white) || 0,
+    );
   const stature = terrorOfPower[actor?.ref?.power ?? ''] ?? 0; // the table holds no NaN; a grade '' is the key '' as before
   const c =
     PC_TERROR_BASE +
@@ -314,7 +336,11 @@ export const PC_SUSTAIN_FULL_ROUNDS =
 export function pcSustainMult(cbt: Pick<AFighterInAPersonalCombat, 'kind' | '_roundNo'> | null | undefined) {
   if (cbt?.kind !== 'monster') return 1;
   const r = Number(cbt._roundNo) || 1;
-  return r <= PC_SUSTAIN_FULL_ROUNDS ? 1 : r <= PC_SUSTAIN_HALF_ROUNDS ? 0.5 : 0;
+  return r <= PC_SUSTAIN_FULL_ROUNDS
+    ? 1
+    : r <= PC_SUSTAIN_HALF_ROUNDS
+      ? THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.theSustainsFade.theShareAtHalfStrength
+      : 0;
 }
 export function pcTakeHit(
   turnContext: Pick<TurnContext, 'G'>,
@@ -466,7 +492,7 @@ export function pcTakeHit(
   // them.
   if (target.druidBeastWard && d > 1) {
     const _bw = d;
-    d = Math.max(1, Math.round(d / 2));
+    d = Math.max(1, Math.round(d / KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT.theNumberADruidsBeastWardDividesABeastsBlowBy));
     if (d < _bw)
       narrate(narrative, {
         kind: "the target reads the beast's every move",
@@ -515,8 +541,22 @@ export function pcTakeHit(
   }
   // MELEE L6 (Parry): a master swordsman turns part of a melee blow aside — 50% chance to shave
   // 1..⌊melee/2⌋ off a landed melee/free/counter strike, never below 1.
-  if (target.perkParry && kindsChannel === 'melee' && d > 1 && kcRng() < 0.5) {
-    const _cut = rng(1, Math.max(1, Math.floor((Number(target.meleeRaw) || 0) / 2)));
+  if (
+    target.perkParry &&
+    kindsChannel === 'melee' &&
+    d > 1 &&
+    kcRng() < KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT.theChanceAParryTurnsABlow
+  ) {
+    const _cut = rng(
+      1,
+      Math.max(
+        1,
+        Math.floor(
+          (Number(target.meleeRaw) || 0) /
+            KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT.theNumberHisMeleeIsDividedByForTheMostAParryTurns,
+        ),
+      ),
+    );
     const _b = d;
     d = Math.max(1, d - _cut);
     if (d < _b)
@@ -529,7 +569,10 @@ export function pcTakeHit(
   // ELEMENTAL L6 (Elemental Armour): a ward of the elements bleeds 1-3 off EVERY attack that
   // lands.
   if (target.perkElemArmour && d > 1) {
-    const _cut2 = rng(1, 3);
+    const _cut2 = rng(
+      KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT.theLeastElementalArmourTakesOff,
+      KC_A_HIT_TAKEN_IN_PERSONAL_COMBAT.theMostElementalArmourTakesOff,
+    );
     const _b2 = d;
     d = Math.max(1, d - _cut2);
     if (d < _b2)
@@ -550,7 +593,7 @@ export function pcTakeHit(
       theChannel: _chan,
       theStrikersKind: _src,
       hisHp: target.hp,
-      hisMaximumHp: target.maxHp || 20,
+      hisMaximumHp: target.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
       theHitsHisOpenGuardHasTaken: Number(target._openGuardUsed) || 0,
       theDamageSoFar: d,
     });
@@ -586,7 +629,7 @@ export function pcTakeHit(
   // rather than a reduction, so the floor is never allowed to lift a blow back over it.
   const _capped = theCapAFightersWardsPutOnAHit({
     theWards: _arm,
-    hisMaximumHp: target.maxHp || 20,
+    hisMaximumHp: target.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
     theDamageSoFar: d,
   });
   if (_capped) {
@@ -610,7 +653,10 @@ export function pcTakeHit(
   // DELIBERATELY SILENT, as asked: no narrative line is pushed, so the reduced figure is simply
   // the damage the player sees.
   if (d > 0) {
-    const _gCap = Math.max(1, Math.floor((target.maxHp || 20) * PC_HIT_CAP_FRAC));
+    const _gCap = Math.max(
+      1,
+      Math.floor((target.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) * PC_HIT_CAP_FRAC),
+    );
     if (d > _gCap) d = _gCap;
   }
   target.hp -= d;
@@ -627,12 +673,12 @@ export function pcTakeHit(
     theWards: _arm,
     hisSecondWindHasBeenUsed: target._armSecondWindUsed,
     hisHp: target.hp,
-    hisMaximumHp: target.maxHp || 20,
+    hisMaximumHp: target.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE,
   });
   if (_wind) {
     target._armSecondWindUsed = true;
     const _back = _wind.theHp;
-    target.hp = Math.min(target.maxHp || 20, target.hp + _back);
+    target.hp = Math.min(target.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE, target.hp + _back);
     narrate(narrative, {
       kind: 'the target will not go down and restores hit points',
       targetIsAGuardian: target.kind === 'monster',
@@ -677,11 +723,15 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
     }
     // a GUARDIAN's regeneration fades as the fight runs long (pcSustainMult); a character's worn
     // regeneration is untouched and returns a multiplier of 1.
-    if (_wards.heRegenerates && cbt.hp > 0 && cbt.hp < (cbt.maxHp || 20)) {
+    if (
+      _wards.heRegenerates &&
+      cbt.hp > 0 &&
+      cbt.hp < (cbt.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)
+    ) {
       const _sm = pcSustainMult(cbt),
         _rg = Math.round(_wards.heRegenerates.theHp * _sm);
       if (_rg > 0) {
-        const h = Math.min(_rg, (cbt.maxHp || 20) - cbt.hp);
+        const h = Math.min(_rg, (cbt.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) - cbt.hp);
         cbt.hp += h;
         narrate(narrative, {
           kind: "a guardian's regeneration knits its flesh",
@@ -729,7 +779,10 @@ export function pcRoundStart(cbt: AFighterAsHisRoundStarts, narrative: Narrative
   cbt.status.dot = (cbt.status.dot ?? []).filter((d) => d.rounds > 0);
   // Heal-over-time (Potion of Regeneration and kin)
   if (cbt.status.hot && cbt.status.hot.rounds > 0) {
-    const h = Math.min(cbt.status.hot.amt, Math.max(0, (cbt.maxHp || 20) - cbt.hp));
+    const h = Math.min(
+      cbt.status.hot.amt,
+      Math.max(0, (cbt.maxHp || KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE) - cbt.hp),
+    );
     cbt.hp += h;
     cbt.status.hot.rounds--;
     if (h > 0)

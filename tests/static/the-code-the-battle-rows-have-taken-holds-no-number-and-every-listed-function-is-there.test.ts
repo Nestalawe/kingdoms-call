@@ -213,6 +213,121 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'seaLiftShortfall',
     "B-06bm, the stranding's half-berths and Naval's mastery: content's rows (KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM, KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA)",
   ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_MELEE_HIT_BASE',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_MELEE_HIT_PER_LVL',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_SKILL_CAP',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_PER_LVL_ABOVE',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_MAX',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_HIT_MIN',
+    "B-06bn, a blow's chance to hit: content's row (KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcMeleeDamage',
+    "B-06bn, a blow's damage: content's row (KC_A_BLOWS_DAMAGE_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcStunWard',
+    "B-06bn, a full ward: the guardian perks' row (THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.aFullWard)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcStunTurned',
+    "B-06bn, a full ward: the guardian perks' row (THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.aFullWard)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_BASE',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_PER_LVL',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_MIN',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_MAX',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'PC_TERROR_BY_POWER',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcCourageChance',
+    "B-06bn, the courage test: content's row (KC_THE_CHANCE_A_FIGHTER_BREAKS_BEFORE_A_TERROR)",
+  ],
+  [
+    'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
+    'pcSustainMult',
+    "B-06bn, the sustain's fade: the guardian perks' row (THE_NUMBERS_THE_CODE_WRITES_FOR_A_GUARDIANS_PERKS.theSustainsFade)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_WEAK_MULT',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_DMG_FLOOR_FRACTION',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_MAX_LINGER_ROUNDS',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/helpers.ts',
+    'PC_PEN_FADE_MIN',
+    "B-06bn, a weakness, the damage floor and the lingering harms: content's row (KC_A_WEAKNESS_THE_DAMAGE_FLOOR_AND_THE_LINGERING_HARMS_IN_PERSONAL_COMBAT)",
+  ],
+  [
+    'src/engine/personal-combat/duels-and-character-encounters.ts',
+    'DUEL_FLEE_DROP',
+    "B-06bn, a duel's and a hero's encounter's figures: content's row (KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES)",
+  ],
+  [
+    'src/engine/personal-combat/duels-and-character-encounters.ts',
+    'resolveDuel',
+    "B-06bn, a duel's and a hero's encounter's figures: content's row (KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES)",
+  ],
+  [
+    'src/engine/personal-combat/duels-and-character-encounters.ts',
+    'resolveCharVsChar',
+    "B-06bn, a duel's and a hero's encounter's figures: content's row (KC_A_DUELS_AND_A_HEROS_ENCOUNTERS_FIGURES)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');

@@ -10,24 +10,20 @@
 // below nothing; Second Wind is Brave's alone, the riposte Cautious's, mercy Cowardly's. So a figure changed in content
 // and not in the words, or in the words and not in content, turns this red.
 // Level 0 (static): content's rows imported (plain data), the briefing's strings read by its syntax tree
-// (tests/lib/source.ts) and the duel's ceiling read from its file's text; nothing runs.
-import fs from 'node:fs';
-import path from 'node:path';
+// (tests/lib/source.ts) and the duel's ceiling read from its row; nothing runs.
 import { expect, test } from 'vitest';
-import { KC_TEMPERS, TEMPER_TRAITS } from '../../src/content/kingdoms-call-data.ts';
-import { ROOT } from '../../tools/build.ts';
+import {
+  KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT,
+  KC_TEMPERS,
+  TEMPER_TRAITS,
+} from '../../src/content/kingdoms-call-data.ts';
 import { stringsOf } from '../lib/source.ts';
 
 type ATemper = 'Berserk' | 'Brave' | 'Cautious' | 'Cowardly';
 const THE_FOUR: readonly ATemper[] = ['Berserk', 'Brave', 'Cautious', 'Cowardly'];
 
-/** The most a blow in a duel can reach, before the defender's guard lowers it (PC_HIT_MAX, as its file writes it). */
-const THE_DUELS_HIT_CEILING = (() => {
-  const file = path.join(ROOT, 'src', 'engine', 'personal-combat', 'to-hit-wounds-stuns-and-courage.ts');
-  const found = /\bPC_HIT_MAX = (\d+)\b/.exec(fs.readFileSync(file, 'utf8'));
-  if (!found?.[1]) throw new Error('to-hit-wounds-stuns-and-courage.ts declares no PC_HIT_MAX');
-  return Number(found[1]);
-})();
+/** The most a blow in a duel can reach, before the defender's guard lowers it (PC_HIT_MAX, content's row since B-06bn). */
+const THE_DUELS_HIT_CEILING: number = KC_A_BLOWS_CHANCE_TO_HIT_IN_PERSONAL_COMBAT.theMost;
 
 /** The words a reader sees in a description: the bold marks (`**`) dropped, the spaces made one. */
 const asAReaderSeesIt = (text: string): string => text.split('**').join('').replace(/\s+/g, ' ').trim();
