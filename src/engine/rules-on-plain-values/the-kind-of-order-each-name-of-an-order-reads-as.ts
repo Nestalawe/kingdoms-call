@@ -17,7 +17,8 @@ type AHeroOrdersRow = (typeof THE_HERO_ORDERS)[keyof typeof THE_HERO_ORDERS];
 // Pursue's, a saved name that reads as an Encounter: what an order's action reads as. A phase order's own type is
 // PhaseOrder (src/schemas/orders-a-realm-submits.ts), whose action is a spelling the form or a bot wrote. Every kind has
 // its resolver in the hero orders' registry (src/engine/orders/the-registry-of-the-hero-orders-…, B-06ao) but
-// forced_march, which processOrder makes a Move before it: a row added with no resolver there fails to compile (P1-10z). A row's readsAs that is no kind fails to compile too (the map's `satisfies`).
+// forced_march, which processOrder makes a Move before it: a row added with no resolver there fails to compile
+// (P1-10z). A row's readsAs that is no kind fails to compile too (the map's `satisfies`).
 export type OrderKind = Exclude<AHeroOrdersRow, { readonly readsAs: string }>['key'];
 
 /** The kind a row's names read as: its own key, or the kind it reads as (Pursue's). */

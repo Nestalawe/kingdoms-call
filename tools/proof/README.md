@@ -282,7 +282,7 @@ changes them.
 
 Not on the grid: a realm's garrison holding a province with no hero, the mastery orders' flags, Sanctuary, Consecrate,
 Illusory Terrain, Terror, Phantasmal Armies, a carried-on battle, discoveries, and a spell named in
-a plan (the commanders cast only what they pick for themselves). A unit case stages those.
+a plan (the commanders cast only what they pick for themselves). Unit cases stage some of these.
 
 **A draw's stage** is read from its call stack, with no mark in `src/`
 ([the-stages-of-the-two-battles-and-the-lines-that-open-them.ts](the-stages-of-the-two-battles-and-the-lines-that-open-them.ts)).
