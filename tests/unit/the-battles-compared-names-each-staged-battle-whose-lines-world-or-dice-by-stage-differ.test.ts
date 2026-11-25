@@ -213,9 +213,18 @@ describe('the grid', () => {
     const cases = theBattleCases();
     const sets = Object.entries(THE_SETS_OF_ARMIES);
     const atSea = sets.filter(([, set]) => theSeaCarriesBothHosts(set)).map(([name]) => name);
-    expect(atSea, 'the sets the sea carries').toEqual(['corsairs', 'whales', 'fleets', 'reavers']);
+    expect(atSea, 'the sets the sea carries').toEqual([
+      'corsairs',
+      'whales',
+      'fleets',
+      'reavers',
+      'flyers carrying foot at sea',
+    ]);
+    const onLand = sets.filter(([, set]) => set.atSeaOnly !== true).length;
+    expect(onLand, 'the sets fought on land: all but flyers carrying foot at sea').toBe(sets.length - 1);
     const each = THE_BATTLES.length * THE_DEFENDERS.length * WHERE_THE_ATTACKER_COMES_FROM.length;
-    expect(cases).toHaveLength(each * ((THE_GROUNDS.length - 1) * sets.length + atSea.length));
+    expect(cases).toHaveLength(each * ((THE_GROUNDS.length - 1) * onLand + atSea.length));
+    expect(cases.filter((c) => c.terrain !== 'sea' && c.armies === 'flyers carrying foot at sea')).toEqual([]);
     expect(new Set(cases.map((c) => c.key)).size).toBe(cases.length);
     expect(cases.filter((c) => c.terrain === 'sea' && !atSea.includes(c.armies))).toEqual([]);
     expect(THE_GROUNDS).toEqual(['plain', 'forest', 'mountain', 'desert', 'sea']);

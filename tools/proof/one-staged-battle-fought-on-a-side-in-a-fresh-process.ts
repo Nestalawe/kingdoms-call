@@ -44,6 +44,8 @@ export interface ASetOfArmies {
   /** The attacker's Tactical (2 unless given), and the items he carries (none unless given). */
   tactical?: number;
   items?: () => unknown[];
+  /** Fought at sea only: a land host the air carries there (flyers carrying foot, no ship), against a ship. */
+  atSeaOnly?: true;
 }
 
 const companiesOf = (type: string, n: number, quality: string, race?: string): ACompany[] =>
@@ -166,6 +168,17 @@ export const THE_SETS_OF_ARMIES: Readonly<Record<string, ASetOfArmies>> = {
       ...companiesOf('Yeoman Longbows', 1, 'Average'),
     ],
   },
+  // flyers carrying foot over open water (isAirborneAtSea): the attacker has no hull, the defender ships
+  'flyers carrying foot at sea': {
+    atSeaOnly: true,
+    race: 'Elven',
+    attackers: () => [
+      ...companiesOf('Eagle Riders', 1, 'Veteran', 'Elven'),
+      ...companiesOf('Men-at-Arms', 2, 'Average'),
+    ],
+    // strong enough that the airborne host loses in some streams, and its rout is a retreat over open water
+    defenders: () => [...companiesOf('Galleon Fleet', 2, 'Average'), ...companiesOf('Men-at-Arms', 1, 'Average')],
+  },
   'an outmatched attacker': {
     attackers: () => companiesOf('Shieldwall Levies', 1, 'Green'),
     defenders: () => companiesOf('Men-at-Arms', 4, 'Elite'),
@@ -182,8 +195,10 @@ const THE_SHIPS_AND_SEA_BEASTS = new Set([
   'Whale Cohort',
   'Shark Shoals',
 ]);
-/** Whether a set's hosts can both stand on a sea field: each holds a ship or a sea beast to carry the rest. */
+/** Whether a set's hosts can both stand on a sea field: each holds a ship or a sea beast to carry the rest, or the set
+ *  is fought at sea only (flyers carrying the attacker's foot). */
 export const theSeaCarriesBothHosts = (set: ASetOfArmies): boolean =>
+  set.atSeaOnly === true ||
   [set.attackers(), set.defenders()].every((host) => host.some((a) => THE_SHIPS_AND_SEA_BEASTS.has(a.type)));
 
 /** One case of the grid: the battle, the ground, the defender led or not, where the attacker comes from, the armies. */

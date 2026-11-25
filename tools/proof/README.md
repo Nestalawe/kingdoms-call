@@ -20,7 +20,7 @@ trial on four planted faults (plan P1-16a).
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the tests send a page's client, to compare base with branch | the tests' own time |
 | `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
 | `npm run proof:worlds -- --base <ref>` | Whether each seed makes the same world with the same dice, stage by stage, base against branch | about 8 minutes (2,560 cases; `--seeds 8`, 100 s) |
-| `npm run proof:battles -- --base <ref>` | Whether each staged battle writes the same lines and the same to the turn's context, leaves the same world and draws the same dice, stage by stage, base against branch | about 2 minutes (672 cases, 8 dice streams each; `--cases 40`, 7 s) |
+| `npm run proof:battles -- --base <ref>` | Whether each staged battle writes the same lines and the same to the turn's context, leaves the same world and draws the same dice, stage by stage, base against branch | about 2 minutes (684 cases, 8 dice streams each; `--cases 40`, 7 s) |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
@@ -265,12 +265,13 @@ every other field but the world and the distance cache by its hash: the statisti
 case differs, and names each with its stream and what differs (`stream 903: H6's dice (1 → 2)`, `the turn's context
 (_tel)`). Options: `--cases N` (N cases spread over the grid, for a quick look), `--jobs N`.
 
-**The grid** (672 cases): the ground (plain, forest, mountain, desert, sea) × the battle (against a province's
+**The grid** (684 cases): the ground (plain, forest, mountain, desert, sea) × the battle (against a province's
 defenders, `combatVsNPC`; between heroes, `combatVsChar`, the two realms at war on a province of the defender's) × the
-defender × where the attacker comes from × 13 sets of armies (foot, missiles, flyers, beasts under a Druid short,
+defender × where the attacker comes from × 14 sets of armies (foot, missiles, flyers, beasts under a Druid short,
 skeletal companies, Monsters under Evil, Dwarven Guard, corsairs, whales, fleets, reavers, Tactical 6 and the War Drum,
-an outmatched attacker). On a sea field only the sets whose two hosts each hold a ship or a sea beast (corsairs, whales,
-fleets, reavers). Each commander has Tactical, Archery and Naval 2, Druid 2, Elemental 3 and Necromancy 2, as the set
+flyers carrying foot at sea, an outmatched attacker). On a sea field only the sets whose two hosts each hold a ship or a
+sea beast (corsairs, whales, fleets, reavers), and flyers carrying foot, fought at sea only: a land host the air carries
+over open water (`isAirborneAtSea`) against ships, its rout a retreat with no hull. Each commander has Tactical, Archery and Naval 2, Druid 2, Elemental 3 and Necromancy 2, as the set
 changes them.
 - **The defender**: led (a neutral guard, or the defending king, challenged to a duel); or leaderless, each battle's
   own sense of it: no guard against the defenders, and between heroes a host whose commander is already dead
@@ -280,7 +281,7 @@ changes them.
   landing that raids the coast (Naval 9's `_raidCoastTurn` this turn). On a sea field, the sea beside it.
 
 Not on the grid: a realm's garrison holding a province with no hero, the mastery orders' flags, Sanctuary, Consecrate,
-Illusory Terrain, Terror, Phantasmal Armies, a carried-on battle, discoveries, a land host at sea, and a spell named in
+Illusory Terrain, Terror, Phantasmal Armies, a carried-on battle, discoveries, and a spell named in
 a plan (the commanders cast only what they pick for themselves). A unit case stages those.
 
 **A draw's stage** is read from its call stack, with no mark in `src/`

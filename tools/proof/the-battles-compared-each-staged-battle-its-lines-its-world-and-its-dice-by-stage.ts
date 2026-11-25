@@ -10,8 +10,8 @@
 //
 // The grid: the ground (plain, forest, mountain, desert, sea) × the battle (against a province's defenders, between
 // heroes) × the defender (led, leaderless) × where the attacker comes from (land, a landing, a landing that raids the
-// coast) × the set of armies (THE_SETS_OF_ARMIES; at sea, only the sets whose hosts the sea carries), each fought with
-// 8 dice streams.
+// coast) × the set of armies (THE_SETS_OF_ARMIES; at sea, only the sets whose hosts the sea carries, one of them fought
+// at sea only: flyers carrying foot), each fought with 8 dice streams.
 //
 // Options: --base REF (default main), --cases N (N cases spread over the grid, for a quick look; all unless given),
 // --jobs N (cases side by side; default one per core).
@@ -39,7 +39,7 @@ export const THE_DEFENDERS: readonly ABattleCase['defender'][] = ['led', 'leader
 export const WHERE_THE_ATTACKER_COMES_FROM: readonly ABattleCase['from'][] = ['land', 'sea', 'sea, raiding the coast'];
 
 /** Every case of the grid, in its order: on a sea field, only the sets whose hosts the sea carries (each holds a ship
- *  or a sea beast). */
+ *  or a sea beast, or flyers carry the attacker's foot); on land, every set but the one fought at sea only. */
 export function theBattleCases(): ABattleCase[] {
   const cases: ABattleCase[] = [];
   for (const terrain of THE_GROUNDS)
@@ -47,7 +47,7 @@ export function theBattleCases(): ABattleCase[] {
       for (const defender of THE_DEFENDERS)
         for (const from of WHERE_THE_ATTACKER_COMES_FROM)
           for (const [armies, set] of Object.entries(THE_SETS_OF_ARMIES))
-            if (terrain !== 'sea' || theSeaCarriesBothHosts(set))
+            if (terrain === 'sea' ? theSeaCarriesBothHosts(set) : set.atSeaOnly !== true)
               cases.push({
                 key: `${terrain}, the battle ${battle}, the defender ${defender}, from ${from}, ${armies}`,
                 battle,
