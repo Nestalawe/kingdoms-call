@@ -7,6 +7,7 @@
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { bootJsdom } from '../lib/boot.ts';
 import { theShareOfAProvinceAnExploreOrderMaps } from '../../src/shared/the-engines-rules-the-player-portal-shares.ts';
+import { THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 type TheFile = typeof import('../../src/ui/player/order-targets.ts');
 let page: Document;
@@ -278,6 +279,33 @@ describe('order-targets.ts: the target field', () => {
       (sel) => sel.querySelector('option[selected]')?.getAttribute('value') ?? '',
     );
     expect(marks).toEqual(['S', 'E']);
+  });
+  test('the Hire Hero field of a realm of none prices and refuses as the alignment its row names (B-06br)', () => {
+    stage('');
+    const hireField = (kingdom: Record<string, unknown>) => {
+      g['currentReport'] = {
+        characters: [hero()],
+        kingdom,
+        provinceOrderData: {
+          7: {
+            availableHeroes: [
+              { id: 21, name: 'Brother Ash', race: 'Human', alignment: 'Evil', skills: {} },
+              { id: 22, name: 'Mother Fen', race: 'Elven', alignment: 'Undead', skills: {}, hireWage: null },
+            ],
+          },
+        },
+      };
+      return words(field({}, 'Hire Hero'));
+    };
+    const asTheRow = hireField({ alignment: THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS });
+    expect(asTheRow, 'the refusal names the crown').toContain(
+      `will NOT serve a ${THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS} crown`,
+    );
+    expect(asTheRow, 'the price counts the steps from it').toContain(
+      `steps from ${THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS}`,
+    );
+    expect(hireField({}), 'a realm of no alignment').toBe(asTheRow);
+    expect(hireField({ alignment: '' }), 'a realm of an empty alignment').toBe(asTheRow);
   });
   test("the Recruit field's refusals: not his ground, no native troops, the most raised", () => {
     stage('');
