@@ -1,34 +1,30 @@
 // ── THE PROVINCES A REALM HAS IN SIGHT NOW, AND THOSE IT HAS VISITED (B-06bw) ────
 // One sight rule, read by the turn's report (playerView, src/views/what-each-realm-may-see-of-the-world.ts) and by the
 // bots (botIntel, src/engine/bots/intel.ts): the parts the two copies work out the same way. Each copy reads its own
-// three sources (the provinces it owns, where its heroes stand, the provinces it spied) and its own bordering ring, as
-// it did before; tests/unit/the-reports-copy-and-the-bots-copy-of-the-sight-rule-each-give-what-they-gave-before.test.ts
-// holds the two copies together.
+// three sources (`owned`, `heroesThere`, `spied`) and keeps its own other sets, as it did before. The test that holds
+// the two copies together: tests/unit/the-reports-copy-and-the-bots-copy-of-the-sight-rule-each-give-what-they-gave-before.test.ts.
 import { nearSpiedProvIds, type SightContext } from './heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { GameState } from '../../schemas/saved-game-state.ts';
 
-/** A realm's three sources of sight now, each as the copy that asks reads it: the provinces it owns, the provinces
- *  where a hero of its own stands, and the provinces it spied. */
+/** A realm's three sources of the sight rule, each as the copy that asks reads it. */
 export interface TheThreeSourcesOfARealmsSight {
   owned: Set<number>;
   heroesThere: Set<number>;
   spied: Set<number>;
 }
 
-/** The sight rule's context (enemyCharVisibleTo's): the three sources, the same sets, and the provinces next to a
- *  spied one. */
+/** The sight rule's context (enemyCharVisibleTo's): the three sources, the same sets, and `nearSpied`. */
 export interface TheSightContextOfARealm extends SightContext {
   nearSpied: Set<number>;
 }
 
-/** The provinces a realm has in sight now: those it owns, then those where a hero of its own stands, then those it
- *  spied, each once, in that order. */
+/** The three sources together, each province once, in the order `owned`, `heroesThere`, `spied`. */
 export function theProvincesInSightNow(sources: TheThreeSourcesOfARealmsSight): Set<number> {
   return new Set([...sources.owned, ...sources.heroesThere, ...sources.spied]);
 }
 
-/** The sight rule's context from a realm's three sources (the same sets) and the provinces next to the spied ones. */
+/** The sight rule's context from a realm's three sources (the same sets), with nearSpiedProvIds of `spied`. */
 export function theSightContextOfARealm(
   state: GameState,
   sources: TheThreeSourcesOfARealmsSight,
@@ -41,7 +37,7 @@ export function theSightContextOfARealm(
   };
 }
 
-/** The provinces a hero of the realm has ever set foot in (each province's visitedBy), in the world's order. */
+/** The provinces whose `visitedBy` names the realm, in the world's order. */
 export function theProvincesARealmHasVisited(state: GameState, realm: number): Set<number> {
   const visited = new Set<number>();
   (asItsGuardReadsIt(state.world.provinces) ?? []).forEach((p) => {

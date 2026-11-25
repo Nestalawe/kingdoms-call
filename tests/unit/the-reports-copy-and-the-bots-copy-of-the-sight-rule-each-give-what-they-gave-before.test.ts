@@ -2,8 +2,8 @@
 // work out the same way are one rule in src/engine/sight/, read by both; each copy keeps its own parts as they were).
 // One staged world, two realms with made-up names, every input written here; on it, each copy's province sets and
 // heroes are asserted as each gave them on the base, in the order each set holds them:
-// - the report's copy: what realm 0 may see (playerView, src/views/what-each-realm-may-see-of-the-world.ts), its sets,
-//   each province's flags, the heroes it lists and the dead it knows of;
+// - the report's copy: playerView (src/views/what-each-realm-may-see-of-the-world.ts) for realm 0, its sets, each
+//   province's flags, the heroes it lists and the dead it knows of;
 // - the bots' copy: what a bot realm knows (botIntel, src/engine/bots/intel.ts), its sets, the context its hero rule
 //   reads, and the heroes it accounts for.
 // A change to either copy, or to the rule both read, fails a case.
@@ -39,13 +39,13 @@ const hero = (id: number, player: number | null, location: number, extra: Record
 });
 const army = () => ({ type: 'Shieldwall Levies', quality: 'Average', race: 'Human', unitName: 'Old Guard' });
 
-/** A 6 × 4 world (province id = row × 6 + col; the map wraps east to west). Realm 0 (Esterhold) lists 7 as its own
- *  and is named owner of 7 and of 2; its king stands in 7, a hero of its own in 12 (on the west edge), another fell
- *  long ago in 22; it once visited 3; it remembers 10; its record of spied provinces holds 14 this turn and 21 last
- *  turn; it watches realm 1's hero in 19 by Clairvoyance. Realm 1 (Varn) holds 3 and 21; its heroes stand in 19, 13,
- *  15, 20 and 23; a wanderer stands in 17. The two realms are at war; five graves lie in 7, 12, 14, 21 and 0. With
- *  `aHeroNextToItsLand`, a third hero of realm 0 stands in 8, next to 7 and 2. */
-function stagedWorld({ aHeroNextToItsLand = false } = {}): GameState {
+/** A 6 × 4 world (province id = row × 6 + col; the map wraps east to west). Realm 0 (Esterhold): its `provinces`
+ *  list 7; the provinces' `owner` names it in 7 and 2; its king stands in 7, a hero of its own in 12 (on the west edge),
+ *  another fell long ago in 22; `visitedBy` names it in 3; its `_provMemory` holds 10; its `_spiedProvincesThisTurn`
+ *  holds 14 and its `_spiedProvincesLastTurn` 21; its `_clairCharThisTurn` names realm 1's hero in 19. Realm 1 (Varn)
+ *  holds 3 and 21; its heroes stand in 19, 13, 15, 20 and 23; a wanderer stands in 17. The two realms are at war; five
+ *  graves lie in 7, 12, 14, 21 and 0. With `aThirdHeroOfItsOwn`, a third hero of realm 0 stands in 8. */
+function stagedWorld({ aThirdHeroOfItsOwn = false } = {}): GameState {
   const provinces = Array.from({ length: COLS * ROWS }, (_, id) => ({
     id,
     row: Math.floor(id / COLS),
@@ -82,7 +82,7 @@ function stagedWorld({ aHeroNextToItsLand = false } = {}): GameState {
     hero(6, 1, 20),
     hero(7, 1, 23),
     hero(8, null, 17, { alignment: 'Good' }),
-    ...(aHeroNextToItsLand ? [hero(9, 0, 8)] : []),
+    ...(aThirdHeroOfItsOwn ? [hero(9, 0, 8)] : []),
   ];
   for (const c of characters) at(c.location).characters.push(c.id);
   Object.assign(at(7), { owner: 0, garrisonArmies: [army()] });
@@ -275,11 +275,11 @@ describe("the bots' copy of the sight rule", () => {
     ).toEqual([0, 1, 3, 5, 6]);
   });
 
-  test("the bots' copy gives the sets it gave before with a hero of its own next to its land", () => {
-    const I = botIntel(stagedWorld({ aHeroNextToItsLand: true }), 0);
+  test("the bots' copy gives the sets it gave before, with a third hero of its own", () => {
+    const I = botIntel(stagedWorld({ aThirdHeroOfItsOwn: true }), 0);
     expect(
       { occupied: [...I.occupied], sight: [...I.sight], border: [...I.border] },
-      "the bots' sets, a hero next to its land",
+      "the bots' sets, with a third hero",
     ).toEqual({
       occupied: [7, 12, 8],
       sight: [2, 7, 12, 8, 21],
