@@ -1,7 +1,6 @@
 import { PRIMAL_ARMY_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
-import { aForceHoldsTheSeaLanes, theHullAUnitSinksBeforeTheBattle } from '../rules/the-registry-of-content-effects.ts';
-import { theVolleysTheCommandersItemsLoose } from '../rules/the-registry-of-magic-item-effects.ts';
+import { aForceHoldsTheSeaLanes } from '../rules/the-registry-of-content-effects.ts';
 import {
   doesARealmsAlignmentHoldABeatenHostOnTheField,
   theConquestDoctrineOfARealmsAlignment,
@@ -15,7 +14,6 @@ import {
   battleFacing,
   battleGrid,
   battleGridLines,
-  battleLineTotal,
   battleMovesLine,
   battleScout,
   battleScoutLine,
@@ -23,42 +21,16 @@ import {
 } from './lines.ts';
 import { UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN, ladderLines } from './ladder.ts';
 import { pursuitsOfTheBeaten, shieldFortHolds, tacMulted, theFractionThePursuitsAdd } from '../units/movement.ts';
-import {
-  AERIAL_TYPES,
-  SEA_TYPES,
-} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
-import {
-  abilityMissileUnits,
-  abilityVolleys,
-  applyFlakScreen,
-  archeryBlockedBy,
-  eyesOfTheForestLine,
-  missileDamageMult,
-  missileTargetPool,
-} from './strength.ts';
 import { battleFortune } from './fortune.ts';
 import { recordBattleGraves } from '../graves.ts';
-import { activeItems } from '../items/equipment.ts';
 import { humanXPMult } from '../units/drill-and-spoils.ts';
 import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { clearPhantomCopies, getNeighborsP } from '../world/map-helpers.ts';
 import { perkTier } from '../titles/perks.ts';
 import { discDeathMult, discPromo } from '../discoveries.ts';
-import {
-  doARealmsDiscoveriesWeightTheLinesBehindTheFront,
-  whatARealmsDiscoveriesAddToTheWholeArmy,
-} from '../rules/the-registry-of-discovery-effects.ts';
 import { completeDefendWatches, noteBattleLoss } from '../turn/mercenary-ids-and-battle-records.ts';
 import { doesTheWinnersRaceFlagTheProvinceItWonABattleIn } from '../rules/the-registry-of-the-race-gifts.ts';
-import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
-import {
-  SEA_LAND_PENALTY,
-  applyMissileHit,
-  finishSide,
-  illusoryTerrainMult,
-  isAirborneAtSea,
-  ladderRow,
-} from './terrain-and-unit-strength.ts';
+import { finishSide } from './terrain-and-unit-strength.ts';
 import {
   bestRetreat,
   navalSplitRetreat,
@@ -68,7 +40,6 @@ import {
 import { getSeaCapability } from '../units/movement-pools.ts';
 import { realCharOf } from './best-commander.ts';
 import { SKILLGAIN_COMMON, SKILLGAIN_STD, trySkillGain } from '../heroes/experience-skill-rises-and-earned-hp.ts';
-import { druidShortfallLine, terrainNoteList } from './battle-report-lines-and-force-markers.ts';
 import { spreadTerror } from './evil-terror.ts';
 import { bloodHarvest, ironThroneRaise } from './blood-harvest-and-iron-throne.ts';
 import { raidLandedHere } from './raid-the-coast-and-landing-parties.ts';
@@ -76,10 +47,6 @@ import {
   CARRYON_DEATH_CAP,
   CARRYON_DEATH_STEP,
 } from './the-death-chances-a-battle-carried-on-round-after-round-scales-by.ts';
-import {
-  SEA_AIRBORNE_FLYER_PENALTY,
-  SEA_AIRBORNE_LAND_PENALTY,
-} from './the-strength-a-host-carried-over-the-sea-by-flyers-keeps.ts';
 import { narrateAll, narrate, recordForTheStatistics } from '../turn/events-and-their-audiences.ts';
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
@@ -89,7 +56,6 @@ import {
 import type { TurnContext } from '../turn/context.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../army-tables.ts';
-import type { CommandMultiplier } from './terrain-and-unit-strength.ts';
 import type { BattleGrid } from './lines.ts';
 import type {
   ABattleIsDecided,
@@ -100,6 +66,7 @@ import type { APursuitOfTheBeaten } from '../rules/the-registry-of-content-effec
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes } from './the-battle-between-heroes/h0-to-h2-the-set-up-the-duel-and-the-sides-to-the-front.ts';
 import { bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes } from './the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts';
+import { bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes } from './the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts';
 
 /** The battle's outcome at its place in the narrative: the head line, written there just before the casualties, which
  *  the battle rewrites in place when the beaten side holds the field; for any other line, a TypeError. */
@@ -137,7 +104,6 @@ export function combatVsChar(
     theProvinceAsTheGuardsReadIt,
     _fieldIds,
     narrative,
-    _atkLA,
     atkArmies,
     defArmies,
     theAttackersRealm,
@@ -148,8 +114,6 @@ export function combatVsChar(
     defTact,
     atkTactBonus,
     defTactBonus,
-    _fearAtk,
-    _fearDef,
     atkMorale,
     defMorale,
     atkName,
@@ -168,329 +132,26 @@ export function combatVsChar(
     defEvilMonster,
     atkFanMult,
     defFanMult,
-    MISSILE_A,
-    atkArch,
-    atkArchBonus,
-    defArch,
-    defArchBonus,
-    atkNav,
-    atkNavBonus,
-    defNav,
-    defNavBonus,
-    atkAlign2,
-    defAlign2,
     pvpTerrain,
     pvpIsLand,
-    _pvpCoastal,
   } = theSetUp;
   let { pvpFront } = theSetUp;
-  // 2026-09-23b: pvpArmStr split into ctx + command-stage builders so the battle rows, the strength
-  // ladder and the stay-or-retreat check all use ONE definition. Per unit: armStr (terrain, kin,
-  // Bulwark…) × Archery (missile units) × Naval (fleets) or Tactical (land and air units — flyers
-  // since 2026-09-23c; land battles only) × Illusory Terrain.
-  function _pvpCtx(isAtk: boolean, force: readonly ArmyInABattle[], enemy: readonly ArmyInABattle[]) {
-    return {
-      force,
-      enemyForce: enemy,
-      isAttacker: isAtk,
-      amphibious: isAtk && !!atk._amphibiousAssault,
-      coastal: _pvpCoastal,
-      reignOfFear: isAtk ? _fearAtk : _fearDef,
-    };
-  }
-  function _pvpCmd(a: ArmyInABattle, isAtk: boolean) {
-    const hero = isAtk ? atk : def,
-      cmd: CommandMultiplier[] = [];
-    const arch = isAtk ? atkArch : defArch,
-      archB = isAtk ? atkArchBonus : defArchBonus;
-    if (MISSILE_A.has(a.type))
-      cmd.push({ key: 'arch', reason: { kind: 'archery', level: arch, multiplier: archB }, m: archB });
-    const isSea = SEA_TYPES.has(a.type);
-    if (isSea) {
-      const nv = isAtk ? atkNav : defNav,
-        nb = isAtk ? atkNavBonus : defNavBonus;
-      cmd.push({ key: 'nav', reason: { kind: 'naval', level: nv, multiplier: nb }, m: nb });
-    } else if (pvpIsLand) {
-      const tm = tacMulted(isAtk ? atkTactBonus : defTactBonus, hero);
-      cmd.push({
-        key: 'tac',
-        reason: { kind: 'tactical at its level', level: isAtk ? atkTact : defTact, multiplier: tm },
-        m: tm,
-      });
-    }
-    if (isAtk ? _atkIllActiveP : _defIllActiveP)
-      cmd.push({
-        key: 'ill',
-        reason: { kind: 'illusory terrain', multiplier: illusoryTerrainMult(a.type) },
-        m: illusoryTerrainMult(a.type),
-      });
-    return cmd;
-  }
-  function _pvpRow(a: ArmyInABattle, isAtk: boolean, force: readonly ArmyInABattle[], enemy: readonly ArmyInABattle[]) {
-    return ladderRow(
-      turnContext,
-      a,
-      isAtk ? atk : def,
-      isAtk ? atkAlign2 : defAlign2,
-      pvpTerrain,
-      _pvpCtx(isAtk, force, enemy),
-      _pvpCmd(a, isAtk),
-    );
-  }
-
   // Both sides' pre-battle magic and army spells (B-06bg: the-battle-between-heroes/, its second stage), called where
   // they stood: they change the hosts, the commanders and the narrative they are handed, and hand on no value.
   bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(turnContext, atk, def, theSetUp);
 
-  // ════
-  // PRE-BATTLE PHASE 2: ARCHERY (both sides)
-  // ════
-  // (`myCount`, each side's count of units, is read by nothing)
-  function applyPreBattleArchery(
-    heroChar: HeroInABattle,
-    myForce: readonly ArmyInABattle[],
-    enemyArmies: readonly ArmyInABattle[],
-    myCount: unknown,
-    narr: NarrativeLine[],
-    isAtk: boolean,
-  ) {
-    // ELF — Ambush: Forest Wardens defending their own woods deny the enemy an archery phase — unless
-    // Eagle Riders fly with the shooters (Eyes of the Forest).
-    {
-      const _eyes = eyesOfTheForestLine(enemyArmies, pvpTerrain, myForce, {
-        heroName: heroChar.name,
-        leaderless: false,
-      });
-      if (_eyes) narrate(narr, _eyes);
-    }
-    if (archeryBlockedBy(enemyArmies, pvpTerrain, myForce)) {
-      narrate(narr, {
-        kind: "the hero's archers find no target among the forest wardens",
-        heroName: { heroName: heroChar.name, leaderless: false },
-      });
-      return;
-    }
-    const myMissile = abilityMissileUnits(myForce, pvpTerrain);
-    if (!myMissile.length || !enemyArmies.length) return;
-    const archLvl = effStat(turnContext, heroChar, 'archery');
-    // the items' registry's "volley: the commander adds volleys" (plan P1-19n: the Quivers)
-    const _itemVolleys = theVolleysTheCommandersItemsLoose(activeItems(heroChar));
-    const hasQ = _itemVolleys.theLines.includes('each missile unit looses two volleys instead of one');
-    const _manyQ = _itemVolleys.theLines.includes('each missile unit looses one more shot');
-    const volleys = _itemVolleys.theVolleys;
-    const _prepared = myMissile.some((a) => abilityVolleys(a, isAtk) > 1); // HUMAN — Prepared Ground: defending Longbows loose twice
-    narrate(narr, {
-      kind: "the hero's archery volley begins",
-      heroName: heroChar.name,
-      missileUnitCount: myMissile.length,
-      doubleVolleys: hasQ,
-      oneMoreShot: _manyQ,
-      preparedGround: _prepared,
-    });
-    myMissile.forEach((a) => {
-      for (let v = 0; v < volleys + abilityVolleys(a, isAtk) - 1; v++) {
-        const pool = missileTargetPool(enemyArmies, 0, a, myForce); // winged riders first, else any random target; firer passed for Punch Through's cap; the force for Eyes of the Forest
-        if (!pool.length) break;
-        const t = pool[Math.floor(kcRng() * pool.length)];
-        if (!t) throw new TypeError('a volley loosed at no target'); // (the pool has just been found not empty)
-        const dmgMult = missileDamageMult(a, myForce, pvpTerrain, t, isAtk);
-        const hit = applyMissileHit(t, archLvl, a, { dmgMult });
-        if (hit.immune)
-          narrate(narr, {
-            kind: "a unit's shot glances off its target",
-            shooterName: a.unitName || a.type,
-            targetUnitName: t.unitName || t.type,
-            whyTheShotGlances: hit.why,
-          });
-        else if (hit.dmg > 0)
-          narrate(narr, {
-            kind: "a unit's shot weakens its target",
-            shooterName: a.unitName || a.type,
-            targetUnitName: t.unitName || t.type,
-            damage: hit.dmg,
-            againstAFlyer: hit.isFly,
-            thickHideHalvesIt: hit.thickHide,
-            shootersUnitType: a.type,
-            shootersAbilityMultiplier: dmgMult,
-            softenedToTheLimit: hit.capped,
-          });
-        else
-          narrate(narr, {
-            kind: "a unit's target is already softened as far as arrows allow",
-            shooterName: a.unitName || a.type,
-            targetUnitName: t.unitName || t.type,
-          });
-      }
-    });
-  }
-  // DWARF — Flak Screen runs before the arrows fly.
-  applyFlakScreen(atkArmies, defArmies, { heroName: atk.name, leaderless: false }, narrative);
-  applyFlakScreen(defArmies, atkArmies, { heroName: def.name, leaderless: false }, narrative);
-  applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);
-  if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);
-
-  // ── PRIMAL — Breach and Swamp ── Whale Cohorts rise beneath a hull and roll it over. 25% per
-  // cohort to sink one enemy fleet unit outright, before either side's strength is counted. The rule
-  // registry's "fate: a hull is sunk before the battle" picks the hull, with the dice it is handed
-  // (plan P1-19i); this sinks it and writes the line (the side whose hull sinks: the enemy's role, plan P1-12d35).
-  function applyBreachAndSwamp(
-    myForce: readonly (ArmyInABattle | null | undefined)[] | null | undefined,
-    enemyForce: readonly (ArmyInABattle | null | undefined)[] | null | undefined,
-    myName: string,
-    theEnemysRole: 'attacker' | 'defender',
-    narr: NarrativeLine[],
-  ) {
-    (myForce ?? []).forEach((a) => {
-      if (!a) return;
-      const hulls = (enemyForce ?? []).filter((e): e is ArmyInABattle =>
-        Boolean(e && SEA_TYPES.has(e.type) && !e._died),
-      );
-      const at = theHullAUnitSinksBeforeTheBattle({ unitType: a.type, theEnemyHullsAfloat: hulls, theDice: kcRng });
-      if (at === null) return;
-      const t = hulls[at];
-      if (!t) throw new TypeError('a hull sunk that is not afloat'); // (the registry picks one of the hulls handed)
-      t._died = true;
-      narrate(narr, {
-        kind: "a side's whale cohort sinks an enemy ship",
-        sideName: myName,
-        targetUnitName: t.unitName || t.type,
-        targetUnitType: t.type,
-        theSideWhoseShipSinks: theEnemysRole,
-      });
-    });
-  }
-  applyBreachAndSwamp(atkArmies, defArmies, atk.name, 'defender', narrative);
-  applyBreachAndSwamp(defArmies, atkArmies, def.name, 'attacker', narrative);
-  // Remove anything sunk before strengths are counted.
-  if (atkArmies.some((a) => a._died) || defArmies.some((a) => a._died)) {
-    recordBattleGraves(
-      turnContext,
-      prov,
-      atkArmies.filter((a) => a._died),
-      theAttackerAsTheGuardsReadHim?.player,
-    );
-    recordBattleGraves(
-      turnContext,
-      prov,
-      defArmies.filter((a) => a._died),
-      theDefenderAsTheGuardsReadHim?.player,
-    ); // Elven escape per side
-    _tallyLost(); // splices in place below — count the sunk before they are gone
-    // (a gap in either list has thrown in the filters above, so each is a unit here)
-    for (let i = atkArmies.length - 1; i >= 0; i--) if (atkArmies[i]?._died) atkArmies.splice(i, 1);
-    for (let i = defArmies.length - 1; i >= 0; i--) if (defArmies[i]?._died) defArmies.splice(i, 1);
-    atk.armies = atkArmies;
-    def.armies = defArmies;
-  }
-
-  // Terrain notes for PvP
-  {
-    const _ta = terrainNoteList(atkArmies, pvpTerrain),
-      _td = terrainNoteList(defArmies, pvpTerrain); // 2026-09-23d: per side, one format
-    if (_ta || _td)
-      narrate(narrative, {
-        kind: "the terrain's effect on each side",
-        terrain: pvpTerrain,
-        atkName: atkSide,
-        unitsTheTerrainMarksOfTheAttacker: _ta,
-        defName: defSide,
-        unitsTheTerrainMarksOfTheDefender: _td,
-      });
-  }
-  if (
-    !pvpIsLand &&
-    (atkArmies.some((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type)) ||
-      defArmies.some((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type)))
-  ) {
-    // 2026-09-23e: flying beasts excluded
-    const _airA = isAirborneAtSea(atkArmies),
-      _airD = isAirborneAtSea(defArmies);
-    if (_airA || _airD)
-      narrate(narrative, {
-        kind: 'hosts airborne over open water fight at a penalty',
-        attackersHostIsAirborne: _airA,
-        defendersHostIsAirborne: _airD,
-        atkName: atkSide,
-        defName: defSide,
-        seaAirborneLandPenalty: SEA_AIRBORNE_LAND_PENALTY,
-        seaAirborneFlyerPenalty: SEA_AIRBORNE_FLYER_PENALTY,
-      });
-    if (
-      (atkArmies.some((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type)) && !_airA) ||
-      (defArmies.some((a) => !AERIAL_TYPES.has(a.type) && !SEA_TYPES.has(a.type)) && !_airD)
-    )
-      narrate(narrative, { kind: 'land units fight at sea at a penalty', seaLandPenalty: SEA_LAND_PENALTY });
-  }
-
-  // Battle lines for PvP — front-line width (pvpFront) is declared above as the single source of
-  // truth.
-
-  // Illusory Terrain (per-unit): a side that did NOT cast the illusion is disoriented — each unit
-  // fights as though caught in the worst terrain for its kind (min −15%), folded into its
-  // strength.
-  const _illCasterP = prov._illusoryTerrain ? prov._illusoryTerrain.caster : null;
-  const _atkIllActiveP = _illCasterP != null && atk.player !== _illCasterP;
-  const _defIllActiveP = _illCasterP != null && def.player !== _illCasterP;
-  // PvP battle lines: sort by strength desc (flying first), strongest in front row. 2026-09-11:
-  // each side's OWN Flanking Tactics.
-  const atkFlankPvp = doARealmsDiscoveriesWeightTheLinesBehindTheFront(theAttackersRealm),
-    defFlankPvp = doARealmsDiscoveriesWeightTheLinesBehindTheFront(theDefendersRealm);
-  const atkSorted = [...atkArmies]
-    .map((a) => _pvpRow(a, true, atkArmies, defArmies))
-    .sort((x, y) => Number(y.fly) - Number(x.fly) || y.s - x.s);
-  const defSorted = [...defArmies]
-    .map((a) => _pvpRow(a, false, defArmies, atkArmies))
-    .sort((x, y) => Number(y.fly) - Number(x.fly) || y.s - x.s);
-  // Ground units fill four terrain-width lines (×1 / ×0.5 / ×0.25 / ×0.125); flyers always front.
-  // `s` is the final per-unit strength — renamed into `base` once, so the totals AND the
-  // narrative sort on the same figure.
-  const atkRows = atkSorted.map((x) => ({ ...x, base: x.s })),
-    defRows = defSorted.map((x) => ({ ...x, base: x.s }));
-  battleLineTotal(atkRows, pvpFront, atkFlankPvp); // undamaged, before whole-force (2026-09-24); its total read by nothing, the call kept as it was
-  battleLineTotal(defRows, pvpFront, defFlankPvp); // (the same)
-
-  // (2026-09-23d: the standalone Archery / Naval notes are retired — the Battle-stats ladder names
-  // "Archery N ×m on K units" and "Naval N ×m on K units" exactly where they apply.)
-
-  // Druid shortfall warnings — only when a penalty actually applies (skeletal/exempt units are
-  // free)
-  // 2026-09-23d: one line per side (was one per unit).
-  {
-    const _dl = druidShortfallLine(turnContext, atkSide, atk, atkArmies, atkAlign2);
-    if (_dl) narrate(narrative, _dl);
-    const _dd = druidShortfallLine(turnContext, defSide, def, defArmies, defAlign2);
-    if (_dd) narrate(narrative, _dd);
-  }
-
-  // Discovery bonus
-  const atkDiscBonus = 1 + whatARealmsDiscoveriesAddToTheWholeArmy();
-  const defDiscBonus = 1 + whatARealmsDiscoveriesAddToTheWholeArmy();
-  if (atkDiscBonus > 1)
-    narrate(narrative, {
-      kind: "a side's realm discoveries strengthen its army",
-      sideName: atkSide,
-      discoveriesBonus: atkDiscBonus,
-    });
-  if (defDiscBonus > 1)
-    narrate(narrative, {
-      kind: "a side's realm discoveries strengthen its army",
-      sideName: defSide,
-      discoveriesBonus: defDiscBonus,
-    });
-
-  // (Illusory Terrain is applied per-unit above, folded into each side's strength.)
-  if (_atkIllActiveP)
-    narrate(narrative, {
-      kind: "the illusory ground of the province confuses a side's forces",
-      provName: prov.name,
-      sideName: atkSide,
-    });
-  if (_defIllActiveP)
-    narrate(narrative, {
-      kind: "the illusory ground of the province confuses a side's forces",
-      provName: prov.name,
-      sideName: defSide,
-    });
+  // Both sides' archery, Flak and Breach (B-06bh: the-battle-between-heroes/, its third stage), called where they
+  // stood, with the front's width as it stands: what the later stages read, each final there, the command stage's
+  // builders' row among it (made there once Illusory Terrain's flags are set; H9's stay-or-retreat check reads it).
+  const theArcheryFlakAndBreach = bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(
+    turnContext,
+    atk,
+    def,
+    prov,
+    theSetUp,
+    pvpFront,
+  );
+  const { atkFlankPvp, defFlankPvp, atkRows, defRows, atkDiscBonus, defDiscBonus, _pvpRow } = theArcheryFlakAndBreach;
   // WHITE L7 — Sanctuary: enemies of the warding caster fight at −25% in the warded province this
   // turn.
   const _sanctBy = theProvinceAsTheGuardsReadIt?._sanctuaryTurn === G.turn ? prov._sanctuaryBy : null;

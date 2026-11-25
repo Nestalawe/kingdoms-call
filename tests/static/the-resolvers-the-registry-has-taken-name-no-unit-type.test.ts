@@ -68,7 +68,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/engine/battle/lines.ts', 'battleRegrid', 'P1-19h, the grid'],
   ['src/engine/battle/lines.ts', 'abilityFlanksRough', 'P1-19h, the grid'],
   ['src/engine/battle/strength.ts', 'applyFlakScreen', 'P1-19i, before the battle'],
-  ['src/engine/battle/battles-between-heroes.ts', 'applyBreachAndSwamp', 'P1-19i, before the battle'],
+  [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'applyBreachAndSwamp',
+    'P1-19i, before the battle',
+  ],
   ['src/engine/units/movement.ts', 'rideThemDownBonus', 'P1-19j, the rout'],
   ['src/engine/units/movement.ts', 'shieldFortHolds', 'P1-19j, the rout'],
   ['src/engine/battle/battles-between-heroes.ts', 'combatVsChar', 'P1-19j, the rout'],
@@ -81,6 +85,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'src/engine/battle/the-battle-between-heroes/h3-both-sides-pre-battle-magic-and-army-spells.ts',
     'bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes',
     "P1-19j, the rout (B-06bg: combatVsChar's magic and army spells, moved)",
+  ],
+  [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes',
+    "P1-19j, the rout (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
   ],
   ['src/engine/battle/battles-against-province-defenders.ts', 'combatVsNPC', 'P1-19j, the rout'],
   [

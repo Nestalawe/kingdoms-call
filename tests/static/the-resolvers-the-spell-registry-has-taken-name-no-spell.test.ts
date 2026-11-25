@@ -71,6 +71,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     "P1-19u, battle magic between heroes (B-06bg: combatVsChar's magic and army spells, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes',
+    "P1-19u, battle magic between heroes (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
+  ],
+  [
     'src/engine/magic/pre-battle-spell-choice.ts',
     'battleSpellUseful',
     'P1-19u, a battle spell has something to strike',

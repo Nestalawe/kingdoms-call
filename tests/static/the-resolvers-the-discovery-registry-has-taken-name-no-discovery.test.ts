@@ -111,6 +111,11 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string, nameSome
     "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bg: combatVsChar's magic and army spells, moved)",
   ],
   [
+    'src/engine/battle/the-battle-between-heroes/h4-both-sides-archery-flak-and-breach.ts',
+    'bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes',
+    "P1-19aa and P1-19ab, the army's strength; a realm's discoveries weight the lines behind the front (B-06bh: combatVsChar's archery, Flak and Breach, moved)",
+  ],
+  [
     'src/engine/battle/best-commander.ts',
     'commandScore',
     "P1-19ab, a realm's discoveries weight the lines behind the front",

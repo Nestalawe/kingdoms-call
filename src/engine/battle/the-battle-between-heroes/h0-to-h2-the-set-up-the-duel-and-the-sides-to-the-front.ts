@@ -21,7 +21,7 @@
 // | `atkTactBonus`, `defTactBonus` | H0, H1 (a commander slain in the duel) | H7, the command stage's builders | a value, final after H1 |
 // | `defBonus` | H1 (made; Siege), H2 (Righteous Defence, the realm's own ground, the commanders' items) | H5, H9 | a value, final after H2 |
 // | `_defFanPct` | H2 (made; Consecrate) | H2 | this stage's own |
-// | `pvpFront` (the front's width) | H2 (rolled), H5 (the scout's deploy) | H4, H5, H7, H9 | a value: combatVsChar's own `let` from the width rolled here; the row that cuts H5 hands the deploy's width on |
+// | `pvpFront` (the front's width) | H2 (rolled), H5 (the scout's deploy) | H4, H5, H7, H9 | a value: combatVsChar's own `let` from the width rolled here; H4 is handed it as it stands; the row that cuts H5 hands the deploy's width on |
 // | `atkNav`, `defNav` | H2 (made; a Curse halves it) | H2, the command stage's builders | a value, final in H2 |
 // | `atkOrd`, `defOrd` (the mastery orders) | H5 | H5, H9 | H5's own, then a value |
 // | `_stayLo`, `_stayWi` | H9 (`_wantsToStay`) | H9 | H9's own |
@@ -29,8 +29,9 @@
 // | `defFriendlyAdj`, `atkFriendlyAdj` | H9 | H9 | H9's own |
 //
 // The command stage's builders (`_pvpCtx`, `_pvpCmd`, `_pvpRow`: each unit's strength on the ground with its
-// commander's Archery, Naval or Tactical and Illusory Terrain) stand in H2's text but stay in combatVsChar: `_pvpCmd`
-// reads Illusory Terrain's two flags, which H4 sets, and H4 and H9 call them. They draw no die.
+// commander's Archery, Naval or Tactical and Illusory Terrain) stood in H2's text; they are a file of their own beside
+// the stages (the-command-stages-builders-…, B-06bh), made in H4 once Illusory Terrain's two flags, which `_pvpCmd`
+// reads, are set. H4 calls `_pvpRow` and hands it on; H9 calls it. They draw no die.
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { KC_UNIT_CLASS } from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
