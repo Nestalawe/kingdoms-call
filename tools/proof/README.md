@@ -1,6 +1,6 @@
 # The proof tools
 
-Nine tools that show what a change to the engine (or to a page's code or its database calls) does, and what the balance
+Ten tools that show what a change to the engine (or to a page's code or its database calls) does, and what the balance
 matrix can't show. The matrix (`npm run balance`) compares its 120 games with their baselines. It is strong on the code those games reach, and
 blind to the rest. These tools tell which lines the games reach, plant a fault and show what catches it, and compare
 the base's words with the branch's where the games don't go.
@@ -20,6 +20,7 @@ trial on four planted faults (plan P1-16a).
 | `KC_RECORD_DATABASE_CALLS=<folder> npx vitest run` | Every database call the tests send a page's client, to compare base with branch | the tests' own time |
 | `npm run proof:tours -- --base <ref>` | Which lines of `src/` this branch changed that no screen tour reaches (nor, for the GM page, the matrix) | about 50 s; 2 minutes more with the matrix |
 | `npm run proof:worlds -- --base <ref>` | Whether each seed makes the same world with the same dice, stage by stage, base against branch | about 8 minutes (2,560 cases; `--seeds 8`, 100 s) |
+| `npm run proof:battles -- --base <ref>` | Whether each staged battle writes the same lines, leaves the same world and draws the same dice, stage by stage, base against branch | about 70 s (440 cases, 8 dice streams each; `--cases 40`, 6 s) |
 
 `--base <ref>` means "where this branch left `<ref>`" (`git merge-base <ref> HEAD`), so a stacked branch names the
 branch it is stacked on. The branch is always the working tree as it is now, uncommitted changes and new files too.
@@ -248,6 +249,59 @@ every stage is found in the tree as it is.
 **What it can't see:** a value no world keeps (the two above); a path no seed reaches; state beyond one world, which a
 fresh process hides by design. Those need unit cases.
 
+## 8. The battles, battle by battle
+
+The proof of B-06's battle rows (B-06ax on): `npm run proof:battles -- --base <ref>`
+([the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts](the-battles-compared-each-staged-battle-its-lines-its-world-and-its-dice-by-stage.ts)).
+Each case is staged and fought twice, once from a copy of the base (`git archive`, `node_modules` linked) and once from
+this working tree, each in a fresh process of its own
+([one-staged-battle-fought-on-a-side-in-a-fresh-process.ts](one-staged-battle-fought-on-a-side-in-a-fresh-process.ts)).
+The worker imports the side's own `tests/lib/a-battle-called-directly.ts` on its own `src/` as they are, makes the world
+from seed 1, stages the battle on it once, and fights it from that staging with each of 8 fixed dice streams (900 to
+907), lending the dice a counting stream (`kcRng.use`). For each stream it compares the battle's lines in words, the
+sha256 of the world after (with who won), the dice drawn in all and the dice drawn by stage. It exits 1 when any case
+differs, and names each with its stream and what differs (`stream 903: H6's dice (1 → 2)`). Options: `--cases N` (N
+cases spread over the grid, for a quick look), `--jobs N`.
+
+**The grid** (440 cases): the ground (plain, forest, mountain, desert, sea) × the battle (against a province's
+defenders, `combatVsNPC`; between heroes, `combatVsChar`, the two realms at war on a province of the defender's) × the
+defender (led: a neutral guard, or the defending king, with Tactical, Archery and Naval 2, Druid 2, Elemental 3 and
+Necromancy 2, challenged to a duel; leaderless: no guard, or a king of no such skill) × where the attacker comes from
+(land; or sea, a landing on a land field) × 11 sets of armies (foot, missiles, flyers, beasts under a Druid short,
+skeletal companies, Monsters under Evil, Dwarven Guard, corsairs, whales, fleets, an outmatched attacker). Not on the
+grid: a realm's garrison holding a province with no hero, the mastery orders' flags, Sanctuary, Consecrate, Illusory
+Terrain, Terror, Phantasmal Armies, a carried-on battle, items, discoveries, Tactical 6's and the War Drum's draws, and a
+spell named in a plan (the commanders cast only what they pick for themselves). A unit case stages those.
+
+**A draw's stage** is read from its call stack, with no mark in `src/`
+([the-stages-of-the-two-battles-and-the-lines-that-open-them.ts](the-stages-of-the-two-battles-and-the-lines-that-open-them.ts)):
+the innermost frame that is a stage's own function, or else the battle's own frame, whose line falls between two of its
+stages' anchors (N0 to N13 against the defenders, H0 to H10 between heroes; a helper draws under the stage whose line
+called it). **The list is kept there until each battle's stage list is in `src/`** (B-06bl): a split row (B-06az on)
+gives each stage it moves its `fn:`, the name of the function the stage now is, and keeps its anchor for the base. A
+stage found on a side by neither stops the proof, and the unit test checks that every stage is found in the tree as it
+is. On the base of B-06aw every stage but N2, N10, N11, H0, H5, H7 and H8 draws on the grid (those draw nothing there).
+
+**Red on planted faults** (the unit test plants each in a copy of `src/`, finding its text in whichever file holds it,
+and fights three cases from the tree and from the copy):
+
+| Planted fault | What the tool shows |
+|---|---|
+| One extra `kcRng()` at the end of the battle between heroes' fortune (H6) | `H6's dice (1 → 2)` in all 8 streams of the battle between heroes; the battles against the defenders the same |
+| The clear band's death chance for the beaten, 0.18 made 0.9 (no draw) | the world after differs |
+| The army spells and the archery of the battle between heroes swapped (H3, H4) | H3's and H4's dice move; the battles against the defenders the same |
+
+A plant whose text a later row moves into another file is still found; one whose text a row rewrites stops the test,
+naming the plant to update.
+
+**The battle lines the matrix misses** (`npm run proof:coverage` on B-06aw's base): 426 of the 9,773 lines with code in
+`src/engine/battle/`; the most in `hosts-gained-in-a-province.ts` (102), `battles-between-heroes.ts` (99),
+`battles-against-province-defenders.ts` (83) and `stalled-battles-and-beaten-guards.ts` (70). The list, file by file:
+the pull request (#PR).
+
+**What it can't see:** a stage no case reaches (above); a value no world keeps and no line says; state beyond one case,
+which a fresh process hides by design. Those need unit cases.
+
 ## The tests
 
 - `tests/unit/the-matrixs-coverage-lists-the-changed-lines-no-game-reaches.test.ts`
@@ -257,3 +311,4 @@ fresh process hides by design. Those need unit cases.
 - `tests/unit/the-two-engines-compared-runs-each-side-in-its-own-process.test.ts`
 - `tests/unit/the-database-call-recorder-writes-each-call-a-page-sends-with-its-steps.test.ts`
 - `tests/unit/the-worlds-making-compared-names-each-case-whose-world-or-dice-by-stage-differ.test.ts`
+- `tests/unit/the-battles-compared-names-each-staged-battle-whose-lines-world-or-dice-by-stage-differ.test.ts`
