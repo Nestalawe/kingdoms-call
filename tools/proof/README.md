@@ -306,7 +306,7 @@ and fights four cases from the tree and from the copy):
 | Both battles' fortune stages moved, their text as it is, into one new file, each battle calling its own | every case the same (the new file holds N9 and H6) |
 | One extra `kcRng()` at the end of the battle between heroes' fortune (H6) | `H6's dice (1 → 2)` in all 8 streams; the battles against the defenders the same |
 | The battle between heroes' swing in its statistics record rounded to hundredths (no draw) | only `the turn's context (_tel)`: the lines, the world and the dice the same |
-| The magic and army spells (their stage's call) and the archery of the battle between heroes swapped (H3, H4) | the lines differ; each draw still counts under its own stage's text |
+| The magic and army spells and the archery of the battle between heroes swapped (H3, H4: the two stages' calls) | the lines differ; each draw still counts under its own stage's text |
 
 A plant whose text a later row moves into another file is still found; one whose text a row rewrites stops the test,
 naming the plant to update.

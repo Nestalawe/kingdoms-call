@@ -300,13 +300,20 @@ function aPlantedCopy(plant: APlant): string {
   return copy;
 }
 
-/** The battle between heroes' magic and army spells (H3), its stage's call: the stage's text is in a file of its own
- *  since B-06bg, so the swap moves its call, which combatVsChar makes just above the archery's. */
+/** The battle between heroes' magic and army spells (H3) and its archery, Flak and Breach (H4), each its stage's call:
+ *  each stage's text is in a file of its own (B-06bg, B-06bh), so the swap moves the two calls, which combatVsChar makes
+ *  one after the other. */
 const MAGIC_AND_ARMY_SPELLS =
   '  bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(turnContext, atk, def, theSetUp);';
 const ARCHERY = [
-  '  applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);',
-  '  if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);',
+  '  const theArcheryFlakAndBreach = bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(',
+  '    turnContext,',
+  '    atk,',
+  '    def,',
+  '    prov,',
+  '    theSetUp,',
+  '    pvpFront,',
+  '  );',
 ].join('\n');
 /** The two battles' fortune, each stage's text as it is, moved into a file of their own: one file holding two stages,
  *  each battle calling its own (an import may stand anywhere at a module's top level). */
