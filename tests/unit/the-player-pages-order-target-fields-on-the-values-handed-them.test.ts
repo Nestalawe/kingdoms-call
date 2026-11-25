@@ -307,6 +307,32 @@ describe('order-targets.ts: the target field', () => {
     expect(hireField({}), 'a realm of no alignment').toBe(asTheRow);
     expect(hireField({ alignment: '' }), 'a realm of an empty alignment').toBe(asTheRow);
   });
+  test("the Research forecast adds the Neutral scholars' points for a Neutral realm alone, its words as they were (B-06bs)", () => {
+    stage('');
+    // the realm's alignment and the scholar's Sage (raw, and one past the cap of 5) pinned; no field of study
+    const forecast = (alignment: string | undefined, c: Record<string, unknown>) => {
+      g['currentReport'] = { characters: [hero(c)], kingdom: { alignment }, researchCategories: [] };
+      return words(field(c, 'Research')).split('Discoveries are permanent')[0]?.trim();
+    };
+    const sage3 = { skills: { sage: 3 } };
+    expect(forecast('Neutral', sage3)).toBe(
+      'Any field of study 📜 Rolls for a Sage discovery: about 30% (Sage 3, Neutral scholars).',
+    );
+    expect(forecast('Neutral', { skills: { sage: 7 } }), 'the Sage counts up to 5').toBe(
+      'Any field of study 📜 Rolls for a Sage discovery: about 50% (Sage 5, Neutral scholars).',
+    );
+    for (const alignment of ['Good', 'Druidic', 'Evil', '', undefined])
+      expect(forecast(alignment, sage3), `a realm of ${String(alignment)}`).toBe(
+        'Any field of study 📜 Rolls for a Sage discovery: about 15% (Sage 3).',
+      );
+    const unseen = { ...sage3, _hiddenSkills: true };
+    expect(forecast('Neutral', unseen), "a Neutral realm's hero of hidden skills").toBe(
+      'Any field of study 📜 Rolls for a Sage discovery: 5% per Sage level (doubled for Neutral scholars) — Ser Vell’s level is hidden from you; without Sage training the search fails.',
+    );
+    expect(forecast('Good', unseen), "another realm's hero of hidden skills").toBe(
+      'Any field of study 📜 Rolls for a Sage discovery: 5% per Sage level — Ser Vell’s level is hidden from you; without Sage training the search fails.',
+    );
+  });
   test("the Recruit field's refusals: not his ground, no native troops, the most raised", () => {
     stage('');
     const rep = (pd: Record<string, unknown>) => ({ characters: [hero()], provinceOrderData: { 7: pd } });
