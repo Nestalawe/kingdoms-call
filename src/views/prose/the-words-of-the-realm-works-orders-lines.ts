@@ -8,6 +8,18 @@ import type {
   TheFactOfTheRealmWorksOrdersLine,
   WhereAWildCallingToreBeastsFrom,
 } from '../../engine/orders/the-facts-the-realm-works-orders-lines-record.ts';
+import {
+  ALIGNMENT_ABILITIES,
+  THE_ALIGNMENT_ORDERS,
+} from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+
+/** Consecrated ground's rules as a consecration's line writes them (B-06bt): its tax, and the creeds of the attackers
+ *  it weakens and by how much, from their rows. "Twice" (the defenders' zeal, its row's 2) stays in the words. */
+function consecratedGroundsRulesInTheConsecrationsLine(): string {
+  const theTax = ALIGNMENT_ABILITIES['consecrated-ground-tax'].theNumbers.theShareMoreTax.value;
+  const theUnholy = ALIGNMENT_ABILITIES['consecrated-ground-weakens-an-unholy-attacker'];
+  return `+${String(theTax)}% tax, defenders twice as likely to fight with fanatical zeal, ${theUnholy.theCreedsItActsAgainst.join(' and ')} invaders fight at \u2212${String(theUnholy.theNumbers.theShareWeaker.value)}%`;
+}
 
 /** A realm's tag after its hero's name, as realmTag wrote it: " (Westmarch)", or nothing for no realm (the Cast Spell
  *  order's prose writes it too). */
@@ -31,7 +43,7 @@ export function theWordsOfTheRealmWorksOrdersLine(fact: TheFactOfTheRealmWorksOr
     case 'only the king can consecrate ground':
       return `${fact.heroName} may pray, but only the anointed King can consecrate ground — the rite belongs to the crown alone.`;
     case 'the gods answer a consecration only from a Divine crown':
-      return `${fact.heroName} kneels and prays, but the gods answer only Divine crowns — Consecration is not for this realm.`;
+      return `${fact.heroName} kneels and prays, but the gods answer only ${THE_ALIGNMENT_ORDERS.consecrate.alignment} crowns — Consecration is not for this realm.`;
     case 'only a province of the realm can be consecrated':
       return `${fact.heroName}: only a province of your own realm can be consecrated — take and hold this land first.`;
     case 'the home marches were anointed at the coronation':
@@ -45,7 +57,7 @@ export function theWordsOfTheRealmWorksOrdersLine(fact: TheFactOfTheRealmWorksOr
     case 'the White faith can sustain no more consecrated provinces':
       return `${fact.heroName}: your White faith can sustain only ${String(fact.limit)} consecrated province${fact.limit !== 1 ? 's' : ''} at once (${fact.consecratedNames.join(', ') || '—'}). One must be lost or captured before you can hallow ${fact.provinceName}. (Raise your White skill to consecrate more.)`;
     case 'a king consecrates a province':
-      return `✨ ${fact.heroName} consecrates ${fact.provinceName}! Holy ground: +50% tax, defenders twice as likely to fight with fanatical zeal, Undead and Evil invaders fight at −15%, and your fallen can be restored only here — they rise in the nearest consecrated province, which then gives up its consecration. If it is captured the consecration breaks at once and the conquerors are emboldened. (${String(fact.consecrated)}/${String(fact.limit)} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`;
+      return `✨ ${fact.heroName} consecrates ${fact.provinceName}! Holy ground: ${consecratedGroundsRulesInTheConsecrationsLine()}, and your fallen can be restored only here — they rise in the nearest consecrated province, which then gives up its consecration. If it is captured the consecration breaks at once and the conquerors are emboldened. (${String(fact.consecrated)}/${String(fact.limit)} consecrated — set by your White skill; a consecrated province that is captured frees a slot.)`;
     case "only a Good realm's folk answer a Call to Arms":
       return `${fact.heroName}'s call goes unanswered — only the folk of a Good realm rise for their king unpaid.`;
     case "only the king's voice carries the Call to Arms":
@@ -85,7 +97,7 @@ export function theWordsOfTheRealmWorksOrdersLine(fact: TheFactOfTheRealmWorksOr
       return `${fact.heroName}: ${_gone} is no more — Creatures and Monsters now come only by recruiting them where they live.`;
     }
     case 'only Undead realms keep corpse-carters':
-      return `${fact.heroName} has neither the craft nor the stomach for grave-harvesting — only Undead realms keep corpse-carters.`;
+      return `${fact.heroName} has neither the craft nor the stomach for grave-harvesting — only ${THE_ALIGNMENT_ORDERS['harvest-the-field'].alignment} realms keep corpse-carters.`;
     case 'no battlefield dead lie here to raise':
       return `${fact.heroName} walks the field of ${fact.provinceName}, but there are no battlefield dead here to raise.`;
     case 'the treasury cannot pay the corpse-carters':

@@ -11,6 +11,7 @@ import { unitEmoji } from './order-chances.ts';
 import { SKILL_LABELS } from './the-order-forms-ledger-practice-note-order-list-and-magic-levels-on-the-orders-handed-them.ts';
 import { armyLabel } from './skills-and-projections.ts';
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
+import { whenTheDiplomacyCardsChangesApply } from './the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts';
 import type { TheReportAsThePagesListsReadIt } from './items-and-heroes.ts';
 
 /** A realm the diplomacy panel and the popup's owner line read: its index, name, colour, relation and standing. */
@@ -981,7 +982,7 @@ export function _renderDiplomacyInto(
             alliancesAllowed
               ? kcHtml`An <strong>alliance</strong> or <strong>peace</strong> is sealed only if <em>both</em> realms propose it in the same turn; a <strong>declaration of war</strong> takes effect on its own.`
               : kcHtml`In a realm of so few kings <strong>no alliances</strong> may be forged — you may make <strong>peace</strong> (both must propose it) or <strong>declare war</strong> (on its own).`
-          } Changes apply at the start of next turn — except that an <strong>Evil</strong> or <strong>Undead</strong> realm's declaration of war takes effect at the <strong>start of this very turn</strong>: its armies may attack the moment the orders run. <strong>Breaking an alliance</strong> returns the two realms to <strong>Neutral</strong> — only an Evil or Undead crown goes straight from alliance to war. Submit your orders to lodge these declarations.</div>`
+          } ${whenTheDiplomacyCardsChangesApply()} Submit your orders to lodge these declarations.</div>`
         : ''
     }`,
   );

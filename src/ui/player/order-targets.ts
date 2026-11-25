@@ -30,6 +30,7 @@ import {
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { L79_ORDERS } from './l79-orders.ts';
+import { CONSECRATED_GROUND_IN_THE_CONSECRATE_HINT } from './the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts';
 import {
   DIRECTIONS,
   gdHintFor,
@@ -1268,7 +1269,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         ? kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
         : kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
       return kcHtml`${inputBox}
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your king's trained <strong>White skill level</strong> at once (one more with Holy Sites, from White 3); a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: ${CONSECRATED_GROUND_IN_THE_CONSECRATE_HINT}. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your king's trained <strong>White skill level</strong> at once (one more with Holy Sites, from White 3); a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;
     }
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms': {

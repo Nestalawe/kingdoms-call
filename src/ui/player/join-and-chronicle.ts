@@ -10,6 +10,11 @@ import {
 import { inWords } from './the-order-forms-forecast-where-a-hero-stands-what-he-carries-and-leads.ts';
 import { KC_PHASE_COLORS, KC_PHASE_NAMES } from '../../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import {
+  THE_CREEDS_ONLY_ONE_REALM_A_GAME_MAY_HOLD_IN_WORDS,
+  THE_KINGS_FIRST_NECROMANCY,
+  THE_KINGS_FIRST_WHITE_MAGIC,
+} from './the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts';
 import { thePagesDb } from './startup.ts';
 import { GUARD_POWER_COLORS_P } from './items-and-heroes.ts';
 import { show } from './init.ts';
@@ -94,7 +99,7 @@ export async function showJoinGame(
   // Show info about taken alignments
   const takenNote =
     warningParts.length > 0
-      ? kcHtml`<div class="msg-warning" style="margin-top:6px">⚠ <strong>${warningParts.join(' and ')}</strong> alignment${warningParts.length > 1 ? 's are' : ' is'} already taken in this game — only one player per game may be Divine or Undead.</div>`
+      ? kcHtml`<div class="msg-warning" style="margin-top:6px">⚠ <strong>${warningParts.join(' and ')}</strong> alignment${warningParts.length > 1 ? 's are' : ' is'} already taken in this game — only one player per game may be ${THE_CREEDS_ONLY_ONE_REALM_A_GAME_MAY_HOLD_IN_WORDS}.</div>`
       : '';
   const gmBox = kcHtml`<div style="background:#f5f0e8;border:1px solid var(--gold);border-radius:3px;padding:8px 12px;font-size:.82rem;line-height:1.6;margin-bottom:8px">
       <div>\u{1F451} <strong>Game Master:</strong> ${(theGameBeingJoinedNow()?.gmName ?? '') || 'the Game Master'}</div>
@@ -126,8 +131,7 @@ export const SKILL_INFO: Readonly<Partial<Record<string, string | KcSafeHtml>>> 
   druid: kcHtml`Beast mastery. Required to command creature and monster armies without penalty — each level you fall short of an army's requirement costs it ~20% strength, and <strong>each level you hold above a Creature or Monster unit's requirement adds +20%</strong> (Druid counted to 9, up to +100%; where your realm waives the requirement every level counts). From Druid 3 a natural beast's blows land at half force against you in a personal encounter. Higher Druid unlocks the most powerful Creatures and Monsters.`,
   explorer:
     'Pathfinding. Speeds up how quickly you explore your provinces each turn, revealing hidden lairs and terrain sooner so you can search and settle faster.',
-  white:
-    'White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast (Divine realms start with White 1).',
+  white: `White Magic — holy spells: heal and bless, resurrect fallen heroes, and smite the undead and evil. Your level sets how many spells you can cast ${THE_KINGS_FIRST_WHITE_MAGIC}.`,
   psychic:
     'Psychic Magic — mind spells: Psychic Blast (direct damage that ignores armies), Telekinetic Storm, and Clairvoyance for long-range intelligence.',
   illusory:
@@ -136,8 +140,7 @@ export const SKILL_INFO: Readonly<Partial<Record<string, string | KcSafeHtml>>> 
     'Elemental Magic — destruction spells: Lightning Bolt, Fireball, Earthquake, Flood and Elemental Summon. Raw offensive power against armies and provinces.',
   // this blurb still advertised "Kill Enemy", a spell that does not exist in the engine
   // (see the note beside SPELLS_BY_SCHOOL in the GM portal). The level-5 Necromancy spell is Plague.
-  necromancy:
-    'Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Plague (Undead realms start with Necromancy 1).',
+  necromancy: `Necromancy — death magic: raise Skeletal Armies from battlefield graves, Control Undead, Curse, Hand of Death and Plague ${THE_KINGS_FIRST_NECROMANCY}.`,
 };
 
 export function renderSkillGrid() {
@@ -267,7 +270,7 @@ export async function doJoinGame(gameId: string) {
     const takenNow = new Set(slots2.map((s) => s.alignment).filter(Boolean));
     if (takenNow.has(alignment)) {
       theMessageBox(msg).innerHTML = String(
-        kcHtml`<div class="msg-error">⚠ The <strong>${alignment}</strong> alignment is already taken in this game. Only one player per game may choose Divine or Undead. Please choose a different alignment.</div>`,
+        kcHtml`<div class="msg-error">⚠ The <strong>${alignment}</strong> alignment is already taken in this game. Only one player per game may choose ${THE_CREEDS_ONLY_ONE_REALM_A_GAME_MAY_HOLD_IN_WORDS}. Please choose a different alignment.</div>`,
       );
       return;
     }
