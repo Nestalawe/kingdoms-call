@@ -5,7 +5,8 @@
 // src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts, and
 // relationBetween, areEnemies and areAllied beside the captures, src/engine/realms/relations-and-captures.ts), and
 // names a state through these constants. The ratchet's count of the relations the engine names
-// (relationChecksInEngine, tools/ratchet.ts) reads its words from here.
+// (relationChecksInEngine, tools/ratchet.ts) reads its words from here. The player portal names a state through them
+// too: the map's popup (its name for each state, below) and the Diplomacy card (src/ui/player/map-symbols.ts).
 
 /** The three states two realms stand in, as a save's relations write them. */
 export const THE_STATES_TWO_REALMS_STAND_IN = {
@@ -26,3 +27,11 @@ export const THE_STATE_A_PAIR_WITH_NO_ENTRY_STANDS_IN: AStateTwoRealmsStandIn = 
 
 /** The Treat: the declaration a realm makes to another to step their relation up (a war is declared as `atWar`). */
 export const THE_TREAT_DECLARATION = 'treat';
+
+/** Each state's name as the player portal's map writes it after the realm that owns a province, in the province's
+ *  popup: "Owned by Velmar (Allied)". */
+export const THE_NAME_THE_MAP_GIVES_EACH_STATE_TWO_REALMS_STAND_IN: Readonly<Record<AStateTwoRealmsStandIn, string>> = {
+  neutral: 'Neutral',
+  allied: 'Allied',
+  enemy: 'Enemy',
+};

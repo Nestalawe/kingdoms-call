@@ -5,8 +5,8 @@
 // reads the alignment's row or content's constant instead. Each row adds what it takes to TAKEN. With them, the
 // ratchet's count of the alignments the portal, the views and the shared rules name (tools/ratchet.ts's
 // alignmentChecksOutsideTheEngine, by its helper alignmentChecksOutsideTheEngineByFunction), so that count only falls:
-// the helper counts each alignment planted there, and none in the engine. Its one listed exception (the map's label of
-// the relation "neutral") is still in its function, and lets only one string through. Not seen: an alignment's rule
+// the helper counts each alignment planted there, and none in the engine. It lists no string as another word: the map's
+// name for the relation "neutral" is content's (B-06bu), so `_ownerLineP` is taken. Not seen: an alignment's rule
 // written in prose or in a page's HTML.
 //
 // Level 0 (static): the files' syntax trees and content's list of alignments as written; nothing runs.
@@ -21,7 +21,6 @@ import {
   compare,
   countsAlignmentChecksOutsideTheEngine,
   readBaseline,
-  THE_ALIGNMENT_WORDS_OUTSIDE_THE_ENGINE_THAT_ARE_NOT_AN_ALIGNMENT,
   theCodeFiles,
 } from '../../tools/ratchet.ts';
 import { everyStringIn, TOP } from '../lib/the-strings-a-function-of-the-code-holds.ts';
@@ -43,6 +42,7 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/views/what-each-realm-may-see-of-the-world.ts', 'provinceAsSeen', 'B-06br'],
   ['src/ui/player/order-targets.ts', 'buildTargetField', 'B-06bs'],
   ['src/ui/player/report.ts', 'renderReportView', 'B-06bs'],
+  ['src/ui/player/map-symbols.ts', '_ownerLineP', 'B-06bu'],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -54,28 +54,8 @@ test.for(TAKEN)('%s: %s names no alignment (%s)', ([file, fn]) => {
   expect(countsAlignmentChecksOutsideTheEngine(file), `${file} is one the count reads`).toBe(true);
   expect(fn === TOP || counts.has(fn), `${file} declares ${fn}`).toBe(true);
   expect(counts.get(fn) ?? 0, `${fn}'s names of an alignment (the ratchet's helper)`).toBe(0);
-  const theExceptions = THE_ALIGNMENT_WORDS_OUTSIDE_THE_ENGINE_THAT_ARE_NOT_AN_ALIGNMENT.filter(
-    ([f, g]) => f === file && g === fn,
-  ).map(([, , word]) => word);
-  expect(everyStringIn(file, text, fn, isAnAlignment), `every string in ${fn} naming an alignment`).toEqual(
-    theExceptions,
-  );
+  expect(everyStringIn(file, text, fn, isAnAlignment), `every string in ${fn} naming an alignment`).toEqual([]);
 });
-
-// A listed exception that its function no longer holds would let a new alignment through: it is still there, once.
-test.for(THE_ALIGNMENT_WORDS_OUTSIDE_THE_ENGINE_THAT_ARE_NOT_AN_ALIGNMENT)(
-  '%s: %s still holds its %s (%s)',
-  ([file, fn, word]) => {
-    expect(
-      everyStringIn(file, read(file), fn, (w) => w === word),
-      `${fn}'s ${word}`,
-    ).toEqual([word]);
-    expect(
-      alignmentChecksOutsideTheEngineByFunction(file, read(file)).get(fn) ?? 0,
-      `${fn}'s alignments, its exception let through`,
-    ).toBe(0);
-  },
-);
 
 test('the files the count reads are the TypeScript of src/ui/, src/views/ and src/shared/', () => {
   expect(

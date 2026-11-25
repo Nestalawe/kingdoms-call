@@ -1,6 +1,11 @@
 import { kcArg, kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
 import { KC_TERRAIN_COLORS } from '../../content/kingdoms-call-data.ts';
 import {
+  THE_NAME_THE_MAP_GIVES_EACH_STATE_TWO_REALMS_STAND_IN,
+  THE_STATES_TWO_REALMS_STAND_IN,
+  THE_TREAT_DECLARATION,
+} from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import {
   doesAnAlignmentBreakAnAllianceIntoWar,
   skillFameLabelM,
   topSkillOf,
@@ -324,9 +329,18 @@ export function _ownerLineP(pd: AProvinceThePopupReads | null | undefined) {
   const col = (_tintForDarkTooltip((pd.ownerColor ?? '') || k?.color) ?? '') || '#f2e8d0';
   const rel = k ? k.relation : null;
   const REL: Readonly<Partial<Record<string, readonly [string, string]>>> = {
-    neutral: ['Neutral', '#e8d8b0'],
-    allied: ['Allied', '#9be07a'],
-    enemy: ['Enemy', '#ff7a6a'],
+    [THE_STATES_TWO_REALMS_STAND_IN.neutral]: [
+      THE_NAME_THE_MAP_GIVES_EACH_STATE_TWO_REALMS_STAND_IN[THE_STATES_TWO_REALMS_STAND_IN.neutral],
+      '#e8d8b0',
+    ],
+    [THE_STATES_TWO_REALMS_STAND_IN.allied]: [
+      THE_NAME_THE_MAP_GIVES_EACH_STATE_TWO_REALMS_STAND_IN[THE_STATES_TWO_REALMS_STAND_IN.allied],
+      '#9be07a',
+    ],
+    [THE_STATES_TWO_REALMS_STAND_IN.atWar]: [
+      THE_NAME_THE_MAP_GIVES_EACH_STATE_TWO_REALMS_STAND_IN[THE_STATES_TWO_REALMS_STAND_IN.atWar],
+      '#ff7a6a',
+    ],
   };
   const relShown = rel ? REL[rel] : undefined;
   const tag = relShown ? kcHtml` <span style="color:${relShown[1]};font-weight:600">(${relShown[0]})</span>` : '';
@@ -918,17 +932,19 @@ export function _renderDiplomacyInto(
   // made sure: a report of no realm known returned above
   const reportRead: TheReportAsTheMapsPopupsReadIt = report ?? {};
   const relBadge = (r: unknown) =>
-    r === 'allied'
+    r === THE_STATES_TWO_REALMS_STAND_IN.allied
       ? kcHtml`<span class="pill" style="background:#dff0d8;color:#1d541d">🤝 Allied</span>`
-      : r === 'enemy'
+      : r === THE_STATES_TWO_REALMS_STAND_IN.atWar
         ? kcHtml`<span class="pill" style="background:#f7d7d7;color:#701010">⚔ At war</span>`
         : kcHtml`<span class="pill" style="background:#efe6cc;color:#3a2e18">🕊 Neutral</span>`;
   const btn = (idx: unknown, val: string, label: string, bg: string) =>
     kcHtml`<button onclick="setDiploChoice(${kcArg(idx)},${kcArg(val)})" style="font-family:'Cinzel',serif;font-size:.68rem;padding:5px 10px;border:1px solid ${bg};background:transparent;color:${bg};border-radius:2px;cursor:pointer">${label}</button>`;
   const pendingLabel = (k: ARealmTheDiplomacyShows) => {
     const p = theDiplomaticChoices()[String(k.index)];
-    if (p === 'enemy') return k.relation === 'allied' ? 'Break Alliance' : 'Declare War';
-    if (p === 'treat') return k.relation === 'enemy' ? 'Propose Peace' : 'Propose Alliance';
+    if (p === THE_STATES_TWO_REALMS_STAND_IN.atWar)
+      return k.relation === THE_STATES_TWO_REALMS_STAND_IN.allied ? 'Break Alliance' : 'Declare War';
+    if (p === THE_TREAT_DECLARATION)
+      return k.relation === THE_STATES_TWO_REALMS_STAND_IN.atWar ? 'Propose Peace' : 'Propose Alliance';
     return '';
   };
   el.innerHTML = String(
@@ -953,15 +969,20 @@ export function _renderDiplomacyInto(
           : '';
       } else if (pending) {
         controls = kcHtml`<div style="font-size:.8rem;color:#7a1c1c">Pending this turn: <strong>${pendingLabel(k)} — ${k.name}</strong> &nbsp;<button onclick="setDiploChoice(${kcArg(k.index)},null)" style="font-size:.66rem;padding:2px 8px;border:1px solid #999;background:#eee;border-radius:2px;cursor:pointer">cancel</button></div>`;
-      } else if (k.relation === 'neutral') {
-        controls = kcHtml`${alliancesAllowed ? kcHtml`${btn(k.index, 'treat', 'Propose Alliance', '#2d6a2d')} ` : ''}${btn(k.index, 'enemy', 'Declare War', '#8a1c1c')}`;
-      } else if (k.relation === 'enemy') {
-        controls = btn(k.index, 'treat', 'Propose Peace', '#2d6a2d');
+      } else if (k.relation === THE_STATES_TWO_REALMS_STAND_IN.neutral) {
+        controls = kcHtml`${alliancesAllowed ? kcHtml`${btn(k.index, THE_TREAT_DECLARATION, 'Propose Alliance', '#2d6a2d')} ` : ''}${btn(k.index, THE_STATES_TWO_REALMS_STAND_IN.atWar, 'Declare War', '#8a1c1c')}`;
+      } else if (k.relation === THE_STATES_TWO_REALMS_STAND_IN.atWar) {
+        controls = btn(k.index, THE_TREAT_DECLARATION, 'Propose Peace', '#2d6a2d');
       } else {
         // allied — 2026-09-24 (Toby item 6): breaking a pact drops the pair to Neutral, except
         // for an Evil or Undead crown, which goes straight to war.
         const _darkSelf = doesAnAlignmentBreakAnAllianceIntoWar(reportRead.kingdom?.alignment); // their rows (P1-19ax2)
-        controls = btn(k.index, 'enemy', _darkSelf ? 'Break Alliance — War' : 'Break Alliance', '#8a1c1c');
+        controls = btn(
+          k.index,
+          THE_STATES_TWO_REALMS_STAND_IN.atWar,
+          _darkSelf ? 'Break Alliance — War' : 'Break Alliance',
+          '#8a1c1c',
+        );
       }
       return kcHtml`<div style="border:1px solid var(--parchment-dark);border-radius:2px;padding:8px 10px;margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">

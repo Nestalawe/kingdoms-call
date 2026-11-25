@@ -1287,25 +1287,16 @@ export function battleNumbersInTheBots(codeFiles: readonly (readonly [file: stri
 // The player portal's naming of an alignment (Run 3e, the portal's alignment rules): alignmentChecksByFunction's rule
 // (a string naming one of KC_ALIGNMENTS, anywhere but a literal type) in the files of src/ui/, src/views/ and
 // src/shared/, where the portal and the views restate an alignment's rule (a realm of none reads as Neutral, the beasts'
-// guide, the Research forecast). One string is a relation's label, not an alignment, and is listed. The count can't see
-// an alignment's rule written in prose or a page's HTML.
+// guide, the Research forecast). None is listed as another word: the map's name for the relation "neutral" is
+// content's (B-06bu). The count can't see an alignment's rule written in prose or a page's HTML.
 // tests/static/the-portal-code-the-alignment-rows-have-taken-names-no-alignment.test.ts holds the functions the rows
 // have taken at 0 each, with alignmentChecksOutsideTheEngineByFunction.
-/** The `'Neutral'` that is the label of the relation "neutral" on the map, not an alignment. */
-export const THE_ALIGNMENT_WORDS_OUTSIDE_THE_ENGINE_THAT_ARE_NOT_AN_ALIGNMENT: readonly AWordThatIsNotTheCountsWord[] =
-  [['src/ui/player/map-symbols.ts', '_ownerLineP', 'Neutral', 'the label of the relation "neutral" on the map']];
 /** The files alignmentChecksOutsideTheEngine counts: the TypeScript of src/ui/, src/views/ and src/shared/. */
 export const countsAlignmentChecksOutsideTheEngine = (file: string): boolean =>
   /^src\/(ui|views|shared)\//.test(file) && file.endsWith('.ts') && !file.endsWith('.d.ts');
-/** Each function of a file, by its name, with the alignments named in it (theWordsNamedByFunction's rule), the listed
- *  exception let through. */
+/** Each function of a file, by its name, with the alignments named in it (theWordsNamedByFunction's rule). */
 export const alignmentChecksOutsideTheEngineByFunction = (file: string, text: string): Map<string, number> =>
-  theWordsNamedByFunction(
-    file,
-    text,
-    (word) => ALIGNMENT_VOCABULARY.has(word),
-    THE_ALIGNMENT_WORDS_OUTSIDE_THE_ENGINE_THAT_ARE_NOT_AN_ALIGNMENT,
-  );
+  theWordsNamedByFunction(file, text, (word) => ALIGNMENT_VOCABULARY.has(word));
 /** The alignments named in the portal's, the views' and the shared files (above). */
 export const alignmentChecksOutsideTheEngine = (
   codeFiles: readonly (readonly [file: string, text: string])[],
