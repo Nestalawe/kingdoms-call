@@ -19,9 +19,9 @@
 // - No draw from the dice.
 // - The turn reaches what the old writes were about, so the test can't pass by not getting there.
 // - The reports can't be built before the Spy stealth is rolled.
-// Red on the base of P1-12b2 (the reports rolled the stealth, cleared the battle flags and normalised the items), and on
-// copies of src/ with each of the three writes put back (P1-12b2's PR shows them, on the matrix game the test played then); each reach check red with its line
-// of the staging taken out (the PR that staged it shows them).
+// Red on the base of P1-12b2 (the reports rolled the stealth, cleared the battle flags and normalised the items), and
+// on copies of src/ with each of the three writes put back (P1-12b2's PR shows them, on the matrix game the test
+// played then); each reach check red with its line of the staging taken out (the PR that staged it shows them).
 // Level 1 (unit): the engine alone, over a staged turn (tests/lib/a-staged-turn-on-the-engines-modules.ts's world, its
 // rows written here, so the test lends the turn and the stealth their own dice); the writes are made deep inside the
 // report's helpers, which only a turn reaches with the world they write to.
@@ -165,7 +165,8 @@ describe('a staged turn, every report built on a world that refuses every write'
       throw new Error(
         'could not stage: a free land province beside free land, two heroes of realm 0 and one of realm 1',
       );
-    // X and Y as the test stages them: plain ground, and no one there the world dealt (a wandering guard is laid to rest)
+    // X and Y as the test stages them: plain ground, and no one there the world dealt (a wandering guard is laid to
+    // rest)
     for (const p of [X, Y]) {
       for (const c of S.characters) if (c.player == null && c.location === p.id) c.alive = false;
       p.characters = p.characters.filter((id) => S.characters.some((c) => c.id === id && c.alive));
