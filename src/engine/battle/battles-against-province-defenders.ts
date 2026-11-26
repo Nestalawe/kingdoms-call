@@ -37,8 +37,9 @@ export function combatVsNPC(
   // The set-up, the duel and the sides (B-06az: the-battle-against-the-defenders/, its first stage), to the home ground
   // and the commander's Archery and Naval: what the later stages read, each final there.
   const theSetUp = theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(turnContext, c, prov, neutralGuardHero);
-  // The attacker's pre-battle phases (B-06ba: the-battle-against-the-defenders/, its second stage), his magic and army
-  // spells, then his archery, Flak and Breach: what the later stages read, and the battle's state, made there.
+  // The attacker's pre-battle phases (B-06ba: the-battle-against-the-defenders/, its second stage), his magic, then his
+  // archery, Flak and Breach: what the later stages read, and the battle's state, made there. (His units' army spells
+  // strike in the third stage, after both sides' spells and so after his archery: R-162, question 164.)
   const theAttackersPhases = theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp);
   // The defenders' pre-battle phases (B-06bb: the-battle-against-the-defenders/, its third stage), their commander's
   // magic, their archery and Flak, their units' army spells: each strikes the attacker's host, and hands nothing on.

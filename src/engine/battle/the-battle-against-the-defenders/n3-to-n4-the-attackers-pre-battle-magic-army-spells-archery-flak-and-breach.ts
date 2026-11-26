@@ -1,7 +1,7 @@
 // The battle against a province's defenders (combatVsNPC, src/engine/battle/battles-against-province-defenders.ts), its
 // second stage, B-06ba: the attacker's pre-battle phases, his magic (the battle proof's N3), then his archery, Flak and
 // Breach (N4), moved here as they were, the same statements in the same order. His units' army spells strike in N5,
-// after their commander's battle spell (R-162). combatVsNPC
+// after their commander's battle spell (R-162), so after his archery here (question 164). combatVsNPC
 // calls it where they stood, after the set-up (n0-to-n2-…), and hands it what the set-up returned, as it is. It returns
 // what the later stages read: the battle spells' names, the defenders' commander's Tactical (final once N3 is done)
 // and its bonus, and the battle's state below. The battle proof (tools/proof/README.md, section 8) finds N3's and N4's
@@ -13,7 +13,8 @@
 //
 // What a stage hands on: each value a later stage reads and no stage writes after it is handed on as a value, returned
 // by its stage in one object, which combatVsNPC hands on as it is and each later stage takes under the same names (the
-// set-up's thirty or so, its lets tactSkill, defBonus and navalSkillAtk among them, each final there; defTactLvl, final
+// set-up's thirty or so, its lets tactSkill, defBonus and navalSkillAtk among them, each final there (N8 withers the
+// first and the last by a Curse, under the same names: R-162); defTactLvl, final
 // once N3 is done; the lines' thirteen, each final in N10). The lets a later stage still writes are the battle's state:
 // each is a field of the state object, read and written through it, never copied by value into a stage. The giant's
 // lets, by stage file (each file named by the stages it holds: n0-to-n2-…, n3-to-n4-…, n5-to-n7-…, n8-to-n10-…,
@@ -22,9 +23,9 @@
 // | let | written in | read in |
 // |---|---|---|
 // | `_npcDuel` | n0-to-n2 (N1) | n0-to-n2 (N1: the duel's result, local to the set-up) |
-// | `tactSkill` | n0-to-n2 (N2) | n0-to-n2 (N2), n8-to-n10 (N8) |
+// | `tactSkill` | n0-to-n2 (N2); n8-to-n10 (N8: its own, a Curse halves it) | n8-to-n10 (N8) |
 // | `defBonus` | n0-to-n2 (N2) | n8-to-n10 (N8) |
-// | `navalSkillAtk` | n0-to-n2 (N2) | n0-to-n2 (N2), n8-to-n10 (N8) |
+// | `navalSkillAtk` | n0-to-n2 (N2); n8-to-n10 (N8: its own, a Curse halves it) | n8-to-n10 (N8) |
 // | `defTactLvl` | n3-to-n4 (N3) | n3-to-n4 (N3), n8-to-n10 (N8) |
 // | `_npcSunkLost` (the state) | n3-to-n4 (N4: Breach and Swamp's hulls) | n11-to-n13 (N13: the defenders' losses handed back) |
 // | `_npcDefWinLost` (the state) | n3-to-n4 (N4, declared), n11-to-n13 (N12: a winning garrison's dead) | n11-to-n13 (N13) |

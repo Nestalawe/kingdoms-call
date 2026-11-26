@@ -4,7 +4,8 @@
 // Righteous Defence, the items at the walls, home), moved here as they were, the same statements in the same order.
 // combatVsNPC calls it where they stood and takes, under the same names, what its later stages read. Nothing it hands
 // on is written after it (its three lets, tactSkill, defBonus and navalSkillAtk, are final here), so each is handed on
-// as a value. The battle proof (tools/proof/README.md, section 8) finds N1's and N2's anchors in this file; the draws
+// as a value. tactSkill and navalSkillAtk are the attacker's levels before the battle's magic: N8 counts them again
+// once a Curse has taken effect (R-162). The battle proof (tools/proof/README.md, section 8) finds N1's and N2's anchors in this file; the draws
 // above N1's (the tiers that fight, the attack's verb) have no anchor above them here, so they count under the caller's
 // line, N0, as they did.
 //

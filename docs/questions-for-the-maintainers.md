@@ -139,23 +139,21 @@ guardians at the table's HP) and [R-072](rulings/R-072-guardian-strength.md) (th
 Found on 2026-11-27.
 
 [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) has a Curse on Tactical halve the
-Tactical a battle counts, in both kinds of battle. A commander at Tactical 6 or more also has the chance that each of
-his units fights a quality tier higher, decided as the battle is set up, before any spell. Example: Lady Wren, Tactical
-7, is cursed by the warlord Morvane: her lines fight at Tactical 3, but her units still roll for their tier-up as at
-Tactical 7. Should the Curse take the tier-up away too?
+Tactical a battle counts. At Tactical 6 or more, each of a commander's units may also fight a tier higher, decided
+before any spell. Example: Lady Wren, Tactical 7, cursed by the warlord Morvane, fights at Tactical 3 but still rolls
+her tier-ups as at 7.
 
-1. **No: the tier-up stays, as built (P1-23an).** Impact: a cursed Tactical 6+ commander keeps one perk of his level;
-   the Curse weakens his lines' bonus only.
-2. **Yes: a Curse that leaves him below 6 takes the tier-up.** Impact: the Curse hits a great tactician harder; the
-   tier-up has to be decided after both sides' spells, so the battle's dice move.
+1. **The tier-up stays, as built (P1-23an).** Impact: the Curse weakens her lines' bonus only.
+2. **A Curse that leaves her below 6 takes it.** Impact: the Curse hits a great tactician harder; the tier-up is
+   decided after the spells, so the dice move.
 
-*Assessment:* option 2 follows the ruling's words ("before the skills … it changes are counted") most closely; option
-1 is how the game plays now and the smaller change. It matters only for a Curse on a Tactical 6+ commander.
+*Assessment:* option 2 follows the ruling's words most closely; option 1 is built and smaller. It matters only for a
+Curse on a Tactical 6+ commander.
 
 *Unlocks:* R-162's open point settled.
 
-*Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) (battle magic at one
-moment) and [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md) (battle magic's one rule).
+*Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md),
+[R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
 
 ## 163. Do ships left ashore keep a battle's cuts when the battle resumes the same turn?
 
@@ -178,3 +176,25 @@ after a lost battle.
 *Unlocks:* the last path where a battle's cuts outlive its end settled.
 
 *Touches:* [R-067](rulings/R-067-ships-ashore-hold-the-ground.md) (ships left ashore contest the province).
+
+## 164. Against guards, do the hero's beasts strike before or after his archers?
+
+Found on 2026-11-27.
+
+Under [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md), a hero's beasts strike after
+the guards' commander's spell, so a Psychic Blast can stop them; that comes after the hero's archery, Flak and Breach.
+Between two heroes' hosts, the beasts strike before any archers. Example: Sir Aldwin's longbowmen loose at the Fenmoor
+guards, then the warlord Morvane casts, then Aldwin's Stone Giants strike; against Lady Wren's host the giants
+strike first.
+
+1. **Keep it, as built (P1-23an).** Impact: only whether archers or beasts strike first differs between the battles.
+2. **Move the guards' commander's spell ahead of the hero's archery.** Impact: one order in both; a larger move of
+   the stages, and the dice move again in every battle against guards.
+
+*Assessment:* option 2 matches between heroes exactly; option 1 is built and changes little (both strike the same
+enemy, neither changes the other). It matters only for a hero with both archers and beasts.
+
+*Unlocks:* R-162's second open point settled.
+
+*Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md),
+[R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).

@@ -13,6 +13,8 @@ leader's and the guards' Flak Screen), and Mass Confusion works on a guard leade
 
 **Open:** whether a Curse on Tactical also takes Tactical 6's tier-up from a commander it leaves below 6 (question
 162). As built, it doesn't: the tier-up is decided before the spells.
+**Open:** whether, against guards, the hero's beasts strike after his archery (as built) or before it, as between heroes
+(question 164).
 
 The question was: battle magic takes effect at different moments in the two battles. Option 1: "one order in both:
 each spell takes effect before the skills and strikes it changes are counted".
