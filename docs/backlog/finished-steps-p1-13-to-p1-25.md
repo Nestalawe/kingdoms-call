@@ -262,6 +262,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-23ad: #370 The order form counts a Grand Cathedral's Bless Province as free
 - P1-23ae: #367 The army card takes a Druid shortfall off as the battle does
 - P1-23af: #372 Battle magic follows one rule in every battle: the bolt counted to 5, no storm at sea or on no Tactical
+- P1-23al: #831 Steel Armour and Military Discipline work against neutral guards as between heroes
 
 Dropped (ids are never reused): P1-23ap, on 2026-11-15, and P1-23aq, on 2026-11-15, re-planned with the new
 alignment abilities (B-09); B-02, on 2026-11-15 (the batch rehearsal); B-04, on 2026-11-15, and B-05, on 2026-11-15,

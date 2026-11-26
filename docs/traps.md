@@ -105,8 +105,8 @@ words; `emit`'s type takes a kind for one realm alone only told to that realm (B
 
 Building the reports reads the world and the GM's log, and writes to neither, even the same value back; a rule that
 changes the world belongs to the engine, before the reports. The reports draw no dice either. Checks:
-`tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts` plays a whole matrix game with every
-report built on a world and a log that refuse every write, on dice that count every draw. Detail:
+`tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts` plays one staged turn, its dice fixed,
+with every report built on a world and a log that refuse every write, on dice that count every draw. Detail:
 [a line of the turn](architecture/a-line-of-the-turn-emit-its-facts-and-the-reports.md#views-never-write).
 
 ## Nothing is on `window` but `globals.ts`

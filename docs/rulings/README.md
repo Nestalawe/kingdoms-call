@@ -230,7 +230,7 @@ at once.
 | [R-157](R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md) | A lair beast talked down by parley counts as pacified, not slain | 2026-11-05 | Decided, not built | no test yet |
 | [R-158](R-158-invisibility-waits-while-a-hero-leads-armies.md) | Invisibility waits while a hero leads armies | 2026-11-05 | Decided, not built | no test yet |
 | [R-159](R-159-a-curse-in-battle-halves-a-master-druids-whole-druid.md) | A Curse in battle halves a master Druid's whole Druid | 2026-11-15 | Decided, not built | no test yet |
-| [R-160](R-160-steel-armour-and-military-discipline-read-alike-against-neutral-guards.md) | Steel Armour and Military Discipline work against neutral guards as between heroes | 2026-11-15 | Decided, not built | no test yet |
+| [R-160](R-160-steel-armour-and-military-discipline-read-alike-against-neutral-guards.md) | Steel Armour and Military Discipline work against neutral guards as between heroes | 2026-11-15 | Confirmed | [`steel-armour-and-military-discipline-read-a-sides-own-companies-against-neutral-guards-as-between-heroes`](../../tests/unit/steel-armour-and-military-discipline-read-a-sides-own-companies-against-neutral-guards-as-between-heroes.test.ts) |
 | [R-161](R-161-a-commander-slain-before-the-battle-takes-his-skills-out-of-it.md) | A commander slain in the duel before a battle takes his skills out of it | 2026-11-15 | Decided, not built | no test yet |
 | [R-162](R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) | Battle magic takes effect at one moment in both kinds of battle | 2026-11-15 | Decided, not built | no test yet |
 | [R-163](R-163-whale-cohorts-may-sink-hulls-on-every-side.md) | Whale Cohorts may sink hulls on every side | 2026-11-15 | Decided, not built | no test yet |
