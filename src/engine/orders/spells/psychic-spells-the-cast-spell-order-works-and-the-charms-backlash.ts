@@ -529,7 +529,7 @@ export function workOratory({ turnContext, c, prov, targetChar }: TheNamesAnActi
   // A NAMED ally who is not here is caught above (free refusal). What is left is a named
   // ally of another realm, or no target at all — self. Never silently swap a named target.
   if (targetChar && targetChar.player !== c.player) {
-    // R-119: the refusal names him only where the caster's realm can find him
+    // R-119: the refusal names the hero it was aimed at as R-119 has an order name him
     const theRefusalNamesHim = !isHiddenByInvisibilityFrom(turnContext, targetChar, c.player);
     emit(turnContext, {
       type: 'system',

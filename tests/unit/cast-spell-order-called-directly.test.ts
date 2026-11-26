@@ -36,7 +36,7 @@
 // realm's hero. Planted faults: in the PR (P1-08j7)
 // Since P1-23e (R-119): a Curse and a Charm at another realm's hero whose Invisibility holds are refused before the
 // roll, with a line naming no one (the cases); a realm that watches him by Clairvoyance still works its spell on him.
-// An Oratory refusal at another realm's hero names him only where the caster's realm can find him (R-119).
+// An Oratory refusal at another realm's hero named by a pre-order reference names him as R-119 has an order name him.
 import fc from 'fast-check';
 import { describe, expect, test, vi } from 'vitest';
 import { CAST_SPELL_ORDER_CASES, LANDS, stageCase, type CastSpellOrderCase } from '../lib/cast-spell-order-cases.ts';
@@ -358,8 +358,7 @@ describe('Cast Spell, called directly: the casting', () => {
     }
   });
 
-  // An Oratory refusal at another realm's hero (named by a pre-order reference, which the check before the roll doesn't
-  // read) names him only where the caster's realm can find him (R-119).
+  // An Oratory refusal at another realm's hero named by a pre-order reference names him as R-119 has an order name him.
   test("an Oratory refusal names the realm's own crown or none", () => {
     const refusal = (hidden: boolean, watched: boolean) => {
       const b = fresh();

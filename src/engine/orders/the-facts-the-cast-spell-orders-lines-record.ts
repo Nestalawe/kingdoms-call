@@ -224,7 +224,7 @@ export type TheFactOfTheCastSpellOrdersLine =
   | { kind: 'a realm learns its hero is ensorcelled by an enemy Charm'; targetName: string }
   | ({
       kind: "Oratory cannot stir another realm's troops";
-      /** The hero it was aimed at, or null where the caster's realm can't find him (R-119). */
+      /** The hero it was aimed at, as R-119 has an order name him (null: none named). */
       targetName: string | null;
     } & ACaster)
   | ({
