@@ -45,7 +45,8 @@
 // heroes, graveyard, provinces, ledger or record of the titles, a holder of no tax base, a gap among the provinces, a
 // garrison with no companies list; the standings, the title race, the minor titles, a hero's bonuses and the
 // Reckoning's reads on plain worlds that lack a part (a legendary relic's point, a hero of a realm the list doesn't
-// hold, a bot's claim with no bots, turn or heroes). Properties (fast-check): the Throne goes to the first realm of the
+// hold, a bot's claim with no bots, turn or heroes), and the Reckoning's bar by the number of realms, six or more
+// reading its own bar (P1-21x). Properties (fast-check): the Throne goes to the first realm of the
 // largest tax base and tells it its own share rounded down, each realm it met rounded and how many it hasn't; the
 // Loremaster copies exactly the fresh discovery the die picks of those a met realm holds and it lacks, or none; the
 // Archmage names, per school, the living mage of the highest level outside its realm, of a met realm or none, the most
@@ -112,10 +113,11 @@ const theRoundingDown =
   await import('../../src/engine/rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts');
 const theBaseStrength = await import('../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts');
 const theGraves = await import('../../src/engine/graves.ts');
-const { reckoningThreshold } = await import('../../src/engine/titles/perks.ts');
+const { reckoningBasePct, reckoningThreshold, reckoningThresholdPct } =
+  await import('../../src/engine/titles/perks.ts');
 const { ITEMS_BY_TIER } = await import('../../src/engine/items/tiers-and-hoards.ts');
 const { SKILL_LABELS } = await import('../../src/engine/army-tables.ts');
-const { SAGE_DISCOVERIES_P } = await import('../../src/content/kingdoms-call-data.ts');
+const { KC_THE_RECKONINGS_NUMBERS, SAGE_DISCOVERIES_P } = await import('../../src/content/kingdoms-call-data.ts');
 const titleIntel = theTitleStages.imperialTitleIntelEachHoldersReportOnRivalRealmsAndTheLoremastersCopy as Fn;
 const titleChanges = theTitleStages.titleChangesTheTitlesEachRealmWonAndLostSinceLastTurn as Fn;
 const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
@@ -1160,6 +1162,19 @@ describe('The standings and the Reckoning on worlds no game holds', () => {
         [0, 0],
       ],
     ]);
+  });
+
+  test("the Reckoning's bar by the number of realms: two to five read the row's table, six or more its bar of six or more", () => {
+    const { theBarByTheNumberOfRealms, theBarWithSixRealmsOrMore, theFloorTheBarNeverFallsBelow } =
+      KC_THE_RECKONINGS_NUMBERS;
+    expect(theBarWithSixRealmsOrMore, 'the bar of six or more is above the floor').toBeGreaterThan(
+      theFloorTheBarNeverFallsBelow,
+    );
+    const realms = [2, 3, 4, 5, 6, 7, 8, 10];
+    const theRows = (n: number) => (n <= 5 ? theBarByTheNumberOfRealms[n as 2 | 3 | 4 | 5] : theBarWithSixRealmsOrMore);
+    expect(realms.map((n) => [n, reckoningBasePct(n), reckoningThresholdPct(n, 0, 1)])).toEqual(
+      realms.map((n) => [n, theRows(n), theRows(n)]),
+    );
   });
 
   test('a Reckoning tied on score and on tax base goes to the realm with the more gold, its gold weighed against the other’s gold', () => {
