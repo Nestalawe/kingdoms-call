@@ -196,7 +196,9 @@ export function abilityVolleys(firer: ForceUnit, isAtk: boolean): number {
 // _laNoTerrain, and not by the snapshot copier — so it persisted on the army object, was serialised
 // with game state, and a winged rider harried once was immune to Flak Screen for the rest of the
 // GAME. It is now deleted alongside those flags wherever they are. A new battle-only flag goes into
-// wipeABattlesMarksFromItsUnits (a-battles-marks-on-its-units-wiped-at-its-end.ts) and the new turn's sweep. The gyrocopters' side is a record (plan P1-12d31); the prose writes its
+// wipeABattlesMarksFromItsUnits (a-battles-marks-on-its-units-wiped-at-its-end.ts), the new turn's three sweeps (a
+// hero's companies, a province's neutral defenders, its garrison: new-turn-counter-….ts) and _survStr's clean copy
+// (h8-to-h10-the-casualties-the-rout-and-the-end.ts). The gyrocopters' side is a record (plan P1-12d31); the prose writes its
 // label.
 export function applyFlakScreen(
   myForce: readonly ForceUnit[] | null | undefined,
