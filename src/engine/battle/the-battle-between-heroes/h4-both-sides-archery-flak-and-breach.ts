@@ -155,7 +155,7 @@ export function bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(
   }
   // DWARF — Flak Screen runs before the arrows fly.
   applyFlakScreen(atkArmies, defArmies, { heroName: atk.name, leaderless: false }, narrative);
-  applyFlakScreen(defArmies, atkArmies, { heroName: def.name, leaderless: false }, narrative);
+  applyFlakScreen(_atkLA ? [] : defArmies, atkArmies, { heroName: def.name, leaderless: false }, narrative); // Lightning Advance stops it, as against guards (R-162)
   applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);
   if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);
 

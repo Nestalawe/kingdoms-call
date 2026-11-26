@@ -99,6 +99,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
     neutralGuardHero._tacticalHalved = false;
     neutralGuardHero._tacticalMult = 1;
     neutralGuardHero._curseHalveStat = null;
+    if (neutralGuardHero._massConfusedTurn === G.turn) neutralGuardHero._tacticalNegated = true; // R-162: as a hero's
   }
   // TACTICAL L6 (10%/unit) & War Drum (20%/unit) — decide ONCE, here, which of c's units fight a
   // tier higher this battle.

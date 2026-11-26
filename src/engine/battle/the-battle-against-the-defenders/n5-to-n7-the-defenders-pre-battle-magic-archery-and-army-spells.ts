@@ -76,7 +76,8 @@ export function theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(
   // DEFENDER PRE-BATTLE PHASES — neutral guard heroes and their armies fight back with magic,
   // army spells, and missile fire (reduces ATTACKER strength)
   // ════
-  if (defHero) {
+  // Lightning Advance stops their commander's battle spell, as it stops a hero's between heroes (R-162).
+  if (defHero && !_cLA) {
     // DEFENDER MAGIC: guard casts a battle spell from their encounter plan (school or specific),
     // or picks one they know
     ensureEncounterPlan(turnContext, defHero);
