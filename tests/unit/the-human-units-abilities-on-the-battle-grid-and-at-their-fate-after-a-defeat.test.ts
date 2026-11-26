@@ -1,5 +1,5 @@
 // The Human units' abilities on the battle grid, and at their fate after a defeat (2026-10-11, Toby, the unit
-// abilities, R-095; plan P1-14k, the old `abilities-human` script): each a matchup and one more.
+// abilities, R-095, R-144; plan P1-14k, the old `abilities-human` script): each a matchup and one more.
 //   Shieldwall Levies   Spear Hedge (cavalry facing them fights at most ×0.75) · Shieldwall (×1.25 with an archer in
 //                       the second line behind them; the old "two Levies in the force" is gone)
 //   Men-at-Arms         Halberds (×1.25 facing cavalry) · Sergeants (Levies beside them in the front ×1.1)
@@ -28,8 +28,9 @@
 // Shieldwall ×1.25 only with an archer behind in the column; Town Watch counts a Human Garrison as Levies; Halberds
 // ×1.25 v cavalry; Sergeants ×1.1 for Levies beside Men-at-Arms; Bodkin Points shoot cavalry at ×1; Harriers ×1.15 in a
 // flank duel; Lance Charge ×1.15 v foot; Dive on the Bowmen ×0.75 on the strongest second-line archer; Hold the Gate
-// spares a defending garrison the side hit; Knightly Example keeps Levies and Men-at-Arms from losing a tier; Massed
-// Volley and Shock of the Charge gone. Level 1: pure functions; nothing needs a battle's dice
+// spares a defending Human Garrison the side hit, and only it (R-144: an Elven, Dwarf or Orc Garrison is hit, ×0.9);
+// Knightly Example keeps Levies and Men-at-Arms from losing a tier; Massed Volley and Shock of the Charge gone. Level 1:
+// pure functions; nothing needs a battle's dice
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
 import { missileDamageMult, unitAbilityMult } from '../../src/engine/battle/strength.ts';
@@ -359,6 +360,22 @@ describe('Hold the Gate', () => {
     const r = fight([['Human Garrison', 3]], [['Orc Berserkers', 5]], 5, 'plain');
     expect(faced(r.me, 'Human Garrison').filter((u) => why(u).includes('hit from the side'))).toHaveLength(2);
   });
+
+  // R-144: Hold the Gate is the Human Garrison's alone, as both books say. Every input is pinned: hand-made rows of one
+  // type, no race, no realm (so no temper and no alignment), no world, and no die (the width is given).
+  test.for(['Elven Garrison', 'Dwarf Garrison', 'Orc Garrison'])(
+    'only the Human Garrison holds the gate: a defending %s at a wrapped end is hit from the side (×0.9)',
+    (garrison) => {
+      const r = fight([['Orc Berserkers', 5]], [[garrison, 3]], 5, 'plain');
+      expect(faced(r.them, garrison)).toHaveLength(3);
+      expect(whyOf(r.them, garrison)).not.toMatch(/Hold the Gate/);
+      const hit = faced(r.them, garrison).filter((u) => why(u).includes('hit from the side'));
+      const middle = faced(r.them, garrison).filter((u) => !why(u).includes('hit from the side'));
+      expect(hit).toHaveLength(2);
+      expect(middle).toHaveLength(1);
+      for (const u of hit) expect(near(u.m, (middle[0]?.m ?? Number.NaN) * 0.9)).toBe(true);
+    },
+  );
 
   test('defending Levies are still hit from the side', () => {
     const r = fight([['Orc Berserkers', 5]], [['Shieldwall Levies', 3]], 5, 'plain');

@@ -35,7 +35,8 @@
 // reads them, a realm's name once its pool is used, the alignments' spread beside humans, the weights for any
 // difficulty, and the intel, the guesses and the estimates on a world lacking a list or a field. Then the strategy's
 // helpers on what no matrix game hands them (P1-10b41): a world, a realm, a hero, a province or a ledger lacking a list
-// or a field, the musters of an admiral, a flying general and a host, a garrison, a hire and the kinds a province raises.
+// or a field, the musters of an admiral, a flying general and a host, a garrison, a hire and the kinds a province raises;
+// and the chest a bot at war keeps, a share of its wages between the weights' least and most (P1-21x).
 // Then the Spring orders pass on what no matrix game hands it (P1-10b42), with a case aimed at each fault the night
 // run's mutation session found unguarded (P1-21j): the empire's width, a feint past a visiting host, the forced march
 // at the second assault, a garrison raised under threat put first, and a Flood mage's pins within his casting limit;
@@ -128,6 +129,8 @@ const { THE_HERO_ORDERS } =
   await import('../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts');
 const { THE_STATES_TWO_REALMS_STAND_IN } =
   await import('../../src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts');
+const { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } =
+  await import('../../src/engine/bots/the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts');
 const { theNameOfTheSpell } = await import('../../src/engine/bots/the-name-of-a-spell-by-its-slug.ts');
 const { BOT_SKILL_BUILD, _usedBotKingdomNames } = theBotsSetUp;
 /** Each function of the engine's a test here calls by its name, the export of the module that defines it. */
@@ -1660,6 +1663,46 @@ describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", 
         ],
       }),
     }).toEqual({ theGarrisons: 4 + 1, aHerosColumn: 3 + 2 });
+  });
+  // B-06h: at war, the chest a bot keeps is a share of its wages, held between the weights' least and most. A realm of
+  // little wages keeps the least, one of middling wages its share, one of great wages the most.
+  test("the bots' war chest: a share of the wages, never below the weights' least nor above their most (B-06h's rule, P1-21x's case)", () => {
+    const W = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold;
+    /** Realm 0 at war with realm 1 (whose king lives), holding one province of no tax, its one hero paid `pay` a turn
+     *  and leading nobody. */
+    const atWar = (pay: number) =>
+      aWorld({
+        world: { provinces: [aProvince({ tax: 0 })] },
+        players: [
+          { gold: 100, race: 'Human', alignment: 'Neutral', temper: 'Brave' },
+          { race: 'Human', alignment: 'Neutral', temper: 'Brave' },
+        ],
+        relations: { '0-1': THE_STATES_TWO_REALMS_STAND_IN.atWar },
+        characters: [
+          { id: 1, player: 0, alive: true, location: 0, pay, armies: [] },
+          { id: 2, player: 1, alive: true, isKing: true, location: 0, armies: [] },
+        ],
+      });
+    const theChest = (pay: number) => {
+      const G = atWar(pay);
+      const ledger = fn('botLedger')(G, 0) as { warFooting: boolean; diag: { reserve: number } };
+      return { warFooting: ledger.warFooting, wages: fn('botUpkeep')(G, 0), reserve: ledger.diag.reserve };
+    };
+    const theShare = (wages: number) => Math.floor(wages * W.theShareOfTheWagesTheChestKeepsOnAWarFooting);
+    const middling = 40;
+    const great = 100;
+    expect(theShare(middling), 'the middling wages give a share between the least and the most').toBeGreaterThan(
+      W.theLeastGoldTheChestKeepsOnAWarFooting,
+    );
+    expect(theShare(middling)).toBeLessThan(W.theMostGoldTheChestKeepsOnAWarFooting);
+    expect(theShare(great), 'the great wages give a share above the most').toBeGreaterThan(
+      W.theMostGoldTheChestKeepsOnAWarFooting,
+    );
+    expect({ little: theChest(0), middling: theChest(middling), great: theChest(great) }).toEqual({
+      little: { warFooting: true, wages: 0, reserve: W.theLeastGoldTheChestKeepsOnAWarFooting },
+      middling: { warFooting: true, wages: middling, reserve: theShare(middling) },
+      great: { warFooting: true, wages: great, reserve: W.theMostGoldTheChestKeepsOnAWarFooting },
+    });
   });
   test('the enemies in sight, the defence of a province and the bodies to raise, on a world that lacks its lists', () => {
     expect(

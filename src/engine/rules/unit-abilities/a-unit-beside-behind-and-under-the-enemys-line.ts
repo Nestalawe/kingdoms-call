@@ -33,7 +33,7 @@ const has = (unit: AUnitInTheLine | null, slug: UnitAbilitySlug) => unit !== nul
 export const HELD_WHEN_HIT_FROM_THE_SIDE = {
   unbreakable: () => 'unbreakable',
   rooted: () => 'rooted',
-  // Every garrison, defending (its row's reach; the books give it to the Human Garrison: a question for Toby).
+  // The Human Garrison alone, defending (R-144).
   'hold-the-gate': (facts) => (facts.theUnitsSideAttacks ? null : 'hold-the-gate'),
 } satisfies Partial<Record<UnitAbilitySlug, TheStrengthStages['held when hit from the side']>>;
 

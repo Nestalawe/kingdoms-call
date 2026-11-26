@@ -26,10 +26,10 @@
 // missing force, leader, state, world or province, a gap in a force, and a leader whose race is `''` (the airborne
 // test, kinship's line, read as its kind and its words since P1-12d3, a coastal province, a hero's kinship); a unit of
 // a quality the tables don't hold (no step up under Oratory or Tactical mastery, the multiplier's fallback), a Pagan
-// Wonder's Standing Stones defending in the woods and only defending, Phantasmal Armies' bonus, a hero with no list of
-// items or an item with no effect, the Kraken Figurehead's step up a tier (none past Elite, none for a unit that isn't
-// a fleet); a ladder row with no command multipliers, a gap among them or one of ×1, and a side with no force
-// multipliers, no options or no ground. Since P1-12d4 `armStr`'s trace holds each modifier's reason: its labels are
+// Wonder's Standing Stones defending in the woods and only defending (their ×1.25 rounded, P1-21x), Phantasmal Armies'
+// bonus, a hero with no list of items or an item with no effect, the Kraken Figurehead's step up a tier (none past
+// Elite, none for a unit that isn't a fleet); a ladder row with no command multipliers, a gap among them or one of ×1,
+// and a side with no force multipliers, no options or no ground. Since P1-12d4 `armStr`'s trace holds each modifier's reason: its labels are
 // read through the prose (`theWordsOfAUnitsModifier`).
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
@@ -50,6 +50,7 @@ import { theWordsOf } from '../../src/views/prose/the-words-of-each-line.ts';
 import { ladderFm, theWordsOfAUnitsModifier } from '../../src/views/prose/the-words-of-a-battles-lines.ts';
 import type { AModifierOfAUnitInTheLadder } from '../../src/engine/battle/the-facts-a-battles-lines-record.ts';
 import { UNIT_BASE_STR, UNIT_Q_MULT } from '../../src/engine/rules-on-plain-values/unit-types-and-base-strength.ts';
+import { KC_THE_WONDERS_FIGURES_IN_A_BATTLE } from '../../src/content/kingdoms-call-data.ts';
 import type { ArmyInABattle, HeroInABattle } from '../../src/engine/army-tables.ts';
 import type { TurnContext } from '../../src/engine/turn/context.ts';
 import type { Character, Province } from '../../src/schemas/saved-game-state.ts';
@@ -202,6 +203,40 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
     expect(labels(unit('Men-at-Arms'), pagan, 'forest', { force: [], isAttacker: false })).toContain(stones);
     expect(labels(unit('Men-at-Arms'), pagan, 'forest', { force: [], isAttacker: true })).not.toContain(stones);
     expect(labels(unit('Men-at-Arms'), pagan, 'forest', { force: [] })).not.toContain(stones);
+  });
+  test("the Standing Stones' ×1.25 is rounded, a half point and more going up, less going down", () => {
+    const pagan = hero({ player: 0, alignment: 'Pagan' });
+    const factor = KC_THE_WONDERS_FIGURES_IN_A_BATTLE.theStandingStonesOnTheDefendersForestJungleOrMountain;
+    /** Realm 0 as in G, but with no Wonder raised. */
+    const noWonder = {
+      G: { players: [{ alignment: 'Pagan', race: 'Human', discoveries: [] }], characters: [] },
+    } as unknown as TurnContext;
+    const defending = { enemyForce: [], force: [], isAttacker: false };
+    const strengths = (type: string) => ({
+      without: armStr(noWonder, unit(type), pagan, 'Pagan', 'forest', defending),
+      withTheStones: armStr(turn, unit(type), pagan, 'Pagan', 'forest', defending),
+    });
+    // Free Lances and a Human Garrison each leave a half point or more under the ×1.25 (6 and 3 in the woods);
+    // Shieldwall Levies less than half a point (5 in the woods: 6.25, which goes down to 6); Men-at-Arms none.
+    const theHalfPoints = ['Free Lances', 'Human Garrison'].map((type) => {
+      const { without } = strengths(type);
+      return without * factor - Math.floor(without * factor);
+    });
+    expect(
+      theHalfPoints.every((part) => part >= 0.5),
+      'each leaves a half point or more',
+    ).toBe(true);
+    const theLevies = strengths('Shieldwall Levies');
+    const theLeviesPart = theLevies.without * factor - Math.floor(theLevies.without * factor);
+    expect(theLeviesPart > 0 && theLeviesPart < 0.5, 'the Levies leave less than half a point').toBe(true);
+    expect(theLevies.withTheStones, 'the Levies go down').toBe(Math.floor(theLevies.without * factor));
+    for (const type of ['Free Lances', 'Human Garrison', 'Shieldwall Levies', 'Men-at-Arms']) {
+      const { without, withTheStones } = strengths(type);
+      expect([type, withTheStones], `${type}: ${String(without)} ×${String(factor)}`).toEqual([
+        type,
+        Math.round(without * factor),
+      ]);
+    }
   });
   test("Phantasmal Armies' bonus raises the units its hero leads by it", () => {
     const without = armStr(turn, unit('Men-at-Arms'), hero(), 'Neutral', null, undefined);

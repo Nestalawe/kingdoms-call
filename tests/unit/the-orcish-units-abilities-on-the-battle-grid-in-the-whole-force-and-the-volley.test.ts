@@ -10,6 +10,7 @@
 //   Wyvern Riders    Terror From Above (the enemy's strongest front-line unit fights ×0.85) · Acid Spit (unchanged) —
 //                    Dread, the −15% to enemy fanaticism, is gone (tests/static/skyward-retreat-and-dread-are-gone-…)
 //   Orc Garrison     Bloodthirsty (×1.15 facing foot when defending) · Raiders' Muster (tests/scenario/raiders-muster-…)
+//                    No Hold the Gate (R-144): defending, hit from the side at a line's end (the Human units' file)
 // Grids placed and faced from rows made by the test (tests/lib/hand-made-battle-lines.ts), each side's strengths the
 // old script's table; each unit's facing and place in words through the prose (theWordsOfWhyAUnitFacesAsItDoes and
 // theWordsOfWhyAUnitStandsWhereItDoes, since P1-12d4). unitAbilityMult and missileDamageMult are called on units made
