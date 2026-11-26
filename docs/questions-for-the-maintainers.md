@@ -67,3 +67,24 @@ march for Sir Aldric; the GM's tab runs the turn at 21:00.
 
 *Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
 deadline are refused).
+
+## 159. Do a province's guards' own Manticores and Shark Shoals hunt a beaten hero?
+
+Found on 2026-11-27.
+
+[R-166](rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md) has four rout rules work against a
+province's guards as between heroes. Between heroes, either side's winner hunts. It doesn't say whether the guards, when
+they win, hunt too. The Manticore guards of the Greywater Ford beat Sir Aldric's host: do his beaten companies die at
+the beaten chance plus 15%?
+
+1. **Yes, either winner hunts, as between heroes.** Impact: how the game works now (P1-23as); a beaten host loses a
+   few more companies against Manticore or Shark Shoal guards.
+2. **No, only a hero's Manticores and Shark Shoals hunt.** Impact: a change in play; a beaten host loses only the plain
+   chance against those guards (their Warg Riders still run it down, by R-166).
+
+*Assessment:* option 1: one rule for both sides, as between heroes, and nothing more to build.
+
+*Unlocks:* R-166's open point settled.
+
+*Touches:* [R-166](rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md) (the rout rules against
+guards) and [R-082](rulings/R-082-run-them-down.md) (Run Them Down's +15%).
