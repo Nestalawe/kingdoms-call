@@ -6,8 +6,9 @@
 // writes only a flag that changes, and at report time none does). Since P1-12b3 the reports are the views' (buildReports,
 // src/views/every-realms-report-and-the-lines-each-realm-reads.ts), built from what the turn hands over for them
 // (whatTheReportsRead), and are lent none of the turn's dice: they draw none.
-// A whole game of the balance matrix (bots-32, set A: battles, worn items, heroes moving unseen, Invisibility,
-// Clairvoyance and spies' lingering sight all reach its reports) is played on the engine's modules, imported directly
+// A whole game of the balance matrix (bots-05, set A: battles, worn items, heroes moving unseen, Invisibility,
+// Clairvoyance and spies' lingering sight all reach its reports; the test names its game, so a change in play can move the
+// game off one of them: KD-493) is played on the engine's modules, imported directly
 // (lib/a-staged-turn-on-the-engines-modules.ts), with a report for every realm every turn, as
 // tools/balance/every-realm.ts plays it in the vm, but with buildReports handed a world and a GM's log that refuse
 // every write: a write (set, delete or define, on any object reached from them) is noted, then throws, so a write a
@@ -31,7 +32,7 @@ import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import type { buildReports } from '../../src/views/every-realms-report-and-the-lines-each-realm-reads.ts';
 import type { TheGamesSlotRow } from '../../src/engine/turn/context.ts';
 
-const GAME_ID = 'bots-32';
+const GAME_ID = 'bots-05';
 const SPEC = matrix('A').find((g) => g.id === GAME_ID);
 if (!SPEC) throw new Error(`the balance matrix has no game ${GAME_ID}`);
 
