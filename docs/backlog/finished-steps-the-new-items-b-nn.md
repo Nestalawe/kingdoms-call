@@ -7,15 +7,30 @@ lettered rows lists each row; an item still open has its finished rows here and 
 The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
 [P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md).
 
+## B-01: the rulings audit
+
+- B-01: done in its rows, below: the rulings audit. Each ruling is checked against the code (the engine, the views,
+  the portal, content's rows, the rulebooks) and given its verdict with its file and function (built, not built, broken
+  or can't tell); each defect found is a `KD-` row in Not yet assessed, and no code, test or rule changes.
+- B-01a: #818 The rulings audit, R-001 to R-012: nine built; the rulebook names two discoveries (R-005)
+- B-01b: #820 The rulings audit, R-013 to R-025: ten built; R-018 and R-023 broken in part
+- B-01c: #821 The rulings audit, R-026 to R-035: eight built; Undead zeal breaks R-030 in part
+- B-01d: #822 The rulings audit, R-036 to R-047: eight built; primal words and the catch chance break two
+- B-01e: #824 The rulings audit, R-048 to R-062: nine built; arrows, a fight's end rolls and two join-screen lines break three
+- B-01f: #825 The rulings audit, R-063 to R-083: twelve built; a guardian's whole Melee breaks R-077 in part
+- B-01g: #826 The rulings audit, R-084 to R-116: all built; R-104's wild neighbour where the map allows (B-20)
+- B-01h: #827 The rulings audit, R-117 to R-145: no new defect; four rulings with gaps already recorded, five still to build
+- B-01i: #828 The rulings audit, R-146 to R-167: nineteen decided rulings still not built, none broken
+- B-01j: #829 The rulings audit, R-168 to R-190: nothing broken, nothing built early; the end review's fixes
+
 ## B-06, T7: the rules pulled out
 
-B-06 is open; its foundations, the alignments, the races, the tempers, the hero orders, diplomacy, the battles' rules
-and personal combat are finished: Run 1 (the economy, then the Reckoning and the titles), Run 2a (world generation),
-Run 2b (the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows), Run 3a (the races and the tempers, B-06ac to
-B-06ak), Run 3b (the hero orders and diplomacy, B-06al to B-06av), Run 3c (the battle proof, the battles' tables and
-the battle against the defenders, B-06aw to B-06be) and Run 3d (the battle between heroes, the battles' stages and
-numbers, and personal combat, B-06bf to B-06bp). The tranche's plan, its counts and its risks: #711; Run 3's: #756.
-
+- B-06: done in its rows, below: the rules pulled out. Each family of rules is counted by the ratchet and moved into
+  content's rows, each with its bot valuation hook, so that a redesign item becomes a content change: Run 1 (the
+  economy, then the Reckoning and the titles), Run 2a (world generation), Run 2b (the alignments, P1-19ba1 to
+  P1-19bb9, P1-19's last rows), Run 3a (the races and the tempers), Run 3b (the hero orders and diplomacy), Run 3c and
+  Run 3d (the battles and personal combat) and Run 3e (the player portal's alignment rules, the bots' battle estimate
+  and sight, B-06br to B-06bz). The tranche's plan, its counts and its risks: #711; Run 3's: #756.
 - B-06a: #711 The ratchet counts the economy and the titles, B-06's lettered rows, the KD- rows found by the scoping, B-20 and the bots' worth hook
 - B-06b: #712 The economy's prices in content: the price table, the fallback 2g and the skeleton's 1g, through one price rule and one wage rule
 - B-06c: #714 The tax's stages on turnEnd: a province's tax and a realm's gold beyond it, in the economy's registry, which the forecast asks too
@@ -97,6 +112,16 @@ numbers, and personal combat, B-06bf to B-06bp). The tranche's plan, its counts 
 - B-06bn: #801 Personal combat, 1 of 3: to-hit, wounds, stuns, courage and the duels, their numbers in rows
 - B-06bo: #802 Personal combat, 2 of 3: speed, encounter plans, melee, flight, archery and tactics, their numbers in rows
 - B-06bp: #803 Personal combat, 3 of 3: lair guardians, combat spells and the resolve, their numbers in rows
+- B-06br: #805 A realm of none reads as Neutral in the player portal and the reports through the alignments' row
+- B-06bs: #807 The Research forecast and the beasts' guide in the player portal ask the alignments' rows
+- B-06bt: #808 The player portal's words that restate an alignment rule read the rows' names and numbers, the words the same
+- B-06bu: #809 The map's relation labels and the Diplomacy card's buttons read the relation rows
+- B-06bq: #810 The bots' battle estimate asks the battles' rows, and its own tuning is the bots' weights of a new kind, battle strength
+- B-06bv: #812 The turn's sight rules read their numbers from content's rows
+- B-06bw: #813 The turn's report and the bots read one sight rule, each copy kept as it is, held by a test
+- B-06bx: #814 The views' last creed checks ask the alignments' rows
+- B-06by: #815 The views' hex neighbours ask the engine's neighbour rule
+- B-06bz: #816 The battle rules written outside the battles' folder read their numbers from content's rows
 - The fix Run 1 found on the way, its known-defect row deleted: #720 The registry compile test: a test and a program for each registry, every planted copy and expected error as it was
 
 ## The other new items

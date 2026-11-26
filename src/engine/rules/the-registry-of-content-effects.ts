@@ -3199,8 +3199,7 @@ export function theStrengthOfAUnitInItsWholeForce(facts: AUnitInItsForce): numbe
 }
 
 /** Each unit type's effects at a stage, in the stage's order: an ability's effect is the effect of its own unit, or of
- *  each unit its row says it reaches (Hold the Gate: every garrison; Sergeants: the Levies). Built once, as the file
- *  loads, from the content. */
+ *  each unit its row says it reaches (Sergeants: the Levies). Built once, as the file loads, from the content. */
 function theEffectsOfEachUnitAt<Effect>(
   order: readonly UnitAbilitySlug[],
   effectOf: (entry: UnitAbilityEntry) => Effect | undefined,

@@ -78,6 +78,9 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   the unit and its side. An effect for one side reaches no unit whose side isn't given. The runner adds the shares cut
   and gives the multiplier left on the chance of death, never below the kind's floor (×0.25, a quarter).
 - **A realm's discoveries promote a unit** (`promo`; `discPromo`): handed the unit. The runner adds the shares.
+- Both battles ask these two through `theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates` (`discoveries.ts`),
+  each side for its own realm's, won or beaten (R-160). Against a province's defenders only the attacker's are read:
+  its guards hold none, and a realm's garrison with no hero reads none there until R-164 is built.
 - **A realm's discoveries carry a fallen unit home** (Homeward Song, `elvenEscape`; `recordBattleGraves`): the points
   added to a fallen Elven unit's chance of slipping away home. The runner adds them; the graves roll as before.
 - **A realm's discoveries drag a hero from the field** (Battlefield Surgery, `nearDeathSurvival`; `handleHeroDeath`):

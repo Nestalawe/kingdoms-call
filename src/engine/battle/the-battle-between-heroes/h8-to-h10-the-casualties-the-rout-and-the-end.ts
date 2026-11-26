@@ -32,7 +32,7 @@ import { theLinesOfThePursuitsOfTheBeaten } from '../battle-report-lines-and-for
 import { humanXPMult } from '../../units/drill-and-spoils.ts';
 import { clearPhantomCopies, getNeighborsP } from '../../world/map-helpers.ts';
 import { perkTier } from '../../titles/perks.ts';
-import { discDeathMult, discPromo } from '../../discoveries.ts';
+import { theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates } from '../../discoveries.ts';
 import { completeDefendWatches, noteBattleLoss } from '../../turn/mercenary-ids-and-battle-records.ts';
 import {
   bestRetreat,
@@ -182,8 +182,20 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   const winXPPvP = _bandPvP.winXP;
   const loseXPPvP = _bandPvP.loseXP;
   const loseDemotePvP = _bandPvP.loseDemote;
-  const atkSteelMultOf = (a: ArmyInABattle) => discDeathMult(turnContext, atk.player, a, 'atk'); // per-unit deathRed discoveries (sd05 now one of them)
-  const defSteelMultOf = (a: ArmyInABattle) => discDeathMult(turnContext, def.player, a, 'def');
+  // Each side's realm's discoveries on its own companies' fates (Steel Armour's and Military Discipline's kinds), read
+  // alike in the battle against a province's guards (R-160).
+  const theAttackersDiscoveries = theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates(
+    turnContext,
+    atk.player,
+    'atk',
+  );
+  const theDefendersDiscoveries = theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates(
+    turnContext,
+    def.player,
+    'def',
+  );
+  const atkSteelMultOf = theAttackersDiscoveries.onItsChanceOfDeath;
+  const defSteelMultOf = theDefendersDiscoveries.onItsChanceOfDeath;
   const atkTacMult =
     perkTier(atk, 'tactical') >=
     KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMasteryTierOfTacticalThatSparesALosingHost
@@ -258,8 +270,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
       }
     });
   };
-  const atkMilMultOf = (a: ArmyInABattle) => 1 + discPromo(turnContext, atk.player, a); // per-unit promo discoveries
-  const defMilMultOf = (a: ArmyInABattle) => 1 + discPromo(turnContext, def.player, a);
+  const atkMilMultOf = theAttackersDiscoveries.onItsChanceOfPromotion;
+  const defMilMultOf = theDefendersDiscoveries.onItsChanceOfPromotion;
 
   prov._hadBattleThisTurn = true;
   // a beaten force that still has a road home normally retreats — but if it ends the fight

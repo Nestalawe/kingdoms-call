@@ -1,7 +1,7 @@
 // A hook or test that plays a whole game of the balance matrix names that work in its time limit:
 // timeLimitForTheWork({ matrixGamesPlayed: N }) (tests/lib/time-limits.ts). Vitest gives a hook 10 s and a test 5 s;
-// a whole game takes up to 10.1 s on a runner (bots-32 with its reports: it failed #351 at the hook's 10 s), so a game
-// played under the default limit fails on a slow runner, not on a fault.
+// a whole game takes up to 10.1 s on a runner (bots-32 with its reports, as the reports test once played it: it
+// failed #351 at the hook's 10 s), so a game played under the default limit fails on a slow runner, not on a fault.
 // What plays a whole game: a `for` loop over the turns up to MAX_TURNS (tools/balance/matrix.ts), or a call of, or a
 // reference to, a function that does, followed through the file's own functions and its named imports from tests/ and
 // tools/balance/ (tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts's scripted05, passed by name to `quietly`, is found so).
@@ -195,11 +195,10 @@ describe('a hook or test that plays a whole game of the matrix names it in its t
   });
 
   // So the check can't pass by finding none: the hooks known to play a whole game are among those it finds.
-  test('it finds the reports, the player portal and the engine-purity games', READS, () => {
+  test('it finds the player portal and the engine-purity games', READS, () => {
     const files = found.map((p) => p.where.replace(/:\d+ .*/, ''));
     expect(files).toEqual(
       expect.arrayContaining([
-        'tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts',
         'tests/unit/the-player-portals-copies-agree-with-the-engine.test.ts',
         'tests/unit/engine-purity.test.ts',
       ]),
@@ -230,8 +229,8 @@ describe('a hook or test that plays a whole game of the matrix names it in its t
     expect(planted).toEqual([{ where: `${PLANTED}:4 beforeAll`, limited }]);
   });
 
-  test("planted: the reports test's hook without its limit", READS, () => {
-    const file = 'tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts';
+  test("planted: the engine-purity test's hook without its limit", READS, () => {
+    const file = 'tests/unit/engine-purity.test.ts';
     const text = files.get(file) ?? '';
     const without = text.replace(/,\s*timeLimitForTheWork\(\{ matrixGamesPlayed: 1 \}\)\.timeout/, '');
     expect(without).not.toBe(text);

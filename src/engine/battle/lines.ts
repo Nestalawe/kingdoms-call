@@ -617,7 +617,8 @@ export function battleEngage(gA: BattleGridCells, gD: BattleGridCells): Record<'
   return E;
 }
 // Face one side against the other. me / them: the two grids (same W); mine / theirs: their engagement;
-// meIsAtk: `me` is the attacker (Hold the Gate and Bloodthirsty belong to a defending garrison).
+// meIsAtk: `me` is the attacker (Hold the Gate belongs to a defending Human Garrison, Bloodthirsty to a defending Orc
+// Garrison).
 export function battleFaceSide(
   me: BattleGrid,
   them: BattleGrid,

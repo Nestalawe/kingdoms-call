@@ -10,9 +10,9 @@ each outcome is in [the goal and the road](../the-goal-and-the-road.md). The lis
    with [the rulings to build](the-rulings-decided-not-built.md); then the rows that serve a later outcome, or wait.
 4. [**Not yet assessed**](#not-yet-assessed): rows whose impact no one has described yet.
 
-Finished items are a record, in four files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
-[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md) and
-[the new items (B-NN)](finished-steps-the-new-items-b-nn.md).
+Finished items are a record, in five files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
+[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md), P1-13 to P1-25 ([part 1](finished-steps-p1-13-to-p1-25.md),
+[part 2](finished-steps-p1-13-to-p1-25-part-2.md)) and [the new items (B-NN)](finished-steps-the-new-items-b-nn.md).
 
 ## How to read a row
 
@@ -56,42 +56,32 @@ this (`tests/static/the-backlog-tracks-each-item-one-way.test.ts`).
 What comes next is the first row of the first group. The top is grouped by tranche, a heading a group, its rows in
 order; inside a group, the rows' "After" decides the order. The order of work is this list's order, and lives only
 here: each row is placed by [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)
-of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
-[Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
+of ordering the backlog, and a maintainer validates its place.
 T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
-[the finished list](finished-steps-p1-13-to-p1-25.md). The tranches "Phase 1's rest" and "The reports' audience in one
-place" are done too: P1-11z, B-16, B-18 and B-19 are in the finished lists.
+[the finished list](finished-steps-p1-13-to-p1-25.md). T7, the rules pulled out, is done: its group, B-06, is in
+[the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out). The tranches "Phase 1's rest",
+"The reports' audience in one place" and "The check after the rules pulled out" are done too: P1-11z, B-16, B-18, B-19,
+B-01 (the rulings audit) and P1-21x are in the finished lists.
 
-### 1. T7, the rules pulled out
+### 1. The first rulings and known defects
 
-B-06 is a group, not a row ([how to read a row](#how-to-read-a-row)): the rules pulled out. Each family of rules is
-counted by the ratchet and moved into content's rows, each with its bot valuation hook
-([the decision](../decisions/README.md#the-decisions-on-how-the-work-runs)), so that a redesign item becomes a content
-change. The foundations, the alignments, the races, the tempers, the hero orders, diplomacy, the battles' rules and
-personal combat are done, all but the bots' battle estimate: the economy, the Reckoning and the titles, world
-generation (B-06a to B-06ab), the alignments (P1-19ba1 to P1-19bb9), the races and the tempers (B-06ac to B-06ak), the
-hero orders and diplomacy (B-06al to B-06av), and the battles and personal combat (B-06aw to B-06bp), in
-[the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out).
-The rest is Run 3e, a stack of its own:
-- the player portal's alignment rules (B-06br to B-06bu, below), then the bots' battle estimate (B-06bq, below);
-- then sight's rows (B-06bv to B-06by, below), their own part, last, every row Maintainer ✓, with their count
-  (`sightNumbersInEngine`).
-
-Each row is one `refactor-only` pull request that keeps the game exactly the same, unless it says otherwise. The
-tranche's plan, its counts and its risks: #711; Run 3's: #756.
-
-| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
-|---|---|---|---|---|---|---|---|---|
-| B-06br | A realm of none reads as Neutral in the player portal and the reports' views from the content's constant, as it does in the engine: the turn-zero page, the join form's fallback, the order form's targets (twice), the charm's and the resurrection's pre-orders, the report's view, the ledger's hire wage, a fallen hero in the turn report and the views' two hire wages ask the alignments' helper (`theAlignmentARealmReadsAs`, P1-19bb1's) in `runTurn0`, `showJoinGame`, `buildTargetField`, `injectResurrectOrders`, `injectCharmOrders`, `renderReportView`, `heroHireWageOfP`, `buildTurnReport`, `otherHeroAsSeen` and `provinceAsSeen`; a unit case for a realm of none; the portal's count of creed checks falls by each. `refactor-only` | Maintainers: a realm of none is Neutral in one place, the portal too | Phase 1 | Small | – | 🟦 | #805 | Run 3e's portal rows' first, after B-06bp |
-| B-06bs | The Research forecast's Neutral double and the beasts' guide ask the rows: the forecast's extra research reads Neutral's research ability, and the guide's Creatures, Monsters, ×1.5 and ×1.25 read the Druidic and Evil battle abilities (`buildTargetField`, `renderReportView`). The parts the forecast leaves out have their `KD-` row (KD-476), not fixed; the portal's count of creed checks falls by each, 11 to 5. `refactor-only` | Maintainers: as B-06br | Phase 1 | Small | – | 🟦 | #807 | After B-06br |
-| B-06bt | The words that restate an alignment rule read the rows' names and numbers, byte for byte the same: Bless's and Consecrate's hints, the consecrated tooltip, the Diplomacy card's war text, the kings' first skills, one Divine and one Undead realm a game (the join form; the page's options and note held to the rows), the battle lines' words and the realm works' words; a static test anchors each place, and each number written as a word, to its rows. No count (prose). `refactor-only` | Maintainers: a change to an alignment's row changes the words players read about it | Phase 1 | Medium | – | 🟦 | #808 | After B-06bs |
-| B-06bu | The map's relation names (Neutral, Allied, Enemy, in `_ownerLineP`: their names a row of their own beside the states) and the Diplomacy card's badge and buttons read content's relation rows (`THE_STATES_TWO_REALMS_STAND_IN`, `THE_TREAT_DECLARATION`), the words the same; the relation's 'Neutral', the one word the portal's count of creed checks listed as not an alignment, leaves its list (the count stays 5). `refactor-only` | Maintainers: how two realms stand is named in one place, the portal too | Phase 1 | Small | – | 🟦 | #809 | After B-06bt; the portal rows' last, before B-06bq |
-| B-06bq | The bots' battle estimate asks the battle's rows (and a Druid shortfall's new row, which the rule reads too); its tuning is the bots' first version's weights of a new kind, `battleStrength`, the bot's figures kept (KD-477). Maintainer ✓: the bots' estimate of a defence. `refactor-only` | Maintainers: the bots follow a change to a battle without new bot code | Phase 1 | Medium | ✓ | 🟦 | #810 | After B-06bu; T7's battles' last, it reads every battle row |
-| B-06bv | The turn's sight rules read their numbers from content's rows (`armySizeBand`, `spotEnemyInOwnedProvince`, `applySpySuccess`), each named for its rule in a file of their own; sight's count falls to 0. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: a change to a sight rule's number is a change to its row | Phase 1 | Small | ✓ | 🟦 | #812 | Sight's rows' first, after B-06bq |
-| B-06bw | The turn's report and the bots read one sight rule, each copy kept exactly as it is, with a unit test on a staged world that holds each copy. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: the report's and the bots' sight rule in one place, held by a test | Phase 1 | Medium | ✓ | 🟦 | #813 | Sight |
-| B-06bx | The views' last creed checks ask the alignments' rows (a table beside them, and the Wonders' rows); the portal's count of creed checks is 0. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: as B-06br | Phase 1 | Small | ✓ | 🟦 | #814 | Sight |
-| B-06by | The views' own hex neighbours ask the engine's neighbour rule, a test first that both agree on the map's wrapped edge. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: one rule for which provinces are neighbours, the views too | Phase 1 | Small | ✓ | 🟦 | #815 | After B-06bx; sight's rows' last |
-| B-06bz | The battle rules written outside the battles' folder read their numbers from content's rows: a hero's and a guard's cast chance (B-06be's row; a spell worked from an item a row of its own), the sea lift's doubling and hulls' shares, Naval 8's tier, and a hero who escapes death left with half his most HP (B-06bm's rows); the battles' count lists each such function at 0 (what is left: KD-479). `refactor-only` | Maintainers: a change to a battle's row reaches every rule that writes it | Phase 1 | Small | – | 🟦 | #816 | After B-06by; the stack's top |
+The rebuild's tranches are done, so the rulings and the known defects come next by the default order:
+[Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild),
+in its order, but for the three rows on what a realm sees (KD-049, P1-23j, P1-23h), which are built with a
+maintainer, so they are not in this list. Each row, and why it is there, is in Later's file:
+1. P1-23as
+2. P1-23k
+3. P1-23l
+4. P1-23an
+5. P1-23am
+6. P1-23n
+7. P1-23v
+8. KD-047
+9. KD-048
+10. P1-23p
+11. P1-23ai
+12. P1-23aj
+13. P1-23ba
 
 ## Not yet assessed
 

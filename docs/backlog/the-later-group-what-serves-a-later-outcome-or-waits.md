@@ -8,6 +8,7 @@ first, or is deferred (⏸). A row moves up once it is assessed against its neig
 ## The rulings and the known defects, after the rebuild
 
 They come after the rebuild, as [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours) places them.
+The rebuild's tranches are done: [the top](README.md#1-the-first-rulings-and-known-defects) lists the first of these rows.
 The first ordering pass placed these rows by impact. Among rows of equal harm, the harm more games meet goes first,
 then the row that unblocks others, then the smaller row. A known defect was placed only when it is plainly harm in
 live play: its row says players notice it in running games, the turn's result is wrong (not only its words), and its
@@ -16,8 +17,6 @@ fix needs no new ruling. The last four rows joined from Next. The other rulings 
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| P1-23m | [R-144](../rulings/R-144-only-the-human-garrison-holds-the-gate.md): only the Human Garrison holds the gate. Folds in KD-101. | Players: a siege goes as the unit's text says | Phase 1 | Small | ✓ | ⬜ | | Harm in every siege: today Hold the Gate spares every garrison, not only the Human Garrison; Small |
-| P1-23al | [R-160](../rulings/R-160-steel-armour-and-military-discipline-read-alike-against-neutral-guards.md): Steel Armour and Military Discipline work against neutral guards as between heroes. Folds in KD-079. | Players: two discoveries do the same against guards as against heroes | Phase 1 | Small | ✓ | ⬜ | | Harm in battles against guards for each realm with Steel Armour or Military Discipline; Small |
 | KD-049 | **Counter-spy discoveries never take anything off a Spy** (found 2026-10-19 in P1-08j6, Spy; live, players can notice it). Cipher Scripts, Watchmen and six creed discoveries (`effect.kind:'counterSpy'`) are worked out only from the province the order names (`targetProvForSpy`). But the order form and the bots send no province (`target:''`), so the reduction is always 0. Example: Realm B knows Cipher Scripts ("45% lower success"); Realm A's Spy 1 hero spies on B's province where he stands at 40%, not 0%. Fix: read the province he stands in when the order names none; a change in play, so its own PR with a balance report and playtester notes. A P1-08j6 case pins today's behaviour. | Players: counter-spy discoveries cut a Spy's chance, as their texts say | Phase 1 | Small | – | ⬜ | | Harm in each Spy order against a realm with a counter-spy discovery: eight discoveries take nothing off; Small |
 | P1-23as | [R-166](../rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md): four rout rules work against a province's guards as between heroes. Folds in KD-003. | Players: four unit abilities reach battles against guards | Phase 1 | Medium | ✓ | ⬜ | | Harm in battles against guards: four rout rules never reach them; Medium |
 | P1-23k | [R-140](../rulings/R-140-messenger-birds-is-retired.md): Messenger Birds is retired. Folds in KD-041. | Players: a discovery that does nothing leaves the research list | Phase 1 | Medium | ✓ | ⬜ | | Harm for each realm that researches Messenger Birds: it does nothing; Medium |

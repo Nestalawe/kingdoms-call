@@ -9,7 +9,7 @@
 // Below the rows, the blurbs themselves (UNIT_ABILITIES, plan P1-19e, moved word for word from the player portal): each
 // unit's abilities as the player portal shows them, keyed by unit. The player portal imports them, and its page's entry
 // (ui/player/page.ts) lists this file, so the words tests read them as the page's.
-import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
+import type { UnitType } from './kingdoms-call-data.ts';
 import { CUT_THE_LINE, KEEP_THE_SEA_LANES } from './the-abilities-of-a-unit-no-longer-raised.ts';
 
 /** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1), and one taken as `−30%`
@@ -50,8 +50,8 @@ export interface AUnitAbilityAsTheBooksWriteIt {
   /** The units of the force it counts (Sheer Numbers: the orc foot), when it counts the others in the force. */
   readonly counts?: readonly UnitType[];
   /** The units it acts on, when not only its own: every unit of the force the ships land (Reaver Crews), or the units
-   *  named (Hold the Gate: every garrison, the data file's class; Sergeants: the Levies beside the Men-at-Arms). A class
-   *  of the data file is a list of strings: the registry's unit test checks that each is a unit type. */
+   *  named (Sergeants: the Levies beside the Men-at-Arms; Knightly Example: the Levies and the Men-at-Arms). Each is a
+   *  string: the registry's unit test checks that each is a unit type. */
   readonly reaches?: 'every unit of the force' | readonly string[];
   /** The unit it counts as for another ability (Town Watch: a Human Garrison counts as Levies for Shieldwall). */
   readonly countsAs?: UnitType;
@@ -268,14 +268,9 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   // Held when hit from the side: a unit at a wrapped end of its front that the enemy line hits from the side is not hit
   // (Unbreakable, the Dwarven Guard's, is its row above).
   rooted: { unit: 'Forest Ents', name: 'Rooted', numbers: {} },
-  // Every garrison holds the gate, defending, not only the Human Garrison the books name: the engine's rule since
-  // 2026-10-11, kept as it is while Toby is asked which he meant.
-  'hold-the-gate': {
-    unit: 'Human Garrison',
-    name: 'Hold the Gate',
-    numbers: {},
-    reaches: KC_UNIT_CLASS.garrison,
-  },
+  // The Human Garrison alone holds the gate, defending, as both books say (R-144): the other garrisons are hit from the
+  // side.
+  'hold-the-gate': { unit: 'Human Garrison', name: 'Hold the Gate', numbers: {} },
   // Beside and behind it in the front line.
   shieldwall: {
     unit: 'Shieldwall Levies',

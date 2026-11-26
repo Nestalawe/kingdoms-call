@@ -39,7 +39,7 @@ import { humanXPMult } from '../../units/drill-and-spoils.ts';
 import { dispFloor } from '../../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { clearPhantomCopies, getNeighborsP } from '../../world/map-helpers.ts';
 import { perkTier } from '../../titles/perks.ts';
-import { discDeathMult, discPromo } from '../../discoveries.ts';
+import { theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates } from '../../discoveries.ts';
 import { noteBattleLoss } from '../../turn/mercenary-ids-and-battle-records.ts';
 import {
   bestRetreat,
@@ -139,15 +139,21 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   // XP loss chances (loser only)
   const loseDemoteChance = _band.loseDemote;
 
-  // Steel Armour discovery: -15% death chance
-  const steelMultOf = (a: AUnitInTheBattleAgainstTheDefenders) => discDeathMult(turnContext, c.player, a, 'atk'); // per-unit deathRed discoveries (sd05 Steel Armour now one of them)
+  // The attacker's realm's discoveries on his own companies' fates (Steel Armour's and Military Discipline's kinds), as
+  // between heroes (R-160): never on the defenders'. The defenders read none: a province's guards hold no realm's, and a
+  // realm's garrison with no hero (which this battle fights too) doesn't read its own realm's here yet (R-164, not built).
+  const theAttackersDiscoveries = theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates(
+    turnContext,
+    c.player,
+    'atk',
+  );
+  const steelMultOf = theAttackersDiscoveries.onItsChanceOfDeath;
   const tacMultNPC =
     perkTier(c, 'tactical') >=
     KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMasteryTierOfTacticalThatSparesALosingHost
       ? KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theShareOfALosingUnitsChancesToDieOrDisbandItLeaves
       : 1; // TACTICAL L8: on a LOSS, c's units half as likely to die/disband
-  // Military Discipline discovery: +20% XP gain chance
-  const milMultOf = (a: AUnitInTheBattleAgainstTheDefenders) => 1 + discPromo(turnContext, c.player, a); // per-unit promo discoveries (sd06 Military Discipline now one of them)
+  const milMultOf = theAttackersDiscoveries.onItsChanceOfPromotion;
 
   // ════
   // UNIT ABILITIES vs NEUTRAL GUARDS
@@ -312,7 +318,9 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
       });
     theLinesOfThePursuitsOfTheBeaten(theOtherPursuitsOf(_npcPursuitsAtk), _npcSFDef, atkSide, _defOwner, narrative);
     defenders.forEach((a) => {
-      if (kcRng() < loseDeathChance * steelMultOf(a) + _npcRideAtkEff) {
+      // (R-160: the beaten defenders, guards or a realm's unled garrison, die at the plain chance; the attacker's Steel
+      // Armour spares his own companies only. The garrison's own realm's is R-164's, not built.)
+      if (kcRng() < loseDeathChance + _npcRideAtkEff) {
         a._died = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
         // The registry's "a beaten unit fails its death roll" (Regenerating Hide), as rollUnitFates asks it of a beaten
@@ -527,7 +535,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
       inTheRout: true,
       dieAt: (a) => loseDeathChance * steelMultOf(a) * tacMultNPC + _npcRideDefEff,
       demoteAt: () => loseDemoteChance * tacMultNPC,
-      promoteTo: (a) => loseDemoteChance + xpChance(loseXPChance, a.quality) * humanXPMult(a, c.player, G),
+      promoteTo: (a) =>
+        loseDemoteChance + xpChance(loseXPChance * milMultOf(a), a.quality) * humanXPMult(a, c.player, G), // (R-160)
       shieldFort: _npcSF,
       notable: true,
       faced: _facedA,
