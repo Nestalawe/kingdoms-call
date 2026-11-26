@@ -10,6 +10,7 @@
 // die.
 import {
   KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
   KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
   KC_THE_MASTERY_ORDERS_FACTORS_IN_A_BATTLE,
   PRIMAL_ARMY_DEFS_P,
@@ -53,7 +54,6 @@ import {
   illusoryTerrainMult,
   isAirborneAtSea,
   ladderRow,
-  theLevelACommanderFightsWithOnceACurseHasTakenEffect,
 } from '../terrain-and-unit-strength.ts';
 import type { CommandMultiplier } from '../terrain-and-unit-strength.ts';
 import type { BattleGrid } from '../lines.ts';
@@ -96,40 +96,21 @@ export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstT
     cName,
     atkSide,
     defHero,
-    tactSkill: theAttackersTacticalBeforeTheMagic,
+    tactSkill,
     isLandBattle,
+    effectiveTactBonus,
     defBonus,
     homeBonus,
     atkHomeBonus,
     MISSILE_ARMIES,
     archSkillAtk,
     archMissileBonus,
-    navalSkillAtk: theAttackersNavalBeforeTheMagic,
+    navalSkillAtk,
+    navalFleetBonus,
     _provCoastal,
     playerAlign,
   } = theSetUp;
   const { defTactLvl, defTactBonus } = theAttackersPhases;
-  // The attacker's Tactical and Naval as the battle counts them, once both sides' magic has taken effect: a Curse their
-  // commander cast after the set-up counted them withers one (R-162), as between heroes.
-  const tactSkill = theLevelACommanderFightsWithOnceACurseHasTakenEffect(
-    c,
-    'tactical',
-    theAttackersTacticalBeforeTheMagic,
-  );
-  const effectiveTactBonus = isLandBattle
-    ? Math.min(
-        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-        1 + tactSkill * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-      )
-    : 1; // Tactical battle bonus hard-capped at ×2.0 (incl. titles); land battles only
-  const navalSkillAtk = theLevelACommanderFightsWithOnceACurseHasTakenEffect(
-    c,
-    'naval',
-    theAttackersNavalBeforeTheMagic,
-  );
-  const navalFleetBonus =
-    1 +
-    navalSkillAtk * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   // ── TERRAIN MODIFIER NOTES ──
   {
     const _tn = terrainNoteList(armies, prov.terrain);
@@ -236,11 +217,9 @@ export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstT
   const defArchMissileBonus = 1 + archSkillDef * ARCHERY_MISSILE_PCT; // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr
   // the defending commander's Naval lifts the fleets / sea-beasts they lead — land or sea —
   // exactly as the attacker's does.
-  const navalSkillDef = theLevelACommanderFightsWithOnceACurseHasTakenEffect(
-    defHero,
-    'naval',
-    defHero ? effStat(turnContext, defHero, 'naval') : 0,
-  );
+  let navalSkillDef = defHero ? effStat(turnContext, defHero, 'naval') : 0;
+  if (defHero?._curseHalveStat === 'naval')
+    navalSkillDef = Math.floor(navalSkillDef / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
   const defNavalFleetBonus =
     1 +
     navalSkillDef * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;

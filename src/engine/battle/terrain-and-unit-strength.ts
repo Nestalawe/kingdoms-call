@@ -149,18 +149,6 @@ export function bestCurseSkill(turnContext: TurnContext, hero: Character) {
   if (nav >= tac && nav >= dru && nav > 0) return 'naval';
   return tac >= dru ? 'tactical' : 'druid';
 }
-/** A commander's level in Tactical or Naval as the battle counts it once its magic has taken effect: halved, rounded
- *  down, when a Curse withered that skill this battle. Both battles count each commander's Tactical and Naval through
- *  it after both sides' battle spells, so a Curse cast by either side changes the battle (R-162). */
-export function theLevelACommanderFightsWithOnceACurseHasTakenEffect(
-  commander: { readonly _curseHalveStat?: string | null } | null | undefined,
-  skill: 'tactical' | 'naval',
-  level: number,
-): number {
-  return commander?._curseHalveStat === skill
-    ? Math.floor(level / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy)
-    : level;
-}
 // Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
 // SHOOTER, not the target: 30% of the firing unit's base strength (unit strength × quality — so a
 // veteran company hits harder than a green one), +10% per level of the commander's Archery,

@@ -11,9 +11,9 @@ cancels Druid comes before the beasts' strikes. Lightning Advance stops all the 
 leader's and the guards' Flak Screen), and Mass Confusion works on a guard leader too.
 [R-126](R-126-battle-magic-follows-one-rule-in-every-battle.md) set the first such rules.
 
-**Note:** Partly built (P1-23an): Lightning Advance, Mass Confusion and a Curse on Tactical or Naval hold in both
-battles. What is not yet built: a guard leader's spell that cancels a hero's Druid comes after the hero's beasts
-strike.
+**Note:** Partly built (P1-23an): Lightning Advance and Mass Confusion hold in both battles. What is not yet built: a
+Curse on Tactical or Naval (both commanders' between heroes, and a guard leader's Curse on a hero, are counted before
+the spell), and a guard leader's spell that cancels a hero's Druid (it comes after the hero's beasts strike).
 
 The question was: battle magic takes effect at different moments in the two battles. Option 1: "one order in both:
 each spell takes effect before the skills and strikes it changes are counted".
