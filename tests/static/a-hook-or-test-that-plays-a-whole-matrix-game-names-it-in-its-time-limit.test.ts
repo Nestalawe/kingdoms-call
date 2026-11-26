@@ -1,7 +1,7 @@
 // A hook or test that plays a whole game of the balance matrix names that work in its time limit:
 // timeLimitForTheWork({ matrixGamesPlayed: N }) (tests/lib/time-limits.ts). Vitest gives a hook 10 s and a test 5 s;
-// a whole game takes up to 10.1 s on a runner (bots-32 with its reports: it failed #351 at the hook's 10 s), so a game
-// played under the default limit fails on a slow runner, not on a fault.
+// a whole game takes up to 10.1 s on a runner (bots-32 with its reports, as the reports test once played it: it
+// failed #351 at the hook's 10 s), so a game played under the default limit fails on a slow runner, not on a fault.
 // What plays a whole game: a `for` loop over the turns up to MAX_TURNS (tools/balance/matrix.ts), or a call of, or a
 // reference to, a function that does, followed through the file's own functions and its named imports from tests/ and
 // tools/balance/ (tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts's scripted05, passed by name to `quietly`, is found so).

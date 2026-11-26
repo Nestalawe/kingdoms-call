@@ -271,8 +271,7 @@ but the reports.
 - A helper the report calls must not write either, even the same value back: `normaliseEquipment` writes only a flag
   that changes, so `activeItems` and every helper that reads items through it are reads at report time, when every
   hero's items are already in order.
-- `tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts` plays a whole game of the matrix with
-  every report built on a world and a log that refuse every write (each write noted, then thrown), on dice that count
-  every draw, and compares every
-  report with the matrix's. A new write in a report, or in anything it calls, turns it red. `_MAXHP_PLAYERS`, a global
+- `tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts` plays one staged turn, its dice fixed,
+  with every report built on a world and a log that refuse every write (each write noted, then thrown), on dice that
+  count every draw, and compares every report with one built unguarded. A new write in a report, or in anything it calls, turns it red. `_MAXHP_PLAYERS`, a global
   the turn keeps, is not the world: it is P1-10's.

@@ -37,8 +37,8 @@ export const ALLOWANCE_MS = {
    *  its syntax tree: up to 3.2 s on a runner (three copies of the repository removed went past 10 s once, #239). */
   everyFileReads: 15_000,
   /** One whole game of the balance matrix played on the engine (every turn up to MAX_TURNS), in the test's process,
-   *  with what the test checks on each turn: bots-32 with a report for every realm every turn took up to 10.1 s on a
-   *  runner (its hook failed #351 at Vitest's 10 s; 2.8 s on a laptop). */
+   *  with what the test checks on each turn: bots-32 with a report for every realm every turn, as the reports test once
+   *  played it, took up to 10.1 s on a runner (its hook failed #351 at Vitest's 10 s; 2.8 s on a laptop). */
   matrixGamesPlayed: 50_000,
 } as const;
 
