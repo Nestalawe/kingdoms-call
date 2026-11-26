@@ -22,6 +22,7 @@ import { combatVsChar } from '../../src/engine/battle/battles-between-heroes.ts'
 import { combatVsNPC } from '../../src/engine/battle/battles-against-province-defenders.ts';
 import * as lines from '../../src/engine/battle/lines.ts';
 import * as dice from '../../src/engine/dice-and-army-names.ts';
+import * as spellEffects from '../../src/engine/rules/the-registry-of-spell-effects.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
@@ -312,5 +313,37 @@ describe.for(BATTLES)('A Curse on Naval changes the battle, whichever side casts
       });
     expect(theNavalLevelsInTheLadder(shown(false))).toEqual([4]);
     expect(theNavalLevelsInTheLadder(shown(true))).toEqual([2]);
+  });
+});
+
+describe.for(BATTLES)("A spell that cancels Druid comes before the beasts' strikes, %s", (battle) => {
+  const theGiants = [{ type: 'Stone Giants', quality: 'Average', race: 'Stone Giant', unitName: 'the Hill Giants' }];
+  /** The Druid level each strike of the attacker's Stone Giants is weighed with, under their commander's Psychic
+   *  Blast or none. */
+  const theDruidHisGiantsStrikeWith = (aBlast: boolean) => {
+    const levels: unknown[] = [];
+    const real = spellEffects.whatAUnitsStrikeMayDoBeforeTheBattle;
+    const theStrikes = vi.spyOn(spellEffects, 'whatAUnitsStrikeMayDoBeforeTheBattle').mockImplementation((facts) => {
+      if (facts.theUnitsType === 'Stone Giants') levels.push(facts.theDruidLevel);
+      return real(facts);
+    });
+    try {
+      aBattle(battle, {
+        theAttackersHost: theGiants,
+        theAttacker: { skills: { tactical: 0, naval: 0, druid: 4 }, spell: '' },
+        theDefenders: [aCompany('Men-at-Arms', 'the Mill Watch')],
+        theirCommander: {
+          skills: { tactical: 0, naval: 0, druid: 0, psychic: aBlast ? 5 : 0 },
+          spell: aBlast ? 'Psychic Blast' : '',
+        },
+      });
+    } finally {
+      theStrikes.mockRestore();
+    }
+    return levels;
+  };
+  test("their commander's Psychic Blast takes the attacker's Druid from his beasts' strikes", () => {
+    expect(theDruidHisGiantsStrikeWith(false)).toEqual([4]);
+    expect(theDruidHisGiantsStrikeWith(true)).toEqual([0]);
   });
 });
