@@ -9,9 +9,9 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 
 ## B-01: the rulings audit
 
-- B-01: done in its rows, below: the rulings audit. Each ruling checked against the code (the engine, the views, the
-  portal, content's rows, the rulebooks), its verdict given with its file and function (built, not built, broken or
-  can't tell), each defect found a `KD-` row in Not yet assessed, and no code, test or rule changed.
+- B-01: done in its rows, below: the rulings audit. Each ruling is checked against the code (the engine, the views,
+  the portal, content's rows, the rulebooks) and given its verdict with its file and function (built, not built, broken
+  or can't tell); each defect found is a `KD-` row in Not yet assessed, and no code, test or rule changes.
 - B-01a: #818 The rulings audit, R-001 to R-012: nine built; the rulebook names two discoveries (R-005)
 - B-01b: #820 The rulings audit, R-013 to R-025: ten built; R-018 and R-023 broken in part
 - B-01c: #821 The rulings audit, R-026 to R-035: eight built; Undead zeal breaks R-030 in part
