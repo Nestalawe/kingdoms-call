@@ -10,9 +10,9 @@ each outcome is in [the goal and the road](../the-goal-and-the-road.md). The lis
    with [the rulings to build](the-rulings-decided-not-built.md); then the rows that serve a later outcome, or wait.
 4. [**Not yet assessed**](#not-yet-assessed): rows whose impact no one has described yet.
 
-Finished items are a record, in four files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
-[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md) and
-[the new items (B-NN)](finished-steps-the-new-items-b-nn.md).
+Finished items are a record, in five files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
+[P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md), P1-13 to P1-25 ([part 1](finished-steps-p1-13-to-p1-25.md),
+[part 2](finished-steps-p1-13-to-p1-25-part-2.md)) and [the new items (B-NN)](finished-steps-the-new-items-b-nn.md).
 
 ## How to read a row
 
