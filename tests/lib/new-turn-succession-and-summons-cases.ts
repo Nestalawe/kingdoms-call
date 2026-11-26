@@ -1034,7 +1034,7 @@ export const SPELLS_END_CASES: NewTurnCase[] = [
     },
   },
   {
-    name: 'a garrison loses only its Terror between turns; its other battle marks stay',
+    name: 'a garrison recovers from every battle mark between turns, as a province’s neutral defenders do',
     stage(b) {
       holdsOnly(b, 0, [seatOf(b, 0), 10], [b.X, 0]);
       b.X.garrisonArmies = [markedCompany('Guard')];
@@ -1043,7 +1043,7 @@ export const SPELLS_END_CASES: NewTurnCase[] = [
     check(o, s) {
       return {
         got: { marks: province(o, there(s)).garrisonArmies.map((u) => marks(u, COMPANY_MARKS)) },
-        want: { marks: [COMPANY_MARKS.filter((k) => k !== '_terrorMult')] },
+        want: { marks: [[]] },
       };
     },
   },

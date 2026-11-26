@@ -419,9 +419,19 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
     if (p._oratoryBonus) delete p._oratoryBonus;
     if (p._tempStrReduction) delete p._tempStrReduction;
     if (p._turnStrReduction) delete p._turnStrReduction;
-    (asItsGuardReadsIt(p.garrisonArmies) ?? []).forEach((a: Army | null | undefined) => {
-      if (a?._terrorMult != null) delete a._terrorMult;
-    }); // 2026-09-24: Terror is a battle-scoped modifier
+    // ...and on its garrison's companies: a company can reach a garrison still carrying a battle's marks (put ashore
+    // from a column at sea, a beaten force's hulls left on the shore), and the battle's end no longer reaches it there.
+    (asItsGuardReadsIt(p.garrisonArmies) ?? []).forEach((a: ACompanyAsTheNewTurnClearsIt | null | undefined) => {
+      if (!a) return; // a gap in the list is left as it is
+      if (a._tempStrReduction) delete a._tempStrReduction;
+      if (a._terrorMult != null) delete a._terrorMult;
+      if (a._turnStrReduction) delete a._turnStrReduction;
+      if (a._archeryRed) delete a._archeryRed;
+      if (a._tacUp) delete a._tacUp;
+      if (a._drumUp) delete a._drumUp;
+      if (a._laNoTerrain) delete a._laNoTerrain;
+      if (a._flakTargeted) delete a._flakTargeted;
+    });
   });
 
   // 7c2. sd35 Order of the Golden Shield: the king's earned-HP gain from a win is doubled, nothing

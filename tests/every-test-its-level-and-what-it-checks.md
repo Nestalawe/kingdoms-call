@@ -106,7 +106,7 @@ prove and run a test, and the levels: [README.md](README.md).
 The database's own unit tests (level 1d, pgTAP) are in `supabase/tests/`, one file per table, run by CI's `db`
 job: [supabase/README.md](../supabase/README.md#the-access-rule-tests).
 
-- `tests/unit/a-beaten-fleets-companies-sent-overland-leave-every-heros-column.test.ts` (unit): `navalSplitRetreat` on a battle's pooled copy: the companies sent overland leave every hero's column, lose their rally marks, and are handed back to the caller
+- `tests/unit/a-beaten-fleets-companies-sent-overland-leave-every-heros-column.test.ts` (unit): `navalSplitRetreat` on a battle's pooled copy: the companies sent overland leave every hero's column, lose their rally marks and the battle's marks, and are handed back to the caller
 - `tests/unit/a-bot-commanders-duel-stance.test.ts` (unit): `botDuelStance` with the forecast handed in: a king answers a duel only at 60%+ to win and 10% or less to fall, a hero at 50%+; seeing no general, a king refuses below skill 4
 - `tests/unit/a-bot-host-counts-the-defenders-who-ride-out.test.ts` (unit): `botScanTargets`: the owner's hosts beside a target, seen or remembered, count in its defence as if they ride in on Defend; a third realm's or a small one doesn't
 - `tests/unit/a-bot-king-raises-his-capitals-garrison-before-he-leaves.test.ts` (unit): `runBotPhaseOne`: an unarmed king beside a stronger enemy host raises his capital's garrison in Spring, then leaves; away from it he leaves in Spring
