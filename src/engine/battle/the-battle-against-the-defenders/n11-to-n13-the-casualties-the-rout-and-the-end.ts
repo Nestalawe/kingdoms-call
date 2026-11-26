@@ -13,7 +13,12 @@ import {
   KC_THE_FACTOR_EACH_QUALITY_TIER_GIVES_A_UNITS_CHANCE_TO_GAIN_EXPERIENCE_IN_A_BATTLE,
 } from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
-import { aForceHoldsTheSeaLanes } from '../../rules/the-registry-of-content-effects.ts';
+import {
+  aForceHoldsTheSeaLanes,
+  theLineByWhichAUnitLivesThroughItsDeathRoll,
+} from '../../rules/the-registry-of-content-effects.ts';
+import type { APursuitOfTheBeaten } from '../../rules/the-registry-of-content-effects.ts';
+import { theLinesOfThePursuitsOfTheBeaten } from '../battle-report-lines-and-force-markers.ts';
 import { theBeatenForceMayRetreatByTheCommandersItems } from '../../rules/the-registry-of-magic-item-effects.ts';
 import {
   doesARealmsAlignmentHoldABeatenHostOnTheField,
@@ -158,13 +163,20 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   // HUMAN — Ride Them Down. Neutral defenders now take the same casualty rolls as a beaten
   // player, so this works exactly as it does in a player battle: the winner's Free Lances add to
   // the LOSER's destruction chance. Symmetric — neutral defenders can field Free Lances too, and
-  // when they win, theirs bite on your force. Open country only. (Against neutral guards it is the
-  // one pursuit that adds to the beaten's losses.)
+  // when they win, theirs bite on your force. Open country only. The other pursuits work here as between heroes
+  // (R-166): the winner's Manticores and Shark Shoals, and the guards' own Warg Riders against a beaten hero, add to the
+  // beaten's losses, each with its line (theLinesOfThePursuitsOfTheBeaten, as between heroes); the Free Lances keep
+  // their own lines here.
   const _npcPursuitsAtk = pursuitsOfTheBeaten(armies, _npcTerrain, c, 'a hero against neutral guards');
   const _npcRideAtk = theFractionThePursuitsAdd(_npcPursuitsAtk);
-  const _npcRideDef = theFractionThePursuitsAdd(
-    pursuitsOfTheBeaten(defenders, _npcTerrain, defHero, 'neutral guards against a hero'),
-  );
+  const _npcPursuitsDef = pursuitsOfTheBeaten(defenders, _npcTerrain, defHero, 'neutral guards against a hero');
+  const _npcRideDef = theFractionThePursuitsAdd(_npcPursuitsDef);
+  const theFreeLancesOf = (pursuits: readonly APursuitOfTheBeaten[]) =>
+    pursuits.filter((p) => p.line === 'the free lances ride the beaten down');
+  const theOtherPursuitsOf = (pursuits: readonly APursuitOfTheBeaten[]) =>
+    pursuits.filter((p) => p.line !== 'the free lances ride the beaten down');
+  const _npcLancesAtk = theFractionThePursuitsAdd(theFreeLancesOf(_npcPursuitsAtk));
+  const _npcLancesDef = theFractionThePursuitsAdd(theFreeLancesOf(_npcPursuitsDef));
   for (const p of _npcPursuitsAtk)
     if (p.onTheGround === 'by the war-horn of the plains')
       narrate(narrative, {
@@ -287,21 +299,47 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
     // DWARF — Shield Fort on the DEFENDING side (2026-09-27, Toby): a Guard-heavy garrison gives no
     // broken backs to ride down.
     const _npcRideAtkEff = _npcSFDef ? 0 : _npcRideAtk;
-    if (_npcRideAtk > 0 && _npcSFDef)
+    if (_npcLancesAtk > 0 && _npcSFDef)
       narrate(narrative, {
         kind: "the defenders' dwarven guard leave the attacker's free lances no broken backs",
         cName: atkSide,
       });
-    else if (_npcRideAtk > 0)
+    else if (_npcLancesAtk > 0)
       narrate(narrative, {
         kind: "the attacker's free lances ride down the defenders' broken companies",
         cName: atkSide,
-        extraLossesPct: dispFloor(_npcRideAtk * 100),
+        extraLossesPct: dispFloor(_npcLancesAtk * 100),
       });
+    theLinesOfThePursuitsOfTheBeaten(theOtherPursuitsOf(_npcPursuitsAtk), _npcSFDef, atkSide, _defOwner, narrative);
     defenders.forEach((a) => {
       if (kcRng() < loseDeathChance * steelMultOf(a) + _npcRideAtkEff) {
         a._died = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
+        // The registry's "a beaten unit fails its death roll" (Regenerating Hide), as rollUnitFates asks it of a beaten
+        // side between heroes (R-166): the guards' Cave Trolls rise again three times in ten, their die drawn only then.
+        const _lives = theLineByWhichAUnitLivesThroughItsDeathRoll({
+          unitType: a.type,
+          itsSideWon: false,
+          theDice: kcRng,
+          theChanceOfRegeneratingHideTheCallGives: null,
+        });
+        if (_lives) {
+          delete a._died; // (it failed the roll above, and lives)
+          narrate(narrative, {
+            kind: "a unit's fate in the battle",
+            itsSideWon: false,
+            fate: _lives,
+            theUnit: {
+              kind: 'a unit named with its quality',
+              owner: _defOwner,
+              unitName: a.unitName,
+              type: a.type,
+              quality: a.quality,
+            },
+            whomItFaced: _fc ?? null,
+          });
+          return;
+        }
         narrate(narrative, {
           kind: "a unit's fate in the battle",
           itsSideWon: false,
@@ -465,17 +503,24 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
     // saying it had withdrawn in good order. Now mirrors the PvP branch exactly: no Ride Them Down
     // against it, and a demotion roll becomes an orderly fall-back instead of a loss of quality.
     const _npcRideDefEff = _npcSF ? 0 : _npcRideDef;
-    if (_npcRideDef > 0 && _npcSF)
+    if (_npcLancesDef > 0 && _npcSF)
       narrate(narrative, {
         kind: "the attacker's dwarven guard leave the defenders' free lances no broken backs",
         cName: atkSide,
       });
-    else if (_npcRideDef > 0)
+    else if (_npcLancesDef > 0)
       narrate(narrative, {
         kind: "the defenders' free lances ride down the attacker's broken companies",
         cName: atkSide,
-        extraLossesPct: dispFloor(_npcRideDef * 100),
+        extraLossesPct: dispFloor(_npcLancesDef * 100),
       });
+    theLinesOfThePursuitsOfTheBeaten(
+      theOtherPursuitsOf(_npcPursuitsDef),
+      _npcSF,
+      _defSide2(defHero?.name.replace(' (wandering)', '') ?? ''),
+      atkSide,
+      narrative,
+    );
     rollUnitFates(armies, {
       owner: atkSide,
       won: false,
@@ -734,5 +779,13 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   } catch {
     // the statistics never stop a battle
   }
-  return { won, narrative, summaryText, atkLost: _telAtkLost, defLost: _telDefLost };
+  // (R-166: whether the beaten defenders held a Shield Fort, which the erosion of their survivors reads.)
+  return {
+    won,
+    narrative,
+    summaryText,
+    atkLost: _telAtkLost,
+    defLost: _telDefLost,
+    theBeatenDefendersHeldAShieldFort: won && _npcSFDef,
+  };
 }

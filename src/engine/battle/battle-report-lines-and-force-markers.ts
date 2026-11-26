@@ -16,12 +16,16 @@ import { KC_THE_GROUNDS_FACTORS_A_BATTLES_NOTE_NAMES_A_UNIT_FOR } from '../../co
 import type { Quality } from '../../content/kingdoms-call-data.ts';
 import type { Army, Character, Province } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
+import type { APursuitOfTheBeaten } from '../rules/the-registry-of-content-effects.ts';
+import { dispFloor } from '../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import type { AFactNotForOneRealmAlone, FightLine, NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import {
   A_TIER_WORKED_OUT_FROM_THE_WORDS_OF_THE_BATTLES_LINES,
   THE_PLACE_OF_A_BATTLES_LOSSES_TALLY,
   type AForceDrawnUpForBattle,
   type ASideAsABattlesReportLinesNameIt,
+  type ASideOfABattle,
+  type TheDefendersOfAProvince,
   type AUnitTheTerrainMarks,
   type AUnitsDruidShortfall,
   type HowAForceComesOnInItsHeader,
@@ -249,4 +253,87 @@ export function emitBattle(
   let sTxt = opts.summaryText;
   if (!sTxt && battle) sTxt = battle.summaryText;
   if (sTxt) emit(turnContext, { ...fight, fact: sTxt, battle: { id: _bid, tier: 's' } });
+}
+
+/** Each pursuit's line over the beaten, in the registry's order (pursuitsOfTheBeaten), for the rout of both battles
+ *  (R-166: the battle against a province's guards writes them as the battle between heroes does): as it bites, or, when
+ *  a Shield Fort holds, the line by which it finds nothing to bite on. A pursuit that adds nothing to the beaten's death
+ *  rolls writes no line. The winner and the loser: a side, or a province's defenders. (Moved as it was from the battle
+ *  between heroes' last stage, h8-to-h10-…, where its kinds and words stay until plan P1-12d.) */
+export function theLinesOfThePursuitsOfTheBeaten(
+  pursuits: readonly APursuitOfTheBeaten[],
+  sf: boolean,
+  winner: ASideOfABattle | TheDefendersOfAProvince,
+  loser: ASideOfABattle | TheDefendersOfAProvince,
+  narr: NarrativeLine[],
+): void {
+  for (const p of pursuits) {
+    if (!(p.theFractionAddedToEachBeatenUnitsDeathRoll > 0)) continue;
+    const pct = dispFloor(p.theFractionAddedToEachBeatenUnitsDeathRoll * 100);
+    if (p.line === 'the free lances ride the beaten down')
+      narrate(
+        narr,
+        sf
+          ? {
+              kind: "the loser's dwarven guard leave the free lances no broken backs",
+              loserName: loser,
+              winnerName: winner,
+            }
+          : {
+              kind: "the winner's free lances ride down the broken companies",
+              winnerName: winner,
+              rideDownPct: pct,
+              loserName: loser,
+            },
+      );
+    else if (p.line === 'the warg riders run the beaten down')
+      narrate(
+        narr,
+        sf
+          ? {
+              kind: "the loser's dwarven guard leave the warg riders no broken backs",
+              loserName: loser,
+              winnerName: winner,
+            }
+          : {
+              kind: "the winner's warg riders run down the broken companies",
+              winnerName: winner,
+              runThemDownPct: pct,
+              loserName: loser,
+            },
+      );
+    else if (p.line === 'the manticore pride hunts the beaten')
+      narrate(
+        narr,
+        sf
+          ? {
+              kind: "the loser's dwarven guard leave the manticore pride nothing to hunt",
+              loserName: loser,
+              winnerName: winner,
+            }
+          : {
+              kind: "the winner's manticore pride hunt the broken companies",
+              winnerName: winner,
+              runThemDownPct: pct,
+              loserName: loser,
+            },
+      );
+    else if (p.line === 'the shark shoals tear into the beaten crews')
+      narrate(
+        narr,
+        sf
+          ? {
+              kind: "the loser's dwarven guard leave the shark shoals nothing in the water",
+              loserName: loser,
+              winnerName: winner,
+            }
+          : {
+              kind: "the winner's shark shoals tear into the beaten crews",
+              winnerName: winner,
+              loserName: loser,
+              runThemDownPct: pct,
+              loserName2: loser,
+            },
+      );
+  }
 }

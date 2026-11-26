@@ -953,6 +953,10 @@ function theWordsOfABeatenGuardsSurvivingUnitsFate(fact: ABeatenGuardsSurvivingU
       return `— ${theLabelOfAUnit(fact.theUnit)} break ranks and flee${fact.victorsHost ? ` before ${fact.victorsHost}'s host` : ''} — they now roam as mercenaries near ${fact.provName}.`;
     case 'loses heart and falls a tier':
       return `— ${theLabelOfAUnit(fact.theUnit)} lost heart in defeat, reduced to ${fact.itsQualityAfter} — ${fact.victorsHost ? `beaten by ${fact.victorsHost}'s host, ` : ''}they rally around ${theLabelOfTheDefenders(fact.theGuard)}.`;
+    case 'holds its tier behind the shield fort':
+      return `— ${theLabelOfAUnit(fact.theUnit)} lock shields behind the ${theNameOfTheAbility('shield-fort')} and lose nothing in defeat${fact.victorsHost ? ` against ${fact.victorsHost}'s host` : ''} — they rally around ${theLabelOfTheDefenders(fact.theGuard)}.`;
+    case 'keeps its nerve under the knightly example':
+      return `— ${theLabelOfAUnit(fact.theUnit)} keep their nerve under the ${theNameOfTheAbility('knightly-example')} of the Gilded Lances and lose nothing in defeat${fact.victorsHost ? ` against ${fact.victorsHost}'s host` : ''} — they rally around ${theLabelOfTheDefenders(fact.theGuard)}.`;
     case 'holds its ground unbroken':
       return `— ${theLabelOfAUnit(fact.theUnit)} hold their ground unbroken${fact.victorsHost ? ` against ${fact.victorsHost}'s host` : ''} and rally around ${theLabelOfTheDefenders(fact.theGuard)}.`;
     case 'has had enough and disbands':
@@ -1115,13 +1119,13 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "a side's free lances find no room to ride":
       return `🐎 ${theLabelOfASide(fact.sideName)}'s Free Lances find no room to ride in ${fact.terrain} country — the broken enemy scatters into cover.`;
     case "the loser's dwarven guard leave the manticore pride nothing to hunt":
-      return `🛡 ${theLabelOfASide(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASide(fact.winnerName)}'s Manticore Pride find no broken backs to hunt.`;
+      return `🛡 ${theLabelOfASideOrTheDefenders(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Manticore Pride find no broken backs to hunt.`;
     case "the winner's manticore pride hunt the broken companies":
-      return `🦂 ${theLabelOfASide(fact.winnerName)}'s Manticore Pride hunt the broken companies down before they can get clear (+${String(fact.runThemDownPct)}% losses to ${theLabelOfASide(fact.loserName)}).`;
+      return `🦂 ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Manticore Pride hunt the broken companies down before they can get clear (+${String(fact.runThemDownPct)}% losses to ${theLabelOfASideOrTheDefenders(fact.loserName)}).`;
     case "the loser's dwarven guard leave the shark shoals nothing in the water":
-      return `🛡 ${theLabelOfASide(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASide(fact.winnerName)}'s Shark Shoals find nothing in the water.`;
+      return `🛡 ${theLabelOfASideOrTheDefenders(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Shark Shoals find nothing in the water.`;
     case "the winner's shark shoals tear into the beaten crews":
-      return `🦈 ${theNameOfTheAbility('feeding-frenzy')} — ${theLabelOfASide(fact.winnerName)}'s Shark Shoals tear into ${theLabelOfASide(fact.loserName)}'s beaten crews as they founder (+${String(fact.runThemDownPct)}% losses to ${theLabelOfASide(fact.loserName2)}).`;
+      return `🦈 ${theNameOfTheAbility('feeding-frenzy')} — ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Shark Shoals tear into ${theLabelOfASideOrTheDefenders(fact.loserName)}'s beaten crews as they founder (+${String(fact.runThemDownPct)}% losses to ${theLabelOfASideOrTheDefenders(fact.loserName2)}).`;
     case "a side's other forces survive the engagement":
       return `— ${allOrAllOther(fact.someUnitsFateIsToldAbove)} forces survive the engagement.`;
     case 'no units were left on the field to count':
@@ -1131,13 +1135,13 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case "the defender's casualties begin":
       return `🛡 **${theLabelOfASideOrTheDefenders(fact.defName)}'s forces** (defender):`;
     case "the loser's dwarven guard leave the free lances no broken backs":
-      return `🛡 ${theLabelOfASide(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASide(fact.winnerName)}'s Free Lances find no broken backs to ride down.`;
+      return `🛡 ${theLabelOfASideOrTheDefenders(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Free Lances find no broken backs to ride down.`;
     case "the winner's free lances ride down the broken companies":
-      return `🐎 ${theLabelOfASide(fact.winnerName)}'s Free Lances ride down the broken companies (+${String(fact.rideDownPct)}% losses to ${theLabelOfASide(fact.loserName)}).`;
+      return `🐎 ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Free Lances ride down the broken companies (+${String(fact.rideDownPct)}% losses to ${theLabelOfASideOrTheDefenders(fact.loserName)}).`;
     case "the loser's dwarven guard leave the warg riders no broken backs":
-      return `🛡 ${theLabelOfASide(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASide(fact.winnerName)}'s Warg Riders find no broken backs to run down.`;
+      return `🛡 ${theLabelOfASideOrTheDefenders(fact.loserName)}'s Dwarven Guard lock shields as they give ground — ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Warg Riders find no broken backs to run down.`;
     case "the winner's warg riders run down the broken companies":
-      return `🐺 ${theLabelOfASide(fact.winnerName)}'s Warg Riders run down the broken companies before they can get clear (+${String(fact.runThemDownPct)}% losses to ${theLabelOfASide(fact.loserName)}).`;
+      return `🐺 ${theLabelOfASideOrTheDefenders(fact.winnerName)}'s Warg Riders run down the broken companies before they can get clear (+${String(fact.runThemDownPct)}% losses to ${theLabelOfASideOrTheDefenders(fact.loserName)}).`;
     case "the winner's corsairs close the sea lanes to the loser":
       return `⛵ ${theLabelOfASide(fact.winnerName)}'s corsairs close the sea lanes — ${theLabelOfASide(fact.loserName)} cannot slip away by water.`;
     case "the loser's skeletal host stands its ground in a deathless march":

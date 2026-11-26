@@ -134,6 +134,8 @@ function aCompanysFateTheTallyCounts(fact: LineFact): ACompanysFateInTheTally | 
         };
       case 'breaks ranks and flees as mercenaries':
       case 'holds its ground unbroken':
+      case 'holds its tier behind the shield fort':
+      case 'keeps its nerve under the knightly example':
         return null;
     }
   }

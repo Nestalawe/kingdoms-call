@@ -1,5 +1,6 @@
 import { KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
+import { theLineByWhichABeatenUnitHoldsItsTier } from '../rules/the-registry-of-content-effects.ts';
 import { demoteOrDisband } from '../army-tables.ts';
 import { SEA_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { recordBattleGraves } from '../graves.ts';
@@ -517,6 +518,7 @@ export function resolveUnitGainInProvince(
           });
         },
         c.name,
+        'theBeatenDefendersHeldAShieldFort' in battle && battle.theBeatenDefendersHeldAShieldFort,
       );
     } else if ((neutralGuard && !neutralGuard.alive) || llDefs.length > 0) {
       // Leaderless survivors (guard slain in the duel, or already leaderless) erode the same way.
@@ -536,6 +538,7 @@ export function resolveUnitGainInProvince(
           });
         },
         c.name,
+        'theBeatenDefendersHeldAShieldFort' in battle && battle.theBeatenDefendersHeldAShieldFort,
       );
       prov.neutralDefenders = _surv;
       prov.npcArmies = _surv.length;
@@ -716,7 +719,10 @@ export const GUARD_FLIGHT_CHANCE = KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES.theChanc
 export const GUARD_DEMOTE_CHANCE = KC_A_BEATEN_GUARDS_SURVIVORS_CHANCES.theChanceEachThatHoldsLosesATier;
 // victor (2026-10-12, Toby: who beat whom): the name of the commander whose host beat them; each line says so.
 // Since P1-12d27 each survivor's line is one kind, a beaten guard's surviving unit's fate (its event's), its fate a
-// slug, the disbanding among them.
+// slug, the disbanding among them. theyHeldAShieldFort: whether the beaten defenders held a Shield Fort in the battle
+// (its result's theBeatenDefendersHeldAShieldFort). A survivor that would lose a tier keeps it behind the Shield Fort,
+// or under the Knightly Example (a Gilded Lances company among the survivors: the registry's "a beaten unit fails its
+// demotion roll"), as a beaten side's companies do between heroes (R-166).
 export function erodeGuardSurvivors(
   turnContext: TurnContext,
   guard: { readonly name: string } | null | undefined,
@@ -724,6 +730,7 @@ export function erodeGuardSurvivors(
   survivors: readonly Army[] | null | undefined,
   tellASurvivingUnitsFate: (line: ABeatenGuardsSurvivingUnitsFate) => void,
   victor: string | null | undefined,
+  theyHeldAShieldFort: boolean,
 ): Army[] {
   const { G } = turnContext;
   const kept: Army[] = [];
@@ -762,6 +769,30 @@ export function erodeGuardSurvivors(
     }
     // Only some of those who stay are worn down a tier; the rest hold at their current quality.
     if (kcRng() < GUARD_DEMOTE_CHANCE) {
+      const holds = theyHeldAShieldFort
+        ? 'holds its tier behind the shield fort'
+        : theLineByWhichABeatenUnitHoldsItsTier({
+            unitType: a.type,
+            itsForce: survivors ?? [],
+            theKnightlyExampleTheCallGives: null,
+          });
+      if (holds) {
+        tellASurvivingUnitsFate({
+          kind: "a beaten guard's surviving unit's fate",
+          fate: holds,
+          theUnit: {
+            kind: 'a unit named with its quality',
+            owner: theGuard,
+            unitName: a.unitName,
+            type: a.type,
+            quality: a.quality,
+          },
+          victorsHost: _vh,
+          theGuard,
+        });
+        kept.push(a);
+        return;
+      }
       const _q0 = a.quality;
       if (demoteOrDisband(a)) {
         tellASurvivingUnitsFate({

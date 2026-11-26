@@ -195,6 +195,7 @@ export function resolveStalledBattles(
             });
           },
           attacker.name,
+          battle.theBeatenDefendersHeldAShieldFort,
         );
         if (liveGuard) guard.armies = surv;
         if (surv.length > 0) {

@@ -1033,6 +1033,7 @@ export function resolveMoveOrder(
           });
         },
         c.name,
+        battle.theBeatenDefendersHeldAShieldFort,
       );
       neutralGuard.armies = defSurvivors;
       if (_guardSlainInDuel) {
@@ -2037,6 +2038,7 @@ export function resolveMoveOrder(
             });
           },
           c.name,
+          llBattle.theBeatenDefendersHeldAShieldFort,
         );
         toProv.neutralDefenders = llSurv;
         toProv.npcArmies = llSurv.length;

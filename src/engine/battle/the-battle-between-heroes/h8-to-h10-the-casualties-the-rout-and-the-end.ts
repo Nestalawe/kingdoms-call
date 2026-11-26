@@ -28,8 +28,8 @@ import { battleFacing, battleGrid } from '../lines.ts';
 import { UNDEAD_SKEL_HERO_FAN, UNDEAD_SKEL_KING_FAN } from '../ladder.ts';
 import { pursuitsOfTheBeaten, shieldFortHolds, theFractionThePursuitsAdd } from '../../units/movement.ts';
 import { recordBattleGraves } from '../../graves.ts';
+import { theLinesOfThePursuitsOfTheBeaten } from '../battle-report-lines-and-force-markers.ts';
 import { humanXPMult } from '../../units/drill-and-spoils.ts';
-import { dispFloor } from '../../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { clearPhantomCopies, getNeighborsP } from '../../world/map-helpers.ts';
 import { perkTier } from '../../titles/perks.ts';
 import { discDeathMult, discPromo } from '../../discoveries.ts';
@@ -57,8 +57,7 @@ import {
 import type { TurnContext } from '../../turn/context.ts';
 import type { NarrativeLine } from '../../turn/events-and-their-audiences.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../../army-tables.ts';
-import type { ABattleIsDecided, ASideOfABattle } from '../the-facts-a-battles-lines-record.ts';
-import type { APursuitOfTheBeaten } from '../../rules/the-registry-of-content-effects.ts';
+import type { ABattleIsDecided } from '../the-facts-a-battles-lines-record.ts';
 import { asItsGuardReadsIt } from '../../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { WhatTheSetUpOfTheBattleBetweenHeroesHandsOn } from './h3-both-sides-pre-battle-magic-and-army-spells.ts';
 import type {
@@ -235,85 +234,6 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   // force no longer chains itself to a lost field.
   const _sfAtk = shieldFortHolds(atkArmies, _dep.gA); // 2026-10-11 (Toby): half the FRONT LINE is Guard, a Dwarf Garrison counting
   const _sfDef = shieldFortHolds(defArmies, _dep.gD);
-  // Each pursuit's line over the beaten, in the registry's order (their kinds and words stay here until plan P1-12d):
-  // as it bites, or, when a Shield Fort holds, the line by which it finds nothing to bite on.
-  const _pursuitLines = (
-    pursuits: readonly APursuitOfTheBeaten[],
-    sf: boolean,
-    winner: ASideOfABattle,
-    loser: ASideOfABattle,
-    narr: NarrativeLine[],
-  ) => {
-    for (const p of pursuits) {
-      if (!(p.theFractionAddedToEachBeatenUnitsDeathRoll > 0)) continue;
-      const pct = dispFloor(p.theFractionAddedToEachBeatenUnitsDeathRoll * 100);
-      if (p.line === 'the free lances ride the beaten down')
-        narrate(
-          narr,
-          sf
-            ? {
-                kind: "the loser's dwarven guard leave the free lances no broken backs",
-                loserName: loser,
-                winnerName: winner,
-              }
-            : {
-                kind: "the winner's free lances ride down the broken companies",
-                winnerName: winner,
-                rideDownPct: pct,
-                loserName: loser,
-              },
-        );
-      else if (p.line === 'the warg riders run the beaten down')
-        narrate(
-          narr,
-          sf
-            ? {
-                kind: "the loser's dwarven guard leave the warg riders no broken backs",
-                loserName: loser,
-                winnerName: winner,
-              }
-            : {
-                kind: "the winner's warg riders run down the broken companies",
-                winnerName: winner,
-                runThemDownPct: pct,
-                loserName: loser,
-              },
-        );
-      else if (p.line === 'the manticore pride hunts the beaten')
-        narrate(
-          narr,
-          sf
-            ? {
-                kind: "the loser's dwarven guard leave the manticore pride nothing to hunt",
-                loserName: loser,
-                winnerName: winner,
-              }
-            : {
-                kind: "the winner's manticore pride hunt the broken companies",
-                winnerName: winner,
-                runThemDownPct: pct,
-                loserName: loser,
-              },
-        );
-      else if (p.line === 'the shark shoals tear into the beaten crews')
-        narrate(
-          narr,
-          sf
-            ? {
-                kind: "the loser's dwarven guard leave the shark shoals nothing in the water",
-                loserName: loser,
-                winnerName: winner,
-              }
-            : {
-                kind: "the winner's shark shoals tear into the beaten crews",
-                winnerName: winner,
-                loserName: loser,
-                runThemDownPct: pct,
-                loserName2: loser,
-              },
-        );
-    }
-  };
   // (The Eagle Riders' Skyward Retreat was retired with the unit abilities, 2026-10-11.)
   const _noEscapeRoll = (force: readonly ArmyInABattle[] | null | undefined, name: string, narr: NarrativeLine[]) => {
     (force ?? []).forEach((a) => {
@@ -474,7 +394,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
     survLine(atkArmies, _cas0);
     narrate(narrative, { kind: "the defender's casualties begin", defName: defSide });
     const _rideAtkEff = _sfDef ? 0 : theFractionThePursuitsAdd(_pursuitsAtk);
-    _pursuitLines(_pursuitsAtk, _sfDef, atkSide, defSide, narrative);
+    theLinesOfThePursuitsOfTheBeaten(_pursuitsAtk, _sfDef, atkSide, defSide, narrative);
     // Losing defender
     const _cas1 = narrative.length;
     rollUnitFates(defArmies, {
@@ -651,7 +571,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
     });
     narrate(narrative, { kind: "the attacker's casualties begin", atkName: atkSide }); // Losing attacker
     const _rideDefEff = _sfAtk ? 0 : theFractionThePursuitsAdd(_pursuitsDef);
-    _pursuitLines(_pursuitsDef, _sfAtk, defSide, atkSide, narrative);
+    theLinesOfThePursuitsOfTheBeaten(_pursuitsDef, _sfAtk, defSide, atkSide, narrative);
     const _cas2 = narrative.length;
     rollUnitFates(atkArmies, {
       owner: atkSide,
