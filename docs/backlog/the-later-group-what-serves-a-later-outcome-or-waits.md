@@ -8,6 +8,7 @@ first, or is deferred (⏸). A row moves up once it is assessed against its neig
 ## The rulings and the known defects, after the rebuild
 
 They come after the rebuild, as [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours) places them.
+The rebuild's tranches are done: [the top](README.md#1-laters-rulings-the-first-rule-changes) lists the first of these rows.
 The first ordering pass placed these rows by impact. Among rows of equal harm, the harm more games meet goes first,
 then the row that unblocks others, then the smaller row. A known defect was placed only when it is plainly harm in
 live play: its row says players notice it in running games, the turn's result is wrong (not only its words), and its
