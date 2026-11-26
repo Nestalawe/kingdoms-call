@@ -57,13 +57,18 @@ example from inside the game.
    export PATH=<scratchpad>/node-v24.22.0-linux-x64/bin:$PATH   # in every shell that runs npm or npx
    ```
 2. `npm ci`, then `npm run build`.
-3. Save the harness, which is kept as text (see its file for why), and keep it out of git:
+3. Save the harness, which is kept as text (see its file for why). Put it in `node_modules/.handplay/`, where the
+   project's type check, lint and ratchet do not look (in `tools/` they would fail `npm run check`). Do this after every
+   `npm ci`, which empties `node_modules`:
    ```sh
-   awk '/^```ts$/{f=1;next} /^```$/{f=0} f' tools/handplay/harness-source.md > tools/handplay/handplay.ts
-   echo tools/handplay/handplay.ts >> .git/info/exclude
+   mkdir -p node_modules/.handplay
+   awk '/^```ts$/{f=1;next} /^```$/{f=0} f' tools/handplay/harness-source.md \
+     | sed "s#'\.\./balance/#'../../tools/balance/#" > node_modules/.handplay/handplay.ts
    ```
-4. Check that the build works: `npx tsx tools/handplay/handplay.ts new /tmp/g.json --seed 4242 --alignments Divine,Good`
-   then `npx tsx tools/handplay/handplay.ts run /tmp/g.json`.
+   Every harness command below is then `npx tsx node_modules/.handplay/handplay.ts ...`, run from the repo root.
+4. Check that it works. A game needs at least three realms (the maps are sized for 3 to 10):
+   `npx tsx node_modules/.handplay/handplay.ts new /tmp/g.json --seed 4242 --alignments Divine,Good,Undead`, then
+   `npx tsx node_modules/.handplay/handplay.ts run /tmp/g.json`.
 5. The baseline runs ("today's rules") are not kept between containers. Play them once before the first comparison:
    `OUT=<dir> TAG=r29 tools/handplay/matrix/run-kits.sh "base-A base-B base-C base-D base-E"` ([matrix/README.md](matrix/README.md)).
 
@@ -99,8 +104,9 @@ make some hostile (`--diplomacy hostile`) and some sea-heavy (`--sea 30`).
 
 Each game is played by one forked agent. A brief that worked:
 
-> Play game gN of Kingdoms Call by hand, with the harness in `tools/handplay/` (README.md). Create it with
-> `npx tsx tools/handplay/handplay.ts new <dir>/gN.json --seed <seed> --alignments <ten alignments> --races <ten races>`.
+> Play game gN of Kingdoms Call by hand, with the harness (`tools/handplay/README.md`; it is saved as
+> `node_modules/.handplay/handplay.ts`). Create the game with
+> `npx tsx node_modules/.handplay/handplay.ts new <dir>/gN.json --seed <seed> --alignments <ten alignments> --races <ten races>`.
 > Play all ten realms for 20 turns. Each turn, for each realm still alive: `view` that realm, read only what it shows,
 > decide its orders as a thoughtful human player of that alignment would, and write them with `orders`. Then `run` the
 > turn. Follow `tools/handplay/brief.md` for the rules and the order formats (its later sections replace earlier ones).

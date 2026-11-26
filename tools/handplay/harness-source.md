@@ -4,13 +4,13 @@ This is the source of the harness the alignment test games were played with. It 
 file, because it is loose research code: it reads the saved game as untyped JSON, so it would not pass the repo's strict
 lint and type checks, and the repo's rules allow no new untyped code.
 
-To use it, save the code block below as `tools/handplay/handplay.ts` in your working copy and run it with `npx tsx`
-(see README.md). Do not commit that file. If the harness becomes a permanent tool, type it properly first: parse the
+To use it, save the code block below as `node_modules/.handplay/handplay.ts` (DESIGN-HANDOFF.md, section 4, has the
+command) and run it with `npx tsx` from the repo root (see README.md). There the project's checks do not see it. If the harness becomes a permanent tool, type it properly first: parse the
 saved state with its Zod schema and give the report fields it reads a small schema of their own.
 
 ```ts
 // Hand-play harness (research tool for the alignment test games; see tools/handplay/README.md): a game with every kit on, every realm held by a player who reads
-// the realm's report and writes its orders. Run from the repo root: npx tsx tools/handplay/handplay.ts <command> ...
+// the realm's report and writes its orders. Run from the repo root: npx tsx node_modules/.handplay/handplay.ts <command> ...
 //   new <game.json> --seed N --alignments A,B,C [--races R,R,R] [--sea 20] [--diplomacy normal|hostile]
 //   view <game.json> <realm>            the realm's last report and its situation, as text
 //   orders <game.json> <realm> <orders.json>   {"<charId>": [5 x {action,target,extra,desc}], ...} plus optional

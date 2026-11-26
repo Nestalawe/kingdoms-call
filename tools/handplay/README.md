@@ -12,20 +12,20 @@ meant for `main`.
 | `IMPLEMENTATION.md` | The requirements for building the new alignment abilities into the live game, for a fresh session: what to build, Toby's decisions, the cases the games found, how to build it on `main`. |
 | `METHOD.md` | How the kits were tested and compared, for engineers. |
 | `matrix/` | The scripts that play the bot matrix with the kits on and compare the runs. |
-| `harness-source.md` | The harness: one game file holds a whole game, and you play every realm by hand, turn by turn. Kept as text (see that file for why): save its code block as `tools/handplay/handplay.ts` to run it, and don't commit that file. |
+| `harness-source.md` | The harness: one game file holds a whole game, and you play every realm by hand, turn by turn. Kept as text (see that file for why): save its code block as `node_modules/.handplay/handplay.ts` to run it (DESIGN-HANDOFF.md, section 4). |
 | `brief.md` | The rules brief each game was played from: how to write orders, every kit ability, lessons from the first games, and the changes of rounds 25 to 28 at the end (later sections replace earlier ones). |
 | `reports/gN-report.md` | One report per hand-played game (g1 to g41): result, how each alignment played, report and order problems found, balance observations. g1 to g9 are 3- and 4-realm games of 16 turns; g10 to g18 ten realms, 16 turns; g19 to g41 ten realms, 20 turns. |
 | `findings/` | The summary of each round (the overnight 3- and 4-realm games, then rounds 24 to 28): what changed, results, findings, suggestions. |
 
 ## Running a game
 
-Node 24 (`.nvmrc`). First save the code block in `harness-source.md` as `tools/handplay/handplay.ts`. Then, from the repo root:
+Node 24 (`.nvmrc`). First save the code block in `harness-source.md` as `node_modules/.handplay/handplay.ts`, as [DESIGN-HANDOFF.md](DESIGN-HANDOFF.md) section 4 shows (in `tools/` it would fail `npm run check`). Then, from the repo root:
 
 ```sh
-npx tsx tools/handplay/handplay.ts new g.json --seed 4242 --alignments Divine,Good,Druidic,Neutral,Pagan,Evil,Undead,Good,Pagan,Neutral --races Human,Elven,Dwarven,Orcish,Human,Elven,Dwarven,Orcish,Human,Elven
-npx tsx tools/handplay/handplay.ts view g.json 3            # realm 3's situation and last report, as text
-npx tsx tools/handplay/handplay.ts orders g.json 3 o3.json  # that realm's orders for this turn
-npx tsx tools/handplay/handplay.ts run g.json               # plays the turn for every realm
+npx tsx node_modules/.handplay/handplay.ts new g.json --seed 4242 --alignments Divine,Good,Druidic,Neutral,Pagan,Evil,Undead,Good,Pagan,Neutral --races Human,Elven,Dwarven,Orcish,Human,Elven,Dwarven,Orcish,Human,Elven
+npx tsx node_modules/.handplay/handplay.ts view g.json 3            # realm 3's situation and last report, as text
+npx tsx node_modules/.handplay/handplay.ts orders g.json 3 o3.json  # that realm's orders for this turn
+npx tsx node_modules/.handplay/handplay.ts run g.json               # plays the turn for every realm
 ```
 
 `new` also takes `--sea 30` and `--diplomacy hostile`. Every alignment kit is switched on (KC_ALIGN_PROTO). The orders
