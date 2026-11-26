@@ -36,6 +36,7 @@
 // realm's hero. Planted faults: in the PR (P1-08j7)
 // Since P1-23e (R-119): a Curse and a Charm at another realm's hero whose Invisibility holds are refused before the
 // roll, with a line naming no one (the cases); a realm that watches him by Clairvoyance still works its spell on him.
+// An Oratory refusal at another realm's hero names him only where the caster's realm can find him (R-119).
 import fc from 'fast-check';
 import { describe, expect, test, vi } from 'vitest';
 import { CAST_SPELL_ORDER_CASES, LANDS, stageCase, type CastSpellOrderCase } from '../lib/cast-spell-order-cases.ts';
@@ -355,6 +356,29 @@ describe('Cast Spell, called directly: the casting', () => {
       rolls([1], () => casts(b, h, 'Oratory', `${kind}_${String(f.id)}_via_${String(h.id)}_ph0`));
       expect(textOf(b, h)).toContain(`lifts ${f.name}'s troops`);
     }
+  });
+
+  // An Oratory refusal at another realm's hero (named by a pre-order reference, which the check before the roll doesn't
+  // read) names him only where the caster's realm can find him (R-119).
+  test("an Oratory refusal names the realm's own crown or none", () => {
+    const refusal = (hidden: boolean, watched: boolean) => {
+      const b = fresh();
+      const h = at(b, { psychic: 1 }, { player: 1 });
+      const m = at(b);
+      if (hidden) m['_invisTurn'] = b.G.turn;
+      if (watched) realm(b, 1)['_clairCharThisTurn'] = m.id;
+      rolls([1], () => casts(b, h, 'Oratory', `charm_${String(m.id)}_via_${String(h.id)}_ph0`));
+      const line = must(
+        linesOf(b, h).find((l) => l.text.includes('Oratory can only stir')),
+        'the refusal',
+      ).text;
+      return line.includes(m.name) ? 'names him' : line.replace(h.name, 'Brann');
+    };
+    expect(refusal(true, false)).toBe(
+      "Brann's Oratory can only stir their own realm's troops — the one it was aimed at serves another crown.",
+    );
+    expect(refusal(true, true)).toBe('names him');
+    expect(refusal(false, false)).toBe('names him');
   });
 
   test('a pre-order reference to a hero nobody knows falls back to the caster himself', () => {

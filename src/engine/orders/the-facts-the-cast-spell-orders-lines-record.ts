@@ -222,7 +222,11 @@ export type TheFactOfTheCastSpellOrdersLine =
       phasesOfOrders: number;
     } & ACaster)
   | { kind: 'a realm learns its hero is ensorcelled by an enemy Charm'; targetName: string }
-  | ({ kind: "Oratory cannot stir another realm's troops"; targetName: string } & ACaster)
+  | ({
+      kind: "Oratory cannot stir another realm's troops";
+      /** The hero it was aimed at, or null where the caster's realm can't find him (R-119). */
+      targetName: string | null;
+    } & ACaster)
   | ({
       kind: 'Oratory lifts the troops a hero leads';
       /** The caster stirs his own troops. */

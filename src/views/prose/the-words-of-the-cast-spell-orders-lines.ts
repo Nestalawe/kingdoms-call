@@ -204,7 +204,7 @@ export function theWordsOfTheCastSpellOrdersLine(fact: TheFactOfTheCastSpellOrde
     case 'a realm learns its hero is ensorcelled by an enemy Charm':
       return `⚠ ${fact.targetName} is ensorcelled by an enemy Charm and slips your command until the season turns.`;
     case "Oratory cannot stir another realm's troops":
-      return `${fact.heroName}'s Oratory can only stir their own realm's troops — ${fact.targetName} serves another crown.`;
+      return `${fact.heroName}'s Oratory can only stir their own realm's troops — ${fact.targetName ?? 'the one it was aimed at'} serves another crown.`;
     case 'Oratory lifts the troops a hero leads':
       return `✨ ${fact.heroName}'s stirring Oratory lifts ${fact.onTheCasterHimself ? 'their own' : fact.targetName + "'s"} troops — every army travelling with ${fact.onTheCasterHimself ? fact.heroName : fact.targetName} fights ${fact.qualityLevels > 1 ? 'two quality levels' : 'one quality level'} higher this turn.`;
     case 'Clairvoyance finds its mark dead':

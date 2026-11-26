@@ -24,7 +24,7 @@ import {
   THE_HERO_WHOSE_ORDER_IS_RESOLVING,
   THE_PHASE_THE_LINE_IS_WRITTEN_IN,
 } from '../../turn/events-and-their-audiences.ts';
-import { effStat, recalcHeroPay } from '../../heroes/effective-skills-and-hidden-heroes.ts';
+import { effStat, isHiddenByInvisibilityFrom, recalcHeroPay } from '../../heroes/effective-skills-and-hidden-heroes.ts';
 import { setMovePool } from '../../units/movement-pools.ts';
 import { awardKillXP } from '../../heroes/experience-skill-rises-and-earned-hp.ts';
 import { ensureEncounterPlan } from '../../personal-combat/speed-encounter-plans-and-combatants.ts';
@@ -529,9 +529,15 @@ export function workOratory({ turnContext, c, prov, targetChar }: TheNamesAnActi
   // A NAMED ally who is not here is caught above (free refusal). What is left is a named
   // ally of another realm, or no target at all — self. Never silently swap a named target.
   if (targetChar && targetChar.player !== c.player) {
+    // R-119: the refusal names him only where the caster's realm can find him
+    const theRefusalNamesHim = !isHiddenByInvisibilityFrom(turnContext, targetChar, c.player);
     emit(turnContext, {
       type: 'system',
-      fact: { kind: "Oratory cannot stir another realm's troops", heroName: c.name, targetName: targetChar.name },
+      fact: {
+        kind: "Oratory cannot stir another realm's troops",
+        heroName: c.name,
+        targetName: theRefusalNamesHim ? targetChar.name : null,
+      },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
