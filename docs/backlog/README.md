@@ -67,8 +67,8 @@ B-01 (the rulings audit) and P1-21x are in the finished lists.
 
 The rebuild's tranches are done, so the rulings and the known defects come next by the default order:
 [Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild),
-in its order, but for the three rows on what a realm sees (KD-049, P1-23j, P1-23h), which wait for a maintainer's day.
-Each row, and why it is there, is in Later's file:
+in its order, but for the three rows on what a realm sees (KD-049, P1-23j, P1-23h), which are built with a
+maintainer, so they are not in this list. Each row, and why it is there, is in Later's file:
 1. P1-23as
 2. P1-23k
 3. P1-23l
