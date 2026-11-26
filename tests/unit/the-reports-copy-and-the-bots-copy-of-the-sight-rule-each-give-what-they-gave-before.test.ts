@@ -1,5 +1,5 @@
-// The report's copy and the bots' copy of the sight rule each give what they gave before (B-06bw: the parts both copies
-// work out the same way are one rule in src/engine/sight/, read by both; each copy keeps its own parts as they were).
+// The report's copy and the bots' copy of the sight rule each give what they gave before (B-06bw: the sets both copies
+// read come from one rule in src/engine/sight/; nothing else in either copy changed).
 // One staged world, two realms with made-up names, every input written here; on it, each copy's province sets and
 // heroes are asserted as each gave them on the base, in the order each set holds them:
 // - the report's copy: playerView (src/views/what-each-realm-may-see-of-the-world.ts) for realm 0, its sets, each
