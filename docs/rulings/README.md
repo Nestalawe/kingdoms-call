@@ -214,7 +214,7 @@ at once.
 | [R-141](R-141-illusory-terrain-fools-the-intelligence-report-and-the-order-forms-too.md) | Illusory Terrain fools the Intelligence report and the order forms too, as it fools the map | 2026-10-31 | Decided, not built | no test yet |
 | [R-142](R-142-a-declaration-of-war-meets-the-realm-that-declared-it.md) | A declaration of war counts as meeting the realm that declared it | 2026-10-31 | Decided, not built | no test yet |
 | [R-143](R-143-the-crown-of-commands-text-says-it-helps-your-realms-characters.md) | The Crown of Command's text says it helps your own realm's characters | 2026-10-31 | Decided, not built | no test yet |
-| [R-144](R-144-only-the-human-garrison-holds-the-gate.md) | Only the Human Garrison holds the gate | 2026-10-31 | Decided, not built | no test yet |
+| [R-144](R-144-only-the-human-garrison-holds-the-gate.md) | Only the Human Garrison holds the gate | 2026-10-31 | Confirmed | [`the-human-units-abilities-on-the-battle-grid-and-at-their-fate-after-a-defeat`](../../tests/unit/the-human-units-abilities-on-the-battle-grid-and-at-their-fate-after-a-defeat.test.ts) |
 | [R-145](R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) | New games' guardians have the guardian table's HP; running games keep theirs | 2026-10-31 | Decided, not built | no test yet |
 | [R-146](R-146-flak-screen-engages-every-flyer.md) | Flak Screen engages every flyer, beasts too | 2026-10-31 | Decided, not built | no test yet |
 | [R-147](R-147-old-corsair-companies-fight-as-plain-fleets.md) | Old Corsair companies fight as plain fleets | 2026-10-31 | Decided, not built | no test yet |
