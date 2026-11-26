@@ -135,7 +135,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   const loseDemoteChance = _band.loseDemote;
 
   // The attacker's realm's discoveries on his own companies' fates (Steel Armour's and Military Discipline's kinds), as
-  // between heroes (R-160): never on the guards', who hold no realm's.
+  // between heroes (R-160): never on the defenders'. The defenders read none: a province's guards hold no realm's, and a
+  // realm's garrison with no hero (which this battle fights too) doesn't read its own realm's here yet (R-164, not built).
   const theAttackersDiscoveries = theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates(
     turnContext,
     c.player,
@@ -304,7 +305,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
         extraLossesPct: dispFloor(_npcRideAtk * 100),
       });
     defenders.forEach((a) => {
-      // (R-160: the beaten guards die at the plain chance; the attacker's Steel Armour spares his own companies only.)
+      // (R-160: the beaten defenders, guards or a realm's unled garrison, die at the plain chance; the attacker's Steel
+      // Armour spares his own companies only. The garrison's own realm's is R-164's, not built.)
       if (kcRng() < loseDeathChance + _npcRideAtkEff) {
         a._died = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)

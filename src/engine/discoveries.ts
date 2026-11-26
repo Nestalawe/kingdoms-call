@@ -377,7 +377,9 @@ export function discDeathMult(
 /** What a side's realm's discoveries do to its own companies' fates after a battle, read alike in both battles (R-160):
  *  the factor left on a company's chance of death (discDeathMult: Steel Armour's kind) and the factor on its chance of
  *  promotion, won or beaten (1 + discPromo: Military Discipline's kind). They speak of the realm's own companies only:
- *  each battle asks them for each side of a realm, and a province's neutral guards hold none. */
+ *  each battle asks them for each side of a realm. The battle against a province's defenders asks them for the
+ *  attacker alone: its guards hold none, and a realm's garrison with no hero doesn't read its realm's there yet (R-164,
+ *  not built). */
 export function theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates(
   turnContext: Pick<TurnContext, 'G'>,
   theSidesRealm: number | null | undefined,
