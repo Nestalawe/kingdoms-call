@@ -204,7 +204,7 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
     expect(labels(unit('Men-at-Arms'), pagan, 'forest', { force: [], isAttacker: true })).not.toContain(stones);
     expect(labels(unit('Men-at-Arms'), pagan, 'forest', { force: [] })).not.toContain(stones);
   });
-  test("the Standing Stones' ×1.25 is rounded, a half point and more going up", () => {
+  test("the Standing Stones' ×1.25 is rounded, a half point and more going up, less going down", () => {
     const pagan = hero({ player: 0, alignment: 'Pagan' });
     const factor = KC_THE_WONDERS_FIGURES_IN_A_BATTLE.theStandingStonesOnTheDefendersForestJungleOrMountain;
     /** Realm 0 as in G, but with no Wonder raised. */
@@ -217,7 +217,7 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
       withTheStones: armStr(turn, unit(type), pagan, 'Pagan', 'forest', defending),
     });
     // Free Lances and a Human Garrison each leave a half point or more under the ×1.25 (6 and 3 in the woods);
-    // Men-at-Arms none.
+    // Shieldwall Levies less than half a point (5 in the woods: 6.25, which goes down to 6); Men-at-Arms none.
     const theHalfPoints = ['Free Lances', 'Human Garrison'].map((type) => {
       const { without } = strengths(type);
       return without * factor - Math.floor(without * factor);
@@ -226,7 +226,11 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
       theHalfPoints.every((part) => part >= 0.5),
       'each leaves a half point or more',
     ).toBe(true);
-    for (const type of ['Free Lances', 'Human Garrison', 'Men-at-Arms']) {
+    const theLevies = strengths('Shieldwall Levies');
+    const theLeviesPart = theLevies.without * factor - Math.floor(theLevies.without * factor);
+    expect(theLeviesPart > 0 && theLeviesPart < 0.5, 'the Levies leave less than half a point').toBe(true);
+    expect(theLevies.withTheStones, 'the Levies go down').toBe(Math.floor(theLevies.without * factor));
+    for (const type of ['Free Lances', 'Human Garrison', 'Shieldwall Levies', 'Men-at-Arms']) {
       const { without, withTheStones } = strengths(type);
       expect([type, withTheStones], `${type}: ${String(without)} ×${String(factor)}`).toEqual([
         type,
