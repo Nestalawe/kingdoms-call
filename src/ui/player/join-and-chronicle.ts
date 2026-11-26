@@ -88,6 +88,8 @@ export async function showJoinGame(
     if (UNIQUE_ALIGNS.includes(opt.value) && takenAlignments.has(opt.value)) {
       opt.disabled = true;
       opt.text = `${opt.value} (taken)`;
+      // the form's pick when the chosen alignment is taken is the alignment a realm of none reads as (B-06br): a
+      // change to that constant changes this default too
       if (alignSel.value === opt.value) alignSel.value = THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS;
       warningParts.push(opt.value);
     } else {
