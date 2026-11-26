@@ -1,8 +1,8 @@
 // ── THE PROVINCES A REALM HAS IN SIGHT NOW, AND THOSE IT HAS VISITED (B-06bw) ────
 // One sight rule, read by the turn's report (playerView, src/views/what-each-realm-may-see-of-the-world.ts) and by the
-// bots (botIntel, src/engine/bots/intel.ts): the parts the two copies work out the same way. Each copy reads its own
-// three sources (`owned`, `heroesThere`, `spied`) and keeps its own other sets, as it did before. The test that holds
-// the two copies together: tests/unit/the-reports-copy-and-the-bots-copy-of-the-sight-rule-each-give-what-they-gave-before.test.ts.
+// bots (botIntel, src/engine/bots/intel.ts): the parts the two copies work out the same way. Each copy hands in its
+// own three sets (`owned`, `heroesThere`, `spied`). The test that holds the two copies together:
+// tests/unit/the-reports-copy-and-the-bots-copy-of-the-sight-rule-each-give-what-they-gave-before.test.ts.
 import { nearSpiedProvIds, type SightContext } from './heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { GameState } from '../../schemas/saved-game-state.ts';
