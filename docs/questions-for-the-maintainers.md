@@ -133,3 +133,26 @@ fix goes live: deploying when no game waits on its first turn makes both the sam
 
 *Touches:* [R-145](rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) (new games'
 guardians at the table's HP) and [R-072](rulings/R-072-guardian-strength.md) (the guardian table's HP).
+
+## 162. Does a Curse on Tactical take away Tactical 6's tier-up?
+
+Found on 2026-11-27.
+
+[R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) has a Curse on Tactical halve the
+Tactical a battle counts, in both kinds of battle. A commander at Tactical 6 or more also has the chance that each of
+his units fights a quality tier higher, decided as the battle is set up, before any spell. Example: Lady Wren, Tactical
+7, is cursed by the warlord Morvane: her lines fight at Tactical 3, but her units still roll for their tier-up as at
+Tactical 7. Should the Curse take the tier-up away too?
+
+1. **No: the tier-up stays, as built (P1-23an).** Impact: a cursed Tactical 6+ commander keeps one perk of his level;
+   the Curse weakens his lines' bonus only.
+2. **Yes: a Curse that leaves him below 6 takes the tier-up.** Impact: the Curse hits a great tactician harder; the
+   tier-up has to be decided after both sides' spells, so the battle's dice move.
+
+*Assessment:* option 2 follows the ruling's words ("before the skills … it changes are counted") most closely; option
+1 is how the game plays now and the smaller change. It matters only for a Curse on a Tactical 6+ commander.
+
+*Unlocks:* R-162's open point settled.
+
+*Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) (battle magic at one
+moment) and [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md) (battle magic's one rule).

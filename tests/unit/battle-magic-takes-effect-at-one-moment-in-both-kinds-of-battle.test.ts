@@ -2,12 +2,14 @@
 // the skills and strikes it changes are counted, against a province's guards as between two heroes' hosts. Lightning
 // Advance stops all the defenders' magic before the battle: their commander's battle spell (a guard leader's too) and
 // their gyrocopters' Flak Screen (a hero's too). Mass Confusion takes a guard leader's Tactical, as a hero's. A Curse
-// on Tactical or Naval, cast by either side, halves the skill the battle counts. Each case is played in both kinds of
+// on Tactical or Naval, cast by either side, halves the skill the battle counts. Their commander's spell that cancels
+// the attacker's Druid comes before his beasts strike, so they strike with none. Each case is played in both kinds of
 // battle on one staged field: realm 0's king attacks a free plain, either its guards (combatVsNPC), led by realm 1's
 // king made a warlord of no realm, or realm 1's king's own host (combatVsChar). Both commanders refuse any challenge,
 // so no duel is fought, and every d100 is fixed at 1 (stood in by vi.spyOn), so each battle spell is cast. What each case
 // reads depends on no other die: a commander's cast line, a gyrocopter harrying the one flyer, the Tactical the lines
-// are deployed with (battleDeploy, stood in likewise, calling the real one), the Naval the ladder lifts a fleet by.
+// are deployed with (battleDeploy, stood in likewise, calling the real one), the Naval the ladder lifts a fleet by,
+// the Druid a beast's strike is weighed with (the spells' registry's, stood in likewise).
 // Every other die is a fixed stream's (kcRng.use), so the battle plays the same under any KC_SEED.
 // Level 1 (unit): the battles called directly, no turn played. Not lower: each rule sits inside a battle's stages.
 // Not higher: a turn adds dice before the battle and nothing the rule reads.

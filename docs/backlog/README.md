@@ -29,7 +29,7 @@ this (`tests/static/the-backlog-tracks-each-item-one-way.test.ts`).
   own. Its heading, under "The groups" of its file, says what it delivers and holds its decisions in force; its rows
   sit wherever the order puts them. A step with work of its own beside its rows gives that work a lettered row.
 - **Folded in:** a known defect that is the same fault as another row is no row of its own. That row's What names it
-  ("Folds in KD-005"), so the id still leads somewhere.
+  ("Folds in KD-004"), so the id still leads somewhere.
 - **Rescoping:** when a row has delivered part of what it says, the id keeps what was delivered, and goes to the
   finished list; the rest is a new row, with a new id.
 - **What:** what the row delivers. A row that must wait for another says so at its end ("After P1-16q").
@@ -69,16 +69,15 @@ The rebuild's tranches are done, so the rulings and the known defects come next 
 [Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild),
 in its order, but for the three rows on what a realm sees (KD-049, P1-23j, P1-23h), which are built with a
 maintainer, so they are not in this list. Each row, and why it is there, is in Later's file:
-1. P1-23an
-2. P1-23am
-3. P1-23n
-4. P1-23v
-5. KD-047
-6. KD-048
-7. P1-23p
-8. P1-23ai
-9. P1-23aj
-10. P1-23ba
+1. P1-23am
+2. P1-23n
+3. P1-23v
+4. KD-047
+5. KD-048
+6. P1-23p
+7. P1-23ai
+8. P1-23aj
+9. P1-23ba
 
 ## Not yet assessed
 
