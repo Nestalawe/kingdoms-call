@@ -244,6 +244,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-21u: #628 Tests for the report and the Hall of Fame from the mutation session of 2026-11-17
 - P1-21v: #636 Tests for the GM's pages and the database reads from the mutation session of 2026-11-17
 - P1-21w: #649 Tests for the typed fake, the balance writes and the ratchet from the mutation session of 2026-11-17
+- P1-21x: #823 Tests for the rules pulled out (T7) from the mutation session of 2026-11-26
 
 ## P1-23
 

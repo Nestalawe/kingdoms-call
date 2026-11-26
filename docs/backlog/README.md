@@ -60,43 +60,9 @@ of ordering the backlog, and a maintainer validates its place. The rulings and t
 [Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
 T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
 [the finished list](finished-steps-p1-13-to-p1-25.md). T7, the rules pulled out, is done: its group, B-06, is in
-[the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out). The tranches "Phase 1's rest"
-and "The reports' audience in one place" are done too: P1-11z, B-16, B-18 and B-19 are in the finished lists.
-
-### 1. The check after the rules pulled out
-
-The tests for the mutation session on T7's lines (P1-21x), then the rulings audit. B-01 is a group, not a row
-([how to read a row](#how-to-read-a-row)): each ruling checked against the code, its verdict given, and each defect a
-`KD-` row, so that a ruling marked Confirmed that the game breaks is found and queued. Its rows each audit a range of
-rulings, one method:
-1. Read the ruling.
-2. Find where the game does it: the engine, the views, the portal, content's rows, the rulebooks.
-3. Give one verdict, citing the file and function: built, not built, broken (the code does something else) or can't
-   tell (and why).
-4. Act on it:
-   - Confirmed and built: no change; a test under **Enforced by** that doesn't assert the rule gets a `KD-` row.
-   - Confirmed and broken, or not built: a `KD-` row in Not yet assessed, with an example; the status is a maintainer's.
-   - Decided, not built, but built: Confirmed, **Enforced by** its test or "no test yet"; its row to build is finished.
-   - To confirm: the verdict goes in the pull request only; the status is a maintainer's.
-   - Superseded: skipped.
-5. No code, no test and no rule changed.
-
-A ruling on what a realm can see or on who can read data is audited, its verdict given to a maintainer, never written
-here.
-
-| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
-|---|---|---|---|---|---|---|---|---|
-| P1-21x | Tests for each fault of the session on T7's lines (P1-21's session after a big series) that no test caught, each at the lowest level that catches it, shown red with the fault and green without; tests only; a fault no test can reach is named with its reason. Maintainer ✓: what the faults say about the tests. `refactor-only` | Maintainers: each fault in T7's lines that the tests missed gets its test | Phase 1 | Small | ✓ | 🟦 | #823 | After a big series (T7, #711 to #816), P1-21's session; it joins the stack once its faults are scored |
-| B-01a | The rulings audit, R-001 to R-012: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #818 | The audit first: it tells which of Later's rulings are really broken before any is built |
-| B-01b | The rulings audit, R-013 to R-025: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #820 | After B-01a |
-| B-01c | The rulings audit, R-026 to R-035: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #821 | After B-01b |
-| B-01d | The rulings audit, R-036 to R-047: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #822 | After B-01c |
-| B-01e | The rulings audit, R-048 to R-062: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #824 | After B-01d |
-| B-01f | The rulings audit, R-063 to R-083: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #825 | After B-01e |
-| B-01g | The rulings audit, R-084 to R-116: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #826 | After B-01f |
-| B-01h | The rulings audit, R-117 to R-145: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #827 | After B-01g |
-| B-01i | The rulings audit, R-146 to R-167: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #828 | After B-01h |
-| B-01j | The rulings audit, R-168 to R-190: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #829 | After B-01i |
+[the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out). The tranches "Phase 1's rest",
+"The reports' audience in one place" and "The check after the rules pulled out" are done too: P1-11z, B-16, B-18, B-19,
+B-01 (the rulings audit) and P1-21x are in the finished lists.
 
 ## Not yet assessed
 
