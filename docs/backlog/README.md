@@ -96,7 +96,7 @@ here.
 | B-01g | The rulings audit, R-084 to R-116: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #826 | After B-01f |
 | B-01h | The rulings audit, R-117 to R-145: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #827 | After B-01g |
 | B-01i | The rulings audit, R-146 to R-167: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #828 | After B-01h |
-| B-01j | The rulings audit, R-168 to R-190: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | | After B-01i |
+| B-01j | The rulings audit, R-168 to R-190: each ruling's verdict (built, not built, broken, can't tell) and what follows from it (B-01's method) | Players and maintainers: a ruling marked Confirmed that the game breaks is found and queued | Phase 1 | Small | – | 🟦 | #829 | After B-01i |
 
 ## Not yet assessed
 
