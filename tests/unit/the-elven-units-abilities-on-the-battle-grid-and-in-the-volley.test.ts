@@ -12,6 +12,7 @@
 //                    shot at) — Skyward Retreat is gone (tests/static/skyward-retreat-and-dread-are-gone-…)
 //   Elven Garrison   Thorn Hedge (cavalry facing it in the woods ×0.85) · Tree Watch (in forest or jungle it shoots
 //                    like an archer)
+//                    No Hold the Gate (R-144): defending, hit from the side at a line's end (the Human units' file)
 // Grids placed and faced from rows made by the test (tests/lib/hand-made-battle-lines.ts), each side's strengths the
 // old script's table; each unit's facing in words through the prose (theWordsOfWhyAUnitFacesAsItDoes, since P1-12d4).
 // The volley's helpers (abilityMissileUnits, archeryBlockedBy, missileTargetPool) are called on units made by the

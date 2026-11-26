@@ -9,6 +9,7 @@
 //   Gnomish Gyrocopters  Flak Gunners (×1.25 when the enemy has flyers) · Flak Screen (unchanged)
 //   Dwarf Garrison       Stone Halls (foot facing it in the mountains ×0.9) · Deep Halls (counts as Guard for Shield
 //                        Fort)
+//                        No Hold the Gate (R-144): defending, hit from the side at a line's end (the Human units' file)
 // Grids placed and faced from rows made by the test (tests/lib/hand-made-battle-lines.ts), each side's strengths the
 // old script's table; each unit's facing in words through the prose (theWordsOfWhyAUnitFacesAsItDoes, since P1-12d4).
 // The Shield Fort's gate (shieldFortHolds) is called on front lines and forces made by the test, and on placed grids.
