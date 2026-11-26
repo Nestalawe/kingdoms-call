@@ -1,13 +1,14 @@
-// Battle magic takes effect at one moment in both kinds of battle (R-162, row P1-23an): what a battle's magic stops
-// or takes away holds the same against a province's guards as between two heroes' hosts. Lightning Advance stops all
-// the defenders' magic before the battle: their commander's battle spell (a guard leader's too) and their
-// gyrocopters' Flak Screen (a hero's too). Mass Confusion takes a guard leader's Tactical from his battle, as it takes
-// a hero's. Each case is played in both kinds of battle on one staged field: realm 0's king attacks a free plain,
-// either its guards (combatVsNPC), led by realm 1's king made a warlord of no realm, or realm 1's king's own host
-// (combatVsChar). Both commanders refuse any challenge, so no duel is fought. What each case reads depends on no die:
-// a commander's cast line is written before his roll, a gyrocopter always harries a flyer left in the enemy's host,
-// and the Tactical the lines are deployed with (battleDeploy, stood in by vi.spyOn, which calls the real one) is the
-// commander's skill. Every die is a fixed stream's (kcRng.use), so the battle plays the same under any KC_SEED.
+// Battle magic takes effect at one moment in both kinds of battle (R-162, row P1-23an): each spell takes effect before
+// the skills and strikes it changes are counted, against a province's guards as between two heroes' hosts. Lightning
+// Advance stops all the defenders' magic before the battle: their commander's battle spell (a guard leader's too) and
+// their gyrocopters' Flak Screen (a hero's too). Mass Confusion takes a guard leader's Tactical, as a hero's. A Curse
+// on Tactical or Naval, cast by either side, halves the skill the battle counts. Each case is played in both kinds of
+// battle on one staged field: realm 0's king attacks a free plain, either its guards (combatVsNPC), led by realm 1's
+// king made a warlord of no realm, or realm 1's king's own host (combatVsChar). Both commanders refuse any challenge,
+// so no duel is fought, and every d100 rolls a 1 (stood in by vi.spyOn), so each spell cast is cast. What each case
+// reads depends on no other die: a commander's cast line, a gyrocopter harrying the one flyer, the Tactical the lines
+// are deployed with (battleDeploy, stood in likewise, calling the real one), the Naval the ladder lifts a fleet by.
+// Every other die is a fixed stream's (kcRng.use), so the battle plays the same under any KC_SEED.
 // Level 1 (unit): the battles called directly, no turn played. Not lower: each rule sits inside a battle's stages.
 // Not higher: a turn adds dice before the battle and nothing the rule reads.
 import '../lib/the-whole-engine.ts';
@@ -20,6 +21,7 @@ import { createTurnContext } from '../../src/engine/turn/context.ts';
 import { combatVsChar } from '../../src/engine/battle/battles-between-heroes.ts';
 import { combatVsNPC } from '../../src/engine/battle/battles-against-province-defenders.ts';
 import * as lines from '../../src/engine/battle/lines.ts';
+import * as dice from '../../src/engine/dice-and-army-names.ts';
 import type { ArmyInABattle } from '../../src/engine/army-tables.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { addTheFieldsResolveTurnAdds } from '../lib/the-fields-resolve-turn-adds-to-the-turns-context.ts';
@@ -87,11 +89,13 @@ const aCompany = (type: string, unitName: string): ArmyInABattle => ({
   unitName,
 });
 
-/** How the battle is staged: the attacker's host and whether he ordered a Lightning Advance this turn; the
+/** How the battle is staged: the attacker's host, his skills and battle spell (none, unless given), and whether he
+ *  ordered a Lightning Advance this turn; the
  *  defenders' units (the guards, or the other king's host), and their commander's skills, the battle spell his plan
  *  names (`CA:<spell>`, or none), and whether a Mass Confusion took his Tactical this turn. */
 interface TheStaging {
   readonly theAttackersHost: readonly ArmyInABattle[];
+  readonly theAttacker?: { readonly skills: Readonly<Record<string, number>>; readonly spell: string };
   readonly aLightningAdvance?: boolean;
   readonly theDefenders: readonly ArmyInABattle[];
   readonly theirCommander: {
@@ -129,7 +133,14 @@ function aBattle(battle: 'against the guards' | 'between two hosts', staging: Th
   atk['_attackedFrom'] = atk.location;
   moveTo(atk);
   atk.armies = [...staging.theAttackersHost];
-  atk.encounterPlan = { tactics: ['ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
+  atk.skills = {
+    ...atk.skills,
+    ...Object.fromEntries(KC_MAGIC_SCHOOLS.map((school) => [school, 0])),
+    ...staging.theAttacker?.skills,
+  };
+  atk.items = [];
+  const hisSpell = staging.theAttacker?.spell;
+  atk.encounterPlan = { tactics: [hisSpell ? `CA:${hisSpell}` : 'ME', 'ME', 'ME', 'ME', 'ME'], duelStance: 'refuse' };
   if (staging.aLightningAdvance) atk['_lightningAdvanceTurn'] = G.turn;
   moveTo(def);
   const theirs = staging.theirCommander;
@@ -152,6 +163,8 @@ function aBattle(battle: 'against the guards' | 'between two hosts', staging: Th
     deployed.tacD = args[2].tacD;
     return realDeploy(...args);
   });
+  // every d100 rolls a 1: each battle spell cast is cast
+  const theRolls = vi.spyOn(dice, 'd100').mockReturnValue(1);
   const was = kcRng.use(kcRngStream(7));
   let narrative: NarrativeLine[];
   try {
@@ -174,6 +187,7 @@ function aBattle(battle: 'against the guards' | 'between two hosts', staging: Th
   } finally {
     kcRng.use(was);
     theDeploy.mockRestore();
+    theRolls.mockRestore();
   }
   return {
     narrative,
@@ -233,5 +247,70 @@ describe.for(BATTLES)('Mass Confusion takes the defending commander’s Tactical
       aBattle(battle, { ...staging, theirCommander: { ...staging.theirCommander, massConfused: true } })
         .theTacticalDeployedWith.ofTheDefenders,
     ).toBe(0);
+  });
+});
+
+describe.for(BATTLES)('A Curse on Tactical changes the battle, whichever side casts it, %s', (battle) => {
+  const plain: TheStaging = {
+    theAttackersHost: [aCompany('Men-at-Arms', 'the First Shields')],
+    theAttacker: { skills: { tactical: 4, naval: 0, druid: 0 }, spell: '' },
+    theDefenders: [aCompany('Men-at-Arms', 'the Mill Watch')],
+    theirCommander: { skills: { tactical: 4, naval: 0, druid: 0 } },
+  };
+  test("the attacker's Curse halves their commander's Tactical in the lines", () => {
+    const shown = aBattle(battle, {
+      ...plain,
+      theAttacker: { skills: { tactical: 4, naval: 0, druid: 0, necromancy: 5 }, spell: 'Curse' },
+    });
+    expect(shown.theTacticalDeployedWith).toEqual({ ofTheAttacker: 4, ofTheDefenders: 2 });
+  });
+  test("their commander's Curse halves the attacker's Tactical in the lines", () => {
+    const shown = aBattle(battle, {
+      ...plain,
+      theirCommander: { skills: { tactical: 4, naval: 0, druid: 0, necromancy: 5 }, spell: 'Curse' },
+    });
+    expect(shown.theTacticalDeployedWith).toEqual({ ofTheAttacker: 2, ofTheDefenders: 4 });
+  });
+  test('with no Curse, each side deploys with its Tactical', () => {
+    expect(aBattle(battle, plain).theTacticalDeployedWith).toEqual({ ofTheAttacker: 4, ofTheDefenders: 4 });
+  });
+});
+
+/** The Naval levels the battle's strength ladder lifts a side's fleets by, as its lines record them. */
+const theNavalLevelsInTheLadder = (shown: WhatTheBattleShows) =>
+  [...JSON.stringify(shown.narrative).matchAll(/"kind":"naval","level":(\d+)/g)].map((m) => Number(m[1]));
+
+describe.for(BATTLES)('A Curse on Naval changes the battle, whichever side casts it, %s', (battle) => {
+  const aFleet = [aCompany('Elven Galleys', 'the Swan')];
+  const theLandHost = [aCompany('Men-at-Arms', 'the Mill Watch')];
+  const aNavalCommander = { tactical: 0, naval: 4, druid: 0 };
+  test("their commander's Curse halves the Naval the attacker's fleet is lifted by", () => {
+    const shown = (aCurse: boolean) =>
+      aBattle(battle, {
+        theAttackersHost: aFleet,
+        theAttacker: { skills: aNavalCommander, spell: '' },
+        theDefenders: theLandHost,
+        theirCommander: {
+          skills: { tactical: 0, naval: 0, druid: 0, necromancy: aCurse ? 5 : 0 },
+          spell: aCurse ? 'Curse' : '',
+        },
+      });
+    expect(theNavalLevelsInTheLadder(shown(false))).toEqual([4]);
+    expect(theNavalLevelsInTheLadder(shown(true))).toEqual([2]);
+  });
+  // (a guard casts a battle spell of any school he knows, his plan or none: with no Curse, he knows no Necromancy)
+  test("the attacker's Curse halves the Naval their fleet is lifted by", () => {
+    const shown = (aCurse: boolean) =>
+      aBattle(battle, {
+        theAttackersHost: [aCompany('Men-at-Arms', 'the First Shields')],
+        theAttacker: {
+          skills: { tactical: 0, naval: 0, druid: 0, necromancy: aCurse ? 5 : 0 },
+          spell: aCurse ? 'Curse' : '',
+        },
+        theDefenders: aFleet,
+        theirCommander: { skills: aNavalCommander },
+      });
+    expect(theNavalLevelsInTheLadder(shown(false))).toEqual([4]);
+    expect(theNavalLevelsInTheLadder(shown(true))).toEqual([2]);
   });
 });

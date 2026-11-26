@@ -38,7 +38,6 @@
 // share (the narrative, the two hosts, the province, the commanders) are handed on as they are, never copied.
 import {
   KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
-  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
   KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST,
 } from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
@@ -74,7 +73,12 @@ import { telSpell } from '../../turn/log-line-helpers.ts';
 import { charMinor } from '../../titles/title-holders-and-battle-merit.ts';
 import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
-import { MISSILE_CAP_FRACTION, applyMissileHit, bestCurseSkill } from '../terrain-and-unit-strength.ts';
+import {
+  MISSILE_CAP_FRACTION,
+  applyMissileHit,
+  bestCurseSkill,
+  theLevelACommanderFightsWithOnceACurseHasTakenEffect,
+} from '../terrain-and-unit-strength.ts';
 import { pickBattleSpell } from '../../magic/pre-battle-spell-choice.ts';
 import { ensureEncounterPlan } from '../../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { narrate } from '../../turn/events-and-their-audiences.ts';
@@ -394,14 +398,16 @@ export function theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(
 
   // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr
   // below)
-  let defTactLvl = defHero
-    ? defHero._tacticalNegated
-      ? 0
-      : effStat(turnContext, defHero, 'tactical') +
-        theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, defHero, title))
-    : 0;
-  if (defHero?._curseHalveStat === 'tactical')
-    defTactLvl = Math.floor(defTactLvl / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
+  const defTactLvl = theLevelACommanderFightsWithOnceACurseHasTakenEffect(
+    defHero,
+    'tactical',
+    defHero
+      ? defHero._tacticalNegated
+        ? 0
+        : effStat(turnContext, defHero, 'tactical') +
+          theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, defHero, title))
+      : 0,
+  );
   const defTactBonus =
     defTactLvl > 0
       ? Math.min(
