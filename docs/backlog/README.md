@@ -91,6 +91,7 @@ tranche's plan, its counts and its risks: #711; Run 3's: #756.
 | B-06bw | The turn's report and the bots read one sight rule, each copy kept exactly as it is, with a unit test on a staged world that holds each copy. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: the report's and the bots' sight rule in one place, held by a test | Phase 1 | Medium | ✓ | 🟦 | #813 | Sight |
 | B-06bx | The views' last creed checks ask the alignments' rows (a table beside them, and the Wonders' rows); the portal's count of creed checks is 0. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: as B-06br | Phase 1 | Small | ✓ | 🟦 | #814 | Sight |
 | B-06by | The views' own hex neighbours ask the engine's neighbour rule, a test first that both agree on the map's wrapped edge. Maintainer ✓: the turn's reports. `refactor-only` | Maintainers: one rule for which provinces are neighbours, the views too | Phase 1 | Small | ✓ | 🟦 | #815 | After B-06bx; sight's rows' last |
+| B-06bz | The battle rules written outside the battles' folder read their numbers from content's rows: a hero's and a guard's cast chance (B-06be's row; a spell worked from an item a row of its own), the sea lift's doubling and hulls' shares, Naval 8's tier, and a hero who escapes death left with half his most HP (B-06bm's rows); the battles' count lists each such function at 0 (what is left: KD-479). `refactor-only` | Maintainers: a change to a battle's row reaches every rule that writes it | Phase 1 | Small | – | 🟦 | #816 | After B-06by; the stack's top |
 
 ## Not yet assessed
 
