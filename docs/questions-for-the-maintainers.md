@@ -88,3 +88,25 @@ the beaten chance plus 15%?
 
 *Touches:* [R-166](rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md) (the rout rules against
 guards) and [R-082](rulings/R-082-run-them-down.md) (Run Them Down's +15%).
+
+## 160. Does a realm that already holds Messenger Birds keep it?
+
+Found on 2026-11-27.
+
+[R-140](rulings/R-140-messenger-birds-is-retired.md) retires Messenger Birds: no realm is offered it. It doesn't say
+what becomes of a realm that found it before. Lady Wren's realm made it on turn 6: is it still in her list of
+discoveries after the change?
+
+1. **It keeps it, as built (P1-23k).** Impact: nothing in play changes; the line stays in its records, and it does
+   nothing, as before.
+2. **It loses it, as the retired `sd34` did** ([R-013](rulings/R-013-mounted-couriers-removed.md); the save's upgrade,
+   `retireDiscoveries`, strikes it and the new turn says how many went). Impact: nothing in play changes either; the
+   line goes from the realm's records, and the turn's report says a retired discovery was removed.
+
+*Assessment:* option 1: a realm keeps what it found, and nothing more to build. Option 2 tidies the records, as `sd34`
+was, for one more small change.
+
+*Unlocks:* R-140's open point settled.
+
+*Touches:* [R-140](rulings/R-140-messenger-birds-is-retired.md) (Messenger Birds retired) and
+[R-013](rulings/R-013-mounted-couriers-removed.md) (the retirement of `sd34`).
