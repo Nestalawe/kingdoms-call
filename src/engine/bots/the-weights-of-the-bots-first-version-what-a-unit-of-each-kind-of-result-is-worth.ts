@@ -125,7 +125,8 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theStrengthOfAUnitTheBotsCantSee: 6,
     /** A province they can't see is guessed by its tax: Rich from this tax, ... */
     theTaxFromWhichTheBotsGuessALandRich: 7,
-    /** ... Prosperous from this one (both neutralDefBand's cuts, written in its function: no row holds them), ... */
+    /** ... Prosperous from this one (both neutralDefBand's cuts, written in its function: no row holds them; a unit
+     *  case holds the two copies together), ... */
     theTaxFromWhichTheBotsGuessALandProsperous: 4,
     /** ... with this many units in a Rich land (the middle of the band its neutral defenders are dealt in), ... */
     theUnitsTheBotsGuessInARichLand: 3.5,
