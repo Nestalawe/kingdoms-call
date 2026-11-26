@@ -34,7 +34,7 @@ import { humanXPMult } from '../../units/drill-and-spoils.ts';
 import { dispFloor } from '../../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { clearPhantomCopies, getNeighborsP } from '../../world/map-helpers.ts';
 import { perkTier } from '../../titles/perks.ts';
-import { discDeathMult, discPromo } from '../../discoveries.ts';
+import { theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates } from '../../discoveries.ts';
 import { noteBattleLoss } from '../../turn/mercenary-ids-and-battle-records.ts';
 import {
   bestRetreat,
@@ -134,15 +134,20 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   // XP loss chances (loser only)
   const loseDemoteChance = _band.loseDemote;
 
-  // Steel Armour discovery: -15% death chance
-  const steelMultOf = (a: AUnitInTheBattleAgainstTheDefenders) => discDeathMult(turnContext, c.player, a, 'atk'); // per-unit deathRed discoveries (sd05 Steel Armour now one of them)
+  // The attacker's realm's discoveries on his own companies' fates (Steel Armour's and Military Discipline's kinds), as
+  // between heroes (R-160): never on the guards', who hold no realm's.
+  const theAttackersDiscoveries = theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates(
+    turnContext,
+    c.player,
+    'atk',
+  );
+  const steelMultOf = theAttackersDiscoveries.onItsChanceOfDeath;
   const tacMultNPC =
     perkTier(c, 'tactical') >=
     KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMasteryTierOfTacticalThatSparesALosingHost
       ? KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theShareOfALosingUnitsChancesToDieOrDisbandItLeaves
       : 1; // TACTICAL L8: on a LOSS, c's units half as likely to die/disband
-  // Military Discipline discovery: +20% XP gain chance
-  const milMultOf = (a: AUnitInTheBattleAgainstTheDefenders) => 1 + discPromo(turnContext, c.player, a); // per-unit promo discoveries (sd06 Military Discipline now one of them)
+  const milMultOf = theAttackersDiscoveries.onItsChanceOfPromotion;
 
   // ════
   // UNIT ABILITIES vs NEUTRAL GUARDS
@@ -299,7 +304,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
         extraLossesPct: dispFloor(_npcRideAtk * 100),
       });
     defenders.forEach((a) => {
-      if (kcRng() < loseDeathChance * steelMultOf(a) + _npcRideAtkEff) {
+      // (R-160: the beaten guards die at the plain chance; the attacker's Steel Armour spares his own companies only.)
+      if (kcRng() < loseDeathChance + _npcRideAtkEff) {
         a._died = true;
         const _fc = _facedD.get(a); // whom they fought (2026-10-12)
         narrate(narrative, {
@@ -482,7 +488,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
       inTheRout: true,
       dieAt: (a) => loseDeathChance * steelMultOf(a) * tacMultNPC + _npcRideDefEff,
       demoteAt: () => loseDemoteChance * tacMultNPC,
-      promoteTo: (a) => loseDemoteChance + xpChance(loseXPChance, a.quality) * humanXPMult(a, c.player, G),
+      promoteTo: (a) =>
+        loseDemoteChance + xpChance(loseXPChance * milMultOf(a), a.quality) * humanXPMult(a, c.player, G), // (R-160)
       shieldFort: _npcSF,
       notable: true,
       faced: _facedA,

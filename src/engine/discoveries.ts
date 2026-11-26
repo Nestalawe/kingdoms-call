@@ -374,6 +374,20 @@ export function discDeathMult(
   const { G } = turnContext;
   return theMultiplierARealmsDiscoveriesLeaveOnABeatenUnitsDeath(G.players[pi], { theUnit: army, theSide: side });
 }
+/** What a side's realm's discoveries do to its own companies' fates after a battle, read alike in both battles (R-160):
+ *  the factor left on a company's chance of death (discDeathMult: Steel Armour's kind) and the factor on its chance of
+ *  promotion, won or beaten (1 + discPromo: Military Discipline's kind). They speak of the realm's own companies only:
+ *  each battle asks them for each side of a realm, and a province's neutral guards hold none. */
+export function theFactorsASidesRealmsDiscoveriesPutOnItsOwnCompaniesFates(
+  turnContext: Pick<TurnContext, 'G'>,
+  theSidesRealm: number | null | undefined,
+  theSide: 'atk' | 'def',
+) {
+  return {
+    onItsChanceOfDeath: (a: AUnitAsTheDiscoveriesReadIt) => discDeathMult(turnContext, theSidesRealm, a, theSide),
+    onItsChanceOfPromotion: (a: AUnitAsTheDiscoveriesReadIt) => 1 + discPromo(turnContext, theSidesRealm, a),
+  };
+}
 // Only discoveries the realm is eligible for (race / alignment) can be researched, found or
 // stolen.
 export function discAvailableFor(turnContext: Pick<TurnContext, 'G'>, pi: number, known: ReadonlySet<string>) {
