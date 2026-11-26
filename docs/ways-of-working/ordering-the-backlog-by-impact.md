@@ -42,8 +42,8 @@ else decides, the default order is:
 ## 4. Propose a position
 
 Say where the row goes (after which row, and before which) and why, in one line of reasoning. For example: "In Later's
-first group, above P1-23al: in every siege today, Hold the Gate spares every garrison, where R-144 says only the Human
-Garrison holds the gate (harm in live play); P1-23al touches only battles against guards."
+first group, above P1-23as: in every Spy order against a realm with a counter-spy discovery today, the discovery takes
+nothing off, where its text says it does (harm in live play); P1-23as touches only battles against guards."
 
 ## 5. Stop for a maintainer
 

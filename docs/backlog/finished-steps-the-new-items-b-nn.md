@@ -9,13 +9,12 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 
 ## B-06, T7: the rules pulled out
 
-B-06 is open; its foundations, the alignments, the races, the tempers, the hero orders, diplomacy, the battles' rules
-and personal combat are finished: Run 1 (the economy, then the Reckoning and the titles), Run 2a (world generation),
-Run 2b (the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows), Run 3a (the races and the tempers, B-06ac to
-B-06ak), Run 3b (the hero orders and diplomacy, B-06al to B-06av), Run 3c (the battle proof, the battles' tables and
-the battle against the defenders, B-06aw to B-06be) and Run 3d (the battle between heroes, the battles' stages and
-numbers, and personal combat, B-06bf to B-06bp). The tranche's plan, its counts and its risks: #711; Run 3's: #756.
-
+- B-06: done in its rows, below: the rules pulled out. Each family of rules is counted by the ratchet and moved into
+  content's rows, each with its bot valuation hook, so that a redesign item becomes a content change: Run 1 (the
+  economy, then the Reckoning and the titles), Run 2a (world generation), Run 2b (the alignments, P1-19ba1 to
+  P1-19bb9, P1-19's last rows), Run 3a (the races and the tempers), Run 3b (the hero orders and diplomacy), Run 3c and
+  Run 3d (the battles and personal combat) and Run 3e (the player portal's alignment rules, the bots' battle estimate
+  and sight, B-06br to B-06bz). The tranche's plan, its counts and its risks: #711; Run 3's: #756.
 - B-06a: #711 The ratchet counts the economy and the titles, B-06's lettered rows, the KD- rows found by the scoping, B-20 and the bots' worth hook
 - B-06b: #712 The economy's prices in content: the price table, the fallback 2g and the skeleton's 1g, through one price rule and one wage rule
 - B-06c: #714 The tax's stages on turnEnd: a province's tax and a realm's gold beyond it, in the economy's registry, which the forecast asks too
@@ -97,6 +96,16 @@ numbers, and personal combat, B-06bf to B-06bp). The tranche's plan, its counts 
 - B-06bn: #801 Personal combat, 1 of 3: to-hit, wounds, stuns, courage and the duels, their numbers in rows
 - B-06bo: #802 Personal combat, 2 of 3: speed, encounter plans, melee, flight, archery and tactics, their numbers in rows
 - B-06bp: #803 Personal combat, 3 of 3: lair guardians, combat spells and the resolve, their numbers in rows
+- B-06br: #805 A realm of none reads as Neutral in the player portal and the reports through the alignments' row
+- B-06bs: #807 The Research forecast and the beasts' guide in the player portal ask the alignments' rows
+- B-06bt: #808 The player portal's words that restate an alignment rule read the rows' names and numbers, the words the same
+- B-06bu: #809 The map's relation labels and the Diplomacy card's buttons read the relation rows
+- B-06bq: #810 The bots' battle estimate asks the battles' rows, and its own tuning is the bots' weights of a new kind, battle strength
+- B-06bv: #812 The turn's sight rules read their numbers from content's rows
+- B-06bw: #813 The turn's report and the bots read one sight rule, each copy kept as it is, held by a test
+- B-06bx: #814 The views' last creed checks ask the alignments' rows
+- B-06by: #815 The views' hex neighbours ask the engine's neighbour rule
+- B-06bz: #816 The battle rules written outside the battles' folder read their numbers from content's rows
 - The fix Run 1 found on the way, its known-defect row deleted: #720 The registry compile test: a test and a program for each registry, every planted copy and expected error as it was
 
 ## The other new items

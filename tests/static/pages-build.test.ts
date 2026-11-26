@@ -16,8 +16,10 @@
 //   is let through as types. A second value import (planted, in each form, the upgrade's own file too) is refused,
 //   and a type-only one (planted) leaves every bundle without the file it names.
 // - tools/pages.ts names each page's files as Rolldown does, but a module nothing on the page reads, which Rolldown
-//   would leave out (none today: kc-safe.ts was one, on the Overlord page, until its reload banner called it, P1-06d;
-//   so the test now expects none on any page). Its importsOf reads a module's imports that
+//   leaves out: the abilities of a unit no longer raised, on the player page. The page reads only the blurbs; the
+//   registry's rows beside them, which name those abilities, are read by nothing there, and Rolldown kept them only
+//   while Hold the Gate's row read a class of the data file (gone with R-144, P1-23m). kc-safe.ts was one, on the
+//   Overlord page, until its reload banner called it (P1-06d). Its importsOf reads a module's imports that
 //   bring code, and leaves out a type-only one (P1-10a2: engine/turn/context.ts imports the schemas' types), in every
 //   form, and a package's (P1-15d: Zod), whose files aren't under src/ (planted).
 // - The engine's files (tools/pages.ts's engineEntryFiles, which tests/lib/engine.ts bundles) are the data file and
@@ -356,7 +358,9 @@ describe('every file under src/ is in a page', () => {
       expect(theirs.filter((f) => !ours.includes(f))).toEqual([]);
       const leftOut = ours.filter((f) => !theirs.includes(f) && !pageEntries(page).styles.includes(f) && f !== page);
       const scriptless = !pageEntries(page).modules.length;
-      expect(leftOut).toEqual([]);
+      expect(leftOut).toEqual(
+        page === 'kingdoms-call-player-portal.html' ? ['content/the-abilities-of-a-unit-no-longer-raised.ts'] : [],
+      );
       expect(scriptless ? theirs : []).toEqual([]);
     },
   );
