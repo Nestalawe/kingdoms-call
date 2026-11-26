@@ -1666,7 +1666,7 @@ describe("The strategy's helpers on what no matrix game hands them (P1-10b41)", 
   });
   // B-06h: at war, the chest a bot keeps is a share of its wages, held between the weights' least and most. A realm of
   // little wages keeps the least, one of middling wages its share, one of great wages the most.
-  test("the bots' war chest: a share of the wages, never below the weights' least nor above their most (B-06h)", () => {
+  test("the bots' war chest: a share of the wages, never below the weights' least nor above their most (B-06h's rule, P1-21x's case)", () => {
     const W = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold;
     /** Realm 0 at war with realm 1 (whose king lives), holding one province of no tax, its one hero paid `pay` a turn
      *  and leading nobody. */
