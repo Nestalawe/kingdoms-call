@@ -272,8 +272,6 @@ but the reports.
   that changes, so `activeItems` and every helper that reads items through it are reads at report time, when every
   hero's items are already in order.
 - `tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts` plays one staged turn, its dice fixed,
-  that reaches the six things the old writes were about (a battle, a worn item, a hero moved unseen, the Invisibility
-  re-stamp, Clairvoyance, a spy's lingering sight), with every report built on a world and a log that refuse every
-  write (each write noted, then thrown), on dice that count every draw, and compares every report with the same report
-  built unguarded. A new write in a report, or in anything it calls, turns it red. `_MAXHP_PLAYERS`, a global
+  with every report built on a world and a log that refuse every write (each write noted, then thrown), on dice that
+  count every draw, and compares every report with one built unguarded. A new write in a report, or in anything it calls, turns it red. `_MAXHP_PLAYERS`, a global
   the turn keeps, is not the world: it is P1-10's.
