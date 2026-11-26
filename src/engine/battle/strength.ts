@@ -195,8 +195,8 @@ export function abilityVolleys(firer: ForceUnit, isAtk: boolean): number {
 // battle-end sweeps that wipe _tempStrReduction / _terrorMult / _archeryRed / _tacUp / _drumUp /
 // _laNoTerrain, and not by the snapshot copier — so it persisted on the army object, was serialised
 // with game state, and a winged rider harried once was immune to Flak Screen for the rest of the
-// GAME. It is now deleted alongside those flags at every one of those five sites. If a new
-// battle-only flag is added, add it to all five. The gyrocopters' side is a record (plan P1-12d31); the prose writes its
+// GAME. It is now deleted alongside those flags wherever they are. A new battle-only flag goes into
+// wipeABattlesMarksFromItsUnits (a-battles-marks-on-its-units-wiped-at-its-end.ts) and the new turn's sweep. The gyrocopters' side is a record (plan P1-12d31); the prose writes its
 // label.
 export function applyFlakScreen(
   myForce: readonly ForceUnit[] | null | undefined,

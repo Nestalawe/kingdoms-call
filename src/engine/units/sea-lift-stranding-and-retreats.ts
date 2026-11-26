@@ -20,6 +20,7 @@ import { getSeaCapability, refreshMovePool } from './movement-pools.ts';
 import { canEnterTerrain } from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import { emit, narrate } from '../turn/events-and-their-audiences.ts';
 import { theUnitsAsTheLineNamesThem } from '../battle/the-facts-a-battles-lines-record.ts';
+import { wipeABattlesMarksFromItsUnits } from '../battle/a-battles-marks-on-its-units-wiped-at-its-end.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { ASideOfABattle } from '../battle/the-facts-a-battles-lines-record.ts';
@@ -602,6 +603,7 @@ export function navalSplitRetreat(
             delete a._fromLeaderless;
             delete a._garrisonOf;
           });
+          wipeABattlesMarksFromItsUnits(real); // they leave the battle before its end, which wipes the rest's
           (asItsGuardReadsIt(G.characters) ?? []).forEach((h: Character | null | undefined) => {
             if (!h || !Array.isArray(h.armies) || !h.armies.some((a) => real.includes(a))) return;
             h.armies = h.armies.filter((a) => !real.includes(a));

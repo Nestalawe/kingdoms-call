@@ -7,6 +7,7 @@
 // it: N12 writes a winning garrison's dead, N13 reads both loss counts. It declares no let a stage after it reads, so
 // the state gains no field. The battle proof (tools/proof/README.md, section 8) finds N11's, N12's and N13's anchors in
 // this file; nothing above N11's draws a die.
+import { wipeABattlesMarksFromItsUnits } from '../a-battles-marks-on-its-units-wiped-at-its-end.ts';
 import {
   KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS,
   KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
@@ -671,19 +672,11 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   }
 
   // Battle-magic strength reductions last only for this battle — units recover afterward.
-  [
+  wipeABattlesMarksFromItsUnits([
     ...(asItsGuardReadsIt(c.armies) ?? []),
     ...(asItsGuardReadsIt(prov.neutralDefenders) ?? []),
     ...(neutralGuardHero?.armies ?? []),
-  ].forEach((a: AUnitInTheBattleAgainstTheDefenders) => {
-    delete a._tempStrReduction;
-    delete a._terrorMult;
-    delete a._archeryRed;
-    delete a._tacUp;
-    delete a._drumUp;
-    delete a._laNoTerrain;
-    delete a._flakTargeted;
-  });
+  ]);
   clearPhantomCopies(c, !won, realCharOf(turnContext, c)); // remove phantom fighting-copies; if c lost, all its phantasmal armies are dismissed
   if (!won && theAttackerAsTheGuardsReadHim) noteBattleLoss(turnContext, c.id, narrative); // AK [3.15] — a beaten general stops Defending
   if (_rollTacticalGain) trySkillGain(turnContext, c, 'tactical', SKILLGAIN_STD, narrative); // Tactical: won a land battle

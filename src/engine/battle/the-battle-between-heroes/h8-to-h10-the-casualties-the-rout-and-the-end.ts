@@ -9,6 +9,7 @@
 // lets it declares (`_stayLo`, `_stayWi`, `_heldField`, `defFriendlyAdj`, `atkFriendlyAdj`) are written and read here
 // alone, so the state gains no field. The battle proof (tools/proof/README.md, section 8) finds H8's, H9's and H10's
 // anchors in this file; nothing above H8's draws a die.
+import { wipeABattlesMarksFromItsUnits } from '../a-battles-marks-on-its-units-wiped-at-its-end.ts';
 import {
   KC_A_BATTLES_DECISIVE_MARGIN_ITS_TRAPPED_UNITS_AND_ITS_BEATEN_SIDES_LESSONS,
   KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
@@ -764,15 +765,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
   }
 
   // Battle-magic strength reductions last only for this battle — units recover afterward.
-  [...(asItsGuardReadsIt(atk.armies) ?? []), ...(asItsGuardReadsIt(def.armies) ?? [])].forEach((a: ArmyInABattle) => {
-    delete a._tempStrReduction;
-    delete a._terrorMult;
-    delete a._archeryRed;
-    delete a._tacUp;
-    delete a._drumUp;
-    delete a._laNoTerrain;
-    delete a._flakTargeted;
-  });
+  wipeABattlesMarksFromItsUnits([...(asItsGuardReadsIt(atk.armies) ?? []), ...(asItsGuardReadsIt(def.armies) ?? [])]);
   clearPhantomCopies(atk, !won, realCharOf(turnContext, atk));
   clearPhantomCopies(def, won, realCharOf(turnContext, def)); // remove phantom fighting-copies; the beaten side loses all its phantasmal armies
 
