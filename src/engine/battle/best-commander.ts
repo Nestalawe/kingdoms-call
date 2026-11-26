@@ -1,8 +1,5 @@
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
-import {
-  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
-  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
-} from '../../content/kingdoms-call-data.ts';
+import { KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE } from '../../content/kingdoms-call-data.ts';
 import { battleFrontWidth, battleLineTotal } from './lines.ts';
 import { tacMulted } from '../units/movement.ts';
 import {
@@ -16,7 +13,12 @@ import { doARealmsDiscoveriesWeightTheLinesBehindTheFront } from '../rules/the-r
 import { charMinor } from '../titles/title-holders-and-battle-merit.ts';
 import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../heroes/effective-skills-and-hidden-heroes.ts';
-import { armStr, provIsCoastal } from './terrain-and-unit-strength.ts';
+import {
+  armStr,
+  provIsCoastal,
+  theBonusACommandersTacticalGivesHisHost,
+  theLevelACommanderFightsWithOnceACurseHasTakenEffect,
+} from './terrain-and-unit-strength.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { ArmyInABattle, HeroInABattle } from '../army-tables.ts';
 import type { Character, Item, Province } from '../../schemas/saved-game-state.ts';
@@ -57,25 +59,16 @@ export function commandScore(
   if (!cand || !pooled?.length) return 0;
   const align = theAlignmentARealmReadsAs(cand.player != null ? (G.players[cand.player]?.alignment ?? '') : '');
   const terrain = (prov?.terrain ?? '') || 'plain';
-  let tact = cand._tacticalNegated
-    ? 0
-    : effStat(turnContext, cand, 'tactical') +
-      theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, cand, title));
-  if (cand._curseHalveStat === 'tactical')
-    tact = Math.floor(tact / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
-  const tacB =
-    terrain === 'sea'
-      ? 1
-      : tacMulted(
-          Math.min(
-            KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-            1 + tact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-          ),
-          cand,
-        );
-  let nav = effStat(turnContext, cand, 'naval');
-  if (cand._curseHalveStat === 'naval')
-    nav = Math.floor(nav / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const tact = theLevelACommanderFightsWithOnceACurseHasTakenEffect(
+    cand,
+    'tactical',
+    cand._tacticalNegated
+      ? 0
+      : effStat(turnContext, cand, 'tactical') +
+          theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, cand, title)),
+  );
+  const tacB = terrain === 'sea' ? 1 : tacMulted(theBonusACommandersTacticalGivesHisHost(tact, true), cand);
+  const nav = theLevelACommanderFightsWithOnceACurseHasTakenEffect(cand, 'naval', effStat(turnContext, cand, 'naval'));
   const navB =
     1 + nav * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   const _coast = provIsCoastal(G, prov);
