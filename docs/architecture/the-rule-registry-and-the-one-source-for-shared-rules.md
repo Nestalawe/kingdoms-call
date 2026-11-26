@@ -21,9 +21,9 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
 - **Within a stage, the effects run in the order its list gives** (`THE_ORDER_OF_EACH_STAGE`), not by a number: a product
   of decimals, and the ladder's words, depend on the order ([traps.md](../traps.md#order-is-data)). The runner finds a unit's
   effects by its type, from a `Map` built once from content as the file loads (an ability whose row says it reaches
-  other units is found under each of them: Hold the Gate under every garrison, Sergeants under the Levies). Where an
-  effect needs what only the resolver's grid can say, the runner takes it from the resolver, never the effect: whether
-  the enemy's line holds a unit, and the worth of each shot, worked out only for a shooter that picks its target.
+  other units is found under each of them: Sergeants under the Levies). Where an effect needs what only the resolver's
+  grid can say, the runner takes it from the resolver, never the effect: whether the enemy's line holds a unit, and the
+  worth of each shot, worked out only for a shooter that picks its target.
 - **The stages written so far:** `strength: the whole force`, the unit's factor from its force (in `armStr`,
   through `unitAbilityMult`): Sheer Numbers, Reaver Crews, Shoal Swarm, Relentless Hunt, Stone Deterrent, Tidal Might,
   Deepwater Grasp, Wyrmscale and Air Superiority, in that order. Facing, four stages that take the multiplier
