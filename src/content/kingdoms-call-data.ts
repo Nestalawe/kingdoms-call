@@ -12492,8 +12492,7 @@ export const SAGE_DISCOVERIES_P = [
     name: 'Messenger Birds',
     category: 'Espionage',
     desc: 'You receive [Intelligence] notifications even from provinces two steps away from yours.',
-    // R-140: retired for now. Its warnings need eyes in the province, so it does nothing: no realm is offered it, and a
-    // realm that holds it keeps it in its records.
+    // retired: R-140
     retired: true,
     effect: { kind: 'extendedIntel' },
   },
