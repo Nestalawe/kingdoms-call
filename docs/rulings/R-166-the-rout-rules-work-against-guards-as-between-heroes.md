@@ -11,9 +11,11 @@ Four rules of the rout work in a battle against a province's guards as in one be
 - the guards' beaten Cave Trolls roll Regenerating Hide's 30%;
 - the guards' beaten Shield Fort, and a Knightly Example, stop a survivor dropping a tier.
 
-Either side's winner: a guard's own Manticores and Shark Shoals hunt a beaten hero too, as between heroes. The guards'
-survivors keep their tier when they held a Shield Fort in the battle, or have a Gilded Lances company among them. No
-unit's text gives an exception; the Warg Riders' text and the rulebook say a guard's own wargs run a beaten army down.
+No unit's text gives an exception; the Warg Riders' text and the rulebook say a guard's own wargs run a beaten army
+down.
+
+**Open:** whether a guard's own Manticores and Shark Shoals hunt a beaten hero too (question 159). As built, yes: either
+side's winner hunts, as between heroes.
 
 The question was: four rout rules skip a battle against a province's guards. Option 1: "each ability works against
 guards as between heroes".

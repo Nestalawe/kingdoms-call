@@ -788,7 +788,8 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
   } catch {
     // the statistics never stop a battle
   }
-  // (R-166: whether the beaten defenders held a Shield Fort, which the erosion of their survivors reads.)
+  // (R-166: whether the beaten defenders held a Shield Fort, and their force as it fought, the fallen too, which the
+  // erosion of their survivors reads: the Knightly Example asks it, as between heroes.)
   return {
     won,
     narrative,
@@ -796,5 +797,6 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
     atkLost: _telAtkLost,
     defLost: _telDefLost,
     theBeatenDefendersHeldAShieldFort: won && _npcSFDef,
+    theBeatenDefendersAsTheyFought: won ? defenders : [],
   };
 }

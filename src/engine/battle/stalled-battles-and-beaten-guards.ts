@@ -196,6 +196,7 @@ export function resolveStalledBattles(
           },
           attacker.name,
           battle.theBeatenDefendersHeldAShieldFort,
+          battle.theBeatenDefendersAsTheyFought,
         );
         if (liveGuard) guard.armies = surv;
         if (surv.length > 0) {
