@@ -6,9 +6,9 @@
 // the `[Save check]` line, and the message says it too). resolveTurn still checks and tells (the balance matrix fails a
 // game on any place), so the tests' staged worlds, which aren't whole saves, still play.
 // The known list holds the Parked leaks of a battle's marks, each a field a turn of today's build can still save (none
-// reported live): a garrison company's strength cuts and its dead mark after a fall-back, or on a beaten force's hulls
-// left ashore; a garrison company's rally tag; a hero slain with no host and raised the same turn. Each entry names its
-// Parked entry, and each leak's fix removes its entry. Not the balance matrix's list
+// reported live): a garrison company's dead mark; a garrison company's rally tag; a hero slain with no host and raised
+// the same turn. And a garrison company's strength cuts, which a save written before the new turn wiped them may hold:
+// the save's next turn wipes them. Each entry names its Parked entry, and each leak's fix removes its entry. Not the balance matrix's list
 // (tools/balance/a-game-fails-on-the-save-check.ts), which lets no leak through.
 // Its dice: the upgrade renames an old world's lairs from the dice (a world without _lairNamesV3); on the copy it draws
 // from dice of its own, lent for the check and given back, so the page's dice, and the seed the shell then draws for
@@ -26,20 +26,20 @@ export interface AKnownPlaceTheSaveCheckFinds {
 }
 
 const A_GARRISON_COMPANYS = String.raw`^world\.provinces\.\d+\.garrisonArmies\.\d+: a field this build doesn't know, `;
-const THE_GARRISONS_STRENGTH_CUTS = "A garrison unit can keep a battle's strength cuts in the save";
-const THE_HULLS_LEFT_ASHORE = "A beaten force's hulls can carry a battle's marks into the garrison";
+const AN_OLDER_SAVES_STRENGTH_CUTS =
+  "A save written before the new turn wiped a garrison's battle marks may hold them: its next turn wipes them";
 
 /** The known places: a turn runs on a save holding one, and the GM is told. Each fix removes its entry. */
 export const THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON: readonly AKnownPlaceTheSaveCheckFinds[] = [
   {
     place: new RegExp(A_GARRISON_COMPANYS + '_tempStrReduction$'),
-    parked: `${THE_GARRISONS_STRENGTH_CUTS}; ${THE_HULLS_LEFT_ASHORE}`,
+    parked: AN_OLDER_SAVES_STRENGTH_CUTS,
   },
   {
     place: new RegExp(A_GARRISON_COMPANYS + '_archeryRed$'),
-    parked: `${THE_GARRISONS_STRENGTH_CUTS}; ${THE_HULLS_LEFT_ASHORE}`,
+    parked: AN_OLDER_SAVES_STRENGTH_CUTS,
   },
-  { place: new RegExp(A_GARRISON_COMPANYS + '_died$'), parked: THE_GARRISONS_STRENGTH_CUTS },
+  { place: new RegExp(A_GARRISON_COMPANYS + '_died$'), parked: 'A garrison company can keep `_died` in the save' },
   {
     place: new RegExp(A_GARRISON_COMPANYS + '_fromGarrison$'),
     parked: 'A garrison company can keep `_fromGarrison` in the save',
