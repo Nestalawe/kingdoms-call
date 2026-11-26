@@ -423,6 +423,31 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'pcCastCombatSpell',
     "B-06bp, a combat spell's cast: content's rows (KC_A_COMBAT_SPELL_CAST_IN_PERSONAL_COMBAT, KC_THE_MOST_HP_OF_A_FIGHTER_WHOSE_RECORD_HOLDS_NONE)",
   ],
+  [
+    'src/engine/bots/intel.ts',
+    'botBattleForce',
+    "B-06bq, Tactical's and Naval's rise and Tactical's most: the battle's row (KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE); the levels weighed: the bots' weights (battleStrength)",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botGuessDefence',
+    "B-06bq, the guess's unit, tax cuts, units and a rival's factor: the bots' weights (battleStrength)",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botMarginFor',
+    "B-06bq, the margin's floors, ease and stake: the bots' weights (battleStrength)",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'BOT_DEF_BONUS',
+    "B-06bq, the defender's edge: the battle's row (KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE)",
+  ],
+  [
+    'src/engine/bots/intel.ts',
+    'botDruidShortfall',
+    "B-06bq, a Druid shortfall's step: content's row (KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');

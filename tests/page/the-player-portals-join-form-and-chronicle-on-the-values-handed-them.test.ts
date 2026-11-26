@@ -1,10 +1,11 @@
 // The player portal's join form and its chronicle on the values handed them (plan P1-16n): the lines P1-16n changed in
 // join-and-chronicle.ts that the screen tours don't reach, or reach only in part (npm run proof:tours), each run here on
-// the value that reaches it, so a fault planted in one is red: the join form (its box, its skills, its checks before the
-// realm is sent, the database's refusals), and the chronicle (the game's end, the heroes' sections by phase, the
-// battles' sides, the tinted names, a name that starts another tinted whole (P1-21s), the intelligence and the
-// dispatches). A battle's side is read by the kind the report gives its line alone (a line whose words open with the
-// force marker, with no kind, is a line), and its colour only as six hex digits (any other form: the default grey).
+// the value that reaches it, so a fault planted in one is red: the join form (its box, its skills, the alignment it falls
+// back to when one is taken, its checks before the realm is sent, the database's refusals), and the chronicle (the
+// game's end, the heroes' sections by phase, the battles' sides, the tinted names, a name that starts another tinted
+// whole (P1-21s), the intelligence and the dispatches). A battle's side is read by the kind the report gives its line
+// alone (a line whose words open with the force marker, with no kind, is a line), and its colour only as six hex digits
+// (any other form: the default grey).
 // Level 4 (page): the file loads the page's start-up (its database client), so no lower level reaches it; the portal is
 // booted in jsdom (tests/lib/boot.ts) on a fake Db at an older database, so it stops at its notice with every module
 // loaded, and each case stages the screen's state as the tours do.
@@ -12,6 +13,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest'
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
 import type { ADatabaseAnswer, Db } from '../../src/db/the-db-interface-and-its-areas.ts';
+import { THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 const errs: string[] = [];
 let P: PageWindow;
@@ -160,6 +162,17 @@ describe('the join form', () => {
     expect(textOf('join-game-info')).toContain('Game Master: Warden Pell');
     expect(textOf('join-game-info')).toContain('World size: 4 realms');
     expect(textOf('join-game-info')).toContain('There are 2 open slots.');
+  });
+  test("an alignment another realm holds, chosen, falls back to the one a realm of none reads as (its row's, B-06br)", async () => {
+    answers['slots'] = () => ok([{ game_id: 'G2', player_index: 0, alignment: 'Divine' }]);
+    const theChoice = theElement('join-alignment') as HTMLSelectElement;
+    theChoice.value = 'Divine';
+    await theJoinFormOpen();
+    expect(theChoice.value, 'the alignment chosen once Divine is taken').toBe(THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS);
+    expect(textOf('join-alignment'), 'Divine is offered as taken').toContain('Divine (taken)');
+    theChoice.value = 'Good';
+    await theJoinFormOpen();
+    expect(theChoice.value, 'an alignment no realm holds stays chosen').toBe('Good');
   });
   test('the skills: one point left reads "point"; a skill taken back to 0 leaves the list; a skill of no name shows its key', async () => {
     await theJoinFormOpen();

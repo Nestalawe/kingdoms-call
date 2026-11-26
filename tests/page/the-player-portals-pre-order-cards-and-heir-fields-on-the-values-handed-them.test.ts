@@ -3,13 +3,15 @@
 // each run here on the value that reaches it, so a fault planted in one is red: the heir's name and temper, the Blood
 // Offering's choices, Resubmit, a target field rebuilt, a field built for a hero the report doesn't hold, a raised
 // hero's card moved to its earlier caster with its orders carried over, the card of a hero hired by a hero hired this
-// turn, and a card's orders poured back from the saved draft.
+// turn, a card's orders poured back from the saved draft, and the temper and alignment of a raised or charmed hero of
+// none.
 // Level 4 (page): pre-orders.ts loads the page's start-up (its database client), so no lower level reaches it; the
 // portal is booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with
 // every module loaded.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { makeAFakeDb } from '../lib/fake-db.ts';
+import { THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 const errs: string[] = [];
 let P: PageWindow;
@@ -371,6 +373,38 @@ describe('a raised or a charmed hero of no temper (B-06ak)', () => {
     expect(tempers({}, {})).toEqual(['Brave', 'Brave']);
     expect(tempers({ temper: '' }, { temper: '' })).toEqual(['Brave', 'Brave']);
     expect(tempers({ temper: 'Cautious' }, { temper: 'Cowardly' })).toEqual(['Cautious', 'Cowardly']);
+    expect(errs, 'no page error').toEqual([]);
+  });
+});
+
+describe('a raised or a charmed hero of no alignment (B-06br)', () => {
+  test("his card's hero reads as the alignment a realm of none reads as (its row's); one of an alignment keeps his", () => {
+    const alignments = (dead: Record<string, unknown>, wanderer: Record<string, unknown>): unknown => {
+      stage(
+        `currentReport = ${JSON.stringify({
+          characters: [{ id: 1, name: 'Healer', alive: true, skills: { white: 3 }, armies: [], items: [] }],
+          knownDeadHeroes: [{ id: 7, name: 'Fallen Friend', race: 'Elven', locationId: 3, ...dead }],
+          visibleChars: [{ id: 5, name: 'Wandering Wren', isKing: false, armies: 0, locationId: 3, ...wanderer }],
+        })};`,
+      );
+      doc.body.insertAdjacentHTML(
+        'beforeend',
+        `<div id="na-test"><div class="orders-char-block"><select id="po-action-1-0"></select></div></div>`,
+      );
+      call('injectResurrectOrders', 1, 0, 7, null);
+      call('injectCharmOrders', 1, 0, 5, 'charm-orders-test');
+      const held = stage(
+        `['resurrect_7_via_1_ph0', 'charm_5_via_1_ph0'].map((id) => (currentReport.characters.find((c) => c.id === id) || {}).alignment)`,
+      );
+      doc.getElementById('na-test')?.remove();
+      doc.getElementById('resurrect-orders-7')?.remove();
+      doc.getElementById('charm-orders-test')?.remove();
+      return held;
+    };
+    const none = THE_ALIGNMENT_A_REALM_OF_NONE_READS_AS;
+    expect(alignments({}, {}), 'none given').toEqual([none, none]);
+    expect(alignments({ alignment: '' }, { alignment: '' }), 'an empty one').toEqual([none, none]);
+    expect(alignments({ alignment: 'Evil' }, { alignment: 'Druidic' }), 'his own').toEqual(['Evil', 'Druidic']);
     expect(errs, 'no page error').toEqual([]);
   });
 });

@@ -87,7 +87,13 @@ always (even at 0, and when a fervour wins); against a province's defenders the 
 **The Druid waiver** (Druidic Creatures, Evil Monsters: two rows, no number) is read by `druidNeedWaivedByAlignment`
 in `src/engine/rules-on-plain-values/`, which the player portal shares and which may import only `src/content`: it
 reads the rows' alignments, the realm's or the leader's own (Decision G), and their entries have no stage (the
-registry's unit test lists them).
+registry's unit test lists them). The player portal reads two more rows from `src/content` itself (B-06bs): the order
+form's Research forecast adds Neutral's scholars' points for a realm of the row's alignment, and the report screen's
+guide to the beasts names Home of the Wild's and Savage Fury's factors for a realm of each row's alignment. The words that restate a
+creed's rule read its rows too (B-06bt): Bless Province's hint, consecrated ground's tax and cut, war without warning, a
+broken alliance, the kings' first skills and the one Divine and one Undead realm a game in the portal
+(`ui/player/the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts`), the battle lines' and
+the realm works' lines; a number written as a word ("twice") stays, held to its row by a static test.
 
 **Who may give an order** (P1-19aw2, `alignment-abilities/who-may-give-an-alignment-order.ts`): Decision H reverses
 P1-19's Decision 2 (no registry entry for an order).
@@ -168,8 +174,11 @@ A new mark is an optional field of the save, with its read, lay and wipe here.
   `rules-on-plain-values/` (the battles, a commander's score, a hero's hire, the Broker's and the Charm's wage, the
   Wonder, the heir); a hero's name of an alignment with no name pools is drawn from its pools. The bots ask it too
   (P1-19bb6: their estimates, their hires and `botAlignOf`); a bot with no alignment left to take is dealt the
-  constant, and an alignment with no first skills of its own takes the constant's. No game holds a realm of none:
-  unit cases hold the constant and the bots' reads.
+  constant, and an alignment with no first skills of its own takes the constant's. The player portal and the
+  reports' views ask the helper too (B-06br: turn zero's set-up, the order form's Perform Rite and Hire Hero fields,
+  a raised or charmed hero's card, the report screen, the ledger's hire wage, the views' two hire wages and a fallen
+  hero in the turn report), and the join form falls back to the constant when the alignment chosen is taken. No game holds a realm
+  of none: unit and page cases hold the constant, the bots' reads and the portal's.
 - **The risen dead's race** is `THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS` ('Undead'), a constant beside the rows
   (P1-19bb2): every raising (Harvest the Field, the Necromancy spells, the Iron Throne, an Undead king's skeletal
   company) makes its units of it, and Control Undead finds the dead by it. It is a unit's race, not an alignment. The

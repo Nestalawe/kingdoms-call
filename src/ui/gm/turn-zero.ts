@@ -22,6 +22,7 @@ import { theElementFound } from './game-list.ts';
 import { theElementWithTheId } from '../shared/the-pages-element-with-the-id.ts';
 import { theField, thisOrElse } from '../shared/a-value-of-any-kind-read-as-javascript-reads-it.ts';
 import { asItsGuardReadsIt } from '../../engine/rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { theAlignmentARealmReadsAs } from '../../engine/rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { refuseASaveThatIsNotAGameInPlay } from '../../engine/saves/upgrade-a-saved-game-and-check-it.ts';
 import type { ARealm } from '../../db/the-db-interface-and-its-areas.ts';
 
@@ -170,7 +171,7 @@ export async function runTurn0() {
         kingName: (setup.kingName ?? '') || p.display_name || `King ${String(p.player_index + 1)}`,
         kingdomName: (setup.kingdomName ?? '') || p.display_name || `Realm ${String(p.player_index + 1)}`,
         race: (setup.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS,
-        alignment: (setup.alignment ?? '') || 'Neutral',
+        alignment: theAlignmentARealmReadsAs(setup.alignment),
         temper: (setup.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
         skills: theSkillsOrNone(setup.skills),
       };

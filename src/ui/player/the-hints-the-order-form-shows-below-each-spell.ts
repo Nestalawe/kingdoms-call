@@ -9,12 +9,15 @@
 // each hint against its row, and Telekinetic Storm's, Plague's, Lightning Bolt's and Hand of Death's against the words
 // of the turn's rule (R-136).
 import { SPELL_EFFECTS_THE_REGISTRY_HOLDS } from '../../content/spell-effects-their-names-numbers-and-words.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 
 const FIREBALL = SPELL_EFFECTS_THE_REGISTRY_HOLDS.fireball.combat;
 const HOLY_SYMBOL = SPELL_EFFECTS_THE_REGISTRY_HOLDS['holy-symbol'].combat;
 const SPIRITWRACK = SPELL_EFFECTS_THE_REGISTRY_HOLDS.spiritwrack.combat;
 const PSYCHIC_BLAST = SPELL_EFFECTS_THE_REGISTRY_HOLDS['psychic-blast'].combat;
 const INVISIBILITY = SPELL_EFFECTS_THE_REGISTRY_HOLDS.invisibility.combat;
+/** A Divine realm's blessing (B-06bt): its creed and its two yields, from its row, as the turn reads them. */
+const THE_DIVINE_BLESSING = ALIGNMENT_ABILITIES['the-divine-blessing'];
 
 /** The hint shown below the order form for each spell, by its name. */
 export const SPELL_HINTS = {
@@ -22,8 +25,7 @@ export const SPELL_HINTS = {
     'Target: a dead hero whose body lies in your caster\u2019s province. Revives at full HP, stripped of all items and armies, and joins your command. Only a hero who never served ANOTHER realm can be raised \u2014 your own fallen, or a wanderer who was never in a rival\u2019s pay; a hero who ever served another crown (even one later released or who deserted) will not answer. Your own fallen KING can also be recalled — their body is borne to your home province (or wealthiest if home is lost); only your most recently fallen monarch may be raised, and only by your realm. A resurrected king reclaims the throne; any reigning heir steps down to a normal hero.',
   'Part Sea':
     'Target: any sea OR land province you\u2019re in or next to (so you can pre-empt a Flood). A sea province \u2014 including a land province flooded to sea earlier this turn \u2014 becomes dry plains for the rest of the turn (land armies may cross); no fleet may enter or leave from the next phase on. Cast on still-dry land it simply finds no sea to part. Cancels Flood.',
-  'Bless Province':
-    'Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+80% for Divine realms; +100% when the Divine KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.',
+  'Bless Province': `Target: a province you\u2019re in or adjacent to. +60% tax base at collection this turn (+${String(THE_DIVINE_BLESSING.theNumbers.byTheRealmsCasters.value)}% for ${THE_DIVINE_BLESSING.alignment} realms; +${String(THE_DIVINE_BLESSING.theNumbers.byTheKingInPerson.value)}% when the ${THE_DIVINE_BLESSING.alignment} KING casts it). The ground is also warded \u2014 50% + 5% per White level (counted to 5, so 50\u201375%) to turn aside each enemy Flood, Earthquake, Plague or Part Sea cast here this turn. One Bless per province \u2014 does not stack.`,
   'Holy Symbol': `Action: no target \u2014 cleanses the province you stand in of ALL its battlefield dead. Every grave there is laid to rest and can never be raised by a necromancer. Combat: enemy \u2212${String(HOLY_SYMBOL.theCutToTheTargetsAimALevel.value)}%/level to hit and seared for ${String(HOLY_SYMBOL.theShareOfMaximumHpItSears.value)}% of its health, both \u00d7${String(HOLY_SYMBOL.theMultiplierAgainstTheUndeadAndFiends.value)} against undead and fiends; you recover ${String(HOLY_SYMBOL.theShareOfHisOwnMaximumHpTheCasterRecovers.value)}% of your health. Battle: enemy undead units fight at 75% strength.`,
   Spiritwrack: `Combat: silences the target for ${String(SPIRITWRACK.theRoundsItSilences.value)} round + 1 per two White levels (max ${String(SPIRITWRACK.theMostRounds.value)}) \u2014 it can\u2019t cast or use archery (it attacks instead) and its melee is halved. Against a guardian weak to White Magic it takes at 95% and lasts ${String(SPIRITWRACK.theRoundsLongerAgainstAGuardianWeakToWhite.value)} round longer (max 4); Powerful and Legendary guardians may shrug it off each round after the first. Battle: all missile units fight at half strength.`,
   Charm:

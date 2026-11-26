@@ -414,6 +414,24 @@ describe('the read-only view: the realm card', () => {
     theViewOf({ kingdom: { alignment: 'Zany', taxIncome: 3 } });
     expect(textOf('report-kingdom')).toMatch(/^Treasury0g Tax Income3g\/turnBase province tax: 3gno bonuses/);
   });
+  test("the beasts' guide: a Druidic realm's Creatures, an Evil realm's Monsters, word for word, and none for the other creeds (B-06bs)", () => {
+    const theGuides = (alignment: string | undefined): string[] => {
+      theViewOf({ kingdom: { alignment } });
+      return [...theElement('report-kingdom').querySelectorAll('div')]
+        .filter((d) => (d.getAttribute('style') ?? '').includes('background:#f5f0e8;border:1px solid var(--stone)'))
+        .map((d) => d.textContent.replace(/\s+/g, ' ').trim());
+    };
+    const CREATURES =
+      '[C] Creatures: Thunderbirds, Forest Ents, Great Bears, Stone Giants, Unicorn Herd, Mammoth Host, Crimson Rocs, Whale Cohort, Great Turtles';
+    expect(theGuides('Druidic')).toEqual([
+      `🌿 Druidic bonuses — [C] Creature armies get no Druid penalty and fight at ×1.5 in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. ${CREATURES}`,
+    ]);
+    expect(theGuides('Evil')).toEqual([
+      `💀 Evil bonuses — [M] Monster armies get no Druid penalty and lift the whole host to ×1.25 in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest, by each hero's doctrine: Terror plunders 50% of its tax; Enslave presses a free Green garrison unit, and the province pays 1g less tax for 3 turns. ${CREATURES} [M] Monsters: Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals`,
+    ]);
+    for (const alignment of ['Good', 'Divine', 'Neutral', 'Pagan', 'Undead', '', undefined])
+      expect(theGuides(alignment), `a realm of ${String(alignment)}`).toEqual([]);
+  });
   test('the heroes: health, pace, temper, place, wage, items, titles and the armies they lead', () => {
     theViewOf({ kingdom: { color: '#3366aa' }, characters: A_HEROES });
     expect(theElement('report-kingdom').querySelectorAll('.char-card').length).toBe(4);

@@ -25,9 +25,12 @@ import {
   whyAKingMayNotConsecrateAProvince,
   aBloodOfferingMayTakeTheCompany,
   theCompaniesABloodOfferingGivesAndRaises,
+  theAlignmentARealmReadsAs,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { L79_ORDERS } from './l79-orders.ts';
+import { CONSECRATED_GROUND_IN_THE_CONSECRATE_HINT } from './the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts';
 import {
   DIRECTIONS,
   gdHintFor,
@@ -1266,7 +1269,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         ? kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="⚠ ${warn}" readonly style="border-color:var(--crimson);color:var(--crimson)">`
         : kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="${okMsg}" readonly>`;
       return kcHtml`${inputBox}
-        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: +50% tax, defenders twice as likely to fight fanatically, Undead/Evil invaders −15%. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your king's trained <strong>White skill level</strong> at once (one more with Holy Sites, from White 3); a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;
+        <div style="font-size:.68rem;color:var(--stone);margin-top:2px">Sanctifies the province ${c.name} stands in: ${CONSECRATED_GROUND_IN_THE_CONSECRATE_HINT}. Your fallen characters can ONLY be restored on consecrated ground — they rise in the nearest consecrated province, which then loses its consecration. Rules: it must be a province you own; <strong>not</strong> your home province or any province next to it; and <strong>no two consecrated provinces may be adjacent</strong>. You may hold up to your king's trained <strong>White skill level</strong> at once (one more with Holy Sites, from White 3); a consecrated province that is captured loses its consecration at once and frees a slot (an Undead conqueror's units each gain an experience level for the sacrilege; an Evil conqueror's have a 50% chance; other realms gain nothing).</div>`;
     }
     // ── GOOD: CALL TO ARMS ──
     case 'Call to Arms': {
@@ -1347,7 +1350,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
       if (
         !aRealmOfThisCreedMayGiveTheAlignmentOrder(
           theAlignmentOrdersRow('Perform Rite'),
-          (report.kingdom?.alignment ?? '') || 'Neutral',
+          theAlignmentARealmReadsAs(report.kingdom?.alignment),
         )
       )
         return kcHtml`<input id="po-target-${c.id}-${ph}" type="text" value="" placeholder="Only Pagan realms keep the old rites" disabled>`;
@@ -1511,7 +1514,13 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
     case 'Research': {
       const sg = Math.min(5, effSkillP(c, 'sage'));
       const per = 5;
-      const neutral = report.kingdom?.alignment === 'Neutral' ? sg * 5 : 0;
+      // a Neutral realm's scholars: their row's alignment and the points each Sage level adds (P1-19av1's row, as the
+      // turn's Research reads it)
+      const theScholars = ALIGNMENT_ABILITIES['neutral-scholars'];
+      const neutral =
+        report.kingdom?.alignment === theScholars.alignment
+          ? sg * theScholars.theNumbers.thePointsASageLevelAdds.value
+          : 0;
       const chance = sg * per + neutral;
       // choose a FIELD of study. Categories with every discovery already made are greyed out.
       const cats = report.researchCategories ?? [];
@@ -1678,7 +1687,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         // Alignment-distance pricing: wage = 2g +1g per 2 spectrum steps between the hero's
         // alignment and YOUR KINGDOM's. Divine and Undead crowns cannot hire one another
         // (Diplomatic Protocols discovery waives the ban — the GM engine handles that at resolution).
-        const kAlign = (report.kingdom?.alignment ?? '') || 'Neutral';
+        const kAlign = theAlignmentARealmReadsAs(report.kingdom?.alignment);
         const wage = heroHireWageOfP(h, report);
         if (wage == null)
           return kcHtml`<option value="" disabled>${h.name} (${h.race}/${h.alignment}) — will NOT serve a ${kAlign} crown</option>`;

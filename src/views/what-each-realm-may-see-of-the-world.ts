@@ -41,6 +41,7 @@ import {
 import type { ARealmsStanding } from '../engine/titles/reckoning.ts';
 import { topSkillOf } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theAlignmentARealmReadsAs } from '../engine/rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { doARealmsDiscoveriesWaiveTheHiringBan } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import {
   armySizeBand,
@@ -576,7 +577,9 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
             alignment: h.alignment,
             temper: h.temper,
             topSkill: topSkillOf(skillsOf(c)),
-            hireWage: h._isNeutralGuard ? null : heroHireWage(me.alignment || 'Neutral', c.alignment, sd31, c),
+            hireWage: h._isNeutralGuard
+              ? null
+              : heroHireWage(theAlignmentARealmReadsAs(me.alignment), c.alignment, sd31, c),
           }
         : {}),
       ...(list === 'itSees' && h.player !== null ? { untargetable: encounterUntargetableReason(c) } : {}),
@@ -817,7 +820,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
         temper: asSaved(h).temper,
         topSkill: topSkillOf(skillsOf(h)),
         pay: asSaved(h).pay,
-        hireWage: heroHireWage(me.alignment || 'Neutral', h.alignment, sd31, h),
+        hireWage: heroHireWage(theAlignmentARealmReadsAs(me.alignment), h.alignment, sd31, h),
       }));
 
     const heroesTheMapShowsHere =

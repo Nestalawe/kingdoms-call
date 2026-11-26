@@ -1,11 +1,13 @@
 import { kcHtml, type KcSafeHtml } from '../shared/kc-safe.ts';
 import { KC_SEASONS } from '../../content/kingdoms-call-data.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   asItsGuardReadsIt,
   countsAgainstBeastCommand,
   dispFloor,
   itemUsableBy,
   skillFameLabelM,
+  theAlignmentARealmReadsAs,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { kcJoinP } from './a-list-of-kchtml-pieces-joined-by-a-separator.ts';
 import { thePagesDb } from './startup.ts';
@@ -557,7 +559,7 @@ export function renderReportView(report: TheReportAsTheReportScreenReadsIt) {
   const armyWages = (kingdom.armyWages ?? 0) || 0;
   const heroWages = (kingdom.heroWages ?? 0) || 0;
   const netIncome = taxIncome - armyWages - heroWages;
-  const playerAlignment = (kingdom.alignment ?? '') || 'Neutral';
+  const playerAlignment = theAlignmentARealmReadsAs(kingdom.alignment);
 
   const ALIGNMENT_SUMMARIES: Readonly<Partial<Record<string, string>>> = {
     Divine: `Your realm walks in the light of the divine. All heroes recover twice as much HP when they Rest (60% of maximum HP rather than the usual 30%). Your White Magic spells draw on deeper power — Bless Province adds 80% of a province's tax value rather than 60%, and when the KING works the blessing in person, the province yields a full 100% more. Should any of your characters — king or hero — fall, divine grace will return them to life after one full turn in death, restored to half health but stripped of armies and items — but ONLY upon consecrated ground: they rise in the nearest consecrated province you still hold, and the miracle spends that province's consecration. If the realm holds no consecrated province when the time comes, the grace is lost (a fallen king is then succeeded by an heir). Consecrate: your king may sanctify owned provinces, up to his White skill level at once (not the home province or its neighbours, and never two side by side — the crown's hearth was already anointed at the coronation, and the gods bid you carry the light outward). Consecrated ground yields +50% tax, its defenders are twice as likely to fight with fanatical zeal, Undead and Evil hosts attacking it fight at −15%, and it is where your fallen are restored. Guard it: a consecrated province that is captured loses its consecration at once, and each unit of the army that takes it has a 50% chance to gain an experience level. Your armies fight with a 50% chance of fanatical zeal — the highest of any alignment. But beware: your court is priced at the far end of the alignment spectrum — dark-hearted heroes cost dearly, and Undead heroes will never serve you at all.`,
@@ -596,14 +598,18 @@ export function renderReportView(report: TheReportAsTheReportScreenReadsIt) {
     </div>`
     : '';
 
+  // the beasts' guide: the Druidic and Evil battle abilities' rows, their alignments and factors (Home of the Wild's
+  // Creatures in forest and jungle, Savage Fury's host with a Monster in it)
+  const theWild = ALIGNMENT_ABILITIES['home-of-the-wild'];
+  const theFury = ALIGNMENT_ABILITIES['savage-fury'];
   const cmGuide =
-    playerAlignment === 'Druidic' || playerAlignment === 'Evil'
+    playerAlignment === theWild.alignment || playerAlignment === theFury.alignment
       ? kcHtml`
     <div style="font-size:.72rem;color:var(--stone);background:#f5f0e8;border:1px solid var(--stone);border-radius:2px;padding:5px 8px;margin-bottom:8px">
-      ${playerAlignment === 'Druidic' ? kcHtml`🌿 <strong>Druidic bonuses</strong> — <span style="color:#1d5a1d"><strong>[C] Creature</strong></span> armies get no Druid penalty and fight at ×1.5 in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1.` : ''}
-      ${playerAlignment === 'Evil' ? kcHtml`💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×1.25 in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest, by each hero's doctrine: Terror plunders 50% of its tax; Enslave presses a free Green garrison unit, and the province pays 1g less tax for 3 turns.` : ''}
+      ${playerAlignment === theWild.alignment ? kcHtml`🌿 <strong>Druidic bonuses</strong> — <span style="color:#1d5a1d"><strong>[C] Creature</strong></span> armies get no Druid penalty and fight at ×${theWild.theNumbers.theStrengthOfACreature.value} in forest/jungle; every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1.` : ''}
+      ${playerAlignment === theFury.alignment ? kcHtml`💀 <strong>Evil bonuses</strong> — <span style="color:#701010"><strong>[M] Monster</strong></span> armies get no Druid penalty and lift the whole host to ×${theFury.theNumbers.theStrengthOfTheHost.value} in every battle (not stacking with zeal); every level of Druid your commander holds adds +20% to them. Your king starts with Druid +1. On decisive wins: Terror effect, and Reign of Fear — your Monsters fight ×1.5 attacking ground your Terror grips. On province conquest, by each hero's doctrine: Terror plunders 50% of its tax; Enslave presses a free Green garrison unit, and the province pays 1g less tax for 3 turns.` : ''}
       <br><span style="color:#1d5a1d;font-weight:600">[C] Creatures:</span> Thunderbirds, Forest Ents, Great Bears, Stone Giants, Unicorn Herd, Mammoth Host, Crimson Rocs, Whale Cohort, Great Turtles
-      ${playerAlignment === 'Evil' ? kcHtml`<br><span style="color:#701010;font-weight:600">[M] Monsters:</span> Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals` : ''}
+      ${playerAlignment === theFury.alignment ? kcHtml`<br><span style="color:#701010;font-weight:600">[M] Monsters:</span> Cave Trolls, Manticore Pride, Basilisk Brood, Sea Giants, Eldritch Kraken, Elder Dragons, Titan Warbeasts, Dread Hydras, Shark Shoals` : ''}
     </div>`
       : '';
   // Royal-succession skill allocation is rendered at the TOP of the orders column now

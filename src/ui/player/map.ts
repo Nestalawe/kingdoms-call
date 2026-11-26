@@ -28,6 +28,7 @@ import {
 import { heroBlocksP, heroGroupP, refreshHeroMoveButtonsP } from './move-analysis.ts';
 import { thePagesDb } from './startup.ts';
 import { asItsGuardReadsIt } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
+import { CONSECRATED_GROUND_IN_THE_MAPS_TOOLTIP } from './the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts';
 import type { AProvinceThePopupReads } from './map-symbols.ts';
 import type { TheReportAsTheTitlesReadIt } from './titles.ts';
 
@@ -988,7 +989,7 @@ export function renderMapIntoSvg(svgEl: Element, report: TheReportAsTheMapDrawsI
           );
           if (pd.consecrated)
             h.push(
-              kcHtml`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (+50% tax, defenders twice as fanatical, Undead/Evil attackers \u221215%, resurrections return here)</span>`,
+              kcHtml`<br><span style="color:#f0d060">\u2728 Consecrated \u2014 holy ground (${CONSECRATED_GROUND_IN_THE_MAPS_TOOLTIP}, resurrections return here)</span>`,
             );
           h.push(_grandDesignNote(pd));
           h.push(terrorNoteP(pd)); // item 23: an Evil realm sees the Terror

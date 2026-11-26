@@ -9,6 +9,7 @@ import {
   TITLE_DEFS,
 } from '../content/kingdoms-call-data.ts';
 import { THE_ALIGNMENT_ORDERS } from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { theAlignmentARealmReadsAs } from '../engine/rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   ARMY_COST_MASTER,
   ARMY_SPEED_MASTER,
@@ -866,7 +867,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
         killedOnTurn: g.killedOnTurn,
         race: (g.race ?? '') || null,
         skills: g.skills ?? {},
-        alignment: (g.alignment ?? '') || 'Neutral',
+        alignment: theAlignmentARealmReadsAs(g.alignment),
         temper: (g.temper ?? '') || THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
         locationId: locId,
         locationName: (g.locationName ?? '') || 'unknown',

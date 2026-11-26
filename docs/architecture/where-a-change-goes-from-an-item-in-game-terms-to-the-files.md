@@ -43,7 +43,7 @@ a hint by its words or its function's name, not by the file's name.
 | Sight: who sees whom, spotting, what a province shows | `sight/`, and `src/views/what-each-realm-may-see-of-the-world.ts` |
 | The warnings of a rival's hero in your land | `turn/intrusion-warnings.ts` |
 | Spies: what a spy learns | `espionage/`, and the espionage orders in `orders/` |
-| Relations between realms, captures | `realms/`; the three states and the Treat in `src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts`, the diplomacy ladder (each declaration's step, the overture's kind, the small game's alliance limit) in `src/content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts`, and the key of a pair and its entry's one reader in `rules-on-plain-values/how-two-realms-stand-…` |
+| Relations between realms, captures | `realms/`; the three states, the Treat and the map's name for each state in `src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts` (the player portal's popup and Diplomacy card read them too: `ui/player/map-symbols.ts`), the diplomacy ladder (each declaration's step, the overture's kind, the small game's alliance limit) in `src/content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts`, and the key of a pair and its entry's one reader in `rules-on-plain-values/how-two-realms-stand-…` |
 | The turn's steps: the new turn, the phases, Early Winter, after the phases, diplomacy and victory | `turn/` |
 | The world and the map | `world/` |
 | Bots | `bots/` |
@@ -112,6 +112,13 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   flight, an arrow, a guardian's hidden traits and powers, a lair's fight, a spell's cast, the initiative and mercy);
   the numbers left in `personal-combat/`'s code are structure (a percentage, the figures a power's words name, the
   last range's index, a loop's guard, the count of a plea's lines).
+- **The bots' estimate of a battle** (`bots/intel.ts`: `botBattleForce`, `botGuessDefence`, `botMarginFor`,
+  `BOT_DEF_BONUS`, `botDruidShortfall`) reads the shared rows where its figure is the battle's (Tactical's and Naval's
+  rise, Tactical's most, the defender's edge, a Druid shortfall's step: `KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT`,
+  which `strengthLeftByADruidShortfall` reads too). The rest is the bots' own (B-06bq): the `battleStrength` kind of
+  the bots' weights, a point of a host's strength, holds the levels of Tactical and Naval they weigh (each to 5, where
+  the battle differs: KD-477), their guess at a defence they can't see (a unit's strength, the tax bands, a rival's
+  factor) and their attack margin's floors, ease and stake. For example, a bot weighs a Naval 7 admiral's fleet at ×2.0.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain
   ([Dice come from `kcRng()`](../traps.md#dice-come-from-kcrng); [tests/README.md](../../tests/README.md#the-same-answer-every-time)).

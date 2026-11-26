@@ -9,12 +9,12 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 
 ## B-06, T7: the rules pulled out
 
-B-06 is open; its foundations, the alignments, the races, the tempers, the hero orders and diplomacy are finished,
-and the battles' first rows: Run 1 (the economy, then the Reckoning and the titles), Run 2a (world generation), Run 2b
-(the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows), Run 3a (the races and the tempers, B-06ac to B-06ak), Run 3b
-(the hero orders and diplomacy, B-06al to B-06av) and Run 3c's first rows (the battle proof, the battles' tables and
-the first two cuts of the battle against the defenders, B-06aw to B-06ba). The tranche's plan, its counts and its
-risks: #711; Run 3's: #756.
+B-06 is open; its foundations, the alignments, the races, the tempers, the hero orders, diplomacy, the battles' rules
+and personal combat are finished: Run 1 (the economy, then the Reckoning and the titles), Run 2a (world generation),
+Run 2b (the alignments, P1-19ba1 to P1-19bb9, P1-19's last rows), Run 3a (the races and the tempers, B-06ac to
+B-06ak), Run 3b (the hero orders and diplomacy, B-06al to B-06av), Run 3c (the battle proof, the battles' tables and
+the battle against the defenders, B-06aw to B-06be) and Run 3d (the battle between heroes, the battles' stages and
+numbers, and personal combat, B-06bf to B-06bp). The tranche's plan, its counts and its risks: #711; Run 3's: #756.
 
 - B-06a: #711 The ratchet counts the economy and the titles, B-06's lettered rows, the KD- rows found by the scoping, B-20 and the bots' worth hook
 - B-06b: #712 The economy's prices in content: the price table, the fallback 2g and the skeleton's 1g, through one price rule and one wage rule
@@ -82,6 +82,21 @@ risks: #711; Run 3's: #756.
 - B-06ay2: #784 The battle grid's tables and the battle's single constants in parameter rows
 - B-06az: #785 The battle against a province's defenders split by stage, 1 of 5: the set-up to the sides, and the state the stages share
 - B-06ba: #786 The battle against a province's defenders split by stage, 2 of 5: the attacker's pre-battle phases, and the battle's state typed
+- B-06bb: #788 The battle against a province's defenders split by stage, 3 of 5: the defenders' pre-battle magic, archery and army spells
+- B-06bc: #790 The battle against a province's defenders split by stage, 4 of 5: the ground's notes, the lines, fortune and the result
+- B-06bd: #791 The battle against a province's defenders split by stage, 5 of 5: the casualties, the rout and the end, and combatVsNPC the stages called in order
+- B-06be: #792 The battle against a province's defenders: its numbers in parameter rows, the defender's edge, home, Tactical, Naval and experience shared
+- B-06bf: #793 The battle between heroes split by stage, 1 of 5: the set-up, the duel and the sides, and the state its stages share
+- B-06bg: #794 The battle between heroes split by stage, 2 of 5: both sides' pre-battle magic and army spells
+- B-06bh: #795 The battle between heroes split by stage, 3 of 5: both sides' archery, Flak and Breach
+- B-06bi: #796 The battle between heroes split by stage, 4 of 5: Sanctuary, the mastery orders, the lines, fortune and the result
+- B-06bj: #797 The battle between heroes split by stage, 5 of 5: the casualties, the rout and the end, and combatVsChar the stages called in order
+- B-06bk: #798 The battle between heroes: its numbers, and its pre-battle phases', read the battles' parameter rows
+- B-06bl: #799 Each battle's stages as one typed list in the order they run, and the battle proof reads it
+- B-06bm: #800 A host's strength, the best commander, the ladder, stalled battles, ride-outs and sea-lift retreats: their numbers in rows
+- B-06bn: #801 Personal combat, 1 of 3: to-hit, wounds, stuns, courage and the duels, their numbers in rows
+- B-06bo: #802 Personal combat, 2 of 3: speed, encounter plans, melee, flight, archery and tactics, their numbers in rows
+- B-06bp: #803 Personal combat, 3 of 3: lair guardians, combat spells and the resolve, their numbers in rows
 - The fix Run 1 found on the way, its known-defect row deleted: #720 The registry compile test: a test and a program for each registry, every planted copy and expected error as it was
 
 ## The other new items

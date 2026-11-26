@@ -3,6 +3,7 @@
 // after the engine, in the same words the engine wrote before. A kind with no words here is a compile error (the
 // `never` below) and, from an untyped caller, a throw in play.
 import { theRealmsTag } from './the-words-of-the-realm-works-orders-lines.ts';
+import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   THE_NUMBER_OF_VERBS_A_VICTORY_IS_TOLD_WITH,
   THE_NUMBER_OF_VERBS_AN_ATTACK_IS_TOLD_WITH,
@@ -58,6 +59,11 @@ import type { AnAbilityAsTheLadderNamesIt } from '../../engine/rules/the-registr
 // from the engine with their last engine callers (aAn from battle/ladder.ts, n0 from army-tables.ts, curseSkillLabel
 // from battle/terrain-and-unit-strength.ts, fortuneNarrative and its two edge helpers from battle/fortune.ts), and the
 // table of a victory's verbs from battle/battles-against-province-defenders.ts.
+
+/** Savage fury's strength more, as a percentage (B-06bt): its row's ×1.25 written as 25, as the lines write it. */
+function theSavageFurysStrengthMoreAsAPercentage(): string {
+  return String(Math.round((ALIGNMENT_ABILITIES['savage-fury'].theNumbers.theStrengthOfTheHost.value - 1) * 100));
+}
 
 /** A unit ability's name, as its content row holds it (Decision 5: a line names an ability from the content). */
 function theNameOfTheAbility(slug: UnitAbilitySlug): string {
@@ -1008,9 +1014,9 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the defenders fight on home ground':
       return `The defenders fight on home ground, gaining ×1.5 total defensive bonus.`;
     case "a side's skeletal legions fight with fanaticism under their undead king":
-      return `${theLabelOfASide(fact.sideName)}'s skeletal legions fight with undying fanaticism under their Undead king! (+${String(fact.undeadKingFanaticismPct)}% strength)`;
+      return `${theLabelOfASide(fact.sideName)}'s skeletal legions fight with undying fanaticism under their ${ALIGNMENT_ABILITIES['skeletal-fervour'].alignment} king! (+${String(fact.undeadKingFanaticismPct)}% strength)`;
     case "a side's monsters are driven to savage fury":
-      return `${theLabelOfASide(fact.sideName)}'s monsters are driven to savage fury! (+25% strength)`;
+      return `${theLabelOfASide(fact.sideName)}'s monsters are driven to savage fury! (+${theSavageFurysStrengthMoreAsAPercentage()}% strength)`;
     case "a side's skeletal legions know no fear":
       return `${theLabelOfASide(fact.sideName)}'s skeletal legions know no fear (+${String(fact.undeadHeroFanaticismPct)}% strength — undying fanaticism).`;
     case "the attacker's forces fight with fanatical zeal":
@@ -1267,7 +1273,7 @@ export function theWordsOfABattlesLine(fact: TheFactOfABattlesLine): string {
     case 'the attacker storms ashore in a raid on the coast against the defenders':
       return `  ⚓ ${theLabelOfASide(fact.cName)} storms ashore in a Raid the Coast — +25% strength.`;
     case "the attacker's monsters are driven to savage fury":
-      return `${theLabelOfASide(fact.cName)}'s monsters are driven to savage fury under their Evil overlord! (+25% strength)`;
+      return `${theLabelOfASide(fact.cName)}'s monsters are driven to savage fury under their ${ALIGNMENT_ABILITIES['savage-fury'].alignment} overlord! (+${theSavageFurysStrengthMoreAsAPercentage()}% strength)`;
     case "the attacker's troops fight with fanatical zeal":
       return `Seized by religious fervour, ${theLabelOfASide(fact.cName)}'s troops fight with fanatical zeal! (+30% strength)`;
     case "the attacker's realm discoveries strengthen his army":

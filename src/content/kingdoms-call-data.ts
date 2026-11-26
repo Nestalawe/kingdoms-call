@@ -15976,6 +15976,13 @@ export const KC_DRUID_LEVELS = {
   ],
   5: ['Elder Dragons', 'Crimson Rocs', 'Titan Warbeasts', 'Dread Hydras'],
 };
+// A unit whose leader is short of the Druid it needs (KC_DRUID_LEVELS) fights at 1 less this share of its strength for
+// each level short, and never below the least share (strengthLeftByADruidShortfall; B-06bq). The bots' estimate reads
+// the same step back from a unit's share, to the levels short (botDruidShortfall).
+export const KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT = {
+  theShareEachLevelShortTakes: 0.2,
+  theLeastShareAUnitKeeps: 0.1,
+} as const;
 
 // Base strength per unit type (× the quality multiplier). Humanoid units and fleets, then every
 // primal unit read straight from PRIMAL_ARMY_DEFS_P above (the one place primal stats are written),

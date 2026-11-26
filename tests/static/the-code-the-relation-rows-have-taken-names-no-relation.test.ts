@@ -2,7 +2,8 @@
 // function (or file's top level) the family's rows have taken holds no string naming a relation between two realms or
 // the Treat declaration (`'enemy'`, `'allied'`, `'neutral'`, `'treat'`), whatever the code does with it (compared, a
 // `case`, a list, a map's value, a literal type, or in a function nested inside). It asks the relation's one reader
-// instead. Each row adds what it takes to TAKEN, which is empty until the first of them. With them, the ratchet's
+// instead (the player portal's two, the map's popup and the Diplomacy card, content's states and the Treat: the count
+// doesn't read the portal, so TAKEN alone holds them). Each row adds what it takes to TAKEN. With them, the ratchet's
 // count of the relations the engine names outside src/engine/rules/ (tools/ratchet.ts's relationChecksInEngine, by its
 // helper relationChecksByFunction), so that count only falls: the helper counts each relation planted, and none in
 // src/engine/rules/ or a page's code. Its two listed exceptions (a battle's kind and a death's cause, each a
@@ -140,6 +141,18 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   [PHASE_ONE, 'botSafeStep', "B-06av, an ally's ground: the content's state"],
   [PHASE_ONE, 'runBotPhaseOne', "B-06av, a foe's ground: the content's state"],
   [PHASE_ONE, 'isEnemyChar', "B-06av, a hero not allied: the content's state"],
+  ['src/ui/player/map-symbols.ts', '_ownerLineP', "B-06bu, the map's name for each state: the content's states"],
+  [
+    'src/ui/player/map-symbols.ts',
+    '_renderDiplomacyInto',
+    "B-06bu, the Diplomacy card's buttons: the content's states and the Treat",
+  ],
+  ['src/ui/player/map-symbols.ts', 'relBadge', "B-06bu, the Diplomacy card's badge: the content's states"],
+  [
+    'src/ui/player/map-symbols.ts',
+    'pendingLabel',
+    "B-06bu, a declaration pending on the Diplomacy card: the content's states and the Treat",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
