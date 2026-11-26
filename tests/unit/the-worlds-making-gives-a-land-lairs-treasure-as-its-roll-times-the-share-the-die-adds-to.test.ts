@@ -2,7 +2,8 @@
 // s03-every-province-made-its-terrain-tax-armies-and-lairs.ts): a land lair's treasure is its roll, between the row's
 // least and most, times a share: the row's least share and what the die adds to it (EACH_PROVINCE.aLairsTreasure),
 // rounded, and never under 1. On a high die a lair holds close to the most of the roll; on a middling die, the middling
-// roll times a middling share.
+// roll times a middling share (4 gold); on the lowest die, the least roll times the least share rounds to nothing, and
+// the floor gives 1.
 //
 // Level 1 (unit): the stage is called directly on the set-up's (S0's) tables, on a one-province map of plain land, with
 // every die fixed (kcRng.use), so the treasure each lair gets is known; nothing is left to the test's seed. Not lower:
@@ -55,5 +56,17 @@ test('on a middling die each land lair holds the middling roll times the middlin
   const die = 0.5;
   const treasures = theLairsTreasuresOnTheDie(die);
   expect(treasures.length, 'the province has lairs').toBeGreaterThan(0);
-  expect(treasures).toEqual(treasures.map(() => theTreasureOnTheDie(die)));
+  expect(theTreasureOnTheDie(die), 'a roll of 6 times a share of 0.7, rounded').toBe(4);
+  expect(treasures).toEqual(treasures.map(() => 4));
+});
+
+test('on the lowest die each land lair holds 1, the floor: its roll of 1 times the least share rounds to nothing', () => {
+  const die = 0;
+  const treasures = theLairsTreasuresOnTheDie(die);
+  expect(treasures.length, 'the province has lairs').toBeGreaterThan(0);
+  expect(
+    Math.round(EACH_PROVINCE.aLairsTreasure.theLeastOfTheRoll * EACH_PROVINCE.aLairsTreasure.theLeastShare),
+    'the roll and the share give nothing',
+  ).toBe(0);
+  expect(treasures).toEqual(treasures.map(() => 1));
 });
