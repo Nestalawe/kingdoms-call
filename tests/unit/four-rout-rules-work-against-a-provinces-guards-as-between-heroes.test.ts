@@ -20,6 +20,7 @@ import { expect, test } from 'vitest';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import { pursuitsOfTheBeaten } from '../../src/engine/units/movement.ts';
 import { erodeGuardSurvivors } from '../../src/engine/battle/hosts-gained-in-a-province.ts';
+import { combatVsNPC } from '../../src/engine/battle/battles-against-province-defenders.ts';
 import {
   aBattleAgainstTheProvince,
   aFieldAndTheGroundBesideIt,
@@ -75,6 +76,21 @@ function aBattleAgainstAGuard(dice: number, his: Company[], theGuards: Company[]
     () => aBattleAgainstTheProvince(tc, hero, field, guard),
   );
   return { battle, hero };
+}
+
+/** The same battle, its result as combatVsNPC returns it (what the erosion of the guards' survivors reads). */
+function theResultOfABattleAgainstAGuard(dice: number, his: Company[], theGuards: Company[]) {
+  const G = aWorld(SEED);
+  const tc = theTurnsContext(G);
+  const { field, from } = aFieldAndTheGroundBesideIt(G, { terrain: 'plain' });
+  own(G, from, 0);
+  const guard = aGuardMadeByTheTest(G, field, theGuards, { encounterPlan: MELEE_AND_NO_DUEL() });
+  const hero = aHeroOfRealm0(G, his);
+  attackFrom(G, hero, from, field);
+  return withTheDice(
+    () => dice,
+    () => combatVsNPC(...([tc, hero, field, guard] as unknown as Parameters<typeof combatVsNPC>)),
+  );
 }
 
 interface AFate {
@@ -161,7 +177,7 @@ test("the guards' beaten Shield Fort, and a Knightly Example, stop a survivor dr
   const { field } = aFieldAndTheGroundBesideIt(G, { terrain: 'plain' });
   const guard = { name: 'Warden Testcairn' };
   // Every die shows 0.4: above the 0.35 to flee as mercenaries, below the 0.5 to lose a tier.
-  const theFates = (survivors: Company[], theyHeldAShieldFort: boolean) => {
+  const theFates = (survivors: Company[], theyHeldAShieldFort: boolean, theForceAsItFought?: Company[]) => {
     const told: { fate: string; type: string }[] = [];
     const kept = withTheDice(
       () => 0.4,
@@ -177,6 +193,7 @@ test("the guards' beaten Shield Fort, and a Knightly Example, stop a survivor dr
           },
           'Sir Testric',
           theyHeldAShieldFort,
+          theForceAsItFought,
         ),
     );
     return { told, qualities: kept.map((a) => [a.type, a.quality]) };
@@ -209,4 +226,61 @@ test("the guards' beaten Shield Fort, and a Knightly Example, stop a survivor dr
     'loses heart and falls a tier',
     'keeps its nerve under the knightly example',
   ]);
+});
+
+test("a Gilded Lances company fallen in the rout still gives the guards' Levies the Knightly Example, as between heroes (R-166)", () => {
+  const G = aWorld(SEED);
+  const tc = theTurnsContext(G);
+  const { field } = aFieldAndTheGroundBesideIt(G, { terrain: 'plain' });
+  const lances = companies('Gilded Lances', 1, 'Average', 'Human');
+  const levies = companies('Shieldwall Levies', 1, 'Average', 'Human');
+  // Every die shows 0.4: above the 0.35 to flee as mercenaries, below the 0.5 to lose a tier.
+  const kept = withTheDice(
+    () => 0.4,
+    () =>
+      erodeGuardSurvivors(
+        tc as unknown as Parameters<typeof erodeGuardSurvivors>[0],
+        { name: 'Warden Testcairn' },
+        field as unknown as Parameters<typeof erodeGuardSurvivors>[2],
+        levies as unknown as Parameters<typeof erodeGuardSurvivors>[3],
+        () => undefined,
+        'Sir Testric',
+        false,
+        [...lances, ...levies],
+      ),
+  );
+  expect(
+    kept.map((a) => [a.type, a.quality]),
+    'the Levies keep their tier: the Lances fought beside them',
+  ).toEqual([['Shieldwall Levies', 'Average']]);
+});
+
+test('the battle against the guards tells the erosion whether the beaten guards held a Shield Fort, and their force as it fought (R-166)', () => {
+  // Every die shows 0.7: the guards are beaten, and above their 0.6 to die.
+  const behindTheFort = theResultOfABattleAgainstAGuard(
+    0.7,
+    companies('Knights', 12, 'Elite', 'Human'),
+    companies('Dwarven Guard', 3, 'Green', 'Dwarven'),
+  );
+  expect(behindTheFort.won, 'the hero beats the guard').toBe(true);
+  expect(behindTheFort.theBeatenDefendersHeldAShieldFort, 'three Dwarven Guard companies hold a Shield Fort').toBe(
+    true,
+  );
+  const inTheOpen = theResultOfABattleAgainstAGuard(
+    0.7,
+    companies('Knights', 12, 'Elite', 'Human'),
+    companies('Shieldwall Levies', 3, 'Green', 'Human'),
+  );
+  expect(inTheOpen.theBeatenDefendersHeldAShieldFort, 'Levies hold none').toBe(false);
+  // Every die shows 0.2: below the beaten guards' 0.6 to die, so the Lances fall; the force as it fought still has them.
+  const fallen = theResultOfABattleAgainstAGuard(0.2, companies('Knights', 12, 'Elite', 'Human'), [
+    ...companies('Gilded Lances', 1, 'Green', 'Human'),
+    ...companies('Shieldwall Levies', 1, 'Green', 'Human'),
+  ]);
+  expect(fallen.won, 'the hero beats the guard').toBe(true);
+  expect(
+    theBeaten(fallen.narrative as readonly NarrativeLine[], 'dies', 'the guards'),
+    'both guard companies die',
+  ).toBe(2);
+  expect(fallen.theBeatenDefendersAsTheyFought.map((a) => a.type)).toEqual(['Gilded Lances', 'Shieldwall Levies']);
 });
