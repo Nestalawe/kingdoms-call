@@ -104,12 +104,14 @@ export function theWorldNamedItsRealmsStatesLairsAndHitPointsSetAndHandedOn({
     c.maxHp = computeMaxHp(c, players);
     c.hp = c.maxHp;
   });
-  // the save's marks, then the save's shape as this build writes it (P1-15c), on the same object in the same order
+  // the save's marks, then the save's shape as this build writes it (P1-15c), on the same object in the same order;
+  // _guardianHpV2 marks a new world's guardians as needing no 5 HP cut: they keep the guardian table's HP (R-145)
   return Object.assign(_newGameState, {
     _maxHpV2: true,
     _maxHpV3: true,
     _guardiansV2: true,
     _guardiansVer: GUARDIAN_TABLE_VER,
+    _guardianHpV2: true,
     schemaVersion: THE_SAVED_GAMES_VERSION_THIS_BUILD_WRITES,
   });
 }

@@ -15,9 +15,9 @@ the turn reads it.
 - **Then the three old flags' passes** (P1-15f1; until then the turn's third stage ran them, before the bots plan): an
   old world's lairs renamed once (`renameLairsThematicP`, behind `_lairNamesV3`), its guardians made 5 HP frailer once
   (behind `_guardianHpV2`), and the retired Library (`sd30`) struck from every realm. Each runs on every load behind
-  its flag, not as a numbered step: a step would skip a new world, and world generation doesn't set `_guardianHpV2`,
-  so a new world's guardians are cut on its first turn (question 17, P1-23l). Setting the flag earlier in turn 1 moved
-  it in the save's key order (the matrix's `state` and `writes`, from turn 1). Beside the cut, with no flag, every
+  its flag, not as a numbered step: a world without the flag gets the pass, whatever its version. World generation
+  sets `_guardianHpV2`, so a new world's guardians keep the guardian table's HP, and a running game, marked by its
+  first turn, keeps its guardians as they are ([R-145](../rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md)). Beside the cut, with no flag, every
   guardian's brute strength is given its kind's words (P1-11e1, R-137); a perk already in them is left untouched.
 - **After the check, the four turn-start repairs** (P1-15f2; until then the turn ran them before the merge of the
   realms' orders): a hero of no realm wearing a beast's race given a people's race by his id, a stranded neutral guard

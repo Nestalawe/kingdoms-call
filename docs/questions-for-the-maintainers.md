@@ -110,3 +110,26 @@ was, for one more small change.
 
 *Touches:* [R-140](rulings/R-140-messenger-birds-is-retired.md) (Messenger Birds retired) and
 [R-013](rulings/R-013-mounted-couriers-removed.md) (the retirement of `sd34`).
+
+## 161. Does a game made before the guardians' fix keep the table's HP on its first turn?
+
+Found on 2026-11-27.
+
+[R-145](rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) gives a new game's
+guardians the table's HP, and a running game keeps its guardians as they are. It doesn't say what becomes of a game
+made before the fix whose first turn has not yet run. Its guardians stand at the table's HP until that turn: the
+Dracolich of Ashfall Barrow at 54. Does it keep 54 when the first turn runs after the fix?
+
+1. **It is cut to 49 on its first turn, as built (P1-23l).** Impact: that game plays as it would have before the fix;
+   only games made after the fix keep the table's HP.
+2. **It keeps 54.** Impact: every game whose first turn runs after the fix keeps the table's HP; the cut never runs
+   again on a real save, so it could be retired. One more small change to build.
+
+*Assessment:* option 2 fits the ruling's aim (guardians as tough as the table says) and its words ("keep their
+guardians as they are"); option 1 is the smaller change. It matters only for a game made but not yet played when the
+fix goes live: deploying when no game waits on its first turn makes both the same.
+
+*Unlocks:* R-145's open point settled.
+
+*Touches:* [R-145](rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) (new games'
+guardians at the table's HP) and [R-072](rulings/R-072-guardian-strength.md) (the guardian table's HP).

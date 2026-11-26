@@ -23,3 +23,4 @@ P1-23's rows from P1-23g on; its first rows, and the ids dropped, are in [part 1
 - P1-23al: #831 Steel Armour and Military Discipline work against neutral guards as between heroes
 - P1-23as: #837 Four rout rules work against a province's guards as between heroes
 - P1-23k: #838 Messenger Birds is retired: no realm is offered it
+- P1-23l: #NNN New games' guardians have the guardian table's HP; running games keep theirs
