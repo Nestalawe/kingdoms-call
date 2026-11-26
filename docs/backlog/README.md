@@ -56,13 +56,32 @@ this (`tests/static/the-backlog-tracks-each-item-one-way.test.ts`).
 What comes next is the first row of the first group. The top is grouped by tranche, a heading a group, its rows in
 order; inside a group, the rows' "After" decides the order. The order of work is this list's order, and lives only
 here: each row is placed by [the default order](../ways-of-working/ordering-the-backlog-by-impact.md#3-compare-it-with-its-neighbours)
-of ordering the backlog, and a maintainer validates its place. The rulings and the known defects come after the rebuild: they head
-[Later](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild).
+of ordering the backlog, and a maintainer validates its place.
 T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
 [the finished list](finished-steps-p1-13-to-p1-25.md). T7, the rules pulled out, is done: its group, B-06, is in
 [the finished list](finished-steps-the-new-items-b-nn.md#b-06-t7-the-rules-pulled-out). The tranches "Phase 1's rest",
 "The reports' audience in one place" and "The check after the rules pulled out" are done too: P1-11z, B-16, B-18, B-19,
 B-01 (the rulings audit) and P1-21x are in the finished lists.
+
+### 1. Later's rulings, the first rule changes
+
+The rebuild's tranches are done, so the rulings and the known defects come next by the default order; the rows on what
+a realm sees (KD-049, P1-23j, P1-23h) wait for a maintainer's day. These rows stay in
+[Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild),
+and come first, in this order:
+1. [P1-23as](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm in battles against guards: four rout rules never reach them; Medium.
+2. [P1-23k](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm for each realm that researches Messenger Birds: it does nothing; Medium.
+3. [P1-23l](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm in every new game: its guardians start below the table's HP; Small.
+4. [P1-23an](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm in battles with battle magic: today it takes effect at different moments in the two kinds of battle; Medium.
+5. [P1-23am](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm after a duel before a battle: the fallen commander's skills still count; Small.
+6. [P1-23n](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm wherever Flak Screen meets beasts that fly: it leaves them be; Small.
+7. [P1-23v](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm for a hero with the Ring or the Helm: today they act as the other second-wind items do; Large, so below the small rows.
+8. [KD-047](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm for a realm that holds the Stone: using it does nothing; Small, one pull request with KD-048.
+9. [KD-048](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm for the holders of three relics, whose powers nothing reads; with KD-047.
+10. [P1-23p](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm for the holders of the two relic standards: +2, not +4 and +6; Small.
+11. [P1-23ai](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm when a hero talks a lair beast down: it counts as slain; Small.
+12. [P1-23aj](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm when an invisible hero leads armies: he stays unseen; Medium.
+13. [P1-23ba](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild): Harm at sea: a fleet ordered to a far coast stays put; Medium.
 
 ## Not yet assessed
 
