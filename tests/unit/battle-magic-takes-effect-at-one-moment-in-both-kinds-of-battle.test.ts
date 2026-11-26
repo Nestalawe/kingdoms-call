@@ -5,7 +5,7 @@
 // on Tactical or Naval, cast by either side, halves the skill the battle counts. Each case is played in both kinds of
 // battle on one staged field: realm 0's king attacks a free plain, either its guards (combatVsNPC), led by realm 1's
 // king made a warlord of no realm, or realm 1's king's own host (combatVsChar). Both commanders refuse any challenge,
-// so no duel is fought, and every d100 rolls a 1 (stood in by vi.spyOn), so each spell cast is cast. What each case
+// so no duel is fought, and every d100 is fixed at 1 (stood in by vi.spyOn), so each battle spell is cast. What each case
 // reads depends on no other die: a commander's cast line, a gyrocopter harrying the one flyer, the Tactical the lines
 // are deployed with (battleDeploy, stood in likewise, calling the real one), the Naval the ladder lifts a fleet by.
 // Every other die is a fixed stream's (kcRng.use), so the battle plays the same under any KC_SEED.
@@ -98,6 +98,8 @@ interface TheStaging {
   readonly theAttackersHost: readonly ArmyInABattle[];
   readonly theAttacker?: { readonly skills: Readonly<Record<string, number>>; readonly spell: string };
   readonly aLightningAdvance?: boolean;
+  /** The battle is fought at sea (a free sea), not on a free plain. */
+  readonly atSea?: boolean;
   readonly theDefenders: readonly ArmyInABattle[];
   readonly theirCommander: {
     readonly skills: Readonly<Record<string, number>>;
@@ -121,9 +123,10 @@ function aBattle(battle: 'against the guards' | 'between two hosts', staging: Th
   tc._logCtx.phase = 1;
   G.relations['0-1'] = 'enemy';
   const [atk, def] = [0, 1].map((p) => G.characters.find((c) => c.alive && c.player === p && c.isKing));
-  // a free plain, emptied: no one else stands there, and it holds nothing of its own
-  const field = G.world.provinces.find((p) => p.terrain === 'plain' && p.owner === null);
-  if (!atk || !def || !field) throw new Error('the world has no king in realm 0 or 1, or no free plain');
+  // a free plain (or sea), emptied: no one else stands there, and it holds nothing of its own
+  const terrain = staging.atSea ? 'sea' : 'plain';
+  const field = G.world.provinces.find((p) => p.terrain === terrain && p.owner === null);
+  if (!atk || !def || !field) throw new Error(`the world has no king in realm 0 or 1, or no free ${terrain}`);
   Object.assign(field, { characters: [], features: [], garrisonArmies: [], npcArmies: 0 });
   const moveTo = (c: Character) => {
     const from = G.world.provinces[c.location];
@@ -243,7 +246,7 @@ describe.for(BATTLES)('Mass Confusion takes the defending commander’s Tactical
   };
   test('his lines are deployed with his Tactical, and with none once Mass Confusion grips him', () => {
     const unconfused = aBattle(battle, staging).theTacticalDeployedWith.ofTheDefenders;
-    expect(unconfused).toBeGreaterThanOrEqual(4);
+    expect(unconfused).toBe(4);
     expect(
       aBattle(battle, { ...staging, theirCommander: { ...staging.theirCommander, massConfused: true } })
         .theTacticalDeployedWith.ofTheDefenders,
@@ -346,4 +349,38 @@ describe.for(BATTLES)("A spell that cancels Druid comes before the beasts' strik
     expect(theDruidHisGiantsStrikeWith(false)).toEqual([4]);
     expect(theDruidHisGiantsStrikeWith(true)).toEqual([0]);
   });
+});
+
+describe('A Curse on Tactical: the lines that name the Tactical name the level it leaves', () => {
+  test("between heroes, the defender's header names the Tactical the Curse leaves him", () => {
+    const shown = aBattle('between two hosts', {
+      theAttackersHost: [aCompany('Men-at-Arms', 'the First Shields')],
+      theAttacker: { skills: { tactical: 0, naval: 0, druid: 0, necromancy: 5 }, spell: 'Curse' },
+      theDefenders: [aCompany('Men-at-Arms', 'the Mill Watch')],
+      theirCommander: { skills: { tactical: 4, naval: 0, druid: 0 } },
+    });
+    const theDefendersHeader = shown.narrative.find(
+      (l) => typeof l === 'object' && l.kind === 'a force drawn up for battle' && l.role === 'defender',
+    );
+    expect(JSON.stringify(theDefendersHeader)).toContain('"tacticalLevel":2');
+  });
+  test.for([false, true])(
+    "against guards at sea, a Curse that leaves the hero no Tactical leaves no line that it doesn't apply (cursed: %s)",
+    (cursed) => {
+      const shown = aBattle('against the guards', {
+        atSea: true,
+        theAttackersHost: [aCompany('Men-at-Arms', 'the First Shields')],
+        theAttacker: { skills: { tactical: 1, naval: 0, druid: 0 }, spell: '' },
+        theDefenders: [aCompany('Men-at-Arms', 'the Mill Watch')],
+        theirCommander: {
+          skills: { tactical: 0, naval: 0, druid: 0, necromancy: cursed ? 5 : 0 },
+          spell: cursed ? 'Curse' : '',
+        },
+      });
+      const theLines = shown.narrative.filter(
+        (l) => typeof l === 'object' && l.kind === "the attacker's Tactical command does not apply at sea",
+      );
+      expect(theLines).toHaveLength(cursed ? 0 : 1);
+    },
+  );
 });

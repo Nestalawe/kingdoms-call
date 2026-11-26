@@ -53,6 +53,7 @@ import {
   illusoryTerrainMult,
   isAirborneAtSea,
   ladderRow,
+  theBonusACommandersTacticalGivesHisHost,
   theLevelACommanderFightsWithOnceACurseHasTakenEffect,
 } from '../terrain-and-unit-strength.ts';
 import type { CommandMultiplier } from '../terrain-and-unit-strength.ts';
@@ -116,12 +117,10 @@ export function theGroundsNotesTheLinesTheFortuneAndTheResultOfTheBattleAgainstT
     'tactical',
     theAttackersTacticalBeforeTheMagic,
   );
-  const effectiveTactBonus = isLandBattle
-    ? Math.min(
-        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-        1 + tactSkill * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-      )
-    : 1; // Tactical battle bonus hard-capped at ×2.0 (incl. titles); land battles only
+  const effectiveTactBonus = theBonusACommandersTacticalGivesHisHost(tactSkill, isLandBattle); // land battles only
+  // (its line at sea follows the Tactical the battle counts, so it is written once the magic has taken effect)
+  if (tactSkill > 0 && !isLandBattle)
+    narrate(narrative, { kind: "the attacker's Tactical command does not apply at sea", cName: atkSide });
   const navalSkillAtk = theLevelACommanderFightsWithOnceACurseHasTakenEffect(
     c,
     'naval',

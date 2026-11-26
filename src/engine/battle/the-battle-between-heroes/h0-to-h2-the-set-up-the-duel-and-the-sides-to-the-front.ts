@@ -71,7 +71,13 @@ import { noteFieldBattle, recordBattleCmdrs } from '../../turn/mercenary-ids-and
 import { charMinor } from '../../titles/title-holders-and-battle-merit.ts';
 import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
-import { REIGN_OF_FEAR_MULT, armStr, kinNarrative, provIsCoastal } from '../terrain-and-unit-strength.ts';
+import {
+  REIGN_OF_FEAR_MULT,
+  armStr,
+  kinNarrative,
+  provIsCoastal,
+  theBonusACommandersTacticalGivesHisHost,
+} from '../terrain-and-unit-strength.ts';
 import { realCharOf } from '../best-commander.ts';
 import { forceMarker } from '../battle-report-lines-and-force-markers.ts';
 import { consumeTerror } from '../evil-terror.ts';
@@ -85,6 +91,7 @@ import {
   THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
 } from '../the-facts-a-battles-lines-record.ts';
 import type { NarrativeLine } from '../../turn/events-and-their-audiences.ts';
+import type { HowAForceComesOnInItsHeader } from '../the-facts-a-battles-lines-record.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../../army-tables.ts';
 import type { TurnContext } from '../../turn/context.ts';
 import { asItsGuardReadsIt } from '../../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
@@ -218,18 +225,8 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
       theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, def, title));
   // Tactical bonus only applies in land provinces
   const isPvPSea = prov.terrain === 'sea';
-  let atkTactBonus = isPvPSea
-    ? 1
-    : Math.min(
-        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-        1 + atkTact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-      ); // cap ×2.0
-  let defTactBonus = isPvPSea
-    ? 1
-    : Math.min(
-        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-        1 + defTact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-      ); // cap ×2.0
+  let atkTactBonus = theBonusACommandersTacticalGivesHisHost(atkTact, !isPvPSea); // cap ×2.0
+  let defTactBonus = theBonusACommandersTacticalGivesHisHost(defTact, !isPvPSea); // cap ×2.0
 
   // frame how the battle began for PvP too — who advanced, into whose province.
   const _pvpOwnersRealm = prov.owner != null ? G.players[prov.owner] : undefined;
@@ -271,6 +268,12 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
   // 2026-10-12 (Toby) it fires only when attacking: a defender never has it.
   const _fearAtk = reignOfFearHere(prov, atk.player),
     _fearDef = false;
+  // Each side's header (its Tactical among it): a Curse cast before the battle withers it in H3 (R-162), so the stages
+  // hand it on.
+  const theHeaders: { attacker: HowAForceComesOnInItsHeader | null; defender: HowAForceComesOnInItsHeader | null } = {
+    attacker: null,
+    defender: null,
+  };
   {
     const _dcC = provIsCoastal(G, prov);
     const _aS = Math.round(
@@ -306,6 +309,13 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
         0,
       ),
     );
+    theHeaders.attacker = {
+      itsVerbs: 'an attack',
+      verbIndex: THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
+      provName: prov.name,
+      armyStrength: _aS,
+      tacticalLevel: atkTact,
+    };
     narrate(
       narrative,
       forceMarker(
@@ -319,15 +329,16 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
         atk.player,
         'attacker',
         atkArmies,
-        {
-          itsVerbs: 'an attack',
-          verbIndex: THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
-          provName: prov.name,
-          armyStrength: _aS,
-          tacticalLevel: atkTact,
-        },
+        theHeaders.attacker,
       ),
     );
+    theHeaders.defender = {
+      itsVerbs: 'a defence',
+      verbIndex: THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
+      provName: prov.name,
+      armyStrength: _dS,
+      tacticalLevel: defTact,
+    };
     narrate(
       narrative,
       forceMarker(
@@ -341,13 +352,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
         def.player,
         'defender',
         defArmies,
-        {
-          itsVerbs: 'a defence',
-          verbIndex: THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
-          provName: prov.name,
-          armyStrength: _dS,
-          tacticalLevel: defTact,
-        },
+        theHeaders.defender,
       ),
     );
   }
@@ -626,6 +631,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
   const _pvpCoastal = provIsCoastal(G, prov); // Sea Giants' Tidal Might
   return {
     G,
+    theHeaders,
     theAttackerAsTheGuardsReadHim,
     theDefenderAsTheGuardsReadHim,
     theProvinceAsTheGuardsReadIt,

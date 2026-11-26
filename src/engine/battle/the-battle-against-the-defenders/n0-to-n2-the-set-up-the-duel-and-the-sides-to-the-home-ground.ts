@@ -339,8 +339,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   // ladder names Tactical on the units it reaches, and this line still counted only ground units
   // (flyers take Tactical since 2026-09-23c), so the two disagreed. (Its count of the land units, read by nothing since,
   // went with P1-10b24.)
-  if (tactSkill > 0 && !isLandBattle)
-    narrate(narrative, { kind: "the attacker's Tactical command does not apply at sea", cName: atkSide });
+  // (the line that his Tactical doesn't apply at sea is written in N8, once a Curse has taken effect: R-162)
 
   // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
   // bonus

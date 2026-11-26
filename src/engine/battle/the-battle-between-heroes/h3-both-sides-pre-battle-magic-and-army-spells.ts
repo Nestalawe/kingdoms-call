@@ -25,7 +25,11 @@ import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeItemBonus } from '../../
 import { whatARealmsDiscoveriesAddToACastersChance } from '../../rules/the-registry-of-discovery-effects.ts';
 import { telSpell } from '../../turn/log-line-helpers.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
-import { bestCurseSkill, theLevelACommanderFightsWithOnceACurseHasTakenEffect } from '../terrain-and-unit-strength.ts';
+import {
+  bestCurseSkill,
+  theBonusACommandersTacticalGivesHisHost,
+  theLevelACommanderFightsWithOnceACurseHasTakenEffect,
+} from '../terrain-and-unit-strength.ts';
 import { pickBattleSpell } from '../../magic/pre-battle-spell-choice.ts';
 import { narrate } from '../../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../../turn/context.ts';
@@ -321,23 +325,18 @@ export function bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(
 
   // Each commander's Tactical and Naval as the battle counts them, once both sides' magic has taken effect: a Curse
   // cast here withers the skill the set-up counted (R-162), as against guards. The later stages read them from the
-  // set-up's values, so they are written there.
-  const theTacticalBonus = (level: number) =>
-    isPvPSea
-      ? 1
-      : Math.min(
-          KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-          1 + level * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-        );
+  // set-up's values, so they are written there, and each side's header names the Tactical he fights with.
   const theNavalBonus = (level: number) =>
     1 + level * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   if (atk._curseHalveStat === 'tactical') {
     theSetUp.atkTact = theLevelACommanderFightsWithOnceACurseHasTakenEffect(atk, 'tactical', theSetUp.atkTact);
-    theSetUp.atkTactBonus = theTacticalBonus(theSetUp.atkTact);
+    theSetUp.atkTactBonus = theBonusACommandersTacticalGivesHisHost(theSetUp.atkTact, !isPvPSea);
+    if (theSetUp.theHeaders.attacker) theSetUp.theHeaders.attacker.tacticalLevel = theSetUp.atkTact;
   }
   if (def._curseHalveStat === 'tactical') {
     theSetUp.defTact = theLevelACommanderFightsWithOnceACurseHasTakenEffect(def, 'tactical', theSetUp.defTact);
-    theSetUp.defTactBonus = theTacticalBonus(theSetUp.defTact);
+    theSetUp.defTactBonus = theBonusACommandersTacticalGivesHisHost(theSetUp.defTact, !isPvPSea);
+    if (theSetUp.theHeaders.defender) theSetUp.theHeaders.defender.tacticalLevel = theSetUp.defTact;
   }
   if (atk._curseHalveStat === 'naval') {
     theSetUp.atkNav = theLevelACommanderFightsWithOnceACurseHasTakenEffect(atk, 'naval', theSetUp.atkNav);
