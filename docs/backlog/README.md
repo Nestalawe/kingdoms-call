@@ -69,19 +69,18 @@ The rebuild's tranches are done, so the rulings and the known defects come next 
 [Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild),
 in its order, but for the three rows on what a realm sees (KD-049, P1-23j, P1-23h), which are built with a
 maintainer, so they are not in this list. Each row, and why it is there, is in Later's file:
-1. P1-23as
-2. P1-23k
-3. P1-23l
-4. P1-23an
-5. P1-23am
-6. P1-23n
-7. P1-23v
-8. KD-047
-9. KD-048
-10. P1-23p
-11. P1-23ai
-12. P1-23aj
-13. P1-23ba
+1. P1-23k
+2. P1-23l
+3. P1-23an
+4. P1-23am
+5. P1-23n
+6. P1-23v
+7. KD-047
+8. KD-048
+9. P1-23p
+10. P1-23ai
+11. P1-23aj
+12. P1-23ba
 
 ## Not yet assessed
 

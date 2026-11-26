@@ -205,7 +205,7 @@ function theSpareHeroesOrdersStaged(from: AState, reportOn: (state: State) => Re
     ),
     staged('the orders for turn 6', () => undefined, 6),
     staged('a hero fallen this turn', (S) => {
-      // a spare hero killed in this turn's fighting: the form still lists him, with no order to give (KD-496)
+      // a spare hero killed in this turn's fighting: the form still lists him, with no order to give (staged)
       const fallen = S.characters.find((c) => c.alive && c.player === SCRIPTED_REALM && !c.isKing);
       if (!fallen) throw new Error(`${from.name}: no hero to stage as fallen`);
       Object.assign(fallen, { alive: false, killedThisTurn: true });
