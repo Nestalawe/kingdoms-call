@@ -107,7 +107,8 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   `armStr` and the best commander's score read the shared ones): a figure changes in its row. The numbers left in
   `battle/`'s code are structure (a percentage, a rounding, a midpoint, a tiny margin, a list's length). Battle rules
   written outside `battle/` read the same rows (a hero's and a guard's cast chance, the sea lift, a hero who escapes
-  death), and the battles' count holds each such function it lists at 0 (`THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES`). A
+  death), and the battles' count holds each such function it lists at 0 (`THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES`);
+  what is left (the cast base and mastery, the portal's copies, the battle spells by school) is KD-479's. A
   personal combat's figures are rows there too (to-hit, a blow, a hit taken, courage, the duels, speed, the plans, a
   flight, an arrow, a guardian's hidden traits and powers, a lair's fight, a spell's cast, the initiative and mercy);
   the numbers left in `personal-combat/`'s code are structure (a percentage, the figures a power's words name, the
