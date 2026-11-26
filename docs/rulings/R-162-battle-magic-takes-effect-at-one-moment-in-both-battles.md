@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Question 53: battle magic takes effect at different moments in the two kinds of battle: which is right? Answer: option 1, one order in both: each spell takes effect before the skills and strikes it changes are counted. Built in P1-23an (#840 and #PRNUM).
+- **Source:** Question 53: battle magic takes effect at different moments in the two kinds of battle: which is right? Answer: option 1, one order in both: each spell takes effect before the skills and strikes it changes are counted. Built in P1-23an (#840 and #842).
 - **Enforced by:** [`battle-magic-takes-effect-at-one-moment-in-both-kinds-of-battle`](../../tests/unit/battle-magic-takes-effect-at-one-moment-in-both-kinds-of-battle.test.ts)
 
 Battle magic follows one order in every battle, against heroes or a province's guards: each spell takes effect

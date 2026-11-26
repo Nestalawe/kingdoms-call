@@ -24,4 +24,4 @@ P1-23's rows from P1-23g on; its first rows, and the ids dropped, are in [part 1
 - P1-23as: #837 Four rout rules work against a province's guards as between heroes
 - P1-23k: #838 Messenger Birds is retired: no realm is offered it
 - P1-23l: #839 New games' guardians have the guardian table's HP; running games keep theirs
-- P1-23an: #840, #PRNUM Battle magic takes effect at one moment in both kinds of battle
+- P1-23an: #840, #842 Battle magic takes effect at one moment in both kinds of battle
