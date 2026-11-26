@@ -253,7 +253,7 @@ request (an account or a setting). Open steps are in [the backlog](README.md); t
 - P1-23d: #317 A spy who stays sees what rival heroes do there, never their realm's news
 - P1-23e: #318 Invisibility hides a hero from every enemy order aimed at him
 - P1-23g: #613 A battlecry holds at most 200 letters, and a battle plan and an order of heroes only what the game offers
-- P1-23m: #NNN Only the Human Garrison holds the gate, as both rulebooks say
+- P1-23m: #830 Only the Human Garrison holds the gate, as both rulebooks say
 - P1-23q: #366 The battle counts a commander's Druid as every rule does: the Crown beside him, a Curse on him (with P1-23ac)
 - P1-23r: #368 The order form counts the Crown of Command in a hero's magic level
 - P1-23s: #369 The order form offers the Warlock's extra cast in his best school
