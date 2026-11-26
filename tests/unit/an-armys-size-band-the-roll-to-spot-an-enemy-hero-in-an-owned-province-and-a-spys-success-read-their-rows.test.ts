@@ -15,8 +15,8 @@
 //
 // Level 1 (unit): the engine's functions called directly on staged worlds, on the engine's modules (the whole engine
 // loaded first), with every input the functions read written here (no seed: the spotting roll is detRoll, a hash of
-// the turn, the realm, the hero and the province, and the turn is chosen for where its roll falls; the spy's dice are
-// fixed with kcRng.use). Not lower: each figure is read inside a computed value.
+// the turn, the realm, the hero and the province, and each turn is written here, where its roll falls asserted; the
+// spy's dice are fixed with kcRng.use). Not lower: each figure is read inside a computed value.
 import '../lib/the-whole-engine.ts';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { kcRng } from '../../src/engine/rng.ts';
@@ -58,14 +58,18 @@ describe('the roll to spot an enemy hero in an owned province', () => {
   // Realm 0 holds Wendmeadow (province 0, plain, not its home: its home is province 9, and no discovery of its own);
   // the enemy hero is Thorn (hero 5, of realm 1); a friendly hero there is Elsa (hero 1, of realm 0).
   const theEnemysId = 5;
-  /** The first turn whose roll for realm 0, Thorn and Wendmeadow falls in [lo, hi), in percent. */
-  function aTurnWhoseRollFallsIn(lo: number, hi: number): number {
-    for (let t = 1; t < 100_000; t++) {
-      const pct = detRoll(t, 0, theEnemysId, 0) * 100;
-      if (pct >= lo && pct < hi) return t;
-    }
-    throw new Error(`no turn rolls in [${String(lo)}, ${String(hi)})`);
-  }
+  /** The roll for realm 0, Thorn and Wendmeadow on turn `t`, in percent. */
+  const theRollOn = (t: number): number => detRoll(t, 0, theEnemysId, 0) * 100;
+  /** For each chance, a turn whose roll falls in [chance − 0.5, chance) and one whose roll falls in
+   *  [chance, chance + 0.5) (each asserted where the case reads it). */
+  const THE_TURNS_JUST_UNDER_AND_JUST_OVER_EACH_CHANCE: Readonly<Record<number, readonly [number, number]>> = {
+    70: [464, 353],
+    50: [61, 165],
+    25: [8, 53],
+    95: [380, 264],
+    30: [31, 168],
+    12.5: [231, 171],
+  };
   /** Whether realm 0 spots Thorn (his skills as given) on turn `t`, with Elsa there of the Spy given (none: no one). */
   function spot(thorn: Obj, elsasSpy: number | null, t: number): boolean {
     const elsa = { id: 1, player: 0, alive: true, isKing: false, location: 0, skills: { spy: elsasSpy ?? 0 } };
@@ -82,10 +86,16 @@ describe('the roll to spot an enemy hero in an owned province', () => {
   }
   /** What the call gives on a roll just under the chance, and on one just over it. */
   function underAndOver(chance: number, thorn: Obj, elsasSpy: number | null): boolean[] {
-    return [
-      spot(thorn, elsasSpy, aTurnWhoseRollFallsIn(chance - 0.5, chance)),
-      spot(thorn, elsasSpy, aTurnWhoseRollFallsIn(chance, chance + 0.5)),
-    ];
+    const turns = THE_TURNS_JUST_UNDER_AND_JUST_OVER_EACH_CHANCE[chance];
+    if (!turns) throw new Error(`no turns written for the chance ${String(chance)}`);
+    const [under, over] = turns;
+    expect(theRollOn(under), `turn ${String(under)}'s roll, at least ${String(chance - 0.5)}`).toBeGreaterThanOrEqual(
+      chance - 0.5,
+    );
+    expect(theRollOn(under), `turn ${String(under)}'s roll, under ${String(chance)}`).toBeLessThan(chance);
+    expect(theRollOn(over), `turn ${String(over)}'s roll, at least ${String(chance)}`).toBeGreaterThanOrEqual(chance);
+    expect(theRollOn(over), `turn ${String(over)}'s roll, under ${String(chance + 0.5)}`).toBeLessThan(chance + 0.5);
+    return [spot(thorn, elsasSpy, under), spot(thorn, elsasSpy, over)];
   }
   test('Spy 2 against a friendly Spy 1: 100 − 2 × 20 + 1 × 10 = 70, as before', () => {
     expect(underAndOver(70, { skills: { spy: 2 } }, 1), 'spotted just under the chance, not just over it').toEqual([
