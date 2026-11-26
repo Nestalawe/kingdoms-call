@@ -376,6 +376,16 @@ describe('The research choices: what the first stage calls', () => {
     }
   });
 
+  test('a pair from a running save offering Messenger Birds (R-140), picked: the other is made outright, and it is forgotten', () => {
+    const { b, tc } = fresh((bb) => {
+      choices(bb, 0, ['a', ['sd20', 'sd19']]);
+      return { sends: { 0: { discoveryChoices: { a: 'sd20' } } } };
+    });
+    run(tc, [RESEARCH]);
+    expect((realm(b, 0)['discoveries'] as Raw[]).map((d) => d['id'])).toEqual(['sd19']);
+    expect(realm(b, 0)['forgottenDiscoveries']).toEqual(['sd20']);
+  });
+
   test('a lead the realm knows only by a gap in its list is still a lead to pursue', () => {
     const { b, tc } = fresh((bb) => {
       realm(bb, 0)['discoveries'] = [null];

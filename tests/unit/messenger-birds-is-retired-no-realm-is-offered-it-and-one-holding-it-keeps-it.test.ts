@@ -6,8 +6,10 @@
 // - its row is the one retired, and no realm of any race or creed the table names is eligible for it;
 // - for every such realm knowing nothing yet, the pool Research and a Breakthrough draw from holds every other
 //   discovery open to it, and not Messenger Birds;
+// - a bot choosing between a pair that offers it keeps the other (botResearchPick asks discMayBeOffered);
 // - a running game's save: a realm that holds it, with a pair from last turn's Research offering it, keeps it through
-//   the save's upgrade (retireDiscoveries strikes only the ids removed from the table), and the pair is left as found.
+//   the save's upgrade (retireDiscoveries strikes only the ids removed from the table), and the pair is left as found:
+//   the pair's settling makes the other outright (tests/unit/before-the-first-phase-called-directly.test.ts).
 // A Research order that can't miss, in the field that holds only Cipher Scripts and Messenger Birds, is one of the
 // research order's cases (tests/lib/research-and-practice-order-cases.ts), played called directly and in a whole turn.
 // Level 1 (unit): plain functions of the engine's modules on staged values; no turn is played, no die is cast.
@@ -16,6 +18,7 @@ import { describe, expect, test } from 'vitest';
 import { SAGE_DISCOVERIES_P } from '../../src/content/kingdoms-call-data.ts';
 import { DISC_BY_ID, discAvailableFor, discEligible } from '../../src/engine/discoveries.ts';
 import { retireDiscoveries } from '../../src/engine/heroes/skills-and-hp.ts';
+import { botResearchPick } from '../../src/engine/bots/missions.ts';
 
 const MESSENGER_BIRDS = SAGE_DISCOVERIES_P.find((d) => d.name === 'Messenger Birds');
 
@@ -47,6 +50,12 @@ describe('Messenger Birds is retired (R-140)', () => {
       ).map((d) => d.name);
       expect(pool).toEqual(open);
     });
+  });
+
+  test('a bot choosing between a pair that offers it never keeps it, whatever its text scores', () => {
+    const G = { players: [{ alignment: 'Neutral' }], characters: [], world: { provinces: [] } };
+    expect(botResearchPick(G as never, 0, ['sd20', 'sd19'])).toBe('sd19');
+    expect(botResearchPick(G as never, 0, ['sd20'])).toBeUndefined();
   });
 
   test("a running game's save: a realm that holds it, with a pair offering it, keeps both through the upgrade", () => {

@@ -8,7 +8,7 @@ import { botResearchPick } from '../bots/missions.ts';
 import { TITLES_PUBLIC_FROM_TURN, TITLE_PERKS_ENABLED } from '../titles/perks.ts';
 import { computeMinorTitles, computeStandings } from '../titles/reckoning.ts';
 import { telOrdersFor } from './log-line-helpers.ts';
-import { DISC_BY_ID, theWonderServesTheRealm } from '../discoveries.ts';
+import { DISC_BY_ID, discMayBeOffered, theWonderServesTheRealm } from '../discoveries.ts';
 import {
   relKeyOf,
   theStateThePairsEntryHolds,
@@ -124,7 +124,9 @@ export function relationsReadyAndLastTurnsResearchChoicesSettledWithTheBotsOwnPi
       pl.discoveries = discovered;
       const held: readonly ({ readonly id: string } | null | undefined)[] = discovered;
       const known = new Set(held.map((d) => d?.id));
-      const opts = p.options.filter((id) => DISC_BY_ID[id] && !known.has(id) && !RETIRED_DISCOVERY_IDS.has(id));
+      const opts = p.options.filter(
+        (id) => discMayBeOffered(DISC_BY_ID[id]) && !known.has(id) && !RETIRED_DISCOVERY_IDS.has(id),
+      ); // a retired row (R-140) left out: the other is made outright
       if (!opts.length) return;
       const want = picks[p.key];
       const openLeads: readonly (string | undefined)[] = opts;

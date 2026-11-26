@@ -74,7 +74,7 @@ import {
 import { BOT_SCHOOLS } from './schools.ts';
 import { botDuelRating, botFillOrders, botPathAny, botPathLenAny, botSpyTarget } from './spellcraft.ts';
 import { isCharmedNow } from '../heroes/charms-and-neutrals.ts';
-import { DISC_BY_ID } from '../discoveries.ts';
+import { DISC_BY_ID, discMayBeOffered } from '../discoveries.ts';
 import type { ADiscoverysRow } from '../../content/discovery-effects-their-kinds-numbers-and-words.ts';
 import {
   emit,
@@ -596,7 +596,7 @@ export function botResearchPick(G: GameState, pi: number, options: Iterable<stri
     if (/sage|research|lore|scholar/.test(txt)) v += 1;
     return v;
   };
-  return [...options].sort((a, b) => score(b) - score(a))[0];
+  return [...options].filter((id) => discMayBeOffered(byId[id])).sort((a, b) => score(b) - score(a))[0]; // R-140
 }
 // ══ ITEMS (Sept 2026, review R3) ════
 // Bots picked up hoards and never touched them. Three habits a human has: don the best kit (the engine's

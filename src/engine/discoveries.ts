@@ -80,17 +80,20 @@ export function discBlockedIds(pl: ARealmAsTheDiscoveriesReadIt | null | undefin
 }
 // ── Discovery eligibility & generic effect readers ────
 // Race/alignment discoveries carry `race` / `alignment`; a realm can only research, breakthrough,
-// Grand-Library or steal (spy) a discovery it is eligible for, and no realm is eligible for a retired one (`retired`,
-// R-140). Their effects are data-driven (`effect.kind`) and found by the discoveries' registry's runners at the hooks (plan P1-19aa to P1-19ag; the readers
+// Grand-Library or steal (spy) a discovery it is eligible for. Their effects are data-driven (`effect.kind`) and found by the discoveries' registry's runners at the hooks (plan P1-19aa to P1-19ag; the readers
 // discEffectsOf, discSumOf, discEff, discSum and discParam went with their last callers, P1-19ag). The table of the
 // discoveries by id is the registry's, which finds a realm's effects of a kind by it.
 export { DISC_BY_ID };
+/** Whether a discovery may be offered to any realm: its row is in the table and isn't retired (R-140). Every way a
+ *  realm is offered one asks it: the pools (through discEligible), a pair's settling, its view and the bots' pick. */
+export function discMayBeOffered(d: Pick<ADiscoverysRow, 'retired'> | null | undefined): boolean {
+  return !!d && !d.retired;
+}
 export function discEligible(
   d: Pick<ADiscoverysRow, 'race' | 'alignment' | 'retired'> | null | undefined,
   pl: ARealmAsTheDiscoveriesReadIt | null | undefined,
 ) {
-  if (!d) return false;
-  if (d.retired) return false; // a retired discovery is offered to no realm (Messenger Birds, R-140)
+  if (!d || !discMayBeOffered(d)) return false;
   if (d.race && pl?.race !== d.race) return false;
   if (d.alignment && pl?.alignment !== d.alignment) return false;
   return true;
