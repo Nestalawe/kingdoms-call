@@ -119,7 +119,8 @@ export const A_REALMS_DISCOVERIES_CHART_A_PROVINCE = {
   'arcane-observatory': () => true,
 } satisfies Partial<Record<DiscoveryEffectSlug, TheSightsStages["a realm's discoveries chart a province"]>>;
 
-/** "visibility: a realm's discoveries widen the warnings it hears" (Messenger Birds, P1-19ah): it does. */
+/** "visibility: a realm's discoveries widen the warnings it hears" (Messenger Birds, P1-19ah): it does. Messenger Birds
+ *  is retired (R-140): no realm is offered it, and nothing reads the warnings it widens. */
 export const A_REALMS_DISCOVERIES_WIDEN_THE_WARNINGS_IT_HEARS = {
   'messenger-birds': () => true,
 } satisfies Partial<Record<DiscoveryEffectSlug, TheSightsStages["a realm's discoveries widen the warnings it hears"]>>;

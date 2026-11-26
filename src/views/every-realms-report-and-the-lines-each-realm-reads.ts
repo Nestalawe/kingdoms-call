@@ -77,8 +77,8 @@ export function playerEvents(
     .filter((c) => c.player === pi && c.alive)
     .forEach((c) => playerVisitedProvs.add(c.location));
   // Messenger Birds: receive intel from provinces 2 steps from owned provinces (the discoveries' registry's since plan
-  // P1-19ah: "visibility: a realm's discoveries widen the warnings it hears", moved as it was: nothing below reads the
-  // set it widens, Parked)
+  // P1-19ah: "visibility: a realm's discoveries widen the warnings it hears"). Nothing below reads the set it widens, so
+  // it does nothing: it is retired (R-140), offered to no realm, and a realm that holds it keeps it
   if (doARealmsDiscoveriesWidenTheWarningsItHears(G.players[pi])) {
     const offEven: readonly (readonly [number, number])[] = [
       [-1, -1],

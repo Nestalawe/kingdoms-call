@@ -421,6 +421,33 @@ export const RESEARCH_ORDER_CASES: ResearchAndPracticeOrderCase[] = [
     },
   },
   {
+    // R-140: the roll certain (a Neutral Sage 5 who has failed five times this turn), and the field holding only
+    // Cipher Scripts and Messenger Birds: before the ruling the two were the pair to choose between; now Messenger
+    // Birds is retired, so Cipher Scripts is the field's last discovery and is made outright.
+    name: 'Research: Messenger Birds is retired (R-140): a certain Espionage find never offers it',
+    stage(b) {
+      creed(b, 'Neutral');
+      knowsHidden(b);
+      knows(b, (d) => d.category === 'Espionage' && d.name !== 'Messenger Birds' && d.name !== 'Cipher Scripts');
+      const h = king(b, { skills: skilled({ sage: 5 }) });
+      h['_researchFailStreak'] = { turn: b.G.turn, n: 5 };
+      return { hero: h, orders: [one(h, order('rest'), order('research', 'Espionage'))], knew: knew(b) };
+    },
+    check(o, { hero: h, knew: k }) {
+      const byId = new Map(
+        (o.world.players[0]?.['discoveries'] as { id: string; name: string }[] | undefined)?.map((d) => [d.id, d.name]),
+      );
+      const learned = ids(o)
+        .filter((id) => !(k ?? []).includes(id))
+        .map((id) => byId.get(id));
+      const offered = choices(o).flatMap((c) => c.options);
+      return {
+        got: { chance: firstRoll(o, h).chance, learned, offered },
+        want: { chance: 100, learned: ['Cipher Scripts'], offered: [] },
+      };
+    },
+  },
+  {
     name: 'Research: Perseverance: each failure this turn makes the next ×1.2 likelier; a discovery starts it afresh',
     stage(b) {
       knowsHidden(b);
