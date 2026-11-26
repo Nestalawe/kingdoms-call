@@ -8,6 +8,7 @@ meant for `main`.
 
 | Path | What |
 |---|---|
+| `DESIGN-HANDOFF.md` | The handoff for a fresh session carrying on the design and testing of the kits with Toby: setting up, how a round runs, Toby's decisions so far, the open questions. |
 | `IMPLEMENTATION.md` | The requirements for building the new alignment abilities into the live game, for a fresh session: what to build, Toby's decisions, the cases the games found, how to build it on `main`. |
 | `METHOD.md` | How the kits were tested and compared, for engineers. |
 | `matrix/` | The scripts that play the bot matrix with the kits on and compare the runs. |
