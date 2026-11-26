@@ -13,8 +13,6 @@
 // (B-06ba).
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
-  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
-  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
   KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE,
   KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
   KC_UNIT_CLASS,
@@ -329,17 +327,11 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   // A slain commander's skills die with them: the stand-in provides no Tactical, Archery, Naval,
   // Druid or spellcraft for the rest of this battle.
   const defHero = defCmdrSlain ? null : (neutralGuardHero ?? null);
-  let tactSkill =
+  const tactSkill =
     atkCmdrSlain || c._tacticalNegated
       ? 0
       : effStat(turnContext, c, 'tactical') +
         theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, c, title));
-  if (c._curseHalveStat === 'tactical')
-    tactSkill = Math.floor(tactSkill / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
-  const tactBonus = Math.min(
-    KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-    1 + tactSkill * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-  ); // Tactical battle bonus hard-capped at ×2.0 (incl. titles)
   // Tactical only applies to land armies (not flying or naval) per AK 4.1.1 Tactical only applies
   // in land provinces AND to land units
   const isLandBattle = prov.terrain !== 'sea';
@@ -349,7 +341,6 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   // went with P1-10b24.)
   if (tactSkill > 0 && !isLandBattle)
     narrate(narrative, { kind: "the attacker's Tactical command does not apply at sea", cName: atkSide });
-  const effectiveTactBonus = isLandBattle ? tactBonus : 1;
 
   // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
   // bonus
@@ -437,12 +428,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   const skillLabels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
   const archSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'archery');
   const archMissileBonus = 1 + archSkillAtk * ARCHERY_MISSILE_PCT; // 2026-09-23b (Toby): Archery lifts missile units +5%/level · sd07 Fire Arrows is a `unitStr` missile effect (armStr)
-  let navalSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'naval');
-  if (c._curseHalveStat === 'naval')
-    navalSkillAtk = Math.floor(navalSkillAtk / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // Curse (battle magic) can wither Naval command
-  const navalFleetBonus =
-    1 +
-    navalSkillAtk * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
+  const navalSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'naval'); // (a Curse withers it in N8, R-162)
   const _provCoastal = provIsCoastal(G, prov); // Sea Giants' Tidal Might
   const playerAlign = theAlignmentARealmReadsAs(theAttackersRealm?.alignment);
   return {
@@ -462,7 +448,6 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
     defHero,
     tactSkill,
     isLandBattle,
-    effectiveTactBonus,
     defBonus,
     homeBonus,
     atkHomeBonus,
@@ -471,7 +456,6 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
     archSkillAtk,
     archMissileBonus,
     navalSkillAtk,
-    navalFleetBonus,
     _provCoastal,
     playerAlign,
   };
