@@ -4,6 +4,7 @@
 // (the bots, Move, Explore, world generation, a spy's findings, the warnings, the report's filter), and perception in
 // src/views applies them. The engine may not import src/views, so they live here, in one copy.
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { THE_MOST_UNITS_EACH_BAND_OF_AN_ARMYS_SIZE_NAMES } from '../../content/the-sight-rules-numbers-an-armys-size-band-spotting-an-enemy-in-an-owned-province-and-a-spys-success.ts';
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { activeItems } from '../items/equipment.ts';
 import { theHerosItemsHideHisFace } from '../rules/the-registry-of-magic-item-effects.ts';
@@ -36,16 +37,18 @@ export function nearSpiedProvIds(gs: GameState, spiedIds: Set<number>) {
 }
 // 2026-10-15 (Toby, D1): how big a force a hero you have not spied leads, as a glance across the field
 // gives it — never the exact count. One wording for the map, the hero sightings and the intrusion alerts.
+// Its bands' figures are content's row (THE_MOST_UNITS_EACH_BAND_OF_AN_ARMYS_SIZE_NAMES, B-06bv).
 export function armySizeBand(n: number) {
+  const band = THE_MOST_UNITS_EACH_BAND_OF_AN_ARMYS_SIZE_NAMES;
   return n <= 0
     ? 'no armies'
-    : n <= 2
+    : n <= band.aSmallEscort
       ? 'a small escort (a few units)'
-      : n <= 5
+      : n <= band.aModestBand
         ? 'a modest band'
-        : n <= 9
+        : n <= band.aSizeableHost
           ? 'a sizeable host'
-          : n <= 15
+          : n <= band.aLargeHost
             ? 'a large host'
             : 'a vast host';
 }

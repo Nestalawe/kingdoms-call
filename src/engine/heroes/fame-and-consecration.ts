@@ -1,4 +1,5 @@
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
+import { THE_FIGURES_OF_THE_ROLL_TO_SPOT_AN_ENEMY_HERO_IN_AN_OWNED_PROVINCE } from '../../content/the-sight-rules-numbers-an-armys-size-band-spotting-an-enemy-in-an-owned-province-and-a-spys-success.ts';
 import { theStateThePairsEntryHolds } from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { homeFounderOf } from '../grand-design.ts';
 import { hexDistP } from '../world/map-helpers.ts';
@@ -212,8 +213,10 @@ export function spotEnemyInOwnedProvince(
   // tax-collectors, garrison and villagers walk it every day, whatever share of it his explorers
   // happened to chart. The contest that remains is the one that was always meant to be here — the
   // lurker's Spy against the watchers'.
-  const explored = 100;
-  const enemySpy = Math.min(5, Number(enemyChar.skills?.spy) || 0);
+  // Its figures are content's row (THE_FIGURES_OF_THE_ROLL_TO_SPOT_AN_ENEMY_HERO_IN_AN_OWNED_PROVINCE, B-06bv).
+  const figures = THE_FIGURES_OF_THE_ROLL_TO_SPOT_AN_ENEMY_HERO_IN_AN_OWNED_PROVINCE;
+  const explored = figures.theShareOfHisOwnGroundTheOwnerKnows;
+  const enemySpy = Math.min(figures.theHighestLevelOfTheEnemysSpyCounted, Number(enemyChar.skills?.spy) || 0);
   let friendlySpy = 0;
   (prov.characters ?? []).forEach((cid) => {
     const f = gs.characters[cid];
@@ -222,17 +225,17 @@ export function spotEnemyInOwnedProvince(
       f.player === viewerPi || relOfReport(gs, viewerPi, f.player) === THE_STATES_TWO_REALMS_STAND_IN.allied;
     if (friendly) friendlySpy = Math.max(friendlySpy, Number(f.skills?.spy) || 0);
   });
-  friendlySpy = Math.min(5, friendlySpy);
+  friendlySpy = Math.min(figures.theHighestLevelOfTheFriendlySpyCounted, friendlySpy);
   // …and no one hides in another realm's land indefinitely. The floor is 25%, not 5%: a Spy-5 hero
   // squatting in a province you hold is now found roughly every fourth turn instead of every
   // twentieth, so a hunt can always eventually be brought to him. Shimmer still halves it.
   let chance = Math.max(
-    25,
+    figures.theLeast,
     Math.min(
-      95,
+      figures.theMost,
       explored -
-        20 * enemySpy +
-        10 * friendlySpy +
+        figures.theFallEachLevelOfTheEnemysSpyGives * enemySpy +
+        figures.theRiseEachLevelOfTheBestFriendlySpyGives * friendlySpy +
         whatARealmsDiscoveriesAddToSpottingALurker(gs.players?.[viewerPi], {
           theGround: prov.terrain,
           isItTheRealmsHome: () => homeFounderOf(gs, prov.id) === viewerPi,
@@ -241,8 +244,9 @@ export function spotEnemyInOwnedProvince(
     ),
   ); // + spotLurker discoveries (sd60 Watch Houses; the discoveries' registry's since plan P1-19ad: "visibility: a
   // realm's discoveries spot a hero lurking in its province", the home and the coast asked only by an effect for them)
-  if (perkTier(enemyChar, 'illusory') >= 1) chance = Math.max(5, chance * 0.5); // ILLUSORY L6 (Shimmer): half as likely to be found
-  return detRoll(turn ?? gs.turn, viewerPi, enemyChar.id, prov.id) * 100 < chance;
+  if (perkTier(enemyChar, 'illusory') >= figures.theTierOfTheIllusoryPerkThatHalvesIt)
+    chance = Math.max(figures.theLeastUnderTheIllusoryPerk, chance * figures.theShareOfItTheIllusoryPerkLeaves); // ILLUSORY L6 (Shimmer): half as likely to be found
+  return detRoll(turn ?? gs.turn, viewerPi, enemyChar.id, prov.id) * figures.theScaleTheRollIsReadOn < chance;
 }
 /** The consecrations a king may hold at once (plan P1-11e22, moved as it was; here since P1-11e24, where the views may ask it): his White, and what his realm's
  *  discoveries add (ad03 Holy Sites, +1; still needs White 1+; the discoveries' registry's since plan P1-19ae:

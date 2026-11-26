@@ -40,7 +40,7 @@ a hint by its words or its function's name, not by the file's name.
 | Discoveries | `discoveries.ts`, and their effects in `rules/discoveries/` |
 | A realm's alignment: its creed's rules, its orders, the marks it leaves on a province | the rows in `src/content/alignment-abilities-their-keys-names-numbers-and-words.ts`, their effects in `rules/alignment-abilities/`, the orders in `orders/alignment/`, the marks in `world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts` |
 | Imperial titles: who holds one, the reckoning (the merit toward one is added by the order or spell that earns it: search its counter) | `titles/` |
-| Sight: who sees whom, spotting, what a province shows | `sight/`, and `src/views/what-each-realm-may-see-of-the-world.ts` |
+| Sight: who sees whom, spotting, what a province shows | `sight/`, and `src/views/what-each-realm-may-see-of-the-world.ts`; the numbers of `armySizeBand`, `spotEnemyInOwnedProvince` and `applySpySuccess` in `src/content/the-sight-rules-numbers-an-armys-size-band-spotting-an-enemy-in-an-owned-province-and-a-spys-success.ts`; the parts of the sight rule the report and the bots both read (each copy hands in its own three sets) in `src/engine/sight/the-provinces-a-realm-has-in-sight-now-and-those-it-has-visited.ts` |
 | The warnings of a rival's hero in your land | `turn/intrusion-warnings.ts` |
 | Spies: what a spy learns | `espionage/`, and the espionage orders in `orders/` |
 | Relations between realms, captures | `realms/`; the three states, the Treat and the map's name for each state in `src/content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts` (the player portal's popup and Diplomacy card read them too: `ui/player/map-symbols.ts`), the diplomacy ladder (each declaration's step, the overture's kind, the small game's alliance limit) in `src/content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts`, and the key of a pair and its entry's one reader in `rules-on-plain-values/how-two-realms-stand-…` |
@@ -106,8 +106,9 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   `src/content/kingdoms-call-data.ts`, each named for its rule, not for one battle (both battles, a host's strength
   `armStr` and the best commander's score read the shared ones): a figure changes in its row. The numbers left in
   `battle/`'s code are structure (a percentage, a rounding, a midpoint, a tiny margin, a list's length). Battle rules
-  written outside `battle/` still hold their own: `units/movement.ts` (`tacMulted`, the pursuits, the Shield Fort),
-  `magic/pre-battle-spell-choice.ts`, `chances-and-lair-grades.ts`, and the sea lift's `seaLiftOfAColumn`. A
+  written outside `battle/` read the same rows (a hero's and a guard's cast chance, the sea lift, a hero who escapes
+  death), and the battles' count holds each such function it lists at 0 (`THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES`);
+  what is left (the cast base and mastery, the portal's copies, the battle spells by school) is KD-479's. A
   personal combat's figures are rows there too (to-hit, a blow, a hit taken, courage, the duels, speed, the plans, a
   flight, an arrow, a guardian's hidden traits and powers, a lair's fight, a spell's cast, the initiative and mercy);
   the numbers left in `personal-combat/`'s code are structure (a percentage, the figures a power's words name, the

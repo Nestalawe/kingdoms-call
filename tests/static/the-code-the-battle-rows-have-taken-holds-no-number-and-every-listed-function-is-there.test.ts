@@ -1,9 +1,10 @@
-// The code the battle rows have taken holds no number, and every file and bots' function the battles' counts list is
-// there (B-06, T7, the rules pulled out: Runs 3c and 3d, the battles). Each function or table the family's rows have
-// taken holds no number other than 0 and 1 (the battles' factors, bands and tables are read from content's rows
-// instead). Each row adds what it takes to TAKEN (the bots' race row B-06ah took the first). With them, the ratchet's
-// three counts of the battles' numbers (tools/ratchet.ts's battleNumbersInEngine over src/engine/battle/ but its facts'
-// files and two files of src/engine/units/, personalCombatNumbersInEngine over src/engine/personal-combat/ but its
+// The code the battle rows have taken holds no number, and every file and function the battles' counts list is there
+// (B-06, T7, the rules pulled out: Runs 3c and 3d, the battles). Each function or table the family's rows have taken
+// holds no number other than 0 and 1 (the battles' factors, bands and tables are read from content's rows instead).
+// Each row adds what it takes to TAKEN (the bots' race row B-06ah took the first). With them, the ratchet's three
+// counts of the battles' numbers (tools/ratchet.ts's battleNumbersInEngine over src/engine/battle/ but its facts' files,
+// two files of src/engine/units/ and the battle functions it lists in the engine's other files (B-06bz, each at 0 when
+// it joined), personalCombatNumbersInEngine over src/engine/personal-combat/ but its
 // facts' file, and battleNumbersInTheBots over the bots' battle estimate's listed functions, by their helper
 // battleNumbersByFunction), which only fall. A count of listed files or functions can be lowered by moving a number out
 // of them, so each one listed must still be there: a function a row empties stays in its list at 0.
@@ -24,6 +25,7 @@ import {
   readBaseline,
   THE_BATTLES_FILES_IN_THE_UNITS_FOLDER,
   THE_BATTLES_FUNCTIONS_IN_THE_BOTS,
+  THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES,
   theCodeFiles,
 } from '../../tools/ratchet.ts';
 
@@ -448,6 +450,39 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
     'botDruidShortfall',
     "B-06bq, a Druid shortfall's step: content's row (KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT)",
   ],
+  ['src/engine/units/movement.ts', 'tacMulted', "B-06bz, Tactical's lift as Telekinetic Storm leaves it: none written"],
+  ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten', "B-06bz, the rout's pursuits: the registry's, none written"],
+  ['src/engine/units/movement.ts', 'shieldFortHolds', "B-06bz, Shield Fort: the registry's, none written"],
+  [
+    'src/engine/magic/pre-battle-spell-choice.ts',
+    'battleSpellUseful',
+    "B-06bz, whether a battle spell has something to strike: the spells' registry's, none written",
+  ],
+  [
+    'src/engine/chances-and-lair-grades.ts',
+    'primalStrikeItemBonus',
+    "B-06bz, the pre-battle strike's items' bonus: the items' registry's, none written",
+  ],
+  [
+    'src/engine/chances-and-lair-grades.ts',
+    'primalStrikeChance',
+    "B-06bz, the pre-battle strike's chance: the spells' registry's, none written",
+  ],
+  [
+    'src/engine/chances-and-lair-grades.ts',
+    'guardCastChance',
+    "B-06bz, a guard's cast chance: content's row (KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST)",
+  ],
+  [
+    'src/engine/rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts',
+    'seaLiftOfAColumn',
+    "B-06bz, the sea lift's doubling and hulls' shares: content's rows (KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA, KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM)",
+  ],
+  [
+    'src/engine/units/movement-pools.ts',
+    'getSeaCapability',
+    "B-06bz, Naval 8's tier: content's row (KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA)",
+  ],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');
@@ -456,7 +491,8 @@ test.for(TAKEN)('%s: %s holds no number (%s)', ([file, fn]) => {
   const isCounted =
     countsBattleNumbers(file) ||
     countsPersonalCombatNumbers(file) ||
-    THE_BATTLES_FUNCTIONS_IN_THE_BOTS.some(([f, g]) => f === file && g === fn);
+    THE_BATTLES_FUNCTIONS_IN_THE_BOTS.some(([f, g]) => f === file && g === fn) ||
+    THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES.some(([f, g]) => f === file && g === fn);
   expect(isCounted, `${file}'s ${fn} is one the battles' counts read`).toBe(true);
   const counts = battleNumbersByFunction(file, read(file));
   expect(fn === TOP || counts.has(fn), `${file} declares ${fn}`).toBe(true);
@@ -471,6 +507,24 @@ test.for(THE_BATTLES_FILES_IN_THE_UNITS_FOLDER)('%s, which the battles count lis
 test.for(THE_BATTLES_FUNCTIONS_IN_THE_BOTS)('%s declares %s, which the bots battle count lists', ([file, fn]) => {
   expect(fs.existsSync(path.join(ROOT, file)), `${file} is there`).toBe(true);
   expect(battleNumbersByFunction(file, read(file)).has(fn), `${file} declares ${fn}`).toBe(true);
+});
+
+test.for(THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES)(
+  '%s declares %s, which the battles count lists outside its files',
+  ([file, fn]) => {
+    expect(fs.existsSync(path.join(ROOT, file)), `${file} is there`).toBe(true);
+    expect(battleNumbersByFunction(file, read(file)).has(fn), `${file} declares ${fn}`).toBe(true);
+  },
+);
+
+// Each function the battles count lists outside its files is listed once, in a file the count doesn't read whole (or
+// its numbers would count twice), and is held at 0 by TAKEN: the list grows only by a function with no number.
+test('no battle function outside its files is listed twice, in a file counted whole, or off TAKEN', () => {
+  const keys = THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES.map(([file, fn]) => `${file} ${fn}`);
+  expect(keys.filter((k, i) => keys.indexOf(k) !== i)).toEqual([]);
+  expect(THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES.filter(([file]) => countsBattleNumbers(file))).toEqual([]);
+  const taken = new Set(TAKEN.map(([file, fn]) => `${file} ${fn}`));
+  expect(keys.filter((k) => !taken.has(k))).toEqual([]);
 });
 
 test("no bots' function is listed twice, and each is in src/engine/bots/", () => {
@@ -528,7 +582,8 @@ test("the ratchet's helper counts each number other than 0 and 1, by top-level f
 });
 
 // The counts on the tree are the ratchet's baselines; a number planted where a count reads raises it by one, and the
-// ratchet fails on it; one where none reads (a facts' file, another units file, a bots' function not listed) doesn't.
+// ratchet fails on it; one where none reads (a facts' file, another units file's function not listed, a bots' function
+// not listed) doesn't.
 type TheBattlesCounts = 'battleNumbersInEngine' | 'personalCombatNumbersInEngine' | 'battleNumbersInTheBots';
 const THE_COUNTS: Readonly<
   Record<TheBattlesCounts, (codeFiles: readonly (readonly [file: string, text: string])[]) => number>
@@ -544,6 +599,7 @@ test.for([
   ['src/engine/units/defend-ride-outs-ambushes-and-reinforcements.ts', 'aPlantedRideOut', 'battleNumbersInEngine', 1],
   ['src/engine/battle/the-facts-a-battles-lines-record.ts', 'aPlantedFact', 'battleNumbersInEngine', 0],
   ['src/engine/units/movement-pools.ts', 'aPlantedPool', 'battleNumbersInEngine', 0],
+  ['src/engine/units/movement-pools.ts', 'getSeaCapability', 'battleNumbersInEngine', 1],
   [
     'src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts',
     'aPlantedToHit',

@@ -1,7 +1,7 @@
 // npm run ratchet: the harness can only get stronger. Counts what weakens it (switched-off checks, allowlist
 // entries, JavaScript not yet TypeScript (the tests' and tools', and the site's in src/, apart), quarantined tests,
 // tests on the engine's vm loader, the engine's checks of a unit by its
-// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, the world's making's numbers and lists, the engine's naming of a race, a temper, an order's kind and a relation, the battles' and personal combat's numbers in the engine and in the bots, the portal's naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
+// type's name, of an item's effect by its key or an item by its name, of a spell by its name or its `fn`, of a discovery by its id or its effect's kind, of a guardian's perk and of an alignment order by its key, its naming of an alignment, the economy's numbers in the engine and in the bots, the engine's checks of a title, the world's making's numbers and lists, the engine's naming of a race, a temper, an order's kind and a relation, the battles' and personal combat's numbers in the engine and in the bots, the sight rules' numbers, the portal's naming of an alignment, ESLint's suppressed findings, the import rules' known violations and what knip finds unused) and fails if
 // any count is above its baseline in tests/ratchet.json. When a count falls, it says so: lower the baseline in the
 // same PR (npm run ratchet -- --update only ever lowers it). tests/static/harness.test.ts runs the same comparison,
 // so npm test and CI fail too.
@@ -1230,9 +1230,11 @@ export const relationChecksInEngine = (codeFiles: readonly (readonly [file: stri
 // (each number other than 0 and 1, not a literal type nor an element's index), by top-level function and table, in
 // every file of src/engine/battle/ (its folders' too: a stage split out of a battle is counted where it goes) but its
 // facts' files (`the-facts-…`, a line's words), and in the two files of src/engine/units/ the battles' ride-outs and
-// retreats are in. personalCombatNumbersInEngine counts the same in src/engine/personal-combat/ but its facts' file,
-// and battleNumbersInTheBots in the bots' battle estimate, its functions listed (THE_BATTLES_FUNCTIONS_IN_THE_BOTS):
-// a listed function a row empties stays in the list at 0, so a number moved out of the list can't hide.
+// retreats are in, and in the battle rules written in other files of the engine, their functions listed
+// (THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES, B-06bz: each at 0 when it joined). personalCombatNumbersInEngine counts the
+// same in src/engine/personal-combat/ but its facts' file, and battleNumbersInTheBots in the bots' battle estimate, its
+// functions listed (THE_BATTLES_FUNCTIONS_IN_THE_BOTS): a listed function a row empties stays in the list at 0, so a
+// number moved out of the list can't hide.
 // tests/static/the-code-the-battle-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts holds the
 // functions the rows have taken at 0 each, with battleNumbersByFunction, and fails on a listed file or bots' function
 // the code no longer has.
@@ -1266,9 +1268,33 @@ export const THE_BATTLES_FUNCTIONS_IN_THE_BOTS: readonly (readonly [file: string
 export function battleNumbersByFunction(file: string, text: string): Map<string, number> {
   return new Map([...worldMakingCountsByFunction(file, text)].map(([fn, c]): [string, number] => [fn, c.numbers]));
 }
-/** The battles' numbers in the files of src/engine/battle/ but its facts' files, and in the units' two files. */
-export const battleNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
-  theTotalOf(battleNumbersByFunction, countsBattleNumbers, codeFiles);
+/** The battle rules written in the engine's other files, which battleNumbersInEngine counts by function: Tactical's
+ *  lift on a host as Telekinetic Storm leaves it, the rout's pursuits and Shield Fort, whether a battle spell has
+ *  something to strike, the pre-battle strike's chance and its items' bonus, a guard's cast chance, the sea lift and
+ *  whether a column can put to sea. */
+export const THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES: readonly (readonly [file: string, fn: string])[] = [
+  ['src/engine/units/movement.ts', 'tacMulted'],
+  ['src/engine/units/movement.ts', 'pursuitsOfTheBeaten'],
+  ['src/engine/units/movement.ts', 'shieldFortHolds'],
+  ['src/engine/magic/pre-battle-spell-choice.ts', 'battleSpellUseful'],
+  ['src/engine/chances-and-lair-grades.ts', 'primalStrikeItemBonus'],
+  ['src/engine/chances-and-lair-grades.ts', 'primalStrikeChance'],
+  ['src/engine/chances-and-lair-grades.ts', 'guardCastChance'],
+  ['src/engine/rules-on-plain-values/ships-and-flyers-that-carry-a-column-across-the-sea.ts', 'seaLiftOfAColumn'],
+  ['src/engine/units/movement-pools.ts', 'getSeaCapability'],
+];
+/** The battles' numbers in the files of src/engine/battle/ but its facts' files, in the units' two files, and in the
+ *  functions listed outside them. */
+export function battleNumbersInEngine(codeFiles: readonly (readonly [file: string, text: string])[]): number {
+  let n = theTotalOf(battleNumbersByFunction, countsBattleNumbers, codeFiles);
+  for (const [file, text] of codeFiles) {
+    const theFunctions = THE_BATTLES_FUNCTIONS_OUTSIDE_ITS_FILES.filter(([f]) => f === file).map(([, fn]) => fn);
+    if (theFunctions.length === 0) continue;
+    const counts = battleNumbersByFunction(file, text);
+    for (const fn of theFunctions) n += counts.get(fn) ?? 0;
+  }
+  return n;
+}
 /** Personal combat's numbers in the files of src/engine/personal-combat/ but its facts' file. */
 export const personalCombatNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
   theTotalOf(battleNumbersByFunction, countsPersonalCombatNumbers, codeFiles);
@@ -1283,6 +1309,28 @@ export function battleNumbersInTheBots(codeFiles: readonly (readonly [file: stri
   }
   return n;
 }
+
+// The sight rules' numbers written in the engine's code (Run 3e, sight's part, from #811; the ratchet's paragraph
+// of docs/architecture/the-toolchain-the-checks-and-the-harness.md): economyNumbersByFunction's rule (each number
+// other than 0, not a literal type nor an element's index) in the sight functions THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE
+// lists (armySizeBand, enemyCharVisibleTo and nearSpiedProvIds in src/engine/sight/, spotEnemyInOwnedProvince and
+// applySpySuccess), counted by syntax tree. The sight rules' sets of provinces and heroes are not numbers, so no count
+// reads them. The family's rows move the numbers into content's rows, so the count only falls. A listed function a
+// row empties stays in the list at 0, so a number moved out of the list can't hide:
+// tests/static/the-code-the-sight-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts holds
+// the functions the rows have taken (and the two that hold none from the start) at 0 each, and fails on a listed file
+// or function the code no longer has.
+/** The engine's sight functions sightNumbersInEngine counts. */
+export const THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE: readonly (readonly [file: string, fn: string])[] = [
+  ['src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts', 'armySizeBand'],
+  ['src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts', 'enemyCharVisibleTo'],
+  ['src/engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts', 'nearSpiedProvIds'],
+  ['src/engine/heroes/fame-and-consecration.ts', 'spotEnemyInOwnedProvince'],
+  ['src/engine/espionage/what-a-spy-learns.ts', 'applySpySuccess'],
+];
+/** The sight rules' numbers in the engine's functions listed (above). */
+export const sightNumbersInEngine = (codeFiles: readonly (readonly [file: string, text: string])[]): number =>
+  economyNumbersIn(THE_SIGHTS_FUNCTIONS_IN_THE_ENGINE, codeFiles);
 
 // The player portal's naming of an alignment (Run 3e, the portal's alignment rules): alignmentChecksByFunction's rule
 // (a string naming one of KC_ALIGNMENTS, anywhere but a literal type) in the files of src/ui/, src/views/ and
@@ -1405,6 +1453,7 @@ export function measure(): Counts {
     battleNumbersInEngine: battleNumbersInEngine(codeFiles),
     personalCombatNumbersInEngine: personalCombatNumbersInEngine(codeFiles),
     battleNumbersInTheBots: battleNumbersInTheBots(codeFiles),
+    sightNumbersInEngine: sightNumbersInEngine(codeFiles),
     alignmentChecksOutsideTheEngine: alignmentChecksOutsideTheEngine(codeFiles),
     eslintSuppressions: eslintSuppressions(),
     knownArchitectureViolations: knownArchitectureViolations(),

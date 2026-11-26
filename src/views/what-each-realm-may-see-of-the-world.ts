@@ -21,7 +21,7 @@
 //
 // It writes nothing and draws no dice (tests/unit/the-reports-are-built-on-a-world-that-cannot-be-written.test.ts).
 // The cases of each sight rule: tests/unit/what-each-realm-may-see-of-the-world.test.ts.
-import { discTaxAdd, realmBaseTax, taxBonusCap } from '../engine/discoveries.ts';
+import { discTaxAdd, realmBaseTax, taxBonusCap, theWonderServesTheRealm } from '../engine/discoveries.ts';
 import { gdActiveFor, homeFounderOf, homeProvinceIdFor, mapCentreColFor } from '../engine/grand-design.ts';
 import { graveIntelFor } from '../engine/graves.ts';
 import { graveServedOther } from '../engine/heroes/charms-and-neutrals.ts';
@@ -29,7 +29,12 @@ import { provinceConsecrated } from '../engine/world/the-marks-on-a-province-con
 import { activeItems } from '../engine/items/equipment.ts';
 import { monsterCatLabel } from '../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../engine/titles/perks.ts';
+import { KC_HEX_DIRS } from '../content/kingdoms-call-data.ts';
 import { MINOR_TITLES } from '../content/the-minor-titles-their-keys-names-perks-requirements-and-how-each-holder-is-found.ts';
+import {
+  THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ,
+  type APartOfTheViewOnlySomeCreedsReadsSlug,
+} from '../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import {
   computeMinorTitles,
   computeStandings,
@@ -41,6 +46,7 @@ import {
 import type { ARealmsStanding } from '../engine/titles/reckoning.ts';
 import { topSkillOf } from '../engine/rules-on-plain-values/skills-in-order-and-a-heros-fame-in-words.ts';
 import { heroHireWage } from '../engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
+import { theHexNextToAProvinceInADirection } from '../engine/rules-on-plain-values/the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 import { theAlignmentARealmReadsAs } from '../engine/rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { doARealmsDiscoveriesWaiveTheHiringBan } from '../engine/rules/the-registry-of-discovery-effects.ts';
 import {
@@ -48,9 +54,13 @@ import {
   encounterUntargetableReason,
   enemyCharVisibleTo,
   featDiscovered,
-  nearSpiedProvIds,
 } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import type { SightContext } from '../engine/sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
+import {
+  theProvincesARealmHasVisited,
+  theProvincesInSightNow,
+  theSightContextOfARealm,
+} from '../engine/sight/the-provinces-a-realm-has-in-sight-now-and-those-it-has-visited.ts';
 import { garrisonMoveRate } from '../engine/units/movement.ts';
 import type {
   Army,
@@ -440,23 +450,26 @@ export interface PlayerView {
   };
 }
 
-// The hex grid's neighbours (an even row's and an odd row's), wrapping east to west, as the map draws them.
-const OFFSETS_EVEN: readonly (readonly [number, number])[] = [
-  [-1, -1],
-  [-1, 0],
-  [0, -1],
-  [0, 1],
-  [1, -1],
-  [1, 0],
-];
-const OFFSETS_ODD: readonly (readonly [number, number])[] = [
-  [-1, 0],
-  [-1, 1],
-  [0, -1],
-  [0, 1],
-  [1, 0],
-  [1, 1],
-];
+/** The places in the map's list (row × `cols` + column) of the hexes next to `prov`, in the compass directions' order
+ *  (KC_HEX_DIRS), on a map `cols` wide and `rows` high: the engine's hex step (B-06by), the columns wrapping round,
+ *  none past the top or bottom row. */
+const thePlacesOfTheHexesNextToAProvince = (
+  prov: Pick<Province, 'row' | 'col'>,
+  cols: number,
+  rows: number,
+): number[] =>
+  KC_HEX_DIRS.map((dir) => theHexNextToAProvinceInADirection(prov, dir, cols, rows)).filter((at) => at !== null);
+
+/** Whether a realm of the alignment reads a part of the view only the realms of some creeds read (B-06bx): the part's
+ *  row (THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ) holds the alignment; one no row holds, or none, doesn't. The view
+ *  and the turn's report both ask it. */
+export const doesARealmOfTheAlignmentReadThePart = (
+  thePart: APartOfTheViewOnlySomeCreedsReadsSlug,
+  theAlignment: unknown,
+): boolean =>
+  THE_PARTS_OF_THE_VIEW_ONLY_SOME_CREEDS_READ[thePart].theCreedsWhoseRealmsReadIt.some(
+    (theCreed) => theCreed === theAlignment,
+  );
 
 /** What realm `realm` may see of `state`, the world after the turn; `itsLines`, what its lines of the turn show
  *  (absent for a report built with no turn: Turn 0, the tests' staged worlds). */
@@ -469,35 +482,26 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
 
   // ── The province sets (each sight rule's) ──
   const ownedProvIds = new Set<number>(player.provinces ?? []);
-  const visitedProvIds = new Set<number>(
-    provinces.filter((p) => (asSaved(p).visitedBy ?? []).includes(realm)).map((p) => p.id),
-  );
+  const visitedProvIds = theProvincesARealmHasVisited(state, realm);
   // next to a province it owns or visited (the order forms list them, for a recruit that fires if it takes one)
   const adjacentProvIds = new Set<number>();
   provinces.forEach((p) => {
     if (!visitedProvIds.has(p.id) && !ownedProvIds.has(p.id)) return;
-    const offsets = p.row % 2 === 0 ? OFFSETS_EVEN : OFFSETS_ODD;
-    offsets.forEach(([dr, dc]) => {
-      const nr = p.row + dr;
-      if (nr < 0 || nr >= rows) return;
-      const nc = (((p.col + dc) % cols) + cols) % cols;
-      const nid = nr * cols + nc;
+    thePlacesOfTheHexesNextToAProvince(p, cols, rows).forEach((nid) => {
       if (!visitedProvIds.has(nid) && !ownedProvIds.has(nid)) adjacentProvIds.add(nid);
     });
   });
   const ownCharLocs = new Set<number>(characters.filter((c) => c.alive && c.player === realm).map((c) => c.location));
   const spiedThisTurn = new Set<number>(player._spiedProvincesThisTurn ?? []);
-  const nearSpied = nearSpiedProvIds(state, spiedThisTurn); // D2: seen as if a hero stood there
+  // the sight rule's three sources, as the report reads them (the sight rule's, src/engine/sight/)
+  const sightSources = { owned: ownedProvIds, heroesThere: ownCharLocs, spied: spiedThisTurn };
+  const mapSight = theSightContextOfARealm(state, sightSources);
+  const nearSpied = mapSight.nearSpied; // D2: seen as if a hero stood there
   // next to a province it owns: its borders, watched all turn
   const ownedAdjacentIds = new Set<number>();
   provinces.forEach((p) => {
     if (!ownedProvIds.has(p.id)) return;
-    const offs = p.row % 2 === 0 ? OFFSETS_EVEN : OFFSETS_ODD;
-    offs.forEach(([dr, dc]) => {
-      const nr = p.row + dr;
-      if (nr < 0 || nr >= rows) return;
-      const nc = (((p.col + dc) % cols) + cols) % cols;
-      const nid = nr * cols + nc;
+    thePlacesOfTheHexesNextToAProvince(p, cols, rows).forEach((nid) => {
       if (!ownedProvIds.has(nid)) ownedAdjacentIds.add(nid);
     });
   });
@@ -508,13 +512,13 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     clairId != null ? characters.find((x) => asSaved(x).id === clairId && x.alive && x.player !== realm) : undefined;
   const spiedByItsLines = new Set(Object.keys(itsLines?.spiedProvincesAndTheirFirstPhase ?? {}).map(Number));
   const provincesOfItsProvinceEvents = new Set((itsLines?.provinceEvents ?? []).map((e) => e.provinceId));
-  const evil = player.alignment === 'Evil';
+  const evil = doesARealmOfTheAlignmentReadThePart('a-provinces-terror', player.alignment);
   // sd31 Diplomatic Protocols: the hiring ban waived (the discoveries' registry's since plan P1-19ae: "orderValidity: a
   // realm's discoveries waive the hiring ban", the rule the hire reads)
   const sd31 = doARealmsDiscoveriesWaiveTheHiringBan(me);
 
-  // ── The sight rule's three questions (as each section has always asked it) ──
-  const mapSight: SightContext = { ownedProvIds, ownCharLocs, spiedThisTurn, nearSpied };
+  // ── The sight rule's three questions (as each section has always asked it): the map's (mapSight, above), the hiring
+  // list's and the province intelligence's ──
   const hiringSight: SightContext = { ownedProvIds, ownCharLocs, spiedThisTurn };
   const provinceIntelligenceSight: SightContext = {
     ownedProvIds: new Set(),
@@ -621,7 +625,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
   const world = asSaved(state);
   const seenDeadThisTurn = new Set<unknown>(player.seenDeadHeroIds ?? []);
   const deadKnownEver = new Set<unknown>(player.knownDeadHeroIds ?? []);
-  const inSightNow = new Set<unknown>([...ownedProvIds, ...ownCharLocs, ...spiedThisTurn]);
+  const inSightNow = theProvincesInSightNow(sightSources);
   const theDeadItKnowsOf: GraveAsKnown[] = (world.heroGraveyard ?? [])
     .filter((g) => {
       const r = asSaved(g);
@@ -769,14 +773,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     const onTheMapNow = owned || heroThere || spied || nextToOwned || nextToSpied || watchedHeroThere;
     const inItsOrderForms = owned || visited || seen.nextToOwnedOrVisited || heroThere;
 
-    const neighbours = (p.row % 2 === 0 ? OFFSETS_EVEN : OFFSETS_ODD)
-      .map(([dr, dc]) => {
-        const nr = p.row + dr;
-        if (nr < 0 || nr >= rows) return null;
-        const nc = (((p.col + dc) % cols) + cols) % cols;
-        return nr * cols + nc;
-      })
-      .filter((n) => n !== null);
+    const neighbours = thePlacesOfTheHexesNextToAProvince(p, cols, rows);
 
     const total = (q.features ?? []).length;
     const explored = q.exploredBy?.[String(realm)] ?? 0;
@@ -991,9 +988,9 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
       baseTax,
       discoveryTaxGoldOfEachOfItsProvinces,
       wonderBlesses: {
-        Good: gdActiveFor(state, realm, 'Good'),
-        Druidic: gdActiveFor(state, realm, 'Druidic'),
-        Divine: gdActiveFor(state, realm, 'Divine'),
+        Good: theWonderServesTheRealm({ G: state }, realm, 'free-city-charter'),
+        Druidic: theWonderServesTheRealm({ G: state }, realm, 'world-tree-grove'),
+        Divine: theWonderServesTheRealm({ G: state }, realm, 'grand-cathedral'),
       },
       provincesItHoldsByTheirRecord: provincesItHoldsByTheirRecord.length,
       unitsGarrisonedInTheProvincesItHolds: provincesItHoldsByTheirRecord.flatMap(

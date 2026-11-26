@@ -43,6 +43,8 @@ const TAKEN: readonly (readonly [file: string, fn: string, row: string])[] = [
   ['src/ui/player/order-targets.ts', 'buildTargetField', 'B-06bs'],
   ['src/ui/player/report.ts', 'renderReportView', 'B-06bs'],
   ['src/ui/player/map-symbols.ts', '_ownerLineP', 'B-06bu'],
+  ['src/views/what-each-realm-may-see-of-the-world.ts', 'playerView', 'B-06bx'],
+  ['src/views/turn-report.ts', 'theTerrorAnEvilRealmSees', 'B-06bx'],
 ];
 
 const read = (file: string): string => fs.readFileSync(path.join(ROOT, file), 'utf8');

@@ -26,8 +26,12 @@ import { consecratedIds } from '../world/the-marks-on-a-province-consecrated-gro
 import {
   enemyCharVisibleTo,
   featDiscovered,
-  nearSpiedProvIds,
 } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
+import {
+  theProvincesARealmHasVisited,
+  theProvincesInSightNow,
+  theSightContextOfARealm,
+} from '../sight/the-provinces-a-realm-has-in-sight-now-and-those-it-has-visited.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
@@ -489,7 +493,8 @@ export function botIntel(G: GameState, pi: number): WhatABotRealmKnows {
       occupied.add(c.location);
   });
   const spied = new Set(pl?._spiedProvincesLastTurn ?? pl?._spiedProvincesThisTurn ?? []);
-  const sight = new Set([...owned, ...occupied, ...spied]);
+  const sources = { owned, heroesThere: occupied, spied };
+  const sight = theProvincesInSightNow(sources);
   const border = new Set<number>();
   sight.forEach((id) => {
     const p = G.world.provinces[id];
@@ -499,18 +504,13 @@ export function botIntel(G: GameState, pi: number): WhatABotRealmKnows {
       if (N && !sight.has(N.id)) border.add(N.id);
     }
   });
-  const remembered = new Set<number>(),
-    visited = new Set<number>();
+  const remembered = new Set<number>();
   Object.keys(pl?._provMemory ?? {}).forEach((k) => {
     const n = +k;
     if (!isNaN(n)) remembered.add(n);
   });
-  (asItsGuardReadsIt(G.world.provinces) ?? []).forEach((p) => {
-    if (asItsGuardReadsIt(p) && (asItsGuardReadsIt(p.visitedBy) ?? []).includes(pi)) {
-      remembered.add(p.id);
-      visited.add(p.id);
-    }
-  });
+  const visited = theProvincesARealmHasVisited(G, pi);
+  visited.forEach((id) => remembered.add(id));
   const known = new Set([...sight, ...border, ...remembered]);
   const o: WhatABotRealmKnows = {
     owned,
@@ -521,7 +521,7 @@ export function botIntel(G: GameState, pi: number): WhatABotRealmKnows {
     remembered,
     visited,
     known,
-    ctx: { ownedProvIds: owned, ownCharLocs: occupied, spiedThisTurn: spied, nearSpied: nearSpiedProvIds(G, spied) },
+    ctx: theSightContextOfARealm(G, sources),
     mem: pl?._provMemory ?? {},
     graves: pl?._graveIntel ?? {},
   };

@@ -125,6 +125,7 @@ import type {
   TerrorAsSeen,
   WandererAsSeen,
 } from './what-each-realm-may-see-of-the-world.ts';
+import { doesARealmOfTheAlignmentReadThePart } from './what-each-realm-may-see-of-the-world.ts';
 
 /** What the realm's lines of the turn show its report (playerEvents' result, src/views/every-realms-report-and-the-
  *  lines-each-realm-reads.ts): its chronicle, its spy activity, and the province events it reads, each with its
@@ -2216,7 +2217,7 @@ function theTerrorAnEvilRealmSees(
   // EVIL sees the Terror (2026-10-12, Toby item 23): every province of the map that Terror grips carries its
   // reading, the realm's own provinces in the report's list too, and a province it has visited but does not hold
   // gets an intel line. No other crown is told.
-  if (view.me.alignment === 'Evil') {
+  if (doesARealmOfTheAlignmentReadThePart('a-provinces-terror', view.me.alignment)) {
     const _tr = (id: number) => terrorReadingOf(view.provinces[id]?.terror, playerIndex);
     (asItsGuardReadsIt(worldMeta.provinces) ?? []).forEach((r: AProvinceTheTerrorIsReadOn | null | undefined) => {
       if (!r) return;

@@ -4,7 +4,12 @@
 // share them (P1-11a). Whether a column can put to sea was getSeaCapability's body (src/engine/units/movement-pools.ts,
 // which keeps it as a wrapper that works out the leader's naval mastery); the player portal's Move notice
 // (poSeaAnalysis) restated it with the figures it explains itself by. Both now ask seaLiftOfAColumn.
-import { KC_CARRIER_BERTHS, KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import {
+  KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA,
+  KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM,
+  KC_CARRIER_BERTHS,
+  KC_UNIT_CLASS,
+} from '../../content/kingdoms-call-data.ts';
 import {
   AERIAL_TYPES,
   CARRIER_TYPES,
@@ -25,6 +30,14 @@ export function carrierBerths(a: UnitOfAType | null | undefined): number {
 
 // Fleet capacity: light foot = 0.5 capacity (2 per hull), heavy/cavalry/siege/beast = 1 per hull
 const LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // gun-crews ride as light foot — an Ironclad ferries a Gun + a Guard
+/** The share of a hull a light foot unit takes aboard ship, and any other land unit (the sea lift's row, in half-berths,
+ *  read in whole berths: a half and a whole). */
+const THE_SHARE_OF_A_HULL_A_LIGHT_FOOT_UNIT_TAKES =
+  KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theHalfBerthsALightFootUnitTakes /
+  KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theHalfBerthsEachBerthHolds;
+const THE_SHARE_OF_A_HULL_ANY_OTHER_LAND_UNIT_TAKES =
+  KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theHalfBerthsAnyOtherLandUnitTakes /
+  KC_A_SEA_LIFTS_HALF_BERTHS_AS_THE_STRANDING_COUNTS_THEM.theHalfBerthsEachBerthHolds;
 /** Whether a unit takes half a hull aboard ship (light foot), not a whole one. */
 export function takesHalfAHullAboard(a: UnitOfAType): boolean {
   return LIGHT_ARMIES.has(a.type);
@@ -73,7 +86,10 @@ export function seaLiftOfAColumn<U extends UnitOfAType>(
   // so they contribute 0 — a force of one Kraken plus one Goblin Horde still cannot put to sea.
   const seaCount = armies.reduce((s, a) => s + carrierBerths(a), 0); // berths, not hulls: a turtle offers two (Island Back)
   let hullCap = seaCount;
-  if (hullsCarryDouble) hullCap *= 2; // NAVAL L8: one naval hull carries what once needed two
+  // NAVAL L8: one naval hull carries what once needed two
+  if (hullsCarryDouble)
+    hullCap *=
+      KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA.theTimesNavalsMasteryRaisesWhatEachBerthCarries;
   const flyerLift = armies.filter((a) => FLYING_TYPES.has(a.type)).length; // humanoid flyers: one unit each
   const lifted = getFlyCapability(armies);
   const lift = (
@@ -102,7 +118,9 @@ export function seaLiftOfAColumn<U extends UnitOfAType>(
   // • everything a flyer CAN lift rides a hull if there is room, else is carried by one humanoid
   // flyer apiece (primal winged beasts still carry nothing);
   // • the shortfall is what the flyers must cover, so hulls + flyers together decide the question.
-  const _capOf = (a: U) => (takesHalfAHull(a) ? 0.5 : 1); // light foot take half a hull, everything else a full one
+  // light foot take half a hull, everything else a full one
+  const _capOf = (a: U) =>
+    takesHalfAHull(a) ? THE_SHARE_OF_A_HULL_A_LIGHT_FOOT_UNIT_TAKES : THE_SHARE_OF_A_HULL_ANY_OTHER_LAND_UNIT_TAKES;
   const _mustSail = landArmies.filter((a) => !isAirCarriable(a)); // horses, siege, beasts — ship or nothing
   const _liftable = landArmies.filter((a) => isAirCarriable(a)); // humanoid foot — ship OR air
   let _room = hullCap - _mustSail.reduce((s, a) => s + _capOf(a), 0);

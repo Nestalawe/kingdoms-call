@@ -1,4 +1,9 @@
-import { KC_MAGIC_SCHOOLS, MONSTERS_P } from '../content/kingdoms-call-data.ts';
+import {
+  KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST,
+  KC_A_SPELL_WORKED_FROM_AN_ITEM_ITS_CAST_CHANCE_AND_THE_LEAST_LEVEL_IT_COUNTS_AS,
+  KC_MAGIC_SCHOOLS,
+  MONSTERS_P,
+} from '../content/kingdoms-call-data.ts';
 import { kcRng } from './rng.ts';
 import { shuffleP } from './battle/fortune.ts';
 import { SEA_GUARDIAN_NAMES } from './names.ts';
@@ -340,10 +345,18 @@ export function castChanceFor(
   opts = opts ?? {};
   // effSkillOf gives no level for no hero, which no caller passes: Number() reads it as JavaScript did (NaN)
   const lvl = opts.itemCast
-    ? Math.max(3, Number(effSkillOf(c, school, opts.chars)))
+    ? Math.max(
+        KC_A_SPELL_WORKED_FROM_AN_ITEM_ITS_CAST_CHANCE_AND_THE_LEAST_LEVEL_IT_COUNTS_AS.theLeastLevelOfItsSchoolItCountsAs,
+        Number(effSkillOf(c, school, opts.chars)),
+      )
     : effSkillOf(c, school, opts.chars);
   if (Number(lvl) <= 0 && !opts.itemCast) return { level: 0, chance: 0, reason: 'no skill' };
-  if (opts.itemCast) return { level: lvl, chance: 95, reason: 'item' };
+  if (opts.itemCast)
+    return {
+      level: lvl,
+      chance: KC_A_SPELL_WORKED_FROM_AN_ITEM_ITS_CAST_CHANCE_AND_THE_LEAST_LEVEL_IT_COUNTS_AS.itsCastChance,
+      reason: 'item',
+    };
   if (opts.necroAuto) return { level: lvl, chance: 100, reason: 'necroAuto' };
   const arcane = 0; // sd27 Arcane Codex is now an ordinary `cast` effect (kept as a field for old callers)
   const l8 = typeof magicL8CastBonus === 'function' ? magicL8CastBonus(c) : 0;
@@ -351,7 +364,15 @@ export function castChanceFor(
   const disc = whatARealmsDiscoveriesAddToACastersChance(player, { theSchool: school, whereHeCasts: 'action' });
   return {
     level: lvl,
-    chance: Math.min(95, SPELL_CAST_BASE + Number(lvl) * 10 + arcane + l8 + disc),
+    chance: Math.min(
+      KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theMost,
+      SPELL_CAST_BASE +
+        Number(lvl) *
+          KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theRiseEachSchoolLevelGives +
+        arcane +
+        l8 +
+        disc,
+    ),
     arcane,
     l8,
     disc,
@@ -367,7 +388,12 @@ export function guardCastChance(
 ) {
   const lvl = Number(effSkillOf(c, school, chars ?? [])); // NaN for no hero, as before
   if (lvl <= 0) return 0;
-  return Math.min(95, SPELL_CAST_BASE + lvl * 10 + magicL8CastBonus(c));
+  return Math.min(
+    KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theMost,
+    SPELL_CAST_BASE +
+      lvl * KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST.theRiseEachSchoolLevelGives +
+      magicL8CastBonus(c),
+  );
 }
 export function magicL8CastBonus(c: Parameters<typeof skillLevel>[0]) {
   return 10 * MAGIC_L8_SCHOOLS.filter((sc) => skillLevel(c, sc) >= 8).length;
