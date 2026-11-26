@@ -156,3 +156,25 @@ Tactical 7. Should the Curse take the tier-up away too?
 
 *Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) (battle magic at one
 moment) and [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md) (battle magic's one rule).
+
+## 163. Do ships left ashore keep a battle's cuts when the battle resumes the same turn?
+
+Found on 2026-11-27.
+
+When a beaten force's ships can't sail, they stay on their own shore and hold the province
+([R-067](rulings/R-067-ships-ashore-hold-the-ground.md)), and the battle stalls: it resumes against them in a later phase of the same turn. They keep the arrows' and spells'
+cuts from the first fight until the new turn wipes them (#841). The Grey Cog of Hollin, shot down to half strength at
+Saltmarsh in phase 1, fights the phase-3 resumption at half strength. Is the resumption the same battle, or a new one?
+
+1. **The same battle: the ships keep their cuts.** Impact: as built; a stalled fight goes on where it stopped, and the
+   ships recover at the new turn.
+2. **A new battle: the ships recover first.** Impact: the ships fight each resumption at full strength; a small change
+   where the hulls join the garrison (`_navalLeaveBehind`), with its own case.
+
+*Assessment:* option 1 matches how a stalled battle reads elsewhere (it "grinds on" each phase until it breaks), and
+it needs no change; option 2 treats every phase's fight alike. Few games meet it: ships stranded on their own shore
+after a lost battle.
+
+*Unlocks:* the last path where a battle's cuts outlive its end settled.
+
+*Touches:* [R-067](rulings/R-067-ships-ashore-hold-the-ground.md) (ships left ashore contest the province).
