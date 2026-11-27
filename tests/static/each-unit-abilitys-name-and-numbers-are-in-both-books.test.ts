@@ -24,9 +24,7 @@
 // the fix too. Of the tables: the battle report names the Wyvern Riders' strike "Acid Spit Volley", both books "Acid
 // Spit" (parked: one name), checked to be still so; and the rulebook gives Forest Runners' two numbers in its terrain
 // column, not in Forest Runners' words (a known difference: the army roster's words test holds that column to the decided roster, and
-// roster holds the ground's table to it), checked to be still so. The Corsair Fleet's two (Cut the Line, Keep the Sea Lanes:
-// plan P1-19j, Choice 4) are a retired unit's,
-// in no book: checked to be still in none, and nothing else. An ability the books give no number (Rooted, Hold the Gate,
+// roster holds the ground's table to it), checked to be still so. An ability the books give no number (Rooted, Hold the Gate,
 // Town Watch, Battering Horns: plan P1-19c; Knightly Example: P1-19d; eight of the volley's: P1-19g; the three flank
 // slots of rough ground: P1-19h; Deep Halls: P1-19j; Raiders' Muster: P1-19k) is listed below,
 // and its name is checked; a number the books leave out (Driven Before Them's cap, which the units beside them never
@@ -48,9 +46,7 @@
 // nor its Dwarf Ironclads row Armoured Hulls (P1-19g); and the numbers the rulebook leaves out of an ability's words,
 // checked to be still left out while the blurb gives them (parked: the rulebook's Whale Cohort row gives Breach and
 // Swamp no chance, P1-19i; its Manticore Pride row gives the Manticores' pursuit, at least half the winning force and
-// +15%, after Spine Volley, outside Relentless Hunt's words, P1-19j). A retired unit's abilities in no book (the
-// Corsair Fleet's Cut the Line and Keep the Sea Lanes, P1-19j) are checked to be still in neither book, and nothing
-// else. Since P1-19l the abilities a table holds too, read by the unit's type: each pre-battle strike's name and damage
+// +15%, after Spine Volley, outside Relentless Hunt's words, P1-19j). Since P1-19l the abilities a table holds too, read by the unit's type: each pre-battle strike's name and damage
 // range (`2–4`, with the books' en dash; each beast's `spells` in `PRIMAL_ARMY_DEFS_P` and the winged riders'
 // `BATTLE_ARMY_SPELLS`, both in content), Island Back's berths (`KC_CARRIER_BERTHS`, as "two land units") and Forest
 // Runners' forest and jungle cells (the ground's table, `KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND`, in content, as
@@ -113,15 +109,6 @@ const NUMBERS_NOT_IN_THE_RULEBOOK_YET: Readonly<Record<string, Readonly<Record<s
     theBeatenFoesRoutLosses:
       "the rulebook's Manticore Pride row gives the Manticores' pursuit after Spine Volley, outside Relentless Hunt's words (parked: the row's words from the blurb)",
   },
-};
-
-/** The abilities of a retired unit that no book names (no blurb, no roster row), each with why: the test checks that
- *  neither book has the unit yet, and nothing else (plan P1-19's second slice, Choice 4). */
-const A_RETIRED_UNITS_IN_NO_BOOK: Readonly<Record<string, string>> = {
-  'cut-the-line':
-    'the Corsair Fleet left the pools on 2026-10-15, and a company raised before still fights (a question for Toby)',
-  'keep-the-sea-lanes':
-    'the Corsair Fleet left the pools on 2026-10-15, and a company raised before still fights (a question for Toby)',
 };
 
 /** The abilities whose words in the books give no number, each with why: the test checks that their rows hold none,
@@ -262,9 +249,7 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
       expect(Object.keys(UNIT_ABILITIES_THE_REGISTRY_HOLDS)).toContain(slug);
   });
 
-  const IN_THE_BOOKS = ROWS.filter((r) => !(r.slug in A_RETIRED_UNITS_IN_NO_BOOK));
-
-  test.for(IN_THE_BOOKS)("$name ($unit): the player portal's blurb", ({ unit, name, numbers, numbersLeftOut }) => {
+  test.for(ROWS)("$name ($unit): the player portal's blurb", ({ unit, name, numbers, numbersLeftOut }) => {
     const blurb = blurbs.get(unit);
     expect(blurb, `the player portal has a blurb for ${unit}`).toBeDefined();
     const words = ownWords(blurb ?? '', name);
@@ -273,7 +258,7 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
     for (const n of numbersLeftOut) expect(words, `${name} in ${unit}'s blurb still leaves out ${n}`).not.toContain(n);
   });
 
-  test.for(IN_THE_BOOKS.filter((r) => !(r.slug in NOT_IN_THE_RULEBOOK_YET)))(
+  test.for(ROWS.filter((r) => !(r.slug in NOT_IN_THE_RULEBOOK_YET)))(
     "$name ($unit): the rulebook's roster row",
     ({ slug, unit, name, numbersInTheRulebook, numbersNotInTheRulebookYet, numbersLeftOut }) => {
       const row = rosterRow(unit);
@@ -303,19 +288,8 @@ describe("each ability's name and numbers in its unit's blurb and its roster row
     },
   );
 
-  test.for(ROWS.filter((r) => r.slug in A_RETIRED_UNITS_IN_NO_BOOK))(
-    '$name ($unit): a retired unit in neither book yet (a known gap)',
-    ({ slug, unit }) => {
-      const why = String(A_RETIRED_UNITS_IN_NO_BOOK[slug]);
-      expect(blurbs.get(unit), `${why}: now the player portal has a blurb for ${unit}, so check ${slug} there`).toBe(
-        undefined,
-      );
-      expect(rosterRow(unit), `${why}: now the rulebook has a row for ${unit}, so check ${slug} there`).toBeNull();
-    },
-  );
-
   test('each known gap is a row the content holds, and each number left out of the rulebook one of its row', () => {
-    for (const slug of [...Object.keys(NOT_IN_THE_RULEBOOK_YET), ...Object.keys(A_RETIRED_UNITS_IN_NO_BOOK)])
+    for (const slug of [...Object.keys(NOT_IN_THE_RULEBOOK_YET)])
       expect(Object.keys(UNIT_ABILITIES_THE_REGISTRY_HOLDS)).toContain(slug);
     for (const [slug, numbers] of Object.entries(NUMBERS_NOT_IN_THE_RULEBOOK_YET)) {
       const row = ROWS.find((r) => r.slug === slug);

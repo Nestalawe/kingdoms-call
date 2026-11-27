@@ -48,11 +48,7 @@ import {
   A_FLYER_IS_HARRIED_BEFORE_THE_BATTLE,
   A_HULL_IS_SUNK_BEFORE_THE_BATTLE,
 } from './unit-abilities/a-flyer-harried-and-a-hull-sunk-before-the-battle.ts';
-import {
-  A_FORCE_HOLDS_THE_SEA_LANES,
-  THE_BEATEN_FORCE_HOLDS,
-  THE_WINNER_RUNS_THE_BEATEN_DOWN,
-} from './unit-abilities/the-rout-after-a-battle.ts';
+import { THE_BEATEN_FORCE_HOLDS, THE_WINNER_RUNS_THE_BEATEN_DOWN } from './unit-abilities/the-rout-after-a-battle.ts';
 import { A_PROVINCE_RAISES_A_UNIT } from './unit-abilities/a-province-raises-a-unit-at-the-turns-end.ts';
 import {
   A_SHOTS_DAMAGE,
@@ -3120,8 +3116,6 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'feeding-frenzy': {
     fate: { 'the winner runs the beaten down': THE_WINNER_RUNS_THE_BEATEN_DOWN['feeding-frenzy'] },
   },
-  'cut-the-line': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['cut-the-line'] } },
-  'keep-the-sea-lanes': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['keep-the-sea-lanes'] } },
   'raiders-muster': { turnEnd: { 'a province raises a unit': A_PROVINCE_RAISES_A_UNIT['raiders-muster'] } },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
@@ -3192,7 +3186,7 @@ export const THE_ORDER_OF_EACH_STAGE = {
     'the winner runs the beaten down': ['ride-them-down', 'run-them-down', 'relentless-hunt', 'feeding-frenzy'],
     'a beaten unit fails its death roll': ['regenerating-hide'],
     'a beaten unit fails its demotion roll': ['knightly-example'],
-    'a force holds the sea lanes': ['cut-the-line', 'keep-the-sea-lanes'],
+    'a force holds the sea lanes': [],
   },
   turnEnd: {
     'a province raises a unit': ['raiders-muster'],
@@ -3382,11 +3376,14 @@ const THE_WINNER_RUNS_THE_BEATEN_DOWN_EFFECTS = THE_ORDER_OF_FATE['the winner ru
   return effect ? [effect] : [];
 }) satisfies readonly TheWinnerRunsTheBeatenDownEffect[];
 type AForceHoldsTheSeaLanesEffect = TheStagesOfEachHookPoint['fate']['a force holds the sea lanes'];
-/** The effects of "a force holds the sea lanes", in the stage's order (each looks for its unit in the force). */
-const A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS = THE_ORDER_OF_FATE['a force holds the sea lanes'].flatMap((slug) => {
-  const effect = ENTRIES[slug].fate?.['a force holds the sea lanes'];
-  return effect ? [effect] : [];
-}) satisfies readonly AForceHoldsTheSeaLanesEffect[];
+/** The effects of "a force holds the sea lanes", in the stage's order (each looks for its unit in the force): none
+ *  since R-147 (the retired Corsair Fleet's two are gone), so the slug is typed as any ability's. */
+const A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS = THE_ORDER_OF_FATE['a force holds the sea lanes'].flatMap(
+  (slug: UnitAbilitySlug) => {
+    const effect = ENTRIES[slug].fate?.['a force holds the sea lanes'];
+    return effect ? [effect] : [];
+  },
+) satisfies readonly AForceHoldsTheSeaLanesEffect[];
 type AProvinceRaisesAUnitEffect = TheStagesOfEachHookPoint['turnEnd']['a province raises a unit'];
 /** The effects of "a province raises a unit", in the stage's order. */
 const A_PROVINCE_RAISES_A_UNIT_EFFECTS = THE_ORDER_OF_EACH_STAGE.turnEnd['a province raises a unit'].flatMap((slug) => {

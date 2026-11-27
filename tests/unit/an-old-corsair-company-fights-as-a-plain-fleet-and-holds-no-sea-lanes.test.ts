@@ -74,7 +74,8 @@ describe('an old Corsair company fights as a plain fleet (R-147)', () => {
   });
 
   test('no ability row names the Corsair Fleet', () => {
-    expect(Object.values(UNIT_ABILITIES_THE_REGISTRY_HOLDS).filter((row) => row.unit === 'Corsair Fleet')).toEqual([]);
+    const units: readonly string[] = Object.values(UNIT_ABILITIES_THE_REGISTRY_HOLDS).map((row) => row.unit);
+    expect(units).not.toContain('Corsair Fleet');
   });
 
   test("a winning host half Corsairs leaves the beaten the sea: no line of the winner's corsairs closing it", () => {

@@ -81,10 +81,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   writes for it; handed the winning force, the ground and whether its commander carries the War-Horn of the Plains, asked
   only by an effect that needs it; `pursuitsOfTheBeaten`, `src/engine/units/movement.ts`, asks it for both battles,
   which add the fractions in order unless a Shield Fort holds, and `rideThemDownBonus` keeps Ride Them Down's share
-  alone); and **a force holds the sea lanes** (the Corsair Fleet's Cut the Line between heroes, and Keep the Sea Lanes
-  against neutral guards: both battles' retreat asks it; a retired unit's, in no book, so their two rows are in a file
-  of their own, `src/content/the-abilities-of-a-unit-no-longer-raised.ts`, read into the rows: the player page's own
-  files name no retired unit). The turn's end (P1-19k,
+  alone); and **a force holds the sea lanes** (both battles' retreat asks it; no ability since R-147 took the retired
+  Corsair Fleet's two). The turn's end (P1-19k,
   `src/engine/rules/unit-abilities/a-province-raises-a-unit-at-the-turns-end.ts`), `turnEnd`'s first stage, **a
   province raises a unit** (Raiders' Muster): Early Winter asks it for each province a realm holds, after the wages,
   handed the province's race, the race of the realm that holds it and whether an orc realm won a battle there this turn
