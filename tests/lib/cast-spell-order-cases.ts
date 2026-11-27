@@ -3402,7 +3402,7 @@ export const FLOOD_CASES: CastSpellOrderCase[] = [
     },
   },
   {
-    name: 'Flood on a sea parted earlier this turn drowns it again, and the turn leaves it dry ground ("plains") for good (Parked)',
+    name: "Flood on a sea parted earlier this turn drowns it again, and the turn's end leaves it sea, as it was before the parting (KD-050)",
     wholeTurnOnly: true,
     stage(b) {
       const sea = ring1(b, 0);
@@ -3417,7 +3417,7 @@ export const FLOOD_CASES: CastSpellOrderCase[] = [
           flooded: says(o, `calls up the deluge — ${b0(s).name} vanishes`),
           after: province(o, b0(s)).terrain,
         },
-        want: { parted: true, flooded: true, after: 'plains' },
+        want: { parted: true, flooded: true, after: 'sea' },
       };
     },
   },

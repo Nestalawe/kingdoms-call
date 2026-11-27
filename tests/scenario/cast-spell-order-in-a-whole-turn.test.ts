@@ -33,7 +33,7 @@
 // enemy until the season turns, the resistance, the immunity, the gulf, a dismissed hero, the backlash; Oratory;
 // Clairvoyance; Psychic Blast and the wage; Telekinetic Storm; Mass Confusion; Dominate), Illusory (Illusory Terrain,
 // Phantasmal Armies, Hide Lairs, Invisibility, Phantom Host, Veil), Elemental (Earthquake, Flood, Elemental Summon,
-// Chain Lightning, Cataclysm; Flood after Part Sea leaves a sea "plains" for good: Parked) and Necromancy (Control
+// Chain Lightning, Cataclysm; a Flood on a parted sea: the sea returns at the turn's end) and Necromancy (Control
 // Undead's scan and seizure, Skeletal Armies, Curse, Plague, Raise Wraiths, Death's Dominion), each with its reach, its
 // refusals, a Bless ward where one applies, and who is told. Level 2: the order is read inside `resolveTurn` (a spell
 // item's Use Item becomes a cast there), the casting limit counts the hero's earlier orders, a hero raised or charmed

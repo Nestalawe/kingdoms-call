@@ -316,9 +316,8 @@ export function workPartSea({ turnContext, G, c, ph, targetProv }: TheNamesAnAct
   if (targetProv.terrain === 'sea') {
     // Part the waters: open sea OR a flooded land province becomes dry plains for the rest
     // of the turn.
-    delete targetProv._flooded; // cancel any Flood on this province
     targetProv._partSea = { orig: targetProv.terrain, turn: G.turn, blockFleetsFromPhase: ph + 1 };
-    targetProv.terrain = 'plains';
+    targetProv.terrain = 'plain'; // the plain's key in every terrain table (KD-050)
     emit(turnContext, {
       type: 'explore',
       fact: { kind: 'the waters of a province draw back', heroName: c.name, provinceName: targetProv.name },
@@ -342,9 +341,7 @@ export function workPartSea({ turnContext, G, c, ph, targetProv }: TheNamesAnAct
     ); // the owner is told
   } else {
     // Cast on dry land — the anticipated Flood never came (or was already parted). There is
-    // no sea to part; clear any lingering flood marker and note it. The cast is spent but
-    // harmless.
-    delete targetProv._flooded;
+    // no sea to part; note it. The cast is spent but harmless.
     emit(turnContext, {
       type: 'explore',
       fact: { kind: 'Part Sea finds no sea to part', heroName: c.name, provinceName: targetProv.name },
