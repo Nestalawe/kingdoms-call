@@ -5,7 +5,8 @@
 // and no ability row names the unit. A staged battle between heroes plays it: the winner's host is half Corsair Fleets
 // and half Men-at-Arms, all Elite, against one Green company, and the loser could fall back to a sea or a land
 // province (the registry's retreatOptions stood in, as no world puts both beside a free plain on demand). The battle
-// writes no line of corsairs closing the sea lanes. Before R-147 was built it did.
+// writes no line of corsairs closing the sea lanes, while its outcome and the beaten's retreat show it reached the rout.
+// Before R-147 was built it wrote one.
 // Level 1 (unit): the registry's runner called directly, and combatVsChar on a world the engine makes from a fixed
 // seed, its dice a fixed stream (kcRngStream(7)); no turn is played. Not lower: the line sits inside combatVsChar.
 // Not higher: a whole turn adds dice and orders before the battle, and no realm raises a Corsair company any more.
@@ -125,5 +126,8 @@ describe('an old Corsair company fights as a plain fleet (R-147)', () => {
     }
     const words = narrative.map((l) => theWordsOf(l));
     expect(words.filter((w) => w.includes('corsairs close the sea lanes'))).toEqual([]);
+    // The battle reached the rout: the Corsairs' host won, and the beaten fell back.
+    expect(words.filter((w) => w.startsWith(`📊 Outcome: **${atk.name} wins**`))).toHaveLength(1);
+    expect(words.filter((w) => w.startsWith(`${def.name} retreats to `))).toHaveLength(1);
   });
 });
