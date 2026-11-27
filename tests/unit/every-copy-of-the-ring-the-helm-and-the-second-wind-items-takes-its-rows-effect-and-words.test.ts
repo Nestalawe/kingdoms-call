@@ -1,10 +1,10 @@
 // Every copy of the Ring of the Unbroken Pulse, the Great Helm of the Deathless and the second-wind items already in a
-// running game takes its content row's effect and words at the turn's start (R-153, question 166's answer): a copy
+// running game takes its content row's effect and words at the turn's start (R-153): a copy
 // made before P1-23v (#846) carried the second wind on the Ring and the Helm, and "near defeat" in the other texts.
 //
 // Level 1 (unit): migrateItemTiers, the save's upgrade pass that re-stamps the items by name at the head of every turn
 // (src/engine/saves/upgrade-a-saved-game-and-check-it.ts), called on a staged state holding an old copy of each item
-// (its effect and its words as #846's base had them) in a hero's items, a lair's hoard and a realm's vault. Not lower:
+// (its effect and its words as #846's base had them) in a hero's items, a lair's hoard and an older save's vault. Not lower:
 // the pass is the re-stamp. No dice.
 import { describe, expect, test } from 'vitest';
 import { migrateItemTiers } from '../../src/engine/items/equipment.ts';
@@ -62,7 +62,7 @@ describe.for(THE_OLD_COPIES)('an old copy of the $name', (old) => {
   test('its row in play differs from the old copy (the case has something to re-stamp)', () => {
     expect([row.desc, row.lore]).not.toEqual([old.desc, old.lore]);
   });
-  for (const where of ["a hero's items", "a lair's hoard", "a realm's vault"] as const) {
+  for (const where of ["a hero's items", "a lair's hoard", "an older save's vault"] as const) {
     test(`in ${where}: the turn's start gives it the row's effect, desc and lore`, () => {
       const copy = { ...structuredClone(old), tier: row.tier };
       const state =
@@ -70,7 +70,7 @@ describe.for(THE_OLD_COPIES)('an old copy of the $name', (old) => {
           ? { characters: [{ items: [copy] }] }
           : where === "a lair's hoard"
             ? { world: { provinces: [{ features: [{ hoardItems: [copy] }] }] } }
-            : { players: [{ vault: [copy] }] };
+            : { players: [{ vault: [copy] }] }; // today's save has no vault: an older save's
       migrateItemTiers(state);
       expect({ effect: copy.effect, desc: copy.desc, lore: copy.lore }).toEqual({
         effect: row.effect,

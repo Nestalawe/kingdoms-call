@@ -13,9 +13,12 @@ first time the bearer falls below 30% of his hit points in a fight, he recovers 
 texts say the 30%. Example: a killing blow falls on Sir Aldric, who wears the Ring; on its chance he stands at 1 HP
 instead.
 
-Every copy already in a running game (a hero's items, a lair's hoard, a realm's vault) changes too: at the start of
-each turn it takes its item's effect and words, so an older Ring or Helm loses its second wind, and the four other
-items say the 30% (question 166, option 2: a maintainer's answer, 27 November).
+Every copy already in a running game (a hero's pack or a lair's hoard) changes too: at the start of each turn it takes
+its item's effect and words, so an older Ring or Helm loses its second wind, and the four other items say the 30%
+(question 166, option 2: a maintainer's answer, 27 November).
+
+**Open:** whether a death that isn't a struck blow (a guardian's burn aura, a shield's lash-back, the Thornwood bite, a
+spell's recoil) is shrugged off too is question 167. Today none of them draws the roll.
 
 The question was: six second-wind items don't say the 30%, and two describe another rule. Option 2: "the Ring and the
 Helm get the rule their texts give, and the four others' texts state the 30%".
