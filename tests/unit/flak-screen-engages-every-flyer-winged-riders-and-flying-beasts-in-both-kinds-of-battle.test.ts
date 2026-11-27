@@ -1,11 +1,11 @@
 // Flak Screen engages every flyer, winged riders and flying beasts alike (R-146, row P1-23n): each Gnomish
 // Gyrocopter engages one enemy flying unit before the battle, which loses 30% of its base strength for the battle (at
-// least 1). The flyers are the content's one list of the units that fly (KC_UNIT_CLASS.aerial): the winged riders and
+// least 1). The flyers are the content's list of every unit that flies (KC_UNIT_CLASS.aerial): the winged riders and
 // the four flying beasts (Thunderbirds, Manticore Pride, Crimson Rocs, Elder Dragons).
 // - In both kinds of battle, on one staged field: realm 0's king attacks a free plain with one company of Gnomish
 //   Gyrocopters, against one company of a flying beast (or, beside them, Eagle Riders), held either by a guard made by
 //   the test (combatVsNPC) or by realm 1's king's own host (combatVsChar). Both sides fight in melee and refuse every
-//   duel, and neither commander casts. With one flyer on the field, the gyrocopters' pick is certain whatever its die;
+//   duel, and neither commander casts. The sides swapped too: the defenders' gyrocopters engage an attacking beast. With one flyer on the field, the gyrocopters' pick is certain whatever its die;
 //   every other die is a fixed stream's (kcRng.use), so the battle plays the same under any KC_SEED.
 // - Flak Screen called directly (applyFlakScreen), its die fixed: between Wyvern Riders and Crimson Rocs (the ruling's
 //   example), the die picks either; two gyrocopters engage both.
@@ -62,29 +62,28 @@ const theFlyersHarried = (narrative: readonly NarrativeLine[]) =>
   );
 
 /** Realm 0's king attacks a free plain with one company of Gnomish Gyrocopters; one company of `flyer` holds it, a
- *  guard's or realm 1's king's. Every die is a fixed stream's. */
-function aBattle(battle: (typeof BATTLES)[number], flyer: string) {
+ *  guard's or realm 1's king's (or, `swapped`, the king attacks with the flyer against the gyrocopters). Every die is a
+ *  fixed stream's. */
+function aBattle(battle: (typeof BATTLES)[number], flyer: string, swapped = false) {
   const G = aWorld(1);
   const tc = theTurnsContext(G, 1);
   G.relations['0-1'] = 'enemy';
   const { field, from } = aFieldAndTheGroundBesideIt(G, { terrain: 'plain' });
   const atk = theKingOf(G, 0);
-  Object.assign(atk, {
-    armies: companies('Gnomish Gyrocopters', 1, 'Average', 'Dwarven'),
-    items: [],
-    encounterPlan: MELEE_AND_NO_DUEL(),
-  });
-  attackFrom(G, atk, from, field);
+  const theGyrocopters = companies('Gnomish Gyrocopters', 1, 'Average', 'Dwarven');
   const theFlyer = companies(flyer, 1, 'Average');
+  const [theAttackers, theDefenders] = swapped ? [theFlyer, theGyrocopters] : [theGyrocopters, theFlyer];
+  Object.assign(atk, { armies: theAttackers, items: [], encounterPlan: MELEE_AND_NO_DUEL() });
+  attackFrom(G, atk, from, field);
   const was = kcRng.use(kcRngStream(7));
   try {
     if (battle === 'between two hosts') {
       const def = theKingOf(G, 1);
-      Object.assign(def, { armies: theFlyer, items: [], encounterPlan: MELEE_AND_NO_DUEL() });
+      Object.assign(def, { armies: theDefenders, items: [], encounterPlan: MELEE_AND_NO_DUEL() });
       place(G, def, field);
       return aBattleBetweenHeroes(tc, atk, def, field);
     }
-    const guard = aGuardMadeByTheTest(G, field, theFlyer, { encounterPlan: MELEE_AND_NO_DUEL() });
+    const guard = aGuardMadeByTheTest(G, field, theDefenders, { encounterPlan: MELEE_AND_NO_DUEL() });
     return aBattleAgainstTheProvince(tc, atk, field, guard);
   } finally {
     kcRng.use(was);
@@ -94,6 +93,12 @@ function aBattle(battle: (typeof BATTLES)[number], flyer: string) {
 describe.for(BATTLES)('Flak Screen engages every flyer, %s', (battle) => {
   test.for(THE_FLYING_BEASTS)('a flying beast: the gyrocopters engage the %s, −30% of its strength', (beast) => {
     expect(theFlyersHarried(aBattle(battle, beast).narrative)).toEqual([
+      { flyer: `${beast} 1`, lost: theLossOf(beast) },
+    ]);
+  });
+
+  test.for(THE_FLYING_BEASTS)('the defenders’ gyrocopters engage the attacking %s, −30% of its strength', (beast) => {
+    expect(theFlyersHarried(aBattle(battle, beast, true).narrative)).toEqual([
       { flyer: `${beast} 1`, lost: theLossOf(beast) },
     ]);
   });

@@ -198,7 +198,8 @@ const THE_ATTACKERS_PHASES =
   '  const theAttackersPhases = theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp);';
 const THE_DEFENDERS_PHASES_COMMENT = [
   "  // The defenders' pre-battle phases (B-06bb: the-battle-against-the-defenders/, its third stage), their commander's",
-  "  // magic, their archery and Flak, their units' army spells: each strikes the attacker's host, and hands nothing on.",
+  "  // magic, then the attacker's units' army spells (R-162), their archery and Flak, and their units' army spells: each",
+  "  // strikes the other side's host, and hands nothing on.",
 ];
 const THE_DEFENDERS_PHASES =
   '  theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp, theAttackersPhases);';

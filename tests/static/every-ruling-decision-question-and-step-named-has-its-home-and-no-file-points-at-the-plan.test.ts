@@ -11,7 +11,7 @@
 //   heading there ("### P1-23: the rulings tranche", a step that is only the sum of its rows), or in its finished list (a
 //   finished step, or one dropped: "P0-14, on 2026-10-14").
 // - No backlog row is done or dropped (those leave it for the finished list), and none is in the finished list too.
-// - Each known defect named (KD-001) is a row of the backlog, or folded into one ("Folds in KD-005 and KD-080" in
+// - Each known defect named (KD-001) is a row of the backlog, or folded into one ("Folds in KD-074 and KD-080" in
 //   the row's What), and no two rows share an id; no file names a known defect by its old title, `Parked "<title>"`,
 //   which no reader can look up (before this check, 37 lines did).
 // - No file git keeps names NEXT.md, PARKED.md or STATUS.md, or a path inside plan/ (naming the folder itself, as
