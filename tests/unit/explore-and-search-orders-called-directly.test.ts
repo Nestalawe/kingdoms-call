@@ -19,8 +19,9 @@
 // companies, the Wild Hunt unpaid or on ground not the hero's own (the empty province taken); rumours paid by grade until
 // the purse runs dry, a guardian of no grade or of one no price lists, an order naming no lair, a guardian with no
 // weakness, a hoard a thief has stripped; and what follows a fight at a lair, the fight stood in for (`fightEndsIn`): a
-// thief's haul and relic, an emptied or bare hoard (a realm that knew it bare kept), a beast pacified, a guardian of no
-// grade counted at his lair's, the challengers' kit, a hero beaten back or fled, Battlefield Surgery, and the fight's
+// thief's haul and relic, an emptied or bare hoard (a realm that knew it bare kept), a beast pacified (and one talked
+// down by parley in the guardian's own fight, its end stood in: half the Monster-Bane merit, no hit points, R-157), a
+// guardian of no grade counted at his lair's, the challengers' kit, a hero beaten back or fled, Battlefield Surgery, and the fight's
 // statistics record; a search naming no lair past a gap in the list; Discover Lost Ruin's empty order, a guardian of no
 // grade, two sites in one province; and an older save's lair stocked when first read (a clearer's gold from its
 // guardian's band, its items before hoards, one item rolled). 96 planted faults in the six functions, their calls and
