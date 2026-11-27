@@ -8,9 +8,9 @@
 // - discoverFeat: a feature an older save had marked discovered for everyone (before discovery was kept realm by
 //   realm), as the save's upgrade leaves it (P1-15f3), stays known to every realm when one realm discovers it again; a feature of a newer game is known only to
 //   the realms that discovered it;
-// - encounterUntargetableReason: a hero wearing an older save's Cloak of Many Faces (`effect:{stat:'hidden'}`) is
-//   faceless to an Encounter Character order; with another item, or none, he is not (plan P1-19am: no test saw it,
-//   and no matrix game holds the old copy).
+// - encounterUntargetableReason: a hero wearing the Cloak of Many Faces, as a lair deals it (`untargetable`) or as a
+//   copy dealt before 12 September 2026 holds it (`hidden`), is faceless to an Encounter Character order; with another
+//   item, or none, he is not (plan P1-19am: no test saw it, and no matrix game holds a Cloak).
 // Level 1 (unit): each function is called on plain values made in the test; no turn runs. A lower level can't run it.
 // refactor-only: each case passes on the base and is red on the fault it was written for (npm run mutants --only).
 import { describe, expect, test } from 'vitest';
@@ -148,11 +148,16 @@ describe('a feature an older save marked discovered stays known to every realm',
 describe('a hero whose items hide his face can’t be named by an Encounter Character order', () => {
   /** The Cloak of Many Faces as a lair deals it (its power `untargetable`). */
   const theCloak = { id: 7, name: 'Cloak of Many Faces', slot: 'cloak', effect: { stat: 'untargetable' } };
+  /** The Cloak as a copy dealt before 12 September 2026 holds it (`hidden`). */
+  const anOlderCloak = { ...theCloak, effect: { stat: 'hidden', bonus: 1 } };
   const theReasonFor = (items: unknown[]) =>
     encounterUntargetableReason(world(hero(1, 1, FAR_AWAY, { items })).characters[1]);
 
   test('wearing the Cloak of Many Faces, he is faceless', () => {
     expect(theReasonFor([{ ...theCloak, equipped: true }])).toBe('faceless');
+  });
+  test('wearing an older copy of the Cloak of Many Faces, he is faceless', () => {
+    expect(theReasonFor([{ ...anOlderCloak, equipped: true }])).toBe('faceless');
   });
   test('with another item, or none, he can be named', () => {
     expect(theReasonFor([{ id: 8, name: 'Crystal Orb', effect: { stat: 'spyAuto' } }])).toBeNull();
