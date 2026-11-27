@@ -52,8 +52,8 @@ A maintainer answered D-01 to D-07 on 2026-09-29, and D-08 to D-13 on 2026-10-11
   ([traps.md](../traps.md#a-rule-written-twice-must-change-twice)).
 - **Questions stored, asked in one sitting** (2026-10-21): every question for the maintainers that an agent finds is stored, with
   the fix it unlocks, in [the questions waiting for them](../questions-for-the-maintainers.md), so that they are answered together.
-  Each fix is its own pull request after its answer. How a question is written: [CLAUDE.md](../../CLAUDE.md#rules),
-  "Design forks go to the maintainers".
+  Each fix is its own pull request after its answer. How a question is written:
+  [the questions file](../questions-for-the-maintainers.md#how-a-question-is-written-and-kept).
 - **Type the whole codebase** (2026-11-08): every file is typed, so that the redesign's refactors are checked by
   the compiler. No `@ts-nocheck` ([CLAUDE.md](../../CLAUDE.md#commands)): lint refuses it in every TypeScript file
   ([why, and how code is typed](../architecture/freeing-a-file-of-its-ts-nocheck-line.md)).

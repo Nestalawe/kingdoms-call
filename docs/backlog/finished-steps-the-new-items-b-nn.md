@@ -134,3 +134,4 @@ The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-a
 - B-19: #710 The kind decides its audience: a line for one realm alone compiles only told to that realm
 - B-23: #850 The maintainers' answers of 27 November go into their rulings (questions 159 to 164), the questions leave their file, and the top becomes the next queue
 - B-24: #866 The maintainers' answers of 28 November go into their rulings (questions 79, 80 and 167 to 177), the questions leave their file, and five rows to build join the backlog
+- B-25: #867 A question for the maintainers takes a shorter shape: one line an option with its impact, then one line each for the assessment, the example and the rulings it touches

@@ -31,7 +31,7 @@ Expected: …
 
 ## Rulings
 
-<!-- Needed: the question, numbered options, each with its impact, an assessment, and a short in-game example.
+<!-- Needed: the question, in the shape of docs/questions-for-the-maintainers.md ("How a question is written and kept").
 Recorded: the new docs/rulings/R-NNN-name.md file(s) in this PR, the ruling in the maintainer's words, and the test that enforces it. -->
 
 None.
