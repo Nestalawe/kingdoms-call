@@ -27,7 +27,7 @@
 // state of `scripted-05` and `scripted-06` (set A; the Evil one), played on the engine's modules imported directly, and
 // the states with what those games don't reach staged (a research pair, an heir, the column arranged in another order
 // than the world's, a hero at a mastery's level; and, P1-15e3, the spare heroes beside a wandering hero who will serve,
-// beside a rival realm's hero, by a Weak lair they know with Sage 1 on five turns running, and in the orders for turn
+// beside a rival realm's hero (at peace, and at war on turn 6), by a Weak lair they know with Sage 1 on five turns running, and in the orders for turn
 // 6; and a realm met and at peace on turn 6), 48 states in all, the realm's report opened and the form given the scripted realm's choices
 // (`tools/balance/scripted.ts`) as a player gives them: each order through its select and `onActionChange`, its target
 // through its field and its change (the Encounter Character list, the Recruit Armies boxes, the Spy, Search Lair, Hire
@@ -46,6 +46,7 @@
 // in `page/`
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
+import { relKeyOf } from '../../src/engine/rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import { L79_ORDERS } from '../../src/ui/player/l79-orders.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
 import { aStagedTurnOnTheEnginesModules } from '../lib/a-staged-turn-on-the-engines-modules.ts';
@@ -186,6 +187,17 @@ function theSpareHeroesOrdersStaged(from: AState, reportOn: (state: State) => Re
       const rival = S.characters.find((c) => c.alive && c.player != null && c.player !== SCRIPTED_REALM && !c.isKing);
       beside(S, home, rival, 'rival realm’s hero');
     }),
+    staged(
+      'a rival realm’s hero at war beside the spare heroes, turn 6',
+      (S, home) => {
+        // the realm at war with his, so its first hero sets out after him (Encounter Character)
+        const rival = S.characters.find((c) => c.alive && c.player != null && c.player !== SCRIPTED_REALM && !c.isKing);
+        beside(S, home, rival, 'rival realm’s hero');
+        if (rival?.player == null) throw new Error(`${from.name}: no rival realm’s hero to stage`);
+        S.relations = { [relKeyOf(SCRIPTED_REALM, rival.player)]: 'enemy' };
+      },
+      6,
+    ),
     ...[0, 1, 2, 3, 4].map((i) =>
       staged(
         `a Weak lair the spare heroes know and Sage 1, turn ${String(from.turn + i)}`,
