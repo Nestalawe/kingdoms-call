@@ -508,8 +508,9 @@ function aMarchTheTurnRefuses(
 // The turn marches a column ordered to a province not next door one step toward it, and the step is then a march like
 // any other (his pace, a border, the sea, ships over land: aMarchTheTurnRefuses). The step is the turn's own (src/shared/):
 // the first step of a shortest route the column may take (the ground its lift lets it enter; ships never from land to
-// land), but of a route as short over safe passage (his realm's own ground, an ally's, or ground no realm holds where
-// no armed neutral guard stands), that one's; where no route reaches it, he stays. Asked on the report's map, with the
+// land; the last step may land from the sea on the target, ships alone too, as next door: R-174), but of a route as
+// short over safe passage (his realm's own ground, an ally's, or ground no realm holds where no armed neutral guard
+// stands), that one's; where no route reaches it, he stays. Asked on the report's map, with the
 // column the Move note counts and the relation the report gives. Forecast limits, left to the turn: ground the report
 // shows as unknown (read as land no realm holds), a guard out of sight, an owner or ground as last seen, an alliance or
 // war changed this turn.
@@ -537,6 +538,7 @@ function theStepTowardAFarProvinceTheTurnTakes(
       from,
       toId,
       extraFilter,
+      true,
     );
   const known = (owner: number | null | undefined) => (report.diplomacy?.known ?? []).find((k) => k?.index === owner);
   // (a guard the report shows: a hero of no realm sworn to the province, leading any company)

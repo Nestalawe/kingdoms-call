@@ -74,11 +74,12 @@ export function provSafePassageFor(turnContext: TurnContext, p: Province | null 
 // THE SHORTEST ROUTE ALWAYS WINS. Now the unrestricted BFS sets the distance, and the safe route
 // is only preferred when it is NO LONGER than it — an equal-length detour onto friendly ground,
 // never a longer one. If the only short road runs through a rival's province, the column takes
-// it.
+// it. It is a Move order's road (and the phase intents' mirror of it): the last step may land
+// from the sea on the target, ships alone too, as a march next door lands (R-174).
 export function stepTowardPreferSafe(turnContext: TurnContext, c: Character, toId: number | null | undefined) {
   // (the preference on the routes' values, plan P1-11e12: src/engine/rules-on-plain-values/)
   return theStepAColumnTakesTowardAFarProvince(
-    (extraFilter?: (p: Province) => boolean) => stepTowardPath(turnContext, c, toId, extraFilter),
+    (extraFilter?: (p: Province) => boolean) => stepTowardPath(turnContext, c, toId, extraFilter, true),
     toId,
     c && c.player != null,
     (p) => provSafePassageFor(turnContext, p, c.player),
@@ -95,11 +96,13 @@ export function stepToward(
 }
 // BFS from the character's province toward `toId`. Returns {first, depth} — the first step of a
 // shortest passable path and how many steps that path takes — or null if no route exists.
+// `itIsAMarchsRoad`: a Move order's, whose last step may land from the sea on the target (R-174).
 export function stepTowardPath(
   turnContext: TurnContext,
   c: Character,
   toId: number | null | undefined,
   extraFilter?: (p: Province) => boolean,
+  itIsAMarchsRoad = false,
 ) {
   const { G, seaCap } = turnContext;
   const from = G.world.provinces[c.location];
@@ -113,5 +116,5 @@ export function stepTowardPath(
   // province first, and it may land again only from the sea.
   const _naval = (c.armies || []).some((a) => a && SEA_TYPES.has(a.type));
   // The search itself, on the map's values (plan P1-11e7): src/engine/rules-on-plain-values/.
-  return theFirstStepOfAShortestRouteAColumnMayTake(c, sc, _naval, G.world, from, toId, extraFilter);
+  return theFirstStepOfAShortestRouteAColumnMayTake(c, sc, _naval, G.world, from, toId, extraFilter, itIsAMarchsRoad);
 }

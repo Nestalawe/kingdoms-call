@@ -1,6 +1,7 @@
 import { theProvincesNextToAProvince } from './the-hexes-next-to-a-province-on-a-map-that-wraps-east-to-west.ts';
 import {
   aColumnLeadingShipsMayNotStepFromLandToLand,
+  aMarchsStepLandsFromTheSea,
   canEnterTerrain,
 } from './where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import type { AColumnAsTheTerrainTestsReadIt } from './where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
@@ -31,8 +32,10 @@ export interface AMapARouteCrosses<P> {
 /** A search, breadth first, from `from` toward the province `toId`: the first step of a shortest route the column may
  *  take, and its depth (the steps after the first), or null when no route of at most 40 steps exists. A step may
  *  enter a province whose ground the column may enter (canEnterTerrain, with its sea cap) and that `extraFilter`
- *  allows, if given; a column that leads ships may not step from land to land. Neighbours are searched in the compass
- *  directions' order (NW, NE, W, E, SW, SE), so of two routes as short, the one whose first step comes first wins. */
+ *  allows, if given; a column that leads ships may not step from land to land. A Move order's road
+ *  (`itIsAMarchsRoad`) may also step from the sea onto its target, whatever the column's ground, as a march next door
+ *  lands (R-174: ships alone too); no other province on the way. Neighbours are searched in the compass directions'
+ *  order (NW, NE, W, E, SW, SE), so of two routes as short, the one whose first step comes first wins. */
 export function theFirstStepOfAShortestRouteAColumnMayTake<P extends AProvinceOnARoute>(
   theColumn: AColumnAsTheTerrainTestsReadIt,
   itsSeaCap: string,
@@ -41,14 +44,18 @@ export function theFirstStepOfAShortestRouteAColumnMayTake<P extends AProvinceOn
   from: P,
   toId: number,
   extraFilter?: (p: P) => boolean,
+  itIsAMarchsRoad = false,
 ): { first: P; depth: number } | null {
-  const passable = (p: P | null | undefined) =>
-    !!p && canEnterTerrain(theColumn, p.terrain, itsSeaCap) && (!extraFilter || extraFilter(p));
-  const edgeOk = (a: P, b: P) => !aColumnLeadingShipsMayNotStepFromLandToLand(itLeadsShips, a.terrain, b.terrain);
+  const mayStep = (a: P, b: P | null | undefined): b is P =>
+    !!b &&
+    (canEnterTerrain(theColumn, b.terrain, itsSeaCap) ||
+      (itIsAMarchsRoad && b.id === toId && aMarchsStepLandsFromTheSea(a.terrain, b.terrain))) &&
+    (!extraFilter || extraFilter(b)) &&
+    !aColumnLeadingShipsMayNotStepFromLandToLand(itLeadsShips, a.terrain, b.terrain);
   const seen = new Set([from.id]);
   // BFS storing the first step taken on each path
   let frontier = theProvincesNextToAProvince(from, theMap.cols, theMap.rows, theMap.provinces)
-    .filter((p) => passable(p) && edgeOk(from, p))
+    .filter((p) => mayStep(from, p))
     .map((p) => ({ p, first: p }));
   frontier.forEach((e) => seen.add(e.p.id));
   let depth = 0;
@@ -59,7 +66,7 @@ export function theFirstStepOfAShortestRouteAColumnMayTake<P extends AProvinceOn
     const next = [];
     for (const e of frontier) {
       for (const nb of theProvincesNextToAProvince(e.p, theMap.cols, theMap.rows, theMap.provinces)) {
-        if (seen.has(nb.id) || !passable(nb) || !edgeOk(e.p, nb)) continue;
+        if (seen.has(nb.id) || !mayStep(e.p, nb)) continue;
         seen.add(nb.id);
         next.push({ p: nb, first: e.first });
       }
