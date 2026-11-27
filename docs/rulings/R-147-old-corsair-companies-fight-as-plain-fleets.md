@@ -7,8 +7,10 @@
 
 A Corsair company raised before the Corsair Fleet was retired ([R-109](R-109-corsairs-retired.md)) loses its
 two old abilities, Cut the Line and Keep the Sea Lanes, and fights as a plain fleet. Between heroes, a winning host
-mostly of Corsairs no longer closes the sea to the beaten; against a province's neutral guards, a host mostly of
-Corsairs no longer keeps its way back to the ships when beaten. The company keeps its own strength and speed.
+at least half Corsairs no longer closes the sea to the beaten; against a province's neutral guards, a host at least
+half Corsairs no longer keeps its way back to the ships when beaten.
+
+**Open:** as built, the company keeps its own row (its strength, speed and upkeep); a question in #862.
 
 The question was: two abilities of the old Corsair companies were in no book. Option 2: "the old companies lose them
 and fight as plain fleets".

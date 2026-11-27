@@ -237,7 +237,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
     for (const p of _ps)
       if (p.onTheGround === 'it finds no room')
         narrate(narrative, { kind: "a side's free lances find no room to ride", sideName: _side, terrain: pvpTerrain });
-  // HUMAN — Cut the Line: a corsair-heavy victor leaves no line of retreat by sea.
+  // The sea lanes (once the Corsair Fleet's Cut the Line): no ability since R-147; KD-517 drops the branch.
   const _cutAtk = aForceHoldsTheSeaLanes({ theForce: atkArmies, theBattle: 'between heroes' });
   const _cutDef = aForceHoldsTheSeaLanes({ theForce: defArmies, theBattle: 'between heroes' });
   // DWARF — Shield Fort (replaces Hold the Line): a Guard-heavy force never routs — it conducts a
@@ -449,7 +449,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
     getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces); // its provinces read by nothing, the call kept as it was
     getSeaCapability(asItsGuardReadsIt(def.armies) ?? [], def); // (the same) only ground the beaten force could legally enter
     let defFriendlyAdj = retreatOptions(turnContext, def, prov, asItsGuardReadsIt(def.armies) ?? []); // own/allied ground it could legally enter, or the unowned sea it sailed from (2026-09-23c)
-    // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
+    // The sea lanes closed to the beaten (once Cut the Line): no ability since R-147; KD-517 drops the branch.
     if (_cutAtk && defFriendlyAdj.length > 0) {
       const overland = defFriendlyAdj.filter((p2) => p2.terrain !== 'sea');
       if (overland.length < defFriendlyAdj.length) {
@@ -469,7 +469,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
     // 2026-09-27 (Toby item 3): the naval split. Evaluated once, ahead of the branch chain, so a
     // mixed column whose hulls can still sail is never filed as "nowhere to retreat". A host that
     // is still the stronger and means to fight on (_wantsToStay) keeps that choice, and a dead
-    // commander never retreats — both are checked first. Cut the Line closes the water to it too.
+    // commander never retreats — both are checked first. The sea lanes' flag: no ability since R-147 (KD-517).
     // (the winner's force and the winner, handed here once, are read by nothing)
     const _defStays = defFriendlyAdj.length > 0 && _wantsToStay(def.armies, def);
     const _navalDef =
@@ -643,7 +643,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleBetweenHeroes(
     getNeighborsP(prov, G.world.cols, G.world.rows, G.world.provinces); // its provinces read by nothing, the call kept as it was
     getSeaCapability(asItsGuardReadsIt(atk.armies) ?? [], atk); // (the same) only ground the beaten force could legally enter
     let atkFriendlyAdj = retreatOptions(turnContext, atk, prov, asItsGuardReadsIt(atk.armies) ?? []); // own/allied ground it could legally enter, or the unowned sea it sailed from (2026-09-23c)
-    // HUMAN — Cut the Line: corsairs close the sea lanes behind a beaten enemy.
+    // The sea lanes closed to the beaten (once Cut the Line): no ability since R-147; KD-517 drops the branch.
     if (_cutDef && atkFriendlyAdj.length > 0) {
       const overland = atkFriendlyAdj.filter((p2) => p2.terrain !== 'sea');
       if (overland.length < atkFriendlyAdj.length) {
