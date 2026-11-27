@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Question 21: the lancer's, the legion's and the bowman's items name fewer units than the battle lifts: which is right? Answer: option 1, the texts say what the battle does.
+- **Source:** Question 21: the lancer's, the legion's and the bowman's items name fewer units than the battle lifts: which is right? Answer: option 1, the texts say what the battle does. Question 175 (asked in #863 and #864): does KD-029's Decision 3 cover this row's re-stamp? Answer: yes, every copy in play is re-stamped; the maintainers' answer of 28 November.
 - **Enforced by:** [`the-commanders-items-texts-name-every-unit-the-battle-lifts`](../../tests/unit/the-commanders-items-texts-name-every-unit-the-battle-lifts.test.ts)
 
 The items that lift one kind of company in battle say every unit the battle lifts, and the siege items say what

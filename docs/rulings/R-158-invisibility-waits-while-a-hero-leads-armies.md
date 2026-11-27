@@ -2,13 +2,15 @@
 
 - **Decided:** 2026-11-05, a maintainer
 - **Status:** Confirmed
-- **Source:** Questions 29 (2026-11-02) and 47 (2026-11-05): the answer to question 29 says invisibility has no effect on a hero leading armies; is the spell then lost, or does it wait? Answer: option 1, the spell waits; it isn't lost.
+- **Source:** Questions 29 (2026-11-02) and 47 (2026-11-05): the answer to question 29 says invisibility has no effect on a hero leading armies; is the spell then lost, or does it wait? Answer: option 1, the spell waits; it isn't lost. Question 176 (asked in #857): does the order form's note show for every caster, or only for one who leads armies? Answer: for every caster; the maintainers' answer of 28 November.
 - **Enforced by:** [`invisibility-waits-while-a-hero-leads-armies-and-hides-him-once-he-leads-none`](../../tests/scenario/invisibility-waits-while-a-hero-leads-armies-and-hides-him-once-he-leads-none.test.ts)
 
 Invisibility has no effect on a hero while he leads armies: he is seen and fought as if he had no spell (spells
 aimed at him land, a spy sees what he does, an enemy commander can call him out). The spell waits; it isn't lost. The
 moment he leads none, it hides him until it would have ended. A hidden hero who takes up an army is seen from that
 moment. The order form lets a hero who leads armies cast it, with the note "no effect while you lead armies".
+The note shows for every caster: the form knows what a hero leads when the turn starts, not after each phase's
+hand-overs, so it can't tell which casts will wait.
 Example: Wystan casts Invisibility in Spring while he leads 300 men; in Summer he hands his men to Sir Bram, and from
 then he is hidden. Lady Wren, hidden since Spring, picks up a garrison in Summer, and is seen from then.
 

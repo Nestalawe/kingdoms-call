@@ -66,11 +66,10 @@ B-01 (the rulings audit) and P1-21x are in the finished lists.
 
 ### 1. The answers of 28 November and the questions' shape
 
-A maintainer's day: the maintainers answered every open question on 28 November, so the answers go into their rulings
-first, then the questions' shorter shape. Each row, and why it is there, is in
+A maintainer's day: the maintainers answered every open question on 28 November, and their answers are in their
+rulings (B-24, in the finished list), so the questions' shorter shape comes next. Its row, and why it is there, is in
 [its file](the-later-group-phase-1s-later-rows.md):
-1. B-24
-2. B-25
+1. B-25
 
 ### 2. B-17's Run A: the bots' statistics
 
@@ -87,10 +86,12 @@ The rebuild's tranches are done, so the rulings and the known defects come next 
 in its order (KD-498 is in group 2), then [the rulings to build](the-rulings-decided-not-built.md) in their file's
 order. The rows on what a realm sees (KD-049, P1-23j, P1-23h, P1-23i, P1-23ag, P1-23bd, P1-23bg) wait for a
 maintainer's day, so they are not in this list. Each row, and why it is there, is in its file:
-1. P1-23x
-2. P1-23y
-3. P1-23z
-4. P1-23aa
+1. P1-23bj
+2. P1-23bk
+3. P1-23x
+4. P1-23y
+5. P1-23z
+6. P1-23aa
 
 ## Not yet assessed
 
