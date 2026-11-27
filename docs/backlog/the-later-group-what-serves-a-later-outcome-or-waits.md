@@ -12,11 +12,13 @@ The rebuild's tranches are done: [the top](README.md#1-the-first-rulings-and-kno
 The first ordering pass placed these rows by impact. Among rows of equal harm, the harm more games meet goes first,
 then the row that unblocks others, then the smaller row. A known defect was placed only when it is plainly harm in
 live play: its row says players notice it in running games, the turn's result is wrong (not only its words), and its
-fix needs no new ruling. The last four rows joined from Next. The other rulings to build are in
+fix needs no new ruling. The first two rows are a maintainer's answers of 27 November; the last four joined from Next. The other rulings to build are in
 [their own file](the-rulings-decided-not-built.md).
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
+| P1-23bh | [R-153](../rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md): its three answers. A failed roll doesn't spend the chance; every running game's copies of the Ring, the Helm and the four second-wind items are re-stamped; only a blow is shrugged off, not a burn, poison or bleed at a round's start | Players: the Ring, the Helm and the second-wind items work and read alike in every game | Phase 1 | Small | ✓ | ⬜ | | A maintainer's answer of 27 November to R-153 |
+| P1-23bi | The Philosopher's Stone's text says the undead (skeletal companies) are not promoted, as the game does; a new ruling, which this row writes | Players: the Stone's text says what it does | Phase 1 | Small | ✓ | ⬜ | | A maintainer's answer of 27 November to #847's review |
 | KD-049 | **Counter-spy discoveries never take anything off a Spy** (found 2026-10-19 in P1-08j6, Spy; live, players can notice it). Cipher Scripts, Watchmen and six creed discoveries (`effect.kind:'counterSpy'`) are worked out only from the province the order names (`targetProvForSpy`). But the order form and the bots send no province (`target:''`), so the reduction is always 0. Example: Realm B knows Cipher Scripts ("45% lower success"); Realm A's Spy 1 hero spies on B's province where he stands at 40%, not 0%. Fix: read the province he stands in when the order names none; a change in play, so its own PR with a balance report and playtester notes. A P1-08j6 case pins today's behaviour. | Players: counter-spy discoveries cut a Spy's chance, as their texts say | Phase 1 | Small | – | ⬜ | | Harm in each Spy order against a realm with a counter-spy discovery: eight discoveries take nothing off; Small |
 | P1-23j | [R-142](../rulings/R-142-a-declaration-of-war-meets-the-realm-that-declared-it.md): a declaration of war meets the realm that declared it. Folds in KD-040. | Players: a realm at war can write to its foe | Phase 1 | Small | ✓ | ⬜ | | Harm when a realm declares war on one that never met it: the realm declared on can't answer; Small |
 | KD-048 | **Three relics never work: the Crystal Orb, the Cloak of Many Faces and the Kraken Figurehead** (found 2026-10-19 in P1-08j6, Spy; live, players can notice them). At load `_retierAndBalanceItems` keeps the relics' `LEGENDARY_ITEMS_P` entries, whose powers (`spyAuto`, `untargetable`, `fleetQuality`) nothing reads; the readers look for the older names (`oracle`, `hidden`, `navalBonus`). E.g. a hero of no Spy with the Crystal Orb reads "20% [roll 64 ✗]", not an automatic success. Fix: one PR (one name per power, as the Philosopher's Stone's has), with a balance report and playtester notes. P1-08j6's tests pin today's behaviour and test the older copies (`oldCrystalOrb`, `oldCloakOfManyFaces`). | Players: the Crystal Orb, the Cloak of Many Faces and the Kraken Figurehead work as their texts say | Phase 1 | Small | – | ⬜ | | Harm for the holders of three relics, whose powers nothing reads |
@@ -32,12 +34,7 @@ fix needs no new ruling. The last four rows joined from Next. The other rulings 
 
 ## Phase 1's later rows
 
-| Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
-|---|---|---|---|---|---|---|---|---|
-| P1-20 | State reshapes that earn their place: items get ids first | Maintainers: an item can be named in a rule or a test by its id; closes a Phase 1 criterion | Phase 1 | Medium | – | ⬜ | | |
-| P1-24 | Long, descriptive names: a glossary a maintainer agrees, then the renames, one area a pull request (saved-state, content and database names left out). After P1-14z and P1-19 | Maintainers: names say what the code does; closes a Phase 1 criterion | Phase 1 | Large | – | ⬜ | | |
-| B-03 | The people's names in code and config comments and messages: `.github/scripts/*.ts` (the dangerous-paths warning and the migrations summary's label, pinned by their unit tests), `.github/workflows/*.yml`, `.github/dependabot.yml`, `.github/dangerous-paths`, the root `README.md`, `tests/README.md`, and comments in `src/` and `tests/`: roles instead, and the names test extended to them | Maintainers: the warnings and comments say "a maintainer", as the docs do | Phase 1 | Small | ✓ | ⬜ | | |
-| B-11 | A maintainer decides on #218's balance comment, which quotes the first lines whose filing changed: hidden on GitHub, or kept. No newer comment quotes a line | Maintainers: an old comment out of view, or kept on purpose; tidying | Phase 1 | Small | – | ⬜ | | |
+In [their own file](the-later-group-phase-1s-later-rows.md).
 
 ## Phase 2: the database decides, and turns are kept
 
