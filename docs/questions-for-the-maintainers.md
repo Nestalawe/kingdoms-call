@@ -178,3 +178,21 @@ doesn't settle it, so it is a maintainer's call.
 *Unlocks:* a row that builds option 2, if chosen.
 
 *Touches:* [R-084](rulings/R-084-retreats-onto-dry-ground.md) (a beaten army retreats onto dry ground).
+
+## 172. Do orders stamped for a later turn also keep only their order of heroes?
+
+Found on 2026-11-28.
+
+[R-192](rulings/R-192-orders-saved-for-an-earlier-turn-and-sent-late-keep-only-their-order-of-heroes.md) names
+orders saved for an earlier turn. The turn refuses orders stamped for any other turn the same way. Example: the GM's
+run of Turn 8 fails and the game stays on Turn 8, but Varrow's form already shows Turn 9 and sends a concession:
+the turn refuses it.
+
+1. **Refused the same way, as built.** Impact: nothing changes.
+2. **Only earlier turns.** Impact: orders for a later turn are read whole on the turn run.
+
+*Assessment:* option 1: the turn already refused such orders' heroes' orders and research choices.
+
+*Unlocks:* a row that builds option 2, if chosen.
+
+*Touches:* [R-192](rulings/R-192-orders-saved-for-an-earlier-turn-and-sent-late-keep-only-their-order-of-heroes.md).
