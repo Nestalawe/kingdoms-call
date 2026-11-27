@@ -536,8 +536,8 @@ export function migrateItemTiers(gs: TheStateAsTheItemsTiersUpgradeReadsIt | nul
     const m = byName.get(it.name) ?? byName.get(_ITEM_ALT_BASE[it.name]);
     if (m) {
       if (it.tier !== m.tier) it.tier = m.tier;
-      // R-153 (question 166's answer): a copy of the Ring, the Helm or a second-wind item takes its row's effect and
-      // words, whenever it was made
+      // R-153: a copy of the Ring, the Helm or a second-wind item takes its row's effect and words, whenever it was
+      // made (an old ritual site's `lairItems`, in older saves only and not in the schema, isn't walked)
       if (theEffectsAnItemCarries(m).some((slug) => THE_EFFECTS_EVERY_COPY_IN_PLAY_TAKES_FROM_ITS_ROW.includes(slug))) {
         if (m.effect) it.effect = { ...m.effect, ...(m.effect.pc ? { pc: { ...m.effect.pc } } : {}) }; // the copy's own, as a minted one's
         if (typeof m.desc === 'string') it.desc = m.desc;
