@@ -42,7 +42,8 @@ export function combatVsNPC(
   // strike in the third stage, after both sides' spells and so after his archery: R-162, question 164.)
   const theAttackersPhases = theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp);
   // The defenders' pre-battle phases (B-06bb: the-battle-against-the-defenders/, its third stage), their commander's
-  // magic, their archery and Flak, their units' army spells: each strikes the attacker's host, and hands nothing on.
+  // magic, then the attacker's units' army spells (R-162), their archery and Flak, and their units' army spells: each
+  // strikes the other side's host, and hands nothing on.
   theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(turnContext, c, prov, theSetUp, theAttackersPhases);
   // The ground's notes, the lines, fortune and the result (B-06bc: the-battle-against-the-defenders/, its fourth stage):
   // the terrain's notes and the battle lines with every multiplier, the fortune of battle, the stat block and the
