@@ -14,7 +14,7 @@
 // attacker's Dwarven Guard holding a Shield Fort with no road out. This plays each, the attacker (or both commanders)
 // alive and slain before the battle (each side then fights on as "<name>'s leaderless host"), and reads each line's
 // words. What no bot order sets is stood in (vi.spyOn): a force that holds the sea lanes (no realm raises Corsairs any
-// more: Parked), where a beaten force can fall back to, a realm's defOwn discovery (since P1-19aa the share the
+// more, and since R-147 none holds them: KD-517), where a beaten force can fall back to, a realm's defOwn discovery (since P1-19aa the share the
 // discoveries' registry's runner gives, stood in where discSum's was), a Shield Fort and the losses a beaten force takes (so that it keeps a company to hold the fort with); Control Undead's dice are fed in order from
 // the moment the hero's spell is chosen (pickBattleSpell, stood in, which calls the real one): the cast roll, then the
 // unit drawn. Every other die is a seeded stream's.
