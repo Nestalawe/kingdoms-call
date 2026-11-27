@@ -29,7 +29,7 @@ this (`tests/static/the-backlog-tracks-each-item-one-way.test.ts`).
   own. Its heading, under "The groups" of its file, says what it delivers and holds its decisions in force; its rows
   sit wherever the order puts them. A step with work of its own beside its rows gives that work a lettered row.
 - **Folded in:** a known defect that is the same fault as another row is no row of its own. That row's What names it
-  ("Folds in KD-107"), so the id still leads somewhere.
+  ("Folds in KD-012"), so the id still leads somewhere.
 - **Rescoping:** when a row has delivered part of what it says, the id keeps what was delivered, and goes to the
   finished list; the rest is a new row, with a new id.
 - **What:** what the row delivers. A row that must wait for another says so at its end ("After P1-16q").
