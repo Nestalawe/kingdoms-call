@@ -1,4 +1,7 @@
-import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
+import {
+  invisibilityWouldHideTheHeroNow,
+  theHerosInvisibilityHidesHimNow,
+} from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import {
@@ -1119,7 +1122,8 @@ export function botLairPlan(
         continue;
       }
       path.forEach((d) => mv.push(aMoveOrderOnThePath(d, 'Seek the lair in ' + o.x.X.name)));
-      if (searches === 0 && (Number(sk.illusory) || 0) >= 1 && left() >= 2)
+      // R-158: Invisibility waits while he leads armies, so a leader doesn't cast it before the lair
+      if (searches === 0 && (Number(sk.illusory) || 0) >= 1 && invisibilityWouldHideTheHeroNow(c) && left() >= 2)
         mv.push({
           action: 'cast_spell',
           target: theNameOfTheSpell('invisibility'),
