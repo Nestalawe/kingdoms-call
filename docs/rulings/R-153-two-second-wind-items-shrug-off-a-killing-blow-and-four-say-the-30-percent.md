@@ -10,8 +10,9 @@ chance to shrug off a killing blow and stand at 1 HP. The other second-wind item
 the bearer falls below 30% of his hit points in a fight, he recovers a share of his maximum), and their texts say
 the 30%. Example: a killing blow falls on Sir Aldric, who wears the Ring; on its chance he stands at 1 HP instead.
 
-**Open:** a Ring or a Helm a hero already holds in a running game keeps the effect it was made with (the second wind),
-as every held item keeps its own; whether those copies change too is a question for the maintainers.
+**Open:** a copy already in a running game (a hero's items, a lair's hoard, a realm's vault) keeps the effect and the
+words it was made with: a Ring or a Helm its second wind, the four other items "near defeat". Whether those copies
+change too is question 166.
 
 The question was: six second-wind items don't say the 30%, and two describe another rule. Option 2: "the Ring and the
 Helm get the rule their texts give, and the four others' texts state the 30%".

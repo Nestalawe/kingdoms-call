@@ -72,15 +72,13 @@ deadline are refused).
 
 Found on 2026-11-27.
 
-[R-166](rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md) has four rout rules work against a
-province's guards as between heroes. Between heroes, either side's winner hunts. It doesn't say whether the guards, when
-they win, hunt too. The Manticore guards of the Greywater Ford beat Sir Aldric's host: do his beaten companies die at
+[R-166](rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md) has the rout rules work against guards
+as between heroes, where either winner hunts. Do winning guards hunt too? The Manticore guards of the Greywater Ford beat Sir Aldric's host: do his beaten companies die at
 the beaten chance plus 15%?
 
-1. **Yes, either winner hunts, as between heroes.** Impact: how the game works now (P1-23as); a beaten host loses a
-   few more companies against Manticore or Shark Shoal guards.
-2. **No, only a hero's Manticores and Shark Shoals hunt.** Impact: a change in play; a beaten host loses only the plain
-   chance against those guards (their Warg Riders still run it down, by R-166).
+1. **Yes, either winner hunts, as between heroes.** Impact: as built (P1-23as); a beaten host loses a few more
+   companies against those guards.
+2. **No, only a hero's beasts hunt.** Impact: a beaten host loses only the plain chance against those guards.
 
 *Assessment:* option 1: one rule for both sides, as between heroes, and nothing more to build.
 
@@ -99,12 +97,10 @@ discoveries after the change?
 
 1. **It keeps it, as built (P1-23k).** Impact: nothing in play changes; the line stays in its records, and it does
    nothing, as before.
-2. **It loses it, as the retired `sd34` did** ([R-013](rulings/R-013-mounted-couriers-removed.md); the save's upgrade,
-   `retireDiscoveries`, strikes it and the new turn says how many went). Impact: nothing in play changes either; the
-   line goes from the realm's records, and the turn's report says a retired discovery was removed.
+2. **It loses it, as the retired `sd34` did** ([R-013](rulings/R-013-mounted-couriers-removed.md), `retireDiscoveries`).
+   Impact: nothing in play changes either; the line leaves the realm's records, and the turn's report says so.
 
-*Assessment:* option 1: a realm keeps what it found, and nothing more to build. Option 2 tidies the records, as `sd34`
-was, for one more small change.
+*Assessment:* option 1: a realm keeps what it found, with nothing to build; option 2 tidies the records.
 
 *Unlocks:* R-140's open point settled.
 
@@ -117,17 +113,14 @@ Found on 2026-11-27.
 
 [R-145](rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) gives a new game's
 guardians the table's HP, and a running game keeps its guardians as they are. It doesn't say what becomes of a game
-made before the fix whose first turn has not yet run. Its guardians stand at the table's HP until that turn: the
-Dracolich of Ashfall Barrow at 54. Does it keep 54 when the first turn runs after the fix?
+made before the fix whose first turn has not yet run: its Dracolich stands at 54 until then. Does it keep 54?
 
 1. **It is cut to 49 on its first turn, as built (P1-23l).** Impact: that game plays as it would have before the fix;
    only games made after the fix keep the table's HP.
-2. **It keeps 54.** Impact: every game whose first turn runs after the fix keeps the table's HP; the cut never runs
-   again on a real save, so it could be retired. One more small change to build.
+2. **It keeps 54.** Impact: every game whose first turn runs after the fix keeps the table's HP; a small change.
 
-*Assessment:* option 2 fits the ruling's aim (guardians as tough as the table says) and its words ("keep their
-guardians as they are"); option 1 is the smaller change. It matters only for a game made but not yet played when the
-fix goes live: deploying when no game waits on its first turn makes both the same.
+*Assessment:* option 2 fits the ruling's aim and words; option 1 is smaller. It matters only for a game made but not
+yet played when the fix goes live.
 
 *Unlocks:* R-145's open point settled.
 
@@ -158,19 +151,16 @@ still rolls her tier-ups as at 7.
 
 Found on 2026-11-27.
 
-When a beaten force's ships can't sail, they stay on their own shore and hold the province
-([R-067](rulings/R-067-ships-ashore-hold-the-ground.md)), and the battle stalls: it resumes against them in a later phase of the same turn. They keep the arrows' and spells'
-cuts from the first fight until the new turn wipes them (#841). The Grey Cog of Hollin, shot down to half strength at
+Ships that can't sail hold their own shore ([R-067](rulings/R-067-ships-ashore-hold-the-ground.md)); the battle
+resumes against them later in the turn, and they keep the first fight's cuts until the new turn (#841). The Grey Cog of Hollin, shot down to half strength at
 Saltmarsh in phase 1, fights the phase-3 resumption at half strength. Is the resumption the same battle, or a new one?
 
-1. **The same battle: the ships keep their cuts.** Impact: as built; a stalled fight goes on where it stopped, and the
-   ships recover at the new turn.
+1. **The same battle: the ships keep their cuts.** Impact: as built; they recover at the new turn.
 2. **A new battle: the ships recover first.** Impact: the ships fight each resumption at full strength; a small change
    where the hulls join the garrison (`_navalLeaveBehind`), with its own case.
 
-*Assessment:* option 1 matches how a stalled battle reads elsewhere (it "grinds on" each phase until it breaks), and
-it needs no change; option 2 treats every phase's fight alike. Few games meet it: ships stranded on their own shore
-after a lost battle.
+*Assessment:* option 1 matches how a stalled battle "grinds on" elsewhere, with no change; option 2 treats every
+phase's fight alike. Few games meet it.
 
 *Unlocks:* the last path where a battle's cuts outlive its end settled.
 
@@ -182,18 +172,36 @@ Found on 2026-11-27.
 
 Under [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md), a hero's beasts strike after
 the guards' commander's spell, so a Psychic Blast can stop them; that comes after the hero's archery, Flak and Breach.
-Between two heroes' hosts, the beasts strike before any archers. Example: Sir Aldwin's longbowmen loose at the Fenmoor
-guards, then the warlord Morvane casts, then Aldwin's Stone Giants strike; against Lady Wren's host the giants
-strike first.
+Between two heroes' hosts, the beasts strike before any archers. Example: against the Fenmoor guards Sir Aldwin's
+longbowmen loose, the warlord casts, then his Stone Giants strike; against a hero's host the giants strike first.
 
 1. **Keep it, as built (P1-23an).** Impact: only whether archers or beasts strike first differs between the battles.
 2. **Move the guards' commander's spell ahead of the hero's archery.** Impact: one order in both; a larger move of
    the stages, and the dice move again in every battle against guards.
 
-*Assessment:* option 2 matches between heroes exactly; option 1 is built and changes little (both strike the same
-enemy, neither changes the other). It matters only for a hero with both archers and beasts.
+*Assessment:* option 2 matches between heroes exactly; option 1 is built and changes little. Only a hero with both
+archers and beasts meets it.
 
 *Unlocks:* R-162's second open point settled.
 
 *Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md),
 [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
+
+## 166. Do the Rings, Helms and second-wind items already in running games change too?
+
+Found on 2026-11-27.
+
+[R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) gives the Ring
+and the Helm a chance to shrug off a killing blow, and four second-wind texts the 30%. A copy already in a running
+game (a hero's items, a lair's hoard, a realm's vault) keeps the effect and the words it was made with. Lady Wren
+holds the Ring: does she keep the second wind?
+
+1. **Yes: only copies made from now on change, as built (P1-23v).** Impact: old copies keep the old rule and words.
+2. **No: every copy is re-stamped by its name** (in `migrateItemTiers`, which re-stamps tiers each turn). Impact:
+   running games' wearers change rule at once.
+
+*Assessment:* option 2: the texts and the rule agree everywhere, for a small change.
+
+*Unlocks:* R-153's open point settled.
+
+*Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md).
