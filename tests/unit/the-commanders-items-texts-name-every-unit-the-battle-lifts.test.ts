@@ -8,7 +8,7 @@
 // engine is imported), its desc and lore, and the lore a copy without its own shows, against the units the battle
 // lifts read from the same table the battle reads (each effect's row's `reaches`, read by the strength a led unit has
 // after its commander's items); then migrateItemTiers, the save's upgrade pass that re-stamps the items by name at the
-// head of every turn, on a staged state holding an old copy (its words as #863's base had them) in a hero's items, a
+// head of every turn, on a staged state holding an old copy (its words before P1-23w) in a hero's items, a
 // lair's hoard and an older save's vault. Not lower: the rows and the pass are the texts and the re-stamp. No dice.
 import '../lib/the-whole-engine.ts';
 import { describe, expect, test } from 'vitest';
@@ -59,7 +59,7 @@ describe("each siege item says the defenders' fortifications are halved when its
   });
 });
 
-/** Old copies as #863's base dealt them: one of each kind of text, its effect and its words. */
+/** Old copies with their words before P1-23w: one of each of the five effects, its effect and its words. */
 const THE_OLD_COPIES = [
   {
     name: 'Golden Spur',
@@ -72,6 +72,18 @@ const THE_OLD_COPIES = [
     effect: { stat: 'infBonus', bonus: 1 },
     desc: 'Infantry you lead fight +20%.',
     lore: 'A plain iron band; the men who see it know their lines will hold and their rations will come. Shieldwall, Guard and Berserker units you lead fight at +20%.',
+  },
+  {
+    name: 'Cap of the Master Bowman',
+    effect: { stat: 'archerStr', bonus: 1 },
+    desc: 'Archer units you lead fight +30%.',
+    lore: 'Green felt, one hawk feather, and a way of reading the wind. Longbow, Bowmen, Shadow Archer and Crossbow units you lead fight at +30%.',
+  },
+  {
+    name: 'Amulet of the Bombardier',
+    effect: { stat: 'heavyBonus', bonus: 1 },
+    desc: 'Heavy engines you lead fight +4.',
+    lore: 'A powder-flask stopper on a chain, still faintly warm. Mountain Guns and Ironclads you lead fight at +4 strength.',
   },
   {
     name: 'Ring of the Sapper',
