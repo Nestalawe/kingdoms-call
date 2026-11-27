@@ -198,9 +198,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
         cName: atkSide,
         terrain: _npcTerrain,
       });
-  // HUMAN — Cut the Line becomes Keep the Sea Lanes. Neutral guards still never withdraw, so
-  // there is no enemy line of retreat to sever; a corsair-heavy force instead guarantees its OWN
-  // escape back to the ships.
+  // The sea lanes (once the Corsair Fleet's Keep the Sea Lanes): no ability since R-147; KD-517 drops the branch.
   const _npcCorsairs = aForceHoldsTheSeaLanes({ theForce: armies, theBattle: 'a hero against neutral guards' });
   // ORC — Run Them Down: still nothing to pursue (neutral guards do not flee the province), so
   // the wargs simply end it fast — half casualties for your own force on a win.
@@ -559,8 +557,7 @@ export function theCasualtiesTheRoutAndTheEndOfTheBattleAgainstTheDefenders(
     // the items' registry's "fate: the beaten force may retreat" (plan P1-19n: the Shield-Wall Rune refuses it)
     const infStay = !theBeatenForceMayRetreatByTheCommandersItems(activeItems(c));
     const _npcSeaTrap = friendlyAdj.length === 0 && !infStay ? seaTrapLine(atkSide, c, prov, _retLive) : null;
-    // HUMAN — Keep the Sea Lanes: a corsair-heavy force always has boats waiting, so long as
-    // there is water to reach. They withdraw to the ships rather than being cut down.
+    // The way back to the ships (once Keep the Sea Lanes): no ability since R-147; KD-517 drops the branch.
     const _seaEscape = _npcCorsairs && adjProvs.some((p2: AProvinceAsTheCorsairsLookForWater) => p2?.terrain === 'sea');
     // DWARF — Shield Fort: trapped, the Guard hold contested with NO extra flight casualties;
     // with a path open they withdraw in good order (no pin — the old Hold the Line is retired).
