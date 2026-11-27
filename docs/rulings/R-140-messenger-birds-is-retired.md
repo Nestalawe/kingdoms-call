@@ -2,14 +2,12 @@
 
 - **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Question 10: what becomes of Messenger Birds, a discovery that does nothing? Answer: option 3, it is retired for now.
+- **Source:** Question 10: what becomes of Messenger Birds, a discovery that does nothing? Answer: option 3, it is retired for now. Question 160 (2026-11-27): does a realm that already holds Messenger Birds keep it? Answer: option 1, it keeps it; a maintainer's answer, 27 November.
 - **Enforced by:** [`messenger-birds-is-retired-no-realm-is-offered-it-and-one-holding-it-keeps-it`](../../tests/unit/messenger-birds-is-retired-no-realm-is-offered-it-and-one-holding-it-keeps-it.test.ts)
 
 Messenger Birds is retired for now: no realm is offered it. Its text promises warnings from provinces two steps
-from the realm's, but a realm reads what happens in a province only with eyes there, so it does nothing.
-
-**Open:** whether a realm that already holds Messenger Birds keeps it (question 160). As built, yes: the line stays in
-its records, and it does nothing, as before.
+away, which the turn never gives, so it does nothing. A realm that already holds it keeps it: the line stays in its records,
+and it does nothing, as before.
 
 The question was: Messenger Birds does nothing. Option 3: "retire it, or replace it with another discovery".
 

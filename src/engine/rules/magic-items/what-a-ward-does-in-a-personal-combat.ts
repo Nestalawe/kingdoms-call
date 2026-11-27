@@ -127,8 +127,8 @@ export const A_HIT_LANDS_HIS_WARDS_CAP_IT = {
 } satisfies Partial<Record<MagicItemEffectSlug, WhatAWardDoes['a hit lands on a fighter: his wards cap it']>>;
 
 export const A_KILLING_BLOW_FALLS = {
-  // the Ring of the Unbroken Pulse and the Great Helm of the Deathless: once a fight, on the copy's chance, a blow that
-  // would kill him leaves him standing at the row's HP (R-153)
+  // the Ring of the Unbroken Pulse and the Great Helm of the Deathless: on the copy's chance, a blow that would kill him
+  // leaves him standing at the row's HP, until it has saved him once in the fight (R-153)
   'a-killing-blow-shrugged-off': ({ theWards, hisShrugHasBeenUsed, hisHpBefore, hisHp }) =>
     theWards?.shrugOff && !hisShrugHasBeenUsed && hisHpBefore > 0 && hisHp <= 0
       ? {

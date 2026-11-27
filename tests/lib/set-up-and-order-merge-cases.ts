@@ -909,43 +909,103 @@ export const STALE_CASES: SetUpCase[] = [
     },
   },
   {
-    name: 'a realm whose orders are refused still has its declaration of war taken',
+    name: 'a realm whose orders are refused has its declaration of war refused too',
     stage: (b) => ({ sends: { 1: { forTurn: b.G.turn + 1, diplomacy: { 2: 'enemy' } } } }),
-    check: (o) => ({ got: { relation: relation(o, 1, 2) }, want: { relation: 'enemy' } }),
+    check: (o) => ({ got: { relation: relation(o, 1, 2) }, want: { relation: 'neutral' } }),
     merged: (m) => ({
       got: { declared: collected(m, 'diploDeclarations') },
-      want: { declared: { 0: {}, 1: { 2: 'enemy' }, 2: {} } },
+      want: { declared: { 0: {}, 2: {} } },
     }),
   },
   {
-    name: 'a realm whose orders are refused still has its messages delivered',
+    name: 'a realm whose orders are refused has its call for the Reckoning refused too',
+    stage: (b) => ({ sends: { 1: { forTurn: b.G.turn + 1, callReckoning: true } } }),
+    check: (o) => ({ got: { told: told(o, tooEarly(nm(o, 1))).length }, want: { told: 0 } }),
+    merged: (m) => ({ got: { calls: collected(m, 'reckoningCalls') }, want: { calls: [] } }),
+  },
+  {
+    name: 'a realm whose orders are refused has its messages refused too',
     stage: (b) => ({ sends: { 1: { forTurn: b.G.turn + 1, messages: [{ to: [2], text: 'Hold the ford.' }] } } }),
     check: (o) => ({
       got: { told: told(o, dispatch(nm(o, 1), 'Hold the ford.')) },
-      want: { told: [{ targets: [2], public: false }] },
+      want: { told: [] },
     }),
     merged: (m) => ({
       got: { messages: collected(m, 'playerMessages') },
-      want: { messages: { 0: [], 1: [{ to: [2], text: 'Hold the ford.' }], 2: [] } },
+      want: { messages: { 0: [], 2: [] } },
     }),
   },
   {
-    name: 'a realm whose orders are refused still concedes, and its concession is told before the refusal',
+    name: 'a realm whose orders are refused has its concession refused too: only the refusal is told',
     stage: (b) => ({ sends: { 1: { forTurn: b.G.turn + 1, concede: true } } }),
     check: (o) => ({
       got: {
         conceded: must(o.world.players[1], 'realm 1')['conceded'] ?? false,
         lines: o.all.filter((l) => l.actor === -1).map((l) => l.text),
       },
-      want: { conceded: true, lines: [conceded(nm(o, 1)), stale(nm(o, 1), o.turn + 1, o.turn)] },
+      want: { conceded: false, lines: [stale(nm(o, 1), o.turn + 1, o.turn)] },
     }),
     merged: (m, s) => ({
       got: { warnings: collected(m, 'staleOrderWarnings') },
+      want: { warnings: [stale(nameOf(must(s.board, 'board'), 1), m.turn + 1, m.turn)] },
+    }),
+  },
+  {
+    name: 'orders saved for an earlier turn and sent late keep only their order of heroes (R-192)',
+    stage: (b) => {
+      turnIs(b, 9); // before the first turn a claim may be lodged (10), so a call taken would be told "too early"
+      const h = realmHero(b, 1);
+      const k = kingOf(b, 1);
+      return {
+        hero: h,
+        others: [k],
+        board: b,
+        sends: {
+          1: {
+            forTurn: 8,
+            heroOrder: [h.id, k.id],
+            diplomacy: { 2: 'enemy' },
+            callReckoning: true,
+            messages: [{ to: [2], text: 'Hold the ford.' }],
+            concede: true,
+          },
+        },
+      };
+    },
+    check: (o, s) => ({
+      got: {
+        order: heroOrderOf(o.world, 1),
+        relation: relation(o, 1, 2),
+        called: told(o, tooEarly(nm(o, 1))).length,
+        dispatched: told(o, dispatch(nm(o, 1), 'Hold the ford.')).length,
+        conceded: must(o.world.players[1], 'realm 1')['conceded'] ?? false,
+        refused: told(o, stale(nm(o, 1), 8, 9)).length,
+      },
       want: {
-        warnings: [
-          conceded(nameOf(must(s.board, 'board'), 1)),
-          stale(nameOf(must(s.board, 'board'), 1), m.turn + 1, m.turn),
-        ],
+        order: [String(hero(s).id), String(other(s, 0).id)],
+        relation: 'neutral',
+        called: 0,
+        dispatched: 0,
+        conceded: false,
+        refused: 1,
+      },
+    }),
+    merged: (m, s) => ({
+      got: {
+        order: heroOrderOf(m.G, 1),
+        declared: collected(m, 'diploDeclarations'),
+        calls: collected(m, 'reckoningCalls'),
+        messages: collected(m, 'playerMessages'),
+        conceded: must(m.G.players[1], 'realm 1')['conceded'] ?? false,
+        warnings: collected(m, 'staleOrderWarnings'),
+      },
+      want: {
+        order: [String(hero(s).id), String(other(s, 0).id)],
+        declared: { 0: {}, 2: {} },
+        calls: [],
+        messages: { 0: [], 2: [] },
+        conceded: false,
+        warnings: [stale(nameOf(must(s.board, 'board'), 1), 8, 9)],
       },
     }),
   },

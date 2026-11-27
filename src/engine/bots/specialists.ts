@@ -1,3 +1,4 @@
+import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { GUARDIAN_POWER_RANK, SKILL_LABELS, STEAL_TIER_PEN } from '../army-tables.ts';
@@ -584,7 +585,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
           e.player !== pi &&
           botRelationRaw(G, pi, e.player) !== THE_STATES_TWO_REALMS_STAND_IN.allied &&
           botSkillsUnknown(G, pi, e) &&
-          e._invisTurn !== G.turn,
+          !theHerosInvisibilityHidesHimNow(e, G.turn),
       )
       .sort(
         (a, b) =>
@@ -692,7 +693,7 @@ export function botStealTarget(G: GameState, pi: number, c: Character, maxD: num
     (botRelationRaw(G, pi, j) === THE_STATES_TWO_REALMS_STAND_IN.atWar || !botAlignFriendly(G, pi, j));
   for (const e of theCharactersOf(G)) {
     if (!(e && e.alive && e.player != null && hostile(e.player) && botSeesChar(G, pi, e))) continue;
-    if (e._invisTurn === G.turn) continue;
+    if (theHerosInvisibilityHidesHimNow(e, G.turn)) continue;
     const d = e.location === from.id ? 0 : botPathLenAny(G, from, e.location, maxD);
     if (d == null) continue;
     const sc =

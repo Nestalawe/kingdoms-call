@@ -1,3 +1,4 @@
+import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { homeProvinceIdFor } from '../grand-design.ts';
 import { spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -235,7 +236,7 @@ export function updateProvinceMemory(turnContext: TurnContext, ph: number) {
       if (!sc || !sc.alive || sc.player == null || sc.player === pi || asItsGuardReadsIt(sc.location) == null) return;
       if (
         (asItsGuardReadsIt(sc.armies) ?? []).length > 0 ||
-        sc._invisTurn === G.turn ||
+        theHerosInvisibilityHidesHimNow(sc, G.turn) ||
         ((asItsGuardReadsIt(sc.skills)?.spy ?? 0) || 0) < 1
       )
         return;

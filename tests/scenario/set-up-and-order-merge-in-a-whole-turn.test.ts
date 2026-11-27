@@ -31,7 +31,8 @@
 // whatever their order; phases that aren't a list given to nobody. The heroes' order in the column kept as text, only
 // the realm's own living heroes, each once (of 205 places, of numbers, lists, objects and very long text), an order
 // that isn't a list leaving it as it was, in the older form too and from a payload for another turn. Orders for another turn (later or earlier) refused, the GM told, the hero Defending, no encounter plan
-// or heir's choices taken, though the realm's declaration, messages and concession are (the concession told first);
+// or heir's choices taken, nor the realm's declaration, Reckoning call, messages or concession: only its order of
+// heroes kept (R-192);
 // orders with no turn on them read. Declarations taken (war made at the turn's end), set aside under Safe Start (war or
 // Treat) with the realm alone told, nothing told for none or neutral, Safe Start over with the orders for turn 6 and
 // holding on turn 5; declarations as text or nothing not read. Research choices: the lead picked pursued; one sent with

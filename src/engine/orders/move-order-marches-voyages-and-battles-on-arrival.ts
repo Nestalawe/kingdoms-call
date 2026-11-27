@@ -28,6 +28,7 @@ import {
 import {
   aColumnIsTurnedBackAtANeutralRealmsBorder,
   aColumnLeadingShipsMayNotStepFromLandToLand,
+  aMarchsStepLandsFromTheSea,
   canEnterTerrain,
 } from '../rules-on-plain-values/where-a-column-may-step-the-ground-a-neutral-realms-border-and-ships-over-land.ts';
 import { TM, creditMapped, perkTier } from '../titles/perks.ts';
@@ -332,10 +333,10 @@ export function resolveMoveOrder(
 
   // Determine which move pool to use
   const enteringSea = toProv.terrain === 'sea';
-  const leavingSea = prov.terrain === 'sea';
   // Coastal landing: moving from sea province to adjacent land province costs from the sea
-  // pool (not land pool) since the journey is naval
-  const coastalLanding = leavingSea && !enteringSea;
+  // pool (not land pool) since the journey is naval. Any column may land, ships alone too; a
+  // far march's road lands on its target as this step does (R-174, stepTowardPreferSafe).
+  const coastalLanding = aMarchsStepLandsFromTheSea(prov.terrain, toProv.terrain);
   // The pool the step spends (rules-on-plain-values/, plan P1-11e5): the sea pool to enter the sea or land from it.
   const _thePoolTheStepSpends = theMovePoolAStepSpends(prov.terrain, toProv.terrain);
   // 2026-10-08 (Toby item 6): WINNING a battle costs one more point, from the SAME pool the step

@@ -1,7 +1,7 @@
 // The battle against a province's defenders (combatVsNPC, src/engine/battle/battles-against-province-defenders.ts), its
 // second stage, B-06ba: the attacker's pre-battle phases, his magic (the battle proof's N3), then his archery, Flak and
 // Breach (N4), moved here as they were, the same statements in the same order. His units' army spells strike in N5,
-// after their commander's battle spell (R-162), so after his archery here (question 164). combatVsNPC
+// after their commander's battle spell (R-162), so after his archery here. combatVsNPC
 // calls it where they stood, after the set-up (n0-to-n2-…), and hands it what the set-up returned, as it is. It returns
 // what the later stages read: the battle spells' names, the defenders' commander's Tactical (final once N3 is done)
 // and its bonus, and the battle's state below. The battle proof (tools/proof/README.md, section 8) finds N3's and N4's

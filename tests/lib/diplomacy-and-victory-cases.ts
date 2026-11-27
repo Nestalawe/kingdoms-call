@@ -732,7 +732,7 @@ export const WAR_FRONT_CASES: DiplomacyAndVictoryCase[] = [
     },
   },
   {
-    name: "a host on the foe's land under Invisibility: its own realm is warned, the foe is not told",
+    name: "a host on the foe's land under Invisibility: the spell waits while he leads armies (R-158), so the warnings are as without it",
     stage(b) {
       const h = host(b, 1, seatOf(b, 2), 2);
       h['_invisTurn'] = b.G.turn;
@@ -742,7 +742,11 @@ export const WAR_FRONT_CASES: DiplomacyAndVictoryCase[] = [
       return {
         got: { said: said(o) },
         want: {
-          said: [...toEach(1, 2, war(nm(o, 1), nm(o, 2))), [[1], frontOwn(hero(s), 2, there(s), true, nm(o, 2))]],
+          said: [
+            ...toEach(1, 2, war(nm(o, 1), nm(o, 2))),
+            [[1], frontOwn(hero(s), 2, there(s), true, nm(o, 2))],
+            [[2], frontFoe(hero(s), nm(o, 1), 2, there(s), true)],
+          ],
         },
       };
     },

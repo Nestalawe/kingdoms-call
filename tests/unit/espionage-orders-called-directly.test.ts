@@ -38,8 +38,8 @@ import fc from 'fast-check';
 import { describe, expect, test, vi } from 'vitest';
 import {
   ESPIONAGE_ORDER_CASES,
-  oldCloakOfManyFaces,
-  oldCrystalOrb,
+  theCloakOfManyFaces,
+  theCrystalOrb,
   stageCase,
   type EspionageOrderCase,
 } from '../lib/espionage-order-cases.ts';
@@ -276,7 +276,7 @@ describe('Spy, called directly: the dice, The Shadow and the odds', () => {
     realm(b, 1)['discoveries'] = [{ id: 'sd63' }];
     const m = rival(b, {}, { spy: 9 });
     const h = at(b, { spy: 0 });
-    h.items = [oldCrystalOrb(b)];
+    h.items = [theCrystalOrb(b)];
     rolls([100, 100], () => {
       play(b, h, o('spy', `char:${String(m.id)}`));
     });
@@ -397,7 +397,7 @@ describe('Spy, called directly: the dice, The Shadow and the odds', () => {
     expect(textOf(b, h)).toContain(`(Spy 1) in ${b.X.name}: 40% [roll 1 ✓]`);
   });
 
-  test('Forgery Arts add 40 to reading a hero too (Spy 1: 75%), and an older Crystal Orb is named on a read', () => {
+  test('Forgery Arts add 40 to reading a hero too (Spy 1: 75%), and the Crystal Orb is named on a read', () => {
     const b = fresh();
     realm(b, 0)['discoveries'] = [{ id: 'sd21' }];
     const m = rival(b);
@@ -406,7 +406,7 @@ describe('Spy, called directly: the dice, The Shadow and the odds', () => {
       play(b, h, o('spy', `char:${String(m.id)}`), 0);
     });
     expect(textOf(b, h)).toContain(`📊 Spy on ${m.name} — ${h.name} (Spy 1) in ${b.X.name}: 75% [roll 1 ✓]`);
-    h.items = [oldCrystalOrb(b)];
+    h.items = [theCrystalOrb(b)];
     rolls([100, 100], () => {
       play(b, h, o('spy', `char:${String(m.id)}`), 1);
     });
@@ -502,12 +502,12 @@ describe('Spy, called directly: the dice, The Shadow and the odds', () => {
     expect(kept[String(second.id)]?.armies.map((a) => a.unitName)).toEqual(['']);
   });
 
-  test('an older save’s Cloak of Many Faces hides its wearer from a read; an older Crystal Orb needs no roll', () => {
+  test('the Cloak of Many Faces hides its wearer from a read; the Crystal Orb needs no roll', () => {
     const b = fresh();
     const m = rival(b);
-    m.items = [oldCloakOfManyFaces(b)];
+    m.items = [theCloakOfManyFaces(b)];
     const h = at(b, { spy: 1 });
-    h.items = [oldCrystalOrb(b)];
+    h.items = [theCrystalOrb(b)];
     rolls([100, 100], () => {
       play(b, h, o('spy', `char:${String(m.id)}`), 0);
       play(b, h, o('spy', b.X.id), 1);

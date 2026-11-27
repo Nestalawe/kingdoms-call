@@ -3,6 +3,7 @@
 // seen hero can't be encountered, and which realm knows a province's feature. Pure: the engine asks them as it resolves
 // (the bots, Move, Explore, world generation, a spy's findings, the warnings, the report's filter), and perception in
 // src/views applies them. The engine may not import src/views, so they live here, in one copy.
+import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_MOST_UNITS_EACH_BAND_OF_AN_ARMYS_SIZE_NAMES } from '../../content/the-sight-rules-numbers-an-armys-size-band-spotting-an-enemy-in-an-owned-province-and-a-spys-success.ts';
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
@@ -73,7 +74,7 @@ export function enemyCharVisibleTo(
     ownHere = ctx.ownedProvIds.has(p.id),
     spied = ctx.spiedThisTurn.has(p.id);
   if (!coLoc && !ownHere && !spied) return false; // no line of sight at all
-  if (c._invisTurn === gs.turn) return false; // Invisibility beats even a spy
+  if (theHerosInvisibilityHidesHimNow(c, gs.turn)) return false; // Invisibility beats even a spy
   if (spied) return true; // a deliberate Spy pierces stealth
   // 2026-10-15 (Toby, D1): another realm's hero beside one of yours at the end of the turn is always
   // seen; their Spy cannot slip them past your hero (only Invisibility, above, still can). Wandering

@@ -104,6 +104,7 @@ import {
   type WhatTheSavesUpgradeFound,
 } from '../../src/engine/saves/upgrade-a-saved-game-and-check-it.ts';
 import { ITEM_LORE_BY_NAME } from '../../src/engine/items/tiers-and-hoards.ts';
+import { migrateItemTiers } from '../../src/engine/items/equipment.ts';
 import { anOlderSavesShapesMendedOnce } from '../../src/engine/saves/version-2-an-older-saves-shapes-mended-once.ts';
 import { GameStateSchema } from '../../src/schemas/saved-game-state.ts';
 import { strictIssues } from '../lib/strict-schema.ts';
@@ -118,6 +119,11 @@ type Province = Save['world']['provinces'][number];
 type Loose = Record<string, unknown>;
 const loose = (o: object) => o as Loose;
 const copy = <T>(o: T): T => structuredClone(o);
+/** Items as the turn's start re-stamps them (migrateItemTiers: a few effects' copies take their rows' words). */
+function reStamped<T>(items: T): T {
+  if (Array.isArray(items)) migrateItemTiers({ players: [{ vault: items }] });
+  return items;
+}
 const must = <T>(v: T | undefined | null, what: string): T => {
   if (v == null) throw new Error(`the new world has no ${what}`);
   return v;
@@ -1069,7 +1075,11 @@ const VERSION_2_SHAPES: {
       const leftHere = b['hoardItems'];
       delete b['hoardItems'];
       b['lairItems'] = leftHere;
-      return [a, copy([...hoard, ...left]), b, copy(leftHere)];
+      // the hoards as the upgrade's re-stamp gives them their rows' words (an old Crown of Command's: R-143; an old
+      // Ring of the Sapper's, Ring of the Lancer's, Crested Barbute's and the like: R-149). This case checks the hoard's
+      // items and their order; their words are pinned by the-crown-of-commands-texts-say-it-helps-your-realms-characters
+      // .test.ts and the-commanders-items-texts-name-every-unit-the-battle-lifts.test.ts
+      return [a, reStamped(copy([...hoard, ...left])), b, reStamped(copy(leftHere))];
     },
     mended(_s, staged) {
       const [a, aHoard, b, bHoard] = staged as [Loose, unknown, Loose, unknown];

@@ -1,7 +1,8 @@
 // The first step of a shortest route on plain values (plan P1-11e7 moved it out of stepTowardPath, so the order form's
 // march forecast can ask the same rule on the report's map): a search, breadth first, over the map's hexes in the
 // compass directions' order (NW, NE, W, E, SW, SE), into the ground the column may enter (its sea cap) and what the
-// caller's filter allows; a column that leads ships never steps from land to land; at most 40 steps.
+// caller's filter allows; a column that leads ships never steps from land to land; a Move order's road may land from
+// the sea on its target, ships alone too (R-174); at most 40 steps.
 //
 // Level 1 (unit): theFirstStepOfAShortestRouteAColumnMayTake
 // (src/engine/rules-on-plain-values/the-first-step-of-a-shortest-route-a-column-may-take.ts) on made-up maps. A lower
@@ -108,6 +109,41 @@ test('a column that leads ships never steps from land to land: it puts out to se
     fromLandNoShips: { first: 1, depth: 0 },
     fromTheSea: { first: 5, depth: 1 },
     fromTheSeaNoShips: { first: 1, depth: 1 },
+  });
+});
+
+test("a Move order's road lands ships alone on its target coast, as the step next door would (R-174); it never crosses land on the way", () => {
+  // Ships alone (a fleet with no foot): their sea cap lets them enter only the sea, and they lead ships.
+  const aFleetAlone = { armies: [{ type: 'Galleon Fleet' }] };
+  const theCoast = aMap('LLLL', 'SSSS');
+  // One row of eight hexes that wraps east to west: a land hex at 2, the sea around it.
+  const anIsle = aMap('SSLSSSSS');
+  const theMarchsRoad = (fromId: number, toId: number, theMap: ReturnType<typeof aMap>, itsALanding = true) => {
+    const from = theMap.provinces[fromId];
+    if (!from) throw new TypeError('no such province on the made-up map');
+    const r = theFirstStepOfAShortestRouteAColumnMayTake(
+      aFleetAlone,
+      'sea',
+      true,
+      theMap,
+      from,
+      toId,
+      undefined,
+      itsALanding,
+    );
+    return r && { first: r.first.id, depth: r.depth };
+  };
+  expect({
+    // From sea 4 to land 2, two hexes off: sail to sea 5, then land at 2 (as from 5 it lands next door).
+    aFarCoast: theMarchsRoad(4, 2, theCoast),
+    // From sea 1 to sea 3, past the isle at 2: the isle is no step on the way, so west the long way (0, 7, 6, 5, 4, 3).
+    pastTheIsle: theMarchsRoad(1, 3, anIsle),
+    // The road of another order (a chase) still finds no landing for ships alone.
+    notAMarch: theMarchsRoad(4, 2, theCoast, false),
+  }).toEqual({
+    aFarCoast: { first: 5, depth: 1 },
+    pastTheIsle: { first: 0, depth: 5 },
+    notAMarch: null,
   });
 });
 

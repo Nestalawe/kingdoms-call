@@ -154,7 +154,7 @@ function world({ turn = TURN, encountered = [] as number[], gameOver = false } =
     hero(8, 1, 14, { armies: [army(), army()] }), // realm 1's hero in a province realm 0 spied by its lines
     hero(9, 0, 23, { alive: false, killedThisTurn: true }), // realm 0's hero, fallen this turn where it doesn't see
     hero(10, 0, 0, { alive: false }), // realm 0's hero, fallen long ago
-    hero(11, 1, 2, { items: [{ name: 'Veil', slot: 'cloak', effect: { stat: 'hidden', bonus: 1 }, equipped: true }] }),
+    hero(11, 1, 2, { items: [{ name: 'Veil', slot: 'cloak', effect: { stat: 'untargetable' }, equipped: true }] }),
   ];
   for (const c of characters) at(c.location).characters.push(c.id);
   Object.assign(at(7), { owner: 0, garrisonArmies: [army()] });

@@ -11,6 +11,7 @@ import {
   type AMagicItemEffectAsItsTextsWriteIt,
   type MagicItemEffectSlug,
 } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
+import { theEffectsAnItemCarries, type AMagicItemAsTheRegistryReadsIt } from './the-effects-a-held-item-carries.ts';
 import { UNIT_Q_MULT } from './unit-types-and-base-strength.ts';
 
 /** What the stage "strength: the commander's items" hands an effect (armStr, after the unit's own modifiers and before
@@ -42,9 +43,20 @@ function reaches(slug: MagicItemEffectSlug, facts: AUnitLedByACommander): boolea
   return row.reaches.includes(facts.unitType);
 }
 
+/** The strength the strongest banner among the commander's items gives (R-148): each copy that carries the banners'
+ *  effect gives its own effect's bonus, and of two the stronger counts, never the two added; none, nothing. */
+function theStrengthTheStrongestBannerGives(theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[]): number {
+  let strongest = 0;
+  for (const item of theCommandersItems) {
+    if (!theEffectsAnItemCarries(item).includes('army-bonus')) continue;
+    strongest = Math.max(strongest, Number(item.effect?.bonus) || 0);
+  }
+  return strongest;
+}
+
 export const THE_COMMANDERS_ITEMS = {
-  // Battle Standard: every army he leads, +2.
-  'army-bonus': () => ({ adds: ROWS['army-bonus'].numbers.strengthAdded.value }),
+  // Battle Standard and every banner: every army he leads, the strongest banner's own strength (R-148).
+  'army-bonus': (_facts, theCommandersItems) => ({ adds: theStrengthTheStrongestBannerGives(theCommandersItems) }),
   // Golden Spur: the cavalry he leads, ×1.25.
   'cavalry-bonus': (facts) =>
     reaches('cavalry-bonus', facts) ? { multipliesBy: ROWS['cavalry-bonus'].numbers.multiplier.value } : null,
@@ -81,21 +93,30 @@ export const THE_COMMANDERS_ITEMS = {
   // Black Sceptre: the skeletal units he leads, +4.
   'undead-bonus': (facts) =>
     reaches('undead-bonus', facts) ? { adds: ROWS['undead-bonus'].numbers.strengthAdded.value } : null,
-} satisfies Partial<Record<MagicItemEffectSlug, (facts: AUnitLedByACommander) => AStepOfTheCommandersItems | null>>;
+} satisfies Partial<
+  Record<
+    MagicItemEffectSlug,
+    (
+      facts: AUnitLedByACommander,
+      theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+    ) => AStepOfTheCommandersItems | null
+  >
+>;
 
 /** An effect of the commander's items: one with a step at the stage "strength: the commander's items". */
 export type AnEffectOfTheCommandersItems = keyof typeof THE_COMMANDERS_ITEMS;
 
 /** The strength of a unit a commander leads after the steps of the effects his items carry, handed in the stage's
- *  order, each rounded as it goes (strength added is not rounded). */
+ *  order, each rounded as it goes (strength added is not rounded), each step read from the unit and his items. */
 export function theStrengthAUnitHasAfterTheStepsOfItsCommandersItems(
   theEffectsHisItemsCarry: readonly AnEffectOfTheCommandersItems[],
   facts: AUnitLedByACommander,
+  theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
   theStrengthSoFar: number,
 ): number {
   let str = theStrengthSoFar;
   for (const slug of theEffectsHisItemsCarry) {
-    const step: AStepOfTheCommandersItems | null = THE_COMMANDERS_ITEMS[slug](facts);
+    const step: AStepOfTheCommandersItems | null = THE_COMMANDERS_ITEMS[slug](facts, theCommandersItems);
     if (!step) continue;
     if ('adds' in step) str += step.adds;
     else if (step.dividedBy === undefined) str = Math.round(str * step.multipliesBy);

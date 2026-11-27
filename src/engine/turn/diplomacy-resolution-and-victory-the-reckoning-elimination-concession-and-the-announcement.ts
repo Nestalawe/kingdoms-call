@@ -311,23 +311,23 @@ export function diplomacyResolutionOverturesPeaceAlliancesWarAndWarFrontWarnings
               system: true,
               province: pv.id,
             });
-            if (c._invisTurn !== G.turn)
-              emit(turnContext, {
-                type: 'system',
-                fact: {
-                  kind: "a new foe's host stands on the realm's war front",
-                  heroName: c.name,
-                  realmName: (G.players[c.player]?.name ?? '') || null,
-                  unitCount: n,
-                  provinceName: pv.name,
-                  onTheRealmsLand: onFoeLand,
-                },
-                audience: { actor: null, realms: [foe] },
-                hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
-                phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
-                system: true,
-                province: pv.id,
-              });
+            // R-158: a host's leader is never hidden by Invisibility (it waits while he leads armies), so the foe is told
+            emit(turnContext, {
+              type: 'system',
+              fact: {
+                kind: "a new foe's host stands on the realm's war front",
+                heroName: c.name,
+                realmName: (G.players[c.player]?.name ?? '') || null,
+                unitCount: n,
+                provinceName: pv.name,
+                onTheRealmsLand: onFoeLand,
+              },
+              audience: { actor: null, realms: [foe] },
+              hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
+              phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,
+              system: true,
+              province: pv.id,
+            });
           });
         }
       }

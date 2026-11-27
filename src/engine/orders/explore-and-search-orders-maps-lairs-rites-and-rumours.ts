@@ -80,9 +80,6 @@ type ALairAsTheSearchReadsIt = Omit<ProvinceFeature, 'monster'> & {
 };
 /** The province a search is made in, its sites as the search reads them. */
 type TheProvinceAsTheSearchReadsIt = Omit<Province, 'features'> & { features: ALairAsTheSearchReadsIt[] };
-/** The fight at a lair as the search reads it: resolveEncounter's, and whether the beast was pacified (a stand-in's: the
- *  fight itself never says so). */
-type TheFightAsTheSearchReadsIt = ReturnType<typeof resolveEncounter> & { readonly pacified?: boolean | undefined };
 /** A hero's item as the lair's keeping of a fallen hero's kit reads it: its effect guarded, as if an item may have none. */
 interface AnItemItsEffectGuarded {
   readonly effect?: { readonly stat?: string | undefined } | null | undefined;
@@ -546,7 +543,7 @@ export function resolveSearchLairOrder(
   } // TITLE MERIT: Loremaster
   const plan = c.encounterPlan ?? { tactics: ['ME'] };
   markProvinceCombat(prov, [c.player]); // purple swords: a personal combat, not a field battle
-  const encounter: TheFightAsTheSearchReadsIt = resolveEncounter(
+  const encounter = resolveEncounter(
     turnContext,
     c,
     f,
@@ -780,7 +777,7 @@ export function resolveSearchLairOrder(
       kills[_g] = (kills[_g] ?? 0) + 1;
     } // 2026-09-26: the slayer's grade ladder reads this (botLairPlan)
     // TITLE MERIT: Monster-Bane — HP of the beast overcome (half credit if
-    // pacified/parleyed).
+    // pacified by parley, R-157).
     if (f.monster) TM(c).monster += Math.round((f.monster.hp || 0) * (encounter.pacified ? 0.5 : 1));
     const tier = (f.monster?.power ?? '') || 'Weak';
     // Reward ladder — tougher monsters are meaningfully more worthwhile (gold + item odds +

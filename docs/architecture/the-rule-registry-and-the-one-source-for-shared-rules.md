@@ -81,10 +81,8 @@ stages. A resolver (`unitAbilityMult`, for one) keeps its name and signature, an
   writes for it; handed the winning force, the ground and whether its commander carries the War-Horn of the Plains, asked
   only by an effect that needs it; `pursuitsOfTheBeaten`, `src/engine/units/movement.ts`, asks it for both battles,
   which add the fractions in order unless a Shield Fort holds, and `rideThemDownBonus` keeps Ride Them Down's share
-  alone); and **a force holds the sea lanes** (the Corsair Fleet's Cut the Line between heroes, and Keep the Sea Lanes
-  against neutral guards: both battles' retreat asks it; a retired unit's, in no book, so their two rows are in a file
-  of their own, `src/content/the-abilities-of-a-unit-no-longer-raised.ts`, read into the rows: the player page's own
-  files name no retired unit). The turn's end (P1-19k,
+  alone); and **a force holds the sea lanes** (both battles' retreat asks it; no ability since R-147 took the retired
+  Corsair Fleet's two). The turn's end (P1-19k,
   `src/engine/rules/unit-abilities/a-province-raises-a-unit-at-the-turns-end.ts`), `turnEnd`'s first stage, **a
   province raises a unit** (Raiders' Muster): Early Winter asks it for each province a realm holds, after the wages,
   handed the province's race, the race of the realm that holds it and whether an orc realm won a battle there this turn
@@ -168,12 +166,12 @@ A **magic item's effect** (from P1-19m) is one row in
   copy, an effect returns gold (the Ring of Wealth and its kin: the copy's own `effect.bonus`) or gold for each province
   the realm holds (the Merchant's Ledger: 1); the runner sums the gold hero by hero, item by item, and counts the most
   any one item gives for each province once, and `capItemTaxGold` caps the two as before. `orderOutcome`'s five, one per
-  order: **a spy's sure success** (an older save's Crystal Orb, `oracle`), **a lair revealed when exploring** (the
+  order: **a spy's sure success** (the Crystal Orb, `spyAuto`), **a lair revealed when exploring** (the
   Philosopher's Lens: the order still draws which lair), **a rest's heal** (the Iron Heart Talisman: a tenth of his
   maximum, rounded, once however many he carries), **a move's exploration** (the Traveller's Cloak: the copy's own
   `exploreMove`, every item's added) and **an item's power used** (the Philosopher's Stone, `promoteAll`:
   the Use Item order and the bots' plan both ask it, and the order does the promoting). `visibility`'s **a hero's items
-  hide his face** (P1-19am, `magic-items/a-heros-items-in-what-a-realm-sees.ts`: an older save's Cloak of Many Faces),
+  hide his face** (P1-19am, `magic-items/a-heros-items-in-what-a-realm-sees.ts`: the Cloak of Many Faces, `untargetable`),
   for `isHiddenChar`, the Spy order and the Encounter.
 - **A hero's standing's stages** (P1-19p, `magic-items/a-heros-items-in-his-standing.ts`): `aHerosStanding`'s **maximum
   HP** (`itemMaxHpBonus`: handed each held copy, the Amulet of Fortitude and its kin give the copy's own `effect.bonus`;

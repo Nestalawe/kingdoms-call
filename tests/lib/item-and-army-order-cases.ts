@@ -379,7 +379,7 @@ export const USE_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
     check(o, { hero: h }) {
       return {
         got: {
-          told: says(o, 'your realm has no armies in the field or in garrison. The Stone is NOT spent'),
+          told: says(o, 'your realm has no living armies in the field or in garrison. The Stone is NOT spent'),
           pack: pack(o, h),
         },
         want: { told: true, pack: [STONE] },
@@ -394,7 +394,10 @@ export const USE_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
     },
     check(o, { hero: h }) {
       return {
-        got: { told: says(o, 'every unit you command is already Elite. The Stone is NOT spent'), pack: pack(o, h) },
+        got: {
+          told: says(o, 'every living unit you command is already Elite. The Stone is NOT spent'),
+          pack: pack(o, h),
+        },
         want: { told: true, pack: [STONE] },
       };
     },

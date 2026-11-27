@@ -27,6 +27,7 @@ import { graveIntelFor } from '../engine/graves.ts';
 import { graveServedOther } from '../engine/heroes/charms-and-neutrals.ts';
 import { provinceConsecrated } from '../engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { activeItems } from '../engine/items/equipment.ts';
+import { theHerosItemsHideHisFace } from '../engine/rules/the-registry-of-magic-item-effects.ts';
 import { monsterCatLabel } from '../engine/rules-on-plain-values/a-guardians-kind-and-the-label-a-player-reads-it-by.ts';
 import { TITLES_PUBLIC_FROM_TURN } from '../engine/titles/perks.ts';
 import { KC_HEX_DIRS } from '../content/kingdoms-call-data.ts';
@@ -1000,12 +1001,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     lookupTables: {
       realms: realmsAsSaved.map((p) => ({ name: p?.name, color: p?.color })),
       heroes: characters
-        .filter(
-          (c) =>
-            !!c.name &&
-            (c.alive || c.killedThisTurn) &&
-            !activeItems(c).some((it) => asSaved(it).effect?.stat === 'hidden'),
-        )
+        .filter((c) => !!c.name && (c.alive || c.killedThisTurn) && !theHerosItemsHideHisFace(activeItems(c)))
         .map((c) => ({
           name: c.name,
           player: asSaved(c).player,

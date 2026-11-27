@@ -49,7 +49,13 @@ import {
 } from './items-and-heroes.ts';
 import { spellSecondaryHtml } from './titles.ts';
 import { SPELLS_BY_SCHOOL, SPELL_REQ_LEVEL, SPELL_TO_SCHOOL, castChanceNote, unitEmoji } from './order-chances.ts';
-import { lastMoveDirOf, moveOriginProv, poMoveModeNote, refreshAllMoveModeNotes } from './move-analysis.ts';
+import {
+  aMoveTargetIsFarOff,
+  lastMoveDirOf,
+  moveOriginProv,
+  poMoveModeNote,
+  refreshAllMoveModeNotes,
+} from './move-analysis.ts';
 import { capitalise, armyLabel } from './skills-and-projections.ts';
 import { heroFameTextP, realmOptStyleP } from './map-symbols.ts';
 import {
@@ -950,7 +956,7 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         return isNaN(id) ? null : (wProvs.find((p) => p.id === id) ?? null);
       })();
       return kcHtml`<select id="po-target-${c.id}-${ph}" onchange="onMoveEdited(${kcArg(String(c.id))},${kcArg(ph)})">${dirOpts}${stayOpt}</select>${edgeNote}
-        <div id="po-move-mode-${c.id}-${ph}">${poMoveModeNote(c, _initDest, projectedMoveHost(c.id, ph), moveOriginProv(c.id, ph))}</div>
+        <div id="po-move-mode-${c.id}-${ph}">${poMoveModeNote(c, _initDest, projectedMoveHost(c.id, ph), moveOriginProv(c.id, ph), aMoveTargetIsFarOff(moveOriginProv(c.id, ph), _initDest))}</div>
         <div id="po-move-note-${c.id}-${ph}" style="display:none;font-size:.72rem;color:#8a4a00;background:#fff3e0;border:1px solid #e0b070;border-radius:2px;padding:3px 6px;margin-top:3px"></div>`;
     }
 

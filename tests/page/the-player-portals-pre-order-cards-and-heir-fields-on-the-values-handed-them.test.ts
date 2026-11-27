@@ -3,8 +3,8 @@
 // each run here on the value that reaches it, so a fault planted in one is red: the heir's name and temper, the Blood
 // Offering's choices, Resubmit, a target field rebuilt, a field built for a hero the report doesn't hold, a raised
 // hero's card moved to its earlier caster with its orders carried over, the card of a hero hired by a hero hired this
-// turn, a card's orders poured back from the saved draft, and the temper and alignment of a raised or charmed hero of
-// none.
+// turn, a card's orders poured back from the saved draft, the temper and alignment of a raised or charmed hero of
+// none, and the realm of the lord a charmed hero still serves.
 // Level 4 (page): pre-orders.ts loads the page's start-up (its database client), so no lower level reaches it; the
 // portal is booted in jsdom (tests/lib/boot.ts) on the fake Db at an older database, so it stops at its notice with
 // every module loaded.
@@ -343,6 +343,31 @@ describe('the second mutation run’s cases (P1-21q)', () => {
     expect(payOf(0)).toBe(1);
     expect(payOf(undefined)).toBe(1);
     expect(payOf(3)).toBe(3);
+  });
+});
+
+describe("a charmed hero's card names the realm of the lord he still serves", () => {
+  test("an enemy realm's hero: his lord's realm, which his Cast Spell field spares; a wanderer: none", () => {
+    const hisLord = (player: number | null): unknown => {
+      stage(
+        `currentReport = ${JSON.stringify({
+          characters: [{ id: 1, name: 'Charmer', skills: {}, armies: [], items: [] }],
+          visibleChars: [{ id: 5, name: 'Dame Orla', isKing: false, armies: 0, locationId: 3, player }],
+        })};`,
+      );
+      doc.body.insertAdjacentHTML(
+        'beforeend',
+        `<div id="cl-test"><div class="orders-char-block"><select id="po-action-1-0"></select></div></div>`,
+      );
+      call('injectCharmOrders', 1, 0, 5, 'charm-lord-test');
+      const held = stage(
+        `(currentReport.characters.find((c) => c.id === 'charm_5_via_1_ph0') || {}).theRealmACharmSeizedHimFrom`,
+      );
+      doc.getElementById('cl-test')?.remove();
+      doc.getElementById('charm-lord-test')?.remove();
+      return held;
+    };
+    expect({ ofRealm2: hisLord(2), wanderer: hisLord(null) }).toEqual({ ofRealm2: 2, wanderer: null });
   });
 });
 

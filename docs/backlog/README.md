@@ -7,7 +7,8 @@ each outcome is in [the goal and the road](../the-goal-and-the-road.md). The lis
 2. [**Next**](the-next-group-the-rebuilds-other-rows.md): the rebuild's other rows, to place
    in the top soon.
 3. [**Later**](the-later-group-what-serves-a-later-outcome-or-waits.md): first the rulings and the known defects,
-   with [the rulings to build](the-rulings-decided-not-built.md); then the rows that serve a later outcome, or wait.
+   with [the rulings to build](the-rulings-decided-not-built.md); then [Phase 1's later rows](the-later-group-phase-1s-later-rows.md),
+   and the rows that serve a later outcome, or wait.
 4. [**Not yet assessed**](#not-yet-assessed): rows whose impact no one has described yet.
 
 Finished items are a record, in five files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
@@ -66,14 +67,14 @@ B-01 (the rulings audit) and P1-21x are in the finished lists.
 ### 1. The first rulings and known defects
 
 The rebuild's tranches are done, so the rulings and the known defects come next by the default order:
-[Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild),
-in its order, but for the three rows on what a realm sees (KD-049, P1-23j, P1-23h), which are built with a
-maintainer, so they are not in this list. Each row, and why it is there, is in Later's file:
-1. KD-048
-2. P1-23p
-3. P1-23ai
-4. P1-23aj
-5. P1-23ba
+[Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild)
+in its order, then [the rulings to build](the-rulings-decided-not-built.md) in their file's order. The rows on what a
+realm sees (KD-049, P1-23j, P1-23h, P1-23i, P1-23ag, P1-23bd, P1-23bg) wait for a maintainer's day, so they are not in
+this list. Each row, and why it is there, is in its file:
+1. P1-23x
+2. P1-23y
+3. P1-23z
+4. P1-23aa
 
 ## Not yet assessed
 

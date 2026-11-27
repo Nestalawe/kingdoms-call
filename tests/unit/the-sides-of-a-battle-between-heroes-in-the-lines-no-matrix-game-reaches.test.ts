@@ -5,8 +5,8 @@
 // loser, in a battle between two heroes' hosts. This plays each, with both commanders alive and with both slain before
 // the battle (each side then fights on as "<name>'s leaderless host"), and reads each line's words: the side each line
 // names is the one it names in play. The corsairs' lines need a Corsair company, which no realm raises any more
-// (Parked: an old company still acts), so whether a force holds the sea lanes and where a beaten force can fall back to
-// are stood in (vi.spyOn, the registry's aForceHoldsTheSeaLanes and retreatOptions): the winner holds them, and the
+// (and since R-147 none holds the sea lanes: KD-517 parks the lines' removal), so whether a force holds the sea
+// lanes and where a beaten force can fall back to are stood in (vi.spyOn, the registry's aForceHoldsTheSeaLanes and retreatOptions): the winner holds them, and the
 // loser could fall back to a sea or a land province. The realm discoveries' line can't be played: what discoveries add
 // to the whole army (whatARealmsDiscoveriesAddToTheWholeArmy, discoveryArmyBonus before P1-19aa) is always 0 (Parked).
 // Since the mutation session of 2026-10-31, also a line the matrix reaches but no test read: an Evil defender's monsters'

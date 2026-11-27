@@ -69,7 +69,6 @@ type AProvinceAsTheNewTurnClearsIt = Province & {
   _phantomArmies?: unknown;
   _featuresHidden?: unknown;
   _earthquakeSpeed?: unknown;
-  _flooded?: unknown;
   _partSea?: { readonly orig: string } | undefined;
   _flood?: { readonly orig: string } | undefined;
   _holyBonus?: unknown;
@@ -406,7 +405,6 @@ export function newTurnCounterKingSuccessionSummonsAndSpellsEndAndTheGrandDesign
       delete p._earthquakeTax;
     }
     if (p._earthquakeSpeed) delete p._earthquakeSpeed;
-    if (p._flooded) delete p._flooded;
     if (p._partSea) {
       p.terrain = p._partSea.orig;
       delete p._partSea;

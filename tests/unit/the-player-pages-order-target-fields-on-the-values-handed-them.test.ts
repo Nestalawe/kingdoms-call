@@ -419,6 +419,62 @@ describe('order-targets.ts: the target field', () => {
     box.innerHTML = String(T.buildTargetField(c, 0, { action: 'Cast Spell', target: 'No Such Spell' }));
     expect(box.content.querySelector('option[selected]')?.getAttribute('value')).toBe(rows[0]?.spell);
   });
+  describe('the Cast Spell field of a hero hired or charmed this turn (skills unseen) aims a spell that needs a mark', () => {
+    // made-up heroes in Ashmere: two of the realm at index 1 (one alone, one leading three companies), and two of the
+    // realm at index 2 (the same)
+    const ofRealm1 = { id: 21, name: 'Dame Orla', player: 1, locationId: 7, locationName: 'Ashmere', armies: 0 };
+    const ofRealm2 = { id: 22, name: 'Brother Tam', player: 2, locationId: 7, locationName: 'Ashmere', armies: 0 };
+    const ledOfRealm1 = { id: 23, name: 'Ser Bran', player: 1, locationId: 7, locationName: 'Ashmere', armies: 3 };
+    const ledOfRealm2 = { id: 24, name: 'Lady Wen', player: 2, locationId: 7, locationName: 'Ashmere', armies: 3 };
+    const marks = (c: Record<string, unknown>, spell: string) => {
+      const me = hero(c);
+      g['currentReport'] = {
+        characters: [me],
+        kingdom: {},
+        visibleChars: [ofRealm1, ofRealm2, ledOfRealm1, ledOfRealm2],
+        everSeenChars: [ofRealm1, ofRealm2],
+        worldMeta: { provinces: [{ id: 7, name: 'Ashmere', terrain: 'plains', neighbors: [] }] },
+      };
+      stage('');
+      const box = page.createElement('template');
+      box.innerHTML = String(T.buildTargetField(me, 0, { action: 'Cast Spell', target: spell }));
+      return [...box.content.querySelectorAll('select[id^="po-extra-"] option[value]:not([value=""])')].map((o) =>
+        o.getAttribute('value'),
+      );
+    };
+    const hired = { player: undefined, skills: {}, _unknownSkills: true };
+    const charmedFromRealm1 = {
+      player: undefined,
+      skills: {},
+      _hiddenSkills: true,
+      _charmEnemy: true,
+      theRealmACharmSeizedHimFrom: 1,
+    };
+    test('a hero hired this turn: Psychic Blast lists the heroes here, Bless Province the province', () => {
+      expect({ psychicBlast: marks(hired, 'Psychic Blast'), bless: marks(hired, 'Bless Province') }).toEqual({
+        psychicBlast: ['21', '22', '23', '24'],
+        bless: ['7'],
+      });
+    });
+    test("a hero charmed from the realm at index 1: his lord's heroes are no mark for a hostile spell", () => {
+      expect({
+        psychicBlast: marks(charmedFromRealm1, 'Psychic Blast'),
+        curse: marks(charmedFromRealm1, 'Curse'),
+        charm: marks(charmedFromRealm1, 'Charm'),
+        controlUndead: marks(charmedFromRealm1, 'Control Undead'),
+        telekineticStorm: marks(charmedFromRealm1, 'Telekinetic Storm'),
+        clairvoyance: marks(charmedFromRealm1, 'Clairvoyance'),
+      }).toEqual({
+        psychicBlast: ['22', '24'],
+        curse: ['22', '24'],
+        charm: ['22'],
+        controlUndead: ['__scan__', '22', '24'],
+        telekineticStorm: ['24'],
+        // a scry harms no one: his lord's hero is still his to watch
+        clairvoyance: ['22', '21'],
+      });
+    });
+  });
   test("an earlier phase's Cast Spell spends its school's cast", () => {
     const c = hero({ skills: { white: 1 } });
     g['currentReport'] = { characters: [c], kingdom: {} };

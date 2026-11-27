@@ -28,3 +28,13 @@ P1-23's rows from P1-23g on; its first rows, and the ids dropped, are in [part 1
 - P1-23am: #843 A commander slain in the duel before a battle takes his skills out of it
 - P1-23n: #845 Flak Screen engages every flyer, beasts too
 - P1-23v: #846 The Ring and the Helm shrug off a killing blow; four second-wind texts say the 30%
+- P1-23bh: #851 The Ring and the Helm try at each killing blow until they save their wearer; every copy in play changes
+- P1-23bi: #853 The Philosopher's Stone's text says the skeletal companies are left out
+- P1-23p: #855 Each banner gives the strength its own text says; of two banners the stronger counts
+- P1-23ai: #856 A lair beast talked down by parley counts as pacified, not slain: half the Monster-Bane merit, no hit points
+- P1-23aj: #857 Invisibility waits while a hero leads armies: seen and fought as if he had no spell, hidden from the moment he leads none; the order form says so
+- P1-23ba: #858 A fleet ordered to a far coast lands as it would next door (R-174): ships alone sail toward the coast and land on it; the order form's forecast follows
+- P1-23f: #861 Orders saved for an earlier turn and sent late keep only their order of heroes (R-192): the turn refuses their declarations, Reckoning call, messages and concession too
+- P1-23o: #862 Old Corsair companies fight as plain fleets (R-147): a running game's Corsair company loses Cut the Line and Keep the Sea Lanes
+- P1-23u: #863 The Crown of Command's texts say it helps your realm's characters (R-143): a running game's copy takes them
+- P1-23w: #864 Thirty item texts name the units the battle lifts (R-149): the siege items say the walls are halved; a running game's copy takes them

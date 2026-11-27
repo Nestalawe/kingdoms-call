@@ -19,13 +19,14 @@
 // companies, the Wild Hunt unpaid or on ground not the hero's own (the empty province taken); rumours paid by grade until
 // the purse runs dry, a guardian of no grade or of one no price lists, an order naming no lair, a guardian with no
 // weakness, a hoard a thief has stripped; and what follows a fight at a lair, the fight stood in for (`fightEndsIn`): a
-// thief's haul and relic, an emptied or bare hoard (a realm that knew it bare kept), a beast pacified, a guardian of no
-// grade counted at his lair's, the challengers' kit, a hero beaten back or fled, Battlefield Surgery, and the fight's
-// statistics record; a search naming no lair past a gap in the list; Discover Lost Ruin's empty order, a guardian of no
-// grade, two sites in one province; and an older save's lair stocked when first read (a clearer's gold from its
-// guardian's band, its items before hoards, one item rolled). 96 planted faults in the six functions, their calls and
-// `processOrder`'s checks each turn at least one of the two tests red, and every test goes red for at least one of them
-// (plan P1-08j2); P1-10b21's cases are each red on a fault planted in the line they guard.
+// thief's haul and relic, an emptied or bare hoard (a realm that knew it bare kept), a beast pacified (and one talked
+// down by parley in the guardian's own fight, its end stood in: half the Monster-Bane merit, no hit points, R-157), a
+// guardian of no grade counted at his lair's, the challengers' kit, a hero beaten back or fled, Battlefield Surgery,
+// and the fight's statistics record; a search naming no lair past a gap in the list; Discover Lost Ruin's empty order,
+// a guardian of no grade, two sites in one province; and an older save's lair stocked when first read (a clearer's gold
+// from its guardian's band, its items before hoards, one item rolled). 96 planted faults in the six functions, their
+// calls and `processOrder`'s checks each turn at least one of the two tests red, and every test goes red for at least
+// one of them (plan P1-08j2); P1-10b21's cases are each red on a fault planted in the line they guard.
 import { describe, expect, test, vi } from 'vitest';
 import {
   EXPLORE_AND_SEARCH_ORDER_CASES,
@@ -65,6 +66,7 @@ type Fn = (...a: unknown[]) => unknown;
 // functions were, so a stand-in on the module is the one called)
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
 const theLairGuardians = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
+const theFightItself = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
 const theExploreAndSearchOrders =
   await import('../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts');
 // (the two it calls only: a whole module read by name hides its unused exports from knip, the ratchet's unusedCode)
@@ -553,6 +555,36 @@ describe('Search Lair, called directly: what follows the fight', () => {
       maxHp: 20,
       earned: 0,
     });
+  });
+
+  test('a beast talked down by parley counts as pacified, not slain: half the Monster-Bane merit, no hit points (R-157)', () => {
+    // The guardian's own fight (resolveEncounter), its end stood in: the parley is switched off in the game
+    // (PARLEY_ENABLED), so the fight ends in one only here. Every die the search draws after it is fixed.
+    const { b, h, f } = searchOne(lair('Drowned Mill', 'Weak', { gold: 7 }), { hp: 20 });
+    guardianOf(f).hp = 40;
+    const theParley = vi
+      .spyOn(theFightItself, 'resolvePersonalCombat')
+      .mockImplementation((_tc, hisSide, theGuardiansSide) => ({
+        winner: null,
+        loser: null,
+        fledBy: null,
+        parley: true,
+        stoleBy: null,
+        aHp: hisSide.hp,
+        bHp: theGuardiansSide.hp,
+        narrative: [],
+      }));
+    try {
+      withDice(engine, [0.99], () => {
+        play(b, h, o('search', '0'));
+      });
+    } finally {
+      theParley.mockRestore();
+    }
+    const merit = (h['tm'] as { monster?: number } | undefined)?.monster ?? 0;
+    // (no earned hit points: `hpEarned` stays 0; his maximum isn't read, since a win's award recomputes it from the
+    // fixture's skills and can fall as well as rise)
+    expect({ cleared: f.cleared, merit, earned: h['hpEarned'] ?? 0 }).toEqual({ cleared: true, merit: 20, earned: 0 });
   });
 
   test("every fight at a lair is kept in the turn's statistics (written inside a try, so a slip there would be silent)", () => {

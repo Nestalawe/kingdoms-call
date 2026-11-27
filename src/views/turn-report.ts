@@ -40,7 +40,10 @@ import {
   theEnslavedProvinceStillPaysLess,
 } from '../engine/world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
 import { activeItems, effTemper, normaliseEquipment } from '../engine/items/equipment.ts';
-import { theExplorationTheMoversItemsAdd } from '../engine/rules/the-registry-of-magic-item-effects.ts';
+import {
+  theExplorationTheMoversItemsAdd,
+  theSpysItemsMakeHisSpySure,
+} from '../engine/rules/the-registry-of-magic-item-effects.ts';
 import { itemSlot } from '../engine/rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { effSkillOf, skillBonusBreakdown } from '../engine/heroes/skills-and-hp.ts';
 import { lairRumourKey } from '../engine/rules-on-plain-values/the-bands-hunting-rumours-reads-a-heros-odds-in-and-the-key-a-lair-is-remembered-by.ts';
@@ -538,12 +541,8 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
         // SPY — 20% + 20% per level, + Forgery Arts and any spy discoveries. Automatic with a
         // Crystal Orb or at Spy 6+. An enemy's Cipher Scripts can cut it by up to 25%.
         out.spy = {
-          auto: items.some((it: AnItemItsEffectGuarded) => it.effect?.stat === 'oracle') || raw('spy') >= 6,
-          autoWhy: items.some((it: AnItemItsEffectGuarded) => it.effect?.stat === 'oracle')
-            ? 'Crystal Orb'
-            : raw('spy') >= 6
-              ? 'Master Spy'
-              : '',
+          auto: theSpysItemsMakeHisSpySure(items) || raw('spy') >= 6,
+          autoWhy: theSpysItemsMakeHisSpySure(items) ? 'Crystal Orb' : raw('spy') >= 6 ? 'Master Spy' : '',
           level: eff('spy'),
           chance: dispFloor(
             (0.2 +

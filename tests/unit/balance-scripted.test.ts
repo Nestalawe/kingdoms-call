@@ -136,11 +136,15 @@ describe('the chase', () => {
     expect(chose.orders['0']?.[0]?.action).toBe('Recruit Armies');
   });
 
-  test('a hero beside one of the realm’s is seen; an Invisibility cast in the turn hides him', () => {
+  test('a hero beside one of the realm’s is seen; an Invisibility cast in the turn hides him while he leads no armies (R-158)', () => {
     const S = moved(moved(atWarWith1(base()), 1, 3), 2, 3); // realm 0's heroes 1 and 2 stand with realm 1's king and hero
     expect(scriptedChoices(S, 0, 8).plan.chaser).toEqual({ heroId: 0, quarryId: 3 });
-    const hidden = { ...S, characters: S.characters.map((c) => (c.id === 3 ? { ...c, _invisTurn: 7 } : c)) };
-    expect(scriptedChoices(hidden, 0, 8).plan.chaser).toEqual({ heroId: 0, quarryId: 4 });
+    const cast = (armies?: unknown[]) => ({
+      ...S,
+      characters: S.characters.map((c) => (c.id === 3 ? { ...c, _invisTurn: 7, ...(armies ? { armies } : {}) } : c)),
+    });
+    expect(scriptedChoices(cast([]), 0, 8).plan.chaser).toEqual({ heroId: 0, quarryId: 4 });
+    expect(scriptedChoices(cast([...army]), 0, 8).plan.chaser).toEqual({ heroId: 0, quarryId: 3 });
   });
 
   test('a king without an army leaves the chase to the first hero, who may not hunt a king', () => {

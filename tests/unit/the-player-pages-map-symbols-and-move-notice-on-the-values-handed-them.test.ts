@@ -5,7 +5,8 @@
 //   drawn as geometry or a glyph (in the hex and in HTML), the legend, the race badge, the lairs, the graves, the
 //   garrison, the Terror, the Grand Design, the spied extras, the heroes known in a province (the dead with no province),
 //   a hero's fame, a province link, a realm's colour, a dead hero's realm, and the diplomacy panel in each standing;
-// - move-analysis.ts: the Move notice (no column handed, ships over land, a sea crossing short of lift, the footnote),
+// - move-analysis.ts: the Move notice (no column handed, ships over land, ships alone to a far coast (R-174), a sea
+//   crossing short of lift, the footnote),
 //   the direction a fresh Move opens on, the succession panel, the hero order (held, applied, the blocks and buttons),
 //   a tactic's label and the encounter plan's rows.
 // Level 1 (unit): the page's two files import in Node (P1-13e8); their functions called on plain values, the page's
@@ -53,6 +54,7 @@ import {
   heirTotalAdded,
   heroGroupP,
   heroOrderFromOrdersP,
+  aMoveTargetIsFarOff,
   lastMoveDirOf,
   poMoveModeNote,
   refreshEncounterPlan,
@@ -444,6 +446,41 @@ describe('move-analysis.ts: the Move notice and the direction', () => {
     );
     expect(out).toContain('(Elven Galleys, Swan)');
     expect(out).not.toContain('counting your');
+  });
+  test('ships alone ordered to a far coast (R-174): the note tells the voyage and the landing, from the sea or a port', () => {
+    // Two rows of four, wrapping east to west: land 0 to 3 above, sea 4 to 7 below (row 1 half a hex east, so sea 4
+    // touches land 0 and 1). Land 2 is two hexes off sea 4 and land 0; land 1 is next door to both.
+    const at = (id: number, terrain: string) => ({
+      id,
+      row: Math.floor(id / 4),
+      col: id % 4,
+      terrain,
+      name: `P${String(id)}`,
+    });
+    const provinces = [0, 1, 2, 3].map((id) => at(id, 'plain')).concat([4, 5, 6, 7].map((id) => at(id, 'sea')));
+    const before = g['currentReport'];
+    g['currentReport'] = { worldMeta: { provinces, cols: 4, rows: 2 }, characters: [] };
+    const fleet = { name: 'Wren', armies: [{ type: 'Galleon Fleet' }] };
+    const note = (fromId: number, toId: number) => {
+      const from = provinces[fromId];
+      const dest = provinces[toId];
+      return html(poMoveModeNote(fleet, dest, null, from, aMoveTargetIsFarOff(from, dest)));
+    };
+    expect({
+      farFromTheSea: aMoveTargetIsFarOff(provinces[4], provinces[2]),
+      nextDoorFromTheSea: aMoveTargetIsFarOff(provinces[4], provinces[1]),
+      farFromAPort: aMoveTargetIsFarOff(provinces[0], provinces[2]),
+      noMap: aMoveTargetIsFarOff({ id: 4 }, provinces[2]),
+    }).toEqual({ farFromTheSea: true, nextDoorFromTheSea: false, farFromAPort: true, noMap: false });
+    expect(note(4, 2)).toContain(
+      '<strong>Voyage to a far coast</strong> — the fleet sails toward <strong>P2</strong>, one sea a season, and lands there once the coast is next door to its sea',
+    );
+    expect(note(0, 2)).toContain('one sea a season, putting out to sea first, and lands there');
+    expect(note(0, 2)).not.toContain('will be refused');
+    // Next door, the notes are as they were: a landing from the sea, a refusal from a port.
+    expect(note(4, 1)).toContain('<strong>Coastal landing</strong>');
+    expect(note(0, 1)).toContain('This move will be refused');
+    g['currentReport'] = before;
   });
   test('a sea crossing short of lift, the footnote of the orders this turn, and no hero to name', () => {
     const host = {

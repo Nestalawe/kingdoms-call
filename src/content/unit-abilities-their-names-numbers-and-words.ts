@@ -10,7 +10,6 @@
 // unit's abilities as the player portal shows them, keyed by unit. The player portal imports them, and its page's entry
 // (ui/player/page.ts) lists this file, so the words tests read them as the page's.
 import type { UnitType } from './kingdoms-call-data.ts';
-import { CUT_THE_LINE, KEEP_THE_SEA_LANES } from './the-abilities-of-a-unit-no-longer-raised.ts';
 
 /** How the books write a number: a multiplier as `×1.25`; a fraction added as `+10%` (0.1), and one taken as `−30%`
  *  (0.3, with the books' minus sign, U+2212); a chance as `30%` (0.3);
@@ -491,10 +490,6 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     },
     onTheGround: ['sea'],
   },
-  // A force holds the sea lanes (fate): a retired unit's two, in no book. Their rows are in their own file, since this
-  // one is among the player page's own files, which name no retired unit.
-  'cut-the-line': CUT_THE_LINE,
-  'keep-the-sea-lanes': KEEP_THE_SEA_LANES,
   // The turn's end (plan P1-19k): plunder feeds the horde. An orcish province, held by an orc realm, where an orc realm
   // won a battle this turn draws a Goblin Horde to its garrison at the turn's end, for nothing.
   'raiders-muster': { unit: 'Orc Garrison', name: "Raiders' Muster", numbers: {}, raises: 'Goblin Horde' },

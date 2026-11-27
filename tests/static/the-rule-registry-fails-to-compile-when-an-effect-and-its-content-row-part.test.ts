@@ -84,13 +84,11 @@ const RACE_GIFTS_REGISTRY = 'src/engine/rules/the-registry-of-the-race-gifts.ts'
 const RACE_GIFTS_ROWS = 'src/content/the-race-gifts-their-keys-races-and-numbers.ts';
 /** The Imperial Titles' rows are TITLE_DEFS, in the data file, whose slugs are its type AnImperialTitlesSlug. */
 const IMPERIAL_TITLES_ROWS = 'src/content/kingdoms-call-data.ts';
-/** The files a copy holds, whose errors it reads: the content and the registry's folder (since P1-19j, the rows of a
- *  unit no longer raised, which the content's rows read; since P1-19m, the items' rows; since P1-19u, the spells';
+/** The files a copy holds, whose errors it reads: the content and the registry's folder (since P1-19m, the items' rows; since P1-19u, the spells';
  *  since P1-19aa, the discoveries' kinds; since P1-19ai, the guardian perks' kinds; since P1-19at1, the alignment
  *  abilities; since B-06c, the economy's rules; since B-06i, the minor titles; since B-06ae, the race gifts). */
 const COPIED = [
   'src/content/kingdoms-call-data.ts',
-  'src/content/the-abilities-of-a-unit-no-longer-raised.ts',
   ROWS,
   ITEMS_ROWS,
   SPELLS_ROWS,

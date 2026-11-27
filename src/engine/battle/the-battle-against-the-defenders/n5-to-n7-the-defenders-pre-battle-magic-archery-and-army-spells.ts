@@ -1,7 +1,7 @@
 // The battle against a province's defenders (combatVsNPC, src/engine/battle/battles-against-province-defenders.ts), its
 // third stage, B-06bb: the defenders' pre-battle phases, their commander's magic, then the attacker's units' army
 // spells, moved here from N3 to strike once both sides' battle spells have taken effect (R-162), and so after his
-// archery, Flak and Breach (N4: question 164) (the battle proof's N5), their archery with the Lightning Advance line and their Flak Screen (N6), and their units' army spells (N7), moved here as they
+// archery, Flak and Breach (N4: R-162) (the battle proof's N5), their archery with the Lightning Advance line and their Flak Screen (N6), and their units' army spells (N7), moved here as they
 // were, the same statements in the same order. combatVsNPC calls it where they stood, after the attacker's pre-battle
 // phases (n3-to-n4-…), and hands it what the set-up and those phases returned, as they are. It returns nothing: it
 // changes only the objects it is handed (the two hosts, the commanders, the narrative), and declares no value a later
@@ -51,7 +51,7 @@ export type WhatTheAttackersPreBattlePhasesInTheBattleAgainstTheDefendersHandOn 
 >;
 
 /** The third stage of the battle against a province's defenders: their commander's pre-battle magic, then the
- *  attacker's units' army spells (after both sides' spells and his archery: R-162, question 164), their archery and
+ *  attacker's units' army spells (after both sides' spells and his archery: R-162), their archery and
  *  their units' army spells, each striking a host before the lines meet. */
 export function theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(
   turnContext: TurnContext,
@@ -286,7 +286,7 @@ export function theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(
   }
 
   // The attacker's special army spells (Wyvern Riders, etc. + all primal armies), once both sides' battle spells have
-  // taken effect (and so after his archery, unlike between heroes: question 164): their commander's spell that
+  // taken effect (and so after his archery, unlike between heroes: R-162): their commander's spell that
   // cancels his Druid comes before his beasts strike (R-162), as between heroes.
   const druIdLvlMag = atkCmdrSlain || c._druidNegated ? 0 : effStat(turnContext, c, 'druid');
   armies.forEach((atk) => {

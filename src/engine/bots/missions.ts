@@ -1,3 +1,7 @@
+import {
+  invisibilityWouldHideTheHeroNow,
+  theHerosInvisibilityHidesHimNow,
+} from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import {
@@ -607,7 +611,7 @@ export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRe
   const carried: readonly (Item | null | undefined)[] = theItemsWithGapsOf(c);
   const items = carried.filter((it): it is Item => Boolean(it));
   if (!items.length) return null;
-  // 1. Philosopher's Stone — every unit of the realm one tier up, once per game
+  // 1. Philosopher's Stone — every unit of the realm one tier up but a skeletal one (R-191), once per game
   const stone = items.find((it) => thePowerAnItemWorksWhenUsed(it) === 'every unit of the realm rises a quality tier');
   if (stone) {
     let units = 0;
@@ -777,9 +781,9 @@ export const BOT_ROLE_ITEM_STATS = {
     'combatUse',
   ]),
   scholar: new Set(['sage', 'castSpell', 'practice']),
-  scout: new Set(['explorer', 'oracle']),
-  spy: new Set(['spy', 'hidden', 'oracle']),
-  thief: new Set(['thief', 'hidden']),
+  scout: new Set(['explorer', 'spyAuto', 'oracle']),
+  spy: new Set(['spy', 'untargetable', 'hidden', 'spyAuto', 'oracle']),
+  thief: new Set(['thief', 'untargetable', 'hidden']),
   none: new Set([]),
 };
 // the stats a role is the FIRST home for (breaks ties between several willing recipients)
@@ -791,7 +795,7 @@ export const BOT_ROLE_ITEM_PRIMARY = {
   mage: new Set(['white', 'psychic', 'illusory', 'elemental', 'necromancy', 'castSpell']),
   scholar: new Set(['sage']),
   scout: new Set(['explorer']),
-  spy: new Set(['spy', 'hidden']),
+  spy: new Set(['spy', 'untargetable', 'hidden']),
   thief: new Set(['thief']),
 };
 // ALLIED FRONT (review R7): a target within two hexes of an allied realm's field host is worth more — two
@@ -1118,7 +1122,8 @@ export function botLairPlan(
         continue;
       }
       path.forEach((d) => mv.push(aMoveOrderOnThePath(d, 'Seek the lair in ' + o.x.X.name)));
-      if (searches === 0 && (Number(sk.illusory) || 0) >= 1 && left() >= 2)
+      // R-158: Invisibility waits while he leads armies, so a leader doesn't cast it before the lair
+      if (searches === 0 && (Number(sk.illusory) || 0) >= 1 && invisibilityWouldHideTheHeroNow(c) && left() >= 2)
         mv.push({
           action: 'cast_spell',
           target: theNameOfTheSpell('invisibility'),
@@ -1532,7 +1537,7 @@ export function botMasteryPre(
           e.player !== pi &&
           !theUnitsWithGapsOf(e).length &&
           botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar &&
-          e._invisTurn !== G.turn &&
+          !theHerosInvisibilityHidesHimNow(e, G.turn) &&
           (!e.isKing || c.isKing),
       )
       .sort((a, b) => (b.isKing ? 1 : 0) - (a.isKing ? 1 : 0))[0];

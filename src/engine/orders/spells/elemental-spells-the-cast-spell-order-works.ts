@@ -99,10 +99,13 @@ export function workFlood({ turnContext, G, c, ph, targetProv }: TheNamesAnActio
   }
   // Cancel Part Sea if present, then submerge the province for the rest of the turn.
   if (blessWardNegates(turnContext, targetProv, c, 'Flood')) return false;
+  // What the turn's end gives back: on a parted sea, the sea it was before the parting, or the land an earlier
+  // Flood found there, never the parting's dry ground.
+  const whatTheTurnsEndGivesBack = targetProv._flood?.orig ?? targetProv._partSea?.orig ?? targetProv.terrain;
   if (targetProv._partSea) {
     delete targetProv._partSea;
   }
-  targetProv._flood = { orig: targetProv.terrain, turn: G.turn };
+  targetProv._flood = { orig: whatTheTurnsEndGivesBack, turn: G.turn };
   targetProv.terrain = 'sea';
   emit(turnContext, {
     type: 'combat',

@@ -985,12 +985,18 @@ describe('the ambush of a hero with no troops on watch (runDefendAmbush)', () =>
   });
 
   test('Invisibility (R-119): the ambush passes him by and falls on the next quarry; a realm that watches him by Clairvoyance still lies in wait for him', () => {
+    // The waiter is a king, so a lone king is his first quarry, ahead of a column (R-158: the spell hides only a hero
+    // who leads no armies, so the hidden quarry leads none).
     const quarry = (watched: boolean) => {
-      const s = stageAmbush(3, [
-        { player: 1, at: 'B', troops: 3 },
-        { player: 1, at: 'C' },
-      ]);
-      const unseen = must(s.es[0], 'the heaviest column');
+      const s = stageAmbush(
+        3,
+        [
+          { player: 1, at: 'B', king: true },
+          { player: 1, at: 'C', troops: 3 },
+        ],
+        true,
+      );
+      const unseen = must(s.es[0], 'the lone king');
       Object.assign(unseen, { _invisTurn: s.b.G.turn });
       if (watched) Object.assign(must(s.b.G.players[0], 'realm 0'), { _clairCharThisTurn: unseen.id });
       firstDie(0.999, () => {

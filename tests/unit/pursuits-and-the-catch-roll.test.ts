@@ -155,7 +155,7 @@ describe('a chase called off', () => {
     expect([friend.said, friend.c.location]).toEqual([false, friend.q.location]);
   });
   test('a quarry of another realm whose Invisibility holds is beyond catching, a line that names no one (R-119); a realm that watches him by Clairvoyance, or his own, still follows', () => {
-    const invisible = (b: Board, q: Character) => Object.assign(q, { _invisTurn: b.G.turn });
+    const invisible = (b: Board, q: Character) => Object.assign(q, { _invisTurn: b.G.turn, armies: [] }); // R-158: it hides only a hero who leads no armies
     const beyond = /quarry is beyond catching now — the chase is called off/;
     const lost = ends(invisible, beyond);
     expect([lost.said, lost.c._pursuit?.active, lost.c.location, allText(lost.b).includes(lost.q.name)]).toEqual([

@@ -1,8 +1,9 @@
 // The steps a commander's items make on the strength of a unit he leads, and the strength after them, on plain values
 // (plan P1-11e37 moved the items' stage "strength: the commander's items" out of the items' registry, so the army card
 // can later ask the turn's own): each of the ten effects gives its step to a unit it reaches (strength added, a
-// multiplier, or the Kraken Figurehead's step up a quality tier) and nothing to one it doesn't, and the steps are taken
-// in the order handed, each multiplier rounded as it goes, strength added not rounded.
+// multiplier, or the Kraken Figurehead's step up a quality tier) and nothing to one it doesn't, a banner the strength
+// its own copy carries and of two banners the stronger (R-148), and the steps are taken in the order handed, each
+// multiplier rounded as it goes, strength added not rounded.
 //
 // Level 1 (unit): the functions of src/engine/rules-on-plain-values/the-strength-a-unit-has-after-the-steps-of-its-
 // commanders-items.ts on made-up units, the registry's entries and stage that hand them on, and the registry's runner
@@ -29,12 +30,24 @@ const aUnit = (changes: Partial<AUnitLedByACommander> = {}): AUnitLedByACommande
   theRealmsAlignment: 'Neutral',
   ...changes,
 });
-const after = theStrengthAUnitHasAfterTheStepsOfItsCommandersItems;
+/** A banner whose copy carries the strength given. */
+const aBanner = (bonus: number) => ({ effect: { stat: 'armyBonus', bonus } });
+/** The strength after the steps handed, the commander carrying an ordinary banner (+2). */
+const after = (
+  slugs: Parameters<typeof theStrengthAUnitHasAfterTheStepsOfItsCommandersItems>[0],
+  unit: AUnitLedByACommander,
+  theStrengthSoFar: number,
+) => theStrengthAUnitHasAfterTheStepsOfItsCommandersItems(slugs, unit, [aBanner(2)], theStrengthSoFar);
 const STEP = THE_COMMANDERS_ITEMS;
 
 describe("each effect's step", () => {
-  test('the Battle Standard: +2 on every unit', () => {
-    expect(STEP['army-bonus']()).toEqual({ adds: 2 });
+  test("a banner: its own copy's strength on every unit; of two, the stronger; none, nothing", () => {
+    expect(STEP['army-bonus'](aUnit(), [aBanner(4)])).toEqual({ adds: 4 });
+    expect(STEP['army-bonus'](aUnit({ unitType: 'Galleon Fleet' }), [aBanner(2)])).toEqual({ adds: 2 });
+    expect(STEP['army-bonus'](aUnit(), [aBanner(4), aBanner(6)])).toEqual({ adds: 6 });
+    expect(STEP['army-bonus'](aUnit(), [aBanner(6), aBanner(2)])).toEqual({ adds: 6 });
+    expect(STEP['army-bonus'](aUnit(), [{ effect: { stat: 'cavBonus', bonus: 9 } }])).toEqual({ adds: 0 });
+    expect(STEP['army-bonus'](aUnit(), [])).toEqual({ adds: 0 });
   });
   test('the Golden Spur, the Mark and the Pendant: their multiplier on the units they reach, else nothing', () => {
     expect(STEP['cavalry-bonus'](aUnit())).toEqual({ multipliesBy: 1.25 });
@@ -109,10 +122,10 @@ describe("the items' registry hands its stage on", () => {
   });
   test("the runner: the effects the items carry, in the stage's order whatever the items' order", () => {
     const spur = { effect: { stat: 'cavBonus' } };
-    const standard = { effect: { stat: 'armyBonus' } };
+    const standard = aBanner(2);
     expect(theStrengthAfterTheCommandersItems(aUnit(), [spur, standard], 9)).toBe(14);
     expect(theStrengthAfterTheCommandersItems(aUnit(), [standard, spur, spur], 9)).toBe(14);
-    expect(theStrengthAfterTheCommandersItems(aUnit(), [{ effect: { stat: 'navalBonus' } }], 9)).toBe(9);
+    expect(theStrengthAfterTheCommandersItems(aUnit(), [{ effect: { stat: 'fleetQuality' } }], 9)).toBe(9);
     expect(theStrengthAfterTheCommandersItems(aUnit(), [], 9)).toBe(9);
   });
 });

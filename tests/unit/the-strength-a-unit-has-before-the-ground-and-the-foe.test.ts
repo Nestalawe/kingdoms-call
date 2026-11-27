@@ -67,10 +67,7 @@ const heroes = [
       'Sea Chart of the Deep',
       'Black Sceptre',
       'Chalice of Dawn',
-    ]
-      .map((n) => item(n))
-      // the Kraken's step up a tier, as an older save's copy carries it (no item in play does: Parked)
-      .concat({ ...item('Kraken Figurehead'), name: 'An Older Figurehead', effect: { stat: 'navalBonus', bonus: 1 } }),
+    ].map((n) => item(n)),
   },
   { id: 5, player: 0, race: 'Human', alignment: 'Divine', skills: {}, items: [item('Golden Spur', false)] },
   { id: 6, player: 0, race: 'Human', alignment: 'Divine', isKing: true, skills: { druid: 6 }, items: [] },
@@ -137,8 +134,8 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
   });
 
   test("a Druid 8 hero's mastery lifts the strength his items' steps added: armStr's, the adds first, then the lift", () => {
-    // a Pagan Human of Druid 8 with a Battle Standard (+2) leading Average Thunderbirds: lifted to Veteran (11 × 3 = 33),
-    // the +2 (35), then his mastery (+80%): 63, where the lift before the +2 would give 59 + 2 = 61
+    // a Pagan Human of Druid 8 with a Battle Standard (+4, R-148) leading Average Thunderbirds: lifted to Veteran
+    // (11 × 3 = 33), the +4 (37), then his mastery (+80%): 67, where the lift before the +4 would give 59 + 4 = 63
     const h = {
       id: 7,
       player: 1,
@@ -155,7 +152,7 @@ describe('the strength of a unit before the ground and the foe (R-135, question 
     const battle = armStr(turn, structuredClone(a), structuredClone(h), 'Pagan', null, undefined);
     expect(theRuleOn(structuredClone(a), structuredClone(h))).toBe(battle);
     expect(gain).toBeCloseTo(0.8);
-    expect(battle).toBe(63);
+    expect(battle).toBe(67);
   });
 
   test("the items' steps run in the registry's order of the stage", () => {

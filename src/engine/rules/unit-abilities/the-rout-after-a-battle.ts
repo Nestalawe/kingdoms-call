@@ -3,11 +3,10 @@
 // down (Ride Them Down, Run Them Down, the Manticores' pursuit and Feeding Frenzy, in the battle code's order:
 // pursuitsOfTheBeaten and rideThemDownBonus, the same file, for the rout of both battles, src/engine/battle/the-battle-
 // between-heroes/h8-to-h10-the-casualties-the-rout-and-the-end.ts and src/engine/battle/the-battle-against-the-
-// defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts),
-// and a force holds the sea lanes (the Corsair Fleet's Cut the Line, between heroes, and Keep the Sea Lanes, against
-// neutral guards: both battles' retreat). Each is handed what its stage hands it (the registry's stage types) and
-// returns a value: whether the force holds, its pursuit, or whether it holds the sea lanes; it changes nothing, and the
-// battle code applies it and writes the lines. Its numbers come from the content's row. No effect here draws a die. The
+// defenders/n11-to-n13-the-casualties-the-rout-and-the-end.ts). The third stage, a force holds the sea lanes, has no
+// ability since R-147 (the retired Corsair Fleet's Cut the Line and Keep the Sea Lanes are gone). Each is handed what
+// its stage hands it (the registry's stage types) and returns a value: whether the force holds, or its pursuit; it
+// changes nothing, and the battle code applies it and writes the lines. Its numbers come from the content's row. No effect here draws a die. The
 // runners (the-registry-of-content-effects.ts) run them in their stages' order, each looking for its row's unit in the
 // force. Until P1-19j they were written inline in those functions, by the units' names.
 import { UNIT_ABILITIES_THE_REGISTRY_HOLDS as ROWS } from '../../../content/unit-abilities-their-names-numbers-and-words.ts';
@@ -116,24 +115,3 @@ export const THE_WINNER_RUNS_THE_BEATEN_DOWN = {
       : null;
   },
 } satisfies Partial<Record<UnitAbilitySlug, TheFateStages['the winner runs the beaten down']>>;
-
-// A force holds the sea lanes (each looks for its row's unit in the force; it holds them if one says so).
-export const A_FORCE_HOLDS_THE_SEA_LANES = {
-  // HUMAN — Cut the Line: between heroes, a corsair-heavy victor leaves the beaten no line of retreat by sea.
-  'cut-the-line': (facts) =>
-    facts.theBattle === 'between heroes' &&
-    atLeastAShareOf(
-      facts.theForce,
-      ROWS['cut-the-line'].unit,
-      ROWS['cut-the-line'].numbers.theWinningForceAtLeast.value,
-    ),
-  // HUMAN — Keep the Sea Lanes: neutral guards never withdraw, so there is no line of theirs to sever; a corsair-heavy
-  // force instead keeps its OWN escape back to the ships when beaten.
-  'keep-the-sea-lanes': (facts) =>
-    facts.theBattle === 'a hero against neutral guards' &&
-    atLeastAShareOf(
-      facts.theForce,
-      ROWS['keep-the-sea-lanes'].unit,
-      ROWS['keep-the-sea-lanes'].numbers.theForceAtLeast.value,
-    ),
-} satisfies Partial<Record<UnitAbilitySlug, TheFateStages['a force holds the sea lanes']>>;

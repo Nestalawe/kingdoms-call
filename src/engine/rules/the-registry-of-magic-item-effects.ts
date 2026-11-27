@@ -871,6 +871,7 @@ export function theStrengthAfterTheCommandersItems(
   return theStrengthAUnitHasAfterTheStepsOfItsCommandersItems(
     THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS.strength["the commander's items"].filter((slug) => carried.has(slug)),
     facts,
+    theCommandersItems,
     theStrengthSoFar,
   );
 }

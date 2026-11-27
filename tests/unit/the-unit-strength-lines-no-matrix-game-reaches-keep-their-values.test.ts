@@ -261,13 +261,19 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
     ).toBe(none);
   });
   test("the Kraken Figurehead: the fleets its bearer leads fight one tier higher (an Elite fleet can't rise)", () => {
-    const kraken = { name: 'Kraken Figurehead', effect: { stat: 'navalBonus', bonus: 1 }, tier: 3, equipped: true };
+    // the relic as a lair deals it (LEGENDARY_ITEMS_P's entry)
+    const kraken = { name: 'Kraken Figurehead', effect: { stat: 'fleetQuality', bonus: 1 }, tier: 4, equipped: true };
     const fleet = (q: string) =>
       armStr(turn, unit('Galleon Fleet', q), hero({ items: [{ ...kraken }] }), 'Neutral', null, undefined);
     const plain = (q: string) => armStr(turn, unit('Galleon Fleet', q), hero(), 'Neutral', null, undefined);
     expect(fleet('Average')).toBe(Math.round((plain('Average') * Number(UNIT_Q_MULT['Veteran'])) / 2));
     expect(fleet('Green')).toBe(Math.round(plain('Green') * 2));
     expect(fleet('Elite')).toBe(plain('Elite'));
+    // a copy dealt before 12 September 2026 carries the older name (`navalBonus`), and lifts the fleet the same
+    const older = { ...kraken, effect: { stat: 'navalBonus', bonus: 1 }, tier: 3 };
+    expect(armStr(turn, unit('Galleon Fleet', 'Average'), hero({ items: [older] }), 'Neutral', null, undefined)).toBe(
+      fleet('Average'),
+    );
     expect(armStr(turn, unit('Men-at-Arms'), hero({ items: [{ ...kraken }] }), 'Neutral', null, undefined)).toBe(
       armStr(turn, unit('Men-at-Arms'), hero(), 'Neutral', null, undefined),
     );

@@ -68,140 +68,131 @@ march for Sir Aldric; the GM's tab runs the turn at 21:00.
 *Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
 deadline are refused).
 
-## 159. Do a province's guards' own Manticores and Shark Shoals hunt a beaten hero?
+## 167. Does the Ring or the Helm shrug off a death that isn't a struck blow?
 
 Found on 2026-11-27.
 
-[R-166](rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md) has the rout rules work against guards
-as between heroes, where either winner hunts. Do winning guards hunt too? The Manticore guards of the Greywater Ford beat Sir Aldric's host: do his beaten companies die at
-the beaten chance plus 15%?
+[R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) says only a blow
+is shrugged off, not a burn, poison or bleeding at a round's start. Other harms also kill without a roll today: a
+guardian's burn aura, a shield's lash-back, the Thornwood bite, a spell's recoil. Arrows, spells' hits, guardian
+specials and free strikes do get the roll. Sir Aldric, wearing the Ring, strikes a Thornwood-clad foe and dies to the
+bite: does the Ring roll?
 
-1. **Yes, either winner hunts, as between heroes.** Impact: as built (P1-23as); a beaten host loses a few more
-   companies against those guards.
-2. **No, only a hero's beasts hunt.** Impact: a beaten host loses only the plain chance against those guards.
+1. **No: only a struck blow, as built.** Impact: these harms kill a wearer outright, as burns do.
+2. **Yes: any harm in the fight but the round-start ticks.** Impact: the Ring and the Helm save a few more wearers; four
+   more places draw the roll, so more fights reshape.
 
-*Assessment:* option 1: one rule for both sides, as between heroes, and nothing more to build.
-
-*Unlocks:* R-166's open point settled.
-
-*Touches:* [R-166](rulings/R-166-the-rout-rules-work-against-guards-as-between-heroes.md) (the rout rules against
-guards) and [R-082](rulings/R-082-run-them-down.md) (Run Them Down's +15%).
-
-## 160. Does a realm that already holds Messenger Birds keep it?
-
-Found on 2026-11-27.
-
-[R-140](rulings/R-140-messenger-birds-is-retired.md) retires Messenger Birds: no realm is offered it. It doesn't say
-what becomes of a realm that found it before. Lady Wren's realm made it on turn 6: is it still in her list of
-discoveries after the change?
-
-1. **It keeps it, as built (P1-23k).** Impact: nothing in play changes; the line stays in its records, and it does
-   nothing, as before.
-2. **It loses it, as the retired `sd34` did** ([R-013](rulings/R-013-mounted-couriers-removed.md), `retireDiscoveries`).
-   Impact: nothing in play changes either; the line leaves the realm's records, and the turn's report says so.
-
-*Assessment:* option 1: a realm keeps what it found, with nothing to build; option 2 tidies the records.
-
-*Unlocks:* R-140's open point settled.
-
-*Touches:* [R-140](rulings/R-140-messenger-birds-is-retired.md) (Messenger Birds retired) and
-[R-013](rulings/R-013-mounted-couriers-removed.md) (the retirement of `sd34`).
-
-## 161. Does a game made before the guardians' fix keep the table's HP on its first turn?
-
-Found on 2026-11-27.
-
-[R-145](rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) gives a new game's
-guardians the table's HP, and a running game keeps its guardians as they are. It doesn't say what becomes of a game
-made before the fix whose first turn has not yet run: its Dracolich stands at 54 until then. Does it keep 54?
-
-1. **It is cut to 49 on its first turn, as built (P1-23l).** Impact: that game plays as it would have before the fix;
-   only games made after the fix keep the table's HP.
-2. **It keeps 54.** Impact: every game whose first turn runs after the fix keeps the table's HP; a small change.
-
-*Assessment:* option 2 fits the ruling's aim and words; option 1 is smaller. It matters only for a game made but not
-yet played when the fix goes live.
-
-*Unlocks:* R-145's open point settled.
-
-*Touches:* [R-145](rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) (new games'
-guardians at the table's HP) and [R-072](rulings/R-072-guardian-strength.md) (the guardian table's HP).
-
-## 162. Does a commander whose skill is cut (cursed, blasted, or slain in the duel) keep his mastery tiers' gifts?
-
-Found on 2026-11-27.
-
-A Curse halves a skill ([R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md)), a
-Psychic Blast cancels Druid, and a commander slain in the duel loses his Druid and Archery
-([R-161](rulings/R-161-a-commander-slain-before-the-battle-takes-his-skills-out-of-it.md)). His tiers' gifts read his
-trained level, so they stay: Tactical 6's tier-up, Tactical 8's spared host, Naval 8's sea waiver, Druid 8's perk
-tier, Necromancy 6's lift (the Druid mastery's gain reads the cut level). Example: Lady Wren, Tactical 7, cursed to 3,
-still rolls her tier-ups as at 7.
-
-1. **They stay, as built.** Impact: a cut weakens the skill's level only.
-2. **A cut skill takes them.** Impact: a cut hits a master harder; a tier-up rolled after the spells moves the dice.
-
-*Assessment:* option 2 follows the rulings' words most closely; option 1 is built and smaller. Masters only.
-
-*Unlocks:* R-161's and R-162's open points settled.
-
-*Touches:* R-121, R-159, R-161, R-162, [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
-
-## 163. Do ships left ashore keep a battle's cuts when the battle resumes the same turn?
-
-Found on 2026-11-27.
-
-Ships that can't sail hold their own shore ([R-067](rulings/R-067-ships-ashore-hold-the-ground.md)); the battle
-resumes against them later in the turn, and they keep the first fight's cuts until the new turn (#841). The Grey Cog of Hollin, shot down to half strength at
-Saltmarsh in phase 1, fights the phase-3 resumption at half strength. Is the resumption the same battle, or a new one?
-
-1. **The same battle: the ships keep their cuts.** Impact: as built; they recover at the new turn.
-2. **A new battle: the ships recover first.** Impact: the ships fight each resumption at full strength; a small change
-   where the hulls join the garrison (`_navalLeaveBehind`), with its own case.
-
-*Assessment:* option 1 matches how a stalled battle "grinds on" elsewhere, with no change; option 2 treats every
-phase's fight alike. Few games meet it.
-
-*Unlocks:* the last path where a battle's cuts outlive its end settled.
-
-*Touches:* [R-067](rulings/R-067-ships-ashore-hold-the-ground.md) (ships left ashore contest the province).
-
-## 164. Against guards, do the hero's beasts strike before or after his archers?
-
-Found on 2026-11-27.
-
-Under [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md), a hero's beasts strike after
-the guards' commander's spell, so a Psychic Blast can stop them; that comes after the hero's archery, Flak and Breach.
-Between two heroes' hosts, the beasts strike before any archers. Example: against the Fenmoor guards Sir Aldwin's
-longbowmen loose, the warlord casts, then his Stone Giants strike; against a hero's host the giants strike first.
-
-1. **Keep it, as built (P1-23an).** Impact: only whether archers or beasts strike first differs between the battles.
-2. **Move the guards' commander's spell ahead of the hero's archery.** Impact: one order in both; a larger move of
-   the stages, and the dice move again in every battle against guards.
-
-*Assessment:* option 2 matches between heroes exactly; option 1 is built and changes little. Only a hero with both
-archers and beasts meets it.
-
-*Unlocks:* R-162's second open point settled.
-
-*Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md),
-[R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
-
-## 166. Do the Rings, Helms and second-wind items already in running games change too?
-
-Found on 2026-11-27.
-
-[R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) gives the Ring
-and the Helm a chance to shrug off a killing blow, and four second-wind texts the 30%. A copy already in a running
-game (a hero's items, a lair's hoard, a realm's vault) keeps the effect and the words it was made with. Lady Wren
-holds the Ring: does she keep the second wind?
-
-1. **Yes: only copies made from now on change, as built (P1-23v).** Impact: old copies keep the old rule and words.
-2. **No: every copy is re-stamped by its name** (in `migrateItemTiers`, which re-stamps tiers each turn). Impact:
-   running games' wearers change rule at once.
-
-*Assessment:* option 2: the texts and the rule agree everywhere, for a small change.
+*Assessment:* option 1: one line between a blow and a harm the wearer meets, and nothing to build.
 
 *Unlocks:* R-153's open point settled.
 
 *Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md).
+
+## 168. Does a Philosopher's Stone already found take the Stone's new words, and its power too?
+
+Found on 2026-11-27.
+
+[R-191](rulings/R-191-the-philosophers-stones-text-says-the-skeletal-companies-are-left-out.md) gives the Stone words
+that say skeletal companies are not promoted. A Stone found before the change keeps the words it was found with: King
+Aldric found one three turns ago, and his pack still reads "promote all armies one quality tier". A Stone dealt before
+12 September 2026 also carries an older power name, which nothing reads since #847, so it can't be worked (KD-508).
+
+1. **It keeps its words.** Impact: nothing changes for a Stone already found; one found from now on has the new words.
+   This is how the game works now.
+2. **It takes the new words at the head of the next turn, the words only.** Impact: Aldric's pack reads the new words
+   from the next turn; nothing changes in play, and a Stone dealt before 12 September still can't be worked.
+3. **It takes the new words and the power,** as the Ring and the Helm do
+   ([R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md)). Impact: the
+   words as in option 2, and a Stone dealt before 12 September works again: a change in play in games that old.
+
+*Assessment:* option 3: the words match what the Stone does, and every Stone works, as before #847.
+
+*Unlocks:* R-191's open point, and KD-508's fix.
+
+*Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) (every
+copy of the Ring and the Helm takes its row's effect and words) and
+[R-191](rulings/R-191-the-philosophers-stones-text-says-the-skeletal-companies-are-left-out.md) (the Stone's words).
+
+## 169. Once Talk returns, does a hero who talks a lair's guardian down still roll for his wounds?
+
+Found on 2026-11-28.
+
+[R-157](rulings/R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md) says a beast talked down by parley
+gives "no earned hit points". The Talk tactic is switched off today. Once it is back, a hero can be wounded in the
+first rounds and then talk the beast down. A parley has no winner, so the fight gives him the roll every wounded hero
+who isn't the winner gets, which can raise his maximum hit points. As built, only the lair's award for a win is held
+back. Example: Sir Tomas is wounded in the first round, then talks the wyvern down. Does he roll for his wounds?
+
+1. **He rolls for his wounds, as any wounded hero does.** Impact: only the win's award is held back; a parley is
+   treated like a fight that ends without a winner. This is how the game works as built.
+2. **He gets no roll at all from a fight he ends by parley.** Impact: a parley gives no maximum hit points of any
+   kind, even to a hero who was hurt first.
+
+*Assessment:* option 1: the wound roll is for the wounds he took, and "no earned hit points" reads as the win's award.
+
+*Unlocks:* R-157's open point, for when Talk returns.
+
+*Touches:* [R-157](rulings/R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md) (a lair beast talked down
+counts as pacified).
+
+## 170. Does a fleet alone that chases a quarry ashore land, as a Move does?
+
+Found on 2026-11-28.
+
+[R-174](rulings/R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) lets a column of ships alone
+land on a coast it is ordered to by a Move, next door or far off. A chase finds its way by the old road: ships alone
+never step onto land, even next door. So a chase by ships alone ends when the quarry goes ashore. Example: Admiral
+Hale's Galleons chase a raider, who lands on the Vakfield coast. A Move to Vakfield would land Hale there; the chase
+ends at sea instead, with "finds no road closer to his quarry".
+
+1. **The chase stops at the shore, as built.** Impact: a fleet alone never lands to catch its quarry; a hero who
+   wants to follow sends a Move instead. Nothing changes.
+2. **The chase lands, as a Move does.** Impact: a fleet alone follows its quarry onto the coast, and may catch him
+   there; a chase and a Move take the same road.
+
+*Assessment:* option 2: R-174's "one rule for the step, however far the target" reads naturally for every march;
+but a chase is not a Move order, so it is a maintainer's call.
+
+*Unlocks:* a row that builds option 2, if chosen.
+
+*Touches:* [R-174](rulings/R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) (a fleet ordered to
+a far coast lands as it would next door).
+
+## 171. While a flooded forest lies parted, does the Flood's mark still turn a beaten army away?
+
+Found on 2026-11-28.
+
+Part Sea "cancels Flood", and on a flooded land province it lays the ground dry for the rest of the turn. But the
+Flood's mark stays on it until the turn's end, so a beaten army never retreats there and the bots read it as flooded.
+Example: the Elder Wood is flooded in spring and parted in summer; Lord Bram's host, beaten next door, can't fall back
+into the dry wood.
+
+1. **The mark stays until the turn's end, as built.** Impact: a parted flooded province is dry to march on, but no
+   beaten army retreats there and the bots treat it as flooded. Nothing changes.
+2. **The parting lifts the Flood's effects too.** Impact: beaten armies may retreat onto it and the bots see dry land;
+   the turn's end still gives back the forest. A change in play, in the rare turns both spells meet.
+
+*Assessment:* option 2: "cancels Flood" reads as the Flood's effects ending while the ground lies dry; but R-084
+doesn't settle it, so it is a maintainer's call.
+
+*Unlocks:* a row that builds option 2, if chosen.
+
+*Touches:* [R-084](rulings/R-084-retreats-onto-dry-ground.md) (a beaten army retreats onto dry ground).
+
+## 172. Do orders stamped for a later turn also keep only their order of heroes?
+
+Found on 2026-11-28.
+
+[R-192](rulings/R-192-orders-saved-for-an-earlier-turn-and-sent-late-keep-only-their-order-of-heroes.md) names
+orders saved for an earlier turn. The turn refuses orders stamped for any other turn the same way. Example: the GM's
+run of Turn 8 fails and the game stays on Turn 8, but Varrow's form already shows Turn 9 and sends a concession:
+the turn refuses it.
+
+1. **Refused the same way, as built.** Impact: nothing changes.
+2. **Only earlier turns.** Impact: orders for a later turn are read whole on the turn run.
+
+*Assessment:* option 1: the turn already refused such orders' heroes' orders and research choices.
+
+*Unlocks:* a row that builds option 2, if chosen.
+
+*Touches:* [R-192](rulings/R-192-orders-saved-for-an-earlier-turn-and-sent-late-keep-only-their-order-of-heroes.md).

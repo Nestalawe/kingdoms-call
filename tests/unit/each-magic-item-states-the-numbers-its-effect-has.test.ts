@@ -10,20 +10,19 @@
 // alone. The items read are the items in play and the Mithril suit (a dwarven birthright in no table, granted: plan
 // P1-19r). Each row with numbers is carried by some item read (else this would check nothing), but the steadfast ward's
 // (resist), which no item in play carries, listed. The rows with no number
-// (the Kraken Figurehead's step up a tier, which no item in play carries; the Tide-Caller's Horn's waiver at sea; the totems' bonus to a strike's chance, which each copy carries itself (plan P1-19v); the
+// (the Kraken Figurehead's step up a tier; the Tide-Caller's Horn's waiver at sea; the totems' bonus to a strike's chance, which each copy carries itself (plan P1-19v); the
 // War-Horn's pursuit on any ground; the Shield-Wall Rune's refusal to retreat; the tax items' and the Traveller's
-// Cloak's numbers, which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
+// Cloak's numbers and the banners' strength (R-148), which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
 // Philosopher's Stone's power; the maximum-HP items' hit points and the temper items' temper, which each copy carries
 // itself; the wards and riders a fighter wears, whose amounts, percentages and hits each copy carries itself, but the
 // buckler's, the second wind's and the low-HP ward's shares of his maximum HP and the HP a killing blow shrugged off leaves him at; the combat items, whose numbers each
 // copy carries itself, but the terror's chance, bane's double, the Lock-Pick's steal and the Warbringer Gauntlets' blow
 // (plan P1-19s); the kinds of item the treasury weighs as a whole, whose worth no text states (plan P1-19t)) are listed, so a number added to one is checked.
 // The known gaps are listed by name, each with its known defect's id, and checked to be still gaps (so the exception
-// leaves with the fix): the two relic standards say +4 and +6 and give +2 (question 20, R-148, not yet built; KD-036);
-// five siege items say "Siege bonus +1" (question 21: KD-092); no home-defence item states its ×1.25 (question 22:
+// leaves with the fix): no home-defence item states its ×1.25 (question 22:
 // KD-260); neither terror item says a foe flees half the time (question
 // 26: KD-090); the Mirror Shard says its illusions are "harder to disbelieve", not that the chance is halved (KD-087).
-// The units an item reaches are words this test can't match to a set (question 21).
+// The units an item reaches: the-commanders-items-texts-name-every-unit-the-battle-lifts.test.ts (R-149).
 // Level 1 (unit), not static: the items in play exist only after the engine's load-time pass (src/engine/items/
 // equipment.ts and tiers-and-hoards.ts rewrite the list: 711 items), so the whole engine is imported first.
 import '../lib/the-whole-engine.ts';
@@ -38,22 +37,10 @@ import { theEffectsAnItemCarries } from '../../src/engine/rules-on-plain-values/
 import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
 
 /** The items whose texts don't state their effect's number yet, by the row's slug, each with its known defect's id. */
-const SIEGE_WORDS = 'KD-092 (question 21, R-149, not yet built)';
 const HOME_DEFENCE_WORDS = 'KD-260 (question 22, R-150, not yet built)';
 const TERROR_WORDS = 'KD-090 (question 26, R-154, not yet built)';
 const MIRROR_SHARD_WORDS = 'KD-087';
 const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, string>>>> = {
-  'army-bonus': {
-    'Battle Standard': 'KD-036 (question 20, R-148, not yet built)',
-    'Standard of the Nine Legions': 'KD-036 (question 20, R-148, not yet built)',
-  },
-  'siege-bonus': {
-    'Cloak of the Siege Engineer': SIEGE_WORDS,
-    'Ring of the Sapper': SIEGE_WORDS,
-    "Siege-Wright's Scale Model": SIEGE_WORDS,
-    'Travelworn Veil': SIEGE_WORDS,
-    'Plain Bezel': SIEGE_WORDS,
-  },
   'home-defence-bonus': {
     'Banner of the Realm': HOME_DEFENCE_WORDS,
     'Shield of the Innocent': HOME_DEFENCE_WORDS,
@@ -82,6 +69,7 @@ const ROWS_WITH_NO_NUMBER: Partial<Record<MagicItemEffectSlug, string>> = {
   'strike-chance-field': 'the percentage points each copy carries itself (its primalStrike)',
   'war-horn-of-the-plains': "a pursuit on any ground (Ride Them Down's share is the unit ability's)",
   'shield-wall-rune': 'a refusal to retreat',
+  'army-bonus': "the strength each copy carries itself (its effect's bonus; of two banners, the stronger: R-148)",
   'tax-bonus': "the gold each copy carries itself (its effect's bonus)",
   'crystal-orb': 'a Spy order without a roll (and no item in play carries it)',
   'philosophers-lens': 'one more lair revealed (the order draws which)',

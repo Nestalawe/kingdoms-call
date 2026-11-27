@@ -19,7 +19,7 @@ export function theWordsOfTheItemOrdersLine(fact: TheFactOfTheItemOrdersLine): s
     case 'a hero has no such item to use':
       return `${fact.heroName}: no such item to use.`;
     case "the Philosopher's Stone finds nothing to work on and is not spent":
-      return `${fact.heroName} raises the ${fact.stoneName}, but there is nothing for it to work on — ${fact.theRealmHasNoUnits ? 'your realm has no armies in the field or in garrison' : 'every unit you command is already Elite'}. The Stone is NOT spent, and may be invoked another turn.`;
+      return `${fact.heroName} raises the ${fact.stoneName}, but there is nothing for it to work on — ${fact.theRealmHasNoUnits ? 'your realm has no living armies in the field or in garrison' : 'every living unit you command is already Elite'}. The Stone is NOT spent, and may be invoked another turn.`;
     case "the GM's note of the undiscovered Stones struck from the lair hoards":
       return `(GM note: ${String(fact.struck)} undiscovered ${fact.stoneName}${fact.struck !== 1 ? 's were' : ' was'} struck from the world's lair hoards — the artefact is destroyed.)`;
     case "the Philosopher's Stone raises the realm's units a tier and crumbles": {
@@ -31,7 +31,7 @@ export function theWordsOfTheItemOrdersLine(fact: TheFactOfTheItemOrdersLine): s
       return `✨ ${fact.heroName} invokes the ${fact.stoneName} — a wave of power sweeps the realm and ${String(fact.raised)} army unit${fact.raised !== 1 ? 's' : ''} advance one quality tier (${_parts.join(', ')}${fact.alreadyElite > 0 ? `; ${String(fact.alreadyElite)} already Elite and unchanged` : ''}). The Stone crumbles to grey dust in ${fact.heroName}'s hands: its work is done, and there is not another in the world.`;
     }
     case "the world sees the Philosopher's Stone burned out":
-      return `🌍 A light passes over the world: somewhere in ${fact.provinceName}, ${fact.isTheirOwnHero ? `your own ${fact.heroName}` : (fact.realmName ?? 'a distant realm')} has worked the ${fact.stoneName} and burned it out. Every soldier of that realm stands a little taller tonight — and the Stone itself is gone from the world for good. No lair will yield another.`;
+      return `🌍 A light passes over the world: somewhere in ${fact.provinceName}, ${fact.isTheirOwnHero ? `your own ${fact.heroName}` : (fact.realmName ?? 'a distant realm')} has worked the ${fact.stoneName} and burned it out. Every living soldier of that realm stands a little taller tonight — and the Stone itself is gone from the world for good. No lair will yield another.`;
     case 'a passive item needs no using':
       return `The ${fact.itemName} is a passive item and does not need to be used — its power is always active.`;
     case 'a charmed hero will part with nothing':

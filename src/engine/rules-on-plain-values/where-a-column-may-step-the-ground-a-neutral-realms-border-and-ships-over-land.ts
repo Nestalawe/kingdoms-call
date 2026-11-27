@@ -47,6 +47,13 @@ export function aColumnIsTurnedBackAtANeutralRealmsBorder(
   );
 }
 
+/** Whether a march's step lands a column from the sea on a coast: it leaves the sea for ground that isn't sea. Any
+ *  column may land so, ships alone too (the turn asks only its sea points); a Move order's road to a far coast lands
+ *  where the step next door would (R-174). */
+export function aMarchsStepLandsFromTheSea(theGroundItLeaves: string, theGroundItEnters: string): boolean {
+  return theGroundItLeaves === 'sea' && theGroundItEnters !== 'sea';
+}
+
 /** Whether a column that leads any naval unit (a fleet or a sea-beast) is refused this step: ships never cross land, so
  *  it may not step from one land province to another; it puts out to sea first, and lands again only from the sea. */
 export function aColumnLeadingShipsMayNotStepFromLandToLand(

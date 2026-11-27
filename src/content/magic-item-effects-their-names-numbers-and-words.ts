@@ -65,7 +65,7 @@ export const THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR = 'armour';
  *  same effect), a rider (its `effect.pc`'s, above 0), a combat item's use (its `effect.use`), or a field of a combat
  *  item's effect (true when set). */
 export type TheKeyAnItemCarriesItsEffectBy =
-  | { readonly stat: string }
+  | { readonly stat: string; readonly orTheOlderCopysStat?: string }
   | { readonly field: AnItemsOwnField }
   | { readonly itemName: string }
   | { readonly ward: string }
@@ -99,8 +99,7 @@ export interface AMagicItemEffectAsItsTextsWriteIt {
 }
 
 // The cavalry, infantry, archers and heavy engines the commander's items reach (until P1-19m armStr's CAV_I, INF_I,
-// ARCH_I and HEAVY_I). Each item's texts name fewer (question 21, R-149, not yet built: KD-092); these are what the
-// battle gives.
+// ARCH_I and HEAVY_I). Each item's texts name every one (R-149).
 const THE_CAVALRY_THE_LANCERS_ITEMS_REACH: readonly UnitType[] = [
   'Free Lances',
   'Gilded Lances',
@@ -151,12 +150,12 @@ const THE_WORTH_OF_A_BLOW = {
 export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
-  // Every army the bearer leads fights +2, whatever the item's own bonus: the two relic standards say +4 and +6 and give
-  // +2 too (question 20, R-148, not yet built; KD-036).
+  // Every army the bearer leads fights at the strength his banner's own copy carries (its effect's bonus: the ordinary
+  // banners +2, the two relic standards +4 and +6); of two banners the stronger counts (R-148).
   'army-bonus': {
     name: 'Battle Standard',
     carriedAs: { stat: 'armyBonus' },
-    numbers: { strengthAdded: { value: 2, theTextsWriteIt: 'strength added' } },
+    numbers: {},
   },
   'cavalry-bonus': {
     name: 'Golden Spur',
@@ -182,11 +181,11 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: { strengthAdded: { value: 4, theTextsWriteIt: 'strength added' } },
     reaches: THE_HEAVY_ENGINES_THE_ENGINEERS_ITEMS_REACH,
   },
-  // The fleets the bearer leads fight one quality tier higher (none past Elite). No item in play carries it now: the
-  // relic's copy in play carries `fleetQuality`, which nothing reads (Parked); an older save's copy still may.
+  // The fleets the bearer leads fight one quality tier higher (none past Elite). The relic a lair deals carries
+  // `fleetQuality`; a copy dealt before 12 September 2026, `navalBonus`.
   'naval-bonus': {
     name: 'Kraken Figurehead',
-    carriedAs: { stat: 'navalBonus' },
+    carriedAs: { stat: 'fleetQuality', orTheOlderCopysStat: 'navalBonus' },
     numbers: {},
     reaches: KC_UNIT_CLASS.carrier,
   },
@@ -244,8 +243,8 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { stat: 'homeDefBonus' },
     numbers: { multiplier: { value: 1.25, theTextsWriteIt: 'a multiplier, as the share it adds' } },
   },
-  // The defenders' fortifications, beyond the bare ×1, are halved when the bearer attacks. Five of its items say "Siege
-  // bonus +1" (question 21, R-149, not yet built).
+  // The defenders' fortifications, beyond the bare ×1, are halved when the bearer attacks, as each of its items says
+  // (R-149).
   'siege-bonus': {
     name: "Siege Master's Ring",
     carriedAs: { stat: 'siegeBonus' },
@@ -293,11 +292,11 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: { goldForEachProvince: { value: 1, theTextsWriteIt: 'gold, for each province' } },
   },
   // ── A hero's items in his orders (orderOutcome), each in its order's resolver. ──
-  // His Spy order succeeds without a roll. Only an older save's copy carries `oracle`: the relic a lair deals today
-  // carries `spyAuto`, which nothing reads (KD-048).
+  // His Spy order succeeds without a roll. The relic a lair deals carries `spyAuto`; a copy dealt before 12 September
+  // 2026, `oracle`.
   'crystal-orb': {
     name: 'Crystal Orb',
-    carriedAs: { stat: 'oracle' },
+    carriedAs: { stat: 'spyAuto', orTheOlderCopysStat: 'oracle' },
     numbers: {},
   },
   // His Explore order reveals one more lair of the province the map hasn't reached (the order draws which).
@@ -319,7 +318,8 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { field: 'exploreMove' },
     numbers: {},
   },
-  // Used (a Use Item order, and the bots' plan), every unit of his realm, led or in a garrison, rises a quality tier
+  // Used (a Use Item order, and the bots' plan), every unit of his realm, led or in a garrison, rises a quality tier, but
+  // a skeletal one (R-191: its texts say so)
   // (from the tables: no number here). The relic a lair deals carries `promoteAll`; the order form offers it to use.
   'philosophers-stone': {
     name: "Philosopher's Stone",
@@ -334,11 +334,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   },
   // ── What a realm sees (visibility, plan P1-19am). ──
   // His face is hidden: no Spy order fixes on him, and no Encounter Character order, Psychic Blast or Curse of another
-  // realm names him. Only an older save's copy carries `hidden`: the relic a lair deals today carries `untargetable`,
-  // which nothing reads (KD-048).
+  // realm names him. The relic a lair deals carries `untargetable`; a copy dealt before 12 September 2026, `hidden`.
   'cloak-of-many-faces': {
     name: 'Cloak of Many Faces',
-    carriedAs: { stat: 'hidden' },
+    carriedAs: { stat: 'untargetable', orTheOlderCopysStat: 'hidden' },
     numbers: {},
   },
   // ── A hero's standing (aHerosStanding): his maximum hit points, the temper he fights with, and his skills. ──
@@ -443,7 +442,8 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
       percentagePointsForAPoint: THE_PERCENTAGE_POINTS_A_FLAG_WARD_CARRIES_FOR_A_POINT,
     },
   },
-  // Once a fight, on the copy's chance (a percentage), a blow that would kill him leaves him standing at these HP (R-153).
+  // On the copy's chance (a percentage), a blow that would kill him leaves him standing at these HP, until it has saved
+  // him once in the fight (R-153).
   'a-killing-blow-shrugged-off': {
     name: 'Ring of the Unbroken Pulse',
     carriedAs: { ward: 'shrugOff' },
@@ -816,3 +816,19 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
 
 /** The slug of an effect the registry holds. */
 export type MagicItemEffectSlug = keyof typeof MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS;
+
+/** The effects every copy already in a running game takes from its item's row, its effect and its words, at the head
+ *  of each turn (migrateItemTiers): the Ring of the Unbroken Pulse and the Great Helm of the Deathless shrug off a
+ *  killing blow, and the second-wind items say the 30% (R-153); the Crown of Command says your realm's characters
+ *  (R-143); the items that lift a kind of company name every unit the battle lifts, and the siege items say the
+ *  defenders' fortifications are halved (R-149). */
+export const THE_EFFECTS_EVERY_COPY_IN_PLAY_TAKES_FROM_ITS_ROW: readonly MagicItemEffectSlug[] = [
+  'a-killing-blow-shrugged-off',
+  'second-wind',
+  'crown-of-command',
+  'cavalry-bonus',
+  'infantry-bonus',
+  'archer-bonus',
+  'heavy-bonus',
+  'siege-bonus',
+];

@@ -363,6 +363,9 @@ export function resolveEncounter(
   // ── Outcome ──
   let won = false,
     fled = false;
+  // A beast talked down by parley is pacified, not slain (R-157): the search gives half the Monster-Bane merit and no
+  // earned hit points.
+  const pacified = res.parley;
   if (res.parley) {
     won = true;
     narrate(narrative, { kind: 'after tense negotiations the guardian agrees', mName: m.name });
@@ -452,5 +455,5 @@ export function resolveEncounter(
   c.hp = Math.max(0, heroHp);
   const heroKilled = heroHp <= 0;
   const damageToHero = Math.max(0, startHp - heroHp);
-  return { won, fled, damageToHero, heroHpAfter: Math.max(0, heroHp), heroKilled, narrative };
+  return { won, fled, pacified, damageToHero, heroHpAfter: Math.max(0, heroHp), heroKilled, narrative };
 }

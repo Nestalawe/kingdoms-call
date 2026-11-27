@@ -18,9 +18,9 @@
 // direct call: the turn's statistics for each cast; the Warlock's extra cast in his best school (titles start at turn
 // 5); a charmed hero's refusal and what it allows; a mark named by a pre-order reference (hired, raised, charmed;
 // nobody); a mastery spell worked last turn; an item's cast that leaves the Wailing Phylactery unspent; which refusals
-// spend no slot; what the turn's end takes back, seen mid-turn (Part Sea's "plains" and its mark, a Flood's, the five
-// elementals by the die, a Clairvoyance replaced, Illusory Terrain by the dice, Oratory, Curse, phantoms, Invisibility,
-// a Veil); Resurrect's guards and the orders a realm wrote for the raised hero (the caster's own card first, after the
+// spend no slot; what the turn's end takes back, seen mid-turn (Part Sea's plain and its mark, a battle there on the
+// plain's row, a Flood's, the five elementals by the die, a Clairvoyance replaced, Illusory Terrain by the dice,
+// Oratory, Curse, phantoms, Invisibility, a Veil); Resurrect's guards and the orders a realm wrote for the raised hero (the caster's own card first, after the
 // cast only, Defend for the rest); Charm's (the orders, his watch dropped, his movement, the marks of an enemy seized,
 // the resistance capped at 95); the helper that was nested in `processOrder` (`charmBacklash`, handed why as a record
 // since P1-12d9, with the duel stood in: no roll for a hero gone or fallen, 50 and 51, Flee on either side, combat
@@ -86,6 +86,7 @@ const { effStat } = await import('../../src/engine/heroes/effective-skills-and-h
 const { theStatisticsOfTheTurn: theStatisticsTheViewsBuild } =
   await import('../../src/views/the-statistics-of-the-turn.ts');
 const { SPELL_DEFS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const { terrainMod } = await import('../../src/engine/battle/terrain-and-unit-strength.ts');
 // (the modules a stand-in is put on: charmBacklash calls the duel and the kill's credit from another file, and
 // Dominate the hosts gained, so a vi.spyOn on each reaches those calls: docs/traps.md)
 const theDuels = await import('../../src/engine/personal-combat/duels-and-character-encounters.ts');
@@ -427,21 +428,25 @@ describe('Cast Spell, called directly: the casting', () => {
 
 // ── What the turn's end takes back, seen mid-turn ───────────────────────────────────────────────────────────────
 describe("Cast Spell, called directly: the spells' marks before the turn's end", () => {
-  test('Part Sea: the parted sea is dry ground ("plains") marked with what it was, and fleets are barred from the next phase', () => {
+  test('Part Sea: the parted sea is dry ground (a plain) marked with what it was, and fleets are barred from the next phase', () => {
     const b = fresh();
     const sea = ring1(b, 0);
     sea.terrain = 'sea';
-    sea['_flooded'] = true;
     const h = at(b, { white: 1 });
     rolls([1], () => casts(b, h, 'Part Sea', sea.id, 2));
-    expect([sea.terrain, sea['_partSea'], sea['_flooded']]).toEqual([
-      'plains',
-      { orig: 'sea', turn: b.G.turn, blockFleetsFromPhase: 3 },
-      undefined,
-    ]);
+    expect([sea.terrain, sea['_partSea']]).toEqual(['plain', { orig: 'sea', turn: b.G.turn, blockFleetsFromPhase: 3 }]);
   });
 
-  test('Flood: the province is sea, marked with what it was; on a parted sea, the parting is undone and "plains" is kept as what it was', () => {
+  test("Part Sea: a battle on the parted seabed reads the plain's row, so Men-at-Arms fight at ×1.1 there, not ×1.0", () => {
+    const b = fresh();
+    const sea = ring1(b, 0);
+    sea.terrain = 'sea';
+    const h = at(b, { white: 1 });
+    rolls([1], () => casts(b, h, 'Part Sea', sea.id, 0));
+    expect(terrainMod('Men-at-Arms', sea.terrain)).toBe(1.1);
+  });
+
+  test('Flood: the province is sea, marked with what it was; on a parted sea, the parting is undone and the sea it was is kept as what it was', () => {
     const b = fresh();
     const p = ring1(b, 0);
     const sea = ring1(b, 1);
@@ -453,11 +458,20 @@ describe("Cast Spell, called directly: the spells' marks before the turn's end",
       casts(b, h, 'Flood', sea.id, 2);
     });
     expect([p.terrain, p['_flood']]).toEqual(['sea', { orig: 'plain', turn: b.G.turn }]);
-    expect([sea.terrain, sea['_partSea'], sea['_flood']]).toEqual([
-      'sea',
-      undefined,
-      { orig: 'plains', turn: b.G.turn },
-    ]);
+    expect([sea.terrain, sea['_partSea'], sea['_flood']]).toEqual(['sea', undefined, { orig: 'sea', turn: b.G.turn }]);
+  });
+
+  test('Flood on a forest flooded, then parted, keeps the forest as what it was: the turn gives back the land, not the sea', () => {
+    const b = fresh();
+    const p = ring1(b, 0);
+    p.terrain = 'forest';
+    const h = at(b, { white: 1, elemental: 3 });
+    rolls([1, 1, 1], () => {
+      casts(b, h, 'Flood', p.id, 0);
+      casts(b, h, 'Part Sea', p.id, 1);
+      casts(b, h, 'Flood', p.id, 2);
+    });
+    expect([p.terrain, p['_partSea'], p['_flood']]).toEqual(['sea', undefined, { orig: 'forest', turn: b.G.turn }]);
   });
 
   test.each([

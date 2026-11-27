@@ -3025,6 +3025,26 @@ describe('The missions on what no matrix game hands them (P1-10b45)', () => {
       '[{"action":"use_item","target":"7","extra":"","desc":"Use Philosopher\'s Stone"},{"action":"use_item","target":"Philosopher\'s Stone","extra":"","desc":"Use Philosopher\'s Stone"},null,{"action":"equip_items","target":"4,Band","extra":"","desc":"Don the best kit"},null]',
     );
   });
+  test('R-158: a lair seeker who leads no armies casts Invisibility before the lair; one who leads armies does not', () => {
+    const seeker = {
+      id: 1,
+      player: 0,
+      alive: true,
+      location: 0,
+      skills: { melee: 9, illusory: 1 },
+      items: [],
+      _botLairKills: { Weak: 2 },
+    };
+    const den = { name: 'Den', monster: {}, discovered: true, cleared: false };
+    const plan = (armies: unknown[]) => {
+      const c = { ...seeker, armies };
+      const G = aWorld({ characters: [c], world: { provinces: [aProvince({ features: [den] })] } });
+      const orders: unknown = fn('botLairPlan')(G, 0, c, [], { budget: 10, upkeep: 0 });
+      return JSON.stringify(orders).includes('Cast Invisibility (before the lair)');
+    };
+    const company = { type: 'Heavy Infantry', quality: 'Regular', unitName: 'the Grey Shields' };
+    expect({ leadsNone: plan([]), leadsArmies: plan([company]) }).toEqual({ leadsNone: true, leadsArmies: false });
+  });
   test('the lair ladder: strength for the grade above, tiers of no ladder, candidates of no features or grade', () => {
     const c = { id: 1, player: 0, alive: true, location: 0, skills: { melee: 6 }, items: [] };
     const lairs = (features: unknown) => aWorld({ characters: [c], world: { provinces: [aProvince({ features })] } });

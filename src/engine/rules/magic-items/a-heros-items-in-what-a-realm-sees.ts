@@ -7,7 +7,7 @@ import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effect
 
 type WhatARealmSees = TheStagesOfEachHookPoint['visibility'];
 
-// Cloak of Many Faces (an older save's copy): his face is hidden.
+// Cloak of Many Faces: his face is hidden.
 export const A_HEROS_ITEMS_HIDE_HIS_FACE = {
   'cloak-of-many-faces': () => true,
 } satisfies Partial<Record<MagicItemEffectSlug, WhatARealmSees["a hero's items hide his face"]>>;

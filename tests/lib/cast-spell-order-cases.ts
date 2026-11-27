@@ -24,7 +24,7 @@ import {
   type World,
 } from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, skeletal, type Item } from './item-and-army-order-cases.ts';
-import { oldCloakOfManyFaces, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
+import { oldCloakOfManyFaces, theCloakOfManyFaces, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
 import { lair } from './explore-and-search-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 
@@ -231,7 +231,7 @@ export const graveLore = (o: Outcome, i: number) =>
 /** A company of beasts (Phantom Host duplicates these; Phantasmal Armies doesn't). */
 export const beasts = (n: number, type = 'Dire Wolves', quality = 'Average') =>
   companies(n, type, quality).map((u) => ({ ...u, race: 'Beast' }));
-export { oldCloakOfManyFaces, skeletal };
+export { theCloakOfManyFaces, skeletal };
 
 // ── The casting itself ──────────────────────────────────────────────────────────────────────────────────────────
 /** A mage of realm 0 in the middle, of `skills`, given `os` in turn. */
@@ -811,7 +811,26 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
     },
   },
   {
-    name: 'the Cloak of Many Faces (as an older save holds it) hides its wearer from Psychic Blast and Curse',
+    name: 'the Cloak of Many Faces (as a lair deals it) hides its wearer from Psychic Blast and Curse',
+    stage(b) {
+      const m = holding(rival(b, {}, { melee: 1 }), theCloakOfManyFaces(b));
+      const s = mage(b, { psychic: 1, necromancy: 1 }, cast('Psychic Blast', m.id), cast('Curse', m.id));
+      return { ...s, mark: m };
+    },
+    check(o, s) {
+      const m = must(s.mark, 'the mark');
+      return {
+        got: {
+          blast: says(o, `${s.hero.name}'s Psychic Blast cannot find ${m.name} — they are cloaked from hostile magic.`),
+          curse: says(o, `${s.hero.name}'s Curse cannot find ${m.name} — they are cloaked from hostile magic.`),
+          skills: char(o, m).skills,
+        },
+        want: { blast: true, curse: true, skills: { melee: 1, tactical: 2, march: 1 } },
+      };
+    },
+  },
+  {
+    name: 'the Cloak of Many Faces (as a copy dealt before 12 September 2026 holds it) hides its wearer from Psychic Blast and Curse',
     stage(b) {
       const m = holding(rival(b, {}, { melee: 1 }), oldCloakOfManyFaces(b));
       const s = mage(b, { psychic: 1, necromancy: 1 }, cast('Psychic Blast', m.id), cast('Curse', m.id));
@@ -832,7 +851,7 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
   {
     name: 'the Cloak of Many Faces does not turn aside other spells (a Telekinetic Storm)',
     stage(b) {
-      const m = leads(holding(rival(b), oldCloakOfManyFaces(b)), companies(2, 'Men-at-Arms', 'Veteran'));
+      const m = leads(holding(rival(b), theCloakOfManyFaces(b)), companies(2, 'Men-at-Arms', 'Veteran'));
       const s = mage(b, { psychic: 1 }, cast('Telekinetic Storm', m.id));
       return { ...s, mark: m };
     },
@@ -844,20 +863,6 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
           hurled: says(o, `Telekinetic Storm hurls ${m.name}'s troops about`),
         },
         want: { cloaked: false, hurled: true },
-      };
-    },
-  },
-  {
-    name: "a Cloak of Many Faces as a lair deals it today hides nobody (its power's name is read by nothing: Parked)",
-    stage(b) {
-      const m = holding(rival(b, {}, { melee: 1 }), item(b, 'Cloak of Many Faces'));
-      const s = mage(b, { psychic: 1 }, cast('Psychic Blast', m.id));
-      return { ...s, mark: m };
-    },
-    check(o) {
-      return {
-        got: { cloaked: says(o, 'cloaked from hostile magic'), blasted: says(o, 'unleashes Psychic Blast') },
-        want: { cloaked: false, blasted: true },
       };
     },
   },
@@ -3065,6 +3070,27 @@ export const INVISIBILITY_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'Invisibility cast by a hero who leads armies holds but waits (R-158): his line says so, and it leaves no unspotted cloak',
+    dice: rollOf(80),
+    stage(b) {
+      const s = illusionist(b, 5, 'Invisibility');
+      leads(s.hero, companies(2));
+      return s;
+    },
+    check(o, s) {
+      return {
+        got: {
+          told: says(
+            o,
+            `✨ ${s.hero.name} weaves Invisibility about themself — but it waits while they lead armies: no enemy eye will find them from the moment they lead none, for the rest of this turn. 80% [roll 80 ✓]`,
+          ),
+          invisible: [char(o, s.hero)['_invisTurn'], char(o, s.hero)['_unspottedTurn']],
+        },
+        want: { told: true, invisible: [o.turn, undefined] },
+      };
+    },
+  },
+  {
     name: 'Invisibility: over 80 it fails to hold (cast from a Ring of Vanishing at 95%)',
     dice: rollOf(81),
     stage(b) {
@@ -3376,7 +3402,7 @@ export const FLOOD_CASES: CastSpellOrderCase[] = [
     },
   },
   {
-    name: 'Flood on a sea parted earlier this turn drowns it again, and the turn leaves it dry ground ("plains") for good (Parked)',
+    name: "Flood on a sea parted earlier this turn drowns it again, and the turn's end leaves it sea, as it was before the parting",
     wholeTurnOnly: true,
     stage(b) {
       const sea = ring1(b, 0);
@@ -3391,7 +3417,7 @@ export const FLOOD_CASES: CastSpellOrderCase[] = [
           flooded: says(o, `calls up the deluge — ${b0(s).name} vanishes`),
           after: province(o, b0(s)).terrain,
         },
-        want: { parted: true, flooded: true, after: 'plains' },
+        want: { parted: true, flooded: true, after: 'sea' },
       };
     },
   },

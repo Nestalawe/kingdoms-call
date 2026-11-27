@@ -170,7 +170,7 @@ see: [here](architecture/the-pages-how-a-portal-boots-and-how-a-page-builds-html
 `KC_*` arrays and object keys are walked for random picks, tie-breaks and dropdowns: append, never re-sort. Never
 reorder a character's `items` (Send Item addresses them by index). A stage of the rule registry runs its effects in the
 order of `THE_ORDER_OF_EACH_STAGE` (the items', `THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS`), not of the entries or the
-content's rows: the commander's items round each step as it goes, so the Battle Standard's +2 comes before the Golden
+content's rows: the commander's items round each step as it goes, so the Battle Standard's +4 comes before the Golden
 Spur's ×1.25; the siege halves what home defence added, so the Banner of the Realm comes first; a fighter reaches for
 his combat items in the stage's order, a healing before a second wind. Checks: the balance matrix, when a game meets
 the order; the commander's items' unit cases, the battles' items' scenario cases, the combat items' unit case.

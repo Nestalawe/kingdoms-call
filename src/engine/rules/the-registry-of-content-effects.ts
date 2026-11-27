@@ -48,11 +48,7 @@ import {
   A_FLYER_IS_HARRIED_BEFORE_THE_BATTLE,
   A_HULL_IS_SUNK_BEFORE_THE_BATTLE,
 } from './unit-abilities/a-flyer-harried-and-a-hull-sunk-before-the-battle.ts';
-import {
-  A_FORCE_HOLDS_THE_SEA_LANES,
-  THE_BEATEN_FORCE_HOLDS,
-  THE_WINNER_RUNS_THE_BEATEN_DOWN,
-} from './unit-abilities/the-rout-after-a-battle.ts';
+import { THE_BEATEN_FORCE_HOLDS, THE_WINNER_RUNS_THE_BEATEN_DOWN } from './unit-abilities/the-rout-after-a-battle.ts';
 import { A_PROVINCE_RAISES_A_UNIT } from './unit-abilities/a-province-raises-a-unit-at-the-turns-end.ts';
 import {
   A_SHOTS_DAMAGE,
@@ -76,7 +72,10 @@ import type {
   AStepOfAMinorTitlesArmyPerk,
   AUnitLedByAHolderOfAMinorTitle,
 } from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
-import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
+import type {
+  AMagicItemAsTheRegistryReadsIt,
+  TheRidersAFighterWears,
+} from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import type { TheEconomysRuleSlug } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
 import type { TheFactOfALineOfABoardOfRivalRealms } from './the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts';
@@ -677,7 +676,7 @@ export interface AFighterAsHisWardsMeetHimAfterAHit {
 }
 
 /** What the stage "a hit lands on a fighter: a killing blow" hands an effect (pcTakeHit, once the hit is dealt, before
- *  the second wind): the wards he wears (none: null), whether his chance to shrug off a killing blow has been used this
+ *  the second wind): the wards he wears (none: null), whether his chance to shrug off a killing blow has saved him this
  *  fight, his hit points before the hit, and his hit points as the fight reads them after it. */
 export interface AFighterAsAKillingBlowFallsOnHim {
   readonly theWards: TheWardsAsTheirEffectsReadThem | null;
@@ -2047,9 +2046,13 @@ export interface TheStagesOfEachHookPoint {
     /** Whether the commander's item waives the sea's penalty to a land unit he leads (armStr, beside Naval's eighth
      *  level; the items' registry). */
     readonly 'a land unit at sea, led': (facts: ALandUnitAtSeaLed) => boolean;
-    /** The step an item the commander carries makes on the strength of a unit he leads, or nothing; the runner applies
-     *  the steps in the stage's order, each rounded as it goes (armStr; the items' registry). */
-    readonly "the commander's items": (facts: AUnitLedByACommander) => AStepOfTheCommandersItems | null;
+    /** The step an item the commander carries makes on the strength of a unit he leads, or nothing, from the unit and
+     *  the items he uses (a banner's strength is its own copy's: R-148); the runner applies the steps in the stage's
+     *  order, each rounded as it goes (armStr; the items' registry). */
+    readonly "the commander's items": (
+      facts: AUnitLedByACommander,
+      theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+    ) => AStepOfTheCommandersItems | null;
     /** The step a minor title the commander holds makes on the strength of a unit he leads, from its row, or nothing;
      *  the runner applies the steps in the stage's order, each rounded as it goes, a perk two titles give once,
      *  asking whether he holds a title only where its step would lift the unit (armStr, after his Druid mastery; and
@@ -3113,8 +3116,6 @@ export const THE_REGISTRY_OF_UNIT_ABILITIES = {
   'feeding-frenzy': {
     fate: { 'the winner runs the beaten down': THE_WINNER_RUNS_THE_BEATEN_DOWN['feeding-frenzy'] },
   },
-  'cut-the-line': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['cut-the-line'] } },
-  'keep-the-sea-lanes': { fate: { 'a force holds the sea lanes': A_FORCE_HOLDS_THE_SEA_LANES['keep-the-sea-lanes'] } },
   'raiders-muster': { turnEnd: { 'a province raises a unit': A_PROVINCE_RAISES_A_UNIT['raiders-muster'] } },
 } satisfies Record<UnitAbilitySlug, UnitAbilityEntry>;
 
@@ -3185,7 +3186,7 @@ export const THE_ORDER_OF_EACH_STAGE = {
     'the winner runs the beaten down': ['ride-them-down', 'run-them-down', 'relentless-hunt', 'feeding-frenzy'],
     'a beaten unit fails its death roll': ['regenerating-hide'],
     'a beaten unit fails its demotion roll': ['knightly-example'],
-    'a force holds the sea lanes': ['cut-the-line', 'keep-the-sea-lanes'],
+    'a force holds the sea lanes': [],
   },
   turnEnd: {
     'a province raises a unit': ['raiders-muster'],
@@ -3375,11 +3376,14 @@ const THE_WINNER_RUNS_THE_BEATEN_DOWN_EFFECTS = THE_ORDER_OF_FATE['the winner ru
   return effect ? [effect] : [];
 }) satisfies readonly TheWinnerRunsTheBeatenDownEffect[];
 type AForceHoldsTheSeaLanesEffect = TheStagesOfEachHookPoint['fate']['a force holds the sea lanes'];
-/** The effects of "a force holds the sea lanes", in the stage's order (each looks for its unit in the force). */
-const A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS = THE_ORDER_OF_FATE['a force holds the sea lanes'].flatMap((slug) => {
-  const effect = ENTRIES[slug].fate?.['a force holds the sea lanes'];
-  return effect ? [effect] : [];
-}) satisfies readonly AForceHoldsTheSeaLanesEffect[];
+/** The effects of "a force holds the sea lanes", in the stage's order (each looks for its unit in the force): none
+ *  since R-147 (the retired Corsair Fleet's two are gone), so the slug is typed as any ability's. */
+const A_FORCE_HOLDS_THE_SEA_LANES_EFFECTS = THE_ORDER_OF_FATE['a force holds the sea lanes'].flatMap(
+  (slug: UnitAbilitySlug) => {
+    const effect = ENTRIES[slug].fate?.['a force holds the sea lanes'];
+    return effect ? [effect] : [];
+  },
+) satisfies readonly AForceHoldsTheSeaLanesEffect[];
 type AProvinceRaisesAUnitEffect = TheStagesOfEachHookPoint['turnEnd']['a province raises a unit'];
 /** The effects of "a province raises a unit", in the stage's order. */
 const A_PROVINCE_RAISES_A_UNIT_EFFECTS = THE_ORDER_OF_EACH_STAGE.turnEnd['a province raises a unit'].flatMap((slug) => {

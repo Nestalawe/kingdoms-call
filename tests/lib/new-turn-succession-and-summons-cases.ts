@@ -962,7 +962,6 @@ export const PROVINCE_MARKS = [
   '_featuresHidden',
   '_earthquakeTax',
   '_earthquakeSpeed',
-  '_flooded',
   '_holyBonus',
   '_oratoryBonus',
   '_tempStrReduction',
@@ -1062,7 +1061,7 @@ export const SPELLS_END_CASES: NewTurnCase[] = [
     name: 'a parted sea is sea again',
     stage(b) {
       const p = ring2(b, 4);
-      Object.assign(p, { terrain: 'plains', _partSea: { orig: 'sea', turn: b.G.turn, blockFleetsFromPhase: 1 } });
+      Object.assign(p, { terrain: 'plain', _partSea: { orig: 'sea', turn: b.G.turn, blockFleetsFromPhase: 1 } });
       return { there: p, orders: [] };
     },
     check(o, s) {
@@ -1087,20 +1086,20 @@ export const SPELLS_END_CASES: NewTurnCase[] = [
     },
   },
   {
-    name: 'a province both parted and flooded: the sea comes back first, then the Flood gives back what it found',
+    name: 'a province both parted and flooded (a forest flooded, then parted): the sea comes back first, then the Flood gives back what it found',
     stage(b) {
       const p = ring2(b, 4);
       Object.assign(p, {
-        terrain: 'sea',
+        terrain: 'plain',
         _partSea: { orig: 'sea', turn: b.G.turn, blockFleetsFromPhase: 1 },
-        _flood: { orig: 'plains', turn: b.G.turn },
+        _flood: { orig: 'forest', turn: b.G.turn },
       });
       return { there: p, orders: [] };
     },
     check(o, s) {
       return {
         got: { terrain: province(o, there(s)).terrain, marks: marks(province(o, there(s)), ['_partSea', '_flood']) },
-        want: { terrain: 'plains', marks: [] },
+        want: { terrain: 'forest', marks: [] },
       };
     },
   },

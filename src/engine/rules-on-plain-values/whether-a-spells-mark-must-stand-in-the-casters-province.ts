@@ -1,12 +1,13 @@
 // ── Whether a spell's mark must stand in the caster's province (plan P1-11c2) ────
 // The engine's rules of a hero, an army, an item, a level or a number, never the world, live in this folder
-// (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can
-// share them (P1-11a). This is the one check of the Cast Spell order the order form makes too (its target field lists a
-// mark from the caster's province only), read from the spell's row in the content
-// (src/content/spell-effects-their-names-numbers-and-words.ts). The spells' registry asks it (src/engine/rules/spells/
-// the-checks-the-cast-spell-order-makes-of-a-spell.ts), and so does the form's target field (spellSecondaryHtml, in
-// src/ui/player/titles.ts), through src/shared/ (P1-11c4): so the player page loads the rows' file too. The tables the
-// form offers are beside it (spells-the-order-form-offers-each-school-aim-and-mastery-level.ts).
+// (src/engine/rules-on-plain-values/): its files import only src/content and each other, so the player portal can share
+// them (P1-11a). These are the two checks of the Cast Spell order the order form makes too (its target field lists a
+// mark from the caster's province only, and none of a charmed hero's lord's heroes for a hostile spell), read from the
+// spell's row in the content (src/content/spell-effects-their-names-numbers-and-words.ts). The spells' registry asks
+// both (src/engine/rules/spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts), and so does the form's target
+// field (spellSecondaryHtml, in src/ui/player/titles.ts), through src/shared/ (P1-11c4): so the player page
+// loads the rows' file too. The tables the form offers are beside it
+// (spells-the-order-form-offers-each-school-aim-and-mastery-level.ts).
 import {
   SPELL_EFFECTS_THE_REGISTRY_HOLDS,
   type ASpellAsItsTextsWriteIt,
@@ -19,4 +20,14 @@ export function theMarkOfThisSpellMustStandInTheCastersProvince(theSpellsName: s
   const everyRow: readonly ASpellAsItsTextsWriteIt[] = Object.values(SPELL_EFFECTS_THE_REGISTRY_HOLDS);
   const row = everyRow.find((r) => r.name === theSpellsName);
   return row?.asAnOrder?.itsMarkMustStandInTheProvince === true;
+}
+
+/** Whether a hero charmed from an enemy realm refuses to aim the spell named at his own lord's heroes, as its row in
+ *  the content says (`asAnOrder.aCharmedHeroWillNotTurnItOnHisLord`): the spells' registry asks it for the Cast Spell
+ *  order's check, and the order form's target field leaves his lord's heroes off its list. A name with no row: he aims
+ *  it as any hero would. */
+export function whetherACharmedHeroWillNotTurnThisSpellOnHisLord(theSpellsName: string): boolean {
+  const everyRow: readonly ASpellAsItsTextsWriteIt[] = Object.values(SPELL_EFFECTS_THE_REGISTRY_HOLDS);
+  const row = everyRow.find((r) => r.name === theSpellsName);
+  return row?.asAnOrder?.aCharmedHeroWillNotTurnItOnHisLord === true;
 }

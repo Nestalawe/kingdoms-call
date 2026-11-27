@@ -6094,6 +6094,8 @@ export const ALL_MAGIC_ITEMS_P = [
     effect: { stat: 'spy', bonus: 2 },
     tier: 2,
   },
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play; a copy
+  // dealt before 12 September 2026 carries this entry's older power name, which the items' registry reads too)
   {
     name: 'Crystal Orb',
     desc: 'Spy always succeeds — no roll needed',
@@ -6277,8 +6279,8 @@ export const ALL_MAGIC_ITEMS_P = [
   // ── Cavalry-specific (Free Lances / Gilded Lances) ──
   {
     name: 'Golden Spur',
-    desc: 'Free Lances and Gilded Lances: +25% strength when you lead them',
-    lore: 'A single gilded spur once worn by a legendary captain of horse. Free Lances and Gilded Lances you lead fight at +25% strength.',
+    desc: 'Free Lances, Gilded Lances, Warg Riders, Eagle Riders, Noble Griffons, Stag Riders and Ironhoof Rams you lead: +25% strength',
+    lore: 'A single gilded spur once worn by a legendary captain of horse. Free Lances, Gilded Lances, Warg Riders, Eagle Riders, Noble Griffons, Stag Riders and Ironhoof Rams you lead fight at +25% strength.',
     effect: { stat: 'cavBonus', bonus: 1 },
     tier: 1,
   },
@@ -6292,8 +6294,8 @@ export const ALL_MAGIC_ITEMS_P = [
   // ── Infantry-specific (Shieldwall Levies) ──
   {
     name: "Legionnaire's Mark",
-    desc: 'Shieldwall Levies you lead: +20% strength in all terrain',
-    lore: 'A brass badge of the old legions, and the foot who see it stand a little straighter. Shieldwall Levies you lead fight at +20% strength in every terrain.',
+    desc: 'Shieldwall Levies, Dwarven Guard, Orc Berserkers and Men-at-Arms you lead: +20% strength in all terrain',
+    lore: 'A brass badge of the old legions, and the foot who see it stand a little straighter. Shieldwall Levies, Dwarven Guard, Orc Berserkers and Men-at-Arms you lead fight at +20% strength in every terrain.',
     effect: { stat: 'infBonus', bonus: 1 },
     tier: 1,
   },
@@ -6314,12 +6316,14 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Eagle-Eye Pendant',
-    desc: 'Yeoman Longbows and Elven Bowmen: +30% strength',
-    lore: "The wearer's archers seem to see the foe a heartbeat before he sees them. Yeoman Longbows and Elven Bowmen you lead fight at +30% strength.",
+    desc: 'Yeoman Longbows, Elven Bowmen, Shadow Archers, Ironwood Crossbows and Black Arrows you lead: +30% strength',
+    lore: "The wearer's archers seem to see the foe a heartbeat before he sees them. Yeoman Longbows, Elven Bowmen, Shadow Archers, Ironwood Crossbows and Black Arrows you lead fight at +30% strength.",
     effect: { stat: 'archerStr', bonus: 1 },
     tier: 1,
   },
   // ── Naval-specific ──
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play; a copy
+  // dealt before 12 September 2026 carries this entry's older power name, which the items' registry reads too)
   {
     name: 'Kraken Figurehead',
     desc: 'All fleets you lead fight as if one experience level higher',
@@ -6338,7 +6342,7 @@ export const ALL_MAGIC_ITEMS_P = [
   // ── Heavy/Siege-specific ──
   {
     name: "Engineer's Blueprint",
-    desc: 'Mountain Guns and Dwarf Ironclads: +4 strength',
+    desc: 'Mountain Guns and Dwarf Ironclads you lead: +4 strength',
     lore: 'Schematics for guns and hulls beyond anything the guild-smiths have built. Mountain Guns and Dwarf Ironclads you lead fight at +4 strength.',
     effect: { stat: 'heavyBonus', bonus: 1 },
     tier: 1,
@@ -7374,11 +7378,13 @@ export const ALL_MAGIC_ITEMS_P = [
   // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
   {
     name: "Philosopher's Stone",
-    desc: 'Once per game: instantly promote all armies one quality tier',
-    lore: "The alchemists' great prize: it turns raw levies into seasoned soldiers as surely as lead into gold. A LEGENDARY relic, usable once per game: instantly promote all your armies one quality tier.",
+    desc: 'Once per game: instantly promote all armies one quality tier (skeletal companies are never promoted)',
+    lore: "The alchemists' great prize: it turns raw levies into seasoned soldiers as surely as lead into gold. A LEGENDARY relic, usable once per game: instantly promote all your armies one quality tier. Skeletal companies are never promoted: the dead do not learn.",
     effect: { stat: 'promoteAll' },
     tier: 3,
   },
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play; a copy
+  // dealt before 12 September 2026 carries this entry's older power name, which the items' registry reads too)
   {
     name: 'Cloak of Many Faces',
     desc: 'This hero may not be targeted by Spy, Psychic Blast, Curse or Encounter Character orders',
@@ -7388,8 +7394,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Crown of Command',
-    desc: 'All characters in the same province gain +1 to all skills for the duration of the turn',
-    lore: "The crown of the old Empire's war-kings; those who stand near it find their skills sharpened. A LEGENDARY relic: every character in the same province, friend or foe, counts all skills 1 level higher for the turn.",
+    desc: "All your realm's characters in the same province gain +1 to all skills for the duration of the turn; rivals beside you gain nothing",
+    lore: "The crown of the old Empire's war-kings; those who serve its wearer find their skills sharpened. A LEGENDARY relic: every character of your realm in the same province, the wearer too, counts all skills 1 level higher for the turn; rivals beside you gain nothing.",
     effect: { stat: 'aura', bonus: 1 },
     tier: 3,
   },
@@ -8846,24 +8852,24 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Circlet of the Quartermaster',
-    desc: 'Infantry you lead fight +20%.',
-    lore: 'A plain iron band; the men who see it know their lines will hold and their rations will come. Shieldwall, Guard and Berserker units you lead fight at +20%.',
+    desc: 'Shieldwall Levies, Dwarven Guard, Orc Berserkers and Men-at-Arms you lead fight +20%.',
+    lore: 'A plain iron band; the men who see it know their lines will hold and their rations will come. Shieldwall Levies, Dwarven Guard, Orc Berserkers and Men-at-Arms you lead fight at +20%.',
     effect: { stat: 'infBonus', bonus: 1 },
     slot: 'helm',
     tier: 1,
   },
   {
     name: 'Helm of the Lancer-Captain',
-    desc: 'Cavalry you lead fight +25%.',
-    lore: 'Its plume has led more charges than its wearers. Lances, riders and winged cavalry you lead fight at +25%.',
+    desc: 'Free Lances, Gilded Lances, Warg Riders, Eagle Riders, Noble Griffons, Stag Riders and Ironhoof Rams you lead fight +25%.',
+    lore: 'Its plume has led more charges than its wearers. Free Lances, Gilded Lances, Warg Riders, Eagle Riders, Noble Griffons, Stag Riders and Ironhoof Rams you lead fight at +25%.',
     effect: { stat: 'cavBonus', bonus: 1 },
     slot: 'helm',
     tier: 1,
   },
   {
     name: 'Cap of the Master Bowman',
-    desc: 'Archer units you lead fight +30%.',
-    lore: 'Green felt, one hawk feather, and a way of reading the wind. Longbow, Bowmen, Shadow Archer and Crossbow units you lead fight at +30%.',
+    desc: 'Yeoman Longbows, Elven Bowmen, Shadow Archers, Ironwood Crossbows and Black Arrows you lead fight +30%.',
+    lore: 'Green felt, one hawk feather, and a way of reading the wind. Yeoman Longbows, Elven Bowmen, Shadow Archers, Ironwood Crossbows and Black Arrows you lead fight at +30%.',
     effect: { stat: 'archerStr', bonus: 1 },
     slot: 'helm',
     tier: 1,
@@ -8894,8 +8900,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Cloak of the Siege Engineer',
-    desc: 'Siege bonus +1.',
-    lore: 'Pockets full of chalk, string and small hard arithmetic. Your armies breach walls as if a level stronger.',
+    desc: 'Province defence bonuses reduced by half when you attack',
+    lore: "Pockets full of chalk, string and small hard arithmetic. When you attack, the defenders' province and fortification bonuses are halved.",
     effect: { stat: 'siegeBonus', bonus: 1 },
     slot: 'cloak',
     tier: 1,
@@ -8958,8 +8964,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Ring of the Sapper',
-    desc: 'Siege bonus +1.',
-    lore: 'Iron, scored with a plan of walls that are no longer standing. Your armies breach walls as if a level stronger.',
+    desc: 'Province defence bonuses reduced by half when you attack',
+    lore: "Iron, scored with a plan of walls that are no longer standing. When you attack, the defenders' province and fortification bonuses are halved.",
     effect: { stat: 'siegeBonus', bonus: 1 },
     slot: 'ring',
     tier: 1,
@@ -8974,8 +8980,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Ring of the Lancer',
-    desc: 'Cavalry you lead fight +25%.',
-    lore: 'A spur-rowel set in silver. Lances, riders and winged cavalry you lead fight at +25%.',
+    desc: 'Free Lances, Gilded Lances, Warg Riders, Eagle Riders, Noble Griffons, Stag Riders and Ironhoof Rams you lead fight +25%.',
+    lore: 'A spur-rowel set in silver. Free Lances, Gilded Lances, Warg Riders, Eagle Riders, Noble Griffons, Stag Riders and Ironhoof Rams you lead fight at +25%.',
     effect: { stat: 'cavBonus', bonus: 1 },
     slot: 'ring',
     tier: 1,
@@ -9054,16 +9060,16 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Medal of the Drill-Sergeant',
-    desc: 'Infantry you lead fight +20%.',
-    lore: 'Bronze, and it has been thrown at people. Shieldwall, Guard and Berserker units you lead fight at +20%.',
+    desc: 'Shieldwall Levies, Dwarven Guard, Orc Berserkers and Men-at-Arms you lead fight +20%.',
+    lore: 'Bronze, and it has been thrown at people. Shieldwall Levies, Dwarven Guard, Orc Berserkers and Men-at-Arms you lead fight at +20%.',
     effect: { stat: 'infBonus', bonus: 1 },
     slot: 'amulet',
     tier: 1,
   },
   {
     name: 'Amulet of the Bombardier',
-    desc: 'Heavy engines you lead fight +4.',
-    lore: 'A powder-flask stopper on a chain, still faintly warm. Mountain Guns and Ironclads you lead fight at +4 strength.',
+    desc: 'Mountain Guns and Dwarf Ironclads you lead fight +4.',
+    lore: 'A powder-flask stopper on a chain, still faintly warm. Mountain Guns and Dwarf Ironclads you lead fight at +4 strength.',
     effect: { stat: 'heavyBonus', bonus: 1 },
     slot: 'amulet',
     tier: 1,
@@ -9085,8 +9091,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: "Siege-Wright's Scale Model",
-    desc: 'Siege bonus +1.',
-    lore: 'A tower in miniature; the full-size one goes up in half the time. Your armies breach walls as if a level stronger.',
+    desc: 'Province defence bonuses reduced by half when you attack',
+    lore: "A tower in miniature; the full-size one goes up in half the time. When you attack, the defenders' province and fortification bonuses are halved.",
     effect: { stat: 'siegeBonus', bonus: 1 },
     tier: 1,
   },
@@ -9146,8 +9152,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Ring of the Unbroken Pulse',
-    desc: '15% to shrug off a killing blow once per fight, standing at 1 HP.',
-    lore: 'The stone flickers once, and you are still standing. Once per fight, 15% to survive a killing blow at 1 HP.',
+    desc: '15% to shrug off a killing blow, standing at 1 HP; it can save you once a fight.',
+    lore: 'The stone flickers once, and you are still standing. 15% to survive a killing blow at 1 HP; it can save you once a fight.',
     effect: { stat: 'pc', pc: { ward: 'shrugOff', pct: 15 } },
     slot: 'ring',
     tier: 3,
@@ -9202,8 +9208,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Great Helm of the Deathless',
-    desc: '20% to shrug off a killing blow once per fight, standing at 1 HP.',
-    lore: 'Its last three owners were each certain they had died in it. Once per fight, 20% to survive a killing blow at 1 HP.',
+    desc: '20% to shrug off a killing blow, standing at 1 HP; it can save you once a fight.',
+    lore: 'Its last three owners were each certain they had died in it. 20% to survive a killing blow at 1 HP; it can save you once a fight.',
     effect: { stat: 'pc', pc: { ward: 'shrugOff', pct: 20 } },
     slot: 'helm',
     tier: 3,
@@ -9542,8 +9548,8 @@ export const LEGENDARY_ITEMS_P = [
   {
     name: 'Crown of Command',
     slot: 'helm',
-    desc: 'All characters in the same province gain +1 to all skills for the duration',
-    lore: 'The iron crown of a king nobody now names, whose word could not be disobeyed. Every character standing with you fights and works one level better in every skill.',
+    desc: "All your realm's characters in the same province gain +1 to all skills for the duration; rivals beside you gain nothing",
+    lore: 'The iron crown of a king nobody now names, whose word could not be disobeyed. Every character of your realm standing with you, you too, fights and works one level better in every skill; rivals beside you gain nothing.',
     effect: { stat: 'aura', bonus: 1 },
     tier: 4,
     _unscorable: true,
@@ -9659,8 +9665,8 @@ export const LEGENDARY_ITEMS_P = [
   },
   {
     name: "Philosopher's Stone",
-    desc: 'Once per game: instantly promote all armies one quality tier',
-    lore: 'Small, dull and warm, and worth more than any province. Once in the whole game, every army of your realm is promoted one experience level on the instant.',
+    desc: 'Once per game: instantly promote all armies one quality tier (skeletal companies are never promoted)',
+    lore: 'Small, dull and warm, and worth more than any province. Once in the whole game, every army of your realm is promoted one experience level on the instant; skeletal companies are never promoted.',
     effect: { stat: 'promoteAll' },
     tier: 4,
     _unscorable: true,
@@ -14713,7 +14719,7 @@ export const SPELL_DEFS_P = {
     target: 'none',
     encounter: true,
     phase: true,
-    desc: 'Combat: enemies suffer \u221210%, and a further \u22124% per Illusory level (\u221214% at 1, \u221230% at 5), to hit the caster for the fight, and the caster gains +30% to Flee. Action: cast on yourself — 80% chance that no enemy player sees you (sightings, spies, encounter targeting, the map) for the rest of the turn, and every enemy order and ambush aimed at you misses you.',
+    desc: 'Combat: enemies suffer \u221210%, and a further \u22124% per Illusory level (\u221214% at 1, \u221230% at 5), to hit the caster for the fight, and the caster gains +30% to Flee. Action: cast on yourself — 80% chance that no enemy player sees you (sightings, spies, encounter targeting, the map) for the rest of the turn, and every enemy order and ambush aimed at you misses you. No effect while you lead armies: the spell waits, and hides you from the moment you lead none until the turn ends; take up an army and you are seen again.',
     fn: 'illusory_invisibility',
   },
   'Mirror Image': {

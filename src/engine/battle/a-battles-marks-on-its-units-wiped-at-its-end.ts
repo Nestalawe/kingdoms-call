@@ -4,10 +4,9 @@
 // `_drumUp`), Lightning Advance's ambush (`_laNoTerrain`) and Flak Screen's (`_flakTargeted`). Both battles' ends wipe
 // them from every unit still on a side. A company that leaves the side before the end has them wiped where it leaves:
 // the companies a beaten fleet sends overland to a garrison (navalSplitRetreat), which otherwise kept the battle's
-// cuts into their next fight. One path the end doesn't reach keeps them on purpose, until a maintainer answers question
-// 163: the ships a beaten force leaves on its own shore (_navalLeaveBehind) hold the ground, and a stalled battle can
-// resume against them the same turn with their cuts. The new turn wipes the marks from every garrison
-// (new-turn-counter-….ts).
+// cuts into their next fight. One path the end doesn't reach keeps them on purpose (R-067): the ships a beaten force
+// leaves on its own shore (_navalLeaveBehind) hold the ground, and a stalled battle can resume against them the same
+// turn with their cuts, as the same battle. The new turn wipes the marks from every garrison (new-turn-counter-….ts).
 import type { ArmyInABattle } from '../army-tables.ts';
 
 /** Wipe a battle's marks from each unit of `units`: the battle is over for them. */

@@ -137,8 +137,7 @@ Each form below keeps every value the old statement gave; a form a row needs tha
 - **Where the body guards a hero who serves no realm** (`c.player != null`), no `servesARealm` check: each read of his
   realm by its index is `c.player === null ? undefined : G.players[c.player]`, as JavaScript reads `G.players[null]`
   (`hisRealm`, the Search; the Spy too, whose body reads his realm both ways). A rest-spread arrow handing its arguments on after the turn's context is typed
-  `(...a: AfterTheTurnsContext<typeof f>)`. A field a test's stand-in gives a typed callee's result and the callee never
-  does (a pacified fight) is read through a type that adds it, optional (`TheFightAsTheSearchReadsIt`).
+  `(...a: AfterTheTurnsContext<typeof f>)`.
 - **A target the body turns into words** (`(t || '').toString()`, `String(t)`, `parseInt(t)`) is typed `string | number |
   null | undefined`, so each conversion stays; its `t || ''` is `(t ?? '') || ''`, which turns a `0` into `''` too.
   A phase fallback `ph ?? THE_PHASE_THE_LINE_IS_WRITTEN_IN` whose callers all pass a number goes.

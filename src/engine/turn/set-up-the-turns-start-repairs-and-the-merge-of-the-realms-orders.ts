@@ -22,9 +22,9 @@ import { THE_DIPLOMACY_LADDER } from '../../content/the-diplomacy-ladder-a-mutua
 //      and its scratch lists start empty, every living hero noting the realm he serves, and every living realm's hero
 //      starts with five empty phases (Defend, later);
 //   4. the merge of the realms' orders: each realm that sent orders has its hero order kept (its own living heroes, each
-//      once, in the order sent), its declarations (or the
-//      Safe Start's refusal), research choices, Reckoning call, messages and concession collected for later stages,
-//      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
+//      once, in the order sent), its declarations (or the Safe Start's refusal), research choices, Reckoning call,
+//      messages and concession collected for later stages, only from orders for the turn run; orders stamped for
+//      another turn refused but for their hero order (R-192), the orders of heroes it means to hire, raise or charm held until the
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
 //      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied. A realm's orders,
 //      encounter plans and heir's choices are taken only for its own heroes (the rest set aside, and the GM told); a
@@ -372,10 +372,13 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
         epObj = itOrAnEmptyObject(raw['encounterPlans']);
         kingSkillsObj = itOrAnEmptyObject(raw['kingSkills']);
         forTurn = raw['forTurn'] ?? null;
+        // R-192: orders saved for another turn and sent late keep only their order of heroes (read above): their
+        // declarations, research choices, Reckoning call, messages and concession are refused with their orders.
+        const forThisTurn = forTurn === null || forTurn === expectedTurnToRun;
         // Diplomacy declarations (king-only, one stance per target). Validated at resolution time
         // against the encountered set; stored raw here.
         const diplomacySent = raw['diplomacy'];
-        if (diplomacySent && typeof diplomacySent === 'object') {
+        if (forThisTurn && diplomacySent && typeof diplomacySent === 'object') {
           // SAFE START (2026-09-29): before the orders for Turn SAFE_START_TURN no Treat or war may be
           // declared — the declarations are discarded and the realm is told why.
           if (safeStartLocked(G, expectedTurnToRun)) {
@@ -384,21 +387,16 @@ export function mergeTheRealmsSubmittedOrdersDeclarationsMessagesAndEncounterPla
               safeStartRefused.push(gp.player_index);
           } else declarationsAsSent[gp.player_index] = diplomacySent;
         }
-        // RESEARCH CHOICE: which of each pending pair to keep ({key: discoveryId}); honoured only when
-        // the payload is for this turn (a stale draft's picks are ignored like its orders).
+        // RESEARCH CHOICE: which of each pending pair to keep ({key: discoveryId}).
         const choicesSent = raw['discoveryChoices'];
-        if (
-          choicesSent &&
-          typeof choicesSent === 'object' &&
-          (raw['forTurn'] == null || raw['forTurn'] === expectedTurnToRun)
-        )
-          picksAsSent[gp.player_index] = choicesSent;
-        if (raw['callReckoning'] === true && !G.players[gp.player_index]?.conceded) reckoningCalls.add(gp.player_index);
+        if (forThisTurn && choicesSent && typeof choicesSent === 'object') picksAsSent[gp.player_index] = choicesSent;
+        if (forThisTurn && raw['callReckoning'] === true && !G.players[gp.player_index]?.conceded)
+          reckoningCalls.add(gp.player_index);
         const messagesSent = raw['messages'];
-        if (Array.isArray(messagesSent)) messagesAsSent[gp.player_index] = messagesSent;
+        if (forThisTurn && Array.isArray(messagesSent)) messagesAsSent[gp.player_index] = messagesSent;
         // CONCEDE. A realm that concedes is out of the game for good — its characters do nothing but
         // Defend from now on (enforced below every turn, whatever is submitted).
-        if (raw['concede'] === true) {
+        if (forThisTurn && raw['concede'] === true) {
           const conceding = G.players[gp.player_index];
           if (conceding && !conceding.conceded) {
             conceding.conceded = true;
