@@ -1418,6 +1418,7 @@ export const THE_MARCHES_THE_FORECAST_GETS_RIGHT = [
   "a far province round a neutral realm's province",
   'a far province round the province of a realm not yet met',
   'a far province no route reaches',
+  'a far coast, ships alone',
   'a far sea, with too little lift',
   'past his pace, then a far province',
 ] as const;
@@ -1580,6 +1581,14 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
   // (a far province no route reaches from the sea for a fleet: one of realm 0's, not on the coast of that sea)
   const inland = provinces.find((p) => ours(p) && !nextTo(sea).includes(p));
   if (!round || !inland) throw new Error('the staged world has no far province to march round or none inland');
+  // (R-174: a coast of realm 0's two steps off the sea, beside the open sea and not beside his own; a fleet alone lands
+  // on it as on a coast next door, so its first step is the first sea next door in the compass directions' order that
+  // the coast is beside)
+  const farShore = nextTo(open).find((p) => ours(p) && p !== start && !nextTo(sea).includes(p));
+  const theSeaBesideTheShore = farShore
+    ? nextTo(sea).find((p) => !isLand(p) && nextTo(p).includes(farShore))
+    : undefined;
+  if (!farShore || !theSeaBesideTheShore) throw new Error('the staged world has no coast two steps off the sea');
   // (the start in realm 0's own list of provinces, so its report shows the provinces beside it as its border, with their
   // owners: the march forecast reads the neutral realm's border there, P1-11e10)
   const ourRealm = objects(g['players'])[0];
@@ -1670,6 +1679,15 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     ],
     // (a fleet at sea: it may not enter land but from the sea next door, so no route reaches an inland province)
     ['a far province no route reaches', [move(`prov:${id(inland)}`)], inland, fleet()],
+    // (a fleet at sea, ordered to a coast two steps off: it sails to the sea beside it, R-174; the coast in realm 0's
+    // own list on that march alone, so its report shows the ground on the way)
+    [
+      'a far coast, ships alone',
+      [move(`prov:${id(farShore)}`)],
+      farShore,
+      fleet(),
+      { itsRealmListsAlso: farShore['id'] },
+    ],
     // (Men-at-Arms, with no hull to lift them, may not enter the sea: no route reaches one)
     [
       'a far sea, with too little lift',
@@ -1686,6 +1704,7 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     'a fleet putting in on a coast',
     'past his pace at sea',
     'a far province no route reaches',
+    'a far coast, ships alone',
   ];
   const setsOutFrom = (kind: AKindOfMarch) => (atSea.includes(kind) ? sea : start);
   // (where his pace stops a march past it: the second step's province on land, the third's at sea; and since P1-11e12
@@ -1700,6 +1719,7 @@ export function marchingWorld(): { world: World; marches: AStagedMarch[]; marche
     'a far province round the province of a realm not yet met': round.safe,
     'a far sea, with too little lift': start,
     'a far province no route reaches': sea,
+    'a far coast, ships alone': theSeaBesideTheShore,
     // (a column leading ships may not step from land to land: no route of the sea reaches the province two steps away)
     'a far province, leading ships': start,
   };
