@@ -24,6 +24,7 @@
 //   nor concedes.
 // It also gives the matrix a per-realm report to hash: all-bot games write none.
 import { PRIMAL_SEA_NAMES, SAFE_START_TURN } from '../../src/engine/army-tables.ts';
+import { theHerosInvisibilityHidesHimNow } from '../../src/engine/rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { DISC_BY_ID } from '../../src/engine/discoveries.ts';
 import { effSkillOf } from '../../src/engine/heroes/skills-and-hp.ts';
 import { heroHireWage } from '../../src/engine/rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
@@ -95,7 +96,7 @@ export interface Lair {
 export interface Character extends HeroTheFormLists {
   location: number;
   armies?: unknown[];
-  /** The turn an Invisibility was cast: unseen that turn's report. */
+  /** The turn an Invisibility was cast: unseen that turn's report while he leads no armies (R-158). */
   _invisTurn?: number;
   alignment?: string;
   _isNeutralGuard?: boolean;
@@ -208,7 +209,7 @@ export function heroesTheRealmSeesToHunt(S: State, me: number): Character[] {
       c.alive &&
       c.player != null &&
       c.player !== me &&
-      c._invisTurn !== S.turn - 1 &&
+      !theHerosInvisibilityHidesHimNow(c, S.turn - 1) &&
       enemyCharVisibleTo(world, me, asSaved(c), sight) &&
       encounterUntargetableReason(asSaved(c)) == null,
   );
@@ -242,7 +243,7 @@ export function heroesBesideHim(S: State, me: number, hero: Character): Characte
         c.alive &&
         c.player !== me &&
         c.location === hero.location &&
-        c._invisTurn !== S.turn - 1 &&
+        !theHerosInvisibilityHidesHimNow(c, S.turn - 1) &&
         !mightHaveSlippedBy(c) &&
         enemyCharVisibleTo(world, me, asSaved(c), sight),
     )

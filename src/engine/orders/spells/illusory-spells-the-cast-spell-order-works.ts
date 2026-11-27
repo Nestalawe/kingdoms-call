@@ -4,6 +4,7 @@
 // cast ends here": no skill gain) and its end `return true;` ("the spell is worked"). The table in the-action-
 // spells-the-cast-spell-order-works-by-slug.ts finds each by its slug.
 import { kcRng } from '../../rng.ts';
+import { theHerosInvisibilityHidesHimNow } from '../../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import {
   CREATURE_ARMIES,
   MONSTER_ARMIES,
@@ -243,10 +244,12 @@ export function workInvisibility({ turnContext, G, c, prov }: TheNamesAnActionSp
   const _ivRoll = d100();
   if (_ivRoll <= 80) {
     c._invisTurn = G.turn;
-    c._unspottedTurn = G.turn;
+    // R-158: while he leads armies the spell waits, and leaves no unspotted cloak; it hides him once he leads none
+    const theSpellWaits = !theHerosInvisibilityHidesHimNow(c, G.turn);
+    if (!theSpellWaits) c._unspottedTurn = G.turn;
     emit(turnContext, {
       type: 'explore',
-      fact: { kind: 'Invisibility holds', heroName: c.name, chance: 80, roll: _ivRoll },
+      fact: { kind: 'Invisibility holds', heroName: c.name, chance: 80, roll: _ivRoll, theSpellWaits },
       audience: { actor: c.player, realms: [c.player] },
       hero: THE_HERO_WHOSE_ORDER_IS_RESOLVING,
       phase: THE_PHASE_THE_LINE_IS_WRITTEN_IN,

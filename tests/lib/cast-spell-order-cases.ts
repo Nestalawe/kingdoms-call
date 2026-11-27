@@ -3070,6 +3070,27 @@ export const INVISIBILITY_CASES: CastSpellOrderCase[] = [
     },
   },
   {
+    name: 'Invisibility cast by a hero who leads armies holds but waits (R-158): his line says so, and it leaves no unspotted cloak',
+    dice: rollOf(80),
+    stage(b) {
+      const s = illusionist(b, 5, 'Invisibility');
+      leads(s.hero, companies(2));
+      return s;
+    },
+    check(o, s) {
+      return {
+        got: {
+          told: says(
+            o,
+            `✨ ${s.hero.name} weaves Invisibility about themself — but it waits while they lead armies: no enemy eye will find them from the moment they lead none, for the rest of this turn. 80% [roll 80 ✓]`,
+          ),
+          invisible: [char(o, s.hero)['_invisTurn'], char(o, s.hero)['_unspottedTurn']],
+        },
+        want: { told: true, invisible: [o.turn, undefined] },
+      };
+    },
+  },
+  {
     name: 'Invisibility: over 80 it fails to hold (cast from a Ring of Vanishing at 95%)',
     dice: rollOf(81),
     stage(b) {

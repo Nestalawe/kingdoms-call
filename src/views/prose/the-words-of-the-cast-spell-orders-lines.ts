@@ -358,7 +358,9 @@ export function theWordsOfTheCastSpellOrdersLine(fact: TheFactOfTheCastSpellOrde
     case 'Phantom Host conjures duplicates of beasts':
       return `✨ ${fact.heroName} conjures a Phantom Host — spectral doubles of ${String(fact.duplicates)} of their ${fact.duplicates === 1 ? 'beast' : 'beasts'} that fight with the real host for the rest of the turn, melting away if their true selves fall or the force is beaten.`;
     case 'Invisibility holds':
-      return `✨ ${fact.heroName} weaves Invisibility about themself — no enemy eye will find them for the rest of this turn. ${fmtRoll(fact.chance, fact.roll)}`;
+      return fact.theSpellWaits
+        ? `✨ ${fact.heroName} weaves Invisibility about themself — but it waits while they lead armies: no enemy eye will find them from the moment they lead none, for the rest of this turn. ${fmtRoll(fact.chance, fact.roll)}`
+        : `✨ ${fact.heroName} weaves Invisibility about themself — no enemy eye will find them for the rest of this turn. ${fmtRoll(fact.chance, fact.roll)}`;
     case 'Invisibility fails to hold':
       return `✨ ${fact.heroName}'s Invisibility shimmers and fails to hold — they remain in plain sight. ${fmtRoll(fact.chance, fact.roll)}`;
     case 'a Veil of illusion is drawn over a host':

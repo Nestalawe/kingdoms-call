@@ -9,7 +9,13 @@ export interface AHeroAsHisInvisibilityIsRead {
   readonly armies?: readonly unknown[] | null | undefined;
 }
 
+/** Whether Invisibility would hide a hero now, were it to hold: he leads no armies (what a bot asks before it casts
+ *  it as a cloak). */
+export function invisibilityWouldHideTheHeroNow(ch: Pick<AHeroAsHisInvisibilityIsRead, 'armies'>): boolean {
+  return (ch.armies ?? []).length === 0;
+}
+
 /** Whether a hero's Invisibility hides him in `turn`: it holds for that turn and he leads no armies now. */
 export function theHerosInvisibilityHidesHimNow(ch: AHeroAsHisInvisibilityIsRead, turn: number): boolean {
-  return ch._invisTurn === turn && (ch.armies ?? []).length === 0;
+  return ch._invisTurn === turn && invisibilityWouldHideTheHeroNow(ch);
 }

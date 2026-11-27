@@ -1,4 +1,4 @@
-import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
+import { invisibilityWouldHideTheHeroNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
@@ -476,7 +476,8 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         )
           return; // there on purpose
         if (o[0]?.action === THE_HERO_ORDERS.move.key) return;
-        const here = botEnemyHostsIn(G, pi, P).filter((e) => !theHerosInvisibilityHidesHimNow(e, G.turn));
+        // a host always has a leader with armies, whom Invisibility never hides (R-158), so none is filtered out
+        const here = botEnemyHostsIn(G, pi, P);
         let danger = here.length > 0;
         if (!danger && c.isKing) {
           let f = 0;
@@ -502,6 +503,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         const levy = valuable(P) && !here.length ? botGarrisonLevy(G, pi, c, P, L) : null;
         if (
           (Number(asItsGuardReadsIt(c.skills)?.illusory) || 0) >= 1 &&
+          invisibilityWouldHideTheHeroNow(c) && // R-158: it waits while he leads armies, so a leader leaves instead
           !o.some((x) => x?.target === theNameOfTheSpell('invisibility'))
         ) {
           o.unshift({

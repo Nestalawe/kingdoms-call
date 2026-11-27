@@ -167,8 +167,9 @@
   - **an unmet realm**: before the game is over, a realm's name anywhere in the report of a realm that hasn't met it
     (`_encountered`, or a hero of it in the report's sightings), but in a chronicle line the reader is a party to
     (R-046). A met realm's name that holds an unmet one is matched first;
-  - **an unseen hero**: a hero who cast Invisibility this turn, in another realm's sightings (`SIGHTINGS`: the map,
-    sightings, province intelligence, Encounter targets) or named in its lines from the moment he cast it. Allowed:
+  - **an unseen hero**: a hero who cast Invisibility this turn and leads no armies at its end (R-158), in another
+    realm's sightings (`SIGHTINGS`: the map, sightings, province intelligence, Encounter targets), or, if he led none
+    when the turn began, named in its lines from the moment he cast it. Allowed:
     Clairvoyance on him; title intelligence; and, from the phase he first acts on the reader, every line (acting on a
     realm reveals him to it: R-119, part 2). A line of the reader's own order naming him is a breach too: every order
     and reaction of another realm aimed at him finds no one (R-119);

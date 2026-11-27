@@ -732,7 +732,7 @@ export const WAR_FRONT_CASES: DiplomacyAndVictoryCase[] = [
     },
   },
   {
-    name: "a host on the foe's land under Invisibility: both realms are told, for the spell waits while he leads armies (R-158)",
+    name: "a host on the foe's land under Invisibility: the spell waits while he leads armies (R-158), so the warnings are as without it",
     stage(b) {
       const h = host(b, 1, seatOf(b, 2), 2);
       h['_invisTurn'] = b.G.turn;
