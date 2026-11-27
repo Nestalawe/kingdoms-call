@@ -244,7 +244,7 @@ at once.
 | [R-171](R-171-the-order-form-shows-hand-overs-at-sea-as-the-turn-does.md) | The order form shows hand-overs and Pick Ups at sea as the turn does them | 2026-11-15 | Decided, not built | no test yet |
 | [R-172](R-172-a-company-under-the-host-leader-still-pays-at-least-1-gold.md) | A company the Host-Leader leads still pays at least 1 gold | 2026-11-15 | Decided, not built | no test yet |
 | [R-173](R-173-the-call-to-arms-note-names-muster-rolls-chance.md) | The Call to Arms note names Muster Rolls' chance of an Average company | 2026-11-15 | Decided, not built | no test yet |
-| [R-174](R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) | A fleet ordered to a far coast lands as it would next door | 2026-11-15 | Decided, not built | no test yet |
+| [R-174](R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) | A fleet ordered to a far coast lands as it would next door | 2026-11-15 | Confirmed | [`a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door`](../../tests/scenario/a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.test.ts) |
 | [R-175](R-175-the-hire-list-says-a-heros-price-and-his-wage-under-granaries.md) | Under Granaries the hire list says a hero's price and his wage after it | 2026-11-15 | Decided, not built | no test yet |
 | [R-176](R-176-enslaves-tax-cut-says-this-turn-and-the-next-3.md) | Enslave's tax cut is written as "this turn and the next 3" | 2026-11-15 | Decided, not built | no test yet |
 | [R-177](R-177-rule-changes-reach-running-games.md) | Rule changes reach running games | 2026-11-15 | Confirmed | no test yet |
