@@ -27,4 +27,4 @@ P1-23's rows from P1-23g on; its first rows, and the ids dropped, are in [part 1
 - P1-23an: #840, #842 Battle magic takes effect at one moment in both kinds of battle
 - P1-23am: #843 A commander slain in the duel before a battle takes his skills out of it
 - P1-23n: #845 Flak Screen engages every flyer, beasts too (R-146)
-- P1-23v: #PR The Ring and the Helm shrug off a killing blow; four second-wind texts say the 30% (R-153)
+- P1-23v: #846 The Ring and the Helm shrug off a killing blow; four second-wind texts say the 30% (R-153)
