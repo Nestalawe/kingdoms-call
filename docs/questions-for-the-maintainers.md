@@ -157,3 +157,24 @@ but a chase is not a Move order, so it is a maintainer's call.
 
 *Touches:* [R-174](rulings/R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) (a fleet ordered to
 a far coast lands as it would next door).
+
+## 171. While a flooded forest lies parted, does the Flood's mark still turn a beaten army away?
+
+Found on 2026-11-28.
+
+Part Sea "cancels Flood", and on a flooded land province it lays the ground dry for the rest of the turn. But the
+Flood's mark stays on it until the turn's end, so a beaten army never retreats there and the bots read it as flooded.
+Example: the Elder Wood is flooded in spring and parted in summer; Lord Bram's host, beaten next door, can't fall back
+into the dry wood.
+
+1. **The mark stays until the turn's end, as built.** Impact: a parted flooded province is dry to march on, but no
+   beaten army retreats there and the bots treat it as flooded. Nothing changes.
+2. **The parting lifts the Flood's effects too.** Impact: beaten armies may retreat onto it and the bots see dry land;
+   the turn's end still gives back the forest. A change in play, in the rare turns both spells meet.
+
+*Assessment:* option 2: "cancels Flood" reads as the Flood's effects ending while the ground lies dry; but R-084
+doesn't settle it, so it is a maintainer's call.
+
+*Unlocks:* a row that builds option 2, if chosen.
+
+*Touches:* [R-084](rulings/R-084-retreats-onto-dry-ground.md) (a beaten army retreats onto dry ground).
