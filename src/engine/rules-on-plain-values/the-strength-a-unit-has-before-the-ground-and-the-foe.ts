@@ -113,6 +113,7 @@ export function theStrengthAUnitHasBeforeTheGroundAndTheFoe(
       isSkeletal: unit.isSkeletal,
       theRealmsAlignment: hero.theRealmsAlignment,
     },
+    hero.theItemsHeUses,
     str,
   );
   if (hero.hisDruidMasteryGain > 0) str = Math.round(str * (1 + hero.hisDruidMasteryGain));

@@ -151,12 +151,12 @@ const THE_WORTH_OF_A_BLOW = {
 export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   // ── The commander's items (strength, in armStr: after the unit's own modifiers, before its factors from its force),
   // each step rounded as it goes. ──
-  // Every army the bearer leads fights +2, whatever the item's own bonus: the two relic standards say +4 and +6 and give
-  // +2 too (question 20, R-148, not yet built; KD-036).
+  // Every army the bearer leads fights at the strength his banner's own copy carries (its effect's bonus: the ordinary
+  // banners +2, the two relic standards +4 and +6); of two banners the stronger counts (R-148).
   'army-bonus': {
     name: 'Battle Standard',
     carriedAs: { stat: 'armyBonus' },
-    numbers: { strengthAdded: { value: 2, theTextsWriteIt: 'strength added' } },
+    numbers: {},
   },
   'cavalry-bonus': {
     name: 'Golden Spur',

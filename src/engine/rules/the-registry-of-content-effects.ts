@@ -76,7 +76,10 @@ import type {
   AStepOfAMinorTitlesArmyPerk,
   AUnitLedByAHolderOfAMinorTitle,
 } from '../rules-on-plain-values/the-quality-a-commanders-druid-8-or-necromancy-6-lifts-a-unit-to-and-the-minor-titles-army-perks.ts';
-import type { TheRidersAFighterWears } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
+import type {
+  AMagicItemAsTheRegistryReadsIt,
+  TheRidersAFighterWears,
+} from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import type { TheHostLeadersCut } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import type { TheEconomysRuleSlug } from '../../content/the-economys-rules-their-keys-names-and-numbers.ts';
 import type { TheFactOfALineOfABoardOfRivalRealms } from './the-imperial-titles/the-boards-of-the-titles-that-read-each-rival-realm-and-the-facts-their-lines-record.ts';
@@ -2047,9 +2050,13 @@ export interface TheStagesOfEachHookPoint {
     /** Whether the commander's item waives the sea's penalty to a land unit he leads (armStr, beside Naval's eighth
      *  level; the items' registry). */
     readonly 'a land unit at sea, led': (facts: ALandUnitAtSeaLed) => boolean;
-    /** The step an item the commander carries makes on the strength of a unit he leads, or nothing; the runner applies
-     *  the steps in the stage's order, each rounded as it goes (armStr; the items' registry). */
-    readonly "the commander's items": (facts: AUnitLedByACommander) => AStepOfTheCommandersItems | null;
+    /** The step an item the commander carries makes on the strength of a unit he leads, or nothing, from the unit and
+     *  the items he uses (a banner's strength is its own copy's: R-148); the runner applies the steps in the stage's
+     *  order, each rounded as it goes (armStr; the items' registry). */
+    readonly "the commander's items": (
+      facts: AUnitLedByACommander,
+      theCommandersItems: readonly AMagicItemAsTheRegistryReadsIt[],
+    ) => AStepOfTheCommandersItems | null;
     /** The step a minor title the commander holds makes on the strength of a unit he leads, from its row, or nothing;
      *  the runner applies the steps in the stage's order, each rounded as it goes, a perk two titles give once,
      *  asking whether he holds a title only where its step would lift the unit (armStr, after his Druid mastery; and

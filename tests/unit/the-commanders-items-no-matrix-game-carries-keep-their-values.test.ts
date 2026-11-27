@@ -3,10 +3,10 @@
 // src/engine/rules/the-registry-of-magic-item-effects.ts), and the matrix proves those its games meet (the Golden Spur,
 // the Legionnaire's Mark, the Eagle-Eye Pendant, the Engineer's Blueprint, the Black Sceptre, the Tide-Caller's Horn:
 // both sets, every realm's report identical). These five it meets in no game, so they are proved here, each on the
-// value it had before: the Battle Standard's +2 (a relic that says +4: today's +2 stays until R-148, question 20, is built), the
+// value it has: the Battle Standard's +4 (its own text's, since R-148), the
 // Sea Chart of the Deep's +1 and the Admiral's Spyglass' +2 for the fleets the bearer leads (and none for a unit that
 // isn't a fleet; a second name of the Spyglass counts as it), the Chalice of Dawn's ×1.15 for a Divine realm's armies
-// (and ×1 for another realm's); and, since a step is rounded as it goes, the stage's order: the Standard's +2 before
+// (and ×1 for another realm's); and, since a step is rounded as it goes, the stage's order: the Standard's +4 before
 // the Spur's ×1.25. The Kraken Figurehead's step up a tier stays in
 // tests/unit/the-unit-strength-lines-no-matrix-game-reaches-keep-their-values.test.ts.
 // And the battle's Druid check (druIdPenaltyMult, through armStr and the side's shortfall line) on the Druid every rule
@@ -60,10 +60,10 @@ const led = (type: string, names: readonly string[], alignment = 'Neutral') =>
   armStr(turn, unit(type), hero(names.map(worn)), alignment, null, undefined);
 
 describe("the commander's items no matrix game carries", () => {
-  test('the Battle Standard: every army its bearer leads, +2 (its text says +4)', () => {
+  test('the Battle Standard: every army its bearer leads, +4, as its text says (R-148)', () => {
     expect(worn('Battle Standard').effect).toEqual({ stat: 'armyBonus', bonus: 4 });
-    expect(led('Men-at-Arms', ['Battle Standard'])).toBe(led('Men-at-Arms', []) + 2);
-    expect(led('Galleon Fleet', ['Battle Standard'])).toBe(led('Galleon Fleet', []) + 2);
+    expect(led('Men-at-Arms', ['Battle Standard'])).toBe(led('Men-at-Arms', []) + 4);
+    expect(led('Galleon Fleet', ['Battle Standard'])).toBe(led('Galleon Fleet', []) + 4);
   });
   test('the Sea Chart of the Deep: the fleets its bearer leads, +1; no other unit', () => {
     expect(led('Galleon Fleet', ['Sea Chart of the Deep'])).toBe(led('Galleon Fleet', []) + 1);
@@ -83,10 +83,10 @@ describe("the commander's items no matrix game carries", () => {
     expect(led('Men-at-Arms', ['Chalice of Dawn'], 'Neutral')).toBe(led('Men-at-Arms', [], 'Neutral'));
     expect(led('Men-at-Arms', ['Cup of the Morning'], 'Divine')).toBe(Math.round(plain * 1.15));
   });
-  test("the stage's order: the Standard's +2, then the Spur's ×1.25, each rounded as it goes", () => {
+  test("the stage's order: the Standard's +4, then the Spur's ×1.25, each rounded as it goes", () => {
     const plain = led('Free Lances', []);
-    expect(led('Free Lances', ['Golden Spur', 'Battle Standard'])).toBe(Math.round((plain + 2) * 1.25));
-    expect(led('Free Lances', ['Battle Standard', 'Golden Spur'])).toBe(Math.round((plain + 2) * 1.25));
+    expect(led('Free Lances', ['Golden Spur', 'Battle Standard'])).toBe(Math.round((plain + 4) * 1.25));
+    expect(led('Free Lances', ['Battle Standard', 'Golden Spur'])).toBe(Math.round((plain + 4) * 1.25));
   });
 });
 
