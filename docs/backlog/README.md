@@ -8,7 +8,7 @@ each outcome is in [the goal and the road](../the-goal-and-the-road.md). The lis
    in the top soon.
 3. [**Later**](the-later-group-what-serves-a-later-outcome-or-waits.md): first the rulings and the known defects,
    with [the rulings to build](the-rulings-decided-not-built.md); then [Phase 1's later rows](the-later-group-phase-1s-later-rows.md),
-   and the rows that serve a later outcome, or wait.
+   and the rows that serve a later outcome, or wait ([B-17's](the-b-17-group-the-bots-improvement-machinery.md) among them).
 4. [**Not yet assessed**](#not-yet-assessed): rows whose impact no one has described yet.
 
 Finished items are a record, in five files: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
@@ -66,11 +66,13 @@ B-01 (the rulings audit) and P1-21x are in the finished lists.
 
 ### 1. B-17's Run A: the bots' statistics
 
-B-17 comes before the rest of the rulings, as a maintainer placed it on 28 November: its Run A first (its rows join
-the backlog in its first row, B-17a), then KD-498, then its Run B by day with a maintainer; its Runs C and D after the
-rulings. Each row, and why it is there, is in its file:
-1. B-17 ([the ground for the redesign](the-later-group-what-serves-a-later-outcome-or-waits.md#the-ground-for-the-redesign))
+B-17 is a group ([its heading and its rows](the-b-17-group-the-bots-improvement-machinery.md#b-17-the-bots-improvement-machinery)).
+It comes before the rest of the rulings, as a maintainer placed it on 28 November: its Run A first, then KD-498, then
+its Run B, which waits for a day with a maintainer (⏸); its Runs C and D after the rulings. Each row, and why it is
+there, is in its file:
+1. B-17a, B-17b, B-17c, B-17d, B-17e, B-17f, B-17l, B-17m, B-17q, B-17r, B-17s (Run A, [B-17's file](the-b-17-group-the-bots-improvement-machinery.md#run-a-the-bots-statistics-then-the-copies-and-the-weights-first-rows))
 2. KD-498 ([Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild))
+3. B-17g, B-17h, B-17i, B-17j, B-17k (Run B, ⏸, [B-17's file](the-b-17-group-the-bots-improvement-machinery.md#run-b-the-bots-read-only-what-their-realm-sees))
 
 ### 2. The first rulings and known defects
 
