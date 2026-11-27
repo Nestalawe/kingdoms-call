@@ -36,6 +36,7 @@ import {
   theDamageAStrikersItemsAddToHisBlow,
   theCapAFightersWardsPutOnAHit,
   theHpAFightersWardsGiveBackAfterAHit,
+  theChanceAFightersWardsGiveToShrugOffAKillingBlow,
   whatAFightersWardsDoAsARoundStarts,
   whatAFightersWardsDoToAHitBeforeAllElse,
   whatAFightersWardsLeaveOfAHit,
@@ -660,6 +661,26 @@ export function pcTakeHit(
     if (d > _gCap) d = _gCap;
   }
   target.hp -= d;
+  // The Ring of the Unbroken Pulse and the Great Helm of the Deathless: once a fight, on the copy's chance, a blow that
+  // would kill him leaves him standing (R-153). The die is drawn only for a wearer struck down.
+  const _shrug = theChanceAFightersWardsGiveToShrugOffAKillingBlow({
+    theWards: _arm,
+    hisShrugHasBeenUsed: target._armShrugOffUsed,
+    hisHp: target.hp,
+  });
+  if (_shrug) {
+    target._armShrugOffUsed = true;
+    if (kcRng() < _shrug.theChance) {
+      target.hp = _shrug.theHpHeStandsAt;
+      narrate(narrative, {
+        kind: 'the target shrugs off a killing blow and stands at 1 HP',
+        targetIsAGuardian: target.kind === 'monster',
+        targetName: target.name,
+        targetsWard: aFightersWardAsTheLineTellsIt(target, _shrug.theWardTheLineNames),
+        targetHp: dispFloor(target.hp),
+      });
+    }
+  }
   if (_mkHpIn > 0 && target.hp <= 0 && target.kind === 'character' && asItsGuardReadsIt(narrative))
     target._fatalMark = {
       arr: narrative,

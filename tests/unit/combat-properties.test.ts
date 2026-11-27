@@ -12,7 +12,7 @@
 // temper, hit points and items from the game's own tables, armour as often as the rest) and any guardian, each input
 // with its own dice: a blow or an arrow never does negative damage (`pcMeleeDamage`, `pcArrowDamage`); a hit taken
 // (`pcTakeHit`, any kind, any size, through mirror images, a drinking ward, Melt Armour and a shield's ward) is never
-// negative and takes exactly that from HP, unless Last-Stand Plate's second wind heals; after any fight
+// negative and takes exactly that from HP, unless Last-Stand Plate's second wind heals or a killing blow is shrugged off; after any fight
 // (`resolvePersonalCombat`) a hero has from 0 HP to their maximum. 2,000 inputs each (20,000 in full). Level 1: each
 // function is called directly on the engine's modules (`lib/personal-combat.ts`; until P1-08e they were nested inside
 // `resolveTurn` and a turn on the GM portal handed them back). TypeScript, in `unit/`
@@ -152,8 +152,9 @@ test('a hit taken is never negative, and takes exactly what it says from HP', LI
         const before = T.hp;
         const taken = call('pcTakeHit', T, dmg, [], 'a foe', kind) as number;
         expect(taken).toBeGreaterThanOrEqual(0);
-        // Last-Stand Plate's second wind heals the wearer once, after the hit: only then may HP differ.
-        const healed = T['_armSecondWindUsed'] === true;
+        // Last-Stand Plate's second wind heals the wearer once, after the hit, and the Ring of the Unbroken Pulse or the
+        // Great Helm of the Deathless may leave him standing at 1 HP from a killing blow (R-153): only then may HP differ.
+        const healed = T['_armSecondWindUsed'] === true || T['_armShrugOffUsed'] === true;
         expect(healed ? before - taken : T.hp, 'HP after the hit').toBe(before - taken);
       },
     ),

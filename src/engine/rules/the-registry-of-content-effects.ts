@@ -568,6 +568,7 @@ export interface TheWardsAFighterWears {
   block?: number | undefined;
   cap?: number | undefined;
   secondWind?: number | undefined;
+  shrugOff?: number | undefined;
   lowHp?: number | undefined;
   firstHit?: boolean | undefined;
   dotImmune?: boolean | undefined;
@@ -673,6 +674,23 @@ export interface AFighterAsHisWardsMeetHimAfterAHit {
   readonly hisSecondWindHasBeenUsed: boolean | undefined;
   readonly hisHp: number;
   readonly hisMaximumHp: number;
+}
+
+/** What the stage "a hit lands on a fighter: a killing blow" hands an effect (pcTakeHit, once the hit is dealt, before
+ *  the second wind): the wards he wears (none: null), whether his chance to shrug off a killing blow has been used this
+ *  fight, and his hit points as the fight reads them. */
+export interface AFighterAsAKillingBlowFallsOnHim {
+  readonly theWards: TheWardsAsTheirEffectsReadThem | null;
+  readonly hisShrugHasBeenUsed: boolean | undefined;
+  readonly hisHp: number;
+}
+
+/** A ward's chance (0 to 1, which pcTakeHit draws) to shrug off a killing blow, the hit points it leaves him standing
+ *  at, and the ward the line names. */
+export interface AWardsChanceToShrugOffAKillingBlow {
+  readonly theChance: number;
+  readonly theHpHeStandsAt: number;
+  readonly theWardTheLineNames: string;
 }
 
 /** The hit points a ward gives back after a hit (once a fight), and the ward the line names. */
@@ -2779,6 +2797,10 @@ export interface TheStagesOfEachHookPoint {
     readonly 'a hit lands on a fighter: his wards cap it': (
       theHit: AHitAsAFightersWardsCapIt,
     ) => AWardsCapOnAHit | null;
+    /** A ward's chance to shrug off a blow that would kill him, once the hit is dealt (pcTakeHit), or nothing. */
+    readonly 'a hit lands on a fighter: a killing blow': (
+      theFighter: AFighterAsAKillingBlowFallsOnHim,
+    ) => AWardsChanceToShrugOffAKillingBlow | null;
     /** The hit points a ward gives back once the hit is dealt (pcTakeHit), or nothing. */
     readonly 'a hit lands on a fighter: after it': (
       theFighter: AFighterAsHisWardsMeetHimAfterAHit,

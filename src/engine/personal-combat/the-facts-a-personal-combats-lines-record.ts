@@ -909,6 +909,13 @@ export type TheFactOfAPersonalCombatsLine =
       capAt: number;
     }
   | {
+      kind: 'the target shrugs off a killing blow and stands at 1 HP';
+      targetIsAGuardian: boolean;
+      targetName: string;
+      targetsWard: AFightersWardAsTheLineTellsIt;
+      targetHp: number;
+    }
+  | {
       kind: 'the target will not go down and restores hit points';
       targetIsAGuardian: boolean;
       targetName: string;
@@ -1189,6 +1196,7 @@ export const THE_AUDIENCE_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE: {
   "the target's armour turns aside some of the harm": "the fight's",
   'the target turns aside all they can but the harm still lands': "the fight's",
   "the target's armour will not let any single hit bite deeper": "the fight's",
+  'the target shrugs off a killing blow and stands at 1 HP': "the fight's",
   'the target will not go down and restores hit points': "the fight's",
   'a fighter ignores the daze': "the fight's",
   "a fighter's armour sloughs off every burn poison and bleeding": "the fight's",
@@ -1412,6 +1420,7 @@ export const THE_TIER_OF_EACH_KIND_OF_A_PERSONAL_COMBATS_LINE: Readonly<
   "the target's armour turns aside some of the harm": 'd',
   'the target turns aside all they can but the harm still lands': 'd',
   "the target's armour will not let any single hit bite deeper": 'd',
+  'the target shrugs off a killing blow and stands at 1 HP': 'd',
   'the target will not go down and restores hit points': 'd',
   'a fighter ignores the daze': 'd',
   "a fighter's armour sloughs off every burn poison and bleeding": 'd',

@@ -6,7 +6,7 @@
 // `+2`, a share as "half" or "halved", volleys as "two volleys", extra shots as "one extra shot", a share as a
 // percentage as `10%`, gold for each province as `+1g`, `+1 gold` or "1 extra gold", skill levels added as `+1` or
 // "one level", damage turned aside as "1 less", a chance in percentage points as `5%`, a multiplier in words as
-// "doubled", damage added as `+2 damage` or "2 extra damage", the strongest units a Fireball strikes as "two strongest", rounds added as "an extra round", a multiplier as the share more as `10% more`), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
+// "doubled", damage added as `+2 damage` or "2 extra damage", the strongest units a Fireball strikes as "two strongest", rounds added as "an extra round", a multiplier as the share more as `10% more`, hit points as `1 HP`), in its desc and in its lore, with no digit just before or after it (`+2` isn't in "+25%", nor `+20%` in "+120%"), and a word whole. So a number changed in content, and not in the items' texts, turns this red, and so does a text changed
 // alone. The items read are the items in play and the Mithril suit (a dwarven birthright in no table, granted: plan
 // P1-19r). Each row with numbers is carried by some item read (else this would check nothing), but the steadfast ward's
 // (resist), which no item in play carries, listed. The rows with no number
@@ -15,14 +15,13 @@
 // Cloak's numbers, which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
 // Philosopher's Stone's power; the maximum-HP items' hit points and the temper items' temper, which each copy carries
 // itself; the wards and riders a fighter wears, whose amounts, percentages and hits each copy carries itself, but the
-// buckler's, the second wind's and the low-HP ward's shares of his maximum HP; the combat items, whose numbers each
+// buckler's, the second wind's and the low-HP ward's shares of his maximum HP and the HP a killing blow shrugged off leaves him at; the combat items, whose numbers each
 // copy carries itself, but the terror's chance, bane's double, the Lock-Pick's steal and the Warbringer Gauntlets' blow
 // (plan P1-19s); the kinds of item the treasury weighs as a whole, whose worth no text states (plan P1-19t)) are listed, so a number added to one is checked.
 // The known gaps are listed by name, each with its known defect's id, and checked to be still gaps (so the exception
 // leaves with the fix): the two relic standards say +4 and +6 and give +2 (question 20, R-148, not yet built; KD-036);
 // five siege items say "Siege bonus +1" (question 21: KD-092); no home-defence item states its ×1.25 (question 22:
-// KD-260); six second-wind items don't say it acts below 30% of the bearer's maximum HP, two of them saying it saves
-// him from a killing blow at 1 HP (question 25: KD-091); neither terror item says a foe flees half the time (question
+// KD-260); neither terror item says a foe flees half the time (question
 // 26: KD-090); the Mirror Shard says its illusions are "harder to disbelieve", not that the chance is halved (KD-087).
 // The units an item reaches are words this test can't match to a set (question 21).
 // Level 1 (unit), not static: the items in play exist only after the engine's load-time pass (src/engine/items/
@@ -41,7 +40,6 @@ import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts
 /** The items whose texts don't state their effect's number yet, by the row's slug, each with its known defect's id. */
 const SIEGE_WORDS = 'KD-092 (question 21, R-149, not yet built)';
 const HOME_DEFENCE_WORDS = 'KD-260 (question 22, R-150, not yet built)';
-const SECOND_WIND_WORDS = 'KD-091 (question 25, R-153, not yet built)';
 const TERROR_WORDS = 'KD-090 (question 26, R-154, not yet built)';
 const MIRROR_SHARD_WORDS = 'KD-087';
 const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, string>>>> = {
@@ -68,14 +66,6 @@ const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, st
     'Banded Targe': HOME_DEFENCE_WORDS,
     'Travelworn Robe': HOME_DEFENCE_WORDS,
     'Plain Round': HOME_DEFENCE_WORDS,
-  },
-  'second-wind': {
-    'Amulet of Second Breath': SECOND_WIND_WORDS,
-    'Mantle of the Second Wind': SECOND_WIND_WORDS,
-    'Ring of the Unbroken Pulse': SECOND_WIND_WORDS,
-    'Great Helm of the Deathless': SECOND_WIND_WORDS,
-    'Pendant of the Ten Thousand Eyes': SECOND_WIND_WORDS,
-    'Grey Mantlet': SECOND_WIND_WORDS,
   },
   'combat-item-terrifies': { 'Scroll of Terror': TERROR_WORDS, 'Wailing Horn': TERROR_WORDS },
   'mirror-shard': { 'Mirror Shard': MIRROR_SHARD_WORDS },
@@ -211,6 +201,8 @@ function asTheTextsWriteIt(n: ANumberOfAnItemsEffect): string[] {
       return n.value === 1 ? ['an extra round', 'one extra round'] : [`${inWords(n.value)} extra rounds`];
     case 'a multiplier, as the share more':
       return [`${String(Number(((n.value - 1) * 100).toFixed(6)))}% more`];
+    case 'hit points':
+      return [`${String(n.value)} HP`];
   }
 }
 /** A number as the texts write it, with no digit or letter just before it, nor a digit, a letter, a `%` or a decimal
@@ -298,6 +290,7 @@ test('a number is matched as the texts write it, and not inside another', () => 
     'one extra round',
   ]);
   expect(asTheTextsWriteIt({ value: 1.1, theTextsWriteIt: 'a multiplier, as the share more' })).toEqual(['10% more']);
+  expect(asTheTextsWriteIt({ value: 1, theTextsWriteIt: 'hit points' })).toEqual(['1 HP']);
   expect(states('does 10% more damage', ['10% more'])).toBe(true);
   expect(states('does 110% more damage', ['10% more'])).toBe(false);
   expect(theNumber('+2').test('Every army you lead fights +2.')).toBe(true);

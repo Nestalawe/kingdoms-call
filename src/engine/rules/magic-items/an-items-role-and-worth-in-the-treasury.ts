@@ -192,7 +192,13 @@ const aPercentage =
 /** A flag: its own worth, and a point for so many of the percentage points the copy carries beside it. */
 const aFlag =
   (
-    slug: 'stun-immunity' | 'lingering-harm-turned-aside' | 'the-first-hit-drunk' | 'second-wind' | 'buckler',
+    slug:
+      | 'stun-immunity'
+      | 'lingering-harm-turned-aside'
+      | 'the-first-hit-drunk'
+      | 'second-wind'
+      | 'a-killing-blow-shrugged-off'
+      | 'buckler',
   ): TheTreasury["an item's worth: a ward"] =>
   (theWard) => {
     const w = ROWS[slug].theWorthOfItInTheTreasury;
@@ -205,6 +211,7 @@ export const A_WARDS_WORTH = {
   'lingering-harm-turned-aside': aFlag('lingering-harm-turned-aside'),
   'the-first-hit-drunk': aFlag('the-first-hit-drunk'),
   'second-wind': aFlag('second-wind'),
+  'a-killing-blow-shrugged-off': aFlag('a-killing-blow-shrugged-off'),
   buckler: aFlag('buckler'),
   'melee-damage-turned-aside': anAmount('melee-damage-turned-aside'),
   'arrow-damage-turned-aside': anAmount('arrow-damage-turned-aside'),
