@@ -777,8 +777,8 @@ export const BOT_ROLE_ITEM_STATS = {
     'combatUse',
   ]),
   scholar: new Set(['sage', 'castSpell', 'practice']),
-  scout: new Set(['explorer', 'oracle']),
-  spy: new Set(['spy', 'hidden', 'oracle']),
+  scout: new Set(['explorer', 'spyAuto']),
+  spy: new Set(['spy', 'hidden', 'spyAuto']),
   thief: new Set(['thief', 'hidden']),
   none: new Set([]),
 };

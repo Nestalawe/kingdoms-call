@@ -146,9 +146,8 @@ const leads = (h: Character, us: Unit[]) => {
 const knows = (b: Board, i: number, ...ids: string[]) => {
   realm(b, i)['discoveries'] = ids.map((id) => ({ id }));
 };
-/** The Crystal Orb as an older save holds it (`effect:{stat:'oracle'}`, the power the Spy order reads). The relic a
- *  lair deals today names its power `spyAuto`, which nothing reads (STATUS, Parked). */
-export const oldCrystalOrb = (b: Board): Item => ({ ...item(b, 'Crystal Orb'), effect: { stat: 'oracle', bonus: 1 } });
+/** The Crystal Orb as a lair deals it (the relic's own entry, its power `spyAuto`). */
+export const theCrystalOrb = (b: Board): Item => item(b, 'Crystal Orb');
 /** The Cloak of Many Faces as an older save holds it (`effect:{stat:'hidden'}`, the power the Spy order reads). The
  *  relic a lair deals today names its power `untargetable`, which nothing reads (STATUS, Parked). */
 export const oldCloakOfManyFaces = (b: Board): Item => ({
@@ -222,34 +221,18 @@ export const SPY_ON_A_PROVINCE_ORDER_CASES: EspionageOrderCase[] = [
     },
   },
   {
-    name: 'Spy: a Crystal Orb (as an older save holds it) makes it certain for a hero of no Spy',
+    name: 'Spy: a Crystal Orb (as a lair deals it) makes it certain for a hero of no Spy',
     dice: UNLUCKY,
     stage(b) {
       b.own(b.X, 1);
       const s = spyHere(b, 0);
-      holding(s.hero, oldCrystalOrb(b));
+      holding(s.hero, theCrystalOrb(b));
       return s;
     },
     check(o, s) {
       return {
         got: { roll: spyRoll(o, s, 0, 'automatic success (Crystal Orb)'), learned: learned(o, s, realmName(o, 1)) },
         want: { roll: true, learned: true },
-      };
-    },
-  },
-  {
-    name: 'Spy: the Crystal Orb a lair deals today makes nothing certain (its power is read by nothing)',
-    dice: UNLUCKY,
-    stage(b) {
-      b.own(b.X, 1);
-      const s = spyHere(b, 0);
-      holding(s.hero, item(b, 'Crystal Orb'));
-      return s;
-    },
-    check(o, s) {
-      return {
-        got: { roll: spyRoll(o, s, 0, '20% [roll 100 ✗]'), missed: missed(o, s) },
-        want: { roll: true, missed: true },
       };
     },
   },

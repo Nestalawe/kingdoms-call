@@ -293,11 +293,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: { goldForEachProvince: { value: 1, theTextsWriteIt: 'gold, for each province' } },
   },
   // ── A hero's items in his orders (orderOutcome), each in its order's resolver. ──
-  // His Spy order succeeds without a roll. Only an older save's copy carries `oracle`: the relic a lair deals today
-  // carries `spyAuto`, which nothing reads (KD-048).
+  // His Spy order succeeds without a roll. The relic a lair deals carries `spyAuto`.
   'crystal-orb': {
     name: 'Crystal Orb',
-    carriedAs: { stat: 'oracle' },
+    carriedAs: { stat: 'spyAuto' },
     numbers: {},
   },
   // His Explore order reveals one more lair of the province the map hasn't reached (the order draws which).

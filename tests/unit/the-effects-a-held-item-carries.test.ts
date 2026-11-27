@@ -24,7 +24,7 @@ const carries = theEffectsAnItemCarries;
 describe('the effects a held item carries', () => {
   test("by its effect's key: the effects of that key, and none for a key no effect has or no key", () => {
     expect(carries({ effect: { stat: 'cavBonus' } })).toEqual(['cavalry-bonus']);
-    expect(carries({ effect: { stat: 'oracle' } })).toEqual(['crystal-orb']);
+    expect(carries({ effect: { stat: 'spyAuto' } })).toEqual(['crystal-orb']);
     expect(carries({ effect: { stat: 'primalStrike' } })).toEqual(['strike-chance-bonus']);
     expect(carries({ effect: { stat: 'no such key' } })).toEqual([]);
     expect(carries({ effect: { stat: null } })).toEqual([]);

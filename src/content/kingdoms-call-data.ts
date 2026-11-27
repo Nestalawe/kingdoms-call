@@ -6094,11 +6094,12 @@ export const ALL_MAGIC_ITEMS_P = [
     effect: { stat: 'spy', bonus: 2 },
     tier: 2,
   },
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
   {
     name: 'Crystal Orb',
     desc: 'Spy always succeeds — no roll needed',
     lore: 'A flawless sphere in which distant halls and whispered councils appear at a thought. A LEGENDARY relic: every Spy order you give succeeds automatically, with no roll needed.',
-    effect: { stat: 'oracle', bonus: 1 },
+    effect: { stat: 'spyAuto' },
     tier: 3,
   },
   {

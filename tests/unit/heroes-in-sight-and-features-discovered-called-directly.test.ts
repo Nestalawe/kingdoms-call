@@ -156,7 +156,7 @@ describe('a hero whose items hide his face can’t be named by an Encounter Char
     expect(theReasonFor([{ ...oldCloak, equipped: true }])).toBe('faceless');
   });
   test('with another item, or none, he can be named', () => {
-    expect(theReasonFor([{ id: 8, name: 'Crystal Orb', effect: { stat: 'oracle', bonus: 1 } }])).toBeNull();
+    expect(theReasonFor([{ id: 8, name: 'Crystal Orb', effect: { stat: 'spyAuto' } }])).toBeNull();
     expect(theReasonFor([])).toBeNull();
   });
 });

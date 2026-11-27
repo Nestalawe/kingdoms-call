@@ -168,7 +168,7 @@ A **magic item's effect** (from P1-19m) is one row in
   copy, an effect returns gold (the Ring of Wealth and its kin: the copy's own `effect.bonus`) or gold for each province
   the realm holds (the Merchant's Ledger: 1); the runner sums the gold hero by hero, item by item, and counts the most
   any one item gives for each province once, and `capItemTaxGold` caps the two as before. `orderOutcome`'s five, one per
-  order: **a spy's sure success** (an older save's Crystal Orb, `oracle`), **a lair revealed when exploring** (the
+  order: **a spy's sure success** (the Crystal Orb, `spyAuto`), **a lair revealed when exploring** (the
   Philosopher's Lens: the order still draws which lair), **a rest's heal** (the Iron Heart Talisman: a tenth of his
   maximum, rounded, once however many he carries), **a move's exploration** (the Traveller's Cloak: the copy's own
   `exploreMove`, every item's added) and **an item's power used** (the Philosopher's Stone, `promoteAll`:
