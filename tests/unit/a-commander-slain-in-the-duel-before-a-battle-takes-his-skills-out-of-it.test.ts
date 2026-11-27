@@ -3,9 +3,10 @@
 // played in both kinds of battle on one staged field: realm 0's king attacks a free plain, either its guards
 // (combatVsNPC), led by realm 1's king made a warlord of no realm, or realm 1's king's own host (combatVsChar). Both
 // realms and both kings are Neutral (no alignment waives a beast's Druid), and carry no items. The duel's outcome is
-// fixed: the duel before the battle (preBattleDuel, stood in by vi.spyOn) slays the attacker, or no duel is fought.
+// fixed: the duel before the battle (preBattleDuel, stood in by vi.spyOn) slays the attacker, or (between hosts) the
+// defending commander, or no duel is fought.
 // What each case reads depends on no die: the strength ladder's reasons on his Cave Trolls (Druid 4 to lead), and the
-// Archery each of his Yeoman Longbows' shots is weighed with (applyMissileHit, stood in likewise, calling the real
+// Archery each Yeoman Longbows' shot is weighed with (applyMissileHit, stood in likewise, calling the real
 // one). Every other die is a fixed stream's (kcRng.use), so the battle plays the same under any KC_SEED.
 // Level 1 (unit): the battles called directly, no turn played. Not lower: each rule sits inside a battle's stages.
 // Not higher: a turn adds dice before the battle and nothing the rule reads.
@@ -89,20 +90,26 @@ const aCompany = (type: string, race: string, unitName: string): ArmyInABattle =
   unitName,
 });
 
-/** What the battle shows: its lines, and the Archery each of the attacker's shots was weighed with. */
+/** What the battle shows: its lines, and the Archery each of the attacker's shots, and each of the defenders', was
+ *  weighed with. */
 interface WhatTheBattleShows {
   readonly narrative: readonly NarrativeLine[];
   readonly theArcheryOfHisShots: readonly unknown[];
+  readonly theArcheryOfTheirShots: readonly unknown[];
 }
 
-/** The battle staged: the attacker (his skills given, every other skill 0) leads his host against the defenders (led
- *  by a commander of no skills), and the duel before it slays him, or no duel is fought. */
+/** The battle staged: the attacker (his skills given, every other skill 0) leads his host against the defenders
+ *  (Men-at-Arms, unless given, led by a commander of the skills given, every other 0), and the duel before it slays
+ *  him, or their commander, or no duel is fought. */
 function aBattle(
   battle: 'against the guards' | 'between two hosts',
   staging: {
     readonly theAttackersHost: readonly ArmyInABattle[];
     readonly hisSkills: Readonly<Record<string, number>>;
     readonly theDuelSlaysHim: boolean;
+    readonly theDefendersHost?: readonly ArmyInABattle[];
+    readonly theirSkills?: Readonly<Record<string, number>>;
+    readonly theDuelSlaysTheirCommander?: boolean;
   },
 ): WhatTheBattleShows {
   const G = JSON.parse(THE_WORLD) as World;
@@ -135,19 +142,28 @@ function aBattle(
   }
   atk.armies = [...staging.theAttackersHost];
   atk.skills = { ...atk.skills, ...noSkills, ...staging.hisSkills };
-  def.skills = { ...def.skills, ...noSkills };
-  const theDefenders = [aCompany('Men-at-Arms', 'Human', 'the Mill Watch')];
+  def.skills = { ...def.skills, ...noSkills, ...staging.theirSkills };
+  const theDefenders = [...(staging.theDefendersHost ?? [aCompany('Men-at-Arms', 'Human', 'the Mill Watch')])];
 
-  // the duel before the battle: it slays the attacker (he dies, as a duel's loser does), or none is fought
+  // the duel before the battle: it slays the attacker, or their commander (he dies, as a duel's loser does), or none
+  // is fought
   const theDuel = vi.spyOn(duels, 'preBattleDuel').mockImplementation(() => {
-    if (!staging.theDuelSlaysHim) return { atkMorale: 1, defMorale: 1 };
-    atk.alive = false;
-    return { atkMorale: 1, defMorale: 1, atkSlain: true, defSlain: false };
+    if (staging.theDuelSlaysHim) {
+      atk.alive = false;
+      return { atkMorale: 1, defMorale: 1, atkSlain: true, defSlain: false };
+    }
+    if (staging.theDuelSlaysTheirCommander) {
+      def.alive = false;
+      return { atkMorale: 1, defMorale: 1, atkSlain: false, defSlain: true };
+    }
+    return { atkMorale: 1, defMorale: 1 };
   });
   const theArcheryOfHisShots: unknown[] = [];
+  const theArcheryOfTheirShots: unknown[] = [];
   const realHit = strength.applyMissileHit;
   const theHits = vi.spyOn(strength, 'applyMissileHit').mockImplementation((...args) => {
     if (args[2] && atk.armies.includes(args[2])) theArcheryOfHisShots.push(args[1]);
+    if (args[2] && theDefenders.includes(args[2])) theArcheryOfTheirShots.push(args[1]);
     return realHit(...args);
   });
   const was = kcRng.use(kcRngStream(7));
@@ -174,7 +190,7 @@ function aBattle(
     theDuel.mockRestore();
     theHits.mockRestore();
   }
-  return { narrative, theArcheryOfHisShots };
+  return { narrative, theArcheryOfHisShots, theArcheryOfTheirShots };
 }
 
 const BATTLES = ['against the guards', 'between two hosts'] as const;
@@ -212,6 +228,27 @@ describe.for(BATTLES)("A commander slain in the duel takes his Archery out of hi
     expect(alive.length).toBeGreaterThan(0);
     expect(new Set(alive)).toEqual(new Set([5]));
     const slain = theArcheryOfHisShots(true);
+    expect(slain.length).toBeGreaterThan(0);
+    expect(new Set(slain)).toEqual(new Set([0]));
+  });
+});
+
+describe("A defending commander slain in the duel takes his Archery out of his bowmen's volley, between two hosts", () => {
+  /** The Archery each of the defending commander's Longbows' shots before the battle is weighed with. */
+  const theArcheryOfTheirShots = (theDuelSlaysTheirCommander: boolean) =>
+    aBattle('between two hosts', {
+      theAttackersHost: [aCompany('Men-at-Arms', 'Human', 'the First Shields')],
+      hisSkills: { archery: 5 },
+      theDuelSlaysHim: false,
+      theDefendersHost: [aCompany('Yeoman Longbows', 'Human', 'the Mill Bows')],
+      theirSkills: { archery: 4 },
+      theDuelSlaysTheirCommander,
+    }).theArcheryOfTheirShots;
+  test('their Yeoman Longbows shoot under his Archery 4 while he lives, and under none once he is slain', () => {
+    const alive = theArcheryOfTheirShots(false);
+    expect(alive.length).toBeGreaterThan(0);
+    expect(new Set(alive)).toEqual(new Set([4]));
+    const slain = theArcheryOfTheirShots(true);
     expect(slain.length).toBeGreaterThan(0);
     expect(new Set(slain)).toEqual(new Set([0]));
   });
