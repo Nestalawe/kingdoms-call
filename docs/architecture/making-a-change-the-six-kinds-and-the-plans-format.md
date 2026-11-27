@@ -36,11 +36,13 @@ for the maintainers; the rest can be technical.
 1. Kind and purpose      One line each: which kind, and what it is for.
 2. What stays the same   What must not change (below, by kind).
 3. The rows              One row per item (below).
-4. Questions             Numbered; each option with its impact, an assessment, and a short example from the game.
+4. Questions             Numbered, in the questions' shape (below).
 5. Proof                 How we will know it is done: the checks and what each must show.
 6. The pull requests     How it splits; each PR's branch, title, labels, and who must look (a maintainer, dangerous paths).
 7. After                 What happens once each PR is merged.
 ```
+
+**The questions** take [the questions' shape](../questions-for-the-maintainers.md#how-a-question-is-written-and-kept).
 
 **A row** says:
 - what the item is, in game terms;

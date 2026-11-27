@@ -8,9 +8,24 @@ the question (for example "2026-11-20: (1)"). Then click **Commit changes**.
 
 ## How a question is written and kept
 
-- **Written** as a design fork: numbered options, each with its impact on play, then an agent's assessment, and a
-  short example from inside the game, with made-up names ([CLAUDE.md](../CLAUDE.md#rules), "Design forks go to the
-  maintainers"). Either maintainer answers.
+- **Written** as a design fork ([CLAUDE.md](../CLAUDE.md#rules), "Design forks go to the maintainers"), in this
+  shape, about 700 bytes a question. Either maintainer answers.
+
+  ```markdown
+  ## N. The question, in game terms?
+
+  Found on <date> (<row or PR>). *Unlocks:* <what the answer lets us build>.
+
+  1. **<Option> (as built).** <its impact on play, one line>
+  2. **<Option>.** <its impact on play, one line>
+
+  *Assessment:* (n), <one reason>. *Example:* <one line from inside the game, made-up names>.
+
+  *Touches:* <R-NNN, by id, or "none">
+  ```
+
+  The option the game follows today says "(as built)". Detail that doesn't fit stays in the pull request that asks
+  the question, or in the ruling's Open line, and the question links there.
 - **Kept here** with what its answer unlocks, so that the questions are answered together, in one sitting
   ([the decision](decisions/README.md#the-decisions-on-how-the-work-runs), "Questions stored, asked in one sitting").
 - **Checked against the rulings:** each question ends with a line *Touches:*, the rulings it was checked against

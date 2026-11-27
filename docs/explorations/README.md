@@ -14,7 +14,7 @@ One file a proposal, `docs/explorations/<name>.md`, in this order:
 
 1. **The proposal**, in game terms, and where it came from (made-up names only).
 2. **Its state:** open, or decided (and by which ruling).
-3. **The questions for the maintainers**, each option with its impact, an assessment and an example; the answers, once given.
+3. **The questions for the maintainers**, in [their shape](../questions-for-the-maintainers.md#how-a-question-is-written-and-kept); the answers, once given.
 4. **Every rule it changes against `main`**, each with where it lives today. Rules the proposal doesn't mention
    come too: they were part of what was measured.
 5. **How it was measured** (bot games, hand-played games, their seeds and sizes) and the results, each with the rules
