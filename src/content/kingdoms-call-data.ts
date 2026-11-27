@@ -7374,8 +7374,8 @@ export const ALL_MAGIC_ITEMS_P = [
   // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
   {
     name: "Philosopher's Stone",
-    desc: 'Once per game: instantly promote all armies one quality tier',
-    lore: "The alchemists' great prize: it turns raw levies into seasoned soldiers as surely as lead into gold. A LEGENDARY relic, usable once per game: instantly promote all your armies one quality tier.",
+    desc: 'Once per game: instantly promote all armies one quality tier (skeletal companies are never promoted)',
+    lore: "The alchemists' great prize: it turns raw levies into seasoned soldiers as surely as lead into gold. A LEGENDARY relic, usable once per game: instantly promote all your armies one quality tier. Skeletal companies are never promoted: the dead do not learn.",
     effect: { stat: 'promoteAll' },
     tier: 3,
   },
@@ -9659,8 +9659,8 @@ export const LEGENDARY_ITEMS_P = [
   },
   {
     name: "Philosopher's Stone",
-    desc: 'Once per game: instantly promote all armies one quality tier',
-    lore: 'Small, dull and warm, and worth more than any province. Once in the whole game, every army of your realm is promoted one experience level on the instant.',
+    desc: 'Once per game: instantly promote all armies one quality tier (skeletal companies are never promoted)',
+    lore: 'Small, dull and warm, and worth more than any province. Once in the whole game, every army of your realm is promoted one experience level on the instant; skeletal companies are never promoted.',
     effect: { stat: 'promoteAll' },
     tier: 4,
     _unscorable: true,

@@ -319,7 +319,8 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { field: 'exploreMove' },
     numbers: {},
   },
-  // Used (a Use Item order, and the bots' plan), every unit of his realm, led or in a garrison, rises a quality tier
+  // Used (a Use Item order, and the bots' plan), every unit of his realm, led or in a garrison, rises a quality tier, but
+  // a skeletal one (R-191: its texts say so)
   // (from the tables: no number here). The relic a lair deals carries `promoteAll`; the order form offers it to use.
   'philosophers-stone': {
     name: "Philosopher's Stone",

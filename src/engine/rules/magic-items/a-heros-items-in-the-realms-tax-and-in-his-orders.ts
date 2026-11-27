@@ -42,7 +42,7 @@ export const A_MOVES_EXPLORATION = {
 } satisfies Partial<Record<MagicItemEffectSlug, AnOrdersOutcome["a move's exploration"]>>;
 
 export const AN_ITEMS_POWER_USED = {
-  // Philosopher's Stone: used, every unit of the realm rises a quality tier.
+  // Philosopher's Stone: used, every unit of the realm rises a quality tier but a skeletal one (R-191).
   'philosophers-stone': () => 'every unit of the realm rises a quality tier',
   // A spell charm (Phial of the Dawn and its kin): used, it casts the spell it holds (plan P1-19y).
   'a-spell-charm': () => 'it casts the spell it holds',

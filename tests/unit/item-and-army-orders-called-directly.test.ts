@@ -257,7 +257,9 @@ describe('Use Item, called directly: the Philosopher’s Stone as a lair deals i
     const h = bearer(b, [skeletal()]);
     play(b, h, o('use_item', STONE));
     expect({
-      told: textOf(b, h).includes('your realm has no armies in the field or in garrison. The Stone is NOT spent'),
+      told: textOf(b, h).includes(
+        'your realm has no living armies in the field or in garrison. The Stone is NOT spent',
+      ),
       pack: pack(h),
     }).toEqual({ told: true, pack: [STONE] });
   });

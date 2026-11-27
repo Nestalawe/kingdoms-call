@@ -67,3 +67,27 @@ march for Sir Aldric; the GM's tab runs the turn at 21:00.
 
 *Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
 deadline are refused).
+
+## 167. Does a Philosopher's Stone already found take the Stone's new words?
+
+Found on 2026-11-27.
+
+[R-191](rulings/R-191-the-philosophers-stones-text-says-the-skeletal-companies-are-left-out.md) gives the Stone words
+that say skeletal companies are not promoted. A Stone found before the change keeps the words it was found with: King
+Aldric found one three turns ago, and his pack still reads "promote all armies one quality tier". The turn works it
+the same either way.
+
+1. **It keeps its words.** Impact: nothing changes for a Stone already found; one found from now on has the new words.
+   This is how the game works now.
+2. **It takes the new words at the head of the next turn,** as the Ring and the Helm do
+   ([R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md)). Impact:
+   Aldric's pack reads the new words from the next turn; the Stone works as before.
+
+*Assessment:* option 2: the words a player reads match what the Stone does, at the cost of one more effect in the list
+of those every copy takes from its row.
+
+*Unlocks:* R-191's open point.
+
+*Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) (every
+copy of the Ring and the Helm takes its row's words) and
+[R-191](rulings/R-191-the-philosophers-stones-text-says-the-skeletal-companies-are-left-out.md) (the Stone's words).
