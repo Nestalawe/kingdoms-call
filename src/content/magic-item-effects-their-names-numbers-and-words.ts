@@ -320,11 +320,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: {},
   },
   // Used (a Use Item order, and the bots' plan), every unit of his realm, led or in a garrison, rises a quality tier
-  // (from the tables: no number here). Only an older save's copy carries `massPromote`: the relic a lair deals today
-  // carries `promoteAll`, which nothing reads (KD-047).
+  // (from the tables: no number here). The relic a lair deals carries `promoteAll`; the order form offers it to use.
   'philosophers-stone': {
     name: "Philosopher's Stone",
-    carriedAs: { stat: 'massPromote' },
+    carriedAs: { stat: 'promoteAll' },
     numbers: {},
   },
   // The first Necromancy spell its bearer casts each turn cannot fail (plan P1-19y: the spells family's).

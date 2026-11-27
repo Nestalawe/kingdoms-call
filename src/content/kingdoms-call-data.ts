@@ -7375,7 +7375,7 @@ export const ALL_MAGIC_ITEMS_P = [
     name: "Philosopher's Stone",
     desc: 'Once per game: instantly promote all armies one quality tier',
     lore: "The alchemists' great prize: it turns raw levies into seasoned soldiers as surely as lead into gold. A LEGENDARY relic, usable once per game: instantly promote all your armies one quality tier.",
-    effect: { stat: 'massPromote', bonus: 1 },
+    effect: { stat: 'promoteAll' },
     tier: 3,
   },
   {

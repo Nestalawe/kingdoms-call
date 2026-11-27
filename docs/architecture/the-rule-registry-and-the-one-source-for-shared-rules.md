@@ -171,7 +171,7 @@ A **magic item's effect** (from P1-19m) is one row in
   order: **a spy's sure success** (an older save's Crystal Orb, `oracle`), **a lair revealed when exploring** (the
   Philosopher's Lens: the order still draws which lair), **a rest's heal** (the Iron Heart Talisman: a tenth of his
   maximum, rounded, once however many he carries), **a move's exploration** (the Traveller's Cloak: the copy's own
-  `exploreMove`, every item's added) and **an item's power used** (an older save's Philosopher's Stone, `massPromote`:
+  `exploreMove`, every item's added) and **an item's power used** (the Philosopher's Stone, `promoteAll`:
   the Use Item order and the bots' plan both ask it, and the order does the promoting). `visibility`'s **a hero's items
   hide his face** (P1-19am, `magic-items/a-heros-items-in-what-a-realm-sees.ts`: an older save's Cloak of Many Faces),
   for `isHiddenChar`, the Spy order and the Encounter.

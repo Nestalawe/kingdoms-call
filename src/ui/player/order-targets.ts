@@ -29,6 +29,7 @@ import {
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { KC_HEX_DIRS } from '../../content/kingdoms-call-data.ts';
 import { ALIGNMENT_ABILITIES } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
+import { MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import { L79_ORDERS } from './l79-orders.ts';
 import { CONSECRATED_GROUND_IN_THE_CONSECRATE_HINT } from './the-words-the-player-portal-writes-of-an-alignments-rule-read-from-its-rows.ts';
 import {
@@ -1186,7 +1187,11 @@ export function buildTargetField(c: AHeroAsTheTargetFieldsReadHim, ph: number, s
         <input type="hidden" id="po-target-${c.id}-${ph}" value="${init.join(',')}"></div>`;
     }
     case 'Use Item': {
-      const ACTIVE_ITEM_STATS = new Set<string | undefined>(['massPromote', 'castSpell']);
+      // the powers a Use Item order works, by the names their content rows give them
+      const ACTIVE_ITEM_STATS = new Set<string | undefined>([
+        MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS['philosophers-stone'].carriedAs.stat,
+        MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS['a-spell-charm'].carriedAs.stat,
+      ]);
       // Items received via Give Item in an earlier phase are usable here too.
       const active = predictedItems(c.id, ph).filter((it): it is AnItem =>
         Boolean(it?.effect && ACTIVE_ITEM_STATS.has(it.effect.stat) && !it._spent),

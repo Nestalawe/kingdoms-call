@@ -12,7 +12,7 @@
 //               whose value the report makes from the state).
 //   truth       a copy or a forecast on the report's value, the engine's function or the turn on the state's: whether
 //               the portal tells the player what the turn will do; where it is known to disagree (a forecast limit
-//               the rulings accept, R-128 and R-134; or the used Stone, which waits on KD-047), the difference is
+//               the rulings accept, R-128 and R-134; or the used Stone, which waits on KD-507), the difference is
 //               pinned exactly.
 // The engine's functions and the forecasts are imported directly, with no vm (P1-11a1, P1-11e43).
 //
@@ -2079,7 +2079,7 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: TheForecasts): ASearc
 // province holds unled (projectedGarrison, which the Pick Up field reads), with the units a Recruit musters
 // (_projRecruitUnits) and where each musters (since P1-11e19 the turn's rule). Each runs as the portal's own code,
 // on the orders staged in its fields; the turn's side is its phases, played one at a time as its loop plays them. Where
-// the forecast disagrees with the turn (the used Stone, which waits on KD-047: R-129), the difference is pinned exactly:
+// the forecast disagrees with the turn (the used Stone, which waits on KD-507: R-129), the difference is pinned exactly:
 // each case says which kind it is.
 
 /** The kinds of staged holding: those the forecast and the turn agree on (since P1-11e19 a beast recruited, handed
@@ -2088,7 +2088,7 @@ export function aSearchLairAfterEachMarchTheTurnRefuses(c: TheForecasts): ASearc
  *  to a comrade who marches in that phase, at once, and the items of a phase handed over in the turn's order of its
  *  heroes; since P1-11z1 a chain of company hand-overs in one phase, the comrade handing on what he was handed), and
  *  the one it is known to get wrong (R-129; not a forecast limit): the Philosopher's Stone used (the turn destroys
- *  it; it waits on KD-047). */
+ *  it; KD-507). */
 export const THE_HOLDINGS_THE_FORECAST_GETS_RIGHT = [
   'items handed to a comrade beside him',
   'an item sent by courier to a comrade elsewhere',
@@ -2227,12 +2227,8 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
     return { ...copyOf(it), id: itemId++ };
   };
   const [first, second, third, fourth] = [anItem(items[0]), anItem(items[1]), anItem(items[2]), anItem(items[3])];
-  // the Philosopher's Stone as an older save's copy carries it, the copy Use Item works (the relic a lair deals today
-  // carries a power nothing reads: KD-047)
-  const stone = {
-    ...anItem(catalogue().find((it) => it['name'] === "Philosopher's Stone")),
-    effect: { stat: 'massPromote' },
-  };
+  // the Philosopher's Stone as a lair deals it
+  const stone = anItem(catalogue().find((it) => it['name'] === "Philosopher's Stone"));
   const mithril = anItem(catalogue().find(anItemIsTheMithrilSuit));
   const classes: Record<string, readonly string[]> = KC_UNIT_CLASS;
   const [beast, otherBeast] = [classes['creature']?.[0], classes['creature']?.[1]];
@@ -2517,7 +2513,7 @@ export function holdingWorld(): { world: World; holdings: AStagedHolding[] } {
       },
     );
   }
-  // the one the forecast gets wrong (R-129: it waits on KD-047; not a forecast limit)
+  // the one the forecast gets wrong (R-129: KD-507; not a forecast limit)
   {
     // (a company of the realm for it to raise a tier, so it is spent)
     const p = aProvince();

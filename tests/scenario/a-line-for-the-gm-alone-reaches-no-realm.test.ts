@@ -15,7 +15,7 @@
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
 // A line for the GM alone reaches no realm (P1-23, entry 7): in a real turn
 // (`lib/a-staged-turn-on-the-engines-modules.ts`, from `KC_SEED`, a report for every realm) a king works the
-// Philosopher's Stone (as an older save holds it) while a lair holds another; the GM's log has the note of the Stone
+// Philosopher's Stone (as a lair deals it) while a lair holds another; the GM's log has the note of the Stone
 // struck from the hoards, the king's realm reads its own account of the working, and neither realm's report holds the
 // note. Certain on every world: working the Stone rolls no die the test reads. Level 2 because who reads a line is
 // decided by the order that writes it and by the views that build the reports, which only a whole turn joins
@@ -57,9 +57,8 @@ interface Staged {
 async function aTurnInWhichRealm0WorksTheStone() {
   const sc = await aStagedTurnOnTheEnginesModules({ seed: SEED });
   sc.reportEveryRealm();
-  // the Stone as an older save holds it: the one a lair deals today can't be worked (STATUS, Parked), and the note is
-  // written only once one is
-  const stone = (id: number): Item => ({ name: STONE, id, tier: 3, effect: { stat: 'massPromote', bonus: 1 } });
+  // the Stone as a lair deals it
+  const stone = (id: number): Item => ({ name: STONE, id, tier: 4, effect: { stat: 'promoteAll' } });
   return sc.turn<Staged, { king: Character }>({
     realms: 2,
     prepare(S) {

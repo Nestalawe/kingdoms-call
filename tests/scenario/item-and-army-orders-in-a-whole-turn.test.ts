@@ -14,7 +14,7 @@
 // `lib/item-and-army-order-cases.ts`, in game terms. Equip Items: the named are worn, the rest taken off, a slot's
 // limit kept (the first named wins, the rest told), an empty slot filled again, by name or id, never another folk's
 // item. Use Item: refused for a hero held by a Charm or an item he lacks; a passive item needs no using; the
-// Philosopher's Stone as a lair yields it today is called passive (Parked: it can't be worked); an older save's Stone
+// Philosopher's Stone as a lair deals it is worked, not called passive; the Stone
 // raises every company the realm leads and garrisons one grade (the dead, the Elite and other realms' left), is not
 // spent on nothing, is gone, every realm told, every other copy struck from the hoards. Send Item: refused for a
 // charmed giver or taker, nobody, a hire card not in service, another realm's or a fallen hero, himself, nothing that

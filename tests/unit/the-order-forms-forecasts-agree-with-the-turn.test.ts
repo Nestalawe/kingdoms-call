@@ -3,7 +3,7 @@
 // lead and a garrison will hold, the order list it offers him, its treasury ledger and its Practice Skill note, each on
 // a staged world in the engine's shape handed through the report's own projection, against what the turn does with the
 // same orders; each difference that stays is pinned: a forecast limit the rulings accept (R-128, R-134), or the
-// Stone, which waits on KD-047 (R-129). The forecasts' and the ledger's files
+// Stone, which waits on KD-507 (R-129). The forecasts' and the ledger's files
 // (src/ui/player/the-order-forms-forecast-…, the-order-forms-ledger-…, P1-11e41, e42) read the report and the orders
 // handed them, so the checks of tests/lib/the-worlds-and-the-checks-of-the-portals-forecasts-and-copies-against-the-turn.ts
 // ask them on the orders staged, made into the snapshot the page's form holds (theOrdersAsTheFormHoldsThem).
@@ -23,7 +23,7 @@
 // them: items handed over, sent by courier and passed on, companies recruited, handed over, left, taken up and
 // disbanded, the beast command, a garrison band, risen dead, a season's heroes in the turn's order (their items, and
 // since P1-11z1 a chain of company hand-overs); the Move note's column and the Pick Up field's garrison as the turn
-// gives them; pinned where it is not: the Stone, which waits on KD-047 (R-129; not a forecast limit). Each of the 46
+// gives them; pinned where it is not: the Stone, which waits on KD-507 (R-129; not a forecast limit). Each of the 46
 // names of the order list is the order `normaliseAction` reads it as, and on staged heroes of realm 0 under each creed
 // the list offered is what `processOrder` lets him give. The treasury ledger says what the turn spends and adds to
 // Early Winter's wages (R-134), pinned where it can't know (a forecast limit, R-134: the Host-Leader on a report that
@@ -205,10 +205,9 @@ describe('what a hero holds: what the order form says he will carry and lead, an
     expect(field).toHaveLength(1);
   });
 
-  test('what the forecast gets wrong is pinned: the Stone, which waits on KD-047 (R-129; not a forecast limit)', () => {
-    // The form replays the orders, not the turn's checks: the Philosopher's Stone used is destroyed (as an older save's
-    // copy carries it: the one Use Item works), and the form keeps it in his pack. The form follows the turn (R-129)
-    // once the Stone works (KD-047).
+  test('what the forecast gets wrong is pinned: the Stone, which waits on KD-507 (R-129; not a forecast limit)', () => {
+    // The form replays the orders, not the turn's checks: the Philosopher's Stone used is destroyed, and the form keeps
+    // it in his pack. The form follows the turn (R-129) once its replay works the Stone (KD-507).
     const list = holdings();
     expect(
       list.map((x) => x.kind).filter((k) => !(THE_HOLDINGS_THE_FORECAST_GETS_RIGHT as readonly string[]).includes(k)),
