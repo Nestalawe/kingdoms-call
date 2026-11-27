@@ -64,7 +64,7 @@
     "fsevents": false
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.119.0"
+    "@supabase/supabase-js": "2.119.2"
   },
   "overrides": {
     "minimatch": "11.0.7"
