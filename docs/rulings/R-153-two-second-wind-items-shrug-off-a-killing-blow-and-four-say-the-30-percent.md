@@ -7,9 +7,11 @@
 
 The Ring of the Unbroken Pulse and the Great Helm of the Deathless do what their texts say: a chance to shrug off a
 killing blow and stand at 1 HP, which can save the wearer once a fight. A failed roll doesn't spend it: he rolls at
-each killing blow until it has saved him once (a maintainer's answer, 27 November). The other second-wind items keep their rule (the first time
-the bearer falls below 30% of his hit points in a fight, he recovers a share of his maximum), and their texts say
-the 30%. Example: a killing blow falls on Sir Aldric, who wears the Ring; on its chance he stands at 1 HP instead.
+each killing blow until it has saved him once. Only a blow is shrugged off: a burn, poison or bleeding that kills him
+at a round's start is not (a maintainer's answers, 27 November). The other second-wind items keep their rule (the
+first time the bearer falls below 30% of his hit points in a fight, he recovers a share of his maximum), and their
+texts say the 30%. Example: a killing blow falls on Sir Aldric, who wears the Ring; on its chance he stands at 1 HP
+instead.
 
 Every copy already in a running game (a hero's items, a lair's hoard, a realm's vault) changes too: at the start of
 each turn it takes its item's effect and words, so an older Ring or Helm loses its second wind, and the four other

@@ -1,7 +1,8 @@
 // The Ring of the Unbroken Pulse and the Great Helm of the Deathless shrug off a killing blow (R-153): on the item's
 // chance (the Ring's 15%, the Helm's 20%: each copy's own, as its texts say), a blow that would leave the wearer at 0
 // HP or below leaves him standing at 1 HP instead, and the line says so; it saves him once a fight, and a failed roll
-// leaves the chance for the next killing blow. Neither gives HP back when he
+// leaves the chance for the next killing blow. Only a blow: a lingering harm that kills him at a round's start draws
+// no roll. Neither gives HP back when he
 // first falls below 30% of his maximum (the other second-wind items' rule, which Last-Stand Plate keeps).
 //
 // Level 1 (unit): pcTakeHit called directly on a staged fighter (a guardian of no perks, 20 HP, tests/lib/
@@ -21,6 +22,8 @@ const { pcApplyFx, pcMonsterCombatant } =
   await import('../../src/engine/personal-combat/speed-encounter-plans-and-combatants.ts');
 const { pcArmourOf } = await import('../../src/engine/personal-combat/helpers.ts');
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
+const { pcRoundStart } = await import('../../src/engine/personal-combat/to-hit-wounds-stuns-and-courage.ts');
+const { kcRng } = await import('../../src/engine/rng.ts');
 
 /** An item in play, by its name. */
 function theItem(name: string) {
@@ -97,4 +100,23 @@ test('a hero wearing the Ring (pcCharCombatant) shrugs off a killing blow at a d
 
 test('a blow on a fighter already at 0 HP raises no one: the chance waits for a blow that strikes him down', () => {
   expect(aBlow(aWearer('Ring of the Unbroken Pulse', 0), 3, 0).hp).toBeLessThanOrEqual(0);
+});
+
+test("only a blow is shrugged off: a burn at the round's start that kills him draws no roll, and he falls", () => {
+  const wearer = aWearer('Ring of the Unbroken Pulse', 4);
+  wearer.status.dot = [{ dmg: 8, rounds: 2, source: { kind: 'a spell that burns', spellName: 'Fireball' } }];
+  const narrative: NarrativeLine[] = [];
+  let draws = 0;
+  const real = kcRng.use(() => {
+    draws++;
+    return 0;
+  });
+  try {
+    pcRoundStart(wearer, narrative);
+  } finally {
+    kcRng.use(real);
+  }
+  expect(wearer.hp).toBeLessThanOrEqual(0);
+  expect(draws).toBe(0);
+  expect(narrative.map((l) => (typeof l === 'string' ? l : l.kind))).not.toContain(STANDS);
 });
