@@ -23,7 +23,7 @@ import {
   type Province,
 } from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies } from './item-and-army-order-cases.ts';
-import { theCloakOfManyFaces, type Dice } from './espionage-order-cases.ts';
+import { oldCloakOfManyFaces, theCloakOfManyFaces, type Dice } from './espionage-order-cases.ts';
 import {
   anySays,
   at,
@@ -271,6 +271,23 @@ export const ENCOUNTER_ORDER_CASES: WarOrderCase[] = [
     stage(b) {
       const q = rival(b);
       return hunter(b, holding(q, theCloakOfManyFaces(b)));
+    },
+    check(o, s) {
+      const line = `${s.hero.name} sets out after ${mark(s).name}, but they are cloaked and leave no trail to follow.`;
+      return {
+        got: { told: told(o, line), ...nothingHunted(o, s) },
+        want: {
+          told: { type: 'system', targets: [0], provinceId: there(s).id, public: false, phase: 0 },
+          ...NOTHING_HUNTED(s),
+        },
+      };
+    },
+  },
+  {
+    name: 'a cloaked quarry (a Cloak of Many Faces, as a copy dealt before 12 September 2026 holds it) leaves no trail',
+    stage(b) {
+      const q = rival(b);
+      return hunter(b, holding(q, oldCloakOfManyFaces(b)));
     },
     check(o, s) {
       const line = `${s.hero.name} sets out after ${mark(s).name}, but they are cloaked and leave no trail to follow.`;

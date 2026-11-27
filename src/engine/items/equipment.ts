@@ -172,7 +172,7 @@ export const LEGENDARY_NAMES_P = new Set(LEGENDARY_ITEMS_P.map((it) => it.name))
 //             worth a +1 weapon or a DR-1 armour in a lair fight — claude/claude_school_study_0924.js);
 //             a +2 or better in psychic / necromancy; any utility stat that carries a pc rider.
 //   UTILITY : the field skills (tactical, march, naval, sage, spy, thief, explorer, druid), tax and army
-//             and unit-type bonuses, siege, home defence, fleet, spell charms, oracle/hidden/promote,
+//             and unit-type bonuses, siege, home defence, fleet, spell charms, spyAuto/untargetable/promoteAll,
 //             and a +1 in psychic or necromancy (measured: worth less than the weakest ward in the game,
 //             and both are realm schools — the spy's and the army-raiser's) — but ONLY when that +1
 //             carries no pc rider of its own; a rider makes it combat whatever the stat (2026-09-27).

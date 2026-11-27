@@ -65,7 +65,7 @@ export const THE_STAT_OF_AN_ITEM_WORN_AS_ARMOUR = 'armour';
  *  same effect), a rider (its `effect.pc`'s, above 0), a combat item's use (its `effect.use`), or a field of a combat
  *  item's effect (true when set). */
 export type TheKeyAnItemCarriesItsEffectBy =
-  | { readonly stat: string }
+  | { readonly stat: string; readonly orTheOlderCopysStat?: string }
   | { readonly field: AnItemsOwnField }
   | { readonly itemName: string }
   | { readonly ward: string }
@@ -183,10 +183,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     reaches: THE_HEAVY_ENGINES_THE_ENGINEERS_ITEMS_REACH,
   },
   // The fleets the bearer leads fight one quality tier higher (none past Elite). The relic a lair deals carries
-  // `fleetQuality`.
+  // `fleetQuality`; a copy dealt before 12 September 2026, `navalBonus`.
   'naval-bonus': {
     name: 'Kraken Figurehead',
-    carriedAs: { stat: 'fleetQuality' },
+    carriedAs: { stat: 'fleetQuality', orTheOlderCopysStat: 'navalBonus' },
     numbers: {},
     reaches: KC_UNIT_CLASS.carrier,
   },
@@ -293,10 +293,11 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: { goldForEachProvince: { value: 1, theTextsWriteIt: 'gold, for each province' } },
   },
   // ── A hero's items in his orders (orderOutcome), each in its order's resolver. ──
-  // His Spy order succeeds without a roll. The relic a lair deals carries `spyAuto`.
+  // His Spy order succeeds without a roll. The relic a lair deals carries `spyAuto`; a copy dealt before 12 September
+  // 2026, `oracle`.
   'crystal-orb': {
     name: 'Crystal Orb',
-    carriedAs: { stat: 'spyAuto' },
+    carriedAs: { stat: 'spyAuto', orTheOlderCopysStat: 'oracle' },
     numbers: {},
   },
   // His Explore order reveals one more lair of the province the map hasn't reached (the order draws which).
@@ -334,10 +335,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   },
   // ── What a realm sees (visibility, plan P1-19am). ──
   // His face is hidden: no Spy order fixes on him, and no Encounter Character order, Psychic Blast or Curse of another
-  // realm names him. The relic a lair deals carries `untargetable`.
+  // realm names him. The relic a lair deals carries `untargetable`; a copy dealt before 12 September 2026, `hidden`.
   'cloak-of-many-faces': {
     name: 'Cloak of Many Faces',
-    carriedAs: { stat: 'untargetable' },
+    carriedAs: { stat: 'untargetable', orTheOlderCopysStat: 'hidden' },
     numbers: {},
   },
   // ── A hero's standing (aHerosStanding): his maximum hit points, the temper he fights with, and his skills. ──
