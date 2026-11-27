@@ -7,8 +7,8 @@
 
 Each banner gives the armies its bearer leads the strength its own text says: the two relic standards (the
 Battle Standard and the Standard of the Nine Legions) give more than the ordinary banners. Two banners don't add up:
-the stronger counts. Example: Lady Wren's king carries the Standard of the Nine Legions, and every army he leads gets
-its text's number: the Battle Standard +4, the Standard of the Nine Legions +6, an ordinary banner +2. A king who
+the stronger counts. Example: Lady Wren's king carries the Standard of the Nine Legions, and every army he leads fights
++6, its text's number (the Battle Standard gives +4, an ordinary banner +2). A king who
 carries both relic standards gets +6, not +10.
 
 The question was: the relics' texts give more than the battle did. Option 1: "each banner gives its own number" ("the
