@@ -164,6 +164,34 @@ describe('order-targets.ts: the Blood Offering hint', () => {
 describe('order-targets.ts: the target field', () => {
   const field = (c: Record<string, unknown>, action: string, more: Record<string, unknown> = {}, ph = 0) =>
     T.buildTargetField(hero(c), ph, { action, ...more });
+  test("the Use Item field offers the Philosopher's Stone a lair deals, and not a passive item", () => {
+    // the Stone as a lair deals it (its power `promoteAll`, a Legendary relic), and a ring whose power is always active
+    const stone = {
+      id: 41,
+      name: "Philosopher's Stone",
+      desc: 'Once per game: instantly promote all armies',
+      tier: 4,
+      effect: { stat: 'promoteAll' },
+    };
+    const ring = {
+      id: 42,
+      name: 'Ring of the Explorer',
+      desc: 'Explore +10%',
+      tier: 1,
+      effect: { stat: 'explore', bonus: 10 },
+    };
+    const offered = (items: unknown[]) => {
+      g['currentReport'] = { characters: [hero({ items })] };
+      stage('');
+      const box = page.createElement('template');
+      box.innerHTML = String(field({ items }, 'Use Item'));
+      return [...box.content.querySelectorAll('option')].map((o) => o.getAttribute('value'));
+    };
+    expect({ withTheStone: offered([stone, ring]), ringAlone: offered([ring]) }).toEqual({
+      withTheStone: ['41'],
+      ringAlone: [],
+    });
+  });
   test('a Grand Heist on poor ground with no name, and Steal with nothing to take', () => {
     g['currentReport'] = {
       characters: [hero()],
