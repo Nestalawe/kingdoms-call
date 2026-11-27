@@ -307,6 +307,8 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   // Druid or spellcraft.
   const atkCmdrSlain = !!_npcDuel.atkSlain || asItsGuardReadsIt(c.alive) === false,
     defCmdrSlain = !!_npcDuel.defSlain;
+  // his companies fight without his Druid, as between heroes (R-161): the strength of each unit reads it negated
+  if (atkCmdrSlain) c._druidNegated = true;
   if (defCmdrSlain && neutralGuardHero)
     // (the duel slays a defender only where there is one)
     narrate(narrative, {

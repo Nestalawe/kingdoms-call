@@ -71,6 +71,8 @@ export function bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(
     defAlign2,
     pvpTerrain,
     pvpIsLand,
+    atkCmdrSlain,
+    defCmdrSlain,
   } = theSetUp;
   // ════
   // PRE-BATTLE PHASE 2: ARCHERY (both sides)
@@ -83,6 +85,7 @@ export function bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(
     myCount: unknown,
     narr: NarrativeLine[],
     isAtk: boolean,
+    hisCommanderIsSlain: boolean,
   ) {
     // ELF — Ambush: Forest Wardens defending their own woods deny the enemy an archery phase — unless
     // Eagle Riders fly with the shooters (Eyes of the Forest).
@@ -102,7 +105,8 @@ export function bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(
     }
     const myMissile = abilityMissileUnits(myForce, pvpTerrain);
     if (!myMissile.length || !enemyArmies.length) return;
-    const archLvl = effStat(turnContext, heroChar, 'archery');
+    // a commander slain in the duel takes his Archery with him: it adds nothing to his volley (R-161)
+    const archLvl = hisCommanderIsSlain ? 0 : effStat(turnContext, heroChar, 'archery');
     // the items' registry's "volley: the commander adds volleys" (plan P1-19n: the Quivers)
     const _itemVolleys = theVolleysTheCommandersItemsLoose(activeItems(heroChar));
     const hasQ = _itemVolleys.theLines.includes('each missile unit looses two volleys instead of one');
@@ -156,8 +160,8 @@ export function bothSidesArcheryFlakAndBreachInTheBattleBetweenHeroes(
   // DWARF — Flak Screen runs before the arrows fly.
   applyFlakScreen(atkArmies, defArmies, { heroName: atk.name, leaderless: false }, narrative);
   applyFlakScreen(_atkLA ? [] : defArmies, atkArmies, { heroName: def.name, leaderless: false }, narrative); // Lightning Advance stops it, as against guards (R-162)
-  applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true);
-  if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false);
+  applyPreBattleArchery(atk, atkArmies, defArmies, atkArmies.length, narrative, true, atkCmdrSlain);
+  if (!_atkLA) applyPreBattleArchery(def, defArmies, atkArmies, defArmies.length, narrative, false, defCmdrSlain);
 
   // ── PRIMAL — Breach and Swamp ── Whale Cohorts rise beneath a hull and roll it over. 25% per
   // cohort to sink one enemy fleet unit outright, before either side's strength is counted. The rule
