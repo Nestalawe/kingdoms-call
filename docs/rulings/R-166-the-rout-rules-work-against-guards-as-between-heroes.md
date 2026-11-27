@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-11-15, a maintainer
 - **Status:** Confirmed
-- **Source:** Question 57: four rout rules skip a battle against a province's guards: do they work there too? Answer: option 1, each works against guards as between heroes.
+- **Source:** Question 57: four rout rules skip a battle against a province's guards: do they work there too? Answer: option 1, each works against guards as between heroes. Question 159 (2026-11-27): do a province's guards' own Manticores and Shark Shoals hunt a beaten hero? Answer: option 1, either winner hunts, as between heroes; a maintainer's answer, 27 November.
 - **Enforced by:** [`four-rout-rules-work-against-a-provinces-guards-as-between-heroes`](../../tests/unit/four-rout-rules-work-against-a-provinces-guards-as-between-heroes.test.ts)
 
 Four rules of the rout work in a battle against a province's guards as in one between heroes:
@@ -14,8 +14,7 @@ Four rules of the rout work in a battle against a province's guards as in one be
 No unit's text gives an exception; the Warg Riders' text and the rulebook say a guard's own wargs run a beaten army
 down.
 
-**Open:** whether a guard's own Manticores and Shark Shoals hunt a beaten hero too (question 159). As built, yes: either
-side's winner hunts, as between heroes.
+Either side's winner hunts, as between heroes: a guard's own Manticores and Shark Shoals hunt a beaten hero too.
 
 The question was: four rout rules skip a battle against a province's guards. Option 1: "each ability works against
 guards as between heroes".
