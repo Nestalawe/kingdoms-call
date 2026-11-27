@@ -607,7 +607,7 @@ export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRe
   const carried: readonly (Item | null | undefined)[] = theItemsWithGapsOf(c);
   const items = carried.filter((it): it is Item => Boolean(it));
   if (!items.length) return null;
-  // 1. Philosopher's Stone — every unit of the realm one tier up, once per game
+  // 1. Philosopher's Stone — every unit of the realm one tier up but a skeletal one (R-191), once per game
   const stone = items.find((it) => thePowerAnItemWorksWhenUsed(it) === 'every unit of the realm rises a quality tier');
   if (stone) {
     let units = 0;

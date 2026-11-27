@@ -5,7 +5,8 @@
 // of the content that deals a Stone (the lair table's and the legendary relics') says, in its desc and in its lore,
 // that skeletal companies are not promoted: the word the turn's own test reads, "skeletal", with a "not" or a "never"
 // in the same sentence. And the line a realm with only the risen dead reads, when the Stone finds nothing to raise,
-// says it has no living armies (the turn counts the skeletal companies out), not none at all.
+// says it has no living armies (the turn counts the skeletal companies out), not none at all; a realm whose living
+// companies are all Elite reads that every living unit is; and the world's line says every living soldier stands taller.
 import { describe, expect, it } from 'vitest';
 import { ALL_MAGIC_ITEMS_P, LEGENDARY_ITEMS_P } from '../../src/content/kingdoms-call-data.ts';
 import { theWordsOfTheItemOrdersLine } from '../../src/views/prose/the-words-of-the-item-orders-lines.ts';
@@ -34,5 +35,25 @@ describe("the Philosopher's Stone's text says the skeletal companies are left ou
       theRealmHasNoUnits: true,
     });
     expect(line).toContain('your realm has no living armies in the field or in garrison');
+  });
+  it("a realm whose living companies are all Elite reads that every living unit is, and the world's line says living", () => {
+    const allElite = theWordsOfTheItemOrdersLine({
+      kind: "the Philosopher's Stone finds nothing to work on and is not spent",
+      heroName: 'Aldric',
+      stoneName: STONE,
+      theRealmHasNoUnits: false,
+    });
+    const theWorld = theWordsOfTheItemOrdersLine({
+      kind: "the world sees the Philosopher's Stone burned out",
+      provinceName: 'Brackenford',
+      isTheirOwnHero: false,
+      heroName: 'Aldric',
+      realmName: 'Belmarch',
+      stoneName: STONE,
+    });
+    expect({ allElite, theWorld }).toEqual({
+      allElite: expect.stringContaining('every living unit you command is already Elite') as unknown,
+      theWorld: expect.stringContaining('Every living soldier of that realm stands a little taller') as unknown,
+    });
   });
 });
