@@ -953,7 +953,7 @@ export const STALE_CASES: SetUpCase[] = [
   {
     name: 'orders saved for an earlier turn and sent late keep only their order of heroes (R-192)',
     stage: (b) => {
-      turnIs(b, 9);
+      turnIs(b, 9); // before the first turn a claim may be lodged (10), so a call taken would be told "too early"
       const h = realmHero(b, 1);
       const k = kingOf(b, 1);
       return {
