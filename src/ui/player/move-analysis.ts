@@ -86,6 +86,8 @@ export function poMoveModeNote(
   destProv: AProvinceAsTheMoveNoticeReadsIt | null | undefined,
   host: TheColumnAsTheMoveNoticeReadsIt | null | undefined,
   fromProv: AProvinceAsTheMoveNoticeReadsIt | null | undefined,
+  // the province it names is not next door to where it sets out (aMoveTargetIsFarOff): the turn steps toward it
+  theTargetIsFarOff = false,
 ): KcSafeHtml {
   const H: TheColumnAsTheMoveNoticeReadsIt = host ?? {
     armies: (ch?.armies ?? []).map((a) => ({ ...a })),
@@ -134,6 +136,12 @@ export function poMoveModeNote(
   // march were legal; it is not, and the order was silently wasted. This is now a hard red warning,
   // raised BEFORE every other verdict so it cannot be buried, and it names the way out.
   const _navalAboard = an.hulls + an.seaBeasts;
+  // R-174: ships alone ordered to a coast not next door sail toward it by sea and land on it as on a coast next door
+  // (the turn's road, which the forecast asks). This phase they sail; they land once the coast is next door.
+  if (destProv && an.allSea && theTargetIsFarOff && !destSea && destKnown)
+    return good(
+      kcHtml`⛵ <strong>Voyage to a far coast</strong> — the fleet sails toward <strong>${(destProv.name ?? '') || 'that province'}</strong>, one sea a season${fromSea ? '' : kcHtml`, putting out to sea first`}, and lands there once the coast is next door to its sea, as on any coastal landing.`,
+    );
   if (_navalAboard > 0 && !fromSea && !destSea && fromKnown && destKnown) {
     const _names = [...new Set(A.filter((a) => PO_SEA_TYPES.has(a.type)).map((a) => (a.unitName ?? '') || a.type))];
     return bad(
@@ -197,6 +205,25 @@ export function moveOriginProv(charId: unknown, ph: number) {
   if (!loc) return null;
   return provs.find((p) => p.id === loc.id) ?? { id: loc.id, name: loc.name };
 }
+// Whether a Move order's province is not next door to where the column sets out (both on the report's map): the turn
+// then takes one step toward it, along its road. False where either is unknown, or the province is where it stands.
+export function aMoveTargetIsFarOff(
+  from:
+    | {
+        readonly id?: number | null | undefined;
+        readonly row?: number | null | undefined;
+        readonly col?: number | null | undefined;
+      }
+    | null
+    | undefined,
+  dest: { readonly id?: number | null | undefined } | null | undefined,
+): boolean {
+  const wm = currentReport?.worldMeta;
+  if (!wm || !from || !dest || from.id == null || dest.id == null || from.id === dest.id) return false;
+  if (theRowOf(from) == null || from.col == null) return false;
+  const fp = { row: Number(from.row), col: from.col };
+  return !KC_HEX_DIRS.some((d) => theHexNextToAProvinceInADirection(fp, d, wm.cols, wm.rows) === dest.id);
+}
 // Recompute the notice under one Move order (the dropdown's onchange; later phases are rebuilt
 // wholesale by onMoveEdited, which regenerates the note with them).
 export function refreshMoveModeNote(charId: unknown, ph: number) {
@@ -215,7 +242,10 @@ export function refreshMoveModeNote(charId: unknown, ph: number) {
     const id = parseInt(tgt.slice(5));
     if (!isNaN(id)) dest = provs.find((p) => p.id === id) ?? null;
   }
-  host.innerHTML = String(poMoveModeNote(ch, dest, projectedMoveHost(charId, ph), moveOriginProv(charId, ph)));
+  const from = moveOriginProv(charId, ph);
+  host.innerHTML = String(
+    poMoveModeNote(ch, dest, projectedMoveHost(charId, ph), from, aMoveTargetIsFarOff(from, dest)),
+  );
 }
 // Every Move notice on the form, rebuilt. A Recruit, Pick Up, Leave/Transfer, Disband, rite or
 // summoning in ANY phase — this hero's or another of the player's — changes the host a later move
