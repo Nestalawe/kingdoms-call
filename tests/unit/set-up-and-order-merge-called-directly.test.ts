@@ -28,7 +28,7 @@
 // merge returns (the merge makes them since P1-08l2), and its later stages reading what the merge collected. Then what
 // a whole turn can't stage: the turn run differing from the save's turn (stale orders, the concession's date, a
 // research choice, Safe Start all judged by the turn run); a slot row for a realm the save doesn't have ("a player"'s
-// stale orders, its order of heroes and concession going nowhere, its Reckoning call taken); the per-turn lists missing
+// stale orders, its order of heroes and concession going nowhere, its Reckoning call refused with them); the per-turn lists missing
 // when the merge runs (made) or holding this turn's orders already (added to); the set-up leaving the lists empty and
 // every hero's phases a list of his own; a save with no map, a gap among the provinces or a garrison's companies; a gap
 // in the realms' list not stopping the conceded hold; an heir named by his id as text; every tactic the order form
@@ -37,9 +37,9 @@
 // once; the merge writes exactly the hero orders sent as lists for the realm's own heroes and holds exactly the written
 // orders with their numbers read, in order, passing over the column's order; a payload for another turn writes no
 // orders, holds none and sets no plan, one for the turn run or with none does, a conceded realm's living heroes hold
-// once a row of orders read comes at or after its concession, concessions told before refusals; declarations taken
-// unless Safe Start holds, under it a realm refused exactly when it offers a Treat or declares war, declarations that
-// aren't a table never read. Planted faults: in the PR (P1-08k7)
+// once a row of orders read comes at or after its concession, one sent for another turn refused, concessions told
+// before refusals; declarations taken unless Safe Start holds, under it a realm refused exactly when it offers a Treat
+// or declares war, declarations that aren't a table never read. Planted faults: in the PR (P1-08k7)
 import fc from 'fast-check';
 import { describe, expect, test, vi, type MockInstance } from 'vitest';
 import {
@@ -211,7 +211,11 @@ describe('The set-up: what it calls', () => {
   test('the merge asks Safe Start once for each realm that sends declarations, of the save and the turn run', () => {
     const b = fresh();
     G(b)['safeStart'] = true;
-    const sends: Record<number, Payload> = { 0: { diplomacy: { 1: 'treat' } }, 2: { diplomacy: null } };
+    const sends: Record<number, Payload> = {
+      0: { diplomacy: { 1: 'treat' }, forTurn: 9 },
+      1: { forTurn: 9 },
+      2: { diplomacy: null, forTurn: 9 },
+    };
     setUp(b.tc);
     given(b, rowsOf(b, { sends }), 9);
     const calls = standIn(['safeStartLocked'], () => {
@@ -360,7 +364,7 @@ describe('The set-up: what only a direct call can stage', () => {
     expect((collected(merged(b), 'discoveryChoicePicks') as Raw)['1'] ?? null).toBeNull();
   });
 
-  test('a slot row for a realm the save doesn’t have: its stale orders are told as “a player”’s; its order of heroes and concession go nowhere; its Reckoning call is taken', () => {
+  test('a slot row for a realm the save doesn’t have: its stale orders are told as “a player”’s; its order of heroes and concession go nowhere; its Reckoning call is refused with its orders', () => {
     const b = fresh();
     setUp(b.tc);
     const row = {
@@ -386,7 +390,7 @@ describe('The set-up: what only a direct call can stage', () => {
       `⚠ Ignoring stale orders from a player — submitted for Turn ${String(b.G.turn + 1)}, not Turn ${String(b.G.turn)}.`,
     ]);
     expect(b.G.players.length).toBe(3);
-    expect(collected(merged(b), 'reckoningCalls')).toEqual([7]);
+    expect(collected(merged(b), 'reckoningCalls')).toEqual([]);
   });
 
   test('the merge makes the lists it holds orders and plans in when the save has none', () => {
@@ -607,7 +611,7 @@ describe('The set-up: properties', () => {
     );
   });
 
-  test('a payload for another turn writes no orders, holds none and sets no plan; one for the turn run (or none) writes them; a conceded realm’s living heroes hold once a row of orders read comes at or after its concession; concessions are told before refusals', () => {
+  test('a payload for another turn writes no orders, holds none and sets no plan; one for the turn run (or none) writes them; a conceded realm’s living heroes hold once a row of orders read comes at or after its concession; a concession sent for another turn is refused with its orders; concessions are told before refusals', () => {
     fc.assert(
       fc.property(
         fc.array(
@@ -648,10 +652,10 @@ describe('The set-up: properties', () => {
             const f = must(realms[pi], 'realm').forTurn;
             return f === null || f === 'now' || f === b.G.turn;
           };
-          const concededAt = realms.map((r, pi) => (r.concededBefore ? -1 : r.concede ? pi : Infinity));
+          const concededAt = realms.map((r, pi) => (r.concededBefore ? -1 : r.concede && ok(pi) ? pi : Infinity));
           realms.forEach((r, pi) => {
             const h = must(hs[pi], 'hero');
-            if (r.concede && !r.concededBefore) warnings.push(conceded(realm(b, pi).name));
+            if (r.concede && !r.concededBefore && ok(pi)) warnings.push(conceded(realm(b, pi).name));
             if (!ok(pi)) warnings.push(stale(realm(b, pi).name, r.forTurn as number, b.G.turn));
             const heldAfter = [0, 1, 2].some((j) => j >= pi && ok(j) && must(concededAt[pi], 'when') <= j);
             const heldBefore = !ok(pi) && [0, 1, 2].some((j) => j < pi && ok(j) && must(concededAt[pi], 'when') <= j);
