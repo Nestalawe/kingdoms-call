@@ -15,7 +15,7 @@ interface SaveAsThisPassReadsIt {
 // 2026-10-15 (Toby, D3): the Corsair Fleet is gone. New worlds stopped offering it on 2026-10-11; a
 // province of a game already running whose pool still offers it now offers the Galleon Fleet in its
 // place (or simply loses it, if the Galleon is already there). A Corsair company already raised is
-// kept and fights as before. Idempotent: runs at the top of every runTurn, in the save's upgrade (the unit and its
+// kept and fights as a plain fleet (R-147). Idempotent: runs at the top of every runTurn, in the save's upgrade (the unit and its
 // stand-in are a content row).
 export function retireCorsairPools(gs: SaveAsThisPassReadsIt | null | undefined) {
   const { retired, inItsPlace } = THE_CORSAIR_FLEET_RETIRED_FROM_THE_POOLS;
