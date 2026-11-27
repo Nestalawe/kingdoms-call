@@ -112,7 +112,7 @@ describe("the items' registry hands its stage on", () => {
     const standard = { effect: { stat: 'armyBonus' } };
     expect(theStrengthAfterTheCommandersItems(aUnit(), [spur, standard], 9)).toBe(14);
     expect(theStrengthAfterTheCommandersItems(aUnit(), [standard, spur, spur], 9)).toBe(14);
-    expect(theStrengthAfterTheCommandersItems(aUnit(), [{ effect: { stat: 'navalBonus' } }], 9)).toBe(9);
+    expect(theStrengthAfterTheCommandersItems(aUnit(), [{ effect: { stat: 'fleetQuality' } }], 9)).toBe(9);
     expect(theStrengthAfterTheCommandersItems(aUnit(), [], 9)).toBe(9);
   });
 });

@@ -182,11 +182,11 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: { strengthAdded: { value: 4, theTextsWriteIt: 'strength added' } },
     reaches: THE_HEAVY_ENGINES_THE_ENGINEERS_ITEMS_REACH,
   },
-  // The fleets the bearer leads fight one quality tier higher (none past Elite). No item in play carries it now: the
-  // relic's copy in play carries `fleetQuality`, which nothing reads (Parked); an older save's copy still may.
+  // The fleets the bearer leads fight one quality tier higher (none past Elite). The relic a lair deals carries
+  // `fleetQuality`.
   'naval-bonus': {
     name: 'Kraken Figurehead',
-    carriedAs: { stat: 'navalBonus' },
+    carriedAs: { stat: 'fleetQuality' },
     numbers: {},
     reaches: KC_UNIT_CLASS.carrier,
   },

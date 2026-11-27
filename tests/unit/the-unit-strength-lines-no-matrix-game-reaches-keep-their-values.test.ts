@@ -261,7 +261,8 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
     ).toBe(none);
   });
   test("the Kraken Figurehead: the fleets its bearer leads fight one tier higher (an Elite fleet can't rise)", () => {
-    const kraken = { name: 'Kraken Figurehead', effect: { stat: 'navalBonus', bonus: 1 }, tier: 3, equipped: true };
+    // the relic as a lair deals it (LEGENDARY_ITEMS_P's entry)
+    const kraken = { name: 'Kraken Figurehead', effect: { stat: 'fleetQuality', bonus: 1 }, tier: 4, equipped: true };
     const fleet = (q: string) =>
       armStr(turn, unit('Galleon Fleet', q), hero({ items: [{ ...kraken }] }), 'Neutral', null, undefined);
     const plain = (q: string) => armStr(turn, unit('Galleon Fleet', q), hero(), 'Neutral', null, undefined);

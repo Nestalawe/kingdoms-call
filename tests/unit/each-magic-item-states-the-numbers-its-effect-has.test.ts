@@ -10,7 +10,7 @@
 // alone. The items read are the items in play and the Mithril suit (a dwarven birthright in no table, granted: plan
 // P1-19r). Each row with numbers is carried by some item read (else this would check nothing), but the steadfast ward's
 // (resist), which no item in play carries, listed. The rows with no number
-// (the Kraken Figurehead's step up a tier, which no item in play carries; the Tide-Caller's Horn's waiver at sea; the totems' bonus to a strike's chance, which each copy carries itself (plan P1-19v); the
+// (the Kraken Figurehead's step up a tier; the Tide-Caller's Horn's waiver at sea; the totems' bonus to a strike's chance, which each copy carries itself (plan P1-19v); the
 // War-Horn's pursuit on any ground; the Shield-Wall Rune's refusal to retreat; the tax items' and the Traveller's
 // Cloak's numbers, which each copy carries itself; the Crystal Orb's sure Spy, the Philosopher's Lens's lair and the
 // Philosopher's Stone's power; the maximum-HP items' hit points and the temper items' temper, which each copy carries

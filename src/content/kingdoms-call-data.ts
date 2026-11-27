@@ -6321,11 +6321,12 @@ export const ALL_MAGIC_ITEMS_P = [
     tier: 1,
   },
   // ── Naval-specific ──
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
   {
     name: 'Kraken Figurehead',
     desc: 'All fleets you lead fight as if one experience level higher',
     lore: 'Carved from a beast that dragged whole fleets under; sailors under it fight like they have been at sea all their lives. A LEGENDARY relic: every fleet you lead fights one experience level higher.',
-    effect: { stat: 'navalBonus', bonus: 1 },
+    effect: { stat: 'fleetQuality', bonus: 1 },
     tier: 3,
   },
   {
