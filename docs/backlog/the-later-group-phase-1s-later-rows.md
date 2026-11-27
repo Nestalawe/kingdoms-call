@@ -8,7 +8,6 @@ known defects, in order.
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| B-24 | The maintainers' answers of 28 November go into their rulings (questions 79, 80 and 167 to 172, and five asked in pull requests only), the questions leave their file, and the rows to build join the backlog | Maintainers: the rulings say what was decided, and the questions file is empty; no change in play | Phase 1 | Small | – | ⬜ | | A maintainer's day: the answers first, so that none waits outside the repository |
 | B-25 | A question for the maintainers takes a shorter shape: one line an option with its impact, the built option marked, then one line each for the assessment, the example and the rulings it touches. After B-24 | Maintainers: about 15 questions fit in their file instead of 8, so none is left in a pull request's description | Phase 1 | Small | – | ⬜ | | After B-24, in one lane: the next questions take the shape |
 | P1-20 | State reshapes that earn their place: items get ids first | Maintainers: an item can be named in a rule or a test by its id; closes a Phase 1 criterion | Phase 1 | Medium | – | ⬜ | | |
 | P1-24 | Long, descriptive names: a glossary a maintainer agrees, then the renames, one area a pull request (saved-state, content and database names left out). After P1-14z and P1-19 | Maintainers: names say what the code does; closes a Phase 1 criterion | Phase 1 | Large | – | ⬜ | | |

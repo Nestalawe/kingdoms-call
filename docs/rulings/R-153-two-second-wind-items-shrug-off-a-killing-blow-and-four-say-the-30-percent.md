@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Question 25: six second-wind items don't say the 30%, and two describe another rule: which is right? Answer: option 2, the Ring and the Helm get the rule their texts give, and the four others' texts state the 30%.
+- **Source:** Question 25: six second-wind items don't say the 30%, and two describe another rule: which is right? Answer: option 2, the Ring and the Helm get the rule their texts give, and the four others' texts state the 30%. Question 167 (2026-11-27): does the Ring or the Helm shrug off a death that isn't a struck blow? Answer: option 1, only a struck blow, as built; the maintainers' answer of 28 November.
 - **Enforced by:** [`the-ring-and-the-helm-shrug-off-a-killing-blow-once-a-fight`](../../tests/unit/the-ring-and-the-helm-shrug-off-a-killing-blow-once-a-fight.test.ts), [`every-copy-of-the-ring-the-helm-and-the-second-wind-items-takes-its-rows-effect-and-words`](../../tests/unit/every-copy-of-the-ring-the-helm-and-the-second-wind-items-takes-its-rows-effect-and-words.test.ts)
 
 The Ring of the Unbroken Pulse and the Great Helm of the Deathless do what their texts say: a chance to shrug off a
@@ -17,8 +17,9 @@ Every copy already in a running game (a hero's pack or a lair's hoard) changes t
 its item's effect and words, so an older Ring or Helm loses its second wind, and the four other items say the 30%
 (question 166, option 2: a maintainer's answer, 27 November).
 
-**Open:** whether a death that isn't a struck blow (a guardian's burn aura, a shield's lash-back, the Thornwood bite, a
-spell's recoil) is shrugged off too is question 167. Today none of them draws the roll.
+Only a struck blow draws the roll: a death that isn't one (a guardian's burn aura, a shield's lash-back, the Thornwood
+bite, a spell's recoil) is not shrugged off. Sir Aldric, wearing the Ring, strikes a Thornwood-clad foe and dies to the
+bite: the Ring doesn't roll.
 
 The question was: six second-wind items don't say the 30%, and two describe another rule. Option 2: "the Ring and the
 Helm get the rule their texts give, and the four others' texts state the 30%".
