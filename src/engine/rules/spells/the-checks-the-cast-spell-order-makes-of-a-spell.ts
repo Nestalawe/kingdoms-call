@@ -14,7 +14,10 @@ import {
   type TheChecksTheCastSpellOrderMakesOfASpell,
 } from '../../../content/spell-effects-their-names-numbers-and-words.ts';
 import { theSpellCostsItsCasterNoCastingSlot } from '../../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
-import { theMarkOfThisSpellMustStandInTheCastersProvince } from '../../rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
+import {
+  theMarkOfThisSpellMustStandInTheCastersProvince,
+  whetherACharmedHeroWillNotTurnThisSpellOnHisLord,
+} from '../../rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
 import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effects.ts';
 
 type TheChecks = TheStagesOfEachHookPoint['orderValidity'];
@@ -26,14 +29,17 @@ const itsRowSays = (slug: SpellSlug, check: keyof TheChecksTheCastSpellOrderMake
 };
 
 // The character-aimed hostile spells: a hero charmed from an enemy realm will not aim them at his own lord's heroes (the
-// Encounter order is refused on the same grounds), in the order the set wrote them.
+// Encounter order is refused on the same grounds), in the order the set wrote them. Each asks the check the order form
+// shares (src/engine/rules-on-plain-values/), which reads the spell's row, so the form's list and the turn agree.
+const theSharedCharmCheckSays = (slug: SpellSlug) => (): boolean =>
+  whetherACharmedHeroWillNotTurnThisSpellOnHisLord(ROWS[slug].name);
 export const A_CHARMED_HERO_WILL_NOT_TURN_IT_ON_HIS_LORD = {
-  'psychic-blast': itsRowSays('psychic-blast', 'aCharmedHeroWillNotTurnItOnHisLord'),
-  'telekinetic-storm': itsRowSays('telekinetic-storm', 'aCharmedHeroWillNotTurnItOnHisLord'),
-  curse: itsRowSays('curse', 'aCharmedHeroWillNotTurnItOnHisLord'),
-  charm: itsRowSays('charm', 'aCharmedHeroWillNotTurnItOnHisLord'),
-  'control-undead': itsRowSays('control-undead', 'aCharmedHeroWillNotTurnItOnHisLord'),
-  dominate: itsRowSays('dominate', 'aCharmedHeroWillNotTurnItOnHisLord'),
+  'psychic-blast': theSharedCharmCheckSays('psychic-blast'),
+  'telekinetic-storm': theSharedCharmCheckSays('telekinetic-storm'),
+  curse: theSharedCharmCheckSays('curse'),
+  charm: theSharedCharmCheckSays('charm'),
+  'control-undead': theSharedCharmCheckSays('control-undead'),
+  dominate: theSharedCharmCheckSays('dominate'),
 } satisfies Partial<Record<SpellSlug, TheChecks['a charmed hero will not turn it on his lord']>>;
 
 // GRAND DESIGN, Divine (the Grand Cathedral): Bless Province uses no casting slot, and is never blocked. It asks the
