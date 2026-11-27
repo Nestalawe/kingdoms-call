@@ -33,4 +33,4 @@ P1-23's rows from P1-23g on; its first rows, and the ids dropped, are in [part 1
 - P1-23p: #855 Each banner gives the strength its own text says; of two banners the stronger counts
 - P1-23ai: #856 A lair beast talked down by parley counts as pacified, not slain: half the Monster-Bane merit, no hit points
 - P1-23aj: #857 Invisibility waits while a hero leads armies: seen and fought as if he had no spell, hidden from the moment he leads none; the order form says so
-- P1-23ba: #858 A fleet ordered to a far coast lands as it would next door (R-174, KD-061): ships alone sail toward the coast and land on it; the order form's forecast follows
+- P1-23ba: #858 A fleet ordered to a far coast lands as it would next door (R-174): ships alone sail toward the coast and land on it; the order form's forecast follows
