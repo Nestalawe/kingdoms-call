@@ -12,7 +12,7 @@ The rebuild's tranches are done: [the top](README.md#1-the-first-rulings-and-kno
 The first ordering pass placed these rows by impact. Among rows of equal harm, the harm more games meet goes first,
 then the row that unblocks others, then the smaller row. A known defect was placed only when it is plainly harm in
 live play: its row says players notice it in running games, the turn's result is wrong (not only its words), and its
-fix needs no new ruling. The last one joined from Next. The other rulings to build are in
+fix needs no new ruling. The other rulings to build are in
 [their own file](the-rulings-decided-not-built.md).
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
@@ -20,7 +20,6 @@ fix needs no new ruling. The last one joined from Next. The other rulings to bui
 | KD-049 | **Counter-spy discoveries never take anything off a Spy** (found 2026-10-19 in P1-08j6, Spy; live, players can notice it). Cipher Scripts, Watchmen and six creed discoveries (`effect.kind:'counterSpy'`) are worked out only from the province the order names (`targetProvForSpy`). But the order form and the bots send no province (`target:''`), so the reduction is always 0. Example: Realm B knows Cipher Scripts ("45% lower success"); Realm A's Spy 1 hero spies on B's province where he stands at 40%, not 0%. Fix: read the province he stands in when the order names none; a change in play, so its own PR with a balance report and playtester notes. A P1-08j6 case pins today's behaviour. | Players: counter-spy discoveries cut a Spy's chance, as their texts say | Phase 1 | Small | – | ⬜ | | Harm in each Spy order against a realm with a counter-spy discovery: eight discoveries take nothing off; Small |
 | P1-23j | [R-142](../rulings/R-142-a-declaration-of-war-meets-the-realm-that-declared-it.md): a declaration of war meets the realm that declared it. Folds in KD-040. | Players: a realm at war can write to its foe | Phase 1 | Small | ✓ | ⬜ | | Harm when a realm declares war on one that never met it: the realm declared on can't answer; Small |
 | P1-23h | [R-138](../rulings/R-138-an-onlooker-with-a-hero-there-reads-a-battles-one-line-summary.md): an onlooker with a hero there reads a battle's one-line summary. Folds in KD-238. | Players: a realm with a hero on the spot learns how a battle there ended | Phase 1 | Small | ✓ | ⬜ | | Harm in what a realm learns: an onlooker with a hero there isn't told how the battle ended; Small |
-| KD-141 | **A hero of unseen levels gets no target field for a Cast Spell order** (found 2026-10-31 scoping P1-11c, by reading, not run; live, players can notice). For a hero hired, raised or charmed this turn (`skillsUnseenP`), the Cast Spell field (`ui/player/order-targets.ts`) lists the spells and returns without `spellSecondaryHtml`, so a Psychic Blast or a Bless Province can't be aimed, though the turn needs a mark. Fix: its own PR, a page case first (the seized hero's spells then filter his lord's heroes, `orderValidity`'s charmed-hero check). | Players: a hero hired, raised or charmed this turn can aim a spell that needs a mark | Phase 1 | Small | – | ⬜ | | Joined from Next; not yet compared with the rows above |
 
 ## Phase 1's later rows
 
