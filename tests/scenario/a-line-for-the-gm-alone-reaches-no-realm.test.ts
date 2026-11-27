@@ -8,8 +8,8 @@
 // filed under) and by the views that build each realm's report from the GM's log; only a whole turn, with its
 // reports, joins the two. A lower level could check the line's audience alone, but not that no report shows it.
 //
-// The staging is certain on every world: realm 0's king carries the Stone as an older save holds it (the one a lair
-// deals today is called a passive item) and leads one Green company (so the working has something to promote), one province's lair, already stocked, holds the world's one other Stone, and no other
+// The staging is certain on every world: realm 0's king carries the Stone as a lair deals it and leads one Green
+// company (so the working has something to promote), one province's lair, already stocked, holds the world's one other Stone, and no other
 // hoard holds one. Working the Stone rolls no die but a Sage lesson, which the test doesn't read.
 //
 // In full, what it checks (tests/every-test-its-level-and-what-it-checks.md gives it one line):
