@@ -12,7 +12,8 @@ leader's and the guards' Flak Screen), and Mass Confusion works on a guard leade
 [R-126](R-126-battle-magic-follows-one-rule-in-every-battle.md) set the first such rules.
 
 A commander whose skill a spell cuts keeps his mastery tiers' gifts: a Curse on Tactical doesn't take Tactical 6's
-tier-up from a commander it leaves below 6. Against guards, the hero's beasts strike after his archery.
+tier-up from a commander it leaves below 6. Against guards, the hero's beasts strike after his archery; between
+heroes' hosts, they strike before any archers.
 
 The question was: battle magic takes effect at different moments in the two battles. Option 1: "one order in both:
 each spell takes effect before the skills and strikes it changes are counted".
