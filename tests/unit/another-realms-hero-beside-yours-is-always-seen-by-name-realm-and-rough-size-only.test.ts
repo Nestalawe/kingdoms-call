@@ -1,5 +1,6 @@
 // 2026-10-15 (Toby, D1; R-110): another realm's hero sharing a province with one of yours at the end of the turn is
-// always seen: their Spy can no longer slip them past your hero. Only Invisibility still hides them, and wandering
+// always seen: their Spy can no longer slip them past your hero. Only Invisibility still hides them (only while they
+// lead no armies, R-158), and wandering
 // heroes keep their small chance to slip by. Without a Spy you learn only the hero's name, the realm they serve and the
 // rough size of their army, wherever they stand (your own land included): no race, alignment, renown or exact count.
 // What a realm's turn data says (buildTurnReport, src/views/turn-report.ts, on what the realm may see: playerView):
@@ -8,8 +9,8 @@
 //     heroes the one sight rule (enemyCharVisibleTo) passes, in a province where it has a hero or that it spied, the
 //     exact count for its own heroes and the rough size for anyone else's.
 // And the warnings of a hero beside yours (generateIntrusionNotifications, src/engine/turn/intrusion-warnings.ts)
-// give the same rough size, whatever the watcher's Spy, and (since P1-21h) name no hero under Invisibility, beside
-// your hero on free ground or in your land. The map popup's words are
+// give the same rough size, whatever the watcher's Spy, and (since P1-21h) name no hero under Invisibility who leads no
+// armies (R-158), beside your hero on free ground or in your land. The map popup's words are
 // page/the-player-portals-map-popup-gives-your-heros-count-and-another-realms-rough-size.test.ts; the rulebook's, and
 // the player portal reading whether a target leads troops, static/the-rulebook-says-another-realms-hero-beside-yours-
 // is-always-seen-and-only-roughly.test.ts.
@@ -192,9 +193,14 @@ test('the heroes your orders can target follow the same rule, and a lone hero is
   ).toEqual({ leadsArmies: false, hp: false, temper: false });
 });
 
-test('a hero under Invisibility is not seen, even beside your hero, nor in the target list', async () => {
+test('a hero under Invisibility who leads no armies is not seen, even beside your hero, nor in the target list; one who leads armies is (R-158)', async () => {
   const { T, theirs, wild, report, chars } = await stage();
   theirs._invisTurn = T;
+  expect(
+    (report().visibleChars ?? []).some((x) => x.id === theirs.id),
+    'a hero under Invisibility who leads armies is seen: the spell waits (R-158)',
+  ).toBe(true);
+  theirs.armies = [];
   const rep = report();
   expect(
     chars(rep, wild.id).some((c) => c.id === theirs.id) ||
@@ -232,7 +238,7 @@ test("the province character intelligence lists the heroes the one sight rule pa
   const { G, P, T, mine, theirs, wander, wild, another, viewOf, report, enemyCharVisibleTo } = await stage();
   // beside them a second hero of realm 1's, under Invisibility; and a province no hero of realm 0's stands in, which it
   // spied this turn, holding a wanderer who rolled to slip by and another hero under Invisibility
-  const veiled = another(wild, { name: 'Veiled Test', isKing: false, _invisTurn: T });
+  const veiled = another(wild, { name: 'Veiled Test', isKing: false, armies: [], _invisTurn: T });
   const spied = P.find(
     (p) =>
       p.terrain !== 'sea' &&
@@ -248,7 +254,7 @@ test("the province character intelligence lists the heroes the one sight rule pa
     _unspottedTurn: T,
     isKing: false,
   });
-  const spiedVeiled = another(spied, { name: 'Spied Veiled Test', isKing: false, _invisTurn: T });
+  const spiedVeiled = another(spied, { name: 'Spied Veiled Test', isKing: false, armies: [], _invisTurn: T });
   const itsLines = {
     spiedProvincesAndTheirFirstPhase: { [spied.id]: 1 },
     provincesWithABattleLineItRead: new Set(),
@@ -366,11 +372,11 @@ test("the warnings of a hero beside yours or in your land give his force's rough
   expect(sizes(10), '…and the same to a master spy').toEqual(expected);
 });
 
-test('the warnings name no hero under Invisibility, beside your hero on free ground or in your land', async () => {
+test('the warnings name no hero under Invisibility who leads no armies, beside your hero; one who leads armies they name (R-158)', async () => {
   await import('../lib/the-whole-engine.ts');
   const { createTurnContext } = await import('../../src/engine/turn/context.ts');
   const { generateIntrusionNotifications } = await import('../../src/engine/turn/intrusion-warnings.ts');
-  const warned = (invisible: boolean) => {
+  const warned = (invisible: boolean, leadsNone = false) => {
     const T = 4;
     const G = {
       turn: T,
@@ -383,7 +389,9 @@ test('the warnings name no hero under Invisibility, beside your hero on free gro
         { id: 0, name: 'Wren', player: 0, alive: true, location: 2, armies: [], skills: {} },
         { id: 1, name: 'Thorn', player: 1, alive: true, location: 2, armies: army(4), skills: {} },
         { id: 2, name: 'Bryn', player: 1, alive: true, location: 3, armies: army(7), skills: {} },
-      ].map((c) => (invisible && c.player === 1 ? { ...c, _invisTurn: T } : c)),
+      ]
+        .map((c) => (invisible && c.player === 1 ? { ...c, _invisTurn: T } : c))
+        .map((c) => (leadsNone && c.id === 1 ? { ...c, armies: [] } : c)),
       world: { provinces: [null, null, { id: 2, name: 'Wendmeadow' }, { id: 3, name: 'Esterhold Vale' }] },
     };
     const tc = createTurnContext(G, [], 3) as unknown as {
@@ -397,5 +405,11 @@ test('the warnings name no hero under Invisibility, beside your hero on free gro
     ['Thorn', 'known'],
     ['Bryn', 'own'],
   ]);
-  expect(warned(true), 'under Invisibility, neither is').toEqual([]);
+  expect(warned(true), 'under Invisibility while each leads armies, both are: the spell waits (R-158)').toEqual([
+    ['Thorn', 'known'],
+    ['Bryn', 'own'],
+  ]);
+  expect(warned(true, true), 'under Invisibility, the one beside your hero who leads none is not').toEqual([
+    ['Bryn', 'own'],
+  ]);
 });

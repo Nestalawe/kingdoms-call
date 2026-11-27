@@ -1,3 +1,4 @@
+import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { theWageOfAHeroInService } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { KC_A_HEROS_WAGE_IN_SERVICE } from '../../content/kingdoms-call-data.ts';
 import { theInitiativeAHeroActsBy } from '../rules-on-plain-values/the-order-the-heroes-act-in-a-phase-and-who-must-act-first.ts';
@@ -213,7 +214,7 @@ export function isHiddenByInvisibilityFrom(
   turn: number = turnContext.G.turn,
 ) {
   const { G } = turnContext;
-  if (ch?._invisTurn !== turn || ch.player === realm) return false;
+  if (!ch || !theHerosInvisibilityHidesHimNow(ch, turn) || ch.player === realm) return false;
   const theWatchersRealm = realm != null ? (G.players ?? [])[realm] : null;
   return !(theWatchersRealm?._clairCharThisTurn === ch.id);
 }

@@ -1,3 +1,4 @@
+import { theHerosInvisibilityHidesHimNow } from './rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { kcRng, kcRngStream } from './rng.ts';
 import {
   refuseASaveThatIsNotAGameInPlay,
@@ -281,7 +282,8 @@ export function spyStealthAndInvisibilityStampedForTheReports(turnContext: TurnC
     // it.
     if (c._invisTurn === G.turn - 1) {
       c._invisTurn = G.turn;
-      c._unspottedTurn = G.turn;
+      // R-158: while he leads armies the spell waits and hides him from nothing, so it leaves no unspotted cloak
+      if (theHerosInvisibilityHidesHimNow(c, G.turn)) c._unspottedTurn = G.turn;
     }
     const _lvl = Math.min(5, effStat(turnContext, c, 'spy'));
     const _shimmer = perkTier(c, 'illusory') >= 1; // ILLUSORY L6 (Shimmer)

@@ -10,7 +10,7 @@
 // (spyStealthAndInvisibilityStampedForTheReports, src/engine/run-turn.ts, after the turn is saved), and the leak check
 // reads the reports built after it with the turn's events; a unit case holds neither. The turn is certain on every
 // world: the caster is realm 0's king in his home province, with Illusory 5 and no armies (R-158: Invisibility waits
-// while a hero leads armies; not built yet, so this turn stays clear of it); realm 1's king stands there and rests,
+// while a hero leads armies, so he leads none); realm 1's king stands there and rests,
 // and casts no Clairvoyance. The two rolls of the cast are the chosen ones: a stand-in on resolveCastSpellOrder (called
 // from the orders' dispatch) makes every percentile roll (d100, called from the cast's files) a 1 while the cast is
 // resolved, so the cast lands and the spell holds (80% or less). Each stand-in is on the module that exports the

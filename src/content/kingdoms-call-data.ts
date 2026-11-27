@@ -14719,7 +14719,7 @@ export const SPELL_DEFS_P = {
     target: 'none',
     encounter: true,
     phase: true,
-    desc: 'Combat: enemies suffer \u221210%, and a further \u22124% per Illusory level (\u221214% at 1, \u221230% at 5), to hit the caster for the fight, and the caster gains +30% to Flee. Action: cast on yourself — 80% chance that no enemy player sees you (sightings, spies, encounter targeting, the map) for the rest of the turn, and every enemy order and ambush aimed at you misses you.',
+    desc: 'Combat: enemies suffer \u221210%, and a further \u22124% per Illusory level (\u221214% at 1, \u221230% at 5), to hit the caster for the fight, and the caster gains +30% to Flee. Action: cast on yourself — 80% chance that no enemy player sees you (sightings, spies, encounter targeting, the map) for the rest of the turn, and every enemy order and ambush aimed at you misses you. No effect while you lead armies: the spell waits, and hides you from the moment you lead none until the turn ends; take up an army and you are seen again.',
     fn: 'illusory_invisibility',
   },
   'Mirror Image': {

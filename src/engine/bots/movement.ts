@@ -1,3 +1,4 @@
+import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
@@ -752,7 +753,7 @@ export function runBotMovement(
               !e.isKing &&
               !theUnitsWithGapsOf(e).length &&
               botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar &&
-              e._invisTurn !== G.turn,
+              !theHerosInvisibilityHidesHimNow(e, G.turn),
           );
           if (sneak) {
             const f = hooks.duelSim(c, botAssumedChar(G, pi, sneak), 24);

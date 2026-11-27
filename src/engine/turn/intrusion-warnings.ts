@@ -1,3 +1,4 @@
+import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { relOfReport, spotEnemyInOwnedProvince } from '../heroes/fame-and-consecration.ts';
 import { armySizeBand } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
@@ -53,7 +54,7 @@ export function generateIntrusionNotifications(turnContext: TurnContext, ph: num
       actingChars.forEach((ac) => {
         const acProv = G.world.provinces[ac.location];
         if (!acProv) return;
-        if (ac._invisTurn === G.turn) return; // 2026-10-15 (Toby): a hero under Invisibility is not noticed
+        if (theHerosInvisibilityHidesHimNow(ac, G.turn)) return; // 2026-10-15 (Toby): a hero under Invisibility is not noticed
         const inOwnedProv = targetOwnedProvs.has(ac.location);
         // 2026-10-15 (Toby): a lone enemy lurking in your land with none of your heroes there is
         // reported only if your people spot them — the same roll the report makes for this hero,

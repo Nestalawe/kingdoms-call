@@ -1,3 +1,4 @@
+import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { TITLE_DEFS } from '../../content/kingdoms-call-data.ts';
@@ -512,7 +513,7 @@ export function botHuntTarget(
     if (!seen && !mem) return;
     if (mem && (theUnitsOf(e).length > 0 || mem.provId === from.id)) return;
     if (e.isKing && !c.isKing) return;
-    if (e._invisTurn === G.turn) return;
+    if (theHerosInvisibilityHidesHimNow(e, G.turn)) return;
     if (mine < botDuelRating(botAssumedChar(G, pi, e)) * 1.2) return; // cheap pre-filter, on known skills only
     const loc = mem ? mem.provId : e.location; // mem is null for a quarry in sight, and there for one out of it
     const d = botPathLenAny(G, from, loc, maxD);

@@ -991,7 +991,7 @@ describe('the ambush of a hero with no troops on watch (runDefendAmbush)', () =>
         { player: 1, at: 'C' },
       ]);
       const unseen = must(s.es[0], 'the heaviest column');
-      Object.assign(unseen, { _invisTurn: s.b.G.turn });
+      Object.assign(unseen, { _invisTurn: s.b.G.turn, armies: [] }); // R-158: it hides only a hero who leads no armies
       if (watched) Object.assign(must(s.b.G.players[0], 'realm 0'), { _clairCharThisTurn: unseen.id });
       firstDie(0.999, () => {
         runDefendAmbush(s.b.tc, PH);
