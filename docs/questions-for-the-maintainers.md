@@ -88,26 +88,27 @@ bite: does the Ring roll?
 
 *Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md).
 
-## 168. Does a Philosopher's Stone already found take the Stone's new words?
+## 168. Does a Philosopher's Stone already found take the Stone's new words, and its power too?
 
 Found on 2026-11-27.
 
 [R-191](rulings/R-191-the-philosophers-stones-text-says-the-skeletal-companies-are-left-out.md) gives the Stone words
 that say skeletal companies are not promoted. A Stone found before the change keeps the words it was found with: King
-Aldric found one three turns ago, and his pack still reads "promote all armies one quality tier". The turn works it
-the same either way.
+Aldric found one three turns ago, and his pack still reads "promote all armies one quality tier". A Stone dealt before
+12 September 2026 also carries an older power name, which nothing reads since #847, so it can't be worked (KD-508).
 
 1. **It keeps its words.** Impact: nothing changes for a Stone already found; one found from now on has the new words.
    This is how the game works now.
-2. **It takes the new words at the head of the next turn,** as the Ring and the Helm do
-   ([R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md)). Impact:
-   Aldric's pack reads the new words from the next turn; the Stone works as before.
+2. **It takes the new words at the head of the next turn, the words only.** Impact: Aldric's pack reads the new words
+   from the next turn; nothing changes in play, and a Stone dealt before 12 September still can't be worked.
+3. **It takes the new words and the power,** as the Ring and the Helm do
+   ([R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md)). Impact: the
+   words as in option 2, and a Stone dealt before 12 September works again: a change in play in games that old.
 
-*Assessment:* option 2: the words a player reads match what the Stone does, at the cost of one more effect in the list
-of those every copy takes from its row.
+*Assessment:* option 3: the words match what the Stone does, and every Stone works, as before #847.
 
-*Unlocks:* R-191's open point.
+*Unlocks:* R-191's open point, and KD-508's fix.
 
 *Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) (every
-copy of the Ring and the Helm takes its row's words) and
+copy of the Ring and the Helm takes its row's effect and words) and
 [R-191](rulings/R-191-the-philosophers-stones-text-says-the-skeletal-companies-are-left-out.md) (the Stone's words).
