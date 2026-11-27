@@ -662,10 +662,11 @@ export function pcTakeHit(
   }
   target.hp -= d;
   // The Ring of the Unbroken Pulse and the Great Helm of the Deathless: once a fight, on the copy's chance, a blow that
-  // would kill him leaves him standing (R-153). The die is drawn only for a wearer struck down.
+  // would kill him leaves him standing (R-153). The die is drawn only for a wearer this blow struck down from above 0.
   const _shrug = theChanceAFightersWardsGiveToShrugOffAKillingBlow({
     theWards: _arm,
     hisShrugHasBeenUsed: target._armShrugOffUsed,
+    hisHpBefore: _mkHpIn,
     hisHp: target.hp,
   });
   if (_shrug) {

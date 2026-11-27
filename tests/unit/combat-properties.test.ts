@@ -150,11 +150,19 @@ test('a hit taken is never negative, and takes exactly what it says from HP', LI
         T.status['incomingDmgBonus'] = wards.incomingDmgBonus;
         T['_roundWardLeft'] = wards.roundWard;
         const before = T.hp;
-        const taken = call('pcTakeHit', T, dmg, [], 'a foe', kind) as number;
+        const lines: unknown[] = [];
+        const taken = call('pcTakeHit', T, dmg, lines, 'a foe', kind) as number;
         expect(taken).toBeGreaterThanOrEqual(0);
         // Last-Stand Plate's second wind heals the wearer once, after the hit, and the Ring of the Unbroken Pulse or the
-        // Great Helm of the Deathless may leave him standing at 1 HP from a killing blow (R-153): only then may HP differ.
-        const healed = T['_armSecondWindUsed'] === true || T['_armShrugOffUsed'] === true;
+        // Great Helm of the Deathless may leave him standing at 1 HP from a killing blow (R-153), its line written:
+        // only then may HP differ.
+        const shrugged = lines.some(
+          (l) =>
+            typeof l === 'object' &&
+            l !== null &&
+            Reflect.get(l, 'kind') === 'the target shrugs off a killing blow and stands at 1 HP',
+        );
+        const healed = T['_armSecondWindUsed'] === true || shrugged;
         expect(healed ? before - taken : T.hp, 'HP after the hit').toBe(before - taken);
       },
     ),

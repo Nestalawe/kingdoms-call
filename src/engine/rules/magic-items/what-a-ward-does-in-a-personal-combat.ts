@@ -129,8 +129,8 @@ export const A_HIT_LANDS_HIS_WARDS_CAP_IT = {
 export const A_KILLING_BLOW_FALLS = {
   // the Ring of the Unbroken Pulse and the Great Helm of the Deathless: once a fight, on the copy's chance, a blow that
   // would kill him leaves him standing at the row's HP (R-153)
-  'a-killing-blow-shrugged-off': ({ theWards, hisShrugHasBeenUsed, hisHp }) =>
-    theWards?.shrugOff && !hisShrugHasBeenUsed && hisHp <= 0
+  'a-killing-blow-shrugged-off': ({ theWards, hisShrugHasBeenUsed, hisHpBefore, hisHp }) =>
+    theWards?.shrugOff && !hisShrugHasBeenUsed && hisHpBefore > 0 && hisHp <= 0
       ? {
           theChance: theWards.shrugOff / 100,
           theHpHeStandsAt: A_KILLING_BLOW_SHRUGGED_OFF.theHpHeStandsAt.value,

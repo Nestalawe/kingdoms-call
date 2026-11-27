@@ -8,7 +8,7 @@
 // (pc.pinned) on each side of the chance. Not lower: the chance is drawn inside pcTakeHit, once the blow is dealt. No
 // matrix game reaches a killing blow on a wearer at a known die.
 import { describe, expect, test } from 'vitest';
-import { personalCombatEngine } from '../lib/personal-combat.ts';
+import { clone, personalCombatEngine } from '../lib/personal-combat.ts';
 import type { NarrativeLine } from '../../src/engine/turn/events-and-their-audiences.ts';
 import type { AFighterInAPersonalCombat } from '../../src/engine/personal-combat/helpers.ts';
 import type { TurnContext } from '../../src/engine/turn/context.ts';
@@ -77,4 +77,15 @@ describe.for([
 
 test('Last-Stand Plate keeps its rule: falling below 30% of his maximum (10 HP to 5 of 20) gives back 25% of it', () => {
   expect(aBlow(aWearer('Last-Stand Plate', 10), 5, 0).hp).toBe(10);
+});
+
+test('a hero wearing the Ring (pcCharCombatant) shrugs off a killing blow at a die under 15%', () => {
+  const staged = { ...clone(pc.base), items: [clone(theItem('Ring of the Unbroken Pulse'))] };
+  const hero = pc.call('pcCharCombatant', staged) as AFighterInAPersonalCombat;
+  hero.hp = 4;
+  expect(aBlow(hero, Math.min(8, Math.floor((hero.maxHp || 20) / 2)), 0.149).hp).toBe(1);
+});
+
+test('a blow on a fighter already at 0 HP raises no one: the chance waits for a blow that strikes him down', () => {
+  expect(aBlow(aWearer('Ring of the Unbroken Pulse', 0), 3, 0).hp).toBeLessThanOrEqual(0);
 });
