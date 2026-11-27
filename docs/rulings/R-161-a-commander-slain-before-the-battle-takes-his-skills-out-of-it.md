@@ -11,7 +11,7 @@ leads Cave Trolls against a province's guards and falls in the duel; his trolls 
 they would against Lady Wren's host. His Yeoman Longbows loose their volley before the battle with no Archery behind
 it, in both kinds of battle.
 
-A commander slain in the duel keeps his mastery tiers' gifts: Druid 8's lift of his beasts' quality, Necromancy 6's,
+A commander slain in the duel keeps his mastery tiers' gifts, for example Druid 8's lift of his beasts' quality, Necromancy 6's,
 Tactical 8's spared host and Naval 8's sea waiver read his trained level.
 
 The question was: the two battles count a slain commander's skills otherwise. Option 1: "a slain commander's skills
