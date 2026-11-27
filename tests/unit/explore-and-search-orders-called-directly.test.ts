@@ -65,6 +65,7 @@ type Fn = (...a: unknown[]) => unknown;
 // functions were, so a stand-in on the module is the one called)
 const { ALL_MAGIC_ITEMS_P } = await import('../../src/content/kingdoms-call-data.ts');
 const theLairGuardians = await import('../../src/engine/personal-combat/lair-guardians-and-the-odds.ts');
+const theFightItself = await import('../../src/engine/personal-combat/resolve-personal-combat.ts');
 const theExploreAndSearchOrders =
   await import('../../src/engine/orders/explore-and-search-orders-maps-lairs-rites-and-rumours.ts');
 // (the two it calls only: a whole module read by name hides its unused exports from knip, the ratchet's unusedCode)
@@ -550,6 +551,39 @@ describe('Search Lair, called directly: what follows the fight', () => {
     expect({ cleared: f.cleared, gold: realm0(b)['gold'], maxHp: h.maxHp, earned: h['hpEarned'] ?? 0 }).toEqual({
       cleared: true,
       gold: 7,
+      maxHp: 20,
+      earned: 0,
+    });
+  });
+
+  test('a beast talked down by parley counts as pacified, not slain: half the Monster-Bane merit, no hit points (R-157)', () => {
+    // The guardian's own fight (resolveEncounter), its end stood in: the parley is switched off in the game
+    // (PARLEY_ENABLED), so the fight ends in one only here. Every die the search draws after it is fixed.
+    const { b, h, f } = searchOne(lair('Drowned Mill', 'Weak', { gold: 7 }), { hp: 20 });
+    guardianOf(f).hp = 40;
+    const theParley = vi
+      .spyOn(theFightItself, 'resolvePersonalCombat')
+      .mockImplementation((_tc, hisSide, theGuardiansSide) => ({
+        winner: null,
+        loser: null,
+        fledBy: null,
+        parley: true,
+        stoleBy: null,
+        aHp: hisSide.hp,
+        bHp: theGuardiansSide.hp,
+        narrative: [],
+      }));
+    try {
+      withDice(engine, [0.99], () => {
+        play(b, h, o('search', '0'));
+      });
+    } finally {
+      theParley.mockRestore();
+    }
+    const merit = (h['tm'] as { monster?: number } | undefined)?.monster ?? 0;
+    expect({ cleared: f.cleared, merit, maxHp: h.maxHp, earned: h['hpEarned'] ?? 0 }).toEqual({
+      cleared: true,
+      merit: 20,
       maxHp: 20,
       earned: 0,
     });
