@@ -64,13 +64,29 @@ T6, the types finished, is done: its two groups, P1-16 and P1-17, are in
 "The reports' audience in one place" and "The check after the rules pulled out" are done too: P1-11z, B-16, B-18, B-19,
 B-01 (the rulings audit) and P1-21x are in the finished lists.
 
-### 1. The first rulings and known defects
+### 1. The answers of 28 November and the questions' shape
+
+A maintainer's day: the maintainers answered every open question on 28 November, so the answers go into their rulings
+first, then the questions' shorter shape. Each row, and why it is there, is in
+[its file](the-later-group-phase-1s-later-rows.md):
+1. B-24
+2. B-25
+
+### 2. B-17's Run A: the bots' statistics
+
+B-17 comes before the rest of the rulings, as a maintainer placed it on 28 November: its Run A first (its rows join
+the backlog in its first row, B-17a), then KD-498, then its Run B by day with a maintainer; its Runs C and D after the
+rulings. Each row, and why it is there, is in its file:
+1. B-17 ([the ground for the redesign](the-later-group-what-serves-a-later-outcome-or-waits.md#the-ground-for-the-redesign))
+2. KD-498 ([Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild))
+
+### 3. The first rulings and known defects
 
 The rebuild's tranches are done, so the rulings and the known defects come next by the default order:
 [Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild)
-in its order, then [the rulings to build](the-rulings-decided-not-built.md) in their file's order. The rows on what a
-realm sees (KD-049, P1-23j, P1-23h, P1-23i, P1-23ag, P1-23bd, P1-23bg) wait for a maintainer's day, so they are not in
-this list. Each row, and why it is there, is in its file:
+in its order (KD-498 is in group 2), then [the rulings to build](the-rulings-decided-not-built.md) in their file's
+order. The rows on what a realm sees (KD-049, P1-23j, P1-23h, P1-23i, P1-23ag, P1-23bd, P1-23bg) wait for a
+maintainer's day, so they are not in this list. Each row, and why it is there, is in its file:
 1. P1-23x
 2. P1-23y
 3. P1-23z
