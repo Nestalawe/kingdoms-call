@@ -67,22 +67,3 @@ march for Sir Aldric; the GM's tab runs the turn at 21:00.
 
 *Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
 deadline are refused).
-
-## 166. Do the Rings, Helms and second-wind items already in running games change too?
-
-Found on 2026-11-27.
-
-[R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) gives the Ring
-and the Helm a chance to shrug off a killing blow, and four second-wind texts the 30%. A copy already in a running
-game (a hero's items, a lair's hoard, a realm's vault) keeps the effect and the words it was made with. Lady Wren
-holds the Ring: does she keep the second wind?
-
-1. **Yes: only copies made from now on change, as built (P1-23v).** Impact: old copies keep the old rule and words.
-2. **No: every copy is re-stamped by its name** (in `migrateItemTiers`, which re-stamps tiers each turn). Impact:
-   running games' wearers change rule at once.
-
-*Assessment:* option 2: the texts and the rule agree everywhere, for a small change.
-
-*Unlocks:* R-153's open point settled.
-
-*Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md).

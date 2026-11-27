@@ -5,7 +5,9 @@ import {
   THE_TEMPER_A_HERO_OF_NO_TEMPER_FIGHTS_WITH,
   _VARIANT_BANK,
 } from '../../content/kingdoms-call-data.ts';
+import { THE_EFFECTS_EVERY_COPY_IN_PLAY_TAKES_FROM_ITS_ROW } from '../../content/magic-item-effects-their-names-numbers-and-words.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
+import { theEffectsAnItemCarries } from '../rules-on-plain-values/the-effects-a-held-item-carries.ts';
 import { HOARD_CATEGORIES } from './hoard-categories.ts';
 import { kcRng } from '../rng.ts';
 import {
@@ -88,6 +90,7 @@ interface AnItemAsItsWorthIsRead extends ItemOfTheseRules {
 interface AnItemOfTheTreasury extends AnItemAsItsWorthIsRead {
   tier: number;
   slot?: string | undefined;
+  readonly desc?: string | undefined;
   readonly lore?: string | undefined;
   _variantOf?: string | undefined;
   _score?: number | undefined;
@@ -107,10 +110,12 @@ export interface AnItemAsTheSlotsReadIt extends AnItemAsItsWorthIsRead {
 export interface AHeroAsHisItemsAreRead<AnItem extends AnItemAsTheSlotsReadIt> extends RaceAndAlignment {
   readonly items?: (AnItem | null | undefined)[] | null | undefined;
 }
-/** An item as the save's upgrade re-stamps it: these rules' item, its tier and its words. */
+/** An item as the save's upgrade re-stamps it: these rules' item, its effect, its tier and its words. */
 interface AnItemAsTheUpgradeReadsIt extends AnItemAsItsWorthIsRead {
+  effect?: AnEffectAsTheseRulesReadIt | null | undefined;
   tier?: number | undefined;
   desc?: string | undefined;
+  lore?: string | undefined;
 }
 /** A list of items as the save's upgrade reads it: a gap among them, or none. */
 type ItemsAsTheUpgradeReadsThem = readonly (AnItemAsTheUpgradeReadsIt | null | undefined)[] | null | undefined;
@@ -520,7 +525,7 @@ export const _VARIANT_EPITHETS = [
 export function migrateItemTiers(gs: TheStateAsTheItemsTiersUpgradeReadsIt | null | undefined) {
   if (!gs) return;
   // a name that may be missing is looked up as Map.get does: no item is filed under it
-  const byName = new Map<string | undefined, { readonly tier: number }>();
+  const byName = new Map<string | undefined, AnItemOfTheTreasury>();
   ALL_MAGIC_ITEMS_P.forEach((it) => byName.set(it.name, it));
   // the labels read by any school's name
   const labels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
@@ -531,6 +536,13 @@ export function migrateItemTiers(gs: TheStateAsTheItemsTiersUpgradeReadsIt | nul
     const m = byName.get(it.name) ?? byName.get(_ITEM_ALT_BASE[it.name]);
     if (m) {
       if (it.tier !== m.tier) it.tier = m.tier;
+      // R-153 (question 166's answer): a copy of the Ring, the Helm or a second-wind item takes its row's effect and
+      // words, whenever it was made
+      if (theEffectsAnItemCarries(m).some((slug) => THE_EFFECTS_EVERY_COPY_IN_PLAY_TAKES_FROM_ITS_ROW.includes(slug))) {
+        if (m.effect) it.effect = { ...m.effect, ...(m.effect.pc ? { pc: { ...m.effect.pc } } : {}) }; // the copy's own, as a minted one's
+        if (typeof m.desc === 'string') it.desc = m.desc;
+        if (typeof m.lore === 'string') it.lore = m.lore;
+      }
     } else if (!isLegendaryItem(it) && ((it.tier ?? 0) || 1) < itemTierFloor(it)) it.tier = itemTierFloor(it);
     // 2026-10-13 (item 7, Toby): an item rolled before the descriptions named their school with a
     // capital ("casts Charm (Psychic Magic)") carries the old lower-case copy; mend it in place.
