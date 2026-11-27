@@ -667,8 +667,8 @@ export function pcAct(
       // working: with the flag off the tactic falls through to an ordinary attack, exactly as an
       // unusable tactic does. To restore: set PARLEY_ENABLED to true and drop `retired` from
       // ENCOUNTER_TACTICS in BOTH portals, restore the Scout report's "a Druid could talk it
-      // down" clause, and put the Druid bullet back in the rulebook (its Monster-Bane line already
-      // says a pacified guardian counts half, R-157).
+      // down" clause, and put the Druid bullet and the Monster-Bane half-credit clause back in
+      // the rulebook.
       if (!PARLEY_ENABLED) {
         pcAdvanceOrStrike(turnContext, actor, foe, narrative, state);
         break;
