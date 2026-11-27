@@ -2,7 +2,7 @@
 
 - **Decided:** 2026-10-31, a maintainer
 - **Status:** Confirmed
-- **Source:** Question 14: the Crown of Command's text says it helps friend or foe, and the turn helps the wearer's realm only: which is right? Answer: option 1, the text follows the turn.
+- **Source:** Question 14: the Crown of Command's text says it helps friend or foe, and the turn helps the wearer's realm only: which is right? Answer: option 1, the text follows the turn. The re-stamp of a running game's copies: decided in the rulings tranche's scoping, 15 November (KD-029's "P1-23u, Decision 3"; the row's "running games' copies of them re-stamped").
 - **Enforced by:** [`the-crown-of-commands-texts-say-it-helps-your-realms-characters`](../../tests/unit/the-crown-of-commands-texts-say-it-helps-your-realms-characters.test.ts)
 
 The Crown of Command gives +1 to every skill of its wearer's own realm's characters in his province, as the

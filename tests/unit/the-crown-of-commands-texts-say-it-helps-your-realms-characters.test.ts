@@ -5,15 +5,15 @@
 //
 // Level 1 (unit): the Crown's row in play and itemLore (the lore the player page shows), then migrateItemTiers, the
 // save's upgrade pass that re-stamps the items by name at the head of every turn
-// (src/engine/saves/upgrade-a-saved-game-and-check-it.ts), on a staged state holding an old copy (its words as #862's
-// base had them) in a hero's items, a lair's hoard and an older save's vault. Not lower: the row and the pass are the
-// texts and the re-stamp. No dice.
+// (src/engine/saves/upgrade-a-saved-game-and-check-it.ts), on a staged state holding an old copy (its words as they
+// were before P1-23u) in a hero's items, a lair's hoard and an older save's vault. Not lower: the row and the pass are
+// the texts and the re-stamp. No dice.
 import { describe, expect, test } from 'vitest';
 import { migrateItemTiers } from '../../src/engine/items/equipment.ts';
 import { itemLore } from '../../src/engine/items/tiers-and-hoards.ts';
 import { ALL_MAGIC_ITEMS_P } from '../../src/content/kingdoms-call-data.ts';
 
-/** The Crown as a copy dealt on #862's base carried it: its effect, its desc and its lore. */
+/** The Crown as a copy dealt before P1-23u carried it: its effect, its desc and its lore. */
 const THE_OLD_COPY = {
   name: 'Crown of Command',
   slot: 'helm',
