@@ -12,7 +12,7 @@ The rebuild's tranches are done: [the top](README.md#1-the-first-rulings-and-kno
 The first ordering pass placed these rows by impact. Among rows of equal harm, the harm more games meet goes first,
 then the row that unblocks others, then the smaller row. A known defect was placed only when it is plainly harm in
 live play: its row says players notice it in running games, the turn's result is wrong (not only its words), and its
-fix needs no new ruling. The first row is a maintainer's answer of 27 November; the last four joined from Next. The other rulings to build are in
+fix needs no new ruling. The last four joined from Next. The other rulings to build are in
 [their own file](the-rulings-decided-not-built.md).
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
