@@ -3402,7 +3402,7 @@ export const FLOOD_CASES: CastSpellOrderCase[] = [
     },
   },
   {
-    name: "Flood on a sea parted earlier this turn drowns it again, and the turn's end leaves it sea, as it was before the parting (KD-050)",
+    name: "Flood on a sea parted earlier this turn drowns it again, and the turn's end leaves it sea, as it was before the parting",
     wholeTurnOnly: true,
     stage(b) {
       const sea = ring1(b, 0);

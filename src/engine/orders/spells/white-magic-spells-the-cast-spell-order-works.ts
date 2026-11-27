@@ -317,7 +317,7 @@ export function workPartSea({ turnContext, G, c, ph, targetProv }: TheNamesAnAct
     // Part the waters: open sea OR a flooded land province becomes dry plains for the rest
     // of the turn.
     targetProv._partSea = { orig: targetProv.terrain, turn: G.turn, blockFleetsFromPhase: ph + 1 };
-    targetProv.terrain = 'plain'; // the plain's key in every terrain table (KD-050)
+    targetProv.terrain = 'plain'; // the plain's key in every terrain table (TERRAIN_MODS)
     emit(turnContext, {
       type: 'explore',
       fact: { kind: 'the waters of a province draw back', heroName: c.name, provinceName: targetProv.name },

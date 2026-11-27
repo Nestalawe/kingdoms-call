@@ -437,7 +437,7 @@ describe("Cast Spell, called directly: the spells' marks before the turn's end",
     expect([sea.terrain, sea['_partSea']]).toEqual(['plain', { orig: 'sea', turn: b.G.turn, blockFleetsFromPhase: 3 }]);
   });
 
-  test("Part Sea (KD-050): a battle on the parted seabed reads the plain's row, so Men-at-Arms fight at ×1.1 there, not ×1.0", () => {
+  test("Part Sea: a battle on the parted seabed reads the plain's row, so Men-at-Arms fight at ×1.1 there, not ×1.0", () => {
     const b = fresh();
     const sea = ring1(b, 0);
     sea.terrain = 'sea';
@@ -446,7 +446,7 @@ describe("Cast Spell, called directly: the spells' marks before the turn's end",
     expect([terrainMod('Men-at-Arms', sea.terrain), terrainMod('Men-at-Arms', 'plain')]).toEqual([1.1, 1.1]);
   });
 
-  test('Flood: the province is sea, marked with what it was; on a parted sea (KD-050), the parting is undone and the sea it was is kept as what it was', () => {
+  test('Flood: the province is sea, marked with what it was; on a parted sea, the parting is undone and the sea it was is kept as what it was', () => {
     const b = fresh();
     const p = ring1(b, 0);
     const sea = ring1(b, 1);
