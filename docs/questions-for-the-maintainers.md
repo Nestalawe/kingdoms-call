@@ -134,3 +134,26 @@ back. Example: Sir Tomas is wounded in the first round, then talks the wyvern do
 
 *Touches:* [R-157](rulings/R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md) (a lair beast talked down
 counts as pacified).
+
+## 170. Does a fleet alone that chases a quarry ashore land, as a Move does?
+
+Found on 2026-11-28.
+
+[R-174](rulings/R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) lets a column of ships alone
+land on a coast it is ordered to by a Move, next door or far off. A chase finds its way by the old road: ships alone
+never step onto land, even next door. So a chase by ships alone ends when the quarry goes ashore. Example: Admiral
+Hale's Galleons chase a raider, who lands on the Vakfield coast. A Move to Vakfield would land Hale there; the chase
+ends at sea instead, with "finds no road closer to his quarry".
+
+1. **The chase stops at the shore, as built.** Impact: a fleet alone never lands to catch its quarry; a hero who
+   wants to follow sends a Move instead. Nothing changes.
+2. **The chase lands, as a Move does.** Impact: a fleet alone follows its quarry onto the coast, and may catch him
+   there; a chase and a Move take the same road.
+
+*Assessment:* option 2: R-174's "one rule for the step, however far the target" reads naturally for every march;
+but a chase is not a Move order, so it is a maintainer's call.
+
+*Unlocks:* a row that builds option 2, if chosen.
+
+*Touches:* [R-174](rulings/R-174-a-fleet-ordered-to-a-far-coast-lands-as-it-would-next-door.md) (a fleet ordered to
+a far coast lands as it would next door).
