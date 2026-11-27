@@ -12,9 +12,10 @@ export interface UnitOfAType {
 
 // Flying armies can cross sea provinces without a fleet
 export const FLYING_TYPES = new Set(KC_UNIT_CLASS.flying);
-// AERIAL_TYPES governs SEA-CROSSING only: every unit that flies and so needs no naval escort to
-// enter a sea province. It is a superset of FLYING_TYPES and adds the winged primal beasts. It is
-// deliberately separate from FLYING_TYPES so their combat terrain modifiers stay untouched.
+// AERIAL_TYPES: every unit that flies, the winged riders and the flying beasts (a superset of FLYING_TYPES). It is
+// what reads "flies" for crossing the sea with no naval escort, for the battle grid's air row and for Flak Screen's
+// pick (R-146). FLYING_TYPES, the winged riders alone, stays apart for the rules that read only them (archery's
+// double, the flying carry).
 export const AERIAL_TYPES = new Set(KC_UNIT_CLASS.aerial);
 // Non-humanoid army classification for Druidic/Evil alignment bonuses
 export const CREATURE_ARMIES = new Set(KC_UNIT_CLASS.creature);
