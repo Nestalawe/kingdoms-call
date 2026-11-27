@@ -1075,9 +1075,10 @@ const VERSION_2_SHAPES: {
       const leftHere = b['hoardItems'];
       delete b['hoardItems'];
       b['lairItems'] = leftHere;
-      // the hoards as the upgrade's re-stamp gives them their rows' words (an old Crown of Command's: R-143). This case
-      // checks the hoard's items and their order; the Crown's words are pinned by
-      // the-crown-of-commands-texts-say-it-helps-your-realms-characters.test.ts
+      // the hoards as the upgrade's re-stamp gives them their rows' words (an old Crown of Command's: R-143; an old
+      // Ring of the Sapper's, Ring of the Lancer's, Crested Barbute's and the like: R-149). This case checks the hoard's
+      // items and their order; their words are pinned by the-crown-of-commands-texts-say-it-helps-your-realms-characters
+      // .test.ts and the-commanders-items-texts-name-every-unit-the-battle-lifts.test.ts
       return [a, reStamped(copy([...hoard, ...left])), b, reStamped(copy(leftHere))];
     },
     mended(_s, staged) {
