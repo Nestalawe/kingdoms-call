@@ -12,4 +12,4 @@ line a realm reads when the Stone finds nothing to raise. Example: King Aldric l
 company of risen dead. He works the Stone: the Men-at-Arms rise to Average, and the skeletal company stays Green. A
 realm whose only companies are skeletal reads that it has no living armies, and keeps the Stone.
 
-**Open:** a Stone already in a running game keeps the words it was found with (question 167).
+**Open:** a Stone already in a running game keeps the words it was found with (question 168).

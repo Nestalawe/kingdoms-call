@@ -68,7 +68,7 @@ march for Sir Aldric; the GM's tab runs the turn at 21:00.
 *Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
 deadline are refused).
 
-## 167. Does a Philosopher's Stone already found take the Stone's new words?
+## 168. Does a Philosopher's Stone already found take the Stone's new words?
 
 Found on 2026-11-27.
 
