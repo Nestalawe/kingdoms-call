@@ -430,7 +430,7 @@ export type TheFactOfTheCastSpellOrdersLine =
     } & ACaster)
   | ({ kind: 'Phantom Host finds no beasts to duplicate' } & ACaster)
   | ({ kind: 'Phantom Host conjures duplicates of beasts'; duplicates: number } & ACaster)
-  | ({ kind: 'Invisibility holds'; chance: number; roll: number } & ACaster)
+  | ({ kind: 'Invisibility holds'; chance: number; roll: number; theSpellWaits: boolean } & ACaster)
   | ({ kind: 'Invisibility fails to hold'; chance: number; roll: number } & ACaster)
   | ({ kind: 'a Veil of illusion is drawn over a host' } & ACaster)
   | { kind: 'Chain Lightning finds no enemy hero in the province'; provinceName: string }
