@@ -18,9 +18,9 @@
 // direct call: the turn's statistics for each cast; the Warlock's extra cast in his best school (titles start at turn
 // 5); a charmed hero's refusal and what it allows; a mark named by a pre-order reference (hired, raised, charmed;
 // nobody); a mastery spell worked last turn; an item's cast that leaves the Wailing Phylactery unspent; which refusals
-// spend no slot; what the turn's end takes back, seen mid-turn (Part Sea's plain and its mark, a battle there on the plain's row, a Flood's, the five
-// elementals by the die, a Clairvoyance replaced, Illusory Terrain by the dice, Oratory, Curse, phantoms, Invisibility,
-// a Veil); Resurrect's guards and the orders a realm wrote for the raised hero (the caster's own card first, after the
+// spend no slot; what the turn's end takes back, seen mid-turn (Part Sea's plain and its mark, a battle there on the
+// plain's row, a Flood's, the five elementals by the die, a Clairvoyance replaced, Illusory Terrain by the dice,
+// Oratory, Curse, phantoms, Invisibility, a Veil); Resurrect's guards and the orders a realm wrote for the raised hero (the caster's own card first, after the
 // cast only, Defend for the rest); Charm's (the orders, his watch dropped, his movement, the marks of an enemy seized,
 // the resistance capped at 95); the helper that was nested in `processOrder` (`charmBacklash`, handed why as a record
 // since P1-12d9, with the duel stood in: no roll for a hero gone or fallen, 50 and 51, Flee on either side, combat
@@ -443,7 +443,7 @@ describe("Cast Spell, called directly: the spells' marks before the turn's end",
     sea.terrain = 'sea';
     const h = at(b, { white: 1 });
     rolls([1], () => casts(b, h, 'Part Sea', sea.id, 0));
-    expect([terrainMod('Men-at-Arms', sea.terrain), terrainMod('Men-at-Arms', 'plain')]).toEqual([1.1, 1.1]);
+    expect(terrainMod('Men-at-Arms', sea.terrain)).toBe(1.1);
   });
 
   test('Flood: the province is sea, marked with what it was; on a parted sea, the parting is undone and the sea it was is kept as what it was', () => {

@@ -22,7 +22,6 @@ export type AHeroAsTheCastMarksHim = Omit<HeroInABattle, 'armies'> & {
 /** A province as the Cast Spell order marks it: a province, and the marks of Part Sea and Flood, which the new turn
  *  takes back. */
 export type AProvinceAsTheCastMarksIt = Province & {
-  /** A Flood's older mark (the new turn wipes it): Part Sea and a Flood cancel it. */
   /** Part Sea's waters drawn back: the terrain it had, the turn, and the phase from which no fleet sails there. */
   _partSea?: { orig: string; turn: number; blockFleetsFromPhase: number };
   /** A Flood: the terrain it had, and the turn. */
