@@ -66,7 +66,7 @@ export const THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN = [
     stages: [
       {
         stage: 'N3',
-        inGameTerms: "the attacker's pre-battle magic and army spells",
+        inGameTerms: "the attacker's pre-battle magic",
         anchor: '// PRE-BATTLE PHASE 1: MAGIC Hero casts first',
       },
       {
@@ -81,7 +81,7 @@ export const THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN = [
     stages: [
       {
         stage: 'N5',
-        inGameTerms: "the defenders' commander's pre-battle magic",
+        inGameTerms: "the defenders' commander's pre-battle magic, then the attacker's army spells",
         anchor: '// DEFENDER PRE-BATTLE PHASES',
       },
       {
@@ -133,7 +133,7 @@ export const THE_BATTLE_AGAINST_THE_DEFENDERS_STAGES_IN_THE_ORDER_THEY_RUN = [
         stage: 'N13',
         inGameTerms: 'the end: the spells lifted, the skills learned',
         anchor:
-          '// Battle-magic strength reductions last only for this battle\n[\n...(asItsGuardReadsIt(c.armies) ?? []),',
+          '// Battle-magic strength reductions last only for this battle\nwipeABattlesMarksFromItsUnits([\n...(asItsGuardReadsIt(c.armies) ?? []),',
       },
     ],
   },
@@ -218,7 +218,7 @@ export const THE_BATTLE_BETWEEN_HEROES_STAGES_IN_THE_ORDER_THEY_RUN = [
         stage: 'H10',
         inGameTerms: 'the end: the spells lifted, the skills learned',
         anchor:
-          '// Battle-magic strength reductions last only for this battle\n[...(asItsGuardReadsIt(atk.armies) ?? []), ...(asItsGuardReadsIt(def.armies) ?? [])]',
+          '// Battle-magic strength reductions last only for this battle\nwipeABattlesMarksFromItsUnits([...(asItsGuardReadsIt(atk.armies) ?? []), ...(asItsGuardReadsIt(def.armies) ?? [])]',
       },
     ],
   },

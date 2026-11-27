@@ -429,9 +429,9 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     numbers: { inTheSecondLine: { value: 1, theBooksWriteIt: 'full strength' } },
   },
   // ── Before the battle (plan P1-19i: applyFlakScreen, and Breach and Swamp in both battles) ──
-  // A flyer is harried before the battle (strength): each Gyrocopter engages one enemy winged rider no gyrocopter has
-  // engaged this battle, which loses 30% of its base strength for the battle (at least 1), so no two gyrocopters engage
-  // the same flyer.
+  // A flyer is harried before the battle (strength): each Gyrocopter engages one enemy flyer (a winged rider or a flying
+  // beast: KC_UNIT_CLASS.aerial, R-146) no gyrocopter has engaged this battle, which loses 30% of its base strength for
+  // the battle (at least 1), so no two gyrocopters engage the same flyer.
   'flak-screen': {
     unit: 'Gnomish Gyrocopters',
     name: 'Flak Screen',
@@ -471,7 +471,7 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
   },
   // When at least half the winning force are Warg Riders, each beaten unit is 15% more likely to be destroyed, on any
   // ground; against neutral guards, who never flee, they halve the winner's own losses instead (the rulebook writes
-  // "halve").
+  // "halve"). A guard's own Warg Riders run a beaten hero down as a winner's do between heroes (R-166).
   'run-them-down': {
     unit: 'Warg Riders',
     name: 'Run Them Down',
@@ -555,7 +555,7 @@ export const UNIT_ABILITIES = {
   'Black Arrows':
     'Brawling Archers — full strength when forced into the front line, where other archers fight ×0.75. Raiders’ Volley — their pre-battle volley does ×1.5 when attacking.',
   'Warg Riders':
-    'Wolves Panic Horses — ×1.25 facing cavalry. Run Them Down — if at least half your winning force are Wargs, they run the beaten army down on the field: every beaten unit is 15% more likely to be destroyed in the rout, on any ground (not against a Dwarven Shield Fort). There is no chase afterwards. Against neutral guards, who never flee, they end the fight fast instead: half casualties for you on a win.',
+    "Wolves Panic Horses — ×1.25 facing cavalry. Run Them Down — if at least half your winning force are Wargs, they run the beaten army down on the field: every beaten unit is 15% more likely to be destroyed in the rout, on any ground (not against a Dwarven Shield Fort). There is no chase afterwards. Against neutral guards, who never flee, they end the fight fast instead: half casualties for you on a win. A guard's own Warg Riders run your beaten army down all the same.",
   'Wyvern Riders':
     'Terror From Above — the enemy’s strongest front-line unit fights ×0.85. Acid Spit — a pre-battle strike on one enemy unit (2–5), one chance in two whatever the commander’s Druid.',
   'Orc Garrison':

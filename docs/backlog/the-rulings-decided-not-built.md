@@ -49,7 +49,7 @@ test checks that each such ruling has its row
 A group, not a row ([how to read a row](README.md#how-to-read-a-row)): fix what the checks found, then what the
 maintainers have ruled. Impact: the game does what its rulings say. Maintainer ✓. `KNOWN_BREACHES` is empty. Its rows
 are in the table above and in [Later's first group](the-later-group-what-serves-a-later-outcome-or-waits.md#the-rulings-and-the-known-defects-after-the-rebuild);
-its finished rows in [the finished list](finished-steps-p1-13-to-p1-25.md#p1-23). Planned on 1 November, its rulings
+its finished rows in the finished list ([part 1](finished-steps-p1-13-to-p1-25.md#p1-23), [part 2](finished-steps-p1-13-to-p1-25-part-2.md#p1-23-continued)). Planned on 1 November, its rulings
 numbered on 15 November, for rows f to ab; its decisions in force:
 - **One row a ruling.** Each is test first and fails first, carries its balance report with "What changes in play"
   and a `## For playtesters` section, and is not `refactor-only`.

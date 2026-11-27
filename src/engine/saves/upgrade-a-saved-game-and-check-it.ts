@@ -41,13 +41,13 @@
 //   7. an old world's lairs renamed once, each from its own guardian's pools (renameLairsThematicP, behind _lairNamesV3;
 //      world generation names a new world's so and sets the flag);
 //   8. an old world's guardians made 5 HP frailer once, their undamaged HP too, never below 5 (behind _guardianHpV2,
-//      which world generation doesn't set: a new world's guardians are cut on its first turn, question 17, P1-23l);
+//      which world generation sets: a new world's guardians keep the guardian table's HP, R-145);
 //   9. every guardian's brute strength given its kind's words (P1-11e1, R-137), with no flag: a perk already in them
 //      is left untouched;
 //   10. the retired Library (sd30) struck from every realm's discoveries, with any gap in the list.
-// Each runs on every load behind its flag, as in the turn, not as a numbered step (P1-15's Decision 2): a numbered
-// step would skip a new world, and the guardians' cut would stop for new games, which is a rule's change. How many
-// lairs it renamed and guardians it cut, it returns: the turn tells the GM where it did.
+// Each runs on every load behind its flag, as in the turn, not as a numbered step (P1-15's Decision 2): a world without
+// the flag, whatever its version, gets the pass. How many lairs it renamed and guardians it cut, it returns: the turn
+// tells the GM where it did.
 // After the check, the four turn-start repairs (P1-15f2; until then the turn ran them once the realms' flags were
 // stamped, before the merge of the realms' orders), so the check still sees the save as loaded (a leaked hull marker
 // is still named). They also mend what today's code may leave:

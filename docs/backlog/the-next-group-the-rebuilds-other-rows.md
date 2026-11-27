@@ -18,8 +18,7 @@ defects placed so far come after the rebuild, in [Later](the-later-group-what-se
 
 A group, not a row ([how to read a row](README.md#how-to-read-a-row)): faults made on purpose, scored by a script,
 after each big series, so that what the tests miss is found; recurring, Maintainer ✓. Each session's tests are a
-lettered row: the finished ones (#192–#649) in [the finished list](finished-steps-p1-13-to-p1-25.md#p1-21), and
-P1-21x, the session on T7's lines, in [the top](README.md#1-the-check-after-the-rules-pulled-out).
+lettered row: the finished ones (#192–#823) in [the finished list](finished-steps-p1-13-to-p1-25.md#p1-21).
 
 ### P1-19: the rule registry for content effects
 

@@ -39,11 +39,10 @@
 //   passed over; on a fixture holding none, only the stamp; a save at version 2 not mended again.
 // - the readers whose fallback for those shapes went (P1-15f6), each through the upgrade then the reader: the {gold}
 //   treasure read and set as a number, the single perk read as the list, the fallen's items stocked into the hoard.
-// The world staged on is one that has played its first turn: its guardians already re-measured (a new world isn't:
-// question 17). And a brand-new world through the upgrade changes nothing but what a known list names: each entry is a
-// known defect, fixed in its own pull request, whose fix removes it (Mithril Armour is made at tier 1, and the upgrade
-// raises it to its floor, tier 2; a new world's guardians are made 5 HP frailer, question 17, P1-23l), so the list only
-// shrinks.
+// The world staged on is a new one: world generation marks its guardians as needing no cut (R-145), so only a case
+// that stages an old world sees it. And a brand-new world through the upgrade changes nothing but what a known list
+// names: each entry is a known defect, fixed in its own pull request, whose fix removes it (Mithril Armour is made at
+// tier 1, and the upgrade raises it to its floor, tier 2), so the list only shrinks.
 // Each staged case is certain on any world: it stages what it reads (a hero's items and his realm's discoveries, a
 // home's race), so no seed can miss it. Each pass, and each of version 2's mends, left out turns its cases red.
 // Level 1 (unit): world generation and the upgrade, called directly on the engine's modules (plan P1-14a); no turn is
@@ -70,7 +69,7 @@
 // given its reader's value, then parsed strictly (a damage range that deals damage left, and named); gaps passed over;
 // a save at version 2 not mended again. The readers whose fallback for those shapes went (P1-15f6), through the
 // upgrade then the reader: the treasure read and set, the perk read, the fallen's items stocked. Four new worlds (2 to 6 realms) change only by a known list (Mithril
-// Armour made at tier 1, raised to 2; the guardians 5 HP frailer, counted: known defects, whose fixes remove them). Each pass or repair left
+// Armour made at tier 1, raised to 2: a known defect, whose fix removes it), none of their guardians cut. Each pass or repair left
 // out turns its cases red (18 of 18), as does each mend of version 2's step (27 of 27: each staged on the version-1
 // fixture, which then parses strictly). What it compares is the passes' counts: the check's findings (P1-15d) are its own test's,
 // since a world made by world generation alone isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots'
@@ -134,10 +133,9 @@ function newWorld(realms: number, cols: number, rows: number, seed = SEED): Save
   }));
   return JSON.parse(JSON.stringify(generateNewGame(setups, { cols, rows }, 0, {}))) as Save;
 }
-/** A save of a world that has played its first turn: its guardians are re-measured then (world generation doesn't mark
- *  a new world's: question 17, P1-23l), so only a case that stages an old world sees the cut. */
+/** A new world: world generation marks its guardians as needing no cut (R-145), so only a case that stages an old world
+ *  sees it. */
 const WORLD = newWorld(3, 10, 8);
-WORLD._guardianHpV2 = true;
 /** What the upgrade's passes counted. The check's findings are left out: a world made by world generation and staged
  *  here isn't a save the GM page wrote (Turn 0 adds the turn mode and the bots' settings), so the check names those;
  *  the check has its own test (a-save-the-check-finds-a-place-in-stops-its-turn-but-for-a-known-leak.test.ts, P1-15d). */
@@ -908,13 +906,6 @@ const KNOWN: { what: string; matches: (d: Difference) => boolean }[] = [
     what: 'Mithril Armour is made at tier 1; the upgrade raises it to its floor, tier 2',
     matches: (d) => d.path.endsWith('.tier') && d.holder['name'] === MITHRIL_ARMOUR.name && d.was === 1 && d.is === 2,
   },
-  {
-    what: "a new world's guardians are made 5 HP frailer on its first turn, never below 5, and the world marked so (world generation doesn't mark it: question 17, P1-23l)",
-    matches: (d) =>
-      d.path === '_guardianHpV2'
-        ? d.was === undefined && d.is === true
-        : /\.monster\.(hp|_hpFull)$/.test(d.path) && typeof d.was === 'number' && d.is === Math.max(5, d.was - 5),
-  },
 ];
 
 describe('a brand-new world through the upgrade', () => {
@@ -927,7 +918,7 @@ describe('a brand-new world through the upgrade', () => {
   test.each(WORLDS)('%i realms on %i by %i: nothing changes but what the known list names', (realms, cols, rows) => {
     const world = newWorld(realms, cols, rows);
     const upgraded = copy(world);
-    expect(countsOf(upgradeGameState(upgraded))).toEqual({ ...NOTHING_FOUND, guardiansCut: guardiansWithHp(world) });
+    expect(countsOf(upgradeGameState(upgraded))).toEqual(NOTHING_FOUND);
     const unknown = differences(world, upgraded).filter((d) => !KNOWN.some((k) => k.matches(d)));
     expect(unknown.map((d) => `${d.path}: ${JSON.stringify(d.was)} → ${JSON.stringify(d.is)}`)).toEqual([]);
   });

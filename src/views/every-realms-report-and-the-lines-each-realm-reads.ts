@@ -77,8 +77,7 @@ export function playerEvents(
     .filter((c) => c.player === pi && c.alive)
     .forEach((c) => playerVisitedProvs.add(c.location));
   // Messenger Birds: receive intel from provinces 2 steps from owned provinces (the discoveries' registry's since plan
-  // P1-19ah: "visibility: a realm's discoveries widen the warnings it hears", moved as it was: nothing below reads the
-  // set it widens, Parked)
+  // P1-19ah: "visibility: a realm's discoveries widen the warnings it hears"). Nothing below reads it; retired: R-140
   if (doARealmsDiscoveriesWidenTheWarningsItHears(G.players[pi])) {
     const offEven: readonly (readonly [number, number])[] = [
       [-1, -1],
@@ -160,31 +159,6 @@ export function playerEvents(
       });
   });
 
-  // ── Spy Activity — for each province this player SPIED, what OTHER realms' characters did
-  // there in the phases AFTER the spy arrived (the agent's lingering line of sight): the gate's (R-118). A force drawn up
-  // for battle is passed over, by its kind (P1-12d36), and a line read twice in a phase once.
-  const spyActivity: { provId: number; provName: string; sincePhase: number; lines: ALineTheSpySees[] }[] = [];
-  theLinesItReads.spysLingeringSight.forEach(({ province: pid, afterPhase: afterPh, lines: theLinesItSees }) => {
-    const seen = new Set<string>();
-    const lines: ALineTheSpySees[] = [];
-    theLinesItSees.forEach(({ line: e, at, phase }) => {
-      if (theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE) return;
-      const key = `${String(phase)}|${String(e.text)}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      lines.push({ phase, text: e.text });
-    });
-    if (lines.length) {
-      lines.sort((a, b) => a.phase - b.phase);
-      spyActivity.push({
-        provId: pid,
-        provName: (G.world.provinces[pid]?.name ?? '') || 'a distant province',
-        sincePhase: afterPh + 1,
-        lines,
-      });
-    }
-  });
-
   // A battle line carries the attacker's (or ranking force's) charId. If that is not one of this
   // player's own characters but they DID field a commander in that battle, re-file the line under
   // their own hero so a defended/resumed battle lands in that hero's Chronicle section rather
@@ -241,6 +215,32 @@ export function playerEvents(
       return pre + (cap ? 'An unknown realm' : 'an unknown realm');
     });
   };
+  // ── Spy Activity — for each province this player SPIED, what OTHER realms' characters did
+  // there in the phases AFTER the spy arrived (the agent's lingering line of sight): the gate's (R-118). A force drawn up
+  // for battle is passed over, by its kind (P1-12d36), and a line read twice in a phase once. Each names a realm as the
+  // chronicle's lines do (_maskText, R-046).
+  const spyActivity: { provId: number; provName: string; sincePhase: number; lines: ALineTheSpySees[] }[] = [];
+  theLinesItReads.spysLingeringSight.forEach(({ province: pid, afterPhase: afterPh, lines: theLinesItSees }) => {
+    const seen = new Set<string>();
+    const lines: ALineTheSpySees[] = [];
+    theLinesItSees.forEach(({ line: e, at, phase }) => {
+      if (theKindOfEachLine[at] === THE_KIND_OF_A_FORCE_DRAWN_UP_FOR_BATTLE) return;
+      const key = `${String(phase)}|${String(e.text)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      lines.push({ phase, text: _maskText(e) });
+    });
+    if (lines.length) {
+      lines.sort((a, b) => a.phase - b.phase);
+      spyActivity.push({
+        provId: pid,
+        provName: (G.world.provinces[pid]?.name ?? '') || 'a distant province',
+        sincePhase: afterPh + 1,
+        lines,
+      });
+    }
+  });
+
   // A force drawn up for battle carries its kind into the realm's chronicle (the pages draw its rows by it alone); no
   // other line carries one.
   const isAForcesRow = ({ at }: ALineTheRealmReads) =>

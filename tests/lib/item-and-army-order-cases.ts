@@ -295,11 +295,8 @@ export const EQUIP_ITEMS_ORDER_CASES: ItemAndArmyOrderCase[] = [
 ];
 
 // ── Use Item ────────────────────────────────────────────────────────────────────────────────────────────────────
-/** The Philosopher's Stone as an older save holds it, with the effect Use Item works (`massPromote`). The relic a lair
- *  yields today reads `promoteAll`, which nothing works: Use Item calls it a passive item (STATUS, Parked). */
-export const oldStone = (b: Board): Item => ({ ...item(b, STONE), effect: { stat: 'massPromote', bonus: 1 } });
-/** Realm 0's king carrying an older save's Philosopher's Stone, and leading `troops`. */
-const stoneBearer = (b: Board, troops: Unit[] = []) => leads(holding(king(b), oldStone(b)), troops);
+/** Realm 0's king carrying the Philosopher's Stone as a lair deals it (`promoteAll`), and leading `troops`. */
+const stoneBearer = (b: Board, troops: Unit[] = []) => leads(holding(king(b), item(b, STONE)), troops);
 const qualities = (us: Unit[] | undefined) => (us ?? []).map((u) => `${u.quality} ${u.unitName}`);
 export const USE_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
   {
@@ -347,7 +344,7 @@ export const USE_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
     },
   },
   {
-    name: 'Use Item: the Philosopher’s Stone a lair yields today is called a passive item, and nothing happens',
+    name: 'Use Item: the Philosopher’s Stone a lair deals is worked, not called a passive item',
     stage(b) {
       const h = leads(holding(king(b), item(b, STONE)), companies(1, 'Men-at-Arms', 'Green'));
       return { hero: h, orders: [one(h, order('use_item', STONE))] };
@@ -355,11 +352,11 @@ export const USE_ITEM_ORDER_CASES: ItemAndArmyOrderCase[] = [
     check(o, { hero: h }) {
       return {
         got: {
-          told: says(o, `The ${STONE} is a passive item and does not need to be used`),
+          passive: says(o, `The ${STONE} is a passive item`),
           pack: pack(o, h),
           led: qualities(char(o, h).armies),
         },
-        want: { told: true, pack: [STONE], led: ['Green Men-at-Arms c0'] },
+        want: { passive: false, pack: [], led: ['Average Men-at-Arms c0'] },
       };
     },
   },

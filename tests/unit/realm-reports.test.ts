@@ -14,7 +14,9 @@
 // - Its spy feed (R-118, P1-23d): a realm that spied a province reads, from the next phase on, what another realm's
 //   heroes do there (a line with a deed) or anyone there could see (a public line, a battle's included), never their
 //   realm's own news (a line told to it with no deed: a hit-point rise, a curse felt), a line with no reader, or a line
-//   that excepts it. No game of the matrix writes a line that excepts a spying realm in its feed.
+//   that excepts it. No game of the matrix writes a line that excepts a spying realm in its feed. Its lines name a
+//   realm as the chronicle's lines do (R-046): a spy's lines, in the words the prose writes, read in another realm's
+//   feed.
 // - Both feeds pass over a line by its kind, as the words pass hands it beside each stored line (P1-12d36): a force
 //   drawn up for battle, and in the Clairvoyance feed the roll lines too; any other kind is read, whatever its words
 //   open with. Every other line here is staged with no kind (null), as a line with no fact. Each line is staged with
@@ -54,6 +56,8 @@ const { playerView: playerViewAsItsModuleExportsIt } =
   await import('../../src/views/what-each-realm-may-see-of-the-world.ts');
 const { buildTurnReport: buildTurnReportAsItsModuleExportsIt } = await import('../../src/views/turn-report.ts');
 const { TITLES_PUBLIC_FROM_TURN } = await import('../../src/engine/titles/perks.ts');
+const { theWordsOfWhatASpyLearnsLine } = await import('../../src/views/prose/the-words-of-what-a-spy-learns-lines.ts');
+const { fmtRoll } = await import('../../src/views/prose/the-words-of-a-roll-a-host-and-a-skill-shown.ts');
 const REALMS = 3;
 const freshPlayers = Array.from({ length: REALMS }, (_, i) => ({
   id: `gp${String(i)}`,
@@ -432,6 +436,90 @@ describe("the spy feed: what rival heroes do there, never their realm's news (R-
         theirAudiences(staged.map(([e]) => e)),
       ).spyActivity.flatMap((s) => s.lines.map((l) => l.text)),
     ).toEqual(['⚑FORCE⚑ [a battle decided]', '📊 [a spell rolled]']);
+  });
+  test("a spy's intelligence line names a realm as the rest of the report does (R-046)", () => {
+    // Realm 1's hero spies out realm 2's home in phase 2, where realm 0's spy looked in phase 1 (realm 0's record of
+    // realms staged: realm 1's alone). His lines read in realm 0's feed name each realm as its chronicle names them.
+    const state = structuredClone(tc.G);
+    const { players } = state as unknown as { players: { name: string; _encountered?: number[] }[] };
+    const [theReader, theSpysRealm, theHomesRealm] = players;
+    if (!theReader || !theSpysRealm || !theHomesRealm) throw new Error('the world has fewer than three realms');
+    theReader._encountered = [1];
+    const words = theWordsOfWhatASpyLearnsLine;
+    const his: Entry[] = [
+      there(
+        words({
+          kind: 'a spy learns who holds a province, its tax and its defenders',
+          heroName: rival.name,
+          provinceName: 'Wendmeadow',
+          ownerRealmName: theHomesRealm.name,
+          tax: 12,
+          defenders: [],
+        }),
+        { type: 'explore', actor: 1, targets: [1], spy: true },
+      ),
+      there(
+        words({
+          kind: "a spy learns a king's home's tax income and heroes",
+          realmName: theHomesRealm.name,
+          taxIncome: 40,
+          heroes: 2,
+        }),
+        { type: 'spy', actor: 1, targets: [1] },
+      ),
+      there(
+        words({
+          kind: "a spy rifles a king's archives for a discovery",
+          heroName: rival.name,
+          spyLevel: 3,
+          realmName: theHomesRealm.name,
+          chance: 30,
+          roll: 10,
+        }),
+        { type: 'spy', actor: 1, targets: [1] },
+      ),
+      there(
+        words({
+          kind: "a spy copies a secret from a king's archives",
+          heroName: rival.name,
+          discoveryName: 'Iron Working',
+          realmName: theHomesRealm.name,
+        }),
+        { type: 'spy', actor: 1, targets: [1] },
+      ),
+      there(`[${theSpysRealm.name}'s banner is seen there]`, { public: true }),
+    ];
+    const staged = [theSpyLooks, ...his];
+    const read = playerEvents(
+      staged.map((e) => ({ ...e })),
+      state,
+      0,
+      sight,
+      noKinds(staged),
+      theirAudiences(staged),
+    ).spyActivity.flatMap((s) => s.lines.map((l) => l.text));
+    expect(read).toEqual([
+      `${rival.name} spies on Wendmeadow: controlled by an unknown realm, tax 12g, defenders: none.`,
+      '[Intelligence] Home-capital intelligence on an unknown realm: the crown draws ~40g in tax income each turn and commands 2 heroes beyond the king.',
+      `[Intelligence] 📊 Discovery theft — ${rival.name} (Spy 3) rifling an unknown realm's archives: ${fmtRoll(30, 10)}`,
+      `[Intelligence] 🗝 ${rival.name} copies the secret of "Iron Working" from an unknown realm's archives — your scholars now hold it as their own.`,
+      `[${theSpysRealm.name}'s banner is seen there]`,
+    ]);
+  });
+  test("a line of the realm's own deed reads in its chronicle, not its spy feed, whoever the hero serves by the turn's end", () => {
+    // A hero spied there in phase 2 for realm 0 (its deed) and serves realm 1 by the turn's end.
+    const itsOwnDeed = there('[realm 0’s spy learns of a home]', { type: 'spy', actor: 0, targets: [0] });
+    const staged = [theSpyLooks, itsOwnDeed];
+    const report = playerEvents(
+      staged.map((e) => ({ ...e })),
+      tc.G,
+      0,
+      sight,
+      noKinds(staged),
+      theirAudiences(staged),
+    );
+    expect(report.spyActivity.flatMap((s) => s.lines.map((l) => l.text))).toEqual([]);
+    expect(report.lastTurnLog.map((l) => l.text)).toContain('[realm 0’s spy learns of a home]');
   });
 });
 

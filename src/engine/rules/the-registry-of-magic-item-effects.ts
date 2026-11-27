@@ -88,6 +88,7 @@ import {
   A_BLOW_LANDS,
   A_BLOWS_CHANCE_TO_HIT,
   A_HIT_LANDS_AFTER_IT,
+  A_KILLING_BLOW_FALLS,
   A_HIT_LANDS_BEFORE_ALL_ELSE,
   A_HIT_LANDS_HIS_WARDS_CAP_IT,
   A_HIT_LANDS_HIS_WARDS_CUT_IT,
@@ -113,6 +114,7 @@ import type {
   AMomentAsAFighterWeighsACombatItem,
   WhatACombatItemDoes,
   WhatAHoardsItemDoesForItsGuardian,
+  AFighterAsAKillingBlowFallsOnHim,
   AFighterAsHisWardsMeetHimAfterAHit,
   AHitAsAFightersWardsCapIt,
   AHitAsAFightersWardsCutIt,
@@ -120,6 +122,7 @@ import type {
   AWardsCapOnAHit,
   TheHarmAWardBitesBackWith,
   TheHpAWardGivesBack,
+  AWardsChanceToShrugOffAKillingBlow,
   WhatAFightersWardsDoAsARoundStarts,
   WhatAFightersWardsLeaveOfAHit,
   WhatAWardDoesToAHitFirst,
@@ -299,6 +302,13 @@ export const THE_REGISTRY_OF_MAGIC_ITEM_EFFECTS = {
       'a hit lands on a fighter: after it': A_HIT_LANDS_AFTER_IT['second-wind'],
     },
     treasury: { "an item's worth: a ward": A_WARDS_WORTH['second-wind'] },
+  },
+  'a-killing-blow-shrugged-off': {
+    personalCombat: {
+      'what a fighter wears: a ward': A_WARD_A_FIGHTER_WEARS['a-killing-blow-shrugged-off'],
+      'a hit lands on a fighter: a killing blow': A_KILLING_BLOW_FALLS['a-killing-blow-shrugged-off'],
+    },
+    treasury: { "an item's worth: a ward": A_WARDS_WORTH['a-killing-blow-shrugged-off'] },
   },
   'damage-cut-at-low-hp': {
     personalCombat: {
@@ -651,6 +661,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
       'block',
       'a-hits-damage-capped',
       'second-wind',
+      'a-killing-blow-shrugged-off',
       'damage-cut-at-low-hp',
       'the-first-hit-drunk',
       'lingering-harm-turned-aside',
@@ -691,6 +702,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
       'open-guard',
     ],
     'a hit lands on a fighter: his wards cap it': ['a-hits-damage-capped'],
+    'a hit lands on a fighter: a killing blow': ['a-killing-blow-shrugged-off'],
     'a hit lands on a fighter: after it': ['second-wind'],
     'a blow lands': ['thorns'],
     'a round starts': ['round-ward', 'lingering-harm-turned-aside', 'regeneration', 'resist'],
@@ -806,6 +818,7 @@ export const THE_ORDER_OF_EACH_STAGE_OF_THE_ITEMS = {
       'lingering-harm-turned-aside',
       'the-first-hit-drunk',
       'second-wind',
+      'a-killing-blow-shrugged-off',
       'buckler',
       'melee-damage-turned-aside',
       'arrow-damage-turned-aside',
@@ -1272,6 +1285,18 @@ export function theCapAFightersWardsPutOnAHit(theHit: AHitAsAFightersWardsCapIt)
   for (const slug of THE_WARDS_STAGES['a hit lands on a fighter: his wards cap it']) {
     const cap = ENTRIES[slug].personalCombat?.['a hit lands on a fighter: his wards cap it']?.(theHit);
     if (cap) return cap;
+  }
+  return null;
+}
+
+/** The runner of "personalCombat: a hit lands on a fighter: a killing blow" (pcTakeHit): the chance the first ward, in
+ *  the stage's order, gives him to shrug off a blow that would kill him, or nothing. */
+export function theChanceAFightersWardsGiveToShrugOffAKillingBlow(
+  theFighter: AFighterAsAKillingBlowFallsOnHim,
+): AWardsChanceToShrugOffAKillingBlow | null {
+  for (const slug of THE_WARDS_STAGES['a hit lands on a fighter: a killing blow']) {
+    const chance = ENTRIES[slug].personalCombat?.['a hit lands on a fighter: a killing blow']?.(theFighter);
+    if (chance) return chance;
   }
   return null;
 }

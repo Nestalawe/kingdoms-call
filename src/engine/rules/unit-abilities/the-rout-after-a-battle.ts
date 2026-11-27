@@ -83,11 +83,10 @@ export const THE_WINNER_RUNS_THE_BEATEN_DOWN = {
   },
   // ORC — Run Them Down (2026-10-09, Toby item 7): when at least half the winning force are Warg Riders, each beaten
   // unit's chance of being destroyed in the rout rises by 15%, on any ground. Against neutral guards, who never flee,
-  // the wargs end the fight fast instead: the winner's own death rolls are halved. Neutral guards' own wargs don't run
-  // a beaten hero down.
+  // the wargs end the fight fast instead: the winner's own death rolls are halved. Neutral guards' own wargs run a
+  // beaten hero down as a winner's do between heroes (R-166).
   'run-them-down': (facts) => {
     const { unit, numbers } = ROWS['run-them-down'];
-    if (facts.theBattle === 'neutral guards against a hero') return null;
     if (!atLeastAShareOf(facts.theWinningForce, unit, numbers.theWinningForceAtLeast.value)) return null;
     return facts.theBattle === 'a hero against neutral guards'
       ? aPursuit(
@@ -99,20 +98,19 @@ export const THE_WINNER_RUNS_THE_BEATEN_DOWN = {
       : aPursuit('the warg riders run the beaten down', numbers.eachBeatenUnitMoreLikelyToBeDestroyed.value);
   },
   // PRIMAL (2026-10-13, the beast abilities) — Relentless Hunt's pursuit: the Manticores hunt a broken foe down on any
-  // ground, +15% to each beaten unit's death roll, when at least half the winning force are theirs. Between heroes only.
+  // ground, +15% to each beaten unit's death roll, when at least half the winning force are theirs. In every battle,
+  // either side: against a province's guards as between heroes (R-166).
   'relentless-hunt': (facts) => {
     const { unit, numbers } = ROWS['relentless-hunt'];
-    return facts.theBattle === 'between heroes' &&
-      atLeastAShareOf(facts.theWinningForce, unit, numbers.theWinningForceAtLeast.value)
+    return atLeastAShareOf(facts.theWinningForce, unit, numbers.theWinningForceAtLeast.value)
       ? aPursuit('the manticore pride hunts the beaten', numbers.theBeatenFoesRoutLosses.value)
       : null;
   },
   // PRIMAL — Feeding Frenzy: at sea the sharks tear into beaten crews, the same, when at least half the winning force
-  // are theirs. Between heroes only.
+  // are theirs. In every battle, either side: against a province's guards as between heroes (R-166).
   'feeding-frenzy': (facts) => {
     const { unit, numbers, onTheGround } = ROWS['feeding-frenzy'];
-    return facts.theBattle === 'between heroes' &&
-      onTheGround.some((g) => g === facts.ground) &&
+    return onTheGround.some((g) => g === facts.ground) &&
       atLeastAShareOf(facts.theWinningForce, unit, numbers.theWinningForceAtLeast.value)
       ? aPursuit('the shark shoals tear into the beaten crews', numbers.theBeatenFoesRoutLosses.value)
       : null;

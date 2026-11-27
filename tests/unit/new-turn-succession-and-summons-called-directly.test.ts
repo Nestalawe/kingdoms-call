@@ -344,7 +344,7 @@ describe('The new turn: what only a direct call can stage', () => {
     expect(marks(h, CHARM_MARKS)).toEqual([]);
   });
 
-  test('every one-turn mark ends on a hero, his companies, a province’s defenders; a garrison keeps all but its Terror', () => {
+  test('every one-turn mark ends on a hero, his companies, a province’s defenders and its garrison', () => {
     const b = fresh();
     const h = leads(at(b, NO_TITLE_SKILLS), [markedCompany('Worn')]);
     Object.assign(h, markedWith(HERO_MARKS), markedWith(CHARM_MARKS), { _phantoms: [{ unitName: 'Mirage' }] });
@@ -356,9 +356,7 @@ describe('The new turn: what only a direct call can stage', () => {
     expect(h['_phantoms']).toEqual([]);
     expect(h.armies.map((u) => marks(u, COMPANY_MARKS))).toEqual([[]]);
     expect(p.neutralDefenders.map((u) => marks(u, COMPANY_MARKS))).toEqual([[]]);
-    expect(p.garrisonArmies.map((u) => marks(u, COMPANY_MARKS))).toEqual([
-      COMPANY_MARKS.filter((k) => k !== '_terrorMult'),
-    ]);
+    expect(p.garrisonArmies.map((u) => marks(u, COMPANY_MARKS))).toEqual([[]]);
   });
 
   test('a reduction of nothing is kept as nothing, but a Terror of nothing is cleared; an empty phantom list is left as it is', () => {

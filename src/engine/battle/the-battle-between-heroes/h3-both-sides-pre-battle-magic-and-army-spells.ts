@@ -3,10 +3,13 @@
 // units' army spells (the battle proof's H3), moved here as they were, the same statements in the same order.
 // combatVsChar calls it where they stood, after the set-up (h0-to-h2-…), and hands it what the set-up returned, as it
 // is. It returns nothing: it changes only the objects it is handed (the two hosts' units, the two commanders, the
-// narrative), and declares no value a later stage reads, so it writes no `let` of the table in h0-to-h2-… and the
-// battle's state gains no field. The battle proof (tools/proof/README.md, section 8) finds H3's anchor in this file;
+// narrative, and a cursed commander's Tactical or Naval and its bonus among the set-up's values, R-162), and declares
+// no value a later stage reads, so the battle's state gains no field. The battle proof (tools/proof/README.md, section 8) finds H3's anchor in this file;
 // nothing above it draws a die.
-import { KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST } from '../../../content/kingdoms-call-data.ts';
+import {
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
+  KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST,
+} from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import { theStrongestUnitsAHerosItemsLetHisFireballStrike } from '../../rules/the-registry-of-magic-item-effects.ts';
 import {
@@ -22,7 +25,11 @@ import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeItemBonus } from '../../
 import { whatARealmsDiscoveriesAddToACastersChance } from '../../rules/the-registry-of-discovery-effects.ts';
 import { telSpell } from '../../turn/log-line-helpers.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
-import { bestCurseSkill } from '../terrain-and-unit-strength.ts';
+import {
+  bestCurseSkill,
+  theBonusACommandersTacticalGivesHisHost,
+  theLevelACommanderFightsWithOnceACurseHasTakenEffect,
+} from '../terrain-and-unit-strength.ts';
 import { pickBattleSpell } from '../../magic/pre-battle-spell-choice.ts';
 import { narrate } from '../../turn/events-and-their-audiences.ts';
 import type { TurnContext } from '../../turn/context.ts';
@@ -315,4 +322,28 @@ export function bothSidesPreBattleMagicAndArmySpellsInTheBattleBetweenHeroes(
   }
   applyArmyBattleSpells(atk, atkArmies, defArmies, narrative);
   if (!_atkLA) applyArmyBattleSpells(def, defArmies, atkArmies, narrative);
+
+  // Each commander's Tactical and Naval as the battle counts them, once both sides' magic has taken effect: a Curse
+  // cast here withers the skill the set-up counted (R-162), as against guards. The later stages read them from the
+  // set-up's values, so they are written there, and each side's header names the Tactical he fights with.
+  const theNavalBonus = (level: number) =>
+    1 + level * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
+  if (atk._curseHalveStat === 'tactical') {
+    theSetUp.atkTact = theLevelACommanderFightsWithOnceACurseHasTakenEffect(atk, 'tactical', theSetUp.atkTact);
+    theSetUp.atkTactBonus = theBonusACommandersTacticalGivesHisHost(theSetUp.atkTact, !isPvPSea);
+    if (theSetUp.theHeaders.attacker) theSetUp.theHeaders.attacker.tacticalLevel = theSetUp.atkTact;
+  }
+  if (def._curseHalveStat === 'tactical') {
+    theSetUp.defTact = theLevelACommanderFightsWithOnceACurseHasTakenEffect(def, 'tactical', theSetUp.defTact);
+    theSetUp.defTactBonus = theBonusACommandersTacticalGivesHisHost(theSetUp.defTact, !isPvPSea);
+    if (theSetUp.theHeaders.defender) theSetUp.theHeaders.defender.tacticalLevel = theSetUp.defTact;
+  }
+  if (atk._curseHalveStat === 'naval') {
+    theSetUp.atkNav = theLevelACommanderFightsWithOnceACurseHasTakenEffect(atk, 'naval', theSetUp.atkNav);
+    theSetUp.atkNavBonus = theNavalBonus(theSetUp.atkNav);
+  }
+  if (def._curseHalveStat === 'naval') {
+    theSetUp.defNav = theLevelACommanderFightsWithOnceACurseHasTakenEffect(def, 'naval', theSetUp.defNav);
+    theSetUp.defNavBonus = theNavalBonus(theSetUp.defNav);
+  }
 }

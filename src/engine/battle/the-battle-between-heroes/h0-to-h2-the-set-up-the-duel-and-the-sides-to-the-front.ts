@@ -18,12 +18,12 @@
 // | let | written in | read in | how the stages share it |
 // |---|---|---|---|
 // | `_mAtkLost`, `_mDefLost` (the titles' merit tally) | h0-to-h2 (H0: made, with `_tallyLost`), h4 (H4) and h8-to-h10 (H10), each by calling `_tallyLost` | h8-to-h10 (H10: the statistics' record, the battle's return) | the battle's state, `theBattlesState` (B-06bf) |
-// | `atkTact`, `defTact` | h0-to-h2 (H0: a Curse halves it; H1: a commander slain in the duel) | h0-to-h2 (H0), h5-to-h7 (H5, H7), h8-to-h10 (H9), the command stage's builders | a value, final after H1 |
-// | `atkTactBonus`, `defTactBonus` | h0-to-h2 (H0, H1: a commander slain in the duel) | h5-to-h7 (H7), the command stage's builders | a value, final after H1 |
+// | `atkTact`, `defTact` | h0-to-h2 (H0; H1: a commander slain in the duel), h3 (a Curse halves it, R-162) | h0-to-h2 (H0), h5-to-h7 (H5, H7), h8-to-h10 (H9), the command stage's builders | a value, final after H3 |
+// | `atkTactBonus`, `defTactBonus` | h0-to-h2 (H0, H1: a commander slain in the duel), h3 (a Curse) | h5-to-h7 (H7), the command stage's builders | a value, final after H3 |
 // | `defBonus` | h0-to-h2 (H1: made, Siege; H2: Righteous Defence, the realm's own ground, the commanders' items) | h5-to-h7 (H5), h8-to-h10 (H9) | a value, final after H2 |
 // | `_defFanPct` | h0-to-h2 (H2: made; Consecrate) | h0-to-h2 (H2) | the first stage's own |
 // | `pvpFront` (the front's width) | h0-to-h2 (H2: rolled), h5-to-h7 (H5: the scout's deploy) | h4 (H4), h5-to-h7 (H5, H7), h8-to-h10 (H9) | a value: H4 is handed the width rolled in H2 (nothing changes it before H5); h5-to-h7's own `let` from it, its deploy's width handed on (B-06bi), final there |
-// | `atkNav`, `defNav` | h0-to-h2 (H2: made; a Curse halves it) | h0-to-h2 (H2), the command stage's builders | a value, final in H2 |
+// | `atkNav`, `defNav` | h0-to-h2 (H2: made), h3 (a Curse halves it, R-162) | h0-to-h2 (H2), the command stage's builders | a value, final after H3 |
 // | `atkOrd`, `defOrd` (the mastery orders) | h5-to-h7 (H5) | h5-to-h7 (H5), h8-to-h10 (H9) | h5-to-h7's own, then a value, final there (B-06bi) |
 // | `_stayLo`, `_stayWi` | h8-to-h10 (H9: `_wantsToStay`) | h8-to-h10 (H9) | the last stage's own (B-06bj) |
 // | `_heldField` | h8-to-h10 (H9) | h8-to-h10 (H9) | the last stage's own (B-06bj) |
@@ -40,7 +40,6 @@
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
   KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
-  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
   KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE,
   KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
   KC_UNIT_CLASS,
@@ -72,7 +71,13 @@ import { noteFieldBattle, recordBattleCmdrs } from '../../turn/mercenary-ids-and
 import { charMinor } from '../../titles/title-holders-and-battle-merit.ts';
 import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
-import { REIGN_OF_FEAR_MULT, armStr, kinNarrative, provIsCoastal } from '../terrain-and-unit-strength.ts';
+import {
+  REIGN_OF_FEAR_MULT,
+  armStr,
+  kinNarrative,
+  provIsCoastal,
+  theBonusACommandersTacticalGivesHisHost,
+} from '../terrain-and-unit-strength.ts';
 import { realCharOf } from '../best-commander.ts';
 import { forceMarker } from '../battle-report-lines-and-force-markers.ts';
 import { consumeTerror } from '../evil-terror.ts';
@@ -86,6 +91,7 @@ import {
   THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
 } from '../the-facts-a-battles-lines-record.ts';
 import type { NarrativeLine } from '../../turn/events-and-their-audiences.ts';
+import type { HowAForceComesOnInItsHeader } from '../the-facts-a-battles-lines-record.ts';
 import type { ArmyInABattle, HeroInABattle, ProvinceInABattle } from '../../army-tables.ts';
 import type { TurnContext } from '../../turn/context.ts';
 import { asItsGuardReadsIt } from '../../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
@@ -213,28 +219,14 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
     ? 0
     : effStat(turnContext, atk, 'tactical') +
       theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, atk, title));
-  if (atk._curseHalveStat === 'tactical')
-    atkTact = Math.floor(atkTact / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
   let defTact = def._tacticalNegated
     ? 0
     : effStat(turnContext, def, 'tactical') +
       theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, def, title));
-  if (def._curseHalveStat === 'tactical')
-    defTact = Math.floor(defTact / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
   // Tactical bonus only applies in land provinces
   const isPvPSea = prov.terrain === 'sea';
-  let atkTactBonus = isPvPSea
-    ? 1
-    : Math.min(
-        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-        1 + atkTact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-      ); // cap ×2.0
-  let defTactBonus = isPvPSea
-    ? 1
-    : Math.min(
-        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-        1 + defTact * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-      ); // cap ×2.0
+  let atkTactBonus = theBonusACommandersTacticalGivesHisHost(atkTact, !isPvPSea); // cap ×2.0
+  let defTactBonus = theBonusACommandersTacticalGivesHisHost(defTact, !isPvPSea); // cap ×2.0
 
   // frame how the battle began for PvP too — who advanced, into whose province.
   const _pvpOwnersRealm = prov.owner != null ? G.players[prov.owner] : undefined;
@@ -276,6 +268,12 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
   // 2026-10-12 (Toby) it fires only when attacking: a defender never has it.
   const _fearAtk = reignOfFearHere(prov, atk.player),
     _fearDef = false;
+  // Each side's header (its Tactical among it): a Curse cast before the battle withers it in H3 (R-162), so the stages
+  // hand it on.
+  const theHeaders: { attacker: HowAForceComesOnInItsHeader | null; defender: HowAForceComesOnInItsHeader | null } = {
+    attacker: null,
+    defender: null,
+  };
   {
     const _dcC = provIsCoastal(G, prov);
     const _aS = Math.round(
@@ -311,6 +309,13 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
         0,
       ),
     );
+    theHeaders.attacker = {
+      itsVerbs: 'an attack',
+      verbIndex: THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
+      provName: prov.name,
+      armyStrength: _aS,
+      tacticalLevel: atkTact,
+    };
     narrate(
       narrative,
       forceMarker(
@@ -324,15 +329,16 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
         atk.player,
         'attacker',
         atkArmies,
-        {
-          itsVerbs: 'an attack',
-          verbIndex: THE_VERB_A_HERO_ATTACKS_A_HEROS_HOST_WITH,
-          provName: prov.name,
-          armyStrength: _aS,
-          tacticalLevel: atkTact,
-        },
+        theHeaders.attacker,
       ),
     );
+    theHeaders.defender = {
+      itsVerbs: 'a defence',
+      verbIndex: THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
+      provName: prov.name,
+      armyStrength: _dS,
+      tacticalLevel: defTact,
+    };
     narrate(
       narrative,
       forceMarker(
@@ -346,13 +352,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
         def.player,
         'defender',
         defArmies,
-        {
-          itsVerbs: 'a defence',
-          verbIndex: THE_VERB_A_HERO_HOLDS_A_PROVINCE_WITH,
-          provName: prov.name,
-          armyStrength: _dS,
-          tacticalLevel: defTact,
-        },
+        theHeaders.defender,
       ),
     );
   }
@@ -617,14 +617,10 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
   const atkArchBonus = 1 + atkArch * ARCHERY_MISSILE_PCT; // +5%/level (2026-09-23b) · sd07 Fire Arrows now via armStr (unitStr missile)
   const defArch = defCmdrSlain ? 0 : effStat(turnContext, def, 'archery');
   const defArchBonus = 1 + defArch * ARCHERY_MISSILE_PCT;
-  let atkNav = atkCmdrSlain ? 0 : effStat(turnContext, atk, 'naval');
-  if (atk._curseHalveStat === 'naval')
-    atkNav = Math.floor(atkNav / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const atkNav = atkCmdrSlain ? 0 : effStat(turnContext, atk, 'naval'); // (a Curse withers it in H3, R-162)
   const atkNavBonus =
     1 + atkNav * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
-  let defNav = defCmdrSlain ? 0 : effStat(turnContext, def, 'naval');
-  if (def._curseHalveStat === 'naval')
-    defNav = Math.floor(defNav / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy);
+  const defNav = defCmdrSlain ? 0 : effStat(turnContext, def, 'naval');
   const defNavBonus =
     1 + defNav * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
   const atkAlign2 = theAlignmentARealmReadsAs(theAttackersRealm?.alignment);
@@ -635,6 +631,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleBetweenHeroes(
   const _pvpCoastal = provIsCoastal(G, prov); // Sea Giants' Tidal Might
   return {
     G,
+    theHeaders,
     theAttackerAsTheGuardsReadHim,
     theDefenderAsTheGuardsReadHim,
     theProvinceAsTheGuardsReadIt,

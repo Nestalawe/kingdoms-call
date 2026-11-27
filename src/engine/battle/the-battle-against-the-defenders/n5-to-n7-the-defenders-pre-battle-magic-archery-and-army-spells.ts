@@ -1,6 +1,7 @@
 // The battle against a province's defenders (combatVsNPC, src/engine/battle/battles-against-province-defenders.ts), its
-// third stage, B-06bb: the defenders' pre-battle phases, their commander's magic (the battle proof's N5), their archery
-// with the Lightning Advance line and their Flak Screen (N6), and their units' army spells (N7), moved here as they
+// third stage, B-06bb: the defenders' pre-battle phases, their commander's magic, then the attacker's units' army
+// spells, moved here from N3 to strike once both sides' battle spells have taken effect (R-162), and so after his
+// archery, Flak and Breach (N4: question 164) (the battle proof's N5), their archery with the Lightning Advance line and their Flak Screen (N6), and their units' army spells (N7), moved here as they
 // were, the same statements in the same order. combatVsNPC calls it where they stood, after the attacker's pre-battle
 // phases (n3-to-n4-…), and hands it what the set-up and those phases returned, as they are. It returns nothing: it
 // changes only the objects it is handed (the two hosts, the commanders, the narrative), and declares no value a later
@@ -49,8 +50,9 @@ export type WhatTheAttackersPreBattlePhasesInTheBattleAgainstTheDefendersHandOn 
   typeof theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders
 >;
 
-/** The third stage of the battle against a province's defenders: their commander's pre-battle magic, their archery
- *  and their units' army spells, each striking the attacker's host before the lines meet. */
+/** The third stage of the battle against a province's defenders: their commander's pre-battle magic, then the
+ *  attacker's units' army spells (after both sides' spells and his archery: R-162, question 164), their archery and
+ *  their units' army spells, each striking a host before the lines meet. */
 export function theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(
   turnContext: TurnContext,
   c: HeroInABattle,
@@ -76,7 +78,8 @@ export function theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(
   // DEFENDER PRE-BATTLE PHASES — neutral guard heroes and their armies fight back with magic,
   // army spells, and missile fire (reduces ATTACKER strength)
   // ════
-  if (defHero) {
+  // Lightning Advance stops their commander's battle spell, as it stops a hero's between heroes (R-162).
+  if (defHero && !_cLA) {
     // DEFENDER MAGIC: guard casts a battle spell from their encounter plan (school or specific),
     // or picks one they know
     ensureEncounterPlan(turnContext, defHero);
@@ -281,6 +284,68 @@ export function theDefendersPreBattlePhasesInTheBattleAgainstTheDefenders(
       }
     }
   }
+
+  // The attacker's special army spells (Wyvern Riders, etc. + all primal armies), once both sides' battle spells have
+  // taken effect (and so after his archery, unlike between heroes: question 164): their commander's spell that
+  // cancels his Druid comes before his beasts strike (R-162), as between heroes.
+  const druIdLvlMag = atkCmdrSlain || c._druidNegated ? 0 : effStat(turnContext, c, 'druid');
+  armies.forEach((atk) => {
+    // What the unit's strike may do is the spells' registry's (plan P1-19v): its strikes are its type's, in the
+    // content's tables; its chance 30% + 10% per Druid level (the winged riders' one in two). This copy draws where it
+    // drew, rolls its chance, applies the blow and writes its lines.
+    const may = whatAUnitsStrikeMayDoBeforeTheBattle({
+      theCopy: "a hero's units against the guards",
+      theUnitsType: atk.type,
+      theEnemyHasAUnit: defenders.length > 0,
+      theDruidLevel: druIdLvlMag || 0,
+      whatTheCommandersItemsAdd: () => primalStrikeItemBonus(atkCmdrSlain || c._druidNegated ? null : c),
+    });
+    if (!may) return;
+    const sp = may.theStrikes[Math.floor(kcRng() * may.theStrikes.length)];
+    if (!sp) throw new TypeError("a unit's strike picked from an empty list"); // (the registry hands at least one)
+    const armySpellChance = may.theChance;
+    const armySpellRoll = d100();
+    if (armySpellRoll > armySpellChance && may.theLineIfItMisses) {
+      narrate(narrative, {
+        kind: theLineThisCopyOfTheBattleWrites(may.theLineIfItMisses, "a unit's power gathers but never strikes"),
+        unitName: atk.unitName || atk.type,
+        powerName: sp.name,
+        strikeChancePct: armySpellChance,
+        druidLevel: druIdLvlMag,
+      });
+    }
+    if (armySpellRoll <= armySpellChance) {
+      narrate(narrative, {
+        kind: theLineThisCopyOfTheBattleWrites(may.theLineIfItStrikes, 'a unit uses its power in battle'),
+        unitName: atk.unitName || atk.type,
+        powerName: sp.name,
+        powerFlavour: sp.flavour,
+      });
+      if (sp.theBlow.reaches === 'every enemy unit') {
+        const dmg = rng(Number(sp.theBlow.theDamage[0]), Number(sp.theBlow.theDamage[1]));
+        defenders.forEach((d) => {
+          d._tempStrReduction = (Number(d._tempStrReduction) || 0) + dmg;
+        });
+        narrate(narrative, {
+          kind: theLineThisCopyOfTheBattleWrites(sp.theBlow.theLine, "a unit's power hits every defending unit"),
+          powerName: sp.name,
+          unitCount: defenders.length,
+          damage: dmg,
+        });
+      } else {
+        const d = defenders[Math.floor(kcRng() * defenders.length)];
+        if (!d) throw new TypeError("a unit's strike fell on no defender"); // (the registry strikes only where there is one)
+        const dmg = rng(Number(sp.theBlow.theDamage[0]), Number(sp.theBlow.theDamage[1]));
+        d._tempStrReduction = (Number(d._tempStrReduction) || 0) + dmg;
+        narrate(narrative, {
+          kind: theLineThisCopyOfTheBattleWrites(sp.theBlow.theLine, "a unit's power hits one unit of the other side"),
+          powerName: sp.name,
+          struckUnitName: d.unitName || d.type,
+          damage: dmg,
+        });
+      }
+    }
+  });
 
   // DEFENDER ARCHERY — 2026-09-24 (Toby): moved OUT of the if(defHero) block, so a garrison with no
   // commander still shoots back (at Archery 0). The Lightning Advance line and the defenders' Flak

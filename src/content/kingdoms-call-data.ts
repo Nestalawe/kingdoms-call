@@ -7371,11 +7371,12 @@ export const ALL_MAGIC_ITEMS_P = [
     tier: 1,
   },
   // ── Special ──
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
   {
     name: "Philosopher's Stone",
     desc: 'Once per game: instantly promote all armies one quality tier',
     lore: "The alchemists' great prize: it turns raw levies into seasoned soldiers as surely as lead into gold. A LEGENDARY relic, usable once per game: instantly promote all your armies one quality tier.",
-    effect: { stat: 'massPromote', bonus: 1 },
+    effect: { stat: 'promoteAll' },
     tier: 3,
   },
   {
@@ -8167,8 +8168,8 @@ export const ALL_MAGIC_ITEMS_P = [
   {
     name: 'Amulet of Second Breath',
     slot: 'amulet',
-    desc: 'Amulet: once per fight, when first pushed near defeat you recover 20% of your maximum HP.',
-    lore: 'It warms when you are almost done. Once per fight, the first time you are driven near defeat you recover 20% of your maximum HP.',
+    desc: 'Amulet: once per fight, the first time you fall below 30% HP you recover 20% of your maximum HP.',
+    lore: 'It warms when you are almost done. Once per fight, the first time you are driven below 30% HP you recover 20% of your maximum HP.',
     effect: { stat: 'pc', pc: { ward: 'secondWind', pct: 20 } },
     tier: 2,
   },
@@ -8405,8 +8406,8 @@ export const ALL_MAGIC_ITEMS_P = [
   {
     name: 'Mantle of the Second Wind',
     slot: 'cloak',
-    desc: 'Cloak: once per fight, when first pushed near defeat you recover 15% of your maximum HP.',
-    lore: 'It tightens at the shoulders when the legs begin to go. Once per fight, driven near defeat, you recover 15% of your maximum HP.',
+    desc: 'Cloak: once per fight, the first time you fall below 30% HP you recover 15% of your maximum HP.',
+    lore: 'It tightens at the shoulders when the legs begin to go. Once per fight, driven below 30% HP, you recover 15% of your maximum HP.',
     effect: { stat: 'pc', pc: { ward: 'secondWind', pct: 15 } },
     tier: 2,
   },
@@ -9147,7 +9148,7 @@ export const ALL_MAGIC_ITEMS_P = [
     name: 'Ring of the Unbroken Pulse',
     desc: '15% to shrug off a killing blow once per fight, standing at 1 HP.',
     lore: 'The stone flickers once, and you are still standing. Once per fight, 15% to survive a killing blow at 1 HP.',
-    effect: { stat: 'pc', pc: { ward: 'secondWind', pct: 15 } },
+    effect: { stat: 'pc', pc: { ward: 'shrugOff', pct: 15 } },
     slot: 'ring',
     tier: 3,
   },
@@ -9203,7 +9204,7 @@ export const ALL_MAGIC_ITEMS_P = [
     name: 'Great Helm of the Deathless',
     desc: '20% to shrug off a killing blow once per fight, standing at 1 HP.',
     lore: 'Its last three owners were each certain they had died in it. Once per fight, 20% to survive a killing blow at 1 HP.',
-    effect: { stat: 'pc', pc: { ward: 'secondWind', pct: 20 } },
+    effect: { stat: 'pc', pc: { ward: 'shrugOff', pct: 20 } },
     slot: 'helm',
     tier: 3,
   },
@@ -9602,8 +9603,8 @@ export const LEGENDARY_ITEMS_P = [
   {
     name: 'Pendant of the Ten Thousand Eyes',
     slot: 'amulet',
-    desc: 'Amulet: once per fight recover 35% of max HP when nearly spent; +16% to hit throughout.',
-    lore: 'Every facet holds a watcher, and between them they miss nothing - least of all the moment you are about to fall. Once per fight, driven near defeat, you recover 35% of your maximum HP; you fight at +16% to hit.',
+    desc: 'Amulet: once per fight, the first time you fall below 30% HP, recover 35% of max HP; +16% to hit throughout.',
+    lore: 'Every facet holds a watcher, and between them they miss nothing - least of all the moment you are about to fall. Once per fight, driven below 30% HP, you recover 35% of your maximum HP; you fight at +16% to hit.',
     effect: { stat: 'pc', pc: { ward: 'secondWind', pct: 35, hitBonus: 16 } },
     tier: 4,
   },
@@ -12492,6 +12493,8 @@ export const SAGE_DISCOVERIES_P = [
     name: 'Messenger Birds',
     category: 'Espionage',
     desc: 'You receive [Intelligence] notifications even from provinces two steps away from yours.',
+    // retired: R-140
+    retired: true,
     effect: { kind: 'extendedIntel' },
   },
   {

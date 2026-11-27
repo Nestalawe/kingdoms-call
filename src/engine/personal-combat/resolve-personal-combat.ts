@@ -173,6 +173,8 @@ export function resolvePersonalCombat(
   B._armFirstHitUsed = false;
   A._armSecondWindUsed = false;
   B._armSecondWindUsed = false;
+  A._armShrugOffUsed = false;
+  B._armShrugOffUsed = false;
   A._roundNo = 0;
   B._roundNo = 0;
   A._roundWardLeft = 0;

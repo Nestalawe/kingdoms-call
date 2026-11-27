@@ -220,6 +220,7 @@ export interface AFighterInAPersonalCombat {
   _foeCat?: string | undefined;
   _armFirstHitUsed?: boolean | undefined;
   _armSecondWindUsed?: boolean | undefined;
+  _armShrugOffUsed?: boolean | undefined;
   _secondWindUsed?: boolean | undefined;
   _roundNo?: number | undefined;
   _roundWardLeft?: number | undefined;

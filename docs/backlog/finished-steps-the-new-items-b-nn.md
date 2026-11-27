@@ -7,6 +7,22 @@ lettered rows lists each row; an item still open has its finished rows here and 
 The other finished steps: [Phase 0, and P1-01 to P1-10](finished-steps-phase-0-and-p1-01-to-p1-10.md),
 [P1-11 and P1-12](finished-steps-p1-11-and-p1-12.md), [P1-13 to P1-25](finished-steps-p1-13-to-p1-25.md).
 
+## B-01: the rulings audit
+
+- B-01: done in its rows, below: the rulings audit. Each ruling is checked against the code (the engine, the views,
+  the portal, content's rows, the rulebooks) and given its verdict with its file and function (built, not built, broken
+  or can't tell); each defect found is a `KD-` row in Not yet assessed, and no code, test or rule changes.
+- B-01a: #818 The rulings audit, R-001 to R-012: nine built; the rulebook names two discoveries (R-005)
+- B-01b: #820 The rulings audit, R-013 to R-025: ten built; R-018 and R-023 broken in part
+- B-01c: #821 The rulings audit, R-026 to R-035: eight built; Undead zeal breaks R-030 in part
+- B-01d: #822 The rulings audit, R-036 to R-047: eight built; primal words and the catch chance break two
+- B-01e: #824 The rulings audit, R-048 to R-062: nine built; arrows, a fight's end rolls and two join-screen lines break three
+- B-01f: #825 The rulings audit, R-063 to R-083: twelve built; a guardian's whole Melee breaks R-077 in part
+- B-01g: #826 The rulings audit, R-084 to R-116: all built; R-104's wild neighbour where the map allows (B-20)
+- B-01h: #827 The rulings audit, R-117 to R-145: no new defect; four rulings with gaps already recorded, five still to build
+- B-01i: #828 The rulings audit, R-146 to R-167: nineteen decided rulings still not built, none broken
+- B-01j: #829 The rulings audit, R-168 to R-190: nothing broken, nothing built early; the end review's fixes
+
 ## B-06, T7: the rules pulled out
 
 - B-06: done in its rows, below: the rules pulled out. Each family of rules is counted by the ratchet and moved into

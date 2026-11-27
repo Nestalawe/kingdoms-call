@@ -322,7 +322,7 @@ export function druIdPenaltyMult(
   // His Druid as every rule counts it (effStat's level: his training, his items, a Curse spell's halving and a Crown of
   // Command's aura beside him; R-120, R-121), counted to 5 here: a battle's Curse below halves what the check counts
   // (question 50, R-159). `chars` are the heroes beside whom it is read (the state's, as effStat reads them). Psychic
-  // Blast (battle magic): this commander's Druid skill has been negated for the battle.
+  // Blast (battle magic), or slain in the duel (R-161): this commander's Druid skill has been negated for the battle.
   let rawDruid = heroChar._druidNegated ? 0 : Math.min(5, Number(effSkillOf(heroChar, 'druid', chars)) || 0);
   // Curse (battle magic): if Druid is the commander's cursed ability, it is halved for the battle.
   if (heroChar._curseHalveStat === 'druid') rawDruid = Math.floor(rawDruid / 2);

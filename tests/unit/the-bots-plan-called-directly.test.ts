@@ -2984,7 +2984,7 @@ describe('The missions on what no matrix game hands them (P1-10b45)', () => {
   const units = (n: number, type = 'Militia') =>
     Array.from({ length: n }, () => ({ type, quality: 'Average', race: 'Human' }));
   test('a hero’s items: the Stone cracked for a realm of eight units, kit of no id, an item of no power', () => {
-    const stone = { name: "Philosopher's Stone", effect: { stat: 'massPromote', bonus: 1 }, tier: 3 };
+    const stone = { name: "Philosopher's Stone", effect: { stat: 'promoteAll' }, tier: 4 };
     const hero = (items: unknown[], more: Record<string, unknown> = {}) => ({
       id: 1,
       player: 0,

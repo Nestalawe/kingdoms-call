@@ -181,8 +181,9 @@ effects are in `src/engine/rules/discoveries/`, a file per group of stages.
   (Arcane Observatory, `turnReveal`): yes or no; the new turn draws whom and where, as before.
 
 **Messenger Birds and the bots** (P1-19ah): `visibility`'s **… widen the warnings it hears** (Messenger Birds,
-`extendedIntel`; `playerEvents`, building a realm's report): yes or no. Moved as it was: nothing reads the set it
-widens (KD-041). The bots' strength estimates (`botEffForce`, `botBattleForce`, `botDruidShortfall`,
+`extendedIntel`; `playerEvents`, building a realm's report): yes or no. Nothing reads the set it widens, so it does
+nothing: it is retired ([R-140](../rulings/R-140-messenger-birds-is-retired.md)), its row marked `retired`, which
+`discEligible` refuses, so no realm is offered it. The bots' strength estimates (`botEffForce`, `botBattleForce`, `botDruidShortfall`,
 `botRecruitableTypes`) ask the battles' runners for Dragon Taming and Flanking Tactics, handed the commander's realm.
 
 ## How it is checked

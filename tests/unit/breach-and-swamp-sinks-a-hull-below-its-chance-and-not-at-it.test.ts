@@ -15,7 +15,7 @@
 //   matrix game sinks a hull there), the hull sunk leaves the host before the battle: it is graved once, where it sank,
 //   not again among the battle's dead; and its grave is its own realm's, so an Elven realm's sunk galley flees home
 //   (the Homeward Song, its die under 45% at sea) rather than leave a grave.
-// - Flak Screen: a Gyrocopter harries one enemy winged rider, which loses 30% of its base strength (at least 1), as both
+// - Flak Screen: a Gyrocopter harries one enemy flyer (here a winged rider), which loses 30% of its base strength (at least 1), as both
 //   books write it; no two gyrocopters harry the same flyer, nor one harried already this battle, and one die is drawn
 //   for each gyrocopter while a flyer is left (applyFlakScreen called directly; since P1-12d31 it is handed the side's
 //   record, not its label).

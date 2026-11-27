@@ -1,5 +1,6 @@
 import {
   KC_A_COMMANDERS_MARCH_AND_NAVAL_MASTERY_ON_THE_GROUND_AND_AT_SEA,
+  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
   KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
   KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE,
   KC_EACH_UNIT_TYPES_FACTOR_ON_EACH_GROUND,
@@ -148,6 +149,29 @@ export function bestCurseSkill(turnContext: TurnContext, hero: Character) {
     nav = effStat(turnContext, hero, 'naval');
   if (nav >= tac && nav >= dru && nav > 0) return 'naval';
   return tac >= dru ? 'tactical' : 'druid';
+}
+/** A commander's level in Tactical or Naval as the battle counts it once its magic has taken effect: halved, rounded
+ *  down, when a Curse withered that skill this battle. Both battles count each commander's Tactical and Naval through
+ *  it after both sides' battle spells, so a Curse cast by either side changes the battle (R-162). */
+export function theLevelACommanderFightsWithOnceACurseHasTakenEffect(
+  commander: { readonly _curseHalveStat?: string | null } | null | undefined,
+  skill: 'tactical' | 'naval',
+  level: number,
+): number {
+  return commander?._curseHalveStat === skill
+    ? Math.floor(level / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy)
+    : level;
+}
+/** The bonus a commander's Tactical gives his host in a battle: ×1 and a rise for each level, at most the cap (×2.0,
+ *  titles included), or ×1 where Tactical doesn't apply (a battle at sea). Both battles count it here, for both
+ *  sides, once the battle's magic has taken effect (R-162). */
+export function theBonusACommandersTacticalGivesHisHost(level: number, whereTacticalApplies: boolean): number {
+  return whereTacticalApplies
+    ? Math.min(
+        KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
+        1 + level * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
+      )
+    : 1;
 }
 // Pre-battle missile "softening" (2026-09-24, Toby: simplified). A volley's damage comes from the
 // SHOOTER, not the target: 30% of the firing unit's base strength (unit strength × quality — so a

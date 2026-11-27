@@ -73,6 +73,8 @@ export interface ADiscoverysRow {
   readonly desc: string;
   readonly race?: string;
   readonly alignment?: string;
+  /** Retired: no realm is offered it (R-140, Messenger Birds). */
+  readonly retired?: boolean;
   readonly effect?: TheEffectOfADiscovery;
   readonly effect2?: TheEffectOfADiscovery;
 }
@@ -233,7 +235,7 @@ export const DISCOVERY_EFFECTS_THE_REGISTRY_HOLDS = {
   // Herbal Lore (sd29): the share of last season's wounds dressed as a phase begins (P1-19ag)
   'herbal-lore': { kind: 'autoHeal' },
   // Messenger Birds (sd20): the provinces two steps from the realm's that its warnings reach (P1-19ah; the set they
-  // widen is read by nothing: Parked)
+  // widen is read by nothing; retired: R-140)
   'messenger-birds': { kind: 'extendedIntel' },
 } as const satisfies Record<string, AKindOfDiscoveryEffect>;
 

@@ -71,7 +71,9 @@ function must<T>(v: T | null | undefined, what: string): T {
   return v;
 }
 
-test('a company the beaten fleet sends overland to a garrison is led by no hero any more', () => {
+/** The battle's ground, the water, the shore, the beaten side's heroes and its pooled copy, as the Move order makes them,
+ *  and the split run on the copy. `marks`: the battle's marks each company of the copy carries when the side breaks. */
+function theBeatenFleetSplits(marks: Record<string, unknown> = {}) {
   kcRng.seed(Number(process.env['KC_SEED']) >>> 0 || 1);
   const setups = generateBotSetups([], 2, 0).map((b) => ({
     ...b,
@@ -148,6 +150,7 @@ test('a company the beaten fleet sends overland to a garrison is led by no hero 
   const fromAHost: Army = { ...company('Shieldwall Levies', 2), quality: 'Green', _fromLeaderless: 9103 };
   // the battle's pooled copy of the beaten side, as the Move order makes it: the same company records
   const pooled: Character = { ...defender, armies: [...defender.armies, ...ally.armies, fromTheGarrison, fromAHost] };
+  pooled.armies.forEach((a) => Object.assign(a, marks));
   const tc = addTheFieldsResolveTurnAdds(
     createTurnContext(...([G, [], 3] as unknown as Parameters<typeof createTurnContext>)),
     { KC_SEASONS, isBotRow },
@@ -157,6 +160,11 @@ test('a company the beaten fleet sends overland to a garrison is led by no hero 
   const r = navalSplitRetreat(
     ...([tc, pooled, site, pooled.armies, narrative, side] as unknown as Parameters<typeof navalSplitRetreat>),
   );
+  return { tc, r, shore, defender, ally, fromTheGarrison, fromAHost };
+}
+
+test('a company the beaten fleet sends overland to a garrison is led by no hero any more', () => {
+  const { tc, r, shore, defender, ally, fromTheGarrison, fromAHost } = theBeatenFleetSplits();
   expect(r, 'the fleet sails').toBe('left');
   const ashore = shore.garrisonArmies;
   expect(ashore.length, 'some companies fell back overland').toBeGreaterThan(0);
@@ -174,4 +182,28 @@ test('a company the beaten fleet sends overland to a garrison is led by no hero 
   ).toEqual([]);
   const tcSent = (tc as unknown as { _companiesSentOverland: Army[] })._companiesSentOverland;
   expect(tcSent, 'the split hands back exactly the companies it sent overland').toEqual(ashore);
+});
+
+// The companies sent overland leave the battle's sides before its end, so the end's wipe of the battle's marks
+// (the strength its arrows and spells took, Terror, the tier-ups, Flak Screen's) never reached them, and a garrison kept
+// a battle's cuts into its next fight and into the save. The split now wipes them as the battle's end does.
+test("a company the beaten fleet sends overland to a garrison keeps none of the battle's marks", () => {
+  const theBattlesMarks = {
+    _tempStrReduction: 3,
+    _archeryRed: 2,
+    _terrorMult: 0.8,
+    _tacUp: true,
+    _drumUp: true,
+    _laNoTerrain: true,
+    _flakTargeted: true,
+  };
+  const { r, shore } = theBeatenFleetSplits(theBattlesMarks);
+  expect(r, 'the fleet sails').toBe('left');
+  expect(shore.garrisonArmies.length, 'some companies fell back overland').toBeGreaterThan(0);
+  const marked = shore.garrisonArmies.flatMap((a) =>
+    Object.keys(theBattlesMarks)
+      .filter((k) => k in a)
+      .map((k) => `${a.unitName}: ${k}`),
+  );
+  expect(marked, 'no company in the garrison keeps a mark of the battle').toEqual([]);
 });

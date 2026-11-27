@@ -224,7 +224,8 @@ export function theLinesOfTheTurnTheRealmReads(
   // what anyone there could see (a line seen by the world, there or in a battle), never their realm's own news
   // (a line told to a realm with no deed: a hit-point rise, a curse felt, the plague's toll), nor a line that excepts
   // this realm (its audience's except).
-  const aSpyThereSees = (a: LineAudience) => (a.actor != null || a.seen !== undefined) && !excepts(a);
+  // A line of its own realm's deed reads in its chronicle (its actor), whoever the hero serves by the turn's end.
+  const aSpyThereSees = (a: LineAudience) => (a.actor != null || a.seen !== undefined) && a.actor !== pi && !excepts(a);
   const spysLingeringSight: TheLinesOfTheTurnTheRealmReads['spysLingeringSight'] = [];
   Object.keys(spyPhaseByProv).forEach((pidStr) => {
     const pid = parseInt(pidStr);

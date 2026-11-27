@@ -17,7 +17,7 @@
 // never reaches (it
 // never runs Use Item, Release Hero or Disband Army): the Stone's Sage lesson (one roll, at the common chance),
 // garrison grades, the dead and a fallen hero's companies, the world's lines, the hoards and ledgers, and the bots'
-// plan working it (`botItemPre`: at eight companies, not seven, nor today's copy; P1-19o); the courier's
+// plan working it (`botItemPre`: at eight companies, not seven, nor a copy of another power; P1-19o); the courier's
 // list, a name that begins with a number, a fallen hire card, an item's maximum HP moving with it; the travelling-light
 // and leads lines' points (the new force's pace), both heroes' pools after a hand-over, a garrison at sea, beasts a
 // comrade already leads, the dead and beasts left in a garrison; a hero of no realm released, his heir's mark, hire
@@ -39,7 +39,6 @@ import {
   STONE,
   companies,
   item,
-  oldStone,
   skeletal,
   stageCase,
   type Item,
@@ -179,7 +178,7 @@ describe.each(ITEM_AND_ARMY_ORDER_CASES)('the %s order, called directly: the who
 });
 
 // ── Use Item ────────────────────────────────────────────────────────────────────────────────────────────────────
-describe('Use Item, called directly: the Philosopher’s Stone (an older save’s copy)', () => {
+describe('Use Item, called directly: the Philosopher’s Stone as a lair deals it', () => {
   interface Roll {
     id: unknown;
     skill: string;
@@ -192,7 +191,7 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
   const common = SKILLGAIN_COMMON;
   const bearer = (b: Board, troops: Unit[]) => {
     const h = at(b, { king: true });
-    h.items = [oldStone(b)];
+    h.items = [item(b, STONE)];
     h.armies = troops;
     return h;
   };
@@ -322,7 +321,7 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
   test('a bearer of another realm: the others are told his realm’s name', () => {
     const b = fresh();
     const h = at(b, { player: 1, king: true });
-    h.items = [oldStone(b)];
+    h.items = [item(b, STONE)];
     h.armies = companies(1, 'Men-at-Arms', 'Green');
     play(b, h, o('use_item', STONE));
     const name = realm(b, 1).name;
@@ -374,9 +373,9 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
     });
   });
 
-  // The bots' plan for their items (botItemPre) works the Stone too: no game of the balance matrix holds an older
-  // save's copy, so no game sees it (plan P1-19o: the plan asks the items' registry for the item's power).
-  test('a bot works it once his realm has eight companies, and not with seven, nor the copy a lair deals today', () => {
+  // The bots' plan for their items (botItemPre) works the Stone too (plan P1-19o: the plan asks the items' registry for
+  // the item's power), the copy a lair deals, and not an older copy whose power has another name.
+  test('a bot works it once his realm has eight companies, and not with seven, nor a copy of another power', () => {
     const plan = (b: Board, h: Character) => fn('botItemPre')(b.G, 0, h, null) as Order | null;
     const b = fresh();
     const h = bearer(b, companies(8, 'Men-at-Arms', 'Green'));
@@ -390,7 +389,7 @@ describe('Use Item, called directly: the Philosopher’s Stone (an older save’
     h.armies = companies(7, 'Men-at-Arms', 'Green');
     expect(plan(b, h)?.action).not.toBe('use_item');
     h.armies = companies(8, 'Men-at-Arms', 'Green');
-    h.items = [item(b, STONE)];
+    h.items = [{ ...item(b, STONE), effect: { stat: 'massPromote', bonus: 1 } }];
     expect(plan(b, h)?.action).not.toBe('use_item');
   });
 });

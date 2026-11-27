@@ -16,7 +16,7 @@ import { KC_UNIT_CLASS, type UnitType } from './kingdoms-call-data.ts';
  *  gold"); skill levels added (1 as `+1`, or "one level"); damage turned aside (1 as "1 less"); a chance in
  *  percentage points (5 as `5%`); a multiplier in words (2 as "doubled"); damage added (2 as `+2 damage`, or "2 extra
  *  damage"); how many of the strongest enemy units a battle spell strikes, in words (2 as "two strongest"); rounds added,
- *  in words (1 as "an extra round"); a multiplier as the share more (×1.1 as `10% more`). */
+ *  in words (1 as "an extra round"); a multiplier as the share more (×1.1 as `10% more`); hit points (1 as `1 HP`). */
 export type HowAnItemsTextsWriteANumber =
   | 'a multiplier, as the share it adds'
   | 'strength added'
@@ -32,7 +32,8 @@ export type HowAnItemsTextsWriteANumber =
   | 'damage added'
   | 'the strongest units, in words'
   | 'rounds added, in words'
-  | 'a multiplier, as the share more';
+  | 'a multiplier, as the share more'
+  | 'hit points';
 
 /** One number of an item's effect, and how the item's texts write it. */
 export interface ANumberOfAnItemsEffect {
@@ -319,11 +320,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     numbers: {},
   },
   // Used (a Use Item order, and the bots' plan), every unit of his realm, led or in a garrison, rises a quality tier
-  // (from the tables: no number here). Only an older save's copy carries `massPromote`: the relic a lair deals today
-  // carries `promoteAll`, which nothing reads (KD-047).
+  // (from the tables: no number here). The relic a lair deals carries `promoteAll`; the order form offers it to use.
   'philosophers-stone': {
     name: "Philosopher's Stone",
-    carriedAs: { stat: 'massPromote' },
+    carriedAs: { stat: 'promoteAll' },
     numbers: {},
   },
   // The first Necromancy spell its bearer casts each turn cannot fail (plan P1-19y: the spells family's).
@@ -438,6 +438,16 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     name: 'Last-Stand Plate',
     carriedAs: { ward: 'secondWind' },
     numbers: { belowThisShareOfHisMaximumHp: { value: 0.3, theTextsWriteIt: 'a share, as a percentage' } },
+    theWorthOfItInTheTreasury: {
+      worth: 4,
+      percentagePointsForAPoint: THE_PERCENTAGE_POINTS_A_FLAG_WARD_CARRIES_FOR_A_POINT,
+    },
+  },
+  // Once a fight, on the copy's chance (a percentage), a blow that would kill him leaves him standing at these HP (R-153).
+  'a-killing-blow-shrugged-off': {
+    name: 'Ring of the Unbroken Pulse',
+    carriedAs: { ward: 'shrugOff' },
+    numbers: { theHpHeStandsAt: { value: 1, theTextsWriteIt: 'hit points' } },
     theWorthOfItInTheTreasury: {
       worth: 4,
       percentagePointsForAPoint: THE_PERCENTAGE_POINTS_A_FLAG_WARD_CARRIES_FOR_A_POINT,

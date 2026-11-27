@@ -293,12 +293,12 @@ describe('the known list', () => {
       '_fromGarrison',
       '_slainBy',
     ]);
-    const cuts = "A garrison unit can keep a battle's strength cuts in the save";
-    const hulls = "A beaten force's hulls can carry a battle's marks into the garrison";
+    const cuts =
+      "A save written before the new turn wiped a garrison's battle marks may hold them: its next turn wipes them";
     expect(THE_KNOWN_LEAKS_A_TURN_STILL_RUNS_ON.map((k) => k.parked)).toEqual([
-      `${cuts}; ${hulls}`,
-      `${cuts}; ${hulls}`,
       cuts,
+      cuts,
+      'A garrison company can keep `_died` in the save',
       'A garrison company can keep `_fromGarrison` in the save',
       'A hero slain and raised in the same turn keeps who slew him in the save',
     ]);

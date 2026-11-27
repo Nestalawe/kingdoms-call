@@ -634,6 +634,8 @@ export function theWordsOfAPersonalCombatsLine(fact: TheFactOfAPersonalCombatsLi
       return `  ${fact.targetName} turns aside all they can, but the ${fact.channel === 'spell' ? 'harm' : fact.channel === 'archery' ? 'arrow' : 'blow'} still lands for ${String(fact.floor)}. (no ward may take a hit below half)`;
     case "the target's armour will not let any single hit bite deeper":
       return `  ${theWardsIcon(fact.targetIsAGuardian)} ${theWordsOfAFightersWard(fact.targetsWard, 'armour')} will not let any single hit bite deeper than ${String(fact.capAt)}.`;
+    case 'the target shrugs off a killing blow and stands at 1 HP':
+      return `  ${theWardsIcon(fact.targetIsAGuardian)} The blow should have felled ${fact.targetName}, but ${theWordsOfAFightersWard(fact.targetsWard, 'charm')} turns death aside. (HP ${String(fact.targetHp)})`;
     case 'the target will not go down and restores hit points':
       return `  ${theWardsIcon(fact.targetIsAGuardian)} ${fact.targetName} will not go down — ${fact.targetIsAGuardian ? (fact.targetSecondWindPerk ?? 'its nature') : "their armour's blessing"} restores ${String(fact.back)} HP. (HP ${String(fact.targetHp)})`;
     case 'a fighter ignores the daze':

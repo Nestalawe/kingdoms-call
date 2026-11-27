@@ -15,6 +15,7 @@ import type { TheStagesOfEachHookPoint } from '../the-registry-of-content-effect
 type WhatAWardDoes = TheStagesOfEachHookPoint['personalCombat'];
 
 const A_SECOND_WIND = ROWS['second-wind'].numbers;
+const A_KILLING_BLOW_SHRUGGED_OFF = ROWS['a-killing-blow-shrugged-off'].numbers;
 const A_CUT_AT_LOW_HP = ROWS['damage-cut-at-low-hp'].numbers;
 const A_RESIST = ROWS.resist.numbers;
 const THE_MITHRIL_SUIT = ROWS['mithril-armour'].numbers;
@@ -124,6 +125,19 @@ export const A_HIT_LANDS_HIS_WARDS_CAP_IT = {
     return theDamageSoFar > theCap ? { theDamageAfter: theCap, theWardTheLineNames: 'cap' } : null;
   },
 } satisfies Partial<Record<MagicItemEffectSlug, WhatAWardDoes['a hit lands on a fighter: his wards cap it']>>;
+
+export const A_KILLING_BLOW_FALLS = {
+  // the Ring of the Unbroken Pulse and the Great Helm of the Deathless: once a fight, on the copy's chance, a blow that
+  // would kill him leaves him standing at the row's HP (R-153)
+  'a-killing-blow-shrugged-off': ({ theWards, hisShrugHasBeenUsed, hisHpBefore, hisHp }) =>
+    theWards?.shrugOff && !hisShrugHasBeenUsed && hisHpBefore > 0 && hisHp <= 0
+      ? {
+          theChance: theWards.shrugOff / 100,
+          theHpHeStandsAt: A_KILLING_BLOW_SHRUGGED_OFF.theHpHeStandsAt.value,
+          theWardTheLineNames: 'shrugOff',
+        }
+      : null,
+} satisfies Partial<Record<MagicItemEffectSlug, WhatAWardDoes['a hit lands on a fighter: a killing blow']>>;
 
 export const A_HIT_LANDS_AFTER_IT = {
   // Last-Stand Plate: once a fight, the first time he drops below the row's share, he recovers the copy's share

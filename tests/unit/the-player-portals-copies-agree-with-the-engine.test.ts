@@ -24,7 +24,7 @@
 // will stand after his Moves and Forced Marches against where the turn leaves him, and the share marching in maps
 // against the turn's (they agree since R-128, but for the forecast limits it accepts, pinned). Since P1-11d2, what a
 // hero holds: what the form says he will carry and lead, and a garrison hold, after his orders, against the turn's
-// phases (they agree since R-129, but for the Stone used, pinned: it waits on KD-047). Since P1-11d3, the orders: the
+// phases (they agree since R-129, but for the Stone used, pinned: it waits on KD-507). Since P1-11d3, the orders: the
 // order list's names against the turn's, the orders it offers a hero against those the turn lets him give, and the
 // creed orders' fields against their rows and the turn (they agree since R-131, R-132 and R-133). Since P1-11d4, gold
 // and practice: the treasury ledger against what the turn spends and Early Winter charges, the Practice Skill note
@@ -119,7 +119,7 @@
 // and since P1-11e20 each season's items handed over in the turn's order of its heroes (a comrade marching in first, a
 // chain of hand-overs, the quicker hero first; a comrade beside him who marches away after), and since P1-11z1 a chain
 // of company hand-overs in one season; and pinned where it is not (R-129): the Philosopher's Stone used (it
-// waits on KD-047; not a forecast limit).
+// waits on KD-507; not a forecast limit).
 // P1-11d3 (P1-11d, before the creed and king check and the masteries' table are shared): each of the 46 names of the
 // order list (`ACTIONS`) is the order `normaliseAction` reads it as, none read as a Defend but Defend; on staged heroes of
 // realm 0 (its report as the engine builds it under each creed, and with its Wonder raised), the list `actionsFor`

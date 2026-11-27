@@ -91,6 +91,7 @@ const KINDS: Record<string, WardKind> = {
   block: 'best',
   cap: 'best',
   secondWind: 'best',
+  shrugOff: 'best',
   lowHp: 'best',
   arrowBlock: 'best',
   spellBlock: 'best',

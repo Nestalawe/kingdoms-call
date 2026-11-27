@@ -1,7 +1,10 @@
 import { KC_A_VOLLEYS_NUMBERS_AND_A_COMMANDERS_ARCHERY_IN_A_BATTLE } from '../../content/kingdoms-call-data.ts';
 import { kcRng } from '../rng.ts';
 import { MISSILE_ARMIES_MASTER } from './ladder.ts';
-import { FLYING_TYPES } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
+import {
+  AERIAL_TYPES,
+  FLYING_TYPES,
+} from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
@@ -177,7 +180,8 @@ export function abilityVolleys(firer: ForceUnit, isAtk: boolean): number {
   return firer ? theVolleysAShooterLooses({ theShootersType: firer.type, theShootersSideAttacks: isAtk }) : 1;
 }
 
-// ── DWARF — Flak Screen ── Each Gyrocopter harries ONE enemy flying unit (-30%). A unit already
+// ── DWARF — Flak Screen ── Each Gyrocopter harries ONE enemy flying unit (-30%): every flyer, the winged riders and
+// the flying beasts alike (AERIAL_TYPES, the content's KC_UNIT_CLASS.aerial; R-146). A unit already
 // engaged by one gyrocopter cannot be picked again in the same battle, so N gyrocopters tie up N
 // distinct flyers. The rule registry's "strength: a flyer is harried before the battle" picks the
 // flyer and its loss, with the dice it is handed (plan P1-19i); this marks the flyer and writes the
@@ -194,9 +198,11 @@ export function abilityVolleys(firer: ForceUnit, isAtk: boolean): number {
 // on one target IN THE SAME BATTLE. It was set here and never cleared anywhere — not by the three
 // battle-end sweeps that wipe _tempStrReduction / _terrorMult / _archeryRed / _tacUp / _drumUp /
 // _laNoTerrain, and not by the snapshot copier — so it persisted on the army object, was serialised
-// with game state, and a winged rider harried once was immune to Flak Screen for the rest of the
-// GAME. It is now deleted alongside those flags at every one of those five sites. If a new
-// battle-only flag is added, add it to all five. The gyrocopters' side is a record (plan P1-12d31); the prose writes its
+// with game state, and a flyer harried once was immune to Flak Screen for the rest of the
+// GAME. It is now deleted alongside those flags wherever they are. A new battle-only flag goes into
+// wipeABattlesMarksFromItsUnits (a-battles-marks-on-its-units-wiped-at-its-end.ts), the new turn's three sweeps (a
+// hero's companies, a province's neutral defenders, its garrison: new-turn-counter-….ts) and _survStr's clean copy
+// (h8-to-h10-the-casualties-the-rout-and-the-end.ts). The gyrocopters' side is a record (plan P1-12d31); the prose writes its
 // label.
 export function applyFlakScreen(
   myForce: readonly ForceUnit[] | null | undefined,
@@ -205,7 +211,7 @@ export function applyFlakScreen(
   narr: NarrativeLine[],
 ): void {
   const flyers = (enemyForce ?? []).filter(
-    (a): a is ArmyInABattle => !!a && FLYING_TYPES.has(a.type) && !a._flakTargeted,
+    (a): a is ArmyInABattle => !!a && AERIAL_TYPES.has(a.type) && !a._flakTargeted,
   );
   if (!flyers.length) return;
   const pool = flyers.slice();

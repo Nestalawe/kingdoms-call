@@ -1,6 +1,7 @@
 // The battle against a province's defenders (combatVsNPC, src/engine/battle/battles-against-province-defenders.ts), its
-// second stage, B-06ba: the attacker's pre-battle phases, his magic and his units' army spells (the battle proof's N3),
-// then his archery, Flak and Breach (N4), moved here as they were, the same statements in the same order. combatVsNPC
+// second stage, B-06ba: the attacker's pre-battle phases, his magic (the battle proof's N3), then his archery, Flak and
+// Breach (N4), moved here as they were, the same statements in the same order. His units' army spells strike in N5,
+// after their commander's battle spell (R-162), so after his archery here (question 164). combatVsNPC
 // calls it where they stood, after the set-up (n0-to-n2-…), and hands it what the set-up returned, as it is. It returns
 // what the later stages read: the battle spells' names, the defenders' commander's Tactical (final once N3 is done)
 // and its bonus, and the battle's state below. The battle proof (tools/proof/README.md, section 8) finds N3's and N4's
@@ -12,7 +13,8 @@
 //
 // What a stage hands on: each value a later stage reads and no stage writes after it is handed on as a value, returned
 // by its stage in one object, which combatVsNPC hands on as it is and each later stage takes under the same names (the
-// set-up's thirty or so, its lets tactSkill, defBonus and navalSkillAtk among them, each final there; defTactLvl, final
+// set-up's thirty or so, its lets tactSkill, defBonus and navalSkillAtk among them, each final there (N8 withers the
+// first and the last by a Curse, under the same names: R-162); defTactLvl, final
 // once N3 is done; the lines' thirteen, each final in N10). The lets a later stage still writes are the battle's state:
 // each is a field of the state object, read and written through it, never copied by value into a stage. The giant's
 // lets, by stage file (each file named by the stages it holds: n0-to-n2-…, n3-to-n4-…, n5-to-n7-…, n8-to-n10-…,
@@ -21,9 +23,9 @@
 // | let | written in | read in |
 // |---|---|---|
 // | `_npcDuel` | n0-to-n2 (N1) | n0-to-n2 (N1: the duel's result, local to the set-up) |
-// | `tactSkill` | n0-to-n2 (N2) | n0-to-n2 (N2), n8-to-n10 (N8) |
+// | `tactSkill` | n0-to-n2 (N2); n8-to-n10 (N8: its own, a Curse halves it) | n8-to-n10 (N8) |
 // | `defBonus` | n0-to-n2 (N2) | n8-to-n10 (N8) |
-// | `navalSkillAtk` | n0-to-n2 (N2) | n0-to-n2 (N2), n8-to-n10 (N8) |
+// | `navalSkillAtk` | n0-to-n2 (N2); n8-to-n10 (N8: its own, a Curse halves it) | n8-to-n10 (N8) |
 // | `defTactLvl` | n3-to-n4 (N3) | n3-to-n4 (N3), n8-to-n10 (N8) |
 // | `_npcSunkLost` (the state) | n3-to-n4 (N4: Breach and Swamp's hulls) | n11-to-n13 (N13: the defenders' losses handed back) |
 // | `_npcDefWinLost` (the state) | n3-to-n4 (N4, declared), n11-to-n13 (N12: a winning garrison's dead) | n11-to-n13 (N13) |
@@ -36,21 +38,14 @@
 // fronts' widths are written and read in one stage file (n8-to-n10-…, B-06bc), so they stay its own lets; the rest are
 // values once their stage is done; n5-to-n7 and n11-to-n13 declare none a later stage reads. The objects the stages
 // share (the narrative, the two hosts, the province, the commanders) are handed on as they are, never copied.
-import {
-  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
-  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
-  KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST,
-} from '../../../content/kingdoms-call-data.ts';
+import { KC_A_SPELLS_CAST_CHANCE_THE_RISE_EACH_SCHOOL_LEVEL_GIVES_AND_THE_MOST } from '../../../content/kingdoms-call-data.ts';
 import { kcRng } from '../../rng.ts';
 import { theHullAUnitSinksBeforeTheBattle } from '../../rules/the-registry-of-content-effects.ts';
 import {
   theStrongestUnitsAHerosItemsLetHisFireballStrike,
   theVolleysTheCommandersItemsLoose,
 } from '../../rules/the-registry-of-magic-item-effects.ts';
-import {
-  whatABattleSpellDoesBeforeTheBattle,
-  whatAUnitsStrikeMayDoBeforeTheBattle,
-} from '../../rules/the-registry-of-spell-effects.ts';
+import { whatABattleSpellDoesBeforeTheBattle } from '../../rules/the-registry-of-spell-effects.ts';
 import { BATTLE_MAGIC_SPELL_NAMES } from '../../army-tables.ts';
 import { SEA_TYPES } from '../../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import {
@@ -65,16 +60,22 @@ import { unitBaseStrength } from '../../rules-on-plain-values/unit-types-and-bas
 import { shuffleP } from '../fortune.ts';
 import { recordBattleGraves } from '../../graves.ts';
 import { activeItems } from '../../items/equipment.ts';
-import { d100, rng } from '../../dice-and-army-names.ts';
+import { d100 } from '../../dice-and-army-names.ts';
 import { dispFloor } from '../../rules-on-plain-values/a-number-shown-to-a-player-rounded-down.ts';
 import { applyWraithTouch } from '../../world/map-helpers.ts';
-import { SPELL_CAST_BASE, magicL8CastBonus, primalStrikeItemBonus } from '../../chances-and-lair-grades.ts';
+import { SPELL_CAST_BASE, magicL8CastBonus } from '../../chances-and-lair-grades.ts';
 import { whatARealmsDiscoveriesAddToACastersChance } from '../../rules/the-registry-of-discovery-effects.ts';
 import { telSpell } from '../../turn/log-line-helpers.ts';
 import { charMinor } from '../../titles/title-holders-and-battle-merit.ts';
 import { theLevelsAHerosTitlesAddToHisTacticalInABattle } from '../../rules/the-registry-of-the-minor-titles-perks.ts';
 import { effStat } from '../../heroes/effective-skills-and-hidden-heroes.ts';
-import { MISSILE_CAP_FRACTION, applyMissileHit, bestCurseSkill } from '../terrain-and-unit-strength.ts';
+import {
+  MISSILE_CAP_FRACTION,
+  applyMissileHit,
+  bestCurseSkill,
+  theBonusACommandersTacticalGivesHisHost,
+  theLevelACommanderFightsWithOnceACurseHasTakenEffect,
+} from '../terrain-and-unit-strength.ts';
 import { pickBattleSpell } from '../../magic/pre-battle-spell-choice.ts';
 import { ensureEncounterPlan } from '../../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { narrate } from '../../turn/events-and-their-audiences.ts';
@@ -110,8 +111,8 @@ export type WhatTheSetUpOfTheBattleAgainstTheDefendersHandsOn = ReturnType<
   typeof theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders
 >;
 
-/** The second stage of the battle against a province's defenders: the attacker's pre-battle magic and army spells,
- *  then his archery, Flak and Breach. It returns what the later stages read, and the battle's state, made here. */
+/** The second stage of the battle against a province's defenders: the attacker's pre-battle magic, then his archery,
+ *  Flak and Breach. It returns what the later stages read, and the battle's state, made here. */
 export function theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(
   turnContext: TurnContext,
   c: HeroInABattle,
@@ -332,83 +333,19 @@ export function theAttackersPreBattlePhasesInTheBattleAgainstTheDefenders(
     }
   }
 
-  // Pre-battle magic: special army spells (Wyvern Riders, etc. + all primal armies)
-  const druIdLvlMag = atkCmdrSlain ? 0 : effStat(turnContext, c, 'druid');
-  armies.forEach((atk) => {
-    // What the unit's strike may do is the spells' registry's (plan P1-19v): its strikes are its type's, in the
-    // content's tables; its chance 30% + 10% per Druid level (the winged riders' one in two). This copy draws where it
-    // drew, rolls its chance, applies the blow and writes its lines.
-    const may = whatAUnitsStrikeMayDoBeforeTheBattle({
-      theCopy: "a hero's units against the guards",
-      theUnitsType: atk.type,
-      theEnemyHasAUnit: defenders.length > 0,
-      theDruidLevel: druIdLvlMag || 0,
-      whatTheCommandersItemsAdd: () => primalStrikeItemBonus(atkCmdrSlain ? null : c),
-    });
-    if (!may) return;
-    const sp = may.theStrikes[Math.floor(kcRng() * may.theStrikes.length)];
-    if (!sp) throw new TypeError("a unit's strike picked from an empty list"); // (the registry hands at least one)
-    const armySpellChance = may.theChance;
-    const armySpellRoll = d100();
-    if (armySpellRoll > armySpellChance && may.theLineIfItMisses) {
-      narrate(narrative, {
-        kind: theLineThisCopyOfTheBattleWrites(may.theLineIfItMisses, "a unit's power gathers but never strikes"),
-        unitName: atk.unitName || atk.type,
-        powerName: sp.name,
-        strikeChancePct: armySpellChance,
-        druidLevel: druIdLvlMag,
-      });
-    }
-    if (armySpellRoll <= armySpellChance) {
-      narrate(narrative, {
-        kind: theLineThisCopyOfTheBattleWrites(may.theLineIfItStrikes, 'a unit uses its power in battle'),
-        unitName: atk.unitName || atk.type,
-        powerName: sp.name,
-        powerFlavour: sp.flavour,
-      });
-      if (sp.theBlow.reaches === 'every enemy unit') {
-        const dmg = rng(Number(sp.theBlow.theDamage[0]), Number(sp.theBlow.theDamage[1]));
-        defenders.forEach((d) => {
-          d._tempStrReduction = (Number(d._tempStrReduction) || 0) + dmg;
-        });
-        narrate(narrative, {
-          kind: theLineThisCopyOfTheBattleWrites(sp.theBlow.theLine, "a unit's power hits every defending unit"),
-          powerName: sp.name,
-          unitCount: defenders.length,
-          damage: dmg,
-        });
-      } else {
-        const d = defenders[Math.floor(kcRng() * defenders.length)];
-        if (!d) throw new TypeError("a unit's strike fell on no defender"); // (the registry strikes only where there is one)
-        const dmg = rng(Number(sp.theBlow.theDamage[0]), Number(sp.theBlow.theDamage[1]));
-        d._tempStrReduction = (Number(d._tempStrReduction) || 0) + dmg;
-        narrate(narrative, {
-          kind: theLineThisCopyOfTheBattleWrites(sp.theBlow.theLine, "a unit's power hits one unit of the other side"),
-          powerName: sp.name,
-          struckUnitName: d.unitName || d.type,
-          damage: dmg,
-        });
-      }
-    }
-  });
-
   // Neutral guard hero tactical skill adds to their defense (declared here, used in rawDefStr
   // below)
-  let defTactLvl = defHero
-    ? defHero._tacticalNegated
-      ? 0
-      : effStat(turnContext, defHero, 'tactical') +
-        theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, defHero, title))
-    : 0;
-  if (defHero?._curseHalveStat === 'tactical')
-    defTactLvl = Math.floor(defTactLvl / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
-  const defTactBonus =
-    defTactLvl > 0
-      ? Math.min(
-          KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-          1 + defTactLvl * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-        )
-      : 1; // cap ×2.0
+  const defTactLvl = theLevelACommanderFightsWithOnceACurseHasTakenEffect(
+    defHero,
+    'tactical',
+    defHero
+      ? defHero._tacticalNegated
+        ? 0
+        : effStat(turnContext, defHero, 'tactical') +
+          theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, defHero, title))
+      : 0,
+  );
+  const defTactBonus = theBonusACommandersTacticalGivesHisHost(defTactLvl, true); // cap ×2.0
   // (The army and defender counts once kept here, read by nothing, went with P1-10b24.)
 
   // ════

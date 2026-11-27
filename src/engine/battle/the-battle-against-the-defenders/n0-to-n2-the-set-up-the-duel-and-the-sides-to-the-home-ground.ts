@@ -4,7 +4,8 @@
 // Righteous Defence, the items at the walls, home), moved here as they were, the same statements in the same order.
 // combatVsNPC calls it where they stood and takes, under the same names, what its later stages read. Nothing it hands
 // on is written after it (its three lets, tactSkill, defBonus and navalSkillAtk, are final here), so each is handed on
-// as a value. The battle proof (tools/proof/README.md, section 8) finds N1's and N2's anchors in this file; the draws
+// as a value. tactSkill and navalSkillAtk are the attacker's levels before the battle's magic: N8 counts them again
+// once a Curse has taken effect (R-162). The battle proof (tools/proof/README.md, section 8) finds N1's and N2's anchors in this file; the draws
 // above N1's (the tiers that fight, the attack's verb) have no anchor above them here, so they count under the caller's
 // line, N0, as they did.
 //
@@ -13,8 +14,6 @@
 // (B-06ba).
 import { theAlignmentARealmReadsAs } from '../../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import {
-  KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE,
-  KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE,
   KC_THE_CHANCE_EACH_UNIT_FIGHTS_A_QUALITY_TIER_HIGHER_IN_A_BATTLE,
   KC_THE_DEFENDERS_EDGE_AND_A_REALMS_HOME_GROUND_IN_A_BATTLE,
   KC_UNIT_CLASS,
@@ -99,6 +98,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
     neutralGuardHero._tacticalHalved = false;
     neutralGuardHero._tacticalMult = 1;
     neutralGuardHero._curseHalveStat = null;
+    if (neutralGuardHero._massConfusedTurn === G.turn) neutralGuardHero._tacticalNegated = true; // R-162: as a hero's
   }
   // TACTICAL L6 (10%/unit) & War Drum (20%/unit) — decide ONCE, here, which of c's units fight a
   // tier higher this battle.
@@ -307,6 +307,8 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   // Druid or spellcraft.
   const atkCmdrSlain = !!_npcDuel.atkSlain || asItsGuardReadsIt(c.alive) === false,
     defCmdrSlain = !!_npcDuel.defSlain;
+  // his companies fight without his Druid, as between heroes (R-161): the strength of each unit reads it negated
+  if (atkCmdrSlain) c._druidNegated = true;
   if (defCmdrSlain && neutralGuardHero)
     // (the duel slays a defender only where there is one)
     narrate(narrative, {
@@ -328,17 +330,11 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   // A slain commander's skills die with them: the stand-in provides no Tactical, Archery, Naval,
   // Druid or spellcraft for the rest of this battle.
   const defHero = defCmdrSlain ? null : (neutralGuardHero ?? null);
-  let tactSkill =
+  const tactSkill =
     atkCmdrSlain || c._tacticalNegated
       ? 0
       : effStat(turnContext, c, 'tactical') +
         theLevelsAHerosTitlesAddToHisTacticalInABattle((title) => charMinor(turnContext, c, title));
-  if (c._curseHalveStat === 'tactical')
-    tactSkill = Math.floor(tactSkill / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // LEVEL 6+ PERK — Grand Tactician
-  const tactBonus = Math.min(
-    KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theMostTimesTacticalLiftsHisHost,
-    1 + tactSkill * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfTacticalGivesHisHost,
-  ); // Tactical battle bonus hard-capped at ×2.0 (incl. titles)
   // Tactical only applies to land armies (not flying or naval) per AK 4.1.1 Tactical only applies
   // in land provinces AND to land units
   const isLandBattle = prov.terrain !== 'sea';
@@ -346,9 +342,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   // ladder names Tactical on the units it reaches, and this line still counted only ground units
   // (flyers take Tactical since 2026-09-23c), so the two disagreed. (Its count of the land units, read by nothing since,
   // went with P1-10b24.)
-  if (tactSkill > 0 && !isLandBattle)
-    narrate(narrative, { kind: "the attacker's Tactical command does not apply at sea", cName: atkSide });
-  const effectiveTactBonus = isLandBattle ? tactBonus : 1;
+  // (the line that his Tactical doesn't apply at sea is written in N8, once a Curse has taken effect: R-162)
 
   // Terrain and defender bonus sd03 Siege Engines: attacker with this discovery reduces defender
   // bonus
@@ -436,12 +430,7 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
   const skillLabels: Readonly<Partial<Record<string, string>>> = SKILL_LABELS;
   const archSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'archery');
   const archMissileBonus = 1 + archSkillAtk * ARCHERY_MISSILE_PCT; // 2026-09-23b (Toby): Archery lifts missile units +5%/level · sd07 Fire Arrows is a `unitStr` missile effect (armStr)
-  let navalSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'naval');
-  if (c._curseHalveStat === 'naval')
-    navalSkillAtk = Math.floor(navalSkillAtk / KC_A_CURSED_COMMANDERS_SKILL_IN_A_BATTLE.theNumberItIsDividedBy); // Curse (battle magic) can wither Naval command
-  const navalFleetBonus =
-    1 +
-    navalSkillAtk * KC_A_COMMANDERS_TACTICAL_AND_NAVAL_IN_A_BATTLE.theRiseEachLevelOfNavalGivesHisFleetsAndSeaBeasts;
+  const navalSkillAtk = atkCmdrSlain ? 0 : effStat(turnContext, c, 'naval'); // (a Curse withers it in N8, R-162)
   const _provCoastal = provIsCoastal(G, prov); // Sea Giants' Tidal Might
   const playerAlign = theAlignmentARealmReadsAs(theAttackersRealm?.alignment);
   return {
@@ -461,7 +450,6 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
     defHero,
     tactSkill,
     isLandBattle,
-    effectiveTactBonus,
     defBonus,
     homeBonus,
     atkHomeBonus,
@@ -470,7 +458,6 @@ export function theSetUpTheDuelAndTheSidesOfTheBattleAgainstTheDefenders(
     archSkillAtk,
     archMissileBonus,
     navalSkillAtk,
-    navalFleetBonus,
     _provCoastal,
     playerAlign,
   };

@@ -29,6 +29,7 @@ export const A_WARD_A_FIGHTER_WEARS = {
   block: (theWard, a) => ({ block: Math.max(Number(a.block) || 0, theWard.pct ?? 0) }),
   'a-hits-damage-capped': (theWard, a) => ({ cap: Math.max(Number(a.cap) || 0, theWard.pct ?? 0) }),
   'second-wind': (theWard, a) => ({ secondWind: Math.max(Number(a.secondWind) || 0, theWard.pct ?? 0) }),
+  'a-killing-blow-shrugged-off': (theWard, a) => ({ shrugOff: Math.max(Number(a.shrugOff) || 0, theWard.pct ?? 0) }),
   'damage-cut-at-low-hp': (theWard, a) => ({ lowHp: Math.max(Number(a.lowHp) || 0, theWard.pct ?? 0) }),
   // flags are set
   'the-first-hit-drunk': () => ({ firstHit: true }),

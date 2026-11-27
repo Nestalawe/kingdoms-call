@@ -61,6 +61,7 @@ import {
   capItemTaxGold,
   discBlockedIds,
   discEligible,
+  discMayBeOffered,
   discExploreMult,
   discHeroWage,
   discUpkeepWage,
@@ -1345,7 +1346,7 @@ export function buildTurnReport(view: PlayerView, itsLines: WhatItsLinesShowTheR
         options: p.options
           .map((id) => {
             const m = DISC_BY_ID[id];
-            return m ? { id, name: m.name, category: m.category, desc: m.desc } : null;
+            return m && discMayBeOffered(m) ? { id, name: m.name, category: m.category, desc: m.desc } : null; // R-140
           })
           .filter(Boolean),
       })),
