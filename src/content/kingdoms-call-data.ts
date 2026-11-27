@@ -7371,6 +7371,7 @@ export const ALL_MAGIC_ITEMS_P = [
     tier: 1,
   },
   // ── Special ──
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
   {
     name: "Philosopher's Stone",
     desc: 'Once per game: instantly promote all armies one quality tier',
