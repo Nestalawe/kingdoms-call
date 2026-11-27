@@ -141,8 +141,9 @@ Found on 2026-11-27.
 A Curse halves a skill ([R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md)), a
 Psychic Blast cancels Druid, and a commander slain in the duel loses his Druid and Archery
 ([R-161](rulings/R-161-a-commander-slain-before-the-battle-takes-his-skills-out-of-it.md)). His tiers' gifts read his
-trained level, so they stay: Tactical 6's tier-up, Tactical 8's spared host, Naval 8's sea waiver, Druid 8's and
-Necromancy 6's lift. Example: Lady Wren, Tactical 7, cursed to 3, still rolls her tier-ups as at 7.
+trained level, so they stay: Tactical 6's tier-up, Tactical 8's spared host, Naval 8's sea waiver, Druid 8's perk
+tier, Necromancy 6's lift (the Druid mastery's gain reads the cut level). Example: Lady Wren, Tactical 7, cursed to 3,
+still rolls her tier-ups as at 7.
 
 1. **They stay, as built.** Impact: a cut weakens the skill's level only.
 2. **A cut skill takes them.** Impact: a cut hits a master harder; a tier-up rolled after the spells moves the dice.
@@ -151,7 +152,7 @@ Necromancy 6's lift. Example: Lady Wren, Tactical 7, cursed to 3, still rolls he
 
 *Unlocks:* R-161's and R-162's open points settled.
 
-*Touches:* R-161, R-162, [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
+*Touches:* R-121, R-159, R-161, R-162, [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
 
 ## 163. Do ships left ashore keep a battle's cuts when the battle resumes the same turn?
 
