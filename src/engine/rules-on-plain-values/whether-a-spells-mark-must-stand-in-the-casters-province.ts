@@ -4,9 +4,9 @@
 // them (P1-11a). These are the two checks of the Cast Spell order the order form makes too (its target field lists a
 // mark from the caster's province only, and none of a charmed hero's lord's heroes for a hostile spell), read from the
 // spell's row in the content (src/content/spell-effects-their-names-numbers-and-words.ts). The spells' registry asks
-// the first (src/engine/rules/spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts) and reads the same row for
-// the second; the form's target field (spellSecondaryHtml, in src/ui/player/titles.ts) asks both, through src/shared/
-// (P1-11c4): so the player page loads the rows' file too. The tables the form offers are beside it
+// both (src/engine/rules/spells/the-checks-the-cast-spell-order-makes-of-a-spell.ts), and so does the form's target
+// field (spellSecondaryHtml, in src/ui/player/titles.ts), through src/shared/ (P1-11c4): so the player page
+// loads the rows' file too. The tables the form offers are beside it
 // (spells-the-order-form-offers-each-school-aim-and-mastery-level.ts).
 import {
   SPELL_EFFECTS_THE_REGISTRY_HOLDS,
@@ -23,8 +23,8 @@ export function theMarkOfThisSpellMustStandInTheCastersProvince(theSpellsName: s
 }
 
 /** Whether a hero charmed from an enemy realm refuses to aim the spell named at his own lord's heroes, as its row in
- *  the content says (`asAnOrder.aCharmedHeroWillNotTurnItOnHisLord`): the engine's check of the Cast Spell order reads
- *  the same row, and the order form's target field leaves his lord's heroes off its list. A name with no row: he aims
+ *  the content says (`asAnOrder.aCharmedHeroWillNotTurnItOnHisLord`): the spells' registry asks it for the Cast Spell
+ *  order's check, and the order form's target field leaves his lord's heroes off its list. A name with no row: he aims
  *  it as any hero would. */
 export function whetherACharmedHeroWillNotTurnThisSpellOnHisLord(theSpellsName: string): boolean {
   const everyRow: readonly ASpellAsItsTextsWriteIt[] = Object.values(SPELL_EFFECTS_THE_REGISTRY_HOLDS);
