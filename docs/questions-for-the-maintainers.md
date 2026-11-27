@@ -134,26 +134,24 @@ fix goes live: deploying when no game waits on its first turn makes both the sam
 *Touches:* [R-145](rulings/R-145-new-games-keep-the-guardian-tables-hp-and-running-games-keep-theirs.md) (new games'
 guardians at the table's HP) and [R-072](rulings/R-072-guardian-strength.md) (the guardian table's HP).
 
-## 162. Does a Curse on Tactical take away Tactical 6's tier-up?
+## 162. Does a commander whose skill is cut (cursed, blasted, or slain in the duel) keep his mastery tiers' gifts?
 
 Found on 2026-11-27.
 
-[R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md) has a Curse on Tactical halve the
-Tactical a battle counts. At Tactical 6 or more, each of a commander's units may also fight a tier higher, decided
-before any spell. Example: Lady Wren, Tactical 7, cursed by the warlord Morvane, fights at Tactical 3 but still rolls
-her tier-ups as at 7.
+A Curse halves a skill ([R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md)), a
+Psychic Blast cancels Druid, and a commander slain in the duel loses his Druid and Archery
+([R-161](rulings/R-161-a-commander-slain-before-the-battle-takes-his-skills-out-of-it.md)). His tiers' gifts read his
+trained level, so they stay: Tactical 6's tier-up, Tactical 8's spared host, Naval 8's sea waiver, Druid 8's and
+Necromancy 6's lift. Example: Lady Wren, Tactical 7, cursed to 3, still rolls her tier-ups as at 7.
 
-1. **The tier-up stays, as built (P1-23an).** Impact: the Curse weakens her lines' bonus only.
-2. **A Curse that leaves her below 6 takes it.** Impact: the Curse hits a great tactician harder; the tier-up is
-   decided after the spells, so the dice move.
+1. **They stay, as built.** Impact: a cut weakens the skill's level only.
+2. **A cut skill takes them.** Impact: a cut hits a master harder; a tier-up rolled after the spells moves the dice.
 
-*Assessment:* option 2 follows the ruling's words most closely; option 1 is built and smaller. It matters only for a
-Curse on a Tactical 6+ commander.
+*Assessment:* option 2 follows the rulings' words most closely; option 1 is built and smaller. Masters only.
 
-*Unlocks:* R-162's open point settled.
+*Unlocks:* R-161's and R-162's open points settled.
 
-*Touches:* [R-162](rulings/R-162-battle-magic-takes-effect-at-one-moment-in-both-battles.md),
-[R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
+*Touches:* R-161, R-162, [R-126](rulings/R-126-battle-magic-follows-one-rule-in-every-battle.md).
 
 ## 163. Do ships left ashore keep a battle's cuts when the battle resumes the same turn?
 
