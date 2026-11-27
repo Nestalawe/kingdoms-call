@@ -856,6 +856,9 @@ export function injectCharmOrders(charId: unknown, ph: number, heroId: unknown, 
     pay: (wanderer.pay ?? 0) || 1,
     // only a seized ENEMY hero is restricted; a charmed wanderer joins freely.
     _charmEnemy: isEnemy,
+    // the realm of the lord a seized enemy hero still serves: his Cast Spell field offers none of its heroes as the mark
+    // of a hostile spell (the engine refuses it); a charmed wanderer serves none.
+    theRealmACharmSeizedHimFrom: isEnemy ? wanderer.player : null,
     locationId: wanderer.locationId ?? null,
     locationName: (wanderer.locationName ?? '') || '(in your province)',
     effectiveSpeed: 5,

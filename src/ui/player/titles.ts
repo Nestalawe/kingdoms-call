@@ -5,6 +5,7 @@ import {
   theActionSpellsAimedAtAHero,
   theActionSpellsAimedAtAProvince,
   theMarkOfThisSpellMustStandInTheCastersProvince,
+  whetherACharmedHeroWillNotTurnThisSpellOnHisLord,
 } from '../../shared/the-engines-rules-the-player-portal-shares.ts';
 import { orderTargetCharsP, preOrderTagP, realmNameP, provDirectionLabel } from './items-and-heroes.ts';
 import { SPELL_HINTS } from './the-hints-the-order-form-shows-below-each-spell.ts';
@@ -563,6 +564,8 @@ export function spellSecondaryHtml(
     readonly locationId?: number | string | null | undefined;
     readonly player?: unknown;
     readonly name?: string | undefined;
+    /** A hero whose command a Charm seizes this turn: the realm of the lord he still serves (the Charm order's card). */
+    readonly theRealmACharmSeizedHimFrom?: unknown;
   },
   ph: number,
   selSpell: string,
@@ -622,6 +625,11 @@ export function spellSecondaryHtml(
     // stands in the caster's province. (Resurrect's bodies and Clairvoyance's sightings follow their own rules.)
     const theMarkMustStandHere = theMarkOfThisSpellMustStandInTheCastersProvince(selSpell);
     const standsWhereTheMarkMust = (whereHeStands: unknown) => !theMarkMustStandHere || whereHeStands === casterLoc;
+    // A hero charmed from an enemy realm will not aim a hostile spell at his own lord's heroes (the engine refuses the
+    // order, asking the spell's row): the lists of a mark beside the caster leave them off.
+    const hisLordsRealm = c.theRealmACharmSeizedHimFrom;
+    const theLordIsSpared = hisLordsRealm != null && whetherACharmedHeroWillNotTurnThisSpellOnHisLord(selSpell);
+    const notOfHisLordsRealm = (whoseRealm: unknown) => !theLordIsSpared || whoseRealm !== hisLordsRealm;
     let charOpts: KcSafeHtml | KcSafeHtml[];
     if (selSpell === 'Resurrect') {
       // Resurrect shows dead heroes the player knows of. Kings can never be resurrected, and
@@ -672,6 +680,7 @@ export function spellSecondaryHtml(
           !x.isKing &&
           !leadsArmiesP(x) &&
           !x.charmImmune &&
+          notOfHisLordsRealm(x.player) &&
           (x.player === null || x.player !== c.player),
       );
       charOpts = targets.map(
@@ -732,7 +741,7 @@ export function spellSecondaryHtml(
       const _cuNoTarget = extra === '' || extra == null;
       const scanOpt = kcHtml`<option value="__scan__" ${extra === '__scan__' || _cuNoTarget ? 'selected' : ''}>🔍 Cast on THIS province — reveal the dead army units here</option>`;
       const targets = (report.visibleChars ?? []).filter(
-        (x) => x.player !== c.player && standsWhereTheMarkMust(x.locationId),
+        (x) => x.player !== c.player && notOfHisLordsRealm(x.player) && standsWhereTheMarkMust(x.locationId),
       );
       const enemyOpts = targets.map(
         (x) =>
@@ -743,7 +752,11 @@ export function spellSecondaryHtml(
       // Telekinetic Storm: a neutral or enemy hero LEADING ARMIES in the caster's province —
       // there is nothing to scatter around a hero marching alone.
       const targets = (report.visibleChars ?? []).filter(
-        (x) => x.player !== c.player && standsWhereTheMarkMust(x.locationId) && leadsArmiesP(x),
+        (x) =>
+          x.player !== c.player &&
+          notOfHisLordsRealm(x.player) &&
+          standsWhereTheMarkMust(x.locationId) &&
+          leadsArmiesP(x),
       );
       charOpts = targets.map(
         (x) =>
@@ -755,7 +768,7 @@ export function spellSecondaryHtml(
       // Other character-target spells (Psychic Blast, Curse, Control Undead fallthrough).
       // Target visible enemy/neutral characters in the same province.
       const targets = (report.visibleChars ?? []).filter(
-        (x) => x.player !== c.player && standsWhereTheMarkMust(x.locationId),
+        (x) => x.player !== c.player && notOfHisLordsRealm(x.player) && standsWhereTheMarkMust(x.locationId),
       );
       charOpts = targets.map(
         (x) =>

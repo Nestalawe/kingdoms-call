@@ -161,7 +161,10 @@ export {
   theShareOfAProvinceAMarchIntoItMaps,
 } from '../engine/rules-on-plain-values/the-share-a-march-into-a-province-maps-and-the-coast-a-voyage-charts.ts';
 export { theStrengthAUnitsKinAndARivalKinsLeaderLeaveIt } from '../engine/rules-on-plain-values/the-strength-a-units-kin-and-a-rival-kins-leader-leave-it.ts';
-export { theMarkOfThisSpellMustStandInTheCastersProvince } from '../engine/rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
+export {
+  theMarkOfThisSpellMustStandInTheCastersProvince,
+  whetherACharmedHeroWillNotTurnThisSpellOnHisLord,
+} from '../engine/rules-on-plain-values/whether-a-spells-mark-must-stand-in-the-casters-province.ts';
 export { unitBaseStrength, unitTypeOf } from '../engine/rules-on-plain-values/unit-types-and-base-strength.ts';
 export { whatAMarchsOrderNames } from '../engine/rules-on-plain-values/what-a-marchs-order-names.ts';
 export {

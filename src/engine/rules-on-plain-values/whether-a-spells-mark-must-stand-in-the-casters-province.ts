@@ -20,3 +20,13 @@ export function theMarkOfThisSpellMustStandInTheCastersProvince(theSpellsName: s
   const row = everyRow.find((r) => r.name === theSpellsName);
   return row?.asAnOrder?.itsMarkMustStandInTheProvince === true;
 }
+
+/** Whether a hero charmed from an enemy realm refuses to aim the spell named at his own lord's heroes, as its row in
+ *  the content says (`asAnOrder.aCharmedHeroWillNotTurnItOnHisLord`): the engine's check of the Cast Spell order reads
+ *  the same row, and the order form's target field leaves his lord's heroes off its list. A name with no row: he aims
+ *  it as any hero would. */
+export function whetherACharmedHeroWillNotTurnThisSpellOnHisLord(theSpellsName: string): boolean {
+  const everyRow: readonly ASpellAsItsTextsWriteIt[] = Object.values(SPELL_EFFECTS_THE_REGISTRY_HOLDS);
+  const row = everyRow.find((r) => r.name === theSpellsName);
+  return row?.asAnOrder?.aCharmedHeroWillNotTurnItOnHisLord === true;
+}
