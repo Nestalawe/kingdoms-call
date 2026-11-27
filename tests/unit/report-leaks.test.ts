@@ -366,6 +366,17 @@ describe('what each leak check allows', () => {
     const noInvis = (t: Turn) => delete char(t.after, 12)._invisTurn;
     expect(leaks(turn((t, r) => (noInvis(t), shown(r))))).toEqual([]);
   });
+
+  test('R-158: a hero who leads armies at the end of the turn is seen; one who led armies when it began may be named in its lines, though he is in no sighting', () => {
+    const company = { type: 'Heavy Infantry', quality: 'Regular', unitName: 'the Grey Shields' };
+    const shown = (r: RealmReport[]) => (of(r, 0)['visibleChars'] = [{ id: 12, name: 'Corin the Grey' }]);
+    const leadsAtTheEnd = (t: Turn) => (char(t.after, 12).armies = [company]);
+    expect(leaks(turn((t, r) => (leadsAtTheEnd(t), shown(r))))).toEqual([]);
+    const ledAtTheStart = (t: Turn) => (char(t.before, 12).armies = [company]);
+    const named = (r: RealmReport[]) => line(r, 0, 'Aldo the Bold glimpses Corin the Grey on the road.');
+    expect(leaks(turn((t, r) => (ledAtTheStart(t), named(r))))).toEqual([]);
+    expect(leaks(turn((t, r) => (ledAtTheStart(t), shown(r))))).toEqual(['an unseen hero']);
+  });
 });
 
 // R-118 (P1-23d; P1-12a1 checks every part of a report): a spy who stays in a province reads what rival heroes do

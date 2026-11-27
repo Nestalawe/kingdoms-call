@@ -21,6 +21,7 @@ import {
   type LogLine,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
+import { theHerosInvisibilityHidesHimNow } from '../../src/engine/rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import {
   theLinesOfTheTurnTheRealmReads,
   type ALineAsTheGateReadsIt,
@@ -237,7 +238,7 @@ function unmetRealms(t: Turn): string[] {
 /** Title intelligence (end of turn) names the heroes behind a title's figures, as the Titles card does: not a sighting. */
 export const TITLE_INTEL = /^\[The [^\]]+\] /;
 
-/** A hero who cast Invisibility this turn is seen by no realm but those he served this turn (realmsServed), unless it
+/** A hero who cast Invisibility this turn, and leads no armies at its end (R-158), is seen by no realm but those he served this turn (realmsServed), unless it
  *  watches him by Clairvoyance: he is in none of its SIGHTINGS, and no line of its report names him from the
  *  moment he cast it (his "weaves Invisibility" line: its phase, and within it, its place in the GM log). Let through:
  *  title intelligence (TITLE_INTEL), and every line from the phase he first acts on the reader, his deeds being the
@@ -246,7 +247,7 @@ export const TITLE_INTEL = /^\[The [^\]]+\] /;
  *  invisible hero to it (R-119, part 2); every other order and reaction of the reader's aimed at him finds no one
  *  (R-119), so a line of its own order naming him is a breach like any other. One breach per realm, hero, phase and kind
  *  of line (one of the reader's own orders or reactions, its actor the reader; or any other): the first, and a count. A name two heroes share isn't checked. The state saves the turn he cast it, one before the
- *  state's. */
+ *  state's. Its lines are checked only for a hero who led no armies when the turn began. */
 function unseenHeroes(t: Turn): string[] {
   const { turn, players: realms = [], characters } = t.after;
   if (typeof turn !== 'number') return [];
@@ -260,16 +261,31 @@ function unseenHeroes(t: Turn): string[] {
   const gmIndex = (text: string, phase: number) =>
     t.gmLog.findIndex((e) => e.text === text && (typeof e.phase === 'number' ? e.phase : 99) === phase);
   const byName = heroesByName(t);
+  /** R-158: the spell hides him only while he leads no armies (the rule the turn asks, on the state it saved). */
+  const hidesHim = (c: Character | undefined) =>
+    c !== undefined &&
+    typeof c._invisTurn === 'number' &&
+    theHerosInvisibilityHidesHimNow({ _invisTurn: c._invisTurn, armies: c.armies }, turn - 1);
+  /** Whether he led no armies when the turn began: the lines are checked only then (a hero who led some may have
+   *  been seen, and named, in the phases before he left them). */
+  const ledNoneAtTheStart = (c: Character) =>
+    (t.before.characters.find((b) => b.id === c.id)?.armies ?? []).length === 0;
   const invisible = characters
-    .filter((c) => c._invisTurn === turn - 1 && typeof c.name === 'string' && byName.get(baseName(c.name)) != null)
-    .map((c) => ({ c, served: realmsServed(t, c), ...castAt(c), re: named(String(c.name)) }));
+    .filter((c) => hidesHim(c) && typeof c.name === 'string' && byName.get(baseName(c.name)) != null)
+    .map((c) => ({
+      c,
+      served: realmsServed(t, c),
+      ...castAt(c),
+      re: named(String(c.name)),
+      linesChecked: ledNoneAtTheStart(c),
+    }));
   if (!invisible.length) return [];
   return (t.reports ?? []).flatMap((r) => {
     const seen = SIGHTINGS.flatMap((path) => select(r.report, path));
     const lines = LINES.flatMap((path) => select(r.report, path));
     return invisible
       .filter(({ c, served }) => !served.has(r.realm) && realms[r.realm]?._clairCharThisTurn !== c.id)
-      .flatMap(({ c, served, from, index, re }) => {
+      .flatMap(({ c, served, from, index, re, linesChecked }) => {
         const who = `${String(c.name)} (id ${String(c.id)}, invisible from phase ${String(from)})`;
         const deeds = new Set(t.gmLog.filter((e) => e.actor == null || served.has(e.actor)).map((e) => e.text));
         const sightings = seen
@@ -282,7 +298,7 @@ function unseenHeroes(t: Turn): string[] {
           const text = textOf(value);
           const ph = record(value)['phase'];
           const phase = typeof ph === 'number' ? ph : 99;
-          if (typeof text !== 'string' || phase < from || !re.test(text)) return [];
+          if (!linesChecked || typeof text !== 'string' || phase < from || !re.test(text)) return [];
           const i = gmIndex(text, phase);
           if (phase === from && i >= 0 && i < index) return [];
           return [{ at, text, phase, own: t.gmLog[i]?.actor === r.realm }];
