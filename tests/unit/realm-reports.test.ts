@@ -507,6 +507,21 @@ describe("the spy feed: what rival heroes do there, never their realm's news (R-
       `[${theSpysRealm.name}'s banner is seen there]`,
     ]);
   });
+  test("a line of the realm's own deed reads in its chronicle, not its spy feed, whoever the hero serves by the turn's end", () => {
+    // A hero spied there in phase 2 for realm 0 (its deed) and serves realm 1 by the turn's end.
+    const itsOwnDeed = there('[realm 0’s spy learns of a home]', { type: 'spy', actor: 0, targets: [0] });
+    const staged = [theSpyLooks, itsOwnDeed];
+    const report = playerEvents(
+      staged.map((e) => ({ ...e })),
+      tc.G,
+      0,
+      sight,
+      noKinds(staged),
+      theirAudiences(staged),
+    );
+    expect(report.spyActivity.flatMap((s) => s.lines.map((l) => l.text))).toEqual([]);
+    expect(report.lastTurnLog.map((l) => l.text)).toContain('[realm 0’s spy learns of a home]');
+  });
 });
 
 // One realm's report (buildTurnReport, src/views/turn-report.ts) on its view of a world staged for it (playerView): what
