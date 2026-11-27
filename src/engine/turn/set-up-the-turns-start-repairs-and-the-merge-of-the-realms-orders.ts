@@ -22,9 +22,9 @@ import { THE_DIPLOMACY_LADDER } from '../../content/the-diplomacy-ladder-a-mutua
 //      and its scratch lists start empty, every living hero noting the realm he serves, and every living realm's hero
 //      starts with five empty phases (Defend, later);
 //   4. the merge of the realms' orders: each realm that sent orders has its hero order kept (its own living heroes, each
-//      once, in the order sent), its declarations (or the
-//      Safe Start's refusal), research choices, Reckoning call, messages and concession collected for later stages,
-//      orders stamped for another turn refused, the orders of heroes it means to hire, raise or charm held until the
+//      once, in the order sent), its declarations (or the Safe Start's refusal), research choices, Reckoning call,
+//      messages and concession collected for later stages, only from orders for the turn run; orders stamped for
+//      another turn refused but for their hero order (R-192), the orders of heroes it means to hire, raise or charm held until the
 //      order lands, every other hero's phases written, a conceded realm's heroes made to hold, its encounter plans
 //      set (or held, for a hero not yet its own), and a new heir's skills, name and temper applied. A realm's orders,
 //      encounter plans and heir's choices are taken only for its own heroes (the rest set aside, and the GM told); a
