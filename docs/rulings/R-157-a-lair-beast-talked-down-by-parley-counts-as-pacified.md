@@ -10,6 +10,9 @@ Example: Sir Aldric searches the Drowned Mill and talks its Marsh Rat down; he g
 and his maximum hit points don't rise. The Talk tactic that makes a parley is switched off in the game today, so the
 rule holds for each parley once it is switched on again.
 
+**Open:** whether a hero wounded before he talks the beast down still rolls for his wounds; as built he does
+(question 169).
+
 The question was: the code's notes say a parley gives half the merit; in play it counts as a kill. Option 1: "a
 parley counts as pacifying the beast: half the merit, no hit points".
 

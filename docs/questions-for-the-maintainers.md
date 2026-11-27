@@ -112,3 +112,25 @@ Aldric found one three turns ago, and his pack still reads "promote all armies o
 *Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) (every
 copy of the Ring and the Helm takes its row's effect and words) and
 [R-191](rulings/R-191-the-philosophers-stones-text-says-the-skeletal-companies-are-left-out.md) (the Stone's words).
+
+## 169. Once Talk returns, does a hero who talks a lair's guardian down still roll for his wounds?
+
+Found on 2026-11-28.
+
+[R-157](rulings/R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md) says a beast talked down by parley
+gives "no earned hit points". The Talk tactic is switched off today. Once it is back, a hero can be wounded in the
+first rounds and then talk the beast down. A parley has no winner, so the fight gives him the roll every wounded hero
+who isn't the winner gets, which can raise his maximum hit points. As built, only the lair's award for a win is held
+back. Example: Sir Tomas is wounded in the first round, then talks the wyvern down. Does he roll for his wounds?
+
+1. **He rolls for his wounds, as any wounded hero does.** Impact: only the win's award is held back; a parley is
+   treated like a fight that ends without a winner. This is how the game works as built.
+2. **He gets no roll at all from a fight he ends by parley.** Impact: a parley gives no maximum hit points of any
+   kind, even to a hero who was hurt first.
+
+*Assessment:* option 1: the wound roll is for the wounds he took, and "no earned hit points" reads as the win's award.
+
+*Unlocks:* R-157's open point, for when Talk returns.
+
+*Touches:* [R-157](rulings/R-157-a-lair-beast-talked-down-by-parley-counts-as-pacified.md) (a lair beast talked down
+counts as pacified).
