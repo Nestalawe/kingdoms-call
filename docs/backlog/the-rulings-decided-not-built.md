@@ -12,7 +12,6 @@ test checks that each such ruling has its row
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
 | P1-23i | [R-141](../rulings/R-141-illusory-terrain-fools-the-intelligence-report-and-the-order-forms-too.md): Illusory Terrain fools the intelligence report and the order forms too. Folds in KD-145. | Players: the spell's false land shows everywhere the map shows it | Phase 1 | Small | ✓ | ⬜ | | |
-| P1-23w | [R-149](../rulings/R-149-the-lancers-the-legions-and-the-bowmans-items-name-the-units-the-battle-lifts.md): thirty item texts name the units the battle lifts. Folds in KD-092. | Players: the texts say which units an item lifts; nothing changes in play | Phase 1 | Medium | ✓ | ⬜ | | |
 | P1-23x | [R-150](../rulings/R-150-the-home-defence-items-say-what-the-battle-does.md): the home-defence items' texts. Folds in KD-260. | Players: the texts say what the battle does; nothing changes in play | Phase 1 | Small | ✓ | ⬜ | | |
 | P1-23y | [R-151](../rulings/R-151-the-shield-wall-runes-text-says-what-the-battle-does.md): the Shield-Wall Rune's texts. Folds in KD-012. | Players: the texts say what the battle does; nothing changes in play | Phase 1 | Small | ✓ | ⬜ | | |
 | P1-23z | [R-152](../rulings/R-152-the-plus-three-tax-items-say-three-gold-each-tax-season.md): the four tax items' texts. Folds in KD-093. | Players: the texts say +3 gold each tax season; nothing changes in play | Phase 1 | Small | ✓ | ⬜ | | |

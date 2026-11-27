@@ -99,8 +99,7 @@ export interface AMagicItemEffectAsItsTextsWriteIt {
 }
 
 // The cavalry, infantry, archers and heavy engines the commander's items reach (until P1-19m armStr's CAV_I, INF_I,
-// ARCH_I and HEAVY_I). Each item's texts name fewer (question 21, R-149, not yet built: KD-092); these are what the
-// battle gives.
+// ARCH_I and HEAVY_I). Each item's texts name every one (R-149).
 const THE_CAVALRY_THE_LANCERS_ITEMS_REACH: readonly UnitType[] = [
   'Free Lances',
   'Gilded Lances',
@@ -244,8 +243,8 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
     carriedAs: { stat: 'homeDefBonus' },
     numbers: { multiplier: { value: 1.25, theTextsWriteIt: 'a multiplier, as the share it adds' } },
   },
-  // The defenders' fortifications, beyond the bare ×1, are halved when the bearer attacks. Five of its items say "Siege
-  // bonus +1" (question 21, R-149, not yet built).
+  // The defenders' fortifications, beyond the bare ×1, are halved when the bearer attacks, as each of its items says
+  // (R-149).
   'siege-bonus': {
     name: "Siege Master's Ring",
     carriedAs: { stat: 'siegeBonus' },
@@ -821,9 +820,15 @@ export type MagicItemEffectSlug = keyof typeof MAGIC_ITEM_EFFECTS_THE_REGISTRY_H
 /** The effects every copy already in a running game takes from its item's row, its effect and its words, at the head
  *  of each turn (migrateItemTiers): the Ring of the Unbroken Pulse and the Great Helm of the Deathless shrug off a
  *  killing blow, and the second-wind items say the 30% (R-153); the Crown of Command says your realm's characters
- *  (R-143). */
+ *  (R-143); the items that lift a kind of company name every unit the battle lifts, and the siege items say the
+ *  defenders' fortifications are halved (R-149). */
 export const THE_EFFECTS_EVERY_COPY_IN_PLAY_TAKES_FROM_ITS_ROW: readonly MagicItemEffectSlug[] = [
   'a-killing-blow-shrugged-off',
   'second-wind',
   'crown-of-command',
+  'cavalry-bonus',
+  'infantry-bonus',
+  'archer-bonus',
+  'heavy-bonus',
+  'siege-bonus',
 ];

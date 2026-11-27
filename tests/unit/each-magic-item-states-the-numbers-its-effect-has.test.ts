@@ -19,10 +19,10 @@
 // copy carries itself, but the terror's chance, bane's double, the Lock-Pick's steal and the Warbringer Gauntlets' blow
 // (plan P1-19s); the kinds of item the treasury weighs as a whole, whose worth no text states (plan P1-19t)) are listed, so a number added to one is checked.
 // The known gaps are listed by name, each with its known defect's id, and checked to be still gaps (so the exception
-// leaves with the fix): five siege items say "Siege bonus +1" (question 21: KD-092); no home-defence item states its ×1.25 (question 22:
+// leaves with the fix): no home-defence item states its ×1.25 (question 22:
 // KD-260); neither terror item says a foe flees half the time (question
 // 26: KD-090); the Mirror Shard says its illusions are "harder to disbelieve", not that the chance is halved (KD-087).
-// The units an item reaches are words this test can't match to a set (question 21).
+// The units an item reaches: the-commanders-items-texts-name-every-unit-the-battle-lifts.test.ts (R-149).
 // Level 1 (unit), not static: the items in play exist only after the engine's load-time pass (src/engine/items/
 // equipment.ts and tiers-and-hoards.ts rewrite the list: 711 items), so the whole engine is imported first.
 import '../lib/the-whole-engine.ts';
@@ -37,18 +37,10 @@ import { theEffectsAnItemCarries } from '../../src/engine/rules-on-plain-values/
 import { MITHRIL_ARMOUR } from '../../src/engine/heroes/fame-and-consecration.ts';
 
 /** The items whose texts don't state their effect's number yet, by the row's slug, each with its known defect's id. */
-const SIEGE_WORDS = 'KD-092 (question 21, R-149, not yet built)';
 const HOME_DEFENCE_WORDS = 'KD-260 (question 22, R-150, not yet built)';
 const TERROR_WORDS = 'KD-090 (question 26, R-154, not yet built)';
 const MIRROR_SHARD_WORDS = 'KD-087';
 const KNOWN_GAPS: Partial<Record<MagicItemEffectSlug, Readonly<Record<string, string>>>> = {
-  'siege-bonus': {
-    'Cloak of the Siege Engineer': SIEGE_WORDS,
-    'Ring of the Sapper': SIEGE_WORDS,
-    "Siege-Wright's Scale Model": SIEGE_WORDS,
-    'Travelworn Veil': SIEGE_WORDS,
-    'Plain Bezel': SIEGE_WORDS,
-  },
   'home-defence-bonus': {
     'Banner of the Realm': HOME_DEFENCE_WORDS,
     'Shield of the Innocent': HOME_DEFENCE_WORDS,

@@ -71,11 +71,10 @@ The rebuild's tranches are done, so the rulings and the known defects come next 
 in its order, then [the rulings to build](the-rulings-decided-not-built.md) in their file's order. The rows on what a
 realm sees (KD-049, P1-23j, P1-23h, P1-23i, P1-23ag, P1-23bd, P1-23bg) wait for a maintainer's day, so they are not in
 this list. Each row, and why it is there, is in its file:
-1. P1-23w
-2. P1-23x
-3. P1-23y
-4. P1-23z
-5. P1-23aa
+1. P1-23x
+2. P1-23y
+3. P1-23z
+4. P1-23aa
 
 ## Not yet assessed
 
