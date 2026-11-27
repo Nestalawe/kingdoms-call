@@ -67,3 +67,23 @@ march for Sir Aldric; the GM's tab runs the turn at 21:00.
 
 *Touches:* [R-184](rulings/R-184-orders-sent-after-the-turns-deadline-are-refused.md) (orders sent after the
 deadline are refused).
+
+## 167. Does the Ring or the Helm shrug off a death that isn't a struck blow?
+
+Found on 2026-11-27.
+
+[R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md) says only a blow
+is shrugged off, not a burn, poison or bleeding at a round's start. Other harms also kill without a roll today: a
+guardian's burn aura, a shield's lash-back, the Thornwood bite, a spell's recoil. Arrows, spells' hits, guardian
+specials and free strikes do get the roll. Sir Aldric, wearing the Ring, strikes a Thornwood-clad foe and dies to the
+bite: does the Ring roll?
+
+1. **No: only a struck blow, as built.** Impact: these harms kill a wearer outright, as burns do.
+2. **Yes: any harm in the fight but the round-start ticks.** Impact: the Ring and the Helm save a few more wearers; four
+   more places draw the roll, so more fights reshape.
+
+*Assessment:* option 1: one line between a blow and a harm the wearer meets, and nothing to build.
+
+*Unlocks:* R-153's open point settled.
+
+*Touches:* [R-153](rulings/R-153-two-second-wind-items-shrug-off-a-killing-blow-and-four-say-the-30-percent.md).
