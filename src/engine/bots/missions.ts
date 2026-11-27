@@ -778,8 +778,8 @@ export const BOT_ROLE_ITEM_STATS = {
   ]),
   scholar: new Set(['sage', 'castSpell', 'practice']),
   scout: new Set(['explorer', 'spyAuto']),
-  spy: new Set(['spy', 'hidden', 'spyAuto']),
-  thief: new Set(['thief', 'hidden']),
+  spy: new Set(['spy', 'untargetable', 'spyAuto']),
+  thief: new Set(['thief', 'untargetable']),
   none: new Set([]),
 };
 // the stats a role is the FIRST home for (breaks ties between several willing recipients)
@@ -791,7 +791,7 @@ export const BOT_ROLE_ITEM_PRIMARY = {
   mage: new Set(['white', 'psychic', 'illusory', 'elemental', 'necromancy', 'castSpell']),
   scholar: new Set(['sage']),
   scout: new Set(['explorer']),
-  spy: new Set(['spy', 'hidden']),
+  spy: new Set(['spy', 'untargetable']),
   thief: new Set(['thief']),
 };
 // ALLIED FRONT (review R7): a target within two hexes of an allied realm's field host is worth more — two

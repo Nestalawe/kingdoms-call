@@ -24,7 +24,7 @@ import {
   type World,
 } from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, skeletal, type Item } from './item-and-army-order-cases.ts';
-import { oldCloakOfManyFaces, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
+import { theCloakOfManyFaces, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
 import { lair } from './explore-and-search-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 
@@ -231,7 +231,7 @@ export const graveLore = (o: Outcome, i: number) =>
 /** A company of beasts (Phantom Host duplicates these; Phantasmal Armies doesn't). */
 export const beasts = (n: number, type = 'Dire Wolves', quality = 'Average') =>
   companies(n, type, quality).map((u) => ({ ...u, race: 'Beast' }));
-export { oldCloakOfManyFaces, skeletal };
+export { theCloakOfManyFaces, skeletal };
 
 // ── The casting itself ──────────────────────────────────────────────────────────────────────────────────────────
 /** A mage of realm 0 in the middle, of `skills`, given `os` in turn. */
@@ -811,9 +811,9 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
     },
   },
   {
-    name: 'the Cloak of Many Faces (as an older save holds it) hides its wearer from Psychic Blast and Curse',
+    name: 'the Cloak of Many Faces (as a lair deals it) hides its wearer from Psychic Blast and Curse',
     stage(b) {
-      const m = holding(rival(b, {}, { melee: 1 }), oldCloakOfManyFaces(b));
+      const m = holding(rival(b, {}, { melee: 1 }), theCloakOfManyFaces(b));
       const s = mage(b, { psychic: 1, necromancy: 1 }, cast('Psychic Blast', m.id), cast('Curse', m.id));
       return { ...s, mark: m };
     },
@@ -832,7 +832,7 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
   {
     name: 'the Cloak of Many Faces does not turn aside other spells (a Telekinetic Storm)',
     stage(b) {
-      const m = leads(holding(rival(b), oldCloakOfManyFaces(b)), companies(2, 'Men-at-Arms', 'Veteran'));
+      const m = leads(holding(rival(b), theCloakOfManyFaces(b)), companies(2, 'Men-at-Arms', 'Veteran'));
       const s = mage(b, { psychic: 1 }, cast('Telekinetic Storm', m.id));
       return { ...s, mark: m };
     },
@@ -844,20 +844,6 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
           hurled: says(o, `Telekinetic Storm hurls ${m.name}'s troops about`),
         },
         want: { cloaked: false, hurled: true },
-      };
-    },
-  },
-  {
-    name: "a Cloak of Many Faces as a lair deals it today hides nobody (its power's name is read by nothing: Parked)",
-    stage(b) {
-      const m = holding(rival(b, {}, { melee: 1 }), item(b, 'Cloak of Many Faces'));
-      const s = mage(b, { psychic: 1 }, cast('Psychic Blast', m.id));
-      return { ...s, mark: m };
-    },
-    check(o) {
-      return {
-        got: { cloaked: says(o, 'cloaked from hostile magic'), blasted: says(o, 'unleashes Psychic Blast') },
-        want: { cloaked: false, blasted: true },
       };
     },
   },

@@ -23,7 +23,7 @@ import {
   type Province,
 } from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies } from './item-and-army-order-cases.ts';
-import { oldCloakOfManyFaces, type Dice } from './espionage-order-cases.ts';
+import { theCloakOfManyFaces, type Dice } from './espionage-order-cases.ts';
 import {
   anySays,
   at,
@@ -267,10 +267,10 @@ export const ENCOUNTER_ORDER_CASES: WarOrderCase[] = [
     },
   },
   {
-    name: 'a cloaked quarry (a Cloak of Many Faces, as an older save holds it) leaves no trail',
+    name: 'a cloaked quarry (a Cloak of Many Faces, as a lair deals it) leaves no trail',
     stage(b) {
       const q = rival(b);
-      return hunter(b, holding(q, oldCloakOfManyFaces(b)));
+      return hunter(b, holding(q, theCloakOfManyFaces(b)));
     },
     check(o, s) {
       const line = `${s.hero.name} sets out after ${mark(s).name}, but they are cloaked and leave no trail to follow.`;
@@ -317,7 +317,7 @@ export const ENCOUNTER_ORDER_CASES: WarOrderCase[] = [
   {
     name: 'a hero of his own realm who is cloaked can still be sought out: they meet',
     stage(b) {
-      return hunter(b, holding(at(b), oldCloakOfManyFaces(b)));
+      return hunter(b, holding(at(b), theCloakOfManyFaces(b)));
     },
     check(o, s) {
       return {

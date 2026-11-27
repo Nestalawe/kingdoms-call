@@ -173,7 +173,7 @@ A **magic item's effect** (from P1-19m) is one row in
   maximum, rounded, once however many he carries), **a move's exploration** (the Traveller's Cloak: the copy's own
   `exploreMove`, every item's added) and **an item's power used** (the Philosopher's Stone, `promoteAll`:
   the Use Item order and the bots' plan both ask it, and the order does the promoting). `visibility`'s **a hero's items
-  hide his face** (P1-19am, `magic-items/a-heros-items-in-what-a-realm-sees.ts`: an older save's Cloak of Many Faces),
+  hide his face** (P1-19am, `magic-items/a-heros-items-in-what-a-realm-sees.ts`: the Cloak of Many Faces, `untargetable`),
   for `isHiddenChar`, the Spy order and the Encounter.
 - **A hero's standing's stages** (P1-19p, `magic-items/a-heros-items-in-his-standing.ts`): `aHerosStanding`'s **maximum
   HP** (`itemMaxHpBonus`: handed each held copy, the Amulet of Fortitude and its kin give the copy's own `effect.bonus`;

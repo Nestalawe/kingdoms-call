@@ -334,11 +334,10 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
   },
   // ── What a realm sees (visibility, plan P1-19am). ──
   // His face is hidden: no Spy order fixes on him, and no Encounter Character order, Psychic Blast or Curse of another
-  // realm names him. Only an older save's copy carries `hidden`: the relic a lair deals today carries `untargetable`,
-  // which nothing reads (KD-048).
+  // realm names him. The relic a lair deals carries `untargetable`.
   'cloak-of-many-faces': {
     name: 'Cloak of Many Faces',
-    carriedAs: { stat: 'hidden' },
+    carriedAs: { stat: 'untargetable' },
     numbers: {},
   },
   // ── A hero's standing (aHerosStanding): his maximum hit points, the temper he fights with, and his skills. ──

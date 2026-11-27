@@ -148,12 +148,8 @@ const knows = (b: Board, i: number, ...ids: string[]) => {
 };
 /** The Crystal Orb as a lair deals it (the relic's own entry, its power `spyAuto`). */
 export const theCrystalOrb = (b: Board): Item => item(b, 'Crystal Orb');
-/** The Cloak of Many Faces as an older save holds it (`effect:{stat:'hidden'}`, the power the Spy order reads). The
- *  relic a lair deals today names its power `untargetable`, which nothing reads (STATUS, Parked). */
-export const oldCloakOfManyFaces = (b: Board): Item => ({
-  ...item(b, 'Cloak of Many Faces'),
-  effect: { stat: 'hidden', bonus: 1 },
-});
+/** The Cloak of Many Faces as a lair deals it (the relic's own entry, its power `untargetable`). */
+export const theCloakOfManyFaces = (b: Board): Item => item(b, 'Cloak of Many Faces');
 const one = (c: Character, ...os: Order[]): [Character, Order[]] => [c, plan(...os)];
 /** Whether one of the hero's lines says `what`, and the line straight after it in the turn's log, if it is his too. */
 const noteAfter = (o: Outcome, s: Staged, what: string) => {
@@ -536,9 +532,9 @@ export const SPY_ON_A_HERO_ORDER_CASES: EspionageOrderCase[] = [
     },
   },
   {
-    name: 'Spy on a hero: a Cloak of Many Faces (as an older save holds it) hides its wearer, and nothing is rolled',
+    name: 'Spy on a hero: a Cloak of Many Faces (as a lair deals it) hides its wearer, and nothing is rolled',
     stage(b) {
-      return spyOn(b, holding(rival(b), oldCloakOfManyFaces(b)), 6);
+      return spyOn(b, holding(rival(b), theCloakOfManyFaces(b)), 6);
     },
     check(o, s) {
       return {
@@ -550,27 +546,6 @@ export const SPY_ON_A_HERO_ORDER_CASES: EspionageOrderCase[] = [
           rolled: says(o, '📊'),
         },
         want: { hidden: true, rolled: false },
-      };
-    },
-  },
-  {
-    name: 'Spy on a hero: the Cloak of Many Faces a lair deals today hides nobody (its power is read by nothing)',
-    dice: UNLUCKY,
-    stage(b) {
-      return spyOn(b, holding(rival(b), item(b, 'Cloak of Many Faces')), 6);
-    },
-    check(o, s) {
-      return {
-        got: {
-          roll: readRoll(o, s, 5, 'automatic success (Master Spy)'),
-          report: report(
-            o,
-            s,
-            ` of ${realmName(o, 1)}`,
-            'skills — Melee 2, Tactical 2, March 1. Items — Cloak of Many Faces.',
-          ),
-        },
-        want: { roll: true, report: true },
       };
     },
   },

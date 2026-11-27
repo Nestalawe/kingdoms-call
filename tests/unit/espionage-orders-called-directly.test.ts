@@ -38,7 +38,7 @@ import fc from 'fast-check';
 import { describe, expect, test, vi } from 'vitest';
 import {
   ESPIONAGE_ORDER_CASES,
-  oldCloakOfManyFaces,
+  theCloakOfManyFaces,
   theCrystalOrb,
   stageCase,
   type EspionageOrderCase,
@@ -502,10 +502,10 @@ describe('Spy, called directly: the dice, The Shadow and the odds', () => {
     expect(kept[String(second.id)]?.armies.map((a) => a.unitName)).toEqual(['']);
   });
 
-  test('an older save’s Cloak of Many Faces hides its wearer from a read; the Crystal Orb needs no roll', () => {
+  test('the Cloak of Many Faces hides its wearer from a read; the Crystal Orb needs no roll', () => {
     const b = fresh();
     const m = rival(b);
-    m.items = [oldCloakOfManyFaces(b)];
+    m.items = [theCloakOfManyFaces(b)];
     const h = at(b, { spy: 1 });
     h.items = [theCrystalOrb(b)];
     rolls([100, 100], () => {

@@ -26,8 +26,7 @@
 // one more combat spell than a fight allows is refused, in the fight a failed Charm brings on); no skill, a mastery
 // spell below its level or twice a turn, refused unrolled; a spell item's Use Item (95%, at least level 3, a small
 // chance at Sage, never a mastery spell); the Wailing Phylactery (Necromancy only); a mark gone, fallen elsewhere,
-// vanished (a friend still reached), veiled or cloaked (the Cloak of Many Faces as a lair deals it today hides nobody:
-// Parked); a charmed hero won't turn on his own lord's people. Every spell, school by school: White (Resurrect: his
+// vanished (a friend still reached), veiled or cloaked (the Cloak of Many Faces as a lair deals it); a charmed hero won't turn on his own lord's people. Every spell, school by school: White (Resurrect: his
 // realm's fallen here, the body named or the freshest, the orders written for the raised hero, a monarch borne home and
 // his heir, every refusal; Part Sea, also after a Flood; Holy Symbol; Bless Province: +60%, +80% Divine, +100% a Divine
 // king, Rites of Plenty, the ward, no stacking; Sanctuary; Divine Judgment), Psychic (Charm: a wanderer for good, an

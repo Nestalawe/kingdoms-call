@@ -146,14 +146,13 @@ describe('a feature an older save marked discovered stays known to every realm',
 });
 
 describe('a hero whose items hide his face can’t be named by an Encounter Character order', () => {
-  /** The Cloak of Many Faces as an older save holds it (the relic a lair deals today carries `untargetable`, which
-   *  nothing reads: KD-048). */
-  const oldCloak = { id: 7, name: 'Cloak of Many Faces', slot: 'cloak', effect: { stat: 'hidden', bonus: 1 } };
+  /** The Cloak of Many Faces as a lair deals it (its power `untargetable`). */
+  const theCloak = { id: 7, name: 'Cloak of Many Faces', slot: 'cloak', effect: { stat: 'untargetable' } };
   const theReasonFor = (items: unknown[]) =>
     encounterUntargetableReason(world(hero(1, 1, FAR_AWAY, { items })).characters[1]);
 
-  test('wearing the old Cloak of Many Faces, he is faceless', () => {
-    expect(theReasonFor([{ ...oldCloak, equipped: true }])).toBe('faceless');
+  test('wearing the Cloak of Many Faces, he is faceless', () => {
+    expect(theReasonFor([{ ...theCloak, equipped: true }])).toBe('faceless');
   });
   test('with another item, or none, he can be named', () => {
     expect(theReasonFor([{ id: 8, name: 'Crystal Orb', effect: { stat: 'spyAuto' } }])).toBeNull();

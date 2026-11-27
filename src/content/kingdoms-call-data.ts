@@ -7380,11 +7380,12 @@ export const ALL_MAGIC_ITEMS_P = [
     effect: { stat: 'promoteAll' },
     tier: 3,
   },
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
   {
     name: 'Cloak of Many Faces',
     desc: 'This hero may not be targeted by Spy, Psychic Blast, Curse or Encounter Character orders',
     lore: 'Its wearer has no face anyone can remember. A LEGENDARY relic: this character cannot be targeted by Spy, Psychic Blast, Curse or Encounter Character orders.',
-    effect: { stat: 'hidden', bonus: 1 },
+    effect: { stat: 'untargetable' },
     tier: 3,
   },
   {
