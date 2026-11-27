@@ -9146,8 +9146,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Ring of the Unbroken Pulse',
-    desc: '15% to shrug off a killing blow once per fight, standing at 1 HP.',
-    lore: 'The stone flickers once, and you are still standing. Once per fight, 15% to survive a killing blow at 1 HP.',
+    desc: '15% to shrug off a killing blow, standing at 1 HP; it can save you once a fight.',
+    lore: 'The stone flickers once, and you are still standing. 15% to survive a killing blow at 1 HP; it can save you once a fight.',
     effect: { stat: 'pc', pc: { ward: 'shrugOff', pct: 15 } },
     slot: 'ring',
     tier: 3,
@@ -9202,8 +9202,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Great Helm of the Deathless',
-    desc: '20% to shrug off a killing blow once per fight, standing at 1 HP.',
-    lore: 'Its last three owners were each certain they had died in it. Once per fight, 20% to survive a killing blow at 1 HP.',
+    desc: '20% to shrug off a killing blow, standing at 1 HP; it can save you once a fight.',
+    lore: 'Its last three owners were each certain they had died in it. 20% to survive a killing blow at 1 HP; it can save you once a fight.',
     effect: { stat: 'pc', pc: { ward: 'shrugOff', pct: 20 } },
     slot: 'helm',
     tier: 3,

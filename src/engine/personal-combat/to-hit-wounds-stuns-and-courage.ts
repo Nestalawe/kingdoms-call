@@ -661,8 +661,9 @@ export function pcTakeHit(
     if (d > _gCap) d = _gCap;
   }
   target.hp -= d;
-  // The Ring of the Unbroken Pulse and the Great Helm of the Deathless: once a fight, on the copy's chance, a blow that
-  // would kill him leaves him standing (R-153). The die is drawn only for a wearer this blow struck down from above 0.
+  // The Ring of the Unbroken Pulse and the Great Helm of the Deathless: on the copy's chance, a blow that would kill him
+  // leaves him standing, once a fight (R-153). The die is drawn only for a wearer this blow struck down from above 0, and
+  // only a roll that saves him spends the chance: a failed one leaves it for the next killing blow.
   const _shrug = theChanceAFightersWardsGiveToShrugOffAKillingBlow({
     theWards: _arm,
     hisShrugHasBeenUsed: target._armShrugOffUsed,
@@ -670,8 +671,8 @@ export function pcTakeHit(
     hisHp: target.hp,
   });
   if (_shrug) {
-    target._armShrugOffUsed = true;
     if (kcRng() < _shrug.theChance) {
+      target._armShrugOffUsed = true;
       target.hp = _shrug.theHpHeStandsAt;
       narrate(narrative, {
         kind: 'the target shrugs off a killing blow and stands at 1 HP',

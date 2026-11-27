@@ -5,8 +5,9 @@
 - **Source:** Question 25: six second-wind items don't say the 30%, and two describe another rule: which is right? Answer: option 2, the Ring and the Helm get the rule their texts give, and the four others' texts state the 30%.
 - **Enforced by:** [`the-ring-and-the-helm-shrug-off-a-killing-blow-once-a-fight`](../../tests/unit/the-ring-and-the-helm-shrug-off-a-killing-blow-once-a-fight.test.ts)
 
-The Ring of the Unbroken Pulse and the Great Helm of the Deathless do what their texts say: once a fight, a
-chance to shrug off a killing blow and stand at 1 HP. The other second-wind items keep their rule (the first time
+The Ring of the Unbroken Pulse and the Great Helm of the Deathless do what their texts say: a chance to shrug off a
+killing blow and stand at 1 HP, which can save the wearer once a fight. A failed roll doesn't spend it: he rolls at
+each killing blow until it has saved him once (a maintainer's answer, 27 November). The other second-wind items keep their rule (the first time
 the bearer falls below 30% of his hit points in a fight, he recovers a share of his maximum), and their texts say
 the 30%. Example: a killing blow falls on Sir Aldric, who wears the Ring; on its chance he stands at 1 HP instead.
 

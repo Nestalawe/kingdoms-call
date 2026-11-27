@@ -443,7 +443,8 @@ export const MAGIC_ITEM_EFFECTS_THE_REGISTRY_HOLDS = {
       percentagePointsForAPoint: THE_PERCENTAGE_POINTS_A_FLAG_WARD_CARRIES_FOR_A_POINT,
     },
   },
-  // Once a fight, on the copy's chance (a percentage), a blow that would kill him leaves him standing at these HP (R-153).
+  // On the copy's chance (a percentage), a blow that would kill him leaves him standing at these HP, until it has saved
+  // him once in the fight (R-153).
   'a-killing-blow-shrugged-off': {
     name: 'Ring of the Unbroken Pulse',
     carriedAs: { ward: 'shrugOff' },

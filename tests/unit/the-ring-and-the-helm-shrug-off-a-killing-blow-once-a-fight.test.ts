@@ -1,6 +1,7 @@
-// The Ring of the Unbroken Pulse and the Great Helm of the Deathless shrug off a killing blow (R-153): once a fight,
-// on the item's chance (the Ring's 15%, the Helm's 20%: each copy's own, as its texts say), a blow that would leave
-// the wearer at 0 HP or below leaves him standing at 1 HP instead, and the line says so. Neither gives HP back when he
+// The Ring of the Unbroken Pulse and the Great Helm of the Deathless shrug off a killing blow (R-153): on the item's
+// chance (the Ring's 15%, the Helm's 20%: each copy's own, as its texts say), a blow that would leave the wearer at 0
+// HP or below leaves him standing at 1 HP instead, and the line says so; it saves him once a fight, and a failed roll
+// leaves the chance for the next killing blow. Neither gives HP back when he
 // first falls below 30% of his maximum (the other second-wind items' rule, which Last-Stand Plate keeps).
 //
 // Level 1 (unit): pcTakeHit called directly on a staged fighter (a guardian of no perks, 20 HP, tests/lib/
@@ -67,6 +68,14 @@ describe.for([
     const wearer = aWearer(name, 4);
     expect(aBlow(wearer, 8, 0).hp).toBe(1);
     expect(aBlow(wearer, 8, 0).hp).toBeLessThanOrEqual(0);
+  });
+  test(`a failed roll doesn't spend the chance: a killing blow at a die of its chance (${String(at)}), then one under it (${String(under)}), leaves him standing at 1 HP`, () => {
+    const wearer = aWearer(name, 4);
+    expect(aBlow(wearer, 8, at).hp).toBeLessThanOrEqual(0);
+    wearer.hp = 4; // staged: set back on his feet by hand, so the case reads the second blow's roll
+    const { hp, kinds } = aBlow(wearer, 8, under);
+    expect(hp).toBe(1);
+    expect(kinds).toContain(STANDS);
   });
   test('falling below 30% of his maximum (10 HP to 5 of 20) gives no HP back', () => {
     const { hp, kinds } = aBlow(aWearer(name, 10), 5, 0);

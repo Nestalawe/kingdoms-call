@@ -677,7 +677,7 @@ export interface AFighterAsHisWardsMeetHimAfterAHit {
 }
 
 /** What the stage "a hit lands on a fighter: a killing blow" hands an effect (pcTakeHit, once the hit is dealt, before
- *  the second wind): the wards he wears (none: null), whether his chance to shrug off a killing blow has been used this
+ *  the second wind): the wards he wears (none: null), whether his chance to shrug off a killing blow has saved him this
  *  fight, his hit points before the hit, and his hit points as the fight reads them after it. */
 export interface AFighterAsAKillingBlowFallsOnHim {
   readonly theWards: TheWardsAsTheirEffectsReadThem | null;
