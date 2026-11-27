@@ -429,9 +429,9 @@ export const UNIT_ABILITIES_THE_REGISTRY_HOLDS = {
     numbers: { inTheSecondLine: { value: 1, theBooksWriteIt: 'full strength' } },
   },
   // ── Before the battle (plan P1-19i: applyFlakScreen, and Breach and Swamp in both battles) ──
-  // A flyer is harried before the battle (strength): each Gyrocopter engages one enemy winged rider no gyrocopter has
-  // engaged this battle, which loses 30% of its base strength for the battle (at least 1), so no two gyrocopters engage
-  // the same flyer.
+  // A flyer is harried before the battle (strength): each Gyrocopter engages one enemy flyer (a winged rider or a flying
+  // beast: KC_UNIT_CLASS.aerial, R-146) no gyrocopter has engaged this battle, which loses 30% of its base strength for
+  // the battle (at least 1), so no two gyrocopters engage the same flyer.
   'flak-screen': {
     unit: 'Gnomish Gyrocopters',
     name: 'Flak Screen',

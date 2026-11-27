@@ -17,9 +17,9 @@ type TheFateStages = TheStagesOfEachHookPoint['fate'];
 
 // A flyer is harried before the battle (each runs only for its row's unit).
 export const A_FLYER_IS_HARRIED_BEFORE_THE_BATTLE = {
-  // DWARF — Flak Screen: each Gyrocopter harries ONE enemy winged rider (FLYING_TYPES, the battle code's pick) that no
-  // gyrocopter has engaged this battle, at random, and it loses 30% of its base strength (at least 1). One die, and only
-  // while a flyer is left.
+  // DWARF — Flak Screen: each Gyrocopter harries ONE enemy flyer, a winged rider or a flying beast (AERIAL_TYPES, the
+  // battle code's pick; R-146), that no gyrocopter has engaged this battle, at random, and it loses 30% of its base
+  // strength (at least 1). One die, and only while a flyer is left.
   'flak-screen': (facts) => {
     const flyers = facts.theEnemyFlyersNotYetHarried;
     if (!flyers.length) return null;
