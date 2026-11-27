@@ -489,7 +489,7 @@ test("the ratchet's helper counts each check of an item's effect or an item, and
       const notAWord = it.effect.stat === 'naval' || it.name === 'Testblade' || other || label || notChecks;
       return x + inside + nested() + notAWord;
     }
-    const nestedNamed = function named() { return it.effect.stat === 'fleetQuality'; };`;
+    const nestedNamed = function named() { return it.effect.stat === 'navalBonus'; };`;
   expect(Object.fromEntries(itemEffectChecksByFunction('planted.ts', planted))).toEqual({
     planted: 11,
     nested: 1,

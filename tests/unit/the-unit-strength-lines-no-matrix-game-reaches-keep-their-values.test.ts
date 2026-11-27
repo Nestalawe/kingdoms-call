@@ -269,6 +269,11 @@ describe("a unit's strength in the lines the matrix doesn't feed", () => {
     expect(fleet('Average')).toBe(Math.round((plain('Average') * Number(UNIT_Q_MULT['Veteran'])) / 2));
     expect(fleet('Green')).toBe(Math.round(plain('Green') * 2));
     expect(fleet('Elite')).toBe(plain('Elite'));
+    // a copy dealt before 12 September 2026 carries the older name (`navalBonus`), and lifts the fleet the same
+    const older = { ...kraken, effect: { stat: 'navalBonus', bonus: 1 }, tier: 3 };
+    expect(armStr(turn, unit('Galleon Fleet', 'Average'), hero({ items: [older] }), 'Neutral', null, undefined)).toBe(
+      fleet('Average'),
+    );
     expect(armStr(turn, unit('Men-at-Arms'), hero({ items: [{ ...kraken }] }), 'Neutral', null, undefined)).toBe(
       armStr(turn, unit('Men-at-Arms'), hero(), 'Neutral', null, undefined),
     );

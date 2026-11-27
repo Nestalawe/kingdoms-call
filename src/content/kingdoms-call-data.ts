@@ -6094,12 +6094,13 @@ export const ALL_MAGIC_ITEMS_P = [
     effect: { stat: 'spy', bonus: 2 },
     tier: 2,
   },
-  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play; a copy
+  // dealt before 12 September 2026 carries this entry's older power name, which the items' registry reads too)
   {
     name: 'Crystal Orb',
     desc: 'Spy always succeeds — no roll needed',
     lore: 'A flawless sphere in which distant halls and whispered councils appear at a thought. A LEGENDARY relic: every Spy order you give succeeds automatically, with no roll needed.',
-    effect: { stat: 'spyAuto' },
+    effect: { stat: 'oracle', bonus: 1 },
     tier: 3,
   },
   {
@@ -6321,12 +6322,13 @@ export const ALL_MAGIC_ITEMS_P = [
     tier: 1,
   },
   // ── Naval-specific ──
-  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play; a copy
+  // dealt before 12 September 2026 carries this entry's older power name, which the items' registry reads too)
   {
     name: 'Kraken Figurehead',
     desc: 'All fleets you lead fight as if one experience level higher',
     lore: 'Carved from a beast that dragged whole fleets under; sailors under it fight like they have been at sea all their lives. A LEGENDARY relic: every fleet you lead fights one experience level higher.',
-    effect: { stat: 'fleetQuality', bonus: 1 },
+    effect: { stat: 'navalBonus', bonus: 1 },
     tier: 3,
   },
   {
@@ -7381,12 +7383,13 @@ export const ALL_MAGIC_ITEMS_P = [
     effect: { stat: 'promoteAll' },
     tier: 3,
   },
-  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play)
+  // (dropped at load by _retierAndBalanceItems: the relic's own entry, in LEGENDARY_ITEMS_P, is the one in play; a copy
+  // dealt before 12 September 2026 carries this entry's older power name, which the items' registry reads too)
   {
     name: 'Cloak of Many Faces',
     desc: 'This hero may not be targeted by Spy, Psychic Blast, Curse or Encounter Character orders',
     lore: 'Its wearer has no face anyone can remember. A LEGENDARY relic: this character cannot be targeted by Spy, Psychic Blast, Curse or Encounter Character orders.',
-    effect: { stat: 'untargetable' },
+    effect: { stat: 'hidden', bonus: 1 },
     tier: 3,
   },
   {

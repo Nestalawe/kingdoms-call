@@ -24,7 +24,7 @@ import {
   type World,
 } from './the-board-a-case-is-staged-on-either-way.ts';
 import { companies, item, skeletal, type Item } from './item-and-army-order-cases.ts';
-import { theCloakOfManyFaces, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
+import { oldCloakOfManyFaces, theCloakOfManyFaces, type Dice, type ExperienceRoll } from './espionage-order-cases.ts';
 import { lair } from './explore-and-search-order-cases.ts';
 import { plainRealms } from './recruit-hire-and-realm-works-order-cases.ts';
 
@@ -814,6 +814,25 @@ export const CASTING_CASES: CastSpellOrderCase[] = [
     name: 'the Cloak of Many Faces (as a lair deals it) hides its wearer from Psychic Blast and Curse',
     stage(b) {
       const m = holding(rival(b, {}, { melee: 1 }), theCloakOfManyFaces(b));
+      const s = mage(b, { psychic: 1, necromancy: 1 }, cast('Psychic Blast', m.id), cast('Curse', m.id));
+      return { ...s, mark: m };
+    },
+    check(o, s) {
+      const m = must(s.mark, 'the mark');
+      return {
+        got: {
+          blast: says(o, `${s.hero.name}'s Psychic Blast cannot find ${m.name} — they are cloaked from hostile magic.`),
+          curse: says(o, `${s.hero.name}'s Curse cannot find ${m.name} — they are cloaked from hostile magic.`),
+          skills: char(o, m).skills,
+        },
+        want: { blast: true, curse: true, skills: { melee: 1, tactical: 2, march: 1 } },
+      };
+    },
+  },
+  {
+    name: 'the Cloak of Many Faces (as a copy dealt before 12 September 2026 holds it) hides its wearer from Psychic Blast and Curse',
+    stage(b) {
+      const m = holding(rival(b, {}, { melee: 1 }), oldCloakOfManyFaces(b));
       const s = mage(b, { psychic: 1, necromancy: 1 }, cast('Psychic Blast', m.id), cast('Curse', m.id));
       return { ...s, mark: m };
     },

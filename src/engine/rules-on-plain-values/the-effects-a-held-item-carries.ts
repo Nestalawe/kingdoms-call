@@ -55,8 +55,11 @@ export const BY_EFFECT_FIELD: [AFieldOfACombatItemsEffect, MagicItemEffectSlug][
 const SLUGS = Object.keys(ROWS).filter((slug): slug is MagicItemEffectSlug => slug in ROWS);
 for (const slug of SLUGS) {
   const key = ROWS[slug].carriedAs;
-  if ('stat' in key) BY_STAT.set(key.stat, [...(BY_STAT.get(key.stat) ?? []), slug]);
-  else if ('field' in key) BY_FIELD.push([key.field, slug]);
+  if ('stat' in key) {
+    // a copy dealt before 12 September 2026 carries some relics' older power names: either name carries it
+    for (const stat of [key.stat, key.orTheOlderCopysStat ?? null])
+      if (stat !== null) BY_STAT.set(stat, [...(BY_STAT.get(stat) ?? []), slug]);
+  } else if ('field' in key) BY_FIELD.push([key.field, slug]);
   else if ('itemName' in key) BY_ITEM_NAME.set(key.itemName, [...(BY_ITEM_NAME.get(key.itemName) ?? []), slug]);
   else if ('ward' in key) BY_WARD.set(key.ward, slug);
   else if ('rider' in key) BY_RIDER.push([key.rider, slug]);

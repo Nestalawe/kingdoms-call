@@ -25,6 +25,10 @@ describe('the effects a held item carries', () => {
   test("by its effect's key: the effects of that key, and none for a key no effect has or no key", () => {
     expect(carries({ effect: { stat: 'cavBonus' } })).toEqual(['cavalry-bonus']);
     expect(carries({ effect: { stat: 'spyAuto' } })).toEqual(['crystal-orb']);
+    // a copy dealt before 12 September 2026 carries the older name of each of three relics' powers
+    expect(carries({ effect: { stat: 'oracle' } })).toEqual(['crystal-orb']);
+    expect(carries({ effect: { stat: 'hidden' } })).toEqual(['cloak-of-many-faces']);
+    expect(carries({ effect: { stat: 'navalBonus' } })).toEqual(['naval-bonus']);
     expect(carries({ effect: { stat: 'primalStrike' } })).toEqual(['strike-chance-bonus']);
     expect(carries({ effect: { stat: 'no such key' } })).toEqual([]);
     expect(carries({ effect: { stat: null } })).toEqual([]);
