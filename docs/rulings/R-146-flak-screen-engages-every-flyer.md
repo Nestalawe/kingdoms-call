@@ -7,8 +7,7 @@
 
 Each Gnomish Gyrocopter's Flak Screen engages one enemy flying unit before the battle (−30% strength), as its
 blurb says: winged riders and flying beasts alike (Crimson Rocs, Thunderbirds, Elder Dragons, Manticores). Example:
-Lady Wren's gyrocopters meet Varn's Wyvern Riders and Crimson Rocs; either may be engaged. The flyers are the
-content's one list of the units that fly (`KC_UNIT_CLASS.aerial`), in both kinds of battle.
+Lady Wren's gyrocopters meet Varn's Wyvern Riders and Crimson Rocs; either may be engaged.
 
 The question was: the blurb says one enemy flying unit; the turn and the rulebook a winged rider. Option 2: "Flak
 Screen engages every flyer, beasts too, as the blurb reads".
