@@ -11,7 +11,6 @@ test checks that each such ruling has its row
 
 | Id | What | Impact | Outcome | Size | Maintainer ✓ | Status | PR | Why here |
 |---|---|---|---|---|---|---|---|---|
-| P1-23f | Orders saved for an earlier turn and sent late keep only their order of heroes: the turn refuses the rest of them (today it takes their declarations, Reckoning call, messages and concession), as it already refuses their research choices. Its pull request adds its ruling. Folds in KD-385. | Players: a draft from a past turn changes nothing in this one but its heroes' order | Phase 1 | Small | ✓ | ⬜ | | |
 | P1-23i | [R-141](../rulings/R-141-illusory-terrain-fools-the-intelligence-report-and-the-order-forms-too.md): Illusory Terrain fools the intelligence report and the order forms too. Folds in KD-145. | Players: the spell's false land shows everywhere the map shows it | Phase 1 | Small | ✓ | ⬜ | | |
 | P1-23o | [R-147](../rulings/R-147-old-corsair-companies-fight-as-plain-fleets.md): old Corsair companies fight as plain fleets. Folds in KD-108. | Players of running games: old Corsairs fight as their text says | Phase 1 | Medium | ✓ | ⬜ | | |
 | P1-23u | [R-143](../rulings/R-143-the-crown-of-commands-text-says-it-helps-your-realms-characters.md): the Crown of Command's texts say your realm; running games' copies of them re-stamped. Folds in KD-109. | Players: the item's text says what it does; nothing changes in play | Phase 1 | Medium | ✓ | ⬜ | | |
