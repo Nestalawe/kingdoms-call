@@ -20,7 +20,7 @@ export const A_HEROS_ITEMS_ADD_TO_THE_REALMS_TAX = {
   'tax-per-province': () => ({ goldForEachProvince: ROWS['tax-per-province'].numbers.goldForEachProvince.value }),
 } satisfies Partial<Record<MagicItemEffectSlug, TheTurnsEnd["a hero's items add to the realm's tax"]>>;
 
-// Crystal Orb (an older save's copy): the Spy order succeeds without a roll.
+// Crystal Orb: the Spy order succeeds without a roll.
 export const A_SPYS_SURE_SUCCESS = {
   'crystal-orb': () => true,
 } satisfies Partial<Record<MagicItemEffectSlug, AnOrdersOutcome["a spy's sure success"]>>;

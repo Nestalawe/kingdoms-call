@@ -21,7 +21,7 @@
 // Cloak of Many Faces hides; a read keeps every skill, item and company; a miss is a small chance at Spy and sees only
 // whether he was noticed; the catch by both Spy levels, whose land, Informer Rewards; caught, the hero's realm told and
 // a duel unless the hero refuses; a wanderer read, no realm told; a vanished spy melts away. The Crystal Orb and the
-// Cloak of Many Faces work as a lair deals them (KD-048). Steal: no Thief; the
+// Cloak of Many Faces work as a lair deals them. Steal: no Thief; the
 // garrison's pay (no paymaster in ground nobody, he or no garrison holds; 1 gold a company, halved; an empty treasury;
 // caught and beaten, or slipped away); a hero elsewhere, a comrade, one vanished, a wanderer with nothing; an item
 // lifted (and how he carries it told straight after), else gold (5%, at least 1, an empty purse), never Mithril, never a

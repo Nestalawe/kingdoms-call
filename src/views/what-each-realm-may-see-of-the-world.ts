@@ -1001,12 +1001,7 @@ export function playerView(state: GameState, realm: number, itsLines?: WhatItsLi
     lookupTables: {
       realms: realmsAsSaved.map((p) => ({ name: p?.name, color: p?.color })),
       heroes: characters
-        .filter(
-          (c) =>
-            !!c.name &&
-            (c.alive || c.killedThisTurn) &&
-            !theHerosItemsHideHisFace(activeItems(c)),
-        )
+        .filter((c) => !!c.name && (c.alive || c.killedThisTurn) && !theHerosItemsHideHisFace(activeItems(c)))
         .map((c) => ({
           name: c.name,
           player: asSaved(c).player,
