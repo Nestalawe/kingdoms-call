@@ -7394,8 +7394,8 @@ export const ALL_MAGIC_ITEMS_P = [
   },
   {
     name: 'Crown of Command',
-    desc: 'All characters in the same province gain +1 to all skills for the duration of the turn',
-    lore: "The crown of the old Empire's war-kings; those who stand near it find their skills sharpened. A LEGENDARY relic: every character in the same province, friend or foe, counts all skills 1 level higher for the turn.",
+    desc: "All your realm's characters in the same province gain +1 to all skills for the duration of the turn; rivals beside you gain nothing",
+    lore: "The crown of the old Empire's war-kings; those who serve its wearer find their skills sharpened. A LEGENDARY relic: every character of your realm in the same province, the wearer too, counts all skills 1 level higher for the turn; rivals beside you gain nothing.",
     effect: { stat: 'aura', bonus: 1 },
     tier: 3,
   },
@@ -9548,8 +9548,8 @@ export const LEGENDARY_ITEMS_P = [
   {
     name: 'Crown of Command',
     slot: 'helm',
-    desc: 'All characters in the same province gain +1 to all skills for the duration',
-    lore: 'The iron crown of a king nobody now names, whose word could not be disobeyed. Every character standing with you fights and works one level better in every skill.',
+    desc: "All your realm's characters in the same province gain +1 to all skills for the duration; rivals beside you gain nothing",
+    lore: 'The iron crown of a king nobody now names, whose word could not be disobeyed. Every character of your realm standing with you, you too, fights and works one level better in every skill; rivals beside you gain nothing.',
     effect: { stat: 'aura', bonus: 1 },
     tier: 4,
     _unscorable: true,

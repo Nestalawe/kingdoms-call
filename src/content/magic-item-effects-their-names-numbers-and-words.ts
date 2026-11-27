@@ -820,8 +820,10 @@ export type MagicItemEffectSlug = keyof typeof MAGIC_ITEM_EFFECTS_THE_REGISTRY_H
 
 /** The effects every copy already in a running game takes from its item's row, its effect and its words, at the head
  *  of each turn (migrateItemTiers): the Ring of the Unbroken Pulse and the Great Helm of the Deathless shrug off a
- *  killing blow, and the second-wind items say the 30% (R-153). */
+ *  killing blow, and the second-wind items say the 30% (R-153); the Crown of Command says your realm's characters
+ *  (R-143). */
 export const THE_EFFECTS_EVERY_COPY_IN_PLAY_TAKES_FROM_ITS_ROW: readonly MagicItemEffectSlug[] = [
   'a-killing-blow-shrugged-off',
   'second-wind',
+  'crown-of-command',
 ];

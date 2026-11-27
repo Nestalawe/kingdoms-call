@@ -36,3 +36,4 @@ P1-23's rows from P1-23g on; its first rows, and the ids dropped, are in [part 1
 - P1-23ba: #858 A fleet ordered to a far coast lands as it would next door (R-174): ships alone sail toward the coast and land on it; the order form's forecast follows
 - P1-23f: #861 Orders saved for an earlier turn and sent late keep only their order of heroes (R-192): the turn refuses their declarations, Reckoning call, messages and concession too
 - P1-23o: #862 Old Corsair companies fight as plain fleets (R-147): a running game's Corsair company loses Cut the Line and Keep the Sea Lanes
+- P1-23u: #PR The Crown of Command's texts say it helps your realm's characters (R-143): a running game's copy takes them
