@@ -438,9 +438,8 @@ describe("the spy feed: what rival heroes do there, never their realm's news (R-
     ).toEqual(['⚑FORCE⚑ [a battle decided]', '📊 [a spell rolled]']);
   });
   test("a spy's intelligence line names a realm as the rest of the report does (R-046)", () => {
-    // Realm 1's hero spies out realm 2's home in phase 2, where realm 0's spy looked in phase 1. Realm 0 has met
-    // realm 1 and not realm 2: his lines read in realm 0's feed name realm 2 as "an unknown realm", and realm 1 by
-    // its name, as a line realm 0 is no party to reads in its chronicle.
+    // Realm 1's hero spies out realm 2's home in phase 2, where realm 0's spy looked in phase 1 (realm 0's record of
+    // realms staged: realm 1's alone). His lines read in realm 0's feed name each realm as its chronicle names them.
     const state = structuredClone(tc.G);
     const { players } = state as unknown as { players: { name: string; _encountered?: number[] }[] };
     const [theReader, theSpysRealm, theHomesRealm] = players;
