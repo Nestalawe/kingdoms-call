@@ -724,6 +724,132 @@ const TheWeightsOfAnAlliedFrontAHostsMarginAndTheSlayersLadderSchema = z.object(
   theLairsOfTheGradeAboveClearedThatKeepAHeroAskingAboutIt: z.number(),
 });
 
+/** When a hero is sent hunting, how long an assessment of a lair stays good and how far a slayer looks for lairs to grow into (botLairPlan, botSlayerHasLairsToGrowInto, bots/missions.ts). */
+const TheWeightsOfALairPlanAndTheHuntingGateSchema = z.object({
+  /** A hero whose Melee and Archery are both below this level is not sent hunting on those two skills alone; the slayer's lessons also count a Melee lesson below it as a lesson that opens the hunting gate. */
+  theMeleeOrArcheryLevelBelowWhichAHeroIsNotSentHuntingAlone: z.number(),
+  /** A hero whose Melee and Archery added together are below this is not sent hunting on those two skills alone. */
+  theMeleeAndArcheryLevelsTogetherBelowWhichAHeroIsNotSentHuntingAlone: z.number(),
+  /** A hero with Melee at this level or more is sent hunting when his Melee, Archery and best combat school added together reach the weight after this one. */
+  theMeleeLevelFromWhichACombatSchoolCanOpenTheHuntingGate: z.number(),
+  /** A hero with Melee at the level of the weight before this is sent hunting when his Melee, Archery and best combat school added together reach this. */
+  theLevelsOfMeleeArcheryAndACombatSchoolTogetherThatOpenTheHuntingGate: z.number(),
+  /** A lair assessment made this many turns ago or fewer is still treated as good for the hero who asked for it. */
+  theTurnsAnAssessmentOfALairStaysGoodForTheHeroWhoAskedIt: z.number(),
+  /** A below-the-bar assessment of the grade above his own, heard this many turns ago or fewer, holds a hero back from asking again until he has cleared more of his own grade. */
+  theTurnsAFreshLowAssessmentOfTheGradeAboveHoldsBackAskingAgain: z.number(),
+  /** A hero casts the spell he casts before a lair only when this many orders or more are still free in the season. */
+  theOrdersAHeroMustHaveLeftToCastThePreHuntSpell: z.number(),
+  /** A hero's first search of the season, ordered on a lair assessment he has just made, goes ahead only with at least this share of his hit points. */
+  theShareOfAHerosHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment: z.number(),
+  /** A lair within this many steps of a slayer is one he trains to clear. */
+  theStepsFromASlayerWithinWhichALairIsOneHeMayGrowInto: z.number(),
+});
+
+/** What makes a target worth a fleet's or an airborne column's strike (botSeaStrike, botAirStrike, bots/missions.ts). */
+const TheWeightsOfASeaStrikeAndAnAirStrikeSchema = z.object({
+  /** Each step of sailing takes this off an unowned sea's worth as a fleet's target. */
+  whatEachStepOfSailingTakesOffAnUnownedSeaAsAFleetsTarget: z.number(),
+  /** Unowned sea with no defenders adds this to its worth as a fleet's target. */
+  theWorthOfOpenWaterAsAFleetsTarget: z.number(),
+  /** Unowned poor waters (whale or shark) add this to their worth as a fleet's target. */
+  theWorthOfPoorWatersAsAFleetsTarget: z.number(),
+  /** An owned coast where a general with liftable foot soldiers stands is worth this as a fleet's target, before its berths and its distance. */
+  theWorthOfAnOwnedCoastWithAGeneralWhoseFootSoldiersAFleetMayLift: z.number(),
+  /** Each berth the fleet can fill with that general's foot soldiers adds this to the coast's worth as a fleet's target. */
+  theWorthOfEachBerthFilledAtAFleetsRendezvous: z.number(),
+  /** Each step of sailing takes this off the worth of a coast where a fleet meets a general. */
+  whatEachStepOfSailingTakesOffAFleetsRendezvous: z.number(),
+  /** A strike facing a foe whose host has a king asks this share of its usual margin of strength (a fleet's and an airborne column's alike). */
+  theShareOfAMarginAHostAsksWhenItsFoeHoldsAKing: z.number(),
+  /** A fleet landing on a coast asks this times its usual margin of strength. */
+  theMarginAnAmphibiousAssaultAsksBeyondALandAssault: z.number(),
+  /** A coast's tax counts this many times, with the tax weight, in its worth as a fleet's landing. */
+  theTimesATaxPointCountsWhenAFleetChoosesALandingCoast: z.number(),
+  /** The rival bias counts this many times in the worth of an enemy-held target (a fleet's landing and an airborne column's alike). */
+  theTimesARivalBiasCountsInAStrikesTarget: z.number(),
+  /** Each unit of a foe's host at the target adds this to its worth (a fleet's landing and an airborne column's alike). */
+  theWorthOfEachUnitOfAFoesHostInAStrikesTarget: z.number(),
+  /** Each step of sailing takes this off a coast's worth as a fleet's landing. */
+  whatEachStepOfSailingTakesOffAFleetsLandingCoast: z.number(),
+  /** A sea province's tax counts this many times, with the tax weight, in its worth as an airborne column's target. */
+  theTimesATaxPointCountsWhenAnAirborneColumnChoosesASeaTarget: z.number(),
+  /** A land province's tax counts this many times, with the tax weight, in its worth as an airborne column's target. */
+  theTimesATaxPointCountsWhenAnAirborneColumnChoosesALandTarget: z.number(),
+  /** An enemy province that touches none of the realm's land adds this to its worth as an airborne column's target. */
+  theWorthOfAnEnemyProvinceBehindTheFrontToAnAirborneColumn: z.number(),
+  /** Each step of flying takes this off a province's worth as an airborne column's target. */
+  whatEachStepOfFlyingTakesOffAnAirborneColumnsTarget: z.number(),
+});
+
+/** When a hero challenges on a mastery and what sets a hero's duel stance (botMasteryPre, botDuelStance, bots/missions.ts). */
+const TheWeightsOfAMasteryChallengeAndADuelStanceSchema = z.object({
+  /** A hero challenges a foe on a mastery when the forecast gives him at least this chance to win. */
+  theChanceToWinFromWhichAMasteryChallengeIsMade: z.number(),
+  /** A hero challenges a foe on a mastery only when the forecast gives him no more than this chance of falling. */
+  theMostChanceOfFallingFromWhichAMasteryChallengeIsMade: z.number(),
+  /** The forecast of a mastery challenge plays this many duels. */
+  theDuelsPlayedToForecastAMasteryChallenge: z.number(),
+  /** A hero whose best duelling skill is below this refuses every duel. */
+  theDuellingSkillBelowWhichAHeroRefusesEveryDuel: z.number(),
+  /** A hero holding less than this share of his hit points refuses every duel. */
+  theShareOfHitPointsBelowWhichAHeroRefusesEveryDuel: z.number(),
+  /** A hero whose best duelling skill is at this level or more counts as a real duellist, fit to ride out if his health allows. */
+  theDuellingSkillOfARealDuellist: z.number(),
+  /** A real duellist holding at least this share of his hit points is fit to ride out. */
+  theShareOfHitPointsAFitDuellistMustHold: z.number(),
+  /** When no enemy general is near, a king accepts a duel only with a duelling skill at this level or more. */
+  theDuellingSkillFromWhichAKingAcceptsWhenNoEnemyGeneralIsNear: z.number(),
+  /** An enemy general placed in a province this many turns ago or fewer counts as being there. */
+  theTurnsAnEnemyGeneralsPlacingStillCountsAsNear: z.number(),
+  /** The forecast of a duel stance plays this many duels. */
+  theDuelsPlayedToForecastAStance: z.number(),
+  /** With no forecast, a hero rated at this multiple of his foe's rating or more counts as the stronger. */
+  theRatingAHeroMustHaveOverAFoeToCountAsStrongerWithNoForecast: z.number(),
+  /** With no forecast, the chance to win counted for a hero rated stronger than his foe; a chance at or above it also marks the foe as the weaker. */
+  theChanceToWinCountedWithNoForecastForOneRatedStronger: z.number(),
+  /** With no forecast, the chance to win counted for any other hero. */
+  theChanceToWinCountedWithNoForecastForAnyOther: z.number(),
+});
+
+/** What draws a hero to take up a leaderless host (botOrphanHostOrders, bots/missions.ts). */
+const TheWeightsOfALeaderlessHostAHeroTakesUpSchema = z.object({
+  /** A province holding this many garrison units or more beyond its garrison target counts as a leaderless host. */
+  theUnitsBeyondItsGarrisonTargetAProvinceMustHoldToCountAsALeaderlessHost: z.number(),
+  /** A hero walks no more than this many steps to take up a leaderless host. */
+  theMostStepsAHeroWalksToTakeUpALeaderlessHost: z.number(),
+  /** Each unit beyond its garrison target adds this to a leaderless host's worth as a hero's errand. */
+  theWorthOfEachUnitOfALeaderlessHost: z.number(),
+  /** Each step of walking takes this off a leaderless host's worth as a hero's errand. */
+  whatEachStepTakesOffALeaderlessHostsWorth: z.number(),
+});
+
+/** Which skill a slayer is taught first, who is taught and what makes a lesson worth the walk (botSlayerSkillPri, botRunSlayerSchool, bots/missions.ts). */
+const TheWeightsOfASlayersLessonsSchema = z.object({
+  /** Melee has this rank among the skills a slayer is taught (the lowest rank is taught first). */
+  theRankOfMeleeAmongTheSkillsASlayerIsTaught: z.number(),
+  /** The slayer's own battle school has this rank among the skills he is taught. */
+  theRankOfTheSlayersOwnSchoolAmongTheSkillsASlayerIsTaught: z.number(),
+  /** Archery has this rank among the skills a slayer is taught. */
+  theRankOfArcheryAmongTheSkillsASlayerIsTaught: z.number(),
+  /** Each other battle school (Elemental, Necromancy, Psychic) has this rank among the skills a slayer is taught. */
+  theRankOfEachOtherBattleSchoolAmongTheSkillsASlayerIsTaught: z.number(),
+  /** Every other skill has this rank among the skills a slayer is taught. */
+  theRankOfEveryOtherSkillAmongTheSkillsASlayerIsTaught: z.number(),
+  /** A slayer who leads no units is sent to a teacher only with at least this share of his hit points. */
+  theShareOfHitPointsASlayerWhoLeadsNoUnitsMustHoldToBeTaught: z.number(),
+  /** A slayer walks no more than this many steps to a lesson. */
+  theMostStepsASlayerWalksToALesson: z.number(),
+  /** Each phase of lessons in a plan adds this to its worth. */
+  theWorthOfEachPhaseOfLessonsInATeachersPlan: z.number(),
+  /** Each lesson in a plan that opens the hunting gate adds this to its worth. */
+  theWorthOfEachLessonThatOpensTheHuntingGate: z.number(),
+  /** A plan taught by the king adds this to its worth. */
+  theWorthOfTheKingAsTheTeacherOfAPlan: z.number(),
+  /** A slayer with no lesson this season walks no more than this many steps to where the king will stand. */
+  theMostStepsASlayerWalksToWhereTheKingWillStand: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -752,6 +878,11 @@ export const TheWeightsOfABotVersionSchema = z.object({
   missionsSignatureOrders: TheWeightsOfTheSignatureOrdersSchema,
   missionsResearchAndKit: TheWeightsOfAResearchPickAndTheKitASlayerGetsSchema,
   missionsAlliesAndLairs: TheWeightsOfAnAlliedFrontAHostsMarginAndTheSlayersLadderSchema,
+  missionsLairPlan: TheWeightsOfALairPlanAndTheHuntingGateSchema,
+  missionsStrikes: TheWeightsOfASeaStrikeAndAnAirStrikeSchema,
+  missionsDuels: TheWeightsOfAMasteryChallengeAndADuelStanceSchema,
+  missionsOrphanedHost: TheWeightsOfALeaderlessHostAHeroTakesUpSchema,
+  missionsSlayerSchool: TheWeightsOfASlayersLessonsSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;
