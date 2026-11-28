@@ -45,7 +45,7 @@ The tools that measure *change* are strong; nothing yet measures whether a bot i
 | What exists | What it gives | The gap |
 |---|---|---|
 | The bots (`src/engine/bots/`, about 11,500 lines), run inside the turn | Every bot realm plans its turn | They write orders straight into the saved game and read the whole state; R-043 has no test |
-| Copies of rules inside the bots | Predictions of outcomes | The copies drift: KD-165, KD-171, KD-173, KD-174 |
+| Copies of rules inside the bots | Predictions of outcomes | The copies drift: KD-165, KD-171, KD-173 |
 | Judgement as inline numbers | | Few are named, and nothing can tune a number with no name |
 | One bot for every realm, "normal" or "hostile" | | No way to seat an old and a new bot in one game |
 | [The balance matrix](../architecture/the-balance-matrix.md) and its noise rule (`tools/balance/paired.ts`) | "Did this change anything, beyond the noise?" | Not "is the bot better?" |
@@ -243,7 +243,7 @@ Claude can each take any seat.
 - **BOT-V3 (must).** A test fails if a bot reads hidden state: the same view with a different army hidden from it gives
   the same orders.
 - **BOT-V4 (must).** The bots keep no copy of a rule: to predict a battle, a spell or a sea lift, a bot asks the rule
-  registry, through each family's bot valuation hook (B-06). The known defects B-17's group names (KD-165, KD-174 and
+  registry, through each family's bot valuation hook (B-06). The known defects B-17's group names (KD-165 and
   the others) close as their copies go.
 - **BOT-V5 (must).** Each alignment ability has its bot valuation: when it is worth using, and what for. It lives in
   the bots, in one table keyed by the ability, `satisfies Record<AlignmentAbilitySlug, …>`, so a new ability with no
