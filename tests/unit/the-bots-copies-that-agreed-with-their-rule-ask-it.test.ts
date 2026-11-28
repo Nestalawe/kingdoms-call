@@ -27,11 +27,13 @@ describe("the practice chance the bots plan on is the turn's table", () => {
 
 describe("whether a host can fly is the rule's answer, asked in the air strike", () => {
   // A column that can't take to the air leaves at once; one that can goes on to read the world, which this case
-  // leaves out, so the call throws there: that tells the two apart without a world.
+  // leaves out, so the call throws there (a read of the world's missing part, named below): that tells the two apart without a world.
   const strike = (armies: readonly { type: string }[]) => () =>
     botAirStrike({} as never, 0, { armies } as never, {} as never, 10, {} as never, 3);
   test('a column of two winged riders and a foot company flies, and goes on to read the world', () => {
-    expect(strike([{ type: 'Eagle Riders' }, { type: 'Eagle Riders' }, { type: 'Shieldwall Levies' }])).toThrow();
+    expect(strike([{ type: 'Eagle Riders' }, { type: 'Eagle Riders' }, { type: 'Shieldwall Levies' }])).toThrow(
+      /Cannot read properties of undefined/,
+    );
   });
   test('a column of a winged rider and two foot companies is too heavy: the strike is none', () => {
     expect(
