@@ -20,7 +20,7 @@ in `npm run check`, with its rules in `.dependency-cruiser.mts`, every one an er
   prose, **`views/prose/`**, only itself, the engine's facts files (`the-facts-*.ts`), `engine/rules-on-plain-values/`
   and `content/`. Both let a type-only import through. **`shared/`** only `shared/`, `views/`,
   `engine/rules-on-plain-values/` and `content/`.
-- **`schemas/`** holds the world's types: any folder may import it with `import type` (TypeScript erases it), and none
+- **`schemas/`** holds the world's types, and the bots' weights' shape: any folder may import it with `import type` (TypeScript erases it), and none
   another way but the save's upgrade (`engine/saves/upgrade-a-saved-game-and-check-it.ts`), whose check at load
   parses with it.
 - **`db/`** imports only `db/` and `schemas/`, and only the pages' code (`ui/`) imports `db/`. Only `db/` may import

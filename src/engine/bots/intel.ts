@@ -35,6 +35,7 @@ import {
 } from '../sight/the-provinces-a-realm-has-in-sight-now-and-those-it-has-visited.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+import type { TheWeightsOfABotVersion } from '../../schemas/the-weights-of-a-bot-version-each-kind-of-result-and-the-names-of-its-weights.ts';
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { AUnitAnEstimateWeighs } from '../battle/lines.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
@@ -92,17 +93,16 @@ interface AHeroWhoseSkillsAreKnown {
 // The kinds of result a bot weighs (B-06h, T7: the rules pulled out). The rule says what, the bot says how much
 // (docs/decisions/README.md): the bot asks a rule what an effect does (a company's wage: 3 gold a turn), and its
 // version's weights file (the-weights-of-the-bots-first-version-…ts) says what it makes of a unit of each kind of
-// result, keyed by the kind, never by the effect, and ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind
-// it gives no weights fails to compile. The economy's (a gold) is the first kind, the titles' (a title, B-06r) the
-// second, the alignments' (an alignment ability, P1-19bb8) the third, the races' (a race's gift, B-06ah) the fourth,
-// the tempers' (a temper, B-06aj) the fifth, the battles' (a point of a host's strength, B-06bq) the sixth. The weights
-// are the bots', never content's: content holds the rules only.
+// result, keyed by the kind, never by the effect, and ends `satisfies TheWeightsOfABotVersion`, the type of its schema
+// (src/schemas/the-weights-of-a-bot-version-…ts, B-17q: each kind an object of its names, the kinds below its keys),
+// so a kind it gives no weights, or a name misspelt, missing or more, fails to compile. The economy's (a gold) is the
+// first kind, the titles' (a title, B-06r) the second, the alignments' (an alignment ability, P1-19bb8) the third, the
+// races' (a race's gift, B-06ah) the fourth, the tempers' (a temper, B-06aj) the fifth, the battles' (a point of a
+// host's strength, B-06bq) the sixth. The weights are the bots', never content's: content holds the rules only.
 /** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
  *  Imperial Title (held, or chased by what its row measures), what an ability of a realm's alignment gives it, what a
  *  gift of its race gives it, what a temper gives a hero or a king, and a point of a host's strength. */
-export type AKindOfResultABotWeighs = 'gold' | 'title' | 'alignmentAbility' | 'raceGift' | 'temper' | 'battleStrength';
-/** A kind of result's weights in a bot version: each a number, named for what it weighs. */
-export type TheWeightsOfAKindOfResult = Readonly<Record<string, number>>;
+export type AKindOfResultABotWeighs = keyof TheWeightsOfABotVersion;
 /** The bots' weights at a difficulty. */
 interface ABotDifficultysWeights {
   readonly attackMarginMult: number;

@@ -35,7 +35,7 @@ ES modules, built by Vite; since P1-09e every file is TypeScript (`.ts`).
   the engine asks as it resolves and the report applies, P1-12b1), `views/` (every realm's turn report, the lines each realm reads: `playerEvents`, P1-12b3, and what it may see of the world: `playerView`, P1-12b4 and P1-12b5, from which alone the report is built; `views/prose/`, the words of each line, written after the engine, P1-12c3), `db/` (the version guard, telemetry and the light `meta` rows),
   `content/` (the data file), `shared/` (the player portal's one door to the engine: it re-exports the rules of
   `engine/rules-on-plain-values/` the portal calls, and nothing else; [the rule registry and the one source for shared rules](the-rule-registry-and-the-one-source-for-shared-rules.md#kingdoms-call-datats-the-one-source-for-shared-rules)),
-  `schemas/` (the types of the world, from Zod schemas: below), `ui/<page>/` (each page's styles,
+  `schemas/` (the types of the world, and the bots' weights' shape, from Zod schemas: below), `ui/<page>/` (each page's styles,
   its entry and the rest of its code), `ui/shared/` (`kc-safe.ts`), `rulebook/`. The
   templates are at the top of `src/`. The GM portal's code is 141 modules; `src/engine/run-turn.ts` (the turn,
   `resolveTurn`, once ~13,000 lines, now ~250 in a file of ~380) was taken apart by P1-08, one area at a time (below). The player portal's
