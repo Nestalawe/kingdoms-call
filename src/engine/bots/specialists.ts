@@ -172,7 +172,11 @@ export function botMageSchools(c: AHeroOfSkills): [string, string] {
 export function botMageAptitude(c: AHeroOfSkills) {
   const s = theSkillsOf(c);
   const [a, b] = botMageSchools(c);
-  return (Number(s[a]) || 0) * 4 + (Number(s[b]) || 0) * 3;
+  const theWeights = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsAptitude;
+  return (
+    (Number(s[a]) || 0) * theWeights.theWorthOfEachLevelOfAMagesBestSchool +
+    (Number(s[b]) || 0) * theWeights.theWorthOfEachLevelOfAMagesSecondSchool
+  );
 }
 // BOT_SPECIALIST_ROLES, botMagicScore and botLandCount are in bots/strategy.ts.
 export const BOT_DEFEND_ORDER = { action: 'defend', target: '', extra: '', desc: 'Hold the post' };
@@ -255,27 +259,48 @@ export function botSpecialistRoles(
   const titles = botTargetTitles(G, pi); // review II A6: a chased title buys a second specialist
   // of the role whose work earns the title's deeds (its row's), as many more as the bots' weights of a title say
   const theMoreAChasedTitleWants = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.title.theSpecialistsMoreAChasedTitleWants;
+  const theCourt = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWanted;
+  const theAptitudes = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsAptitude;
+  const theWork = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork;
   const aChasedTitleWantsMore = (theRole: Parameters<typeof aTitleTheRealmChasesCountsTheDeedsOfTheRole>[1]) =>
     aTitleTheRealmChasesCountsTheDeedsOfTheRole(titles, theRole) ? theMoreAChasedTitleWants : 0;
   const want = {
-    slayer: 1 + (lairs >= 6 ? 1 : 0) + aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once six lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
-    scout: unmapped > 0 ? Math.min(3, 1 + Math.floor(unmapped / 6)) : 0,
+    slayer:
+      1 +
+      (lairs >= theCourt.theLairsKnownFromWhichTheCourtWantsASecondSlayer ? 1 : 0) +
+      aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once six lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
+    scout:
+      unmapped > 0
+        ? Math.min(
+            theCourt.theMostScoutsTheCourtWants,
+            1 + Math.floor(unmapped / theCourt.theUnmappedProvincesAScoutIsWantedFor),
+          )
+        : 0,
     scholar:
-      (land >= 10 ? 2 : 1) +
+      (land >= theCourt.theProvincesFromWhichTheCourtWantsASecondScholar ? theCourt.theScholarsALargerCourtWants : 1) +
       (doesARealmOfThisAlignmentAddToResearch(p?.alignment)
         ? THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.alignmentAbility.theScholarsMoreARealmWhoseAlignmentAddsToResearchWants
         : 0) +
       aChasedTitleWantsMore('scholar'), // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only at 10+ land — gold and armies come first (12 in the first cut cost a third of the discoveries)
-    spy: (met || turn >= 3 ? (war ? 2 : 1) : 0) + aChasedTitleWantsMore('spy'),
-    thief: met || turn >= 4 ? 1 : 0,
+    spy:
+      (met || turn >= theCourt.theTurnFromWhichTheCourtWantsASpyWithNoRealmMet
+        ? war
+          ? theCourt.theSpiesTheCourtWantsAtWar
+          : 1
+        : 0) + aChasedTitleWantsMore('spy'),
+    thief: met || turn >= theCourt.theTurnFromWhichTheCourtWantsAThiefWithNoRealmMet ? 1 : 0,
     mage:
-      heroes.some((c) => BOT_SCHOOLS.some((k) => (Number(theSkillsOf(c)[k]) || 0) >= 1)) || turn >= 3
-        ? 1 + (land >= 10 ? 1 : 0)
+      heroes.some((c) => BOT_SCHOOLS.some((k) => (Number(theSkillsOf(c)[k]) || 0) >= 1)) ||
+      turn >= theCourt.theTurnFromWhichTheCourtWantsAMageWithNoHeroKnowingASchool
+        ? 1 + (land >= theCourt.theProvincesFromWhichTheCourtWantsASecondMage ? 1 : 0)
         : 0, // 2026-09-26 (Toby): a mage from the first hero who knows a school
   };
   if (aTitleTheRealmChasesCountsTheDeedsOfTheRole(titles, 'scout')) want.scout += theMoreAChasedTitleWants;
   // keep one hero free to muster / carry troops once there is a realm to feed
-  const slots = Math.max(Math.min(2, heroes.length), heroes.length - (land >= 3 ? 1 : 0)); // the slayer and the scholar are never squeezed out by the feeder reserve
+  const slots = Math.max(
+    Math.min(theCourt.theHeroesTheFeederReserveNeverSqueezesOut, heroes.length),
+    heroes.length - (land >= theCourt.theProvincesFromWhichOneHeroIsKeptToMusterTroops ? 1 : 0),
+  ); // the slayer and the scholar are never squeezed out by the feeder reserve
   const order: readonly ASpecialistsRole[] = [
     'slayer',
     'scholar',
@@ -298,24 +323,27 @@ export function botSpecialistRoles(
     if (role === 'mage')
       return (
         botMageAptitude(c) +
-        (c._botRole === role ? 3 : 0) -
-        ((Number(s.melee) || 0) + (Number(s.archery) || 0) + (Number(s.tactical) || 0)) * 0.5
+        (c._botRole === role ? theAptitudes.theWorthOfHoldingARoleAlready : 0) -
+        ((Number(s.melee) || 0) + (Number(s.archery) || 0) + (Number(s.tactical) || 0)) *
+          theAptitudes.whatEachLevelOfAFightingSkillTakesOffAThinkingRolesCandidate
       );
     if (theSlayersMustFight() && role === 'slayer' && !botIsFighter(c)) return -1e9; // 2026-09-28 (option 1, strict — off by default)
     if (role === 'slayer')
       return (
-        (Number(s.melee) || 0) * 4 +
-        (Number(s.archery) || 0) * 3 +
-        (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.3 +
-        (c._botRole === role ? 3 : 0) +
+        (Number(s.melee) || 0) * theAptitudes.theWorthOfEachLevelOfMeleeForASlayer +
+        (Number(s.archery) || 0) * theAptitudes.theWorthOfEachLevelOfArcheryForASlayer +
+        (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) *
+          theAptitudes.theWorthOfEachHitPointForASlayer +
+        (c._botRole === role ? theAptitudes.theWorthOfHoldingARoleAlready : 0) +
         ((Number(s.elemental) || 0) + (Number(s.necromancy) || 0) + (Number(s.psychic) || 0) + (Number(s.white) || 0)) *
-          0.5
+          theAptitudes.theWorthOfEachLevelOfADuellingSchoolForASlayer
       ); // 2026-09-26: a duelling school counts a little FOR a slayer (×1.5 handed the role to mages: Melee 1.9 at game end)
     return (
-      (Number(s[String(k)]) || 0) * 4 +
-      (c._botRole === role ? 3 : 0) -
-      ((Number(s.melee) || 0) + (Number(s.archery) || 0) + (Number(s.tactical) || 0)) * 0.5 -
-      botMagicScore(c) * 0.5
+      (Number(s[String(k)]) || 0) * theAptitudes.theWorthOfEachLevelOfTheRolesOwnSkillForAnyOtherRole +
+      (c._botRole === role ? theAptitudes.theWorthOfHoldingARoleAlready : 0) -
+      ((Number(s.melee) || 0) + (Number(s.archery) || 0) + (Number(s.tactical) || 0)) *
+        theAptitudes.whatEachLevelOfAFightingSkillTakesOffAThinkingRolesCandidate -
+      botMagicScore(c) * theAptitudes.whatEachPointOfMagicTakesOffAnyOtherRolesCandidate
     );
   };
   const byId: Partial<Record<number, string>> = {},
@@ -381,7 +409,10 @@ export function botSpecialistRoles(
     else if (c._botRole !== undefined && BOT_SPECIALIST_ROLES.has(c._botRole)) delete c._botRole;
     // review II A11: a working thief fights by stealing and fleeing; anyone else keeps the engine's auto plan
     const ep: NonNullable<Character['encounterPlan']> = c.encounterPlan ?? {};
-    if (c._botRole === 'thief' && (Number(theSkillsOf(c).thief) || 0) >= 3) {
+    if (
+      c._botRole === 'thief' &&
+      (Number(theSkillsOf(c).thief) || 0) >= theWork.theThiefSkillFromWhichAThiefFightsByStealingAndFleeing
+    ) {
       c.encounterPlan = { ...ep, tactics: ['ST', 'FL', 'FL', 'FL', 'FL', 'FL'], _botTactics: true };
     } else if (ep._botTactics) {
       c.encounterPlan = { ...ep, tactics: [], _botTactics: false };
@@ -433,8 +464,9 @@ export function botTrainOrders(
       )
         continue;
       const d = m.location === c.location ? 0 : botPathLen(G, pi, P, m.location, true);
-      if (d == null || d > 3) continue;
-      const sc = ml * 4 - d;
+      if (d == null || d > THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork.theProvincesAwayAMentorMayStand)
+        continue;
+      const sc = ml * THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork.theWorthOfEachLevelOfAMentorsSkill - d;
       if (!best || sc > best.sc) best = { m, d, sc };
     }
     if (best) {
@@ -445,7 +477,18 @@ export function botTrainOrders(
   if (dest == null && H?.owner === pi) dest = home;
   if (dest != null && P && c.location !== dest) {
     const D = G.world.provinces[dest];
-    const path = botPathDirs(G, pi, P, dest, Math.max(0, 4 - pre.length), true) ?? [];
+    const path =
+      botPathDirs(
+        G,
+        pi,
+        P,
+        dest,
+        Math.max(
+          0,
+          THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork.theMostOrdersTheWayToAMentorTakes - pre.length,
+        ),
+        true,
+      ) ?? [];
     path.forEach((d) => mv.push(aMoveOrderOnThePath(d, 'Rendezvous at ' + (D ? D.name : '') + why2)));
   }
   const pr = {
@@ -488,9 +531,22 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
       !ko.some((x) => x?.action === THE_HERO_ORDERS.move.key)
     ) {
       const P = G.world.provinces[c.location];
-      const path = P ? (botPathDirs(G, pi, P, king.location, Math.min(3, 4 - pre.length), true) ?? []) : [];
+      const theWork = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork;
+      const path = P
+        ? (botPathDirs(
+            G,
+            pi,
+            P,
+            king.location,
+            Math.min(
+              theWork.theProvincesAwayTheKingMayBeForAScholarToJoinHim,
+              theWork.theMostOrdersTheWayToTheKingTakes - pre.length,
+            ),
+            true,
+          ) ?? [])
+        : [];
       const d = P ? botPathLen(G, pi, P, king.location, true) : null;
-      if (d != null && path.length === d && d <= 3) {
+      if (d != null && path.length === d && d <= theWork.theProvincesAwayTheKingMayBeForAScholarToJoinHim) {
         const out = [...pre, ...path.map((x) => aMoveOrderOnThePath(x, 'Study with the king'))];
         while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
           out.push({ action: 'practice', target: 'sage', extra: '', desc: 'Practice Sage (scholar)' });
@@ -503,9 +559,15 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
   const pr = { action: 'practice', target: 'sage', extra: '', desc: 'Practice Sage (scholar)' };
   // a scholar still short of Sage 5 splits the year: three Research, two practices
   const out = [...pre];
+  const theWork = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork;
   let k = 0;
   while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
-    out.push(sg >= 5 || k < 3 ? { ...research } : { ...pr });
+    out.push(
+      sg >= theWork.theSageLevelFromWhichAScholarOnlyResearches ||
+        k < theWork.theResearchesAScholarBelowThatLevelDoesEachSeason
+        ? { ...research }
+        : { ...pr },
+    );
     k++;
   }
   return out;
@@ -527,17 +589,23 @@ export function botScoutTarget(G: GameState, pi: number, c: Character, maxD: num
     if (mapped >= 100) continue;
     const d = X.id === from.id ? 0 : botPathLen(G, pi, from, X.id, true);
     if (d == null || d > maxD) continue;
-    const wild = isTheRaceOneOfTheWildsSubRaces(asItsGuardReadsIt(X.race)) ? 15 : 0;
-    const sc = (100 - mapped) / 4 + wild + (X.owner === pi ? 6 : 0) - d * 8;
+    const theWork = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork;
+    const wild = isTheRaceOneOfTheWildsSubRaces(asItsGuardReadsIt(X.race)) ? theWork.theWorthOfWildGroundToAScout : 0;
+    const sc =
+      (100 - mapped) / theWork.theUnmappedPointsThatMakeAPointOfAScoutsTargetScore +
+      wild +
+      (X.owner === pi ? theWork.theWorthOfOwnGroundToAScout : 0) -
+      d * theWork.whatEachStepAwayTakesOffAScoutsTarget;
     if (!best || sc > best.sc) best = { X, d, sc };
   }
   return best;
 }
 export function botScoutOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
-  const t = botScoutTarget(G, pi, c, 4);
+  const theProvincesAway = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork.theProvincesAwayAScoutGoes;
+  const t = botScoutTarget(G, pi, c, theProvincesAway);
   if (!t) return null;
-  const path = t.d > 0 ? (botPathDirs(G, pi, P, t.X.id, 4, true) ?? []) : [];
+  const path = t.d > 0 ? (botPathDirs(G, pi, P, t.X.id, theProvincesAway, true) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
   if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const out = [...pre, ...path.map((d) => aMoveOrderOnThePath(d, 'Scout ' + t.X.name))];
@@ -551,19 +619,21 @@ export function botScoutOrders(G: GameState, pi: number, c: Character, pre: read
 export function botRoamOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
+  const theWork = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork;
   let best: { readonly X: Province; readonly d: number; readonly sc: number } | null = null;
   for (const X of theProvincesOf(G)) {
     if (!X || X.terrain === 'sea' || X.id === P.id || !botKnows(G, pi, X.id)) continue;
     const bo = botBelievedOwner(G, pi, X);
     if (bo != null && bo !== pi && botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.allied) continue;
     if ((asItsGuardReadsIt(X.visitedBy) ?? []).includes(pi)) continue;
-    const d = botPathLenAny(G, P, X.id, 5);
+    const d = botPathLenAny(G, P, X.id, theWork.theProvincesAwayARoamingHeroLooksForNewGround);
     if (d == null) continue;
-    const sc = (X.tax || 0) - d * 3 + (theFeaturesWithGapsOf(X).length ? 1 : 0);
+    const sc =
+      (X.tax || 0) - d * theWork.whatEachStepAwayTakesOffARoamsTarget + (theFeaturesWithGapsOf(X).length ? 1 : 0);
     if (!best || sc > best.sc) best = { X, d, sc };
   }
   if (!best) return botScoutOrders(G, pi, c, pre);
-  const path = botPathAny(G, P, best.X.id, 5) ?? [];
+  const path = botPathAny(G, P, best.X.id, theWork.theProvincesAwayARoamingHeroLooksForNewGround) ?? [];
   if (path.length !== best.d || pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
     return botScoutOrders(G, pi, c, pre);
   const to = best.X;
@@ -582,7 +652,12 @@ export function botCloakPre(
   pre: readonly AnOrderAsThePassesReadIt[],
   destProv: Province | null | undefined,
 ) {
-  if ((Number(theSkillsOf(c).illusory) || 0) < 1 || pre.length >= 4) return pre;
+  if (
+    (Number(theSkillsOf(c).illusory) || 0) < 1 ||
+    pre.length >=
+      THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork.theOrdersAlreadyGivenFromWhichASpyDoesNotCloakHimself
+  )
+    return pre;
   if (pre.some((o) => o?.action === THE_HERO_ORDERS.cast_spell.key && o.target === theNameOfTheSpell('invisibility')))
     return pre;
   if (destProv?.owner === pi) return pre;
@@ -593,6 +668,7 @@ export function botCloakPre(
 }
 export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
+  const theWork = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork;
   // Sept 2026 (Toby): learn a rival's skills before anyone decides to fight him — a character standing here whose
   // skills our spies have not reported (generals and kings first) is spied on this phase.
   {
@@ -608,11 +684,12 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
       )
       .sort(
         (a, b) =>
-          theUnitsWithGapsOf(b).length * 2 +
-          (b.isKing ? 5 : 0) -
-          (theUnitsWithGapsOf(a).length * 2 + (a.isKing ? 5 : 0)),
+          theUnitsWithGapsOf(b).length * theWork.theWorthOfEachUnitAMarkLeadsToSpyOn +
+          (b.isKing ? theWork.theWorthOfAKingAsAMarkToSpyOn : 0) -
+          (theUnitsWithGapsOf(a).length * theWork.theWorthOfEachUnitAMarkLeadsToSpyOn +
+            (a.isKing ? theWork.theWorthOfAKingAsAMarkToSpyOn : 0)),
       )[0];
-    if (mark && pre.length < 4) {
+    if (mark && pre.length < theWork.theOrdersAlreadyGivenFromWhichASpyMarksNoHero) {
       const out = [
         ...pre,
         { action: 'spy', target: 'char:' + String(mark.id), extra: '', desc: 'Spy on ' + mark.name },
@@ -630,24 +707,26 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
     const I = botEnemyIntel(G, pi);
     let best: { readonly e: Character; readonly X: Province; readonly d: number; readonly sc: number } | null = null;
     for (const [k, r] of Object.entries(I.generals)) {
-      if ((G.turn || 0) - r.turn > 2) continue;
+      if ((G.turn || 0) - r.turn > theWork.theTurnsAGeneralLastSeenIsStillShadowed) continue;
       const e = theCharactersOf(G).find((x) => x?.id === +k);
       if (!e || !e.alive || !botSkillsUnknown(G, pi, e)) continue;
       if (botRelationRaw(G, pi, r.player) === THE_STATES_TWO_REALMS_STAND_IN.allied) continue;
       if (r.provId === c.location) continue;
       const X = theProvinceAt(G, r.provId);
       if (!X) continue;
-      const d = botPathLenAny(G, P, X.id, 3);
-      if (d == null || d + pre.length > 3) continue;
+      const d = botPathLenAny(G, P, X.id, theWork.theProvincesAwayASpyShadowsAGeneral);
+      if (d == null || d + pre.length > theWork.theMostOrdersAShadowingTripAndTheOrdersBeforeItTake) continue;
       const sc =
-        r.units * 2 +
-        (r.isKing ? 6 : 0) +
-        (botRelationRaw(G, pi, r.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar ? 5 : 0) -
-        d * 2;
+        r.units * theWork.theWorthOfEachUnitALastSeenGeneralLeads +
+        (r.isKing ? theWork.theWorthOfAKingToShadow : 0) +
+        (botRelationRaw(G, pi, r.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
+          ? theWork.theWorthOfAGeneralAtWarToShadow
+          : 0) -
+        d * theWork.whatEachStepAwayTakesOffAShadowedGeneral;
       if (!best || sc > best.sc) best = { e, X, d, sc };
     }
     if (best) {
-      const path = botPathAny(G, P, best.X.id, 3) ?? [];
+      const path = botPathAny(G, P, best.X.id, theWork.theProvincesAwayASpyShadowsAGeneral) ?? [];
       if (path.length === best.d) {
         const shadowed = best.e;
         const out = [
@@ -663,9 +742,9 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
       }
     }
   }
-  const t = botSpyTarget(G, pi, c, 4);
+  const t = botSpyTarget(G, pi, c, theWork.theProvincesAwayASpyLooksForANewTarget);
   if (!t) return null;
-  const path = t.d > 0 ? (botPathAny(G, P, t.X.id, 4) ?? []) : [];
+  const path = t.d > 0 ? (botPathAny(G, P, t.X.id, theWork.theProvincesAwayASpyLooksForANewTarget) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
   if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const p = theRealmsOf(G)[pi];
@@ -683,7 +762,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
   let k = 0;
   while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     out.push(
-      k < 2
+      k < theWork.theSpyAttemptsBeforeASpyLiesInWait
         ? { ...spy }
         : aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }),
     );

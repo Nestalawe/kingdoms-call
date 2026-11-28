@@ -15,7 +15,7 @@
 // BOT_TUNING and BOT_DIFFICULTY wrote; then B-17s's: a duel's (BOT_DUEL, BOT_DUEL_WITHOUT_A_FORECAST), the Spring
 // pass's (BOT_P1, BOT_PIN_EDGE), a rival's hero's assumed skills' (BOT_ASSUMED_SKILLS), and the names B-17s added to the gold
 // (the fleets' caps), the war (BOT_ALLY_ALIGN_DIST), the lair (BOT_RUMOUR_FUND_PER_SLAYER) and the tuning
-// (BOT_MAX_FIGHTS), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
+// (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts, part 1), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
 // refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -89,7 +89,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(125);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(175);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -274,5 +274,70 @@ test("a rival's hero's assumed skills' weights are the numbers BOT_ASSUMED_SKILL
     theArcheryTheBotsAssumeOfARivalsHeroByDefault: 2,
     theTacticalTheBotsAssumeOfARivalsHeroByDefault: 2,
     theElementalTheBotsAssumeOfARivalsHeroByDefault: 2,
+  });
+});
+
+test("the court's wanted specialists' weights are the numbers botSpecialistRoles wrote for its wants and its feeder reserve before B-17t, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWanted).toEqual({
+    theLairsKnownFromWhichTheCourtWantsASecondSlayer: 6,
+    theMostScoutsTheCourtWants: 3,
+    theUnmappedProvincesAScoutIsWantedFor: 6,
+    theProvincesFromWhichTheCourtWantsASecondScholar: 10,
+    theScholarsALargerCourtWants: 2,
+    theTurnFromWhichTheCourtWantsASpyWithNoRealmMet: 3,
+    theSpiesTheCourtWantsAtWar: 2,
+    theTurnFromWhichTheCourtWantsAThiefWithNoRealmMet: 4,
+    theTurnFromWhichTheCourtWantsAMageWithNoHeroKnowingASchool: 3,
+    theProvincesFromWhichTheCourtWantsASecondMage: 10,
+    theHeroesTheFeederReserveNeverSqueezesOut: 2,
+    theProvincesFromWhichOneHeroIsKeptToMusterTroops: 3,
+  });
+});
+
+test("a hero's aptitudes' weights are the numbers botSpecialistRoles' aptitude and botMageAptitude wrote before B-17t, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsAptitude).toEqual({
+    theWorthOfEachLevelOfAMagesBestSchool: 4,
+    theWorthOfEachLevelOfAMagesSecondSchool: 3,
+    theWorthOfHoldingARoleAlready: 3,
+    whatEachLevelOfAFightingSkillTakesOffAThinkingRolesCandidate: 0.5,
+    theWorthOfEachLevelOfMeleeForASlayer: 4,
+    theWorthOfEachLevelOfArcheryForASlayer: 3,
+    theWorthOfEachHitPointForASlayer: 0.3,
+    theWorthOfEachLevelOfADuellingSchoolForASlayer: 0.5,
+    theWorthOfEachLevelOfTheRolesOwnSkillForAnyOtherRole: 4,
+    whatEachPointOfMagicTakesOffAnyOtherRolesCandidate: 0.5,
+  });
+});
+
+test("a specialist's work's weights are the numbers botTrainOrders, botScholarOrders, botScoutTarget, botRoamOrders and botSpyOrders wrote before B-17t, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork).toEqual({
+    theThiefSkillFromWhichAThiefFightsByStealingAndFleeing: 3,
+    theProvincesAwayAMentorMayStand: 3,
+    theWorthOfEachLevelOfAMentorsSkill: 4,
+    theMostOrdersTheWayToAMentorTakes: 4,
+    theProvincesAwayTheKingMayBeForAScholarToJoinHim: 3,
+    theMostOrdersTheWayToTheKingTakes: 4,
+    theSageLevelFromWhichAScholarOnlyResearches: 5,
+    theResearchesAScholarBelowThatLevelDoesEachSeason: 3,
+    theWorthOfWildGroundToAScout: 15,
+    theUnmappedPointsThatMakeAPointOfAScoutsTargetScore: 4,
+    theWorthOfOwnGroundToAScout: 6,
+    whatEachStepAwayTakesOffAScoutsTarget: 8,
+    theProvincesAwayAScoutGoes: 4,
+    theProvincesAwayARoamingHeroLooksForNewGround: 5,
+    whatEachStepAwayTakesOffARoamsTarget: 3,
+    theOrdersAlreadyGivenFromWhichASpyDoesNotCloakHimself: 4,
+    theWorthOfEachUnitAMarkLeadsToSpyOn: 2,
+    theWorthOfAKingAsAMarkToSpyOn: 5,
+    theOrdersAlreadyGivenFromWhichASpyMarksNoHero: 4,
+    theTurnsAGeneralLastSeenIsStillShadowed: 2,
+    theProvincesAwayASpyShadowsAGeneral: 3,
+    theMostOrdersAShadowingTripAndTheOrdersBeforeItTake: 3,
+    theWorthOfEachUnitALastSeenGeneralLeads: 2,
+    theWorthOfAKingToShadow: 6,
+    theWorthOfAGeneralAtWarToShadow: 5,
+    whatEachStepAwayTakesOffAShadowedGeneral: 2,
+    theProvincesAwayASpyLooksForANewTarget: 4,
+    theSpyAttemptsBeforeASpyLiesInWait: 2,
   });
 });
