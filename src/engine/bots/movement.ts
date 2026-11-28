@@ -119,6 +119,15 @@ import {
   THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
 } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
+
+const theFallen = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementRaisingTheFallen;
+const theCompanions = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementCompanions;
+const theSplits = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementSplitsAndMusters;
+const thePreparations = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementPreparations;
+const theColumns = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementReachAndStrength;
+const theUnarmed = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementWanderersAndWarRoles;
+
 // Its types (plan P1-10b47): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
 type AnOrderAsThePassesReadIt = PhaseOrder | null | undefined;
@@ -201,8 +210,8 @@ function theAlignmentOf(G: GameState, pi: number): string {
 // only his own realm recall him; the regent steps down) — gets the nearest white mage (White 1+, not a general with
 // a host, not badly hurt). He walks there through our own / unowned land (a monarch's body lies at the home or the
 // richest held province) and casts Resurrect on that body as often as his White allows in the phases left — a
-// second cast only matters if the first fizzles (the engine allows one raise per body per turn). A body more than
-// four hops away is walked toward over several years (up to eight hops). Richest bodies first: the king, then by skill.
+// second cast only matters if the first fizzles (the engine allows one raise per body per turn). A body too far
+// to cast on in the same season is walked toward over several years. Richest bodies first: the king, then by skill.
 // botRaiseTargets (the bodies this realm may raise) is in bots/strategy.ts; botResurrectErrands, below, sends the mages.
 export function botResurrectErrands(
   G: GameState,
@@ -223,11 +232,17 @@ export function botResurrectErrands(
       if (assigned.has(c.id) || c._isHeir || (Number(theSkillsOf(c).white) || 0) < 1) continue;
       if (roles.leaders.includes(c.id) && theUnitsWithGapsOf(c).length) continue; // a general with a host keeps to the war
       const hp = theHitPointsOf(c);
-      if (hp < (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.5) continue;
+      if (
+        hp <
+        (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) *
+          theFallen.theShareOfHisMostHitPointsAMageMustHaveToWalkToRaiseTheFallen
+      )
+        continue;
       const P = G.world.provinces[c.location];
       if (!P) continue;
-      const path = P.id === X.id ? [] : botPathDirs(G, pi, P, X.id, 8, true);
-      if (!path || path.length > 8) continue;
+      const path =
+        P.id === X.id ? [] : botPathDirs(G, pi, P, X.id, theFallen.theMostHopsAMageWalksToRaiseTheFallen, true);
+      if (!path || path.length > theFallen.theMostHopsAMageWalksToRaiseTheFallen) continue;
       if (!best || path.length < best.path.length) best = { c, path };
     }
     if (!best) {
@@ -239,7 +254,7 @@ export function botResurrectErrands(
     best.path
       .slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
       .forEach((d) => mv.push(aMoveOrderOnThePath(d, 'To raise ' + g.name)));
-    if (best.path.length <= 4) {
+    if (best.path.length <= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1) {
       const casts = Math.min(
         botSchoolLimit(Number(theSkillsOf(c).white) || 0),
         THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - mv.length,
@@ -289,7 +304,7 @@ export function runBotMovement(
     // ideally a mage, who casts offensive / supporting / defensive spells for him in the early phases
     // and then follows a phase behind. A co-located companion is also the natural recipient when a
     // grown host splits. One companion per general, the biggest host choosing first; scored on magic
-    // (×3) minus distance, within 6 hops through any land. ──
+    // (weighted) minus distance, within reach through any land. ──
     const magicScore = (x: Character) => {
       const s = theSkillsOf(x);
       return (
@@ -303,7 +318,8 @@ export function runBotMovement(
     const escortOf: Partial<Record<number, Character>> = {}; // companion id → the general it escorts
     const defCovered = new Set<number>(); // provinces a field host or a posted defender already guards
     leaders.forEach((l) => {
-      if (theUnitsWithGapsOf(l).length >= 3) defCovered.add(l.location);
+      if (theUnitsWithGapsOf(l).length >= theCompanions.theUnitsFromWhichAGeneralsHostGuardsTheProvinceItStandsIn)
+        defCovered.add(l.location);
     });
     {
       const spare = all.filter(
@@ -320,9 +336,17 @@ export function runBotMovement(
           let best: { h: Character; sc: number } | null = null;
           for (const h of spare) {
             if (escortOf[h.id] != null) continue;
-            const d = h.location === l.location ? 0 : botPathLenAny(G, G.world.provinces[h.location], l.location, 6);
+            const d =
+              h.location === l.location
+                ? 0
+                : botPathLenAny(
+                    G,
+                    G.world.provinces[h.location],
+                    l.location,
+                    theCompanions.theMostHopsASpareHeroIsSearchedForAsAGeneralsCompanion,
+                  );
             if (d == null) continue;
-            const sc = magicScore(h) * 3 - d;
+            const sc = magicScore(h) * theCompanions.theWorthOfEachLevelOfMagicInChoosingAGeneralsCompanion - d;
             if (!best || sc > best.sc) best = { h, sc };
           }
           if (best) escortOf[best.h.id] = l;
@@ -342,11 +366,11 @@ export function runBotMovement(
       const pre = [];
       const hire = botHireOrder(G, pi, c, L);
       if (hire) pre.push(hire);
-      // Sept 2026 (review R10): a king under 75% health with no host on the doorstep rests the year out.
+      // Sept 2026 (review R10): a king in poor health with no host on the doorstep rests the year out.
       if (c.isKing && !homeThreat && !botUnderAttack(G, pi)) {
         const _khp = theHitPointsOf(c),
           _kmhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN;
-        if (_khp < _kmhp * 0.75) {
+        if (_khp < _kmhp * thePreparations.theShareOfHisMostHitPointsBelowWhichAKingWithNoThreatRestsTheSeasonOut) {
           const o = [...pre];
           while (o.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
             o.push({ action: 'rest', target: '', extra: '', desc: 'Rest & heal (the crown)' });
@@ -362,7 +386,7 @@ export function runBotMovement(
       }
       {
         const ip = botItemPre(G, pi, c, roles);
-        if (ip && pre.length < 2) pre.push(ip);
+        if (ip && pre.length < thePreparations.theMostOrdersAHeroHasPlannedBeforeAnItemOrderIsAdded) pre.push(ip);
       } // Sept 2026 (review R3): kit
       // ── INFILTRATOR: a Necromancy / Elemental caster who is not running a
       // field army goes behind the enemy line and conjures a host in undefended ground, taking the
@@ -414,7 +438,14 @@ export function runBotMovement(
       // character standing here, who holds and drills it this year and marches it as a second host
       // next year (botRoles makes any holder of ≥3 units a leader). Two fronts, one battle per phase
       // each — the single mega-stack was conquering one province a turn with 16 units in reserve. ──
-      if (isLeader && armed && theUnitsWithGapsOf(c).length >= (roles.defenders.length ? 8 : 10)) {
+      if (
+        isLeader &&
+        armed &&
+        theUnitsWithGapsOf(c).length >=
+          (roles.defenders.length
+            ? theSplits.theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsDefenders
+            : theSplits.theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsNoDefenders)
+      ) {
         // Sept 2026: an unarmed DEFENDER standing here takes the column first (it is his post's
         // garrison); otherwise a mage stays the general's companion and a fighter takes it.
         const rcpt = all
@@ -429,17 +460,27 @@ export function runBotMovement(
           )
           .sort(
             (a, b) =>
-              (roles.defenders.includes(a.id) ? -100 : 0) +
+              (roles.defenders.includes(a.id)
+                ? theSplits.theRankOfADefenderAmongTheHeroesWhoMayTakeASplitHostsWeakerHalf
+                : 0) +
               magicScore(a) -
-              ((roles.defenders.includes(b.id) ? -100 : 0) + magicScore(b)),
+              ((roles.defenders.includes(b.id)
+                ? theSplits.theRankOfADefenderAmongTheHeroesWhoMayTakeASplitHostsWeakerHalf
+                : 0) +
+                magicScore(b)),
           )[0];
         if (rcpt) {
           const ranked = theUnitsWithGapsOf(c)
             .filter((a): a is Army => a != null && !a._isSkeletal && !BOT_SEA_ALL.has(a.type))
             .map((a) => ({ a, v: unitBaseStrength(a) }))
             .sort((x, y) => x.v - y.v);
-          const give = ranked.slice(0, Math.floor(theUnitsWithGapsOf(c).length / 2)).map((x) => x.a);
-          if (give.length >= 3) {
+          const give = ranked
+            .slice(
+              0,
+              Math.floor(theUnitsWithGapsOf(c).length / theSplits.theNumberOfPartsAHostIsDividedIntoWhenItSplits),
+            )
+            .map((x) => x.a);
+          if (give.length >= theSplits.theLeastUnitsAHostGivesAwayWhenItSplits) {
             pre.push({
               action: 'leave_army',
               target: give.map((a) => a.unitName || a.type).join(','),
@@ -459,7 +500,7 @@ export function runBotMovement(
         }
       }
       // ── MUSTER before marching: a leader raises field troops where it stands; anyone leaves a
-      // single-unit garrison behind (only when the march still keeps at least 2 hops). ──
+      // single-unit garrison behind (only when the march still keeps enough hops). ──
       let recruitTypes: string[] = [];
       if (P.owner === pi) {
         if (isLeader) {
@@ -471,8 +512,16 @@ export function runBotMovement(
           }
         }
       }
-      const reach = Math.min(3, armed ? botLandReach(c, recruitTypes) : 5);
-      if (P.owner === pi && THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length - 1 >= 2 && reach >= 2) {
+      const reach = Math.min(
+        theColumns.theMostHopsAnArmedColumnMarchesInASeason,
+        armed ? botLandReach(c, recruitTypes) : theColumns.theMostHopsAnUnarmedHeroMarchesInASeason,
+      );
+      if (
+        P.owner === pi &&
+        THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length - 1 >=
+          theSplits.theLeastPhasesLeftAfterAGarrisonOrderForOneToBeAdded &&
+        reach >= theSplits.theLeastReachFromWhichAGarrisonOrderIsAdded
+      ) {
         const go = botGarrisonOrder(G, pi, P, L);
         if (go) pre.push(go);
       }
@@ -480,10 +529,17 @@ export function runBotMovement(
       // 2026-09-28: the hops a SEA-GOING column may sail — its ships set the pace, not the foot they carry.
       const seaHops =
         armed && botSeaCap(c.armies) !== 'land'
-          ? Math.max(0, Math.min(3, botSeaReach(c) || reach, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length))
+          ? Math.max(
+              0,
+              Math.min(
+                theColumns.theMostHopsASeaGoingColumnSailsInASeason,
+                botSeaReach(c) || reach,
+                THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length,
+              ),
+            )
           : 0;
       const myStr = botBattleForce(G, c, null, 'plain', undefined); // battle-model strength on open ground (Druid, front line, Tactical)
-      // ── UNARMED: chase a wandering hero within 3 hops (hire on arrival); an unarmed LEADER goes
+      // ── UNARMED: chase a wandering hero within reach (hire on arrival); an unarmed LEADER goes
       // home to
       // raise a host; a feeder with nothing to do here walks to a free muster province. ──
       if (!armed) {
@@ -506,15 +562,15 @@ export function runBotMovement(
             if (heroHireWage(theAlignmentOf(G, pi), h.alignment, false, h) == null) continue;
             if (h.location === c.location || heroClaimed.has(h.id)) continue;
             // seekers walk through neutral country too (an unarmed character is never engaged by a
-            // guard), up to 5 hops — the whole of an unarmed character's reach.
-            const d = botPathLenAny(G, P, h.location, 5);
+            // guard), up to the whole of an unarmed character's reach.
+            const d = botPathLenAny(G, P, h.location, theUnarmed.theMostHopsAnUnarmedHeroSearchesForAWanderer);
             if (d == null) continue;
             const de = d - botHireBias(G, pi, h);
             if (!bestH || de < bestH.de) bestH = { h, d, de };
           }
         if (bestH && maxHops > 0) {
           const wanderer = bestH.h;
-          const path = botPathAny(G, P, wanderer.location, 5);
+          const path = botPathAny(G, P, wanderer.location, theUnarmed.theMostHopsAnUnarmedHeroSearchesForAWanderer);
           if (path?.length === bestH.d) {
             heroClaimed.add(wanderer.id);
             const mv = path.map((d) => aMoveOrderOnThePath(d, 'Seek ' + wanderer.name));
@@ -524,11 +580,16 @@ export function runBotMovement(
             return;
           }
         }
-        // ── ROAM FOR WANDERERS (2026-09-26, Toby item 5): a court under three heroes sends every hero who is
+        // ── ROAM FOR WANDERERS (2026-09-26, Toby item 5): a court with few heroes sends every hero who is
         // not the general out to find them — no wanderer is in sight, so he walks to the nearest land the
         // realm has never set foot in (wanderers are seen only from where our characters stand) and
         // explores it on arrival. Kings never roam. ──
-        if (!c.isKing && !isLeader && _heroesNow < 3 && maxHops > 0) {
+        if (
+          !c.isKing &&
+          !isLeader &&
+          _heroesNow < theCompanions.theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers &&
+          maxHops > 0
+        ) {
           const rm = botRoamOrders(G, pi, c, pre);
           if (rm) {
             theTurnsOrders(G)[c.id] = rm;
@@ -592,7 +653,7 @@ export function runBotMovement(
             // still here — the engine resolves a friendly cast before its co-located target's own
             // move), defence, economy.
             const casts = botCastPlan(G, pi, c, P, {
-              max: 3,
+              max: theCompanions.theMostCastsACompanionPlansForHisGeneralInOneSeason,
               fighting: genAttacks ? gen : null,
               siege: genAttacks ? botPlannedAttackTarget(G, gen) : null,
               threat: botNearbyThreat(G, pi, c),
@@ -600,7 +661,7 @@ export function runBotMovement(
               .filter((o) => !(genAttacks && o.target === theNameOfTheSpell('flood')))
               .filter((o, i) => o.extra !== String(gen.id) || pre.length + i < firstMovePh); // Sept 2026: a Flood would strand OUR assault too
             // Follow the general's path one phase behind, only into ground that is ours / allied,
-            // land he simply walks into, or his first assault when the battle model gives him a 2×
+            // land he simply walks into, or his first assault when the battle model gives him a clear
             // edge.
             const follow: PhaseOrder[] = [];
             let cur = P;
@@ -618,7 +679,9 @@ export function runBotMovement(
                 (follow.length === 0 && (asItsGuardReadsIt(o.desc) ?? '').startsWith('Advance')) ||
                 (follow.length === 0 &&
                   /^(Attack|Assault)/.test(o.desc || '') &&
-                  botBattleForce(G, gen, null, N.terrain, undefined) >= 2 * botTargetDefence(G, pi, N));
+                  botBattleForce(G, gen, null, N.terrain, undefined) >=
+                    theCompanions.theMultipleOfAProvincesDefenceAGeneralsAssaultMustHaveForHisCompanionToFollowIt *
+                      botTargetDefence(G, pi, N));
               if (!safe) break;
               follow.push({ ...o, desc: 'Follow ' + gen.name });
               cur = N;
@@ -638,7 +701,9 @@ export function runBotMovement(
             assigned.add(c.id);
             return;
           } else {
-            const path = (botPathAny(G, P, gen.location, 6) ?? [])
+            const path = (
+              botPathAny(G, P, gen.location, theCompanions.theMostHopsACompanionWalksToJoinHisGeneral) ?? []
+            )
               .slice(0, Math.max(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length))
               .map((d) => aMoveOrderOnThePath(d, 'Join ' + gen.name));
             if (path.length) {
@@ -653,16 +718,22 @@ export function runBotMovement(
         // HUNTER (run down a beatable enemy hero), SPY (rifle an enemy capital's archives). Only when at
         // war, only for non-leaders, and only when the target is within reach.
         if (!isLeader && botAtWar(G, pi)) {
-          if (hp >= mhp * 0.7) {
-            // HUNTER: a beatable enemy hero within 4 hops — Encounter runs the chase over the phases.
+          if (hp >= mhp * theUnarmed.theShareOfHisMostHitPointsFromWhichAnUnarmedHeroTakesAWarRole) {
+            // HUNTER: a beatable enemy hero within reach — Encounter runs the chase over the phases.
             // Hunter tactics (Sept 2026): the quarry must be beatable on the ENGINE's own duel
             // model — runTurn hands in a Monte-Carlo forecast (`hooks.duelSim`) that fights cloned
             // copies with both sides' real plans, items and tempers; the hunt goes ahead only at
-            // >=65% wins and <=20% risk of being felled. The rating pre-filter keeps the sim cheap.
-            // Hunters also set out only at >=85% health.
-            const hunt = hp >= mhp * 0.85 ? botHuntTarget(G, pi, c, 4, hooks.duelSim) : null;
+            // a good chance of winning and a low risk of being felled. The rating pre-filter keeps the sim cheap.
+            // Hunters also set out only in good health.
+            const hunt =
+              hp >= mhp * theUnarmed.theShareOfHisMostHitPointsFromWhichAHunterSetsOut
+                ? botHuntTarget(G, pi, c, theUnarmed.theMostHopsAHunterSearchesForAQuarry, hooks.duelSim)
+                : null;
             if (hunt?.mem) {
-              const path = (botPathAny(G, P, hunt.loc, 4) ?? []).slice(0, Math.max(0, 4 - pre.length));
+              const path = (botPathAny(G, P, hunt.loc, theUnarmed.theMostHopsAHunterSearchesForAQuarry) ?? []).slice(
+                0,
+                Math.max(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1 - pre.length),
+              );
               if (path.length) {
                 const o = [...pre, ...path.map((d) => aMoveOrderOnThePath(d, 'Stalk ' + hunt.e.name))];
                 while (o.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
@@ -691,11 +762,11 @@ export function runBotMovement(
             }
             // RAIDER: walk into enemy land and cast; Invisibility first if the school allows.
             if (botOffensiveMagic(c) >= 1) {
-              const raid = botRaidTarget(G, pi, P, 5);
+              const raid = botRaidTarget(G, pi, P, theUnarmed.theMostHopsARaiderSearchesForALandToRaid);
               if (raid) {
-                const path = botPathAny(G, P, raid.P.id, 5) ?? [];
+                const path = botPathAny(G, P, raid.P.id, theUnarmed.theMostHopsARaiderSearchesForALandToRaid) ?? [];
                 const mv = path
-                  .slice(0, Math.max(0, 4 - pre.length))
+                  .slice(0, Math.max(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1 - pre.length))
                   .map((d) => aMoveOrderOnThePath(d, 'Raid ' + raid.P.name));
                 let dest = P;
                 for (const m of mv) {
@@ -732,8 +803,8 @@ export function runBotMovement(
                 }
               }
             }
-            // SPY: an at-war enemy capital holding discoveries we lack, within 5 hops — go and rifle its archives.
-            if ((Number(theSkillsOf(c).spy) || 0) >= 2) {
+            // SPY: an at-war enemy capital holding discoveries we lack, within reach — go and rifle its archives.
+            if ((Number(theSkillsOf(c).spy) || 0) >= theUnarmed.theLeastSpyLevelFromWhichAHeroGoesToSpyOnACapital) {
               const mine = new Set((G.players[pi]?.discoveries ?? []).map((d) => d.id));
               let bestK: { hid: number; d: number; name: string } | null = null;
               for (const [j, pl] of theRealmsOf(G).entries()) {
@@ -742,18 +813,21 @@ export function runBotMovement(
                 const hid = pl.homeProvinceId;
                 const H = G.world.provinces[hid];
                 if (H?.owner !== j) continue;
-                const d = botPathLenAny(G, P, hid, 5);
+                const d = botPathLenAny(G, P, hid, theUnarmed.theMostHopsASpySearchesForACapitalToSpyOn);
                 if (d == null) continue;
                 if (!bestK || d < bestK.d) bestK = { hid, d, name: pl.name };
               }
               if (bestK) {
                 const capitalsRealm = bestK.name;
-                const path = (botPathAny(G, P, bestK.hid, 5) ?? [])
-                  .slice(0, Math.max(0, 4 - pre.length))
+                const path = (botPathAny(G, P, bestK.hid, theUnarmed.theMostHopsASpySearchesForACapitalToSpyOn) ?? [])
+                  .slice(0, Math.max(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1 - pre.length))
                   .map((d) => aMoveOrderOnThePath(d, 'Infiltrate ' + capitalsRealm));
                 const spy = { action: 'spy', target: '', extra: '', desc: 'Spy on ' + bestK.name };
                 const rest: PhaseOrder[] = [];
-                while (pre.length + path.length + rest.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && rest.length < 2)
+                while (
+                  pre.length + path.length + rest.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON &&
+                  rest.length < theUnarmed.theMostSpyOrdersASpyGivesOnArrival
+                )
                   rest.push({ ...spy });
                 theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, [...pre, ...path, ...rest], []);
                 assigned.add(c.id);
@@ -763,7 +837,7 @@ export function runBotMovement(
           }
         }
         // ── review II A7: a Melee-7 hero Challenges a rival here when the forecast (on known skills) says 70%+. ──
-        if (!isLeader && hp >= mhp * 0.85) {
+        if (!isLeader && hp >= mhp * theUnarmed.theShareOfHisMostHitPointsFromWhichAHeroChallengesARival) {
           const mo = botMasteryPre(G, pi, c, P, { duelSim: hooks.duelSim });
           if (mo?.action === THE_HERO_ORDERS.challenge.key) {
             theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, [...pre, mo], []);
@@ -771,14 +845,17 @@ export function runBotMovement(
             return;
           }
         }
-        // ── review II A4: a fighter standing where an at-war unarmed rival stands runs him down first (duel sim ≥ 50%, felled ≤ 10%). ──
+        // ── review II A4: a fighter standing where an at-war unarmed rival stands runs him down first (the duel forecast favours him, and the risk of being felled is low). ──
         if (
           !isLeader &&
           !c.isKing &&
           P.owner === pi &&
           botAtWar(G, pi) &&
-          hp >= mhp * 0.85 &&
-          (Number(theSkillsOf(c).melee) >= 3 || Number(theSkillsOf(c).archery) >= 3) &&
+          hp >= mhp * theUnarmed.theShareOfHisMostHitPointsFromWhichAFighterRunsDownAnUnarmedRival &&
+          (Number(theSkillsOf(c).melee) >=
+            theUnarmed.theLeastMeleeOrArcheryLevelFromWhichAFighterRunsDownAnUnarmedRival ||
+            Number(theSkillsOf(c).archery) >=
+              theUnarmed.theLeastMeleeOrArcheryLevelFromWhichAFighterRunsDownAnUnarmedRival) &&
           typeof hooks.duelSim === 'function'
         ) {
           const sneak = botVisibleCharsIn(G, pi, P).find(
@@ -792,8 +869,16 @@ export function runBotMovement(
               !theHerosInvisibilityHidesHimNow(e, G.turn),
           );
           if (sneak) {
-            const f = hooks.duelSim(c, botAssumedChar(G, pi, sneak), 24);
-            if (f && f.win >= 0.5 && f.felled <= 0.1) {
+            const f = hooks.duelSim(
+              c,
+              botAssumedChar(G, pi, sneak),
+              theUnarmed.theRoundsOfTheDuelForecastThatDecidesWhetherAFighterRunsDownARival,
+            );
+            if (
+              f &&
+              f.win >= theUnarmed.theLeastOddsOfAKillFromWhichAFighterRunsDownAnUnarmedRival &&
+              f.felled <= theUnarmed.theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival
+            ) {
               theTurnsOrders(G)[c.id] = botFillOrders(
                 G,
                 pi,
@@ -807,7 +892,11 @@ export function runBotMovement(
           }
         }
         // ── LAIR RAIDER: a fighter walks to a beatable discovered lair within 4 hops (hoard + Monster-Bane merit). ──
-        if (!isLeader && !c.isKing && hp >= mhp * 0.7) {
+        if (
+          !isLeader &&
+          !c.isKing &&
+          hp >= mhp * theUnarmed.theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair
+        ) {
           const lo = botLairPlan(G, pi, c, pre, L);
           if (lo) {
             theTurnsOrders(G)[c.id] = lo;
@@ -816,7 +905,7 @@ export function runBotMovement(
           }
         }
         // ── SPECIALISTS: scholar / scout / spy / thief (Sept 2026, Toby). Wounded heroes fall through to Rest. ──
-        if (!isLeader && hp >= mhp * 0.6) {
+        if (!isLeader && hp >= mhp * theUnarmed.theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders) {
           const role = spec.byId[c.id]; // Sept 2026: a non-leading king may be the slayer or the scholar
           if (role) {
             const so = botSpecialistOrders(G, pi, c, pre, role, L);
@@ -848,8 +937,8 @@ export function runBotMovement(
             if (x?.owner !== pi || x.terrain === 'sea' || x.id === P.id || !theArmyTypesOf(x).length) continue;
             if (all.some((o) => o.id !== c.id && o.location === x.id)) continue;
             const d = botPathLen(G, pi, P, x.id, true);
-            if (d == null || d > 4) continue;
-            const sc = (x.tax || 0) - d * 2;
+            if (d == null || d > theSplits.theMostHopsAnUnarmedHeroSearchesForAProvinceToMusterIn) continue;
+            const sc = (x.tax || 0) - d * theSplits.theWorthLostForEachHopToAProvinceToMusterIn;
             if (!bestM || sc > bestM.sc) bestM = { x, sc, d };
           }
           if (bestM) {
@@ -1035,12 +1124,24 @@ export function runBotMovement(
             P,
             myStr,
             T,
-            Math.max(1, Math.min(5, botAirReach(c), THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length)),
+            Math.max(
+              theColumns.theLeastHopsAnAirStrikeIsPlannedAcross,
+              Math.min(
+                theColumns.theMostHopsAnAirStrikeFliesInASeason,
+                botAirReach(c),
+                THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length,
+              ),
+            ),
           );
           if (as?.moves.length) {
             const buff =
-              theUnitsWithGapsOf(c).length >= 3 && pre.length <= 2
-                ? botCastPlan(G, pi, c, P, { max: 1, fighting: c }).find((o) =>
+              theUnitsWithGapsOf(c).length >=
+                thePreparations.theLeastUnitsAFlyingGeneralLeadsToPlanABuffCastBeforeAStrike &&
+              pre.length <= thePreparations.theMostOrdersAFlyingGeneralHasPlannedForABuffCastToBeAddedBeforeAStrike
+                ? botCastPlan(G, pi, c, P, {
+                    max: thePreparations.theMostBuffCastsAHeroPlansBeforeAFight,
+                    fighting: c,
+                  }).find((o) =>
                     [theNameOfTheSpell('oratory'), theNameOfTheSpell('phantasmal-armies')].includes(o.target),
                   )
                 : null;
@@ -1098,7 +1199,10 @@ export function runBotMovement(
         const ss = seaHops > 0 ? botSeaStrike(G, pi, c, P, myStr, T, seaHops) : null;
         if (ss?.moves.length) {
           const mo = botMasteryPre(G, pi, c, P, { fightAhead: ss.N.terrain !== 'sea', fromSea: true });
-          const pre2 = mo && pre.length <= 2 ? [...pre, mo] : pre;
+          const pre2 =
+            mo && pre.length <= thePreparations.theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight
+              ? [...pre, mo]
+              : pre;
           theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, pre2, ss.moves);
           return;
         }
@@ -1134,31 +1238,40 @@ export function runBotMovement(
       }
       if (best) {
         // A real fight ahead: one buff cast first (Oratory > Elemental Summon > Phantasmal Armies)
-        // when the host has 3+ units and a phase to spare — a Veteran elemental or +1 quality tier
+        // when the host is big enough and a phase is to spare — a Veteran elemental or +1 quality tier
         // decides battles.
-        if (best.targetStr > 0 && theUnitsWithGapsOf(c).length >= 2 && pre.length <= 3) {
-          // 2026-09-26 (idea 1): every planned fight, from two units
+        if (
+          best.targetStr > 0 &&
+          theUnitsWithGapsOf(c).length >= thePreparations.theLeastUnitsAHostNeedsForItsHeroToPrepareForAFight &&
+          pre.length <= thePreparations.theMostOrdersAHeroHasPlannedForHisPreparationsForAFightToBegin
+        ) {
+          // 2026-09-26 (idea 1): every planned fight, from a small host
           const rite = botRitePre(G, pi, c, P, L, true);
           if (rite) pre.push(rite); // Pagan: the Wild Hunt / a Blood Offering before the clash
           {
             const mo = botMasteryPre(G, pi, c, P, { fightAhead: true });
-            if (mo && pre.length <= 2) pre.push(mo);
+            if (mo && pre.length <= thePreparations.theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight)
+              pre.push(mo);
           } // review II A7
-          const buff = botCastPlan(G, pi, c, P, { max: 1, fighting: c }).find((o) =>
+          const buff = botCastPlan(G, pi, c, P, {
+            max: thePreparations.theMostBuffCastsAHeroPlansBeforeAFight,
+            fighting: c,
+          }).find((o) =>
             [
               theNameOfTheSpell('oratory'),
               theNameOfTheSpell('elemental-summon'),
               theNameOfTheSpell('phantasmal-armies'),
             ].includes(o.target),
           );
-          if (buff && pre.length <= 3) pre.push(buff);
+          if (buff && pre.length <= thePreparations.theMostOrdersAHeroHasPlannedForABuffCastToBeAddedBeforeAFight)
+            pre.push(buff);
         }
         const moves = [botMoveOrder(best.dirIdx, best.targetStr > 0 ? 'Attack' : 'Advance')];
         visited.add(best.N.id);
         let str = myStr,
           fights = 0;
         if (best.targetStr > 0) {
-          str *= 0.85;
+          str *= theColumns.theShareOfAHostsStrengthItKeepsAfterAPlannedFight;
           fights = 1;
         }
         moves.push(...botChainHops(G, pi, c, best.N, str, T, maxHops - 1, visited, fights));
@@ -1273,7 +1386,10 @@ export function runBotMovement(
             : null;
         if (ss?.moves.length) {
           const mo = botMasteryPre(G, pi, c, P, { fightAhead: ss.N.terrain !== 'sea', fromSea: true });
-          const pre2 = mo && pre.length <= 2 ? [...pre, mo] : pre;
+          const pre2 =
+            mo && pre.length <= thePreparations.theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight
+              ? [...pre, mo]
+              : pre;
           theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, pre2, ss.moves);
           return;
         }
@@ -1345,8 +1461,13 @@ export function runBotMovement(
           )
             continue;
           const d = botPathLen(G, pi, P, x.id, false);
-          if (d == null || d > 6) continue;
-          const sc = (x.tax || 0) - d * 2 + (hasAdm && botCoastalFleetType(x) ? 6 : 0);
+          if (d == null || d > theSplits.theMostHopsAGeneralSearchesForAProvinceToRaiseAHostIn) continue;
+          const sc =
+            (x.tax || 0) -
+            d * theSplits.theWorthLostForEachHopToAProvinceToMusterIn +
+            (hasAdm && botCoastalFleetType(x)
+              ? theSplits.theWorthAPortAddsToAProvinceToRaiseAHostInWhenTheRealmHasAnAdmiral
+              : 0);
           if (!bestM || sc > bestM.sc) bestM = { x, sc, d };
         }
         if (bestM) {

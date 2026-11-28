@@ -574,4 +574,73 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     whatEachLevelOfArcheryAddsToAHeroesLairRating: 2,
     whatEachLevelOfElementalNecromancyAndPsychicAddsToAHeroesLairRating: 4,
   },
+  /** Which mage walks to raise a fallen hero, and how far (botResurrectErrands, bots/movement.ts). */
+  movementRaisingTheFallen: {
+    theShareOfHisMostHitPointsAMageMustHaveToWalkToRaiseTheFallen: 0.5,
+    theMostHopsAMageWalksToRaiseTheFallen: 8,
+  },
+  /** Which spare hero escorts a general and how he follows (the companion pass of runBotMovement, bots/movement.ts). */
+  movementCompanions: {
+    theUnitsFromWhichAGeneralsHostGuardsTheProvinceItStandsIn: 3,
+    theMostHopsASpareHeroIsSearchedForAsAGeneralsCompanion: 6,
+    theWorthOfEachLevelOfMagicInChoosingAGeneralsCompanion: 3,
+    theMostCastsACompanionPlansForHisGeneralInOneSeason: 3,
+    theMultipleOfAProvincesDefenceAGeneralsAssaultMustHaveForHisCompanionToFollowIt: 2,
+    theMostHopsACompanionWalksToJoinHisGeneral: 6,
+    theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers: 3,
+  },
+  /** When a host splits, who takes its weaker half, when a garrison is left and where a hero walks to muster (the split, the muster and the muster walks of runBotMovement, bots/movement.ts). */
+  movementSplitsAndMusters: {
+    theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsDefenders: 8,
+    theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsNoDefenders: 10,
+    theRankOfADefenderAmongTheHeroesWhoMayTakeASplitHostsWeakerHalf: -100,
+    theNumberOfPartsAHostIsDividedIntoWhenItSplits: 2,
+    theLeastUnitsAHostGivesAwayWhenItSplits: 3,
+    theLeastPhasesLeftAfterAGarrisonOrderForOneToBeAdded: 2,
+    theLeastReachFromWhichAGarrisonOrderIsAdded: 2,
+    theMostHopsAnUnarmedHeroSearchesForAProvinceToMusterIn: 4,
+    theMostHopsAGeneralSearchesForAProvinceToRaiseAHostIn: 6,
+    theWorthLostForEachHopToAProvinceToMusterIn: 2,
+    theWorthAPortAddsToAProvinceToRaiseAHostInWhenTheRealmHasAnAdmiral: 6,
+  },
+  /** What a hero plans before a march: a king's rest, an item, a mastery order, a rite and a buff (the passes before the march of runBotMovement, bots/movement.ts). */
+  movementPreparations: {
+    theShareOfHisMostHitPointsBelowWhichAKingWithNoThreatRestsTheSeasonOut: 0.75,
+    theMostOrdersAHeroHasPlannedBeforeAnItemOrderIsAdded: 2,
+    theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight: 2,
+    theLeastUnitsAHostNeedsForItsHeroToPrepareForAFight: 2,
+    theMostOrdersAHeroHasPlannedForHisPreparationsForAFightToBegin: 3,
+    theMostOrdersAHeroHasPlannedForABuffCastToBeAddedBeforeAFight: 3,
+    theMostBuffCastsAHeroPlansBeforeAFight: 1,
+    theLeastUnitsAFlyingGeneralLeadsToPlanABuffCastBeforeAStrike: 3,
+    theMostOrdersAFlyingGeneralHasPlannedForABuffCastToBeAddedBeforeAStrike: 2,
+  },
+  /** How far a column marches, sails and flies in a season, and the strength it is rated at after a fight (runBotMovement, bots/movement.ts). */
+  movementReachAndStrength: {
+    theMostHopsAnArmedColumnMarchesInASeason: 3,
+    theMostHopsAnUnarmedHeroMarchesInASeason: 5,
+    theMostHopsASeaGoingColumnSailsInASeason: 3,
+    theMostHopsAnAirStrikeFliesInASeason: 5,
+    theLeastHopsAnAirStrikeIsPlannedAcross: 1,
+    theShareOfAHostsStrengthItKeepsAfterAPlannedFight: 0.85,
+  },
+  /** How far an unarmed hero looks for a wanderer, a quarry, a raid or a capital, and the health and skill each of his roles needs (the unarmed pass of runBotMovement, bots/movement.ts). */
+  movementWanderersAndWarRoles: {
+    theMostHopsAnUnarmedHeroSearchesForAWanderer: 5,
+    theShareOfHisMostHitPointsFromWhichAnUnarmedHeroTakesAWarRole: 0.7,
+    theShareOfHisMostHitPointsFromWhichAHunterSetsOut: 0.85,
+    theMostHopsAHunterSearchesForAQuarry: 4,
+    theMostHopsARaiderSearchesForALandToRaid: 5,
+    theLeastSpyLevelFromWhichAHeroGoesToSpyOnACapital: 2,
+    theMostHopsASpySearchesForACapitalToSpyOn: 5,
+    theMostSpyOrdersASpyGivesOnArrival: 2,
+    theShareOfHisMostHitPointsFromWhichAHeroChallengesARival: 0.85,
+    theShareOfHisMostHitPointsFromWhichAFighterRunsDownAnUnarmedRival: 0.85,
+    theLeastMeleeOrArcheryLevelFromWhichAFighterRunsDownAnUnarmedRival: 3,
+    theRoundsOfTheDuelForecastThatDecidesWhetherAFighterRunsDownARival: 24,
+    theLeastOddsOfAKillFromWhichAFighterRunsDownAnUnarmedRival: 0.5,
+    theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival: 0.1,
+    theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair: 0.7,
+    theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: 0.6,
+  },
 } satisfies TheWeightsOfABotVersion;

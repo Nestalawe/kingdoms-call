@@ -1032,6 +1032,132 @@ const TheWeightsOfStrategyLairRatingSchema = z.object({
   whatEachLevelOfElementalNecromancyAndPsychicAddsToAHeroesLairRating: z.number(),
 });
 
+/** Which mage walks to raise a fallen hero, and how far (botResurrectErrands, bots/movement.ts). */
+const TheWeightsOfMovementRaisingTheFallenSchema = z.object({
+  /** A hero is sent to raise a fallen hero only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsAMageMustHaveToWalkToRaiseTheFallen: z.number(),
+  /** The most hops a mage walks, and is searched for across, to stand where a fallen hero lies. */
+  theMostHopsAMageWalksToRaiseTheFallen: z.number(),
+});
+
+/** Which spare hero escorts a general and how he follows (the companion pass of runBotMovement, bots/movement.ts). */
+const TheWeightsOfMovementCompanionsSchema = z.object({
+  /** A general leading at least this many units counts as guarding the province he stands in. */
+  theUnitsFromWhichAGeneralsHostGuardsTheProvinceItStandsIn: z.number(),
+  /** The most hops away a spare hero may stand and still be chosen as a general's companion. */
+  theMostHopsASpareHeroIsSearchedForAsAGeneralsCompanion: z.number(),
+  /** Each level of magic a spare hero has adds this to his score as a general's companion, before the hops to him are taken off. */
+  theWorthOfEachLevelOfMagicInChoosingAGeneralsCompanion: z.number(),
+  /** The most spells a companion plans for his general in one season. */
+  theMostCastsACompanionPlansForHisGeneralInOneSeason: z.number(),
+  /** A companion follows a general's first assault into a province only when the general's force is at least this many times its defence. */
+  theMultipleOfAProvincesDefenceAGeneralsAssaultMustHaveForHisCompanionToFollowIt: z.number(),
+  /** The most hops a companion is searched across to reach the general he escorts. */
+  theMostHopsACompanionWalksToJoinHisGeneral: z.number(),
+  /** A court with fewer heroes than this sends every hero who is not a king or a general out to find wanderers. */
+  theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers: z.number(),
+});
+
+/** When a host splits, who takes its weaker half, when a garrison is left and where a hero walks to muster (the split, the muster and the muster walks of runBotMovement, bots/movement.ts). */
+const TheWeightsOfMovementSplitsAndMustersSchema = z.object({
+  /** A general leading at least this many units splits his host when the realm has posted defenders. */
+  theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsDefenders: z.number(),
+  /** A general leading at least this many units splits his host when the realm has posted no defenders. */
+  theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsNoDefenders: z.number(),
+  /** A hero posted as a defender takes this off his score as the one to take a split host's weaker half; the lowest score takes it. */
+  theRankOfADefenderAmongTheHeroesWhoMayTakeASplitHostsWeakerHalf: z.number(),
+  /** A host that splits divides its units into this many equal parts by number and gives away the weakest part. */
+  theNumberOfPartsAHostIsDividedIntoWhenItSplits: z.number(),
+  /** A host splits only when the part to give away holds at least this many units. */
+  theLeastUnitsAHostGivesAwayWhenItSplits: z.number(),
+  /** A garrison order is added only while at least this many phases of the season are left once it is. */
+  theLeastPhasesLeftAfterAGarrisonOrderForOneToBeAdded: z.number(),
+  /** A garrison order is added only when the column's reach, in hops, is at least this. */
+  theLeastReachFromWhichAGarrisonOrderIsAdded: z.number(),
+  /** The most hops an unarmed hero searches across for an owned province to muster in. */
+  theMostHopsAnUnarmedHeroSearchesForAProvinceToMusterIn: z.number(),
+  /** The most hops a general with nothing to attack searches across for an owned province to raise troops in. */
+  theMostHopsAGeneralSearchesForAProvinceToRaiseAHostIn: z.number(),
+  /** Each hop to a province to muster in takes this off its tax in the score of the search, for an unarmed hero and for a general. */
+  theWorthLostForEachHopToAProvinceToMusterIn: z.number(),
+  /** A province that recruits a fleet adds this to its score as a general's place to raise a host, while the realm has an admiral. */
+  theWorthAPortAddsToAProvinceToRaiseAHostInWhenTheRealmHasAnAdmiral: z.number(),
+});
+
+/** What a hero plans before a march: a king's rest, an item, a mastery order, a rite and a buff (the passes before the march of runBotMovement, bots/movement.ts). */
+const TheWeightsOfMovementPreparationsSchema = z.object({
+  /** A king whose hit points are below this share of his most, with no host near his capital and no attack on the realm, rests the whole season. */
+  theShareOfHisMostHitPointsBelowWhichAKingWithNoThreatRestsTheSeasonOut: z.number(),
+  /** An item order is added only while the hero has planned fewer orders than this. */
+  theMostOrdersAHeroHasPlannedBeforeAnItemOrderIsAdded: z.number(),
+  /** A mastery order is added before a fight, or a sea march, only while the hero has planned at most this many orders. */
+  theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight: z.number(),
+  /** A hero leading at least this many units, with a fight ahead, plans a rite, a mastery order and a buff first. */
+  theLeastUnitsAHostNeedsForItsHeroToPrepareForAFight: z.number(),
+  /** A hero begins his preparations for a fight only while he has planned at most this many orders. */
+  theMostOrdersAHeroHasPlannedForHisPreparationsForAFightToBegin: z.number(),
+  /** A buff cast is added before a fight only while the hero has planned at most this many orders. */
+  theMostOrdersAHeroHasPlannedForABuffCastToBeAddedBeforeAFight: z.number(),
+  /** The most buff casts a hero plans before a fight, for a general on the ground and for a flying general. */
+  theMostBuffCastsAHeroPlansBeforeAFight: z.number(),
+  /** A flying general leading at least this many units plans a buff cast before an air strike. */
+  theLeastUnitsAFlyingGeneralLeadsToPlanABuffCastBeforeAStrike: z.number(),
+  /** A buff cast is added before an air strike only while the flying general has planned at most this many orders. */
+  theMostOrdersAFlyingGeneralHasPlannedForABuffCastToBeAddedBeforeAStrike: z.number(),
+});
+
+/** How far a column marches, sails and flies in a season, and the strength it is rated at after a fight (runBotMovement, bots/movement.ts). */
+const TheWeightsOfMovementReachAndStrengthSchema = z.object({
+  /** The most hops an armed column is planned to march in one season, whatever its speed. */
+  theMostHopsAnArmedColumnMarchesInASeason: z.number(),
+  /** The most hops an unarmed hero is planned to walk in one season. */
+  theMostHopsAnUnarmedHeroMarchesInASeason: z.number(),
+  /** The most hops a sea-going column is planned to sail in one season. */
+  theMostHopsASeaGoingColumnSailsInASeason: z.number(),
+  /** The most hops a flying general plans an air strike across in one season. */
+  theMostHopsAnAirStrikeFliesInASeason: z.number(),
+  /** A flying general plans an air strike across at least this many hops. */
+  theLeastHopsAnAirStrikeIsPlannedAcross: z.number(),
+  /** A host's strength is counted as this share of itself for the hops planned after a fight. */
+  theShareOfAHostsStrengthItKeepsAfterAPlannedFight: z.number(),
+});
+
+/** How far an unarmed hero looks for a wanderer, a quarry, a raid or a capital, and the health and skill each of his roles needs (the unarmed pass of runBotMovement, bots/movement.ts). */
+const TheWeightsOfMovementWanderersAndWarRolesSchema = z.object({
+  /** The most hops an unarmed hero searches across, and walks, to reach a wandering hero to hire. */
+  theMostHopsAnUnarmedHeroSearchesForAWanderer: z.number(),
+  /** An unarmed hero takes a hunter's, a raider's or a spy's role in a war only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsFromWhichAnUnarmedHeroTakesAWarRole: z.number(),
+  /** A hero sets out to hunt an enemy hero only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsFromWhichAHunterSetsOut: z.number(),
+  /** The most hops a hunter searches across, and walks, to reach an enemy hero to hunt. */
+  theMostHopsAHunterSearchesForAQuarry: z.number(),
+  /** The most hops a raider searches across, and walks, to reach enemy land to raid. */
+  theMostHopsARaiderSearchesForALandToRaid: z.number(),
+  /** A hero goes to spy on an enemy capital only at this level of Spy or more. */
+  theLeastSpyLevelFromWhichAHeroGoesToSpyOnACapital: z.number(),
+  /** The most hops a spy searches across, and walks, to reach an enemy capital. */
+  theMostHopsASpySearchesForACapitalToSpyOn: z.number(),
+  /** The most spy orders a hero gives once he has reached an enemy capital. */
+  theMostSpyOrdersASpyGivesOnArrival: z.number(),
+  /** A hero of high Melee challenges a rival where he stands only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsFromWhichAHeroChallengesARival: z.number(),
+  /** A fighter runs down an unarmed rival where he stands only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsFromWhichAFighterRunsDownAnUnarmedRival: z.number(),
+  /** A fighter runs down an unarmed rival only with Melee or Archery at this level or more. */
+  theLeastMeleeOrArcheryLevelFromWhichAFighterRunsDownAnUnarmedRival: z.number(),
+  /** The rounds of the duel forecast that decides whether a fighter runs down an unarmed rival. */
+  theRoundsOfTheDuelForecastThatDecidesWhetherAFighterRunsDownARival: z.number(),
+  /** A fighter runs down an unarmed rival only when the forecast gives him at least this share of kills. */
+  theLeastOddsOfAKillFromWhichAFighterRunsDownAnUnarmedRival: z.number(),
+  /** A fighter runs down an unarmed rival only when the forecast gives him at most this share of being felled. */
+  theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival: z.number(),
+  /** An unarmed fighter walks to a lair to raid it only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair: z.number(),
+  /** An unarmed hero with a specialist's role takes that role's orders only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -1072,6 +1198,12 @@ export const TheWeightsOfABotVersionSchema = z.object({
   strategyPractice: TheWeightsOfStrategyPracticeSchema,
   strategyReach: TheWeightsOfStrategyReachSchema,
   strategyLairRating: TheWeightsOfStrategyLairRatingSchema,
+  movementRaisingTheFallen: TheWeightsOfMovementRaisingTheFallenSchema,
+  movementCompanions: TheWeightsOfMovementCompanionsSchema,
+  movementSplitsAndMusters: TheWeightsOfMovementSplitsAndMustersSchema,
+  movementPreparations: TheWeightsOfMovementPreparationsSchema,
+  movementReachAndStrength: TheWeightsOfMovementReachAndStrengthSchema,
+  movementWanderersAndWarRoles: TheWeightsOfMovementWanderersAndWarRolesSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;
