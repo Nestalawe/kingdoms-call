@@ -2,8 +2,9 @@
 // (src/ui/player/briefing-and-submit.ts) writes to the realm's row, built from the saved state the turn will load and
 // what the realm chose in the form. The balance matrix's scripted realm (scripted.ts) makes the choices; this builds
 // the payload from them as the form does, so the matrix's games save what a human realm's orders save. The choices'
-// and the state's types are in src/schemas/what-a-realm-chooses-in-the-orders-form-and-the-parts-of-the-saved-state-
-// the-form-reads.ts (B-17n), where the engine and the bots can use them; the copy of the form stays here.
+// and the state's types are in
+// src/schemas/what-a-realm-chooses-in-the-orders-form-and-the-parts-of-the-saved-state-the-form-reads.ts (B-17n),
+// where the engine and the bots can use them; the copy of the form stays here.
 //
 // The form is built from the realm's turn report, which the views write from the same world (src/views/turn-report.ts):
 // so the heroes it lists, their order in the column, an heir's skills and the plans it starts from are read here from
