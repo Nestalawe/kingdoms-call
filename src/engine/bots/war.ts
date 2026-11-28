@@ -109,7 +109,7 @@ function theTargetedProvince(G: GameState, id: number): Province {
 //   7 SUE FOR PEACE — at war for minWarTurns+ and badly outmatched, or losing the battles against
 //     them, the bot offers peace; it accepts a peace the rival offers this turn only when it is
 //     not winning.
-//   8 PERSONALITY — the king's Temper moves the bar (Berserk −0.25 … Cowardly +0.3: the bots' weights' `temper`),
+//   8 PERSONALITY — the king's Temper moves the bar (each temper's own amount: the bots' weights' `temper`),
 //     with a small fixed per-realm lean; a new war is kept minWarTurns before peace is weighed, and a new peace
 //     peaceCooldown turns before war is weighed again.
 // The Aggressive bot-diplomacy setting, a Reckoning claim, the grudge (with its survival exception)
@@ -117,7 +117,7 @@ function theTargetedProvince(G: GameState, id: number): Province {
 // decided before this is consulted (botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim).
 // Tuning 2026-09-29b (Toby: "I still want bloody games") — chosen over 32 fuzz games of 6 bots × 20 turns
 // against the old war-on-contact rule: realm battles ≈ the same (38 vs 38 a game), realms eliminated
-// 17 vs 12, ~7 standing wars a game at mid-game. Each number is the bots' first version's weights' `war` (B-17r), by name.
+// 17 vs 12, ~7 standing wars a game at mid-game. Each number is a weight of the bots' first version, by name: `war`, `warPowers`, `warBarAndPrize` and `warAssaults`.
 const thePowers = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warPowers;
 const theBarAndPrize = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warBarAndPrize;
 const theAssaults = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warAssaults;
@@ -149,10 +149,10 @@ export const BOT_WAR = {
     Cowardly: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatACowardlyKingAddsToTheBarForWar,
   },
   grudgeYield: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheRealmsStrengthAtWhichAGrudgeYields,
-  grudgeRecall: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheRealmsStrengthAtWhichAGrudgeComesBack, // a grudge yields when the human is 5× our strength, returns at 2×
+  grudgeRecall: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheRealmsStrengthAtWhichAGrudgeComesBack, // a grudge yields when the human is far stronger than we are, and returns when it is less so
   prizeHops: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theProvincesFromTheRealmAPrizeMayLie, // a prize may lie on our border or one province beyond it
-  losingRatio: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfAFoesStrengthBelowWhichTheRealmStartsNoNewWar, // no new war while any foe is > 1/0.6 ≈ 1.7× our own strength
-  noPrizeMult: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheBarAWarWithNoPrizeInReachMustClear, // with no prize in reach, war still if the ratio clears 1.3× the bar
+  losingRatio: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfAFoesStrengthBelowWhichTheRealmStartsNoNewWar, // no new war while any foe is much stronger than our own
+  noPrizeMult: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheBarAWarWithNoPrizeInReachMustClear, // with no prize in reach, war still if the ratio clears the bar by a wider margin
   acceptRatio: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfTheRivalsStrengthBelowWhichARealmAcceptsItsPeace,
   acceptNoPrize:
     THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war
@@ -468,7 +468,7 @@ export function botWarAssess(
   return { decision, why, ratio, thr, prize, expanding, opp, losingElsewhere, wins, losses };
 }
 // Phase 4b — CONCENTRATED ASSAULT planning. A strong enemy province no single character can crack
-// is left alone by the solo attack logic. Here we gang up: if ≥2 of a bot's FREE characters are
+// is left alone by the solo attack logic. Here we gang up: if several of a bot's FREE characters are
 // each adjacent to the same at-war enemy province, none can win alone, but their COMBINED force
 // clears it with a comfortable margin, we order them all to march on it THIS phase. Orders use the
 // numeric province id (not a dir: string) because the engine only unifies co-attackers whose move

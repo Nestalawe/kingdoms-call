@@ -95,7 +95,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(513);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(514);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -831,6 +831,7 @@ test("springPassOrdersAndReach's weights are the numbers bots/phase-one.ts wrote
     theLeastUnitsAGeneralLeadsToPlanAFeint: 3,
     theLeastUnitsAGeneralLeadsToSendADetachmentToASecondFront: 4,
     theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral: 0.7,
+    theMostUnitsAGeneralKeepsForASecondFrontsDetachmentToBeRefused: 1,
     theFirstOrdersOfAHeroWhereStrikeCastsAreKeptWhenHeTakesASecondFront: 3,
   });
 });

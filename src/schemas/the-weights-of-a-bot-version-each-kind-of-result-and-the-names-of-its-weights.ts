@@ -1164,7 +1164,7 @@ const TheWeightsOfWarPowersSchema = z.object({
   theWorthOfAPointOfIncomeInARealmsPower: z.number(),
   /** Each living hero of a realm adds this to its own power. */
   theWorthOfEachHeroInARealmsOwnPower: z.number(),
-  /** A hero of a rival placed at most this many turns ago counts as one of the rival's units in the rival's power. */
+  /** A hero of a rival placed at most this many turns ago joins the hosts or heroes counted for the rival, which the worth of each then multiplies. */
   theMostTurnsAgoARivalsHeroCountsTowardsItsPower: z.number(),
   /** A rival's power always includes this much for the garrison of its capital. */
   theGarrisonAssumedInARivalsCapital: z.number(),
@@ -1194,7 +1194,7 @@ const TheWeightsOfWarBarAndPrizeSchema = z.object({
   theMixOfTheLengthOfARealmsNameInItsFixedLeanTowardsWar: z.number(),
   /** A realm's fixed lean takes one of this many values, found as the remainder of its sum divided by this. */
   theNumberOfStepsInARealmsFixedLeanTowardsWar: z.number(),
-  /** The step of a realm's fixed lean that is no lean; each step above it adds, and each below it takes off, one step of the lean. */
+  /** The step of a realm's fixed lean that is no lean, always the number of steps less one, halved; each step above it adds, and each below it takes off, one step of the lean. */
   theStepOfARealmsFixedLeanThatLeansNeitherWay: z.number(),
   /** A realm's fixed lean is its steps from no lean divided by this. */
   theStepsInOneUnitOfARealmsFixedLeanTowardsWar: z.number(),
@@ -1224,13 +1224,15 @@ const TheWeightsOfSpringPassOrdersAndReachSchema = z.object({
   theLeastUnitsAGeneralLeadsToSendADetachmentToASecondFront: z.number(),
   /** A hero is handed a detachment, for a feint or a second front, only while his hit points are at least this share of his most. */
   theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral: z.number(),
+  /** A second front's detachment is refused when the general would keep this many units or fewer. */
+  theMostUnitsAGeneralKeepsForASecondFrontsDetachmentToBeRefused: z.number(),
   /** Of a hero's planned orders, only the strike casts among his first this many are kept when he takes a second front. */
   theFirstOrdersOfAHeroWhereStrikeCastsAreKeptWhenHeTakesASecondFront: z.number(),
 });
 
 /** How urgently each kind of order comes first in a hero's season (the reordering of a hero's orders, bots/phase-one.ts). */
 const TheWeightsOfSpringPassUrgencySchema = z.object({
-  /** The urgency of a cloak, a strike cast, a challenge or a theft from a province, which goes ahead of all others. */
+  /** The urgency of a cloak, a strike cast, a challenge or a theft from a character, not from a garrison, which goes ahead of all others. */
   theUrgencyOfAnOrderThatMustComeFirst: z.number(),
   /** The urgency of an order a hero in contact, or a hero guarding a province with hosts about it, gives to prepare for a fight. */
   theUrgencyOfAnOrderThatEasesAFightInContact: z.number(),
