@@ -2,16 +2,16 @@
 // rules pulled out, the bots' worth of gold). The weights file is keyed by the kind of result a rule hands a bot
 // (AKindOfResultABotWeighs), never by the effect, and ends `satisfies TheWeightsOfABotVersion`, the type of its Zod
 // schema (B-17q: src/schemas/the-weights-of-a-bot-version-…ts, each kind an object of its names). Here, as types the
-// compiler checks: the file weighs every kind and no other, it meets the schema's type, and it fails it with one more
-// kind (a kind with no weight), a name misspelt or a weight not a number, each a constant whose type holds only while
-// that is so (no comment that waives an error). Then the file parsed with the schema's strict version: no issue, and a
-// weight of the wrong type, a missing name and one more name each give one. Then the gold's weights, each the number
-// botLedger wrote before T7, a title's (B-06r), each the number botTargetTitles and botSpecialistRoles wrote, and an
-// alignment ability's (P1-19bb8), each the number botHeroCap, botSpecialistRoles and the scholar's orders wrote, and a
-// race gift's (B-06ah), each the number botTuning's race overlays wrote, a temper's (B-06aj), each the number
-// botDuelRating and the war bar's table (BOT_WAR.temper) wrote, and a point of a host's strength's (B-06bq), each the
-// number botBattleForce, botGuessDefence and botMarginFor wrote, in its place: a change of one is a change of the bots'
-// play (the balance matrix), never a refactor.
+// compiler checks: the file weighs every kind and no other, it meets the schema's type, and it fails it with a kind
+// missing, a name misspelt or a weight not a number, each a constant whose type holds only while that is so (no
+// comment that waives an error). Then the file parsed with the schema's strict version: no issue; and in every kind,
+// each name missing or in words gives one on that name, and one more name one on the kind. Then the gold's weights,
+// each the number botLedger wrote before T7, a title's (B-06r), each the number botTargetTitles and botSpecialistRoles
+// wrote, and an alignment ability's (P1-19bb8), each the number botHeroCap, botSpecialistRoles and the scholar's orders
+// wrote, and a race gift's (B-06ah), each the number botTuning's race overlays wrote, a temper's (B-06aj), each the
+// number botDuelRating and the war bar's table (BOT_WAR.temper) wrote, and a point of a host's strength's (B-06bq),
+// each the number botBattleForce, botGuessDefence and botMarginFor wrote, in its place: a change of one is a change of
+// the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
 // compiler's (`npm run check`), which a lower level can't run.
@@ -42,18 +42,16 @@ type WithAWeightNotANumber = Omit<TheWeightsOfABotVersion, 'gold'> & {
   gold: Omit<AGold, 'theMostGoldTheChestKeepsOnAWarFooting'> & { theMostGoldTheChestKeepsOnAWarFooting: string };
 };
 
-test('the weights file weighs every kind of result and no other, meets its schema, and a kind with no weight, a misspelt name or a weight not a number fails to compile', () => {
+test('the weights file weighs every kind of result and no other, meets its schema, and a missing kind, a misspelt name or a weight not a number fails to compile', () => {
   const itWeighsEveryKindAndNoOther: TheSame<keyof TheFirstVersionsWeights, AKindOfResultABotWeighs> = true;
   const itMeetsTheSchemasType: ItMeetsTheSchema<TheFirstVersionsWeights> = true;
-  const aKindWithNoWeightFailsIt: ItMeetsTheSchema<
-    Omit<TheFirstVersionsWeights, 'temper'> & Record<'a-kind-with-no-weight', AGold>
-  > = false;
+  const aMissingKindFailsIt: ItMeetsTheSchema<Omit<TheFirstVersionsWeights, 'temper'>> = false;
   const aMisspeltNameFailsIt: ItMeetsTheSchema<WithANameMisspelt> = false;
   const aWeightNotANumberFailsIt: ItMeetsTheSchema<WithAWeightNotANumber> = false;
   expect([
     itWeighsEveryKindAndNoOther,
     itMeetsTheSchemasType,
-    aKindWithNoWeightFailsIt,
+    aMissingKindFailsIt,
     aMisspeltNameFailsIt,
     aWeightNotANumberFailsIt,
   ]).toEqual([true, true, false, false, false]);
@@ -66,28 +64,27 @@ test("the weights file parses with its schema's strict version: every kind and n
   ).toEqual([]);
 });
 
-test("the schema's strict version refuses a weight of the wrong type, a missing name and one more name", () => {
-  const { gold } = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION;
-  const goldWithANameMissing = Object.fromEntries(
-    Object.entries(gold).filter(([name]) => name !== 'theMostGoldTheChestKeepsOnAWarFooting'),
-  );
-  const withAWeightOfTheWrongType = {
-    ...THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION,
-    gold: { ...gold, theMostGoldTheChestKeepsOnAWarFooting: '8' },
-  };
-  const withANameMissing = { ...THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION, gold: goldWithANameMissing };
-  const withOneMoreName = {
-    ...THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION,
-    gold: { ...gold, aWeightTheSchemaDoesNotName: 1 },
-  };
-  const theIssues = (value: unknown): string => strictIssues(TheWeightsOfABotVersionSchema, value).join(' | ');
-  expect(theIssues(withAWeightOfTheWrongType), 'a weight of the wrong type').toMatch(
-    /^gold\.theMostGoldTheChestKeepsOnAWarFooting: invalid_type/,
-  );
-  expect(theIssues(withANameMissing), 'a missing name').toMatch(
-    /^gold\.theMostGoldTheChestKeepsOnAWarFooting: invalid_type/,
-  );
-  expect(theIssues(withOneMoreName), 'one more name').toMatch(/^gold: unrecognized_keys .*aWeightTheSchemaDoesNotName/);
+test("the schema's strict version refuses, in every kind, each name missing, each name not a number and one more name", () => {
+  const theWeights: Readonly<Record<string, Readonly<Record<string, unknown>>>> = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION;
+  /** Each issue of a value parsed strictly, as its path and its code (`gold.theMost…: invalid_type`). */
+  const theIssues = (value: unknown): string[] =>
+    strictIssues(TheWeightsOfABotVersionSchema, value).map((issue) => issue.split(' ').slice(0, 2).join(' '));
+  let theNamesChecked = 0;
+  for (const [kind, names] of Object.entries(theWeights)) {
+    for (const name of Object.keys(names)) {
+      theNamesChecked += 1;
+      const withTheNameMissing = {
+        ...theWeights,
+        [kind]: Object.fromEntries(Object.entries(names).filter(([other]) => other !== name)),
+      };
+      expect(theIssues(withTheNameMissing), `${kind}.${name} missing`).toEqual([`${kind}.${name}: invalid_type`]);
+      const withTheNameInWords = { ...theWeights, [kind]: { ...names, [name]: 'a weight in words' } };
+      expect(theIssues(withTheNameInWords), `${kind}.${name} in words`).toEqual([`${kind}.${name}: invalid_type`]);
+    }
+    const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
+    expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
+  }
+  expect(theNamesChecked, 'the names checked, every kind').toBe(46);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7, each in its place", () => {
