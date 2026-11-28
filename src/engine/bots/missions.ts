@@ -279,6 +279,10 @@ function theItemsWithGapsOf(c: Character): readonly (Item | null | undefined)[] 
 // (counted as enemy-owned neighbours: that is the "behind the front line" test), rich ground, and —
 // for a necromancer — graves, less 3 per hop of walking. Unowned undefended land is a legal
 // secondary target and needs no war.
+const theInfiltration = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsInfiltration;
+const theSignatureOrders = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsSignatureOrders;
+const theResearchAndKit = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsResearchAndKit;
+const theAlliesAndLairs = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsAlliesAndLairs;
 export const BOT_INFILTRATE_RANGE = 5; // an unarmed character's full walking reach
 export function botInfiltrateSchool(c: Character) {
   const s: Character['skills'] = asItsGuardReadsIt(c.skills) ?? {};
@@ -302,7 +306,7 @@ export function botProvUndefended(G: GameState, prov: Province | null | undefine
   if (!botKnows(G, pi, prov.id)) return false; // never seen — not a plan, a guess in the dark
   if (!botSees(G, pi, prov.id)) {
     const b = botBelief(G, pi, prov);
-    return !!b && (b.tax || 0) < 3 && b.owner == null; // only poor, unowned ground is ASSUMED empty
+    return !!b && (b.tax || 0) < theInfiltration.theTaxBelowWhichUnseenUnownedGroundIsBelievedEmpty && b.owner == null; // only poor, unowned ground is ASSUMED empty
   }
   if ((asItsGuardReadsIt(prov.garrisonArmies) ?? []).length > 0) return false;
   if ((asItsGuardReadsIt(prov.neutralDefenders) ?? []).length > 0 || (asItsGuardReadsIt(prov.npcArmies) ?? 0) > 0)
@@ -321,7 +325,11 @@ export function botInfiltrateTarget(G: GameState, pi: number, c: Character, scho
   // from prov.battleGraves, so a bot can no longer smell every corpse in the world.
   const gravesKnown = (X: Province) => botKnowsGraves(G, pi, X.id);
   const graveCount = (X: Province) =>
-    botSees(G, pi, X.id) ? (asItsGuardReadsIt(X.battleGraves) ?? []).length : gravesKnown(X) ? 2 : 0;
+    botSees(G, pi, X.id)
+      ? (asItsGuardReadsIt(X.battleGraves) ?? []).length
+      : gravesKnown(X)
+        ? theInfiltration.theGravesAnUnseenProvinceIsBelievedToHold
+        : 0;
   let best: { readonly P: Province; readonly d: number; readonly sc: number } | null = null;
   for (const X of theProvincesOf(G)) {
     if (!X || X.terrain === 'sea') continue;
@@ -341,7 +349,13 @@ export function botInfiltrateTarget(G: GameState, pi: number, c: Character, scho
       const no = botBelievedOwner(G, pi, N);
       if (N && no != null && no !== pi && botRelationRaw(G, pi, no) === THE_STATES_TWO_REALMS_STAND_IN.atWar) depth++;
     }
-    const sc = (b.tax || 0) * 2 + depth * 4 + (enemyLand ? 10 : 0) + Math.min(3, graveCount(X)) * 2 - d * 3;
+    const sc =
+      (b.tax || 0) * theInfiltration.theWorthOfEachPointOfTaxToAnInfiltrationTarget +
+      depth * theInfiltration.theWorthOfEachNeighbourAtWarToAnInfiltrationTarget +
+      (enemyLand ? theInfiltration.theWorthOfEnemyLandToAnInfiltrationTarget : 0) +
+      Math.min(theInfiltration.theMostGravesThatAddToAnInfiltrationTarget, graveCount(X)) *
+        theInfiltration.theWorthOfEachGraveToAnInfiltrationTarget -
+      d * theInfiltration.whatEachStepAwayTakesOffAnInfiltrationTarget;
     if (!best || sc > best.sc) best = { P: X, d, sc };
   }
   return best;
@@ -411,7 +425,9 @@ export function botConsecrateTarget(G: GameState, pi: number, c: Character, maxD
     if (!X || !botConsecrateOK(G, pi, c, X)) continue;
     const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, false);
     if (d == null || d > maxD) continue;
-    const sc = (X.tax || 0) * 2 - d * 3;
+    const sc =
+      (X.tax || 0) * theInfiltration.theWorthOfEachPointOfTaxToAConsecrationTarget -
+      d * theInfiltration.whatEachStepAwayTakesOffAConsecrationTarget;
     if (!best || sc > best.sc) best = { X, d, sc };
   }
   return best;
@@ -444,8 +460,12 @@ export function botSignaturePre(
       if (isTheRaceTheWildsOrOneOfItsSubRaces(asItsGuardReadsIt(X.race))) continue; // the engine falls back to GARRISON_BY_RACE_CTA
       if ((X.tax || 0) < 4 && X.id !== botHomeId(G, pi)) continue; // Toby's garrison rule: Prosperous+ land (and the capital) only
       const g = (asItsGuardReadsIt(X.garrisonArmies) ?? []).length;
-      if (g >= 2) continue;
-      const sc = (X.tax || 0) + (botIsEdge(G, pi, X) ? 4 : 0) + (X.id === botHomeId(G, pi) ? 2 : 0) - g * 3;
+      if (g >= theSignatureOrders.theGarrisonsAProvinceMayHoldForACallToArmsToRaiseOneThere) continue;
+      const sc =
+        (X.tax || 0) +
+        (botIsEdge(G, pi, X) ? theSignatureOrders.theWorthOfAFrontierProvinceToACallToArms : 0) +
+        (X.id === botHomeId(G, pi) ? theSignatureOrders.theWorthOfTheCapitalToACallToArms : 0) -
+        g * theSignatureOrders.whatEachGarrisonTakesOffACallToArmsTarget;
       if (!best || sc > best.sc) best = { X, sc };
     }
     if (!best) return null;
@@ -490,7 +510,9 @@ export function botSignaturePre(
         if (w == null || L.budget < w) continue;
         const itsSkills: Character['skills'] = asItsGuardReadsIt(h.skills) ?? {};
         const v =
-          Object.values(itsSkills).reduce((a: number, b) => a + (Number(b) || 0), 0) - w + botHireBias(G, pi, h) * 3;
+          Object.values(itsSkills).reduce((a: number, b) => a + (Number(b) || 0), 0) -
+          w +
+          botHireBias(G, pi, h) * theSignatureOrders.theWorthOfEachPointOfHireBiasToABrokersHire;
         if (!best || v > best.v) best = { h, w, v };
       }
       if (best) {
@@ -565,7 +587,7 @@ export function botRitePre(
       };
     }
   }
-  if (army.length >= 6) {
+  if (army.length >= theSignatureOrders.theUnitsAHostMustHoldToMakeABloodOffering) {
     const idx = theUnitsWithGapsOf(c)
       .map((a, i) => ({ a, i }))
       .filter((x): x is { a: Army; i: number } => Boolean(x.a && army.includes(x.a)))
@@ -589,23 +611,34 @@ export function botResearchPick(G: GameState, pi: number, options: Iterable<stri
   const war = botAtWar(G, pi),
     met = botHasMetPlayers(G, pi);
   const CAT: Readonly<Partial<Record<string, number>>> = {
-    Military: war ? 4 : 2,
-    Economy: war ? 2 : 4,
-    Espionage: met ? 3 : 1,
-    Scholarship: 2,
-    Heroic: 3,
-    Special: 3,
+    Military: war
+      ? theResearchAndKit.theWorthOfAMilitaryDiscoveryAtWar
+      : theResearchAndKit.theWorthOfAMilitaryDiscoveryAtPeace,
+    Economy: war
+      ? theResearchAndKit.theWorthOfAnEconomicDiscoveryAtWar
+      : theResearchAndKit.theWorthOfAnEconomicDiscoveryAtPeace,
+    Espionage: met
+      ? theResearchAndKit.theWorthOfAnEspionageDiscoveryOnceOtherCrownsAreMet
+      : theResearchAndKit.theWorthOfAnEspionageDiscoveryBeforeOtherCrownsAreMet,
+    Scholarship: theResearchAndKit.theWorthOfAScholarshipDiscovery,
+    Heroic: theResearchAndKit.theWorthOfAHeroicDiscovery,
+    Special: theResearchAndKit.theWorthOfASpecialDiscovery,
   }; // review II A9: the data file's six categories, explicitly
   const byId: Readonly<Partial<Record<string, ADiscoverysRow>>> = DISC_BY_ID;
   const score = (id: string) => {
     const d = byId[id];
     if (!d) return -99;
     const txt = ((d.category || '') + ' ' + (d.name || '') + ' ' + (d.desc || '')).toLowerCase();
-    let v = (CAT[d.category] ?? 0) * 2;
-    if (/war|battle|arm|siege|strength|fight|host|troop|unit|command/.test(txt)) v += war ? 4 : 2;
-    if (/tax|gold|trade|wealth|state|treasur|income|harvest/.test(txt)) v += war ? 1 : 3;
-    if (/spy|cipher|scout|explor|map|thief|steal/.test(txt)) v += met ? 2 : 0;
-    if (/sage|research|lore|scholar/.test(txt)) v += 1;
+    let v = (CAT[d.category] ?? 0) * theResearchAndKit.theTimesACategorysWorthCountsInADiscoverysWorth;
+    if (/war|battle|arm|siege|strength|fight|host|troop|unit|command/.test(txt))
+      v += war ? theResearchAndKit.theWorthOfAWarlikeWordingAtWar : theResearchAndKit.theWorthOfAWarlikeWordingAtPeace;
+    if (/tax|gold|trade|wealth|state|treasur|income|harvest/.test(txt))
+      v += war
+        ? theResearchAndKit.theWorthOfAWordingOfWealthAtWar
+        : theResearchAndKit.theWorthOfAWordingOfWealthAtPeace;
+    if (/spy|cipher|scout|explor|map|thief|steal/.test(txt))
+      v += met ? theResearchAndKit.theWorthOfAWordingOfEspionageOnceOtherCrownsAreMet : 0;
+    if (/sage|research|lore|scholar/.test(txt)) v += theResearchAndKit.theWorthOfAWordingOfLore;
     return v;
   };
   return [...options].filter((id) => discMayBeOffered(byId[id])).sort((a, b) => score(b) - score(a))[0]; // R-140
@@ -629,7 +662,7 @@ export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRe
     theProvincesOf(G).forEach((p) => {
       if (p?.owner === pi) units += (asItsGuardReadsIt(p.garrisonArmies) ?? []).length;
     });
-    if (units >= 8)
+    if (units >= theResearchAndKit.theUnitsTheRealmMustHoldForThePhilosophersStoneToBeUsed)
       return {
         action: 'use_item',
         target: String(asItsGuardReadsIt(stone.id) ?? stone.name),
@@ -709,7 +742,11 @@ export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRe
         }
         if (room <= 0) continue;
         const sc =
-          (primaryOf[role]?.has(stat) ? 10 : 0) + (role === 'slayer' && _BOT_DUEL_KIT.includes(stat) ? 5 : 0) + room;
+          (primaryOf[role]?.has(stat) ? theResearchAndKit.theWorthOfTheComradeWhoseRoleMostUsesAKitsStat : 0) +
+          (role === 'slayer' && _BOT_DUEL_KIT.includes(stat)
+            ? theResearchAndKit.theWorthOfASlayerAsTheComradeToGetDuellingKit
+            : 0) +
+          room;
         if (!best || sc > best.sc) best = { x, sc };
       }
       if (best) {
@@ -722,7 +759,7 @@ export function botItemPre(G: GameState, pi: number, c: Character, roles: ABotRe
   const ranked = Object.entries(gives).sort(([, a], [, b]) => b.length - a.length)[0];
   if (!ranked) return null;
   const [rid, given] = ranked;
-  const idx = given.sort((a, b) => a - b).slice(0, 2);
+  const idx = given.sort((a, b) => a - b).slice(0, theResearchAndKit.theMostKitSentToOneComradeInATurn);
   const rc = theCharactersOf(G).find((x) => x?.id === +rid);
   return {
     action: 'give_item',
@@ -815,7 +852,7 @@ export function botAllyNear(G: GameState, pi: number, X: Province | null | undef
       e?.alive &&
       e.player != null &&
       e.player !== pi &&
-      theUnitsWithGapsOf(e).length >= 3 &&
+      theUnitsWithGapsOf(e).length >= theAlliesAndLairs.theUnitsAnAlliedHostMustLeadToCountAsAnAlliedFront &&
       botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.allied &&
       botSeesChar(G, pi, e)
     ))
@@ -845,7 +882,7 @@ export function botRememberedHostAt(G: GameState, pi: number, provId: number, on
   Object.entries(I.generals).forEach(([k, r]) => {
     if (
       r.provId !== provId ||
-      turn - r.turn > 3 ||
+      turn - r.turn > theAlliesAndLairs.theTurnsARememberedHostStillCountsAgainstATarget ||
       botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar
     )
       return;
@@ -861,7 +898,15 @@ export function botRememberedHostAt(G: GameState, pi: number, provId: number, on
 // The margin demanded against an enemy HOST (Toby): 1.5× a five-unit column, rising 0.05 per unit to 2×.
 export function botHostMargin(base: number, hostUnits: number) {
   if (!(hostUnits > 0)) return base;
-  return Math.max(base, Math.min(2.0, 1.5 + 0.05 * Math.max(0, hostUnits - 5)));
+  return Math.max(
+    base,
+    Math.min(
+      theAlliesAndLairs.theMostMarginAHostAsksOfAFoesHost,
+      theAlliesAndLairs.theMarginAHostAsksOfAFoesColumnOfFiveUnitsOrFewer +
+        theAlliesAndLairs.theMarginEachUnitBeyondFiveAddsToWhatAHostAsks *
+          Math.max(0, hostUnits - theAlliesAndLairs.theUnitsOfAFoesHostBeyondWhichTheMarginRises),
+    ),
+  );
 }
 // ══ LAIRS BY RUMOUR (Sept 2026, Toby: Hunting Rumours first, clear at 80%+, weakest first) ════
 // A rumour is bought (1–4g by grade) by the hero who would fight, and the engine records the odds band it
@@ -926,19 +971,19 @@ export function botSlayerTrainSkill(c: Character) {
   // experience). The ladder: Melee 3, Archery 2, school 1, Melee 4, school 2, Melee 5, school 3→5, Archery 5,
   // then his other combat schools; null when all are at 5.
   const L: readonly (readonly [skill: string, to: number])[] = [
-    ['melee', 3],
-    ['archery', 2],
-    [sch, 1],
-    ['melee', 4],
-    [sch, 2],
-    ['melee', 5],
-    [sch, 3],
-    [sch, 5],
-    ['archery', 5],
-    ['elemental', 5],
-    ['necromancy', 5],
-    ['psychic', 5],
-    ['white', 5],
+    ['melee', theAlliesAndLairs.theLevelOfMeleeTheSlayersLadderFirstAsksOf],
+    ['archery', theAlliesAndLairs.theLevelOfArcheryTheSlayersLadderFirstAsksOf],
+    [sch, theAlliesAndLairs.theLevelOfASchoolTheSlayersLadderFirstAsksOf],
+    ['melee', theAlliesAndLairs.theLevelOfMeleeTheSlayersLadderNextAsksOf],
+    [sch, theAlliesAndLairs.theLevelOfASchoolTheSlayersLadderNextAsksOf],
+    ['melee', theAlliesAndLairs.theLevelOfMeleeTheSlayersLadderThenAsksOf],
+    [sch, theAlliesAndLairs.theLevelOfASchoolTheSlayersLadderThenAsksOf],
+    [sch, theAlliesAndLairs.theLevelOfASchoolTheSlayersLadderFinallyAsksOf],
+    ['archery', theAlliesAndLairs.theLevelOfArcheryTheSlayersLadderFinallyAsksOf],
+    ['elemental', theAlliesAndLairs.theLevelOfEachOtherBattleSchoolTheSlayersLadderEndsWith],
+    ['necromancy', theAlliesAndLairs.theLevelOfEachOtherBattleSchoolTheSlayersLadderEndsWith],
+    ['psychic', theAlliesAndLairs.theLevelOfEachOtherBattleSchoolTheSlayersLadderEndsWith],
+    ['white', theAlliesAndLairs.theLevelOfEachOtherBattleSchoolTheSlayersLadderEndsWith],
   ];
   for (const [k, to] of L) {
     if ((Number(s[k]) || 0) < Math.min(5, to)) return k;
@@ -953,8 +998,8 @@ export function botSlayerTrainSkill(c: Character) {
 export function botRumourAffordable(G: GameState, pi: number, L: ABotRealmsLedger, price: number) {
   return (
     (Number(L.rumourFund) || 0) >= price ||
-    L.budget >= price + 1 ||
-    (Number(theRealmsOf(G)[pi]?.gold) || 0) >= price + 3
+    L.budget >= price + theAlliesAndLairs.theGoldAboveARumoursPriceTheMusterBudgetMustHold ||
+    (Number(theRealmsOf(G)[pi]?.gold) || 0) >= price + theAlliesAndLairs.theGoldAboveARumoursPriceTheTreasuryMustHold
   );
 }
 export function botSpendRumour(L: ABotRealmsLedger, price: number) {
@@ -1034,7 +1079,9 @@ export function botLairTiers(c: Character) {
   if (cur < 0) up = 0;
   else if (
     cur < 3 &&
-    (k(cur) >= BOT_LAIR_PROMOTE_AT || k(cur + 1) >= 1 || botLairStrongFor(c, cur + 1)) &&
+    (k(cur) >= BOT_LAIR_PROMOTE_AT ||
+      k(cur + 1) >= theAlliesAndLairs.theLairsOfTheGradeAboveClearedThatKeepAHeroAskingAboutIt ||
+      botLairStrongFor(c, cur + 1)) &&
     k(cur) >= (Number(lad.retryAt) || 0)
   )
     up = cur + 1;

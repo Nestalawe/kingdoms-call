@@ -586,6 +586,132 @@ const TheWeightsOfAHostsMarchSchema = z.object({
 
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
+/** What draws a conjurer to a province to raise a host in and a king to a province to consecrate (botProvUndefended, botInfiltrateTarget, botConsecrateTarget, bots/missions.ts). */
+const TheWeightsOfAnInfiltrationAndAConsecrationSchema = z.object({
+  /** Unseen, unowned ground whose believed tax is below this is taken to hold nothing that could fight for it. */
+  theTaxBelowWhichUnseenUnownedGroundIsBelievedEmpty: z.number(),
+  /** A province not in sight, whose graves the realm knows of, counts this many graves toward its worth as a place to conjure. */
+  theGravesAnUnseenProvinceIsBelievedToHold: z.number(),
+  /** Each point of a province's believed tax adds this to its worth as a place to conjure a host. */
+  theWorthOfEachPointOfTaxToAnInfiltrationTarget: z.number(),
+  /** Each neighbouring province believed held by a realm at war with this one adds this to a province's worth as a place to conjure a host. */
+  theWorthOfEachNeighbourAtWarToAnInfiltrationTarget: z.number(),
+  /** A province believed held by a realm at war with this one adds this to its worth as a place to conjure a host. */
+  theWorthOfEnemyLandToAnInfiltrationTarget: z.number(),
+  /** A province's graves add to its worth as a place to conjure a host up to this many. */
+  theMostGravesThatAddToAnInfiltrationTarget: z.number(),
+  /** Each grave of those counted adds this to a province's worth as a place to conjure a host. */
+  theWorthOfEachGraveToAnInfiltrationTarget: z.number(),
+  /** Each step of walking takes this off a province's worth as a place to conjure a host. */
+  whatEachStepAwayTakesOffAnInfiltrationTarget: z.number(),
+  /** Each point of a province's tax adds this to its worth as ground for a king to consecrate. */
+  theWorthOfEachPointOfTaxToAConsecrationTarget: z.number(),
+  /** Each step of walking takes this off a province's worth as ground for a king to consecrate. */
+  whatEachStepAwayTakesOffAConsecrationTarget: z.number(),
+});
+
+/** Where a Call to Arms goes, what a Broker's hire weighs and when a host makes a Blood Offering (botSignaturePre, botRitePre, bots/missions.ts). */
+const TheWeightsOfTheSignatureOrdersSchema = z.object({
+  /** A province already holding this many garrison companies or more is passed over for a Call to Arms. */
+  theGarrisonsAProvinceMayHoldForACallToArmsToRaiseOneThere: z.number(),
+  /** A province on the frontier adds this to its worth as the place for a Call to Arms. */
+  theWorthOfAFrontierProvinceToACallToArms: z.number(),
+  /** The realm's capital adds this to its worth as the place for a Call to Arms. */
+  theWorthOfTheCapitalToACallToArms: z.number(),
+  /** Each garrison company already in a province takes this off its worth as the place for a Call to Arms. */
+  whatEachGarrisonTakesOffACallToArmsTarget: z.number(),
+  /** Each point of the realm's liking for a wanderer adds this to his worth as a hire through a Broker. */
+  theWorthOfEachPointOfHireBiasToABrokersHire: z.number(),
+  /** A host that cannot hunt makes a Blood Offering when it holds this many units or more that are not summoned. */
+  theUnitsAHostMustHoldToMakeABloodOffering: z.number(),
+});
+
+/** What makes a discovery worth picking and what moves kit between the court's heroes (botResearchPick, botItemPre, bots/missions.ts). */
+const TheWeightsOfAResearchPickAndTheKitASlayerGetsSchema = z.object({
+  /** A discovery of the Military category is worth this before its category's count, when the realm is at war. */
+  theWorthOfAMilitaryDiscoveryAtWar: z.number(),
+  /** A discovery of the Military category is worth this before its category's count, when the realm is at peace. */
+  theWorthOfAMilitaryDiscoveryAtPeace: z.number(),
+  /** A discovery of the Economy category is worth this before its category's count, when the realm is at war. */
+  theWorthOfAnEconomicDiscoveryAtWar: z.number(),
+  /** A discovery of the Economy category is worth this before its category's count, when the realm is at peace. */
+  theWorthOfAnEconomicDiscoveryAtPeace: z.number(),
+  /** A discovery of the Espionage category is worth this before its category's count, once the realm has met other crowns. */
+  theWorthOfAnEspionageDiscoveryOnceOtherCrownsAreMet: z.number(),
+  /** A discovery of the Espionage category is worth this before its category's count, before the realm has met other crowns. */
+  theWorthOfAnEspionageDiscoveryBeforeOtherCrownsAreMet: z.number(),
+  /** A discovery of the Scholarship category is worth this before its category's count. */
+  theWorthOfAScholarshipDiscovery: z.number(),
+  /** A discovery of the Heroic category is worth this before its category's count. */
+  theWorthOfAHeroicDiscovery: z.number(),
+  /** A discovery of the Special category is worth this before its category's count. */
+  theWorthOfASpecialDiscovery: z.number(),
+  /** A discovery's category worth is counted this many times in its worth. */
+  theTimesACategorysWorthCountsInADiscoverysWorth: z.number(),
+  /** A discovery worded of war adds this to its worth when the realm is at war. */
+  theWorthOfAWarlikeWordingAtWar: z.number(),
+  /** A discovery worded of war adds this to its worth when the realm is at peace. */
+  theWorthOfAWarlikeWordingAtPeace: z.number(),
+  /** A discovery worded of tax or wealth adds this to its worth when the realm is at war. */
+  theWorthOfAWordingOfWealthAtWar: z.number(),
+  /** A discovery worded of tax or wealth adds this to its worth when the realm is at peace. */
+  theWorthOfAWordingOfWealthAtPeace: z.number(),
+  /** A discovery worded of spying or scouting adds this to its worth once the realm has met other crowns. */
+  theWorthOfAWordingOfEspionageOnceOtherCrownsAreMet: z.number(),
+  /** A discovery worded of lore or research adds this to its worth. */
+  theWorthOfAWordingOfLore: z.number(),
+  /** A hero carrying the Philosopher's Stone uses it once the realm holds this many units or more, in the field and in its garrisons. */
+  theUnitsTheRealmMustHoldForThePhilosophersStoneToBeUsed: z.number(),
+  /** A comrade whose role counts a kit's stat among its main ones adds this to his worth as the one to send the kit to. */
+  theWorthOfTheComradeWhoseRoleMostUsesAKitsStat: z.number(),
+  /** A slayer adds this to his worth as the comrade to send duelling kit to. */
+  theWorthOfASlayerAsTheComradeToGetDuellingKit: z.number(),
+  /** A hero sends one comrade this many items at most in a turn. */
+  theMostKitSentToOneComradeInATurn: z.number(),
+});
+
+/** What counts as an allied front, how long a remembered host counts, the margin a host asks of a foe's host and the slayer's ladder of skills (botAllyNear, botRememberedHostAt, botHostMargin, botSlayerTrainSkill, botRumourAffordable, botLairTiers, bots/missions.ts). */
+const TheWeightsOfAnAlliedFrontAHostsMarginAndTheSlayersLadderSchema = z.object({
+  /** An allied hero leading this many units or more, seen near a target, makes it part of an allied front. */
+  theUnitsAnAlliedHostMustLeadToCountAsAnAlliedFront: z.number(),
+  /** A host last seen in a province no more than this many turns ago still counts against it. */
+  theTurnsARememberedHostStillCountsAgainstATarget: z.number(),
+  /** A host asks no more than this margin of strength of a foe's host. */
+  theMostMarginAHostAsksOfAFoesHost: z.number(),
+  /** A host asks this margin of strength of a foe's column of five units or fewer. */
+  theMarginAHostAsksOfAFoesColumnOfFiveUnitsOrFewer: z.number(),
+  /** Each unit of a foe's host beyond five adds this to the margin a host asks. */
+  theMarginEachUnitBeyondFiveAddsToWhatAHostAsks: z.number(),
+  /** A foe's host of more units than this raises the margin a host asks; a column of five or fewer does not. */
+  theUnitsOfAFoesHostBeyondWhichTheMarginRises: z.number(),
+  /** The first rung of the slayer's ladder trains Melee to this level. */
+  theLevelOfMeleeTheSlayersLadderFirstAsksOf: z.number(),
+  /** The first rung of the slayer's ladder trains Archery to this level. */
+  theLevelOfArcheryTheSlayersLadderFirstAsksOf: z.number(),
+  /** The first rung of the slayer's ladder trains his battle school to this level. */
+  theLevelOfASchoolTheSlayersLadderFirstAsksOf: z.number(),
+  /** The next rung of the slayer's ladder trains Melee to this level. */
+  theLevelOfMeleeTheSlayersLadderNextAsksOf: z.number(),
+  /** The next rung of the slayer's ladder trains his battle school to this level. */
+  theLevelOfASchoolTheSlayersLadderNextAsksOf: z.number(),
+  /** The third rung of the slayer's ladder trains Melee to this level. */
+  theLevelOfMeleeTheSlayersLadderThenAsksOf: z.number(),
+  /** The third rung of the slayer's ladder trains his battle school to this level. */
+  theLevelOfASchoolTheSlayersLadderThenAsksOf: z.number(),
+  /** The fourth rung of the slayer's ladder trains his battle school to this level. */
+  theLevelOfASchoolTheSlayersLadderFinallyAsksOf: z.number(),
+  /** The slayer's ladder then trains Archery to this level. */
+  theLevelOfArcheryTheSlayersLadderFinallyAsksOf: z.number(),
+  /** The slayer's ladder ends with each other battle school trained to this level. */
+  theLevelOfEachOtherBattleSchoolTheSlayersLadderEndsWith: z.number(),
+  /** A rumour is bought from the muster budget when the budget holds its price and this much more. */
+  theGoldAboveARumoursPriceTheMusterBudgetMustHold: z.number(),
+  /** A rumour is bought from the treasury when it holds its price and this much more. */
+  theGoldAboveARumoursPriceTheTreasuryMustHold: z.number(),
+  /** A hero who has cleared this many lairs or more of the grade above his own keeps asking about that grade. */
+  theLairsOfTheGradeAboveClearedThatKeepAHeroAskingAboutIt: z.number(),
+});
+
 export const TheWeightsOfABotVersionSchema = z.object({
   gold: TheWeightsOfAGoldSchema,
   title: TheWeightsOfATitleSchema,
@@ -607,6 +733,10 @@ export const TheWeightsOfABotVersionSchema = z.object({
   specialistsMageWork: TheWeightsOfAMagesWorkSchema,
   specialistsDefenders: TheWeightsOfADefendersPostSchema,
   specialistsHostsMarch: TheWeightsOfAHostsMarchSchema,
+  missionsInfiltration: TheWeightsOfAnInfiltrationAndAConsecrationSchema,
+  missionsSignatureOrders: TheWeightsOfTheSignatureOrdersSchema,
+  missionsResearchAndKit: TheWeightsOfAResearchPickAndTheKitASlayerGetsSchema,
+  missionsAlliesAndLairs: TheWeightsOfAnAlliedFrontAHostsMarginAndTheSlayersLadderSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;
