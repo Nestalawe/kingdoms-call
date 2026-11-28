@@ -122,9 +122,11 @@ makes of that gold from its version's weights file.
   the kind of result, never by the effect. Its `gold` holds the ledger's numbers, each named for what it weighs: the
   enemy host that puts a realm on a war footing, the share of the income its wages may take then and the chest it
   keeps then, the size of a small realm and the share of its free treasury its wages may lean on, and the defenders'
-  full strength and the share of the wage ceiling held back for them. The kinds (`AKindOfResultABotWeighs`) and a kind's shape are
-  in `src/engine/bots/intel.ts`; the file ends `satisfies Record<AKindOfResultABotWeighs, …>`, so a kind it gives no
-  weights fails to compile. Content holds no bot number.
+  full strength and the share of the wage ceiling held back for them. Its shape is a Zod schema,
+  `src/schemas/the-weights-of-a-bot-version-each-kind-of-result-and-the-names-of-its-weights.ts`: each kind an object
+  of its names, each name with what it weighs. The kinds (`AKindOfResultABotWeighs`, `src/engine/bots/intel.ts`) are
+  its keys, and the file ends `satisfies TheWeightsOfABotVersion` (the schema's type), so a kind with no weights, or a
+  name misspelt, missing or more, fails to compile. Content holds no bot number.
 - **A later bot version** is a weights file of its own beside this one, of the same kinds and names, for the bots
   to read in its place (after T7, the old bot played against the new). A new kind joins the kinds, and every version's
   file gives it its weights: a title is the second kind
@@ -152,8 +154,8 @@ makes of that gold from its version's weights file.
 - `tests/unit/a-heros-wage-in-service-is-one-formula-the-turn-the-worlds-making-and-the-release-read.test.ts`: the
   formula against each copy it replaced.
 - `tests/unit/the-bots-first-versions-weights-weigh-every-kind-of-result-and-hold-the-numbers-the-ledger-wrote.test.ts`:
-  the weights file weighs every kind and no other (a kind with no weight fails to compile), and holds botLedger's
-  numbers; `tests/unit/the-bots-plan-called-directly.test.ts` holds the ledger and the upkeep on what no game hands them.
+  the weights file weighs every kind and no other (a kind with no weight, a misspelt name or a weight not a number
+  fails to compile), parses with its schema's strict version, and holds botLedger's numbers; `tests/unit/the-bots-plan-called-directly.test.ts` holds the ledger and the upkeep on what no game hands them.
 - The ratchet's `economyNumbersInEngine` and `economyNumbersInTheBots`, which only fall, and the economy's static test
   of the functions its rows have taken
   (`tests/static/the-code-the-economys-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts`).
