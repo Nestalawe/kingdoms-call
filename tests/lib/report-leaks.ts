@@ -18,6 +18,7 @@
 import {
   THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE,
   type LineAudience,
+  type LineFact,
   type LogLine,
 } from '../../src/engine/turn/events-and-their-audiences.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
@@ -336,6 +337,9 @@ export interface EventAsEmitted {
   kind: unknown;
   /** The realm its fact names (a line for one realm alone: THE_KINDS_WHOSE_AUDIENCE_IS_ONE_REALMS_ALONE), else null. */
   factsRealm: unknown;
+  /** The fact its line records, whole (none: a line written with its words): what the balance matrix counts each
+   *  alignment ability's use by (tools/balance/the-count-of-each-alignment-abilitys-use-by-its-key.ts). */
+  fact?: LineFact;
 }
 /** What perception read besides the world: the turn's events, and its sight (resolveTurn's whatTheReportsRead). */
 export interface Perception {
@@ -373,6 +377,7 @@ export function perceptionOfTheTurn(
         audience: { ...audience },
         kind: fact?.kind ?? null,
         factsRealm: (fact !== undefined && 'realm' in fact ? fact.realm : null) ?? null,
+        ...(fact !== undefined ? { fact } : {}),
       },
     ];
   });

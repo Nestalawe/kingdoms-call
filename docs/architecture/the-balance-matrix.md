@@ -83,6 +83,16 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   first turn, the realms and the report sections. It reads `src/`, so with `KC_SITE` it isn't played: its fail-first
   proof is a planted copy of the branch. `--out FILE` writes its run beside FILE (`every-realm.json`), and the balance
   report says in one line whether every realm's report is identical to the base branch's.
+- **Each alignment ability's use, counted by its key** (`tools/balance/the-count-of-each-alignment-abilitys-use-by-its-key.ts`,
+  B-17c): the every-realm half counts, per realm per game, the uses of each of the 51 alignment abilities, by one typed
+  rule a key (`satisfies Record<AlignmentAbilitySlug, …>`: a new ability with no rule doesn't compile): a line's kind
+  (from where the line names the realm: a battle's lines name the attacker's realm first, the defender's second), an
+  order (the telemetry's), a fact, the state after the turn, or once at the set-up. A use is an act or the ability's
+  own effect; three are typed stand-ins (what the world holds where the ability could act: the risen dead held, beasts
+  led without the Druid), not uses. Only a realm of the ability's alignment counts (an Undead hero in a duel: his own).
+  It reads kinds, facts, orders and state, never words (BOT-S6). Two are "not countable yet": righteous defence and the
+  home of the wild show only in a battle's strength record. The counts ride on each game's result (`abilityUses`) and
+  its `--out` run, never in a baseline.
 - `KC_SITE` plays another copy of the site. `-- --set B` plays the noise set; `-- --only bots-03,scripted-01` plays
   some games; `-- --out <file>` writes the run in the baseline's form, e.g. to compare two runs.
 - When a change is meant to change play, or a realm's report, `npm run balance:update` rewrites the baselines (both

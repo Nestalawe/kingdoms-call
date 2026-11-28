@@ -26,6 +26,13 @@ import { scenarioInTheVm } from '../../tests/lib/scenario-in-the-vm.ts';
 import type { ReportsResult } from './baseline.ts';
 import { h, playHash, proseHash, reportSectionHashes, withoutStamps } from './hash.ts';
 import { MAX_TURNS, type GameSpec } from './matrix.ts';
+import {
+  countATurn,
+  countTheSetUp,
+  noUsesYet,
+  theTurnAsTheCountReadsIt,
+  theWorldAsTheCountReadsIt,
+} from './the-count-of-each-alignment-abilitys-use-by-its-key.ts';
 
 /** Plays `spec` in the engine's vm (from `src`, by default this checkout's src/) with every realm's report, and
  *  returns its hashes and what the leak checks found. */
@@ -36,12 +43,15 @@ export function playEveryRealm(spec: GameSpec, src?: string): ReportsResult {
   sc.recordTheEvents();
   for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) sc.W.eval('kcRng()');
   let state = newWorldOf(sc.engine, spec);
+  const abilityUses = noUsesYet();
+  countTheSetUp(theWorldAsTheCountReadsIt(state), abilityUses);
   const turns: string[] = [];
   const states: string[] = [];
   const sections = new Map<string, string[]>();
   let reports = 0;
   const leaks: string[] = [];
   for (let t = 1; t <= MAX_TURNS; t++) {
+    const stateBefore = state;
     const before = JSON.parse(state) as SavedState & { turn: number };
     if (before.gameOver) break;
     const played = sc.play(state, JSON.parse(slotRowsJsonOf(spec, state, before.turn)) as unknown[]);
@@ -61,6 +71,15 @@ export function playEveryRealm(spec: GameSpec, src?: string): ReportsResult {
       ...(played.perception ? { perception: played.perception } : {}),
     });
     if (breaches.length) leaks.push(describeBreaches(`turn ${String(t)}`, breaches));
+    countATurn(
+      theTurnAsTheCountReadsIt({
+        before: stateBefore,
+        after: state,
+        events: played.perception?.events ?? [],
+        statistics: played.collected,
+      }),
+      abilityUses,
+    );
     turns.push(
       each
         .map(({ realm, report }) => {
@@ -85,6 +104,7 @@ export function playEveryRealm(spec: GameSpec, src?: string): ReportsResult {
     states,
     reports,
     leaks,
+    abilityUses: Object.fromEntries(abilityUses),
     ms: Math.round(performance.now() - t0),
   };
 }
