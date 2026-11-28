@@ -387,6 +387,40 @@ function theRealmsALineNames(line: ALineAsTheCountReadsIt, where: WhereALineName
   }
 }
 
+/** The saved world as the count reads it, from its JSON. */
+export const theWorldAsTheCountReadsIt = (json: string): TheWorldAsTheCountReadsIt =>
+  JSON.parse(json) as TheWorldAsTheCountReadsIt;
+
+/** What a played turn hands the count (every-realm.ts): the saved world before and after it, as JSON; perception's
+ *  events, each line with its fact; and the turn's statistics, its orders among them. */
+export interface APlayedTurnAsTheCountTakesIt {
+  readonly before: string;
+  readonly after: string;
+  readonly events: readonly {
+    readonly line: {
+      readonly actor: number | null;
+      readonly targets: readonly (number | null)[];
+      readonly charIds: readonly number[] | null;
+    };
+    readonly fact?: LineFact;
+  }[];
+  readonly statistics: { readonly orders?: TheOrdersOfATurn };
+}
+
+/** A played turn as the count reads it: each line's kind from its fact (a line written with its words has none). */
+export const theTurnAsTheCountReadsIt = (played: APlayedTurnAsTheCountTakesIt): ATurnAsTheCountReadsIt => ({
+  before: theWorldAsTheCountReadsIt(played.before),
+  after: theWorldAsTheCountReadsIt(played.after),
+  lines: played.events.map(({ line, fact }) => ({
+    kind: fact?.kind ?? null,
+    ...(fact ? { fact } : {}),
+    actor: line.actor,
+    targets: line.targets,
+    charIds: line.charIds,
+  })),
+  orders: played.statistics.orders ?? {},
+});
+
 /** Counts the uses at the world's making: each set-up ability, once for each realm of its alignment. */
 export function countTheSetUp(world: TheWorldAsTheCountReadsIt, into: TheUsesOfEachAlignmentAbility): void {
   for (const key of THE_KEYS) {

@@ -30,8 +30,8 @@ import {
   countATurn,
   countTheSetUp,
   noUsesYet,
-  type TheOrdersOfATurn,
-  type TheWorldAsTheCountReadsIt,
+  theTurnAsTheCountReadsIt,
+  theWorldAsTheCountReadsIt,
 } from './the-count-of-each-alignment-abilitys-use-by-its-key.ts';
 
 /** Plays `spec` in the engine's vm (from `src`, by default this checkout's src/) with every realm's report, and
@@ -44,7 +44,7 @@ export function playEveryRealm(spec: GameSpec, src?: string): ReportsResult {
   for (let i = 0; i < PAGE_DRAWS_AS_IT_LOADS; i++) sc.W.eval('kcRng()');
   let state = newWorldOf(sc.engine, spec);
   const abilityUses = noUsesYet();
-  countTheSetUp(JSON.parse(state) as TheWorldAsTheCountReadsIt, abilityUses);
+  countTheSetUp(theWorldAsTheCountReadsIt(state), abilityUses);
   const turns: string[] = [];
   const states: string[] = [];
   const sections = new Map<string, string[]>();
@@ -72,18 +72,12 @@ export function playEveryRealm(spec: GameSpec, src?: string): ReportsResult {
     });
     if (breaches.length) leaks.push(describeBreaches(`turn ${String(t)}`, breaches));
     countATurn(
-      {
-        before: JSON.parse(stateBefore) as TheWorldAsTheCountReadsIt,
-        after: JSON.parse(state) as TheWorldAsTheCountReadsIt,
-        lines: (played.perception?.events ?? []).map(({ line, fact }) => ({
-          kind: fact?.kind ?? null,
-          ...(fact ? { fact } : {}),
-          actor: line.actor,
-          targets: line.targets,
-          charIds: line.charIds,
-        })),
-        orders: (played.collected as { orders?: TheOrdersOfATurn }).orders ?? {},
-      },
+      theTurnAsTheCountReadsIt({
+        before: stateBefore,
+        after: state,
+        events: played.perception?.events ?? [],
+        statistics: played.collected,
+      }),
       abilityUses,
     );
     turns.push(

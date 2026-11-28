@@ -5,6 +5,7 @@
 // from the world after the turn; the set-up, once a realm at the world's making. The battle factors with no line
 // (righteous defence, the home of the wild) are the keys not countable yet. The count over the matrix's 60 games is in
 // the pull request.
+// What a played turn hands the count (every-realm.ts's theTurnAsTheCountReadsIt) is read as the count reads it.
 // Level 1 (unit): pure functions on made-up turns; no game is played.
 import { describe, expect, test } from 'vitest';
 import type { AlignmentAbilitySlug } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
@@ -13,6 +14,7 @@ import {
   countTheSetUp,
   HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED,
   noUsesYet,
+  theTurnAsTheCountReadsIt,
   THE_KEYS_COUNTED_BY_A_STAND_IN,
   THE_KEYS_NOT_COUNTABLE_YET,
   type ALineAsTheCountReadsIt,
@@ -276,5 +278,35 @@ describe('each kind of rule', () => {
     expect(uses.get('a-druidic-king-starts-with-druid'), 'no Druidic realm').toEqual({});
     expect(uses.get('consecrate'), 'an order is not counted at the making').toEqual({});
     expect(theUsesOf('one-undead-realm-a-game', aTurn({})), 'not in a turn').toEqual({});
+  });
+});
+
+describe('what a played turn hands the count (every-realm.ts)', () => {
+  test("its worlds, each line's kind from its fact and the realms it names, and the statistics' orders", () => {
+    const fact = {
+      kind: 'an Evil or Undead realm declares war without warning',
+      declarer: { realmName: 'Ashmarch', seat: 2 },
+      foe: { realmName: 'Brightvale', seat: 0 },
+      undead: true,
+    } as const;
+    const turn = theTurnAsTheCountReadsIt({
+      before: JSON.stringify(WORLD),
+      after: JSON.stringify({ ...WORLD, relations: { '0-2': 'enemy' } }),
+      events: [
+        { line: { actor: null, targets: [2, 0], charIds: null }, fact },
+        { line: { actor: 1, targets: [1], charIds: [11] } },
+      ],
+      statistics: { orders: { 2: { chars: { 12: { ph: [{ a: 'harvest_field' }] } } } } },
+    });
+    expect(turn.before, 'the world before').toEqual(WORLD);
+    expect(turn.after.relations, 'the world after').toEqual({ '0-2': 'enemy' });
+    expect(turn.lines, 'the lines').toEqual([
+      { kind: fact.kind, fact, actor: null, targets: [2, 0], charIds: null },
+      { kind: null, actor: 1, targets: [1], charIds: [11] },
+    ]);
+    const uses = noUsesYet();
+    countATurn(turn, uses);
+    expect(uses.get('war-without-warning-of-an-undead-realm'), 'the fact counted').toEqual({ 2: 1 });
+    expect(uses.get('harvest-the-field'), "the statistics' orders counted").toEqual({ 2: 1 });
   });
 });
