@@ -18,7 +18,7 @@
 // (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts,
 // part 1), and B-17u's: a thief's targets, the roles' work, a mage's work, a defender's post and a host's march (part
 // 2), and B-17v's: an infiltration's and a consecration's, the signature orders', a research pick's and a slayer's kit,
-// and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a leaderless host's and a slayer's lessons (bots/missions.ts, part 2), each in its place: a
+// and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a leaderless host's and a slayer's lessons (bots/missions.ts, part 2), and B-17x's: a general's worth, the roles' posts and the recruiting and the court's size (bots/strategy.ts, part 1), each in its place: a
 // change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -92,7 +92,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(347);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(395);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -589,5 +589,68 @@ test("missionsSlayerSchool's weights are the numbers bots/missions.ts wrote inli
     theWorthOfEachLessonThatOpensTheHuntingGate: 6,
     theWorthOfTheKingAsTheTeacherOfAPlan: 1,
     theMostStepsASlayerWalksToWhereTheKingWillStand: 5,
+  });
+});
+
+test("strategyGeneralship's weights are the numbers bots/strategy.ts wrote inline before B-17x, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyGeneralship).toEqual({
+    whatEachLevelOfTacticalIsWorthInAGeneral: 4,
+    whatEachLevelOfMarchIsWorthInAGeneral: 2,
+    theMostUnitsThatCountTowardAGeneralsWorth: 10,
+    theUnitsFromWhichAHostGivesItsGeneralAFlatBonus: 3,
+    theFlatBonusAHostOfThatSizeGivesItsGeneral: 8,
+    theTimesTheShareOfUnitsOfAGeneralsOwnRaceCountsInHisWorth: 4,
+    theTimesTheShareOfUnitsOfARivalRaceCountsAgainstAGeneralsWorth: 6,
+    theNecromancyLevelFromWhichAKingLeadingSkeletonsGainsInWorth: 1,
+    theShareOfSkeletonsAKingMustLeadToGainTheNecromancyBonus: 0.5,
+    theWorthAKingOfNecromancyLeadingSkeletonsGainsAsAGeneral: 10,
+  });
+});
+
+test("strategyRoles's weights are the numbers bots/strategy.ts wrote inline before B-17x, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyRoles).toEqual({
+    theUnitsAHeroLeadsFromWhichHisHostKeepsItsOwnCommander: 3,
+    theHeroesBesideTheKingFromWhichAHeroGeneralIsWantedBesideAKingWhoLeads: 3,
+    theGeneralsWantedWhenAHeroGeneralIsWantedBesideAKingWhoLeads: 2,
+    theReachCountedForARealmWithNoGeneralToRankFirst: 3,
+    theHeroesAtCourtFromWhichAnAdmiralIsWanted: 4,
+    theHeroesAtCourtFromWhichARealmWithNoLandFrontierLeftWantsAnAdmiral: 2,
+    whatEachLevelOfNavalIsWorthWhenAnAdmiralIsPicked: 3,
+    theHeroesAtCourtFromWhichAFlyingGeneralIsWanted: 5,
+    theTurnFromWhichAFlyingGeneralIsWantedBeforeAnyCrownIsMet: 5,
+    whatEachLevelOfDruidIsWorthWhenAFlyingGeneralIsPicked: 2,
+    theTurnFromWhichDefendersAreWantedBeforeAnyCrownIsMet: 4,
+    theLandProvincesForEachDefenderARealmWants: 4,
+    theMostDefendersARealmWants: 3,
+    theFreeHeroesKeptBackFromDefendersForTheSlayerTheScholarAndTheScout: 3,
+    whatEachUnitAHeroLeadsAddsToHisWorthAsADefender: 5,
+    whatEachLevelOfTacticalAddsToAHeroesWorthAsADefender: 3,
+    whatEachPointOfMagicTakesOffAHeroesWorthAsADefender: 2,
+    whatEachLevelOfSageSpyThiefAndExplorerTakesOffAHeroesWorthAsADefender: 2,
+  });
+});
+
+test("strategyRecruiting's weights are the numbers bots/strategy.ts wrote inline before B-17x, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyRecruiting).toEqual({
+    theUnitsTheHomeProvinceGarrisonsWhileAnEnemyHostIsNear: 2,
+    theUnitsTheHomeProvinceGarrisonsInPeace: 1,
+    theTaxFromWhichAProvinceCountsAsRichForAGarrisonWhileAnEnemyHostIsNear: 7,
+    theUnitsARichProvinceGarrisonsWhileAnEnemyHostIsNear: 1,
+    theMostGarrisonUnitsRecruitedInAProvinceInOneSeason: 2,
+    theWageCeilingRoomFromWhichAProvinceBuysTheMostOfAKind: 12,
+    theMostUnitsOfAKindAProvinceBuysInOneSeason: 3,
+    theTaxFromWhichAProvinceBuysTheMiddleNumberOfAKind: 10,
+    theBudgetFromWhichARealmBuysTheMiddleNumberOfAKind: 20,
+    theMiddleNumberOfUnitsOfAKindAProvinceBuysInOneSeason: 2,
+    theLeastUnitsOfAKindAProvinceBuysInOneSeason: 1,
+    theMostHullsAnAdmiralsRealmWantsAtMost: 10,
+    theHullsAnAdmiralsRealmWantsBeforeItsLandGrowsIt: 3,
+    theLandProvincesForEachHullAnAdmiralsRealmAddsToItsWant: 3,
+    theHullsARealmWithoutAnAdmiralWants: 3,
+    theHeroesACourtWantsBeforeItsLandAddsToThem: 4,
+    theGoldFromWhichAFatChestHiresMoreHeroes: 30,
+    theHeroesMoreACourtWantsWithAFatChest: 2,
+    theMeleeOrArcheryLevelFromWhichAHeroCountsAsAFighter: 2,
+    theWorthOfAFightingWandererToARealmWithNoFightingSlayer: 2,
   });
 });

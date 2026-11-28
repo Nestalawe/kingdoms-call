@@ -850,6 +850,114 @@ const TheWeightsOfASlayersLessonsSchema = z.object({
   theMostStepsASlayerWalksToWhereTheKingWillStand: z.number(),
 });
 
+/** How good a field commander a hero is judged to be (botGeneralship, bots/strategy.ts). */
+const TheWeightsOfStrategyGeneralshipSchema = z.object({
+  /** Each level of Tactical adds this to a hero's worth as a general. */
+  whatEachLevelOfTacticalIsWorthInAGeneral: z.number(),
+  /** Each level of March adds this to a hero's worth as a general. */
+  whatEachLevelOfMarchIsWorthInAGeneral: z.number(),
+  /** A general's worth counts one point for each unit he leads, up to this many. */
+  theMostUnitsThatCountTowardAGeneralsWorth: z.number(),
+  /** A hero leading this many units or more gains the flat bonus of the weight after this one, which keeps a host with its current general. */
+  theUnitsFromWhichAHostGivesItsGeneralAFlatBonus: z.number(),
+  /** A hero leading a host of the size of the weight before this gains this much worth as a general. */
+  theFlatBonusAHostOfThatSizeGivesItsGeneral: z.number(),
+  /** The share of his units who are of a general's own race counts this many times in his worth. */
+  theTimesTheShareOfUnitsOfAGeneralsOwnRaceCountsInHisWorth: z.number(),
+  /** The share of his units who are of a race that rivals a general's own counts this many times against his worth. */
+  theTimesTheShareOfUnitsOfARivalRaceCountsAgainstAGeneralsWorth: z.number(),
+  /** A king with Necromancy at this level or more, leading enough skeletons, gains the bonus of the weight after the next as a general. */
+  theNecromancyLevelFromWhichAKingLeadingSkeletonsGainsInWorth: z.number(),
+  /** A king of Necromancy gains the bonus of the next weight when at least this share of his units are skeletons. */
+  theShareOfSkeletonsAKingMustLeadToGainTheNecromancyBonus: z.number(),
+  /** A king of Necromancy leading enough skeletons gains this much worth as a general. */
+  theWorthAKingOfNecromancyLeadingSkeletonsGainsAsAGeneral: z.number(),
+});
+
+/** Who leads a realm's hosts and who is posted as admiral, flying general or defender (botRoles, bots/strategy.ts). */
+const TheWeightsOfStrategyRolesSchema = z.object({
+  /** A hero leading this many units or more counts as holding a host of his own, and the realm wants at least one general for each such host. */
+  theUnitsAHeroLeadsFromWhichHisHostKeepsItsOwnCommander: z.number(),
+  /** A realm with this many heroes or more, whose best general is its king, wants a second general. */
+  theHeroesBesideTheKingFromWhichAHeroGeneralIsWantedBesideAKingWhoLeads: z.number(),
+  /** The least number of generals a realm wants once it wants a hero general beside its king. */
+  theGeneralsWantedWhenAHeroGeneralIsWantedBesideAKingWhoLeads: z.number(),
+  /** A realm with no general to rank first counts its hosts' reach as this many hops when it works out how many generals it wants. */
+  theReachCountedForARealmWithNoGeneralToRankFirst: z.number(),
+  /** A realm with sea worth taking wants an admiral once its court holds this many heroes who are not the king. */
+  theHeroesAtCourtFromWhichAnAdmiralIsWanted: z.number(),
+  /** A realm with sea worth taking and no land frontier left wants an admiral once its court holds this many heroes who are not the king. */
+  theHeroesAtCourtFromWhichARealmWithNoLandFrontierLeftWantsAnAdmiral: z.number(),
+  /** Each level of Naval adds this to a hero's worth when the realm picks its admiral. */
+  whatEachLevelOfNavalIsWorthWhenAnAdmiralIsPicked: z.number(),
+  /** A realm wants a flying general once its court holds this many heroes who are not the king. */
+  theHeroesAtCourtFromWhichAFlyingGeneralIsWanted: z.number(),
+  /** A realm that has met no other crown still wants a flying general from this turn. */
+  theTurnFromWhichAFlyingGeneralIsWantedBeforeAnyCrownIsMet: z.number(),
+  /** Each level of Druid adds this to a hero's worth when the realm picks its flying general. */
+  whatEachLevelOfDruidIsWorthWhenAFlyingGeneralIsPicked: z.number(),
+  /** A realm that has met no other crown still wants defenders from this turn. */
+  theTurnFromWhichDefendersAreWantedBeforeAnyCrownIsMet: z.number(),
+  /** A realm wants one defender for each this many land provinces it holds. */
+  theLandProvincesForEachDefenderARealmWants: z.number(),
+  /** A realm wants no more than this many defenders. */
+  theMostDefendersARealmWants: z.number(),
+  /** A realm's first this many heroes who do not lead a host are not posted as defenders. */
+  theFreeHeroesKeptBackFromDefendersForTheSlayerTheScholarAndTheScout: z.number(),
+  /** Each unit a hero leads adds this to his worth as a defender. */
+  whatEachUnitAHeroLeadsAddsToHisWorthAsADefender: z.number(),
+  /** Each level of Tactical adds this to a hero's worth as a defender. */
+  whatEachLevelOfTacticalAddsToAHeroesWorthAsADefender: z.number(),
+  /** Each point of a hero's magic takes this off his worth as a defender. */
+  whatEachPointOfMagicTakesOffAHeroesWorthAsADefender: z.number(),
+  /** Each level of Sage, Spy, Thief and Explorer taken together takes this off a hero's worth as a defender. */
+  whatEachLevelOfSageSpyThiefAndExplorerTakesOffAHeroesWorthAsADefender: z.number(),
+});
+
+/** How many units a province's garrison and a field levy hold, how many hulls a realm builds and how many heroes a court wants (botGarrisonTarget, botGarrisonOrder, botFieldRecruitTokens, botHeroCap, botIsFighter, botHireBias, bots/strategy.ts). */
+const TheWeightsOfStrategyRecruitingSchema = z.object({
+  /** The home province is garrisoned with this many units while an enemy host is near. */
+  theUnitsTheHomeProvinceGarrisonsWhileAnEnemyHostIsNear: z.number(),
+  /** The home province is garrisoned with this many units in peace, when a war could come before next turn. */
+  theUnitsTheHomeProvinceGarrisonsInPeace: z.number(),
+  /** A province, other than the home province, with at least this tax is garrisoned while an enemy host is near. */
+  theTaxFromWhichAProvinceCountsAsRichForAGarrisonWhileAnEnemyHostIsNear: z.number(),
+  /** A rich province is garrisoned with this many units while an enemy host is near. */
+  theUnitsARichProvinceGarrisonsWhileAnEnemyHostIsNear: z.number(),
+  /** No more than this many garrison units are recruited in a province in one season. */
+  theMostGarrisonUnitsRecruitedInAProvinceInOneSeason: z.number(),
+  /** A realm with this much room under its wage ceiling or more buys the most units of one kind in a province. */
+  theWageCeilingRoomFromWhichAProvinceBuysTheMostOfAKind: z.number(),
+  /** The most units of one kind a field levy buys in a province in one season. */
+  theMostUnitsOfAKindAProvinceBuysInOneSeason: z.number(),
+  /** A province with at least this tax buys the middle number of units of one kind. */
+  theTaxFromWhichAProvinceBuysTheMiddleNumberOfAKind: z.number(),
+  /** A realm with at least this much in its budget buys the middle number of units of one kind. */
+  theBudgetFromWhichARealmBuysTheMiddleNumberOfAKind: z.number(),
+  /** The middle number of units of one kind a field levy buys in a province in one season. */
+  theMiddleNumberOfUnitsOfAKindAProvinceBuysInOneSeason: z.number(),
+  /** The number of units of one kind a field levy buys in a province when neither the room, the tax nor the budget asks for more. */
+  theLeastUnitsOfAKindAProvinceBuysInOneSeason: z.number(),
+  /** No realm with an admiral wants more than this many hulls. */
+  theMostHullsAnAdmiralsRealmWantsAtMost: z.number(),
+  /** A realm with an admiral wants this many hulls before its land provinces add to the number. */
+  theHullsAnAdmiralsRealmWantsBeforeItsLandGrowsIt: z.number(),
+  /** An admiral's realm wants one more hull for each this many land provinces it holds. */
+  theLandProvincesForEachHullAnAdmiralsRealmAddsToItsWant: z.number(),
+  /** A realm without an admiral wants no more than this many hulls. */
+  theHullsARealmWithoutAnAdmiralWants: z.number(),
+  /** A court wants this many heroes before its land provinces and its gold add to the number. */
+  theHeroesACourtWantsBeforeItsLandAddsToThem: z.number(),
+  /** A realm with more than this much gold wants the extra heroes of the weight after this one. */
+  theGoldFromWhichAFatChestHiresMoreHeroes: z.number(),
+  /** A realm with a fat chest wants this many heroes more. */
+  theHeroesMoreACourtWantsWithAFatChest: z.number(),
+  /** A hero with Melee or Archery at this level or more counts as a fighter. */
+  theMeleeOrArcheryLevelFromWhichAHeroCountsAsAFighter: z.number(),
+  /** A realm with no fighting slayer counts a wandering fighter as worth this many hops more than any other wanderer. */
+  theWorthOfAFightingWandererToARealmWithNoFightingSlayer: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -883,6 +991,9 @@ export const TheWeightsOfABotVersionSchema = z.object({
   missionsDuels: TheWeightsOfAMasteryChallengeAndADuelStanceSchema,
   missionsOrphanedHost: TheWeightsOfALeaderlessHostAHeroTakesUpSchema,
   missionsSlayerSchool: TheWeightsOfASlayersLessonsSchema,
+  strategyGeneralship: TheWeightsOfStrategyGeneralshipSchema,
+  strategyRoles: TheWeightsOfStrategyRolesSchema,
+  strategyRecruiting: TheWeightsOfStrategyRecruitingSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;

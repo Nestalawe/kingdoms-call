@@ -62,6 +62,10 @@ import type {
 import { aCopyMadeThroughJson } from '../rules-on-plain-values/a-copy-made-through-json-and-typed-as-its-original.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 
+const theGeneralship = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyGeneralship;
+const theRoles = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyRoles;
+const theRecruiting = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyRecruiting;
+
 // Its types (plan P1-10b41): each parameter typed as wide as the body's guards, so each guard stays; the ledger's and
 // the roles' shapes are bots/intel.ts', beside the turn's cache that holds them.
 /** A unit as the wages read it: a summoned one is `_temporary` (a mark the schema lacks). */
@@ -192,23 +196,32 @@ export function botGeneralship(c: Character) {
   const s = asItsGuardReadsIt(c.skills) ?? {};
   const a = asItsGuardReadsIt(c.armies) ?? [];
   const n = a.length;
-  // Sept 2026 (review §3): a lord of the column's own blood (+20% kinship, no grudge) and a Necromancy king
-  // over skeletons (×1.5 fanaticism vs ×1.3) are better generals than the raw skills say.
+  // Sept 2026 (review §3): a lord of the column's own blood (kinship, no grudge) and a Necromancy king
+  // over skeletons (fanaticism) are better generals than the raw skills say.
   const kin = n ? a.filter((x) => asItsGuardReadsIt(x) && x.race === c.race).length / n : 0;
   const RIV: Partial<Record<string, string>> = { ...KC_RIVAL_RACE };
   const grudge = n ? a.filter((x) => asItsGuardReadsIt(x) && RIV[x.race] === c.race).length / n : 0;
   const skel = n ? a.filter((x) => asItsGuardReadsIt(x) && x._isSkeletal).length / n : 0;
   return (
-    (Number(s.tactical) || 0) * 4 +
-    (Number(s.march) || 0) * 2 +
+    (Number(s.tactical) || 0) * theGeneralship.whatEachLevelOfTacticalIsWorthInAGeneral +
+    (Number(s.march) || 0) * theGeneralship.whatEachLevelOfMarchIsWorthInAGeneral +
     (Number(s.melee) || 0) +
     (Number(s.archery) || 0) +
-    Math.min(10, n) +
-    (n >= 3 ? 8 : 0) +
-    Math.round(kin * 4 - grudge * 6) +
-    (c.isKing && (Number(s.necromancy) || 0) >= 1 && skel >= 0.5 ? 10 : 0)
+    Math.min(theGeneralship.theMostUnitsThatCountTowardAGeneralsWorth, n) +
+    (n >= theGeneralship.theUnitsFromWhichAHostGivesItsGeneralAFlatBonus
+      ? theGeneralship.theFlatBonusAHostOfThatSizeGivesItsGeneral
+      : 0) +
+    Math.round(
+      kin * theGeneralship.theTimesTheShareOfUnitsOfAGeneralsOwnRaceCountsInHisWorth -
+        grudge * theGeneralship.theTimesTheShareOfUnitsOfARivalRaceCountsAgainstAGeneralsWorth,
+    ) +
+    (c.isKing &&
+    (Number(s.necromancy) || 0) >= theGeneralship.theNecromancyLevelFromWhichAKingLeadingSkeletonsGainsInWorth &&
+    skel >= theGeneralship.theShareOfSkeletonsAKingMustLeadToGainTheNecromancyBonus
+      ? theGeneralship.theWorthAKingOfNecromancyLeadingSkeletonsGainsAsAGeneral
+      : 0)
   );
-} // +8 sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
+} // a sticky bonus: handing a host to a marginally better general cost a turn of conquest every time a hero was hired
 // ROLES — field-army LEADERS (best generals; one per desired field army) vs FEEDERS (everyone
 // else). Desired field armies = 1 + floor(empire diameter / primary reach): once the realm is wider
 // than the main host can cross in a turn, a second host is raised, and so on.
@@ -228,20 +241,28 @@ export function botRoles(G: GameState, pi: number): ABotRealmsRoles {
   if (!chars.length) chars = all;
   const ranked = [...chars].sort((a, b) => botGeneralship(b) - botGeneralship(a));
   const primary = ranked[0] ?? null;
-  const reach = Math.max(1, primary ? botLandReach(primary) || 1 : 3);
-  const holding = chars.filter((c) => (asItsGuardReadsIt(c.armies) ?? []).length >= 3).length; // a split-off second host keeps its own commander
+  const reach = Math.max(
+    1,
+    primary ? botLandReach(primary) || 1 : theRoles.theReachCountedForARealmWithNoGeneralToRankFirst,
+  );
+  const holding = chars.filter(
+    (c) =>
+      (asItsGuardReadsIt(c.armies) ?? []).length >= theRoles.theUnitsAHeroLeadsFromWhichHisHostKeepsItsOwnCommander,
+  ).length; // a split-off second host keeps its own commander
   const heroCount = all.filter((c) => !c.isKing).length;
   const want = Math.max(
     1,
     holding,
     Math.min(ranked.length, 1 + Math.floor(botEmpireDiameter(G, pi) / reach)),
-    heroCount >= 3 && primary?.isKing ? 2 : 1,
-  ); // Sept 2026 (Toby): a HERO general beside a king who leads, once the court has three heroes
+    heroCount >= theRoles.theHeroesBesideTheKingFromWhichAHeroGeneralIsWantedBesideAKingWhoLeads && primary?.isKing
+      ? theRoles.theGeneralsWantedWhenAHeroGeneralIsWantedBesideAKingWhoLeads
+      : 1,
+  ); // Sept 2026 (Toby): a HERO general beside a king who leads, once the court has enough heroes
   const leaders = ranked.slice(0, want).map((c) => c.id);
   // ── ROLE PRIORITY (2026-09-26, Toby item 2/3): General > Slayer > Sage > Explorer > Admiral > Flying
   // General > Defender > Spy > Thief. The first three specialists are filled by botSpecialistRoles from
   // whoever is left; the admiral and the flying general are therefore only wanted once the court has
-  // FOUR non-king heroes (the general's slot may be the king's), and defenders only from the heroes left
+  // enough non-king heroes (the general's slot may be the king's), and defenders only from the heroes left
   // after those. The one exception: a realm whose land frontier is spent wants its admiral at any size.
   const _landSpent = !(asItsGuardReadsIt(G.world.provinces) ?? []).some(
     (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea' && botIsEdge(G, pi, p),
@@ -250,7 +271,10 @@ export function botRoles(G: GameState, pi: number): ABotRealmsRoles {
   // _botRole) is a leader whose front is the water — see botSeaStrike / botFieldRecruitTokens.
   {
     const wantAdm =
-      botSeaWorthTaking(G, pi) && ranked.length > want && (heroCount >= 4 || (_landSpent && heroCount >= 2));
+      botSeaWorthTaking(G, pi) &&
+      ranked.length > want &&
+      (heroCount >= theRoles.theHeroesAtCourtFromWhichAnAdmiralIsWanted ||
+        (_landSpent && heroCount >= theRoles.theHeroesAtCourtFromWhichARealmWithNoLandFrontierLeftWantsAnAdmiral));
     let adm: Character | null | undefined = all.find((c) => c._botRole === 'admiral' && c.alive && !c.isKing);
     if (!wantAdm) {
       if (adm) {
@@ -265,9 +289,11 @@ export function botRoles(G: GameState, pi: number): ABotRealmsRoles {
           )
           .sort(
             (a, b) =>
-              (Number(asItsGuardReadsIt(b.skills)?.naval) || 0) * 3 +
+              (Number(asItsGuardReadsIt(b.skills)?.naval) || 0) *
+                theRoles.whatEachLevelOfNavalIsWorthWhenAnAdmiralIsPicked +
               botGeneralship(b) -
-              (Number(asItsGuardReadsIt(a.skills)?.naval) || 0) * 3 -
+              (Number(asItsGuardReadsIt(a.skills)?.naval) || 0) *
+                theRoles.whatEachLevelOfNavalIsWorthWhenAnAdmiralIsPicked -
               botGeneralship(a),
           )[0] ?? null;
     }
@@ -280,14 +306,14 @@ export function botRoles(G: GameState, pi: number): ABotRealmsRoles {
     }
   }
   // FLYING GENERAL (2026-09-26, Toby item 8): one per realm, sticky, once a province of ours raises a humanoid
-  // flyer, another crown has been met (or from turn 5) and five heroes serve. He recruits flyers and the foot
+  // flyer, another crown has been met (or from a set turn) and enough heroes serve. He recruits flyers and the foot
   // they carry and makes lightning strikes over sea and behind the front — botAirStrike.
   {
     const wantSky =
       botFlyerPorts(G, pi).length > 0 &&
       ranked.length > leaders.length &&
-      heroCount >= 5 &&
-      (botHasMetPlayers(G, pi) || (G.turn || 0) >= 5);
+      heroCount >= theRoles.theHeroesAtCourtFromWhichAFlyingGeneralIsWanted &&
+      (botHasMetPlayers(G, pi) || (G.turn || 0) >= theRoles.theTurnFromWhichAFlyingGeneralIsWantedBeforeAnyCrownIsMet);
     let sky: Character | null | undefined = all.find((c) => c._botRole === 'skygeneral' && c.alive && !c.isKing);
     if (!wantSky) {
       if (sky) {
@@ -300,9 +326,11 @@ export function botRoles(G: GameState, pi: number): ABotRealmsRoles {
           .filter((c) => !c.isKing && !leaders.includes(c.id) && c._botRole !== 'defender' && c._botRole !== 'admiral')
           .sort(
             (a, b) =>
-              (Number(asItsGuardReadsIt(b.skills)?.druid) || 0) * 2 +
+              (Number(asItsGuardReadsIt(b.skills)?.druid) || 0) *
+                theRoles.whatEachLevelOfDruidIsWorthWhenAFlyingGeneralIsPicked +
               botGeneralship(b) -
-              (Number(asItsGuardReadsIt(a.skills)?.druid) || 0) * 2 -
+              (Number(asItsGuardReadsIt(a.skills)?.druid) || 0) *
+                theRoles.whatEachLevelOfDruidIsWorthWhenAFlyingGeneralIsPicked -
               botGeneralship(a),
           )[0] ?? null;
     }
@@ -314,28 +342,36 @@ export function botRoles(G: GameState, pi: number): ABotRealmsRoles {
       if (!leaders.includes(sky.id)) leaders.push(sky.id);
     }
   }
-  // DEFENDERS — one per four land provinces (max 3) once another crown has been met (or from turn
-  // 4), and never at the expense of the slayer, the scholar and the scout: only the heroes beyond the
-  // first three free (non-leading) ones may be posted. Existing defenders keep the role; new ones are the
+  // DEFENDERS — one per set number of land provinces (to a limit) once another crown has been met (or from a
+  // set turn), and never at the expense of the slayer, the scholar and the scout: only the heroes beyond the
+  // first free (non-leading) ones may be posted. Existing defenders keep the role; new ones are the
   // best non-leader fighters, preferring anyone already holding a column and steering mages toward
   // companion duty instead.
   const leaderSet = new Set(leaders);
   const freeHeroes = all.filter((c) => !c.isKing && !leaderSet.has(c.id)).length;
   const wantDef = botSafeWindow(G)
     ? 0
-    : botHasMetPlayers(G, pi) || (G.turn || 0) >= 4
-      ? Math.max(0, Math.min(3, Math.floor(botLandCount(G, pi) / 4), freeHeroes - 3))
+    : botHasMetPlayers(G, pi) || (G.turn || 0) >= theRoles.theTurnFromWhichDefendersAreWantedBeforeAnyCrownIsMet
+      ? Math.max(
+          0,
+          Math.min(
+            theRoles.theMostDefendersARealmWants,
+            Math.floor(botLandCount(G, pi) / theRoles.theLandProvincesForEachDefenderARealmWants),
+            freeHeroes - theRoles.theFreeHeroesKeptBackFromDefendersForTheSlayerTheScholarAndTheScout,
+          ),
+        )
       : 0;
   let defenders = sticky.filter((c) => !leaderSet.has(c.id));
   const defScore = (c: Character) => {
     const s = asItsGuardReadsIt(c.skills) ?? {};
     return (
-      (asItsGuardReadsIt(c.armies) ?? []).length * 5 +
-      (Number(s.tactical) || 0) * 3 +
+      (asItsGuardReadsIt(c.armies) ?? []).length * theRoles.whatEachUnitAHeroLeadsAddsToHisWorthAsADefender +
+      (Number(s.tactical) || 0) * theRoles.whatEachLevelOfTacticalAddsToAHeroesWorthAsADefender +
       (Number(s.melee) || 0) +
       (Number(s.archery) || 0) -
-      botMagicScore(c) * 2 -
-      ((Number(s.sage) || 0) + (Number(s.spy) || 0) + (Number(s.thief) || 0) + (Number(s.explorer) || 0)) * 2
+      botMagicScore(c) * theRoles.whatEachPointOfMagicTakesOffAHeroesWorthAsADefender -
+      ((Number(s.sage) || 0) + (Number(s.spy) || 0) + (Number(s.thief) || 0) + (Number(s.explorer) || 0)) *
+        theRoles.whatEachLevelOfSageSpyThiefAndExplorerTakesOffAHeroesWorthAsADefender
     );
   };
   defenders.sort((a, b) => defScore(b) - defScore(a));
@@ -535,15 +571,23 @@ export function botUnderAttack(G: GameState, pi: number) {
 }
 export function botGarrisonTarget(G: GameState, prov: Province | null | undefined, pi: number) {
   if (prov?.owner !== pi || prov.terrain === 'sea') return 0;
-  // Sept 2026 (Toby): garrisons only in Prosperous/Rich land (tax 4+; the capital always), never
-  // more than 2 per province. Defence proper is the DEFENDER heroes (botRoles / botDefenderOrders).
+  // Sept 2026 (Toby): garrisons only in Prosperous/Rich land (the capital always), never
+  // more than a few per province. Defence proper is the DEFENDER heroes (botRoles / botDefenderOrders).
   // 2026-09-26 (Toby): FEWER GARRISONS, BIGGER FIELD HOST. Only the capital is garrisoned in peace (one unit);
-  // once an enemy host is on the doorstep the capital takes two and a Rich province (tax 7+) one. Everything
+  // once an enemy host is on the doorstep the capital takes more and a Rich province one. Everything
   // else is held by the defenders and the field army — every levy not sunk into a garrison marches with the general.
   const home = prov.id === botHomeId(G, pi);
   const attacked = botUnderAttack(G, pi);
-  if (home) return attacked ? 2 : botSafeWindow(G) ? 0 : 1; // Safe Start: no peace garrison while no war can come before next turn
-  return attacked && (prov.tax || 0) >= 7 ? 1 : 0;
+  if (home)
+    return attacked
+      ? theRecruiting.theUnitsTheHomeProvinceGarrisonsWhileAnEnemyHostIsNear
+      : botSafeWindow(G)
+        ? 0
+        : theRecruiting.theUnitsTheHomeProvinceGarrisonsInPeace; // Safe Start: no peace garrison while no war can come before next turn
+  return attacked &&
+    (prov.tax || 0) >= theRecruiting.theTaxFromWhichAProvinceCountsAsRichForAGarrisonWhileAnEnemyHostIsNear
+    ? theRecruiting.theUnitsARichProvinceGarrisonsWhileAnEnemyHostIsNear
+    : 0;
 }
 export function botGarrisonType(prov: Province) {
   return ((asItsGuardReadsIt(prov.armyTypes) ?? []).find((x) => /garrison/i.test(x)) ?? '') || null;
@@ -559,7 +603,10 @@ export function botGarrisonOrder(G: GameState, pi: number, prov: Province, L: AB
   if (done[gt]) return null;
   const cost = (ARMY_COST_MASTER[gt] ?? 0) || 1;
   let q = 0;
-  while (q < Math.min(2, tgt - have) && botCanAfford(L, cost)) {
+  while (
+    q < Math.min(theRecruiting.theMostGarrisonUnitsRecruitedInAProvinceInOneSeason, tgt - have) &&
+    botCanAfford(L, cost)
+  ) {
     q++;
     botSpend(L, cost);
   }
@@ -573,7 +620,7 @@ export function botGarrisonOrder(G: GameState, pi: number, prov: Province, L: AB
   };
 }
 // FIELD RECRUITMENT — one Recruit order packing the strongest affordable, sustainable field units
-// this province offers (2 of a type where tax>=10 allows). Navy first when there is a naval reason
+// this province offers (more of a type where the tax allows). Navy first when there is a naval reason
 // here.
 // 2026-09-28 (Toby): troops raised for the ADMIRAL or the FLYING GENERAL are paid from their own wage cap
 // (L.nav / L.air, see botLedger) — the ledger's ceiling is swapped for the pool's while the muster runs.
@@ -623,7 +670,13 @@ export function botFieldRecruitTokensCore(
   if (!prov || !asItsGuardReadsIt(prov.armyTypes) || prov.owner !== pi) return [];
   const done = L.recruitedByProv[prov.id] ?? {};
   L.recruitedByProv[prov.id] = done;
-  const perTypeLimit = L.upkeepCap - L.upkeep >= 12 ? 3 : prov.tax >= 10 || L.budget >= 20 ? 2 : 1; // Sept 2026 (§99): the ledger showed 17g of unused wage ceiling per turn with few holders in recruit provinces — a wide ceiling buys three of a kind
+  const perTypeLimit =
+    L.upkeepCap - L.upkeep >= theRecruiting.theWageCeilingRoomFromWhichAProvinceBuysTheMostOfAKind
+      ? theRecruiting.theMostUnitsOfAKindAProvinceBuysInOneSeason
+      : prov.tax >= theRecruiting.theTaxFromWhichAProvinceBuysTheMiddleNumberOfAKind ||
+          L.budget >= theRecruiting.theBudgetFromWhichARealmBuysTheMiddleNumberOfAKind
+        ? theRecruiting.theMiddleNumberOfUnitsOfAKindAProvinceBuysInOneSeason
+        : theRecruiting.theLeastUnitsOfAKindAProvinceBuysInOneSeason; // Sept 2026 (§99): the ledger showed 17g of unused wage ceiling per turn with few holders in recruit provinces — a wide ceiling buys three of a kind
   const tokens = [];
   const fleetType = botCoastalFleetType(prov);
   // Sept 2026: a fleet pins a mixed host to the coast (it cannot march overland while leading
@@ -640,8 +693,14 @@ export function botFieldRecruitTokensCore(
     (adm || botNavalEnemyCoast(G, prov, pi) || (!botIsEdge(G, pi, prov) && botFrontierTarget(G, pi, prov) == null)); // a hull would ground the flying general's column
   // Sept 2026 (Toby): the ADMIRAL raises hulls at his port until every liftable land unit he leads has a berth
   // (plus one spare), up to a cap that grows with the realm; other hosts buy a single hull for the old reasons.
-  // 2026-09-26 (item 1): the cap starts at three hulls and grows a hull per three land provinces (was 2 + land/4).
-  const hullCap = adm ? Math.min(10, 3 + Math.floor(botLandCount(G, pi) / 3)) : 3;
+  // 2026-09-26 (item 1): the cap starts at a few hulls and grows a hull per few land provinces.
+  const hullCap = adm
+    ? Math.min(
+        theRecruiting.theMostHullsAnAdmiralsRealmWantsAtMost,
+        theRecruiting.theHullsAnAdmiralsRealmWantsBeforeItsLandGrowsIt +
+          Math.floor(botLandCount(G, pi) / theRecruiting.theLandProvincesForEachHullAnAdmiralsRealmAddsToItsWant),
+      )
+    : theRecruiting.theHullsARealmWithoutAnAdmiralWants;
   if (_navalNeed && !done[fleetType] && botFleetHullCount(G, pi) < hullCap) {
     const cost = (ARMY_COST_MASTER[fleetType] ?? 0) || 3;
     let q = 0;
@@ -779,17 +838,27 @@ export function botHeroCap(G: GameState, pi: number) {
   const theWidestCourtWantsMore = doesARealmOfThisAlignmentHireItsDearestWandererForTheLeast(pl?.alignment)
     ? THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.alignmentAbility.theHeroesMoreARealmWhoseDearestWandererAsksTheLeastWants
     : 0;
-  return 4 + land + theWidestCourtWantsMore + ((Number(pl?.gold) || 0) > 30 ? 2 : 0);
-} // Sept 2026 (Toby): hire as much as possible   // §94: a fat chest hires two more   // Neutral: wages capped at 3g, so the widest court   // more heroes = more actions (was 2+land/2)
-// 2026-09-28 (Toby, option 1): a SLAYER must be a fighter — Melee or Archery 2+. While the realm has no fighting
-// slayer, a wandering fighter is worth two hops more than any other wanderer (seek / broker choices).
+  return (
+    theRecruiting.theHeroesACourtWantsBeforeItsLandAddsToThem +
+    land +
+    theWidestCourtWantsMore +
+    ((Number(pl?.gold) || 0) > theRecruiting.theGoldFromWhichAFatChestHiresMoreHeroes
+      ? theRecruiting.theHeroesMoreACourtWantsWithAFatChest
+      : 0)
+  );
+} // Sept 2026 (Toby): hire as much as possible   // §94: a fat chest hires more   // Neutral: wages capped, so the widest court   // more heroes = more actions
+// 2026-09-28 (Toby, option 1): a SLAYER must be a fighter — Melee or Archery at a set level. While the realm has no fighting
+// slayer, a wandering fighter is worth more hops than any other wanderer (seek / broker choices).
 // BOT_SLAYER_FIGHTERS_ONLY (option 1, strict): true = only a fighter may hold the slayer role at all. Tested
 // 2026-09-28: 2.5× the clears per slayer, but 60% fewer slayers and −14% lairs cleared overall (the trainee
 // slayers grow into hunters and are the group-practice partners), so it ships OFF; the hiring preference stays on.
 export const BOT_SLAYER_FIGHTERS_ONLY = false;
 export function botIsFighter(h: Character | null | undefined) {
   const s = h?.skills ?? {};
-  return (Number(s.melee) || 0) >= 2 || (Number(s.archery) || 0) >= 2;
+  return (
+    (Number(s.melee) || 0) >= theRecruiting.theMeleeOrArcheryLevelFromWhichAHeroCountsAsAFighter ||
+    (Number(s.archery) || 0) >= theRecruiting.theMeleeOrArcheryLevelFromWhichAHeroCountsAsAFighter
+  );
 }
 export function botNeedsSlayer(G: GameState, pi: number) {
   return !(asItsGuardReadsIt(G.characters) ?? []).some(
@@ -797,7 +866,9 @@ export function botNeedsSlayer(G: GameState, pi: number) {
   );
 }
 export function botHireBias(G: GameState, pi: number, h: Character) {
-  return botIsFighter(h) && botNeedsSlayer(G, pi) ? 2 : 0;
+  return botIsFighter(h) && botNeedsSlayer(G, pi)
+    ? theRecruiting.theWorthOfAFightingWandererToARealmWithNoFightingSlayer
+    : 0;
 }
 export function botHireOrder(G: GameState, pi: number, c: Character, L: ABotRealmsLedger) {
   const hired = L.hired ?? new Set<number>();
