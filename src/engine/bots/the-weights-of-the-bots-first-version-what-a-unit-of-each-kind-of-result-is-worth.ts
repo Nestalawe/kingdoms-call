@@ -202,7 +202,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   },
   /** The specialists a realm's court wants, by role: how many of each (botSpecialistRoles, bots/specialists.ts) and how many heroes it keeps free of them. */
   specialistsWanted: {
-    theLairsKnownFromWhichTheCourtWantsASecondSlayer: 6,
+    theLairsFromWhichTheCourtWantsASecondSlayer: 6,
     theMostScoutsTheCourtWants: 3,
     theUnmappedProvincesAScoutIsWantedFor: 6,
     theProvincesFromWhichTheCourtWantsASecondScholar: 10,
@@ -245,9 +245,9 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     whatEachStepAwayTakesOffARoamsTarget: 3,
     theWorthOfEachUnitAMarkLeadsToSpyOn: 2,
     theWorthOfAKingAsAMarkToSpyOn: 5,
-    theTurnsAGeneralLastSeenIsStillShadowed: 2,
+    theTurnsAGeneralMayBeShadowedAfterHisLastPlacing: 2,
     theProvincesAwayASpyShadowsAGeneral: 3,
-    theWorthOfEachUnitALastSeenGeneralLeads: 2,
+    theWorthOfEachUnitAGeneralToShadowLeads: 2,
     theWorthOfAKingToShadow: 6,
     theWorthOfAGeneralAtWarToShadow: 5,
     whatEachStepAwayTakesOffAShadowedGeneral: 2,

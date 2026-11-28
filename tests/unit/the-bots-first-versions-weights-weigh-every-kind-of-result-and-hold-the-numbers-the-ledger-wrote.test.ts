@@ -280,7 +280,7 @@ test("a rival's hero's assumed skills' weights are the numbers BOT_ASSUMED_SKILL
 
 test("the court's wanted specialists' weights are the numbers botSpecialistRoles wrote for its wants and its feeder reserve before B-17t, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWanted).toEqual({
-    theLairsKnownFromWhichTheCourtWantsASecondSlayer: 6,
+    theLairsFromWhichTheCourtWantsASecondSlayer: 6,
     theMostScoutsTheCourtWants: 3,
     theUnmappedProvincesAScoutIsWantedFor: 6,
     theProvincesFromWhichTheCourtWantsASecondScholar: 10,
@@ -327,9 +327,9 @@ test("a specialist's work's weights are the numbers botTrainOrders, botScholarOr
     whatEachStepAwayTakesOffARoamsTarget: 3,
     theWorthOfEachUnitAMarkLeadsToSpyOn: 2,
     theWorthOfAKingAsAMarkToSpyOn: 5,
-    theTurnsAGeneralLastSeenIsStillShadowed: 2,
+    theTurnsAGeneralMayBeShadowedAfterHisLastPlacing: 2,
     theProvincesAwayASpyShadowsAGeneral: 3,
-    theWorthOfEachUnitALastSeenGeneralLeads: 2,
+    theWorthOfEachUnitAGeneralToShadowLeads: 2,
     theWorthOfAKingToShadow: 6,
     theWorthOfAGeneralAtWarToShadow: 5,
     whatEachStepAwayTakesOffAShadowedGeneral: 2,
