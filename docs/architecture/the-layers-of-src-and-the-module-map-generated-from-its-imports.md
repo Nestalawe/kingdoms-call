@@ -20,9 +20,9 @@ in `npm run check`, with its rules in `.dependency-cruiser.mts`, every one an er
   prose, **`views/prose/`**, only itself, the engine's facts files (`the-facts-*.ts`), `engine/rules-on-plain-values/`
   and `content/`. Both let a type-only import through. **`shared/`** only `shared/`, `views/`,
   `engine/rules-on-plain-values/` and `content/`.
-- **`schemas/`** holds the world's types, and the bots' weights' shape: any folder may import it with `import type` (TypeScript erases it), and none
-  another way but the save's upgrade (`engine/saves/upgrade-a-saved-game-and-check-it.ts`), whose check at load
-  parses with it.
+- **`schemas/`** holds the world's types, the bots' weights' shape, and what a realm chooses in the orders form: any
+  folder may import it with `import type` (TypeScript erases it), and none another way but the save's upgrade
+  (`engine/saves/upgrade-a-saved-game-and-check-it.ts`), whose check at load parses with it.
 - **`db/`** imports only `db/` and `schemas/`, and only the pages' code (`ui/`) imports `db/`. Only `db/` may import
   `@supabase/supabase-js`, and imports only its types: each page makes its client and its `Db` through `db/`.
 - **A page's code** (`ui/<page>/`) imports no other page's but `ui/shared/`, which imports only itself. **Only the GM

@@ -54,10 +54,10 @@ import { bootJsdom, readPage, type PageWindow } from '../lib/boot.ts';
 import { PAGE_DRAWS_AS_IT_LOADS, setupsOf, slotRowsJsonOf, stampedAsTheShellSaves } from '../lib/matrix-game.ts';
 import { MAP_SIZES, matrix, MAX_TURNS, SCRIPTED_REALM } from '../../tools/balance/matrix.ts';
 import { scriptedChoices, type State } from '../../tools/balance/scripted.ts';
+import type { WhatTheRealmChose } from '../../src/schemas/what-a-realm-chooses-in-the-orders-form-and-the-parts-of-the-saved-state-the-form-reads.ts';
 import {
   theHeroesTheFormLists,
   theOrdersThePlayerPortalSends,
-  type WhatTheRealmChose,
 } from '../../tools/balance/the-orders-the-player-portal-sends.ts';
 
 /** One state the portal is driven on: the saved state the turn will load, and the realm's report on it. */
