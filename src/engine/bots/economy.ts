@@ -36,6 +36,7 @@ import {
   theBotsRecordClosesARealmsTurn,
   theBotsRecordClosesTheTurn,
   theBotsRecordCountsAHygienesOutcome,
+  theBotsRecordIsOpen,
   theBotsRecordOpensTheTurn,
   type AnOrderHygienesOutcome,
   type TheBotsRecordOfARealmsTurn,
@@ -49,16 +50,18 @@ declare global {
   interface Window {
     __botDiag?: unknown;
     __botHyg?: Partial<Record<string, number>> | null | undefined;
-    __botChoices?: TheBotsRecordOfARealmsTurn[] | null | undefined;
+    __botChoices?: unknown;
   }
 }
 /** The bots' record of their choices opens for the turn where a page asks for it (`window.__botChoices`), and stays
  *  off where none does (the engine alone, and the site). */
 export function theBotsRecordOpensForThePageThatAsks(G: GameState): void {
-  theBotsRecordOpensTheTurn(
-    G,
-    typeof window !== 'undefined' && Array.isArray(window.__botChoices) ? window.__botChoices : null,
-  );
+  const asked = typeof window !== 'undefined' ? window.__botChoices : undefined;
+  theBotsRecordOpensTheTurn(G, aListOfTheBotsRecords(asked) ? asked : null);
+}
+/** Whether the page's hook holds a list, where the bots' records go. */
+function aListOfTheBotsRecords(x: unknown): x is TheBotsRecordOfARealmsTurn[] {
+  return Array.isArray(x);
 }
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
 type AnOrderAsThePassesReadIt = PhaseOrder | null | undefined;
@@ -749,17 +752,20 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
         }
       });
     }
-    // the realm's record of the turn closes on its heroes' plans as the hygiene leaves them
-    theBotsRecordClosesARealmsTurn(
-      G,
-      pi,
-      mine.map((hero) => ({ hero, plan: thePlanOf(G, hero) })),
-      {
-        schools: BOT_SCHOOLS,
-        theLimitOf: (hero, school) => botCastLimit(G, hero, school),
-        theSchoolOfACast: (x) => theSchoolOfACastOrder(x, spells),
-      },
-    );
+    // the realm's record of the turn closes on its heroes' plans as the hygiene leaves them (where a page asked)
+    if (theBotsRecordIsOpen(G))
+      theBotsRecordClosesARealmsTurn(
+        G,
+        pi,
+        mine.map((hero) => ({ hero, plan: thePlanOf(G, hero) })),
+        {
+          schools: BOT_SCHOOLS,
+          theLimitOf: (hero, school, practised) => botCastLimit(G, hero, school, practised),
+          theSchoolOfACast: (x) => theSchoolOfACastOrder(x, spells),
+          practises: (x, school) =>
+            !!x && 'action' in x && x.action === THE_HERO_ORDERS.practice.key && 'target' in x && x.target === school,
+        },
+      );
   });
   theBotsRecordClosesTheTurn(G);
 }

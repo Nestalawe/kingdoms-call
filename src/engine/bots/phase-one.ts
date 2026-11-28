@@ -1016,7 +1016,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           const out: AnOrderAsThePassReadsIt[] = [...keepCasts];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(best.i, (best.d > 0 ? 'Attack ' : 'Advance on ') + best.N.name + ' (second front)'));
-          while (out.length < 5) out.push(hold('Hold ' + best.N.name));
+          while (out.length < 5) out.push(aPaddingOrder(G, 'hold-the-ground-won', hold('Hold ' + best.N.name)));
           turnOrders[hero.id] = out.slice(0, 5);
           spring.add(hero.id);
           taken.add(best.N.id);

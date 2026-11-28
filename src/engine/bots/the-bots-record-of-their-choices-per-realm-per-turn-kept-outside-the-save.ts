@@ -24,17 +24,31 @@ export const THE_ORDER_HYGIENES_OUTCOMES = [
 ] as const;
 export type AnOrderHygienesOutcome = (typeof THE_ORDER_HYGIENES_OUTCOMES)[number];
 
-/** The kinds of order a bot pads a hero's free phase with, as the code that writes it names it (never read from the
- *  order's words, BOT-S6): a plain hold ('Hold'), and a specialist's hold of his post ('Hold the post'). */
-export const THE_KINDS_OF_PADDING_ORDER = ['hold', 'hold-the-post'] as const;
+/** The kinds of order a bot pads a hero's free phases with (each a Defend), as the code that writes it names it (never
+ *  read from the order's words, BOT-S6): a plain hold ('Hold'); a specialist's hold of his post ('Hold the post'); a
+ *  hero waiting with a host for its pick-up ('Hold with the host'); a spy's or a thief's wait ('Lie in wait'); a thief
+ *  lying low after the Grand Heist ('Lie low'); a hunter at the end of his stalk ('Lie in wait for …'); and a hero
+ *  holding the province his second-front attack or advance takes ('Hold …'). */
+export const THE_KINDS_OF_PADDING_ORDER = [
+  'hold',
+  'hold-the-post',
+  'hold-with-the-host',
+  'lie-in-wait',
+  'lie-low',
+  'lie-in-wait-for-a-quarry',
+  'hold-the-ground-won',
+] as const;
 export type AKindOfPaddingOrder = (typeof THE_KINDS_OF_PADDING_ORDER)[number];
 
-/** A hero's casts in a school in a turn: his limit as the turn begins (botCastLimit, before any practice of the turn),
- *  and the cast orders in the school he is left with once the hygiene has run. */
+/** A hero's casts in a school in a turn, on his plan as the hygiene leaves it: his limit as the turn begins
+ *  (botCastLimit, before any practice of the turn); the limit the hygiene applies to his last cast in the school (each
+ *  practice of the school before it counted as a level; with no cast, the limit as the turn begins), which his casts
+ *  never pass; and the cast orders in the school he is left with. */
 export interface AHerosCastsInASchool {
   hero: number;
   school: string;
   limit: number;
+  limitTheHygieneApplies: number;
   casts: number;
 }
 
@@ -104,11 +118,18 @@ export function aCopyOfAnOrderKeepingItsPaddingKind<TheOrder extends object>(G: 
   return copy;
 }
 
-/** What closing a realm's record reads of the hygiene: a hero's limit in a school, and a cast order's school. */
+/** What closing a realm's record reads of the hygiene: a hero's limit in a school after a number of the turn's
+ *  practices of it, a cast order's school, and whether an order is a practice of a school. */
 export interface WhatTheRecordReadsOfAHerosCasts {
   readonly schools: readonly string[];
-  readonly theLimitOf: (c: Character, school: string) => number;
+  readonly theLimitOf: (c: Character, school: string, practised: number) => number;
   readonly theSchoolOfACast: (order: object | null | undefined) => string | null;
+  readonly practises: (order: object | null | undefined, school: string) => boolean;
+}
+
+/** Whether the turn's record is open (a page asked for it): the hygiene builds what the close reads only then. */
+export function theBotsRecordIsOpen(G: GameState): boolean {
+  return THE_OPEN_RECORDS.has(G);
 }
 
 /** A bot realm's record closes once the hygiene has run, on its heroes' plans as they stand: each padding order by its
@@ -133,9 +154,14 @@ export function theBotsRecordClosesARealmsTurn(
       if (kind) record.padding[kind] = (record.padding[kind] ?? 0) + 1;
     }
     for (const school of casts.schools) {
-      const limit = casts.theLimitOf(hero, school);
-      const given = plan.filter((order) => casts.theSchoolOfACast(order) === school).length;
-      if (limit > 0 || given > 0) record.casts.push({ hero: hero.id, school, limit, casts: given });
+      const limit = casts.theLimitOf(hero, school, 0);
+      const phases = plan.slice(0, 5);
+      const given = phases.filter((order) => casts.theSchoolOfACast(order) === school).length;
+      const last = phases.findLastIndex((order) => casts.theSchoolOfACast(order) === school);
+      const practisedBefore = phases.slice(0, Math.max(0, last)).filter((o) => casts.practises(o, school)).length;
+      const limitTheHygieneApplies = last < 0 ? limit : casts.theLimitOf(hero, school, practisedBefore);
+      if (limit > 0 || given > 0)
+        record.casts.push({ hero: hero.id, school, limit, limitTheHygieneApplies, casts: given });
     }
   }
   open.thePagesRecords.push(record);

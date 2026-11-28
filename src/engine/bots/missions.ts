@@ -1685,7 +1685,10 @@ export function botOrphanHostOrders(G: GameState, pi: number, c: Character, pre:
   const po = botPickupOrder(G, pi, { ...c, location: host.id }, host);
   if (!po) return null;
   out.push(po);
-  while (out.length < 5) out.push({ action: 'defend', target: '', extra: '', desc: 'Hold with the host' });
+  while (out.length < 5)
+    out.push(
+      aPaddingOrder(G, 'hold-with-the-host', { action: 'defend', target: '', extra: '', desc: 'Hold with the host' }),
+    );
   return out;
 }
 // ══ BOT CONCESSION ════
