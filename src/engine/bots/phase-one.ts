@@ -47,14 +47,14 @@ import type { ABotRealmsLedger } from './intel.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
-
-const theOrdersAndReach = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassOrdersAndReach;
-const theUrgencies = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassUrgency;
-const theSteps = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassSafeStepAndSecondFront;
 import {
   THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
   THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
 } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
+
+const theOrdersAndReach = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassOrdersAndReach;
+const theUrgencies = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassUrgency;
+const theSteps = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassSafeStepAndSecondFront;
 
 // Its types (plan P1-10b42): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the pass reads a plan: an order, or a gap the plan holds. */
@@ -134,8 +134,8 @@ const theErrandsThatKeepABotHeroFromAFeintOrASecondFront: readonly string[] = [
 // Stage 'order' (after every other pass):
 //   E. NO SELF-FLOOD — a Flood on ground our own host stands on or marches into is struck out.
 //   P. PINS — every Flood pin (botPins) is written into its caster's Spring.
-//   B–D. REORDER — a stable sort of each plan's pre-move block: strikes (5), musters in contact (4),
-//      guard magic and the watch under threat (3), hire (1), the rest (0).
+//   B–D. REORDER — a stable sort of each plan's pre-move block: strikes first, musters in contact next,
+//      guard magic and the watch under threat after them, then a hire, the rest last (the weights' `springPassUrgency`).
 // Reordering is confined to the orders before the first move (all resolve in the starting province).
 // The pass's tuning, BOT_P1, and its contact tests, botEnemyHostsIn and botInContact, are in bots/strategy.ts.
 export function botOrderDest(G: GameState, cur: Province | null | undefined, o: AnOrderAsThePassReadsIt) {
@@ -162,7 +162,7 @@ export function botIsFiller(o: AnOrderAsThePassReadsIt) {
 // given to one of our Elemental casters standing NEXT to it (never in it) with a casting to spare.
 // The planner treats a pinned province as sea this year — no attack into it, and no longer a "trap"
 // beside a target — so the generals strike the unflooded provinces around it instead.
-// The bots' first version's weights' `springPass` (B-17s).
+// The bots' first version's weights' `springPass`, `springPassOrdersAndReach`, `springPassUrgency` and `springPassSafeStepAndSecondFront`.
 export const BOT_PIN_EDGE =
   THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theTimesAnEnemyHostsStrengthAtWhichItIsBeatableWhereItStands;
 export function botPins(G: GameState, pi: number) {
@@ -638,7 +638,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           theNameOfTheSpell('elemental-summon'),
         ]);
       let n = o.filter((x) => x?.action === THE_HERO_ORDERS.cast_spell.key && EL.has(x.target)).length;
-      for (let i = 4; i >= 0 && n >= lim; i--) {
+      for (let i = THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1; i >= 0 && n >= lim; i--) {
         const x = o[i];
         if (
           x?.action === THE_HERO_ORDERS.cast_spell.key &&
@@ -662,7 +662,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
     //   T1 SOFTEN — Plague (humanoid units lose a level) and Illusory Terrain (defenders fight disoriented)
     //      over each attack target, cast in Spring by any caster of ours standing in or next to it with a
     //      casting to spare — before any move, so even a Spring assault meets a weakened garrison.
-    //   T2 FORCED MARCH — a March-7 general with two or more attacks this year makes the march between
+    //   T2 FORCED MARCH — a general with the march to spare and several attacks this year makes the march between
     //      them (or the approach to the first) a Forced March: a 50% chance to slip past a battle that
     //      would otherwise stop him short of his second target.
     //   T3 FEINT — (after the reorder) a general whose first target sits beside an enemy host that would
@@ -1032,7 +1032,12 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
             give.push(r.a);
             if (botBattleForce(G, hero, give, best.N.terrain, {}) >= best.d * mH) break;
           }
-          if (!give.length || give.length >= theUnitsOf(g).length - 1) return;
+          if (
+            !give.length ||
+            give.length >=
+              theUnitsOf(g).length - theOrdersAndReach.theMostUnitsAGeneralKeepsForASecondFrontsDetachmentToBeRefused
+          )
+            return;
           if (best.d > 0 && botBattleForce(G, hero, give, best.N.terrain, {}) < best.d * mH) return;
           if (t1) {
             const keep = theUnitsOf(g).filter((a) => !give.includes(a));

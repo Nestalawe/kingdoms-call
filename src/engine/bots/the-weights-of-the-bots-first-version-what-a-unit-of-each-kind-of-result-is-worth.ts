@@ -682,6 +682,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theLeastUnitsAGeneralLeadsToPlanAFeint: 3,
     theLeastUnitsAGeneralLeadsToSendADetachmentToASecondFront: 4,
     theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral: 0.7,
+    theMostUnitsAGeneralKeepsForASecondFrontsDetachmentToBeRefused: 1,
     theFirstOrdersOfAHeroWhereStrikeCastsAreKeptWhenHeTakesASecondFront: 3,
   },
   /** How urgently each kind of order comes first in a hero's season (the reordering of a hero's orders, bots/phase-one.ts). */
