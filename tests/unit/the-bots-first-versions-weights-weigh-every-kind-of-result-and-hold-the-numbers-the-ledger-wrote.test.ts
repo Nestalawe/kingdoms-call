@@ -91,7 +91,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(234);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(239);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -357,9 +357,7 @@ test("specialistsTheft's weights are the numbers bots/specialists.ts wrote inlin
     theThiefSkillFromWhichAThiefRobsAGuardiansHoard: 3,
     theChanceFromWhichAThiefRobsAGuardiansHoard: 75,
     theProvincesAwayAThiefLooksForAHoardToRob: 4,
-    theWorthOfEachRankOfAGuardianToALairTarget: 2,
-    whatEachStepAwayTakesOffALairTarget: 2,
-    theProvincesAwayAnUnarmedFighterLooksForALair: 4,
+    theStealAttemptsBeforeAThiefLiesInWait: 1,
   });
 });
 
@@ -377,6 +375,14 @@ test("specialistsRoleWork's weights are the numbers bots/specialists.ts wrote in
   });
 });
 
+test("specialistsUnarmedFighters's weights are the numbers botLairTarget and botLairOrders wrote inline before B-17u, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsUnarmedFighters).toEqual({
+    theWorthOfEachRankOfAGuardianToALairTarget: 2,
+    whatEachStepAwayTakesOffALairTarget: 2,
+    theProvincesAwayAnUnarmedFighterLooksForALair: 4,
+  });
+});
+
 test("specialistsMageWork's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsMageWork).toEqual({
     theProvincesAwayAMageLooksForAWandererToCharm: 3,
@@ -390,6 +396,9 @@ test("specialistsMageWork's weights are the numbers bots/specialists.ts wrote in
     theShareOfAnOwnedNeighboursTaxThatAddsToAProvincesBlessingWorth: 0.8,
     theUnitsAGeneralMustLeadForAMageToJoinHim: 3,
     theProvincesAwayAMageGoesToJoinAGeneral: 4,
+    theMostCastsAMageGivesToHexAGeneral: 3,
+    theMostCastsAMageGivesBesideAGeneral: 3,
+    theMostCastsAMageGivesToBlessAProvince: 2,
   });
 });
 
@@ -402,11 +411,12 @@ test("specialistsDefenders's weights are the numbers bots/specialists.ts wrote i
     whatEachStepAwayTakesOffADefendersPost: 1.5,
     theShareOfTheBestPostsWorthWhichKeepsADefenderAtHisPost: 0.8,
     theMostStepsADefenderWalksToHisPostInASeason: 3,
-    theStepsADefenderWhoLeadsNoTroopsMayReachInASeason: 5,
     theGarrisonUnitsAnOwnedNeighbourMustHoldAboveForADefenderToGatherThem: 2,
     theLandUnitsFromWhichADefenderDrillsTactical: 3,
     theSageLevelFromWhichADefenderResearches: 2,
     theHexesFromTheCapitalWithinWhichAnEnemyHostIsAHomeThreat: 2,
+    theWorthOfARaisingPlaceToAnArmedDefender: 1,
+    theMostCastsADefenderGives: 2,
   });
 });
 
