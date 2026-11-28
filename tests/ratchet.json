@@ -32,6 +32,6 @@
     "alignmentChecksOutsideTheEngine": 0,
     "eslintSuppressions": 216,
     "knownArchitectureViolations": 0,
-    "unusedCode": 8
+    "unusedCode": 5
   }
 }
