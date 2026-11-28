@@ -66,14 +66,14 @@ BOT-V is the foundation under all four: one door through which a bot, the script
 
 ## 2. Its state
 
-The requirements are agreed: a maintainer answered their questions (below), ten on 2026-11-20 and the rest on
-2026-11-28, with the delivery plan's. Nothing is built. The delivery plan is [B-17's group](../backlog/the-b-17-group-the-bots-improvement-machinery.md#b-17-the-bots-improvement-machinery),
+The requirements are agreed: a maintainer answered their questions (below): ten on 2026-11-20, the rest on
+2026-11-28. Nothing is built. The delivery plan is [B-17's group](../backlog/the-b-17-group-the-bots-improvement-machinery.md#b-17-the-bots-improvement-machinery),
 whose heading holds the plan's decisions on order. When the last part is built, this file goes, and the architecture
 docs say what is true ([the explorations](README.md)).
 
 ## 3. The questions and their answers
 
-| | The question | The answer (a maintainer, 2026-11-20, but where a row gives another date) |
+| | The question | The answer (a maintainer; 2026-11-20 unless the row says otherwise) |
 |---|---|---|
 | A1 | The competence bar for each alignment | Each ability used in a set share of the games where it is available, and no alignment's win share more than a set margin below the average; the figures set after BOT-S's first run |
 | A2 | An ability too rare to come up in the matrix's games | A named scenario may stand in, but the goal is bots that make the normal set of games show every ability |
@@ -87,7 +87,7 @@ docs say what is true ([the explorations](README.md)).
 | A10 | Whether the balance report needs a "bot change" class | No: the report already shows a bot change as a reshape and lists the figures that moved; the league's report is the verdict (a maintainer, 2026-11-28) |
 | A11 | Where these requirements live | Here, with the delivery plan in the backlog (B-17's group); each part's how-to goes into `docs/architecture/` as it is built |
 | A12 | Where each alignment ability's bot valuation lives | In the bots, in one table keyed by the ability, not in the ability's row of the content (BOT-V5) (a maintainer, 2026-11-28) |
-| A13 | The abilities the matrix's games don't show used | A set-up ability counts as used when the world is made with it; the Neutral mercenary discount stands in a named scenario, with its row, until the bots hire mercenaries; the Undead realm's 0% zeal is listed as "cannot act", its reason a maintainer's line (BOT-S3) (a maintainer, 2026-11-28) |
+| A13 | The abilities the matrix's games don't show used | Three exceptions, written in BOT-S3 (a maintainer, 2026-11-28) |
 
 ## 4. The rules it changes
 
