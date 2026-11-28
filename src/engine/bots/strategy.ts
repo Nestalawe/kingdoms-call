@@ -212,7 +212,7 @@ export function botGeneralship(c: Character) {
     (Number(s.melee) || 0) +
     (Number(s.archery) || 0) +
     Math.min(theGeneralship.theMostUnitsThatCountTowardAGeneralsWorth, n) +
-    (n >= theGeneralship.theUnitsFromWhichAHostGivesItsGeneralAFlatBonus
+    (n >= theRoles.theUnitsAHeroLeadsFromWhichHisHostKeepsItsOwnCommander
       ? theGeneralship.theFlatBonusAHostOfThatSizeGivesItsGeneral
       : 0) +
     Math.round(
@@ -412,7 +412,7 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     playersGold = G.players[pi]?.gold;
   const income = botTaxIncome(G, pi);
   // WAR FOOTING: at war (or facing a big enemy host) the bot spends its treasury down and lifts its
-  // sustainable army ceiling toward 100% of income; in peacetime it keeps the tuned cap + a small
+  // sustainable army ceiling toward the whole of its income; in peacetime it keeps the tuned cap + a small
   // chest.
   // What a gold is worth to this bot version: its weights file's (B-06h), the numbers as they were.
   const W = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold;
@@ -445,8 +445,7 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     budget,
     recruitedByProv: {},
   };
-  // 2026-09-28 (Toby: slayers must always have the gold to hunt rumours): 4g a slayer (two Moderate or four Weak
-  // rumours) is set aside BEFORE any muster can spend it; botRumourAffordable / botSpendRumour draw on it first.
+  // 2026-09-28 (Toby: slayers must always have the gold to hunt rumours): a set sum a slayer (a few rumours) is set aside BEFORE any muster can spend it; botRumourAffordable / botSpendRumour draw on it first.
   {
     const nSl = (asItsGuardReadsIt(G.characters) ?? []).filter(
       (c) => asItsGuardReadsIt(c) && c.alive && c.player === pi && c._botRole === 'slayer',
@@ -492,8 +491,8 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     _defs.length && _defUnits < W.theUnitsEachDefenderLeadsAtFullStrength * _defs.length
       ? Math.floor(L.upkeepCap * W.theShareOfTheWageCeilingHeldBackForTheDefenders)
       : 0;
-  // 2026-09-26 (Toby items 1 / 6 / 8): the same for the NAVY and the AIR — while the admiral has fewer than
-  // three hulls, or the flying general fewer than two flyers, a share of the ceiling is held back from every
+  // 2026-09-26 (Toby items 1 / 6 / 8): the same for the NAVY and the AIR — while the admiral has too few
+  // hulls, or the flying general too few flyers, a share of the ceiling is held back from every
   // other muster (the land general musters first and was spending every coin before the fleet got a hull).
   {
     const chars = asItsGuardReadsIt(G.characters) ?? [];
@@ -505,7 +504,7 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
     L.navReserve = 0;
     L.airReserve = 0; // superseded 2026-09-28 by the separate wage caps below
     // ── NAVY and AIR WAGE CAPS (2026-09-28, Toby): the admiral and the flying general each draw on a wage
-    // ceiling of their OWN, carved out of the realm's ceiling while they serve — 20% for the navy, 15% for
+    // ceiling of their OWN, carved out of the realm's ceiling while they serve — a share for the navy, a share for
     // the air (never less than one unit's wages). Their columns' army wages are billed to their own cap;
     // the land hosts, garrisons and hero wages share what is left. Before this the reserves above only held
     // gold back from OTHER musters, which did nothing once the realm's wages already filled the ceiling —
@@ -546,9 +545,9 @@ export function botSpend(L: ABotRealmsSpending, cost: number) {
   L.budget -= cost;
   L.upkeep += cost;
 }
-// GARRISONS: one cheap unit per province — enough to make an enemy stop and fight, never meant to
+// GARRISONS: a cheap garrison per province — enough to make an enemy stop and fight, never meant to
 // hold. Only once a player is actually on our doorstep (in or beside our land) do valuable
-// provinces get 2 and the capital 3.
+// provinces get more and the capital more still.
 export function botUnderAttack(G: GameState, pi: number) {
   // an enemy host counts only once the realm can see it (in our own land, or in ground we have eyes
   // on beside it) — botSeesChar is the same rule the player's map uses.
@@ -577,7 +576,7 @@ export function botGarrisonTarget(G: GameState, prov: Province | null | undefine
   if (prov?.owner !== pi || prov.terrain === 'sea') return 0;
   // Sept 2026 (Toby): garrisons only in Prosperous/Rich land (the capital always), never
   // more than a few per province. Defence proper is the DEFENDER heroes (botRoles / botDefenderOrders).
-  // 2026-09-26 (Toby): FEWER GARRISONS, BIGGER FIELD HOST. Only the capital is garrisoned in peace (one unit);
+  // 2026-09-26 (Toby): FEWER GARRISONS, BIGGER FIELD HOST. Only the capital is garrisoned in peace (a minimal garrison);
   // once an enemy host is on the doorstep the capital takes more and a Rich province one. Everything
   // else is held by the defenders and the field army — every levy not sunk into a garrison marches with the general.
   const home = prov.id === botHomeId(G, pi);
@@ -680,7 +679,7 @@ export function botFieldRecruitTokensCore(
       : prov.tax >= theRecruiting.theTaxFromWhichAProvinceBuysTheMiddleNumberOfAKind ||
           L.budget >= theRecruiting.theBudgetFromWhichARealmBuysTheMiddleNumberOfAKind
         ? theRecruiting.theMiddleNumberOfUnitsOfAKindAProvinceBuysInOneSeason
-        : theRecruiting.theLeastUnitsOfAKindAProvinceBuysInOneSeason; // Sept 2026 (§99): the ledger showed 17g of unused wage ceiling per turn with few holders in recruit provinces — a wide ceiling buys three of a kind
+        : theRecruiting.theLeastUnitsOfAKindAProvinceBuysInOneSeason; // Sept 2026 (§99): the ledger showed 17g of unused wage ceiling per turn with few holders in recruit provinces — a wide ceiling buys the most of a kind
   const tokens = [];
   const fleetType = botCoastalFleetType(prov);
   // Sept 2026: a fleet pins a mixed host to the coast (it cannot march overland while leading
@@ -696,7 +695,7 @@ export function botFieldRecruitTokensCore(
     !sky &&
     (adm || botNavalEnemyCoast(G, prov, pi) || (!botIsEdge(G, pi, prov) && botFrontierTarget(G, pi, prov) == null)); // a hull would ground the flying general's column
   // Sept 2026 (Toby): the ADMIRAL raises hulls at his port until every liftable land unit he leads has a berth
-  // (plus one spare), up to a cap that grows with the realm; other hosts buy a single hull for the old reasons.
+  // (plus a spare), up to a cap that grows with the realm; other hosts buy one hull for the old reasons.
   // 2026-09-26 (item 1): the cap starts at a few hulls and grows a hull per few land provinces.
   const hullCap = adm
     ? Math.min(
@@ -714,7 +713,15 @@ export function botFieldRecruitTokensCore(
       myLand = (asItsGuardReadsIt(cmdr.armies) ?? []).filter(
         (a) => asItsGuardReadsIt(a) && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type),
       ).length;
-    const wantHulls = adm ? Math.max(1, Math.min(hullCap - botFleetHullCount(G, pi), myLand + 1 - myHulls)) : 1;
+    const wantHulls = adm
+      ? Math.max(
+          theRecruiting.theLeastHullsAnAdmiralRaisesInOneSeason,
+          Math.min(
+            hullCap - botFleetHullCount(G, pi),
+            myLand + theRecruiting.theSpareHullsAnAdmiralRaisesBeyondOneForEachLiftableUnitHeLeads - myHulls,
+          ),
+        )
+      : theRecruiting.theHullsAHostOtherThanTheAdmiralsBuysInOneSeason;
     while (q < wantHulls && botCanAfford(L, cost)) {
       q++;
       botSpend(L, cost);
@@ -759,7 +766,10 @@ export function botFieldRecruitTokensCore(
     if (ft && !done[ft]) {
       const cost = (ARMY_COST_MASTER[ft] ?? 0) || 4;
       let q = 0;
-      const wantF = Math.max(1, Math.min(perTypeLimit, foot + 1 - flyers));
+      const wantF = Math.max(
+        theRecruiting.theLeastFlyersAFlyingGeneralRaisesInOneSeason,
+        Math.min(perTypeLimit, foot + theRecruiting.theFlyersMoreThanHisFootSoldiersAFlyingGeneralRaises - flyers),
+      );
       while (q < wantF && canAff(cost)) {
         q++;
         botSpend(L, cost);

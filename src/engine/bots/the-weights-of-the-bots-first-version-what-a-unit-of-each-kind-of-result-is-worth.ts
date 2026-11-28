@@ -481,7 +481,6 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     whatEachLevelOfTacticalIsWorthInAGeneral: 4,
     whatEachLevelOfMarchIsWorthInAGeneral: 2,
     theMostUnitsThatCountTowardAGeneralsWorth: 10,
-    theUnitsFromWhichAHostGivesItsGeneralAFlatBonus: 3,
     theFlatBonusAHostOfThatSizeGivesItsGeneral: 8,
     theTimesTheShareOfUnitsOfAGeneralsOwnRaceCountsInHisWorth: 4,
     theTimesTheShareOfUnitsOfARivalRaceCountsAgainstAGeneralsWorth: 6,
@@ -532,6 +531,11 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theHeroesMoreACourtWantsWithAFatChest: 2,
     theMeleeOrArcheryLevelFromWhichAHeroCountsAsAFighter: 2,
     theWorthOfAFightingWandererToARealmWithNoFightingSlayer: 2,
+    theSpareHullsAnAdmiralRaisesBeyondOneForEachLiftableUnitHeLeads: 1,
+    theLeastHullsAnAdmiralRaisesInOneSeason: 1,
+    theHullsAHostOtherThanTheAdmiralsBuysInOneSeason: 1,
+    theFlyersMoreThanHisFootSoldiersAFlyingGeneralRaises: 1,
+    theLeastFlyersAFlyingGeneralRaisesInOneSeason: 1,
   },
   /** What an enemy character, a body among the fallen and a unit are worth, and how a muster ranks its units (botEnemyChars, botRaiseTargets, botRecruitableTypes, bots/strategy.ts). */
   strategyHostsAndMusters: {

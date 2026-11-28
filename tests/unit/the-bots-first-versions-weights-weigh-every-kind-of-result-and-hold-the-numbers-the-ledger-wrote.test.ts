@@ -95,7 +95,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(420);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(424);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -600,7 +600,6 @@ test("strategyGeneralship's weights are the numbers bots/strategy.ts wrote inlin
     whatEachLevelOfTacticalIsWorthInAGeneral: 4,
     whatEachLevelOfMarchIsWorthInAGeneral: 2,
     theMostUnitsThatCountTowardAGeneralsWorth: 10,
-    theUnitsFromWhichAHostGivesItsGeneralAFlatBonus: 3,
     theFlatBonusAHostOfThatSizeGivesItsGeneral: 8,
     theTimesTheShareOfUnitsOfAGeneralsOwnRaceCountsInHisWorth: 4,
     theTimesTheShareOfUnitsOfARivalRaceCountsAgainstAGeneralsWorth: 6,
@@ -610,7 +609,7 @@ test("strategyGeneralship's weights are the numbers bots/strategy.ts wrote inlin
   });
 });
 
-test("strategyRoles's weights are the numbers bots/strategy.ts wrote inline before B-17x, each in its place", () => {
+test("strategyRoles' weights are the numbers bots/strategy.ts wrote inline before B-17x, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyRoles).toEqual({
     theUnitsAHeroLeadsFromWhichHisHostKeepsItsOwnCommander: 3,
     theHeroesBesideTheKingFromWhichAHeroGeneralIsWantedBesideAKingWhoLeads: 3,
@@ -655,6 +654,11 @@ test("strategyRecruiting's weights are the numbers bots/strategy.ts wrote inline
     theHeroesMoreACourtWantsWithAFatChest: 2,
     theMeleeOrArcheryLevelFromWhichAHeroCountsAsAFighter: 2,
     theWorthOfAFightingWandererToARealmWithNoFightingSlayer: 2,
+    theSpareHullsAnAdmiralRaisesBeyondOneForEachLiftableUnitHeLeads: 1,
+    theLeastHullsAnAdmiralRaisesInOneSeason: 1,
+    theHullsAHostOtherThanTheAdmiralsBuysInOneSeason: 1,
+    theFlyersMoreThanHisFootSoldiersAFlyingGeneralRaises: 1,
+    theLeastFlyersAFlyingGeneralRaisesInOneSeason: 1,
   });
 });
 

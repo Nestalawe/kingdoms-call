@@ -858,9 +858,7 @@ const TheWeightsOfStrategyGeneralshipSchema = z.object({
   whatEachLevelOfMarchIsWorthInAGeneral: z.number(),
   /** A general's worth counts one point for each unit he leads, up to this many. */
   theMostUnitsThatCountTowardAGeneralsWorth: z.number(),
-  /** A hero leading this many units or more gains the flat bonus of the weight after this one, which keeps a host with its current general. */
-  theUnitsFromWhichAHostGivesItsGeneralAFlatBonus: z.number(),
-  /** A hero leading a host of the size of the weight before this gains this much worth as a general. */
+  /** A hero leading a host of the size strategyRoles' units-a-hero-leads weight gives (the one number of units from which a column counts as a host) gains this much worth as a general. */
   theFlatBonusAHostOfThatSizeGivesItsGeneral: z.number(),
   /** The share of his units who are of a general's own race counts this many times in his worth. */
   theTimesTheShareOfUnitsOfAGeneralsOwnRaceCountsInHisWorth: z.number(),
@@ -876,7 +874,7 @@ const TheWeightsOfStrategyGeneralshipSchema = z.object({
 
 /** Who leads a realm's hosts and who is posted as admiral, flying general or defender (botRoles, bots/strategy.ts). */
 const TheWeightsOfStrategyRolesSchema = z.object({
-  /** A hero leading this many units or more counts as holding a host of his own, and the realm wants at least one general for each such host. */
+  /** A column of this many units or more counts as a host (one number for both uses): the realm wants at least one general for each hero who holds one, and a hero holding one gains the flat bonus of strategyGeneralship's flat-bonus weight as a general. */
   theUnitsAHeroLeadsFromWhichHisHostKeepsItsOwnCommander: z.number(),
   /** A realm with this many heroes or more, whose best general is its king, wants a second general. */
   theHeroesBesideTheKingFromWhichAHeroGeneralIsWantedBesideAKingWhoLeads: z.number(),
@@ -956,6 +954,16 @@ const TheWeightsOfStrategyRecruitingSchema = z.object({
   theMeleeOrArcheryLevelFromWhichAHeroCountsAsAFighter: z.number(),
   /** A realm with no fighting slayer counts a wandering fighter as worth this many hops more than any other wanderer. */
   theWorthOfAFightingWandererToARealmWithNoFightingSlayer: z.number(),
+  /** An admiral raises hulls for each liftable land unit he leads plus this many spare. */
+  theSpareHullsAnAdmiralRaisesBeyondOneForEachLiftableUnitHeLeads: z.number(),
+  /** An admiral who raises hulls raises at least this many in one season. */
+  theLeastHullsAnAdmiralRaisesInOneSeason: z.number(),
+  /** A host other than the admiral's that buys a hull buys this many in one season. */
+  theHullsAHostOtherThanTheAdmiralsBuysInOneSeason: z.number(),
+  /** A flying general raises flyers up to the number of his foot soldiers plus this many. */
+  theFlyersMoreThanHisFootSoldiersAFlyingGeneralRaises: z.number(),
+  /** A flying general raises at least this many flyers in one season. */
+  theLeastFlyersAFlyingGeneralRaisesInOneSeason: z.number(),
 });
 
 /** What an enemy character, a body among the fallen and a unit are worth, and how a muster ranks its units (botEnemyChars, botRaiseTargets, botRecruitableTypes, bots/strategy.ts). */
