@@ -2,8 +2,8 @@
 
 **One repeatable way to find what the bots do badly, change them, and prove that the change made them better.** It
 runs whenever the rules change, and above all each time an alignment changes. This file holds the requirements. The
-delivery plan (which parts come first, their backlog rows, their sizes) is still to come, and its backlog row is
-B-17.
+delivery plan (which parts come first, their rows, their sizes) is [B-17's group](../backlog/the-b-17-group-the-bots-improvement-machinery.md#b-17-the-bots-improvement-machinery)
+in the backlog.
 
 ## 1. The proposal
 
@@ -66,25 +66,28 @@ BOT-V is the foundation under all four: one door through which a bot, the script
 
 ## 2. Its state
 
-The requirements are agreed but for one point: a maintainer answered ten of the eleven questions on 2026-11-20 (below), and A10 waits for a maintainer. Nothing is built. The
-delivery plan comes next, as B-17. When the last part is built, this file goes, and the architecture docs say what is
-true ([the explorations](README.md)).
+The requirements are agreed: a maintainer answered their questions (below): ten on 2026-11-20, the rest on
+2026-11-28. Nothing is built. The delivery plan is [B-17's group](../backlog/the-b-17-group-the-bots-improvement-machinery.md#b-17-the-bots-improvement-machinery),
+whose heading holds the plan's decisions on order. When the last part is built, this file goes, and the architecture
+docs say what is true ([the explorations](README.md)).
 
 ## 3. The questions and their answers
 
-| | The question | The answer (a maintainer, 2026-11-20) |
+| | The question | The answer (a maintainer; 2026-11-20 unless the row says otherwise) |
 |---|---|---|
 | A1 | The competence bar for each alignment | Each ability used in a set share of the games where it is available, and no alignment's win share more than a set margin below the average; the figures set after BOT-S's first run |
 | A2 | An ability too rare to come up in the matrix's games | A named scenario may stand in, but the goal is bots that make the normal set of games show every ability |
 | A3 | Where "which bot plays which realm" is kept | Only in the league's set-up: the league judges a bot's change, nothing is kept in the saved game |
-| A4 | Where each alignment's flavour is written | A design document discusses the flavour of each alignment (BOT-D) |
+| A4 | Where each alignment's flavour is written, and who writes it | A design document discusses the flavour of each alignment (BOT-D). Claude drafts each alignment's flavour from the rulebooks, the creed texts and the alignment rows, and the owner corrects it; it is needed before B-17an (a maintainer, 2026-11-28) |
 | A5 | When Claude-played turns run | By hand only, each run stating its size first |
 | A6 | What Claude's findings become | A set of bot changes and tweaks; a maintainer discusses and accepts them; then they become backlog rows |
 | A7 | Whether a better bot reaches running games | Yes, once its backlog rows are delivered |
 | A8 | Whether the league plays both "normal" and "hostile" bots | Yes |
 | A9 | What tuning means | Improving the bots' behaviour against these criteria (the aims in order), not only beating copies of themselves |
-| A10 | Whether the balance report needs a "bot change" class | Open. Proposed: no. It already reports a bot change as a reshape, lists the figures that moved, and doesn't fail on them; the league report is the verdict |
-| A11 | Where these requirements live | Here, with one backlog row (B-17) for the delivery plan; each part's how-to goes into `docs/architecture/` as it is built |
+| A10 | Whether the balance report needs a "bot change" class | No: the report already shows a bot change as a reshape and lists the figures that moved; the league's report is the verdict (a maintainer, 2026-11-28) |
+| A11 | Where these requirements live | Here, with the delivery plan in the backlog (B-17's group); each part's how-to goes into `docs/architecture/` as it is built |
+| A12 | Where each alignment ability's bot valuation lives | In the bots, in one table keyed by the ability, not in the ability's row of the content (BOT-V5) (a maintainer, 2026-11-28) |
+| A13 | The abilities the matrix's games don't show used | Three exceptions, written in BOT-S3 (a maintainer, 2026-11-28) |
 
 ## 4. The rules it changes
 
@@ -123,7 +126,11 @@ can answer "does the Undead bot raise its dead, how often, and does it waste ord
 - **BOT-S2 (must).** Summed per alignment and per race across the run, each figure with the noise rule.
 - **BOT-S3 (must).** Every alignment ability is used in at least one of the matrix's games; a missing one fails the run
   and names the ability. While the bots' use of one is still to be built, a named scenario may stand in for it,
-  listed by name with its backlog row; the list is meant to empty (A2).
+  listed by name with its backlog row; the list is meant to empty (A2). Its exceptions (A13):
+  - a set-up ability (a Divine king's White magic, for one) counts as used when the world is made with it, read from
+    the state;
+  - the Neutral mercenary discount stands in a named scenario, with its row, until the bots hire mercenaries;
+  - the Undead realm's zeal, 0%, is listed as "cannot act", its reason a maintainer's line.
 - **BOT-S4 (should).** A profile per alignment, set against BOT-D: wars declared, treaties made and broken, doctrine
   chosen, and the share of the treasury spent on armies, heroes and spells.
 - **BOT-S5 (must).** The statistics only read: every game plays the same with them and without them.
@@ -137,7 +144,8 @@ can answer "does the Undead bot raise its dead, how often, and does it waste ord
 it should feel to play and to face.
 
 - **BOT-D1 (must).** A design document discusses the flavour of each of the seven alignments: what such a realm values,
-  how it treats its neighbours, what it does when it is winning and when it is losing.
+  how it treats its neighbours, what it does when it is winning and when it is losing. Claude drafts it, and the owner
+  corrects it (A4).
 - **BOT-D2 (must).** Each alignment's BOT-S4 profile names the passage of BOT-D1 it measures.
 
 *Acceptance:* every alignment has its passage, and every BOT-S4 figure points at one.
@@ -233,9 +241,12 @@ Claude can each take any seat.
 - **BOT-V3 (must).** A test fails if a bot reads hidden state: the same view with a different army hidden from it gives
   the same orders.
 - **BOT-V4 (must).** The bots keep no copy of a rule: to predict a battle, a spell or a sea lift, a bot asks the rule
-  registry, through each family's bot valuation hook (B-06). KD-165, KD-171, KD-173 and KD-174 close as their copies go.
-- **BOT-V5 (must).** Each row of the alignment abilities holds its bot valuation: when it is worth using, and what for.
-  A row without one fails a static check.
+  registry, through each family's bot valuation hook (B-06). The known defects B-17's group names (KD-165, KD-174 and
+  the others) close as their copies go.
+- **BOT-V5 (must).** Each alignment ability has its bot valuation: when it is worth using, and what for. It lives in
+  the bots, in one table keyed by the ability, `satisfies Record<AlignmentAbilitySlug, …>`, so a new ability with no
+  valuation doesn't compile (A12). Content holds rules only
+  ([the rule says what, the bot says how much](../decisions/README.md#the-decisions-on-how-the-work-runs), 2026-11-22).
 - **BOT-V6 (must).** The move goes family by family as `refactor-only` rows, each keeping every seeded game the same.
   Where today's bots turn out to read hidden state, that row is a fix with its own test, not a refactor.
 - **BOT-V7 (should).** Each pass of the bots' plan records its choices with a short reason, for BOT-S and BOT-C to
@@ -246,7 +257,7 @@ Claude can each take any seat.
   audience part rests on the audience gate (B-18).
 
 *Acceptance:* BOT-V3's test fails on a bot planted to read one hidden army, and passes on every bot after the move; no
-alignment ability row lacks its bot valuation.
+alignment ability lacks its bot valuation.
 
 ### BOT-P: comparing with players' choices (later)
 
@@ -276,6 +287,6 @@ per alignment, the shares of the bots' orders with players', naming no player, r
 
 ### Out of scope
 
-The delivery plan; any change to a rule of the game; judging the alignments' balance (that stays with the balance
-matrix and the maintainers); Claude in live games; new difficulty levels for players; the design matrix and its
-scorecard (B-07).
+The delivery plan (B-17's group in the backlog); any change to a rule of the game; judging the alignments' balance
+(that stays with the balance matrix and the maintainers); Claude in live games; new difficulty levels for players; the
+design matrix and its scorecard (B-07).
