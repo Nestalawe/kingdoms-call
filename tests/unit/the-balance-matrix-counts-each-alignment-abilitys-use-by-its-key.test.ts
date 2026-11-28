@@ -72,7 +72,9 @@ describe('each kind of rule', () => {
   test("a line's kind: the defender's zeal for the realm named second, a realm of the alignment only", () => {
     const zeal = aLine({ kind: "the defender's forces fight with fanatical zeal", actor: 1, targets: [1, 0] });
     expect(theUsesOf('zeal-of-a-divine-realm', aTurn({ lines: [zeal, zeal] })), 'Divine zeal').toEqual({ 0: 2 });
-    expect(theUsesOf('zeal-of-an-evil-realm', aTurn({ lines: [zeal] })), 'the attacker is not the defender').toEqual({});
+    expect(theUsesOf('zeal-of-an-evil-realm', aTurn({ lines: [zeal] })), 'the attacker is not the defender').toEqual(
+      {},
+    );
   });
   test('an order: each phase a hero of the realm gives it', () => {
     const orders = {
@@ -92,7 +94,9 @@ describe('each kind of rule', () => {
       },
       targets: [2, 0],
     });
-    expect(theUsesOf('war-without-warning-of-an-undead-realm', aTurn({ lines: [war] })), 'the declarer').toEqual({ 2: 1 });
+    expect(theUsesOf('war-without-warning-of-an-undead-realm', aTurn({ lines: [war] })), 'the declarer').toEqual({
+      2: 1,
+    });
     expect(theUsesOf('war-without-warning-of-an-evil-realm', aTurn({ lines: [war] })), 'not Evil').toEqual({});
     const tax = (neutralTrade: number) =>
       aLine({
@@ -126,11 +130,11 @@ describe('each kind of rule', () => {
       1: 1,
     });
   });
-  test('the state: an alliance broken into war, and the graves kept on Undead land', () => {
-    const before = { ...WORLD, relations: { '1-3': 'allied', '0-2': 'allied' } };
+  test('the state: an alliance broken into war (not a war declared from neutral), and the graves kept on Undead land', () => {
+    const before = { ...WORLD, relations: { '1-3': 'allied', '0-2': 'allied', '1-2': 'neutral' } };
     const after = {
       ...WORLD,
-      relations: { '1-3': 'enemy', '0-2': 'neutral' },
+      relations: { '1-3': 'enemy', '0-2': 'neutral', '1-2': 'enemy' },
       world: { provinces: [{ owner: 2, battleGraves: [{}] }, { owner: 2, battleGraves: [] }, { owner: 1 }] },
     };
     expect(theUsesOf('a-broken-alliance-means-war-for-an-evil-realm', aTurn({ before, after })), 'Evil').toEqual({
@@ -146,6 +150,7 @@ describe('each kind of rule', () => {
     countTheSetUp(WORLD, uses);
     expect(uses.get('one-undead-realm-a-game'), 'the Undead realm').toEqual({ 2: 1 });
     expect(uses.get('a-pagan-king-starts-with-explorer'), 'no Pagan realm').toEqual({});
+    expect(uses.get('consecrate'), 'an order is not counted at the making').toEqual({});
     expect(theUsesOf('one-undead-realm-a-game', aTurn({})), 'not in a turn').toEqual({});
   });
 });

@@ -73,9 +73,7 @@ export interface ATurnAsTheCountReadsIt {
 type WhereALineNamesTheRealm = 'its actor' | 'its first target' | 'its second target' | 'each realm it names';
 /** The order keys the count reads: the five alignment orders' own, a Research and a hand-over. */
 type AnOrderTheCountReads =
-  | (typeof THE_ALIGNMENT_ORDERS)[keyof typeof THE_ALIGNMENT_ORDERS]['key']
-  | 'research'
-  | 'leave_army';
+  (typeof THE_ALIGNMENT_ORDERS)[keyof typeof THE_ALIGNMENT_ORDERS]['key'] | 'research' | 'leave_army';
 
 interface CountedByALinesKind {
   readonly by: "a line's kind";
@@ -109,17 +107,16 @@ interface NotCountableYet {
 }
 /** How an ability's use is counted. */
 export type HowAnAbilitysUseIsCounted =
-  | CountedByALinesKind
-  | CountedByAnOrder
-  | CountedByAFact
-  | CountedFromTheState
-  | CountedAtTheSetUp
-  | NotCountableYet;
+  CountedByALinesKind | CountedByAnOrder | CountedByAFact | CountedFromTheState | CountedAtTheSetUp | NotCountableYet;
 
 /** A fact rule over the lines of one kind, its fact typed as that kind's. */
 function byAFact<K extends LineFact['kind']>(
   kind: K,
-  uses: (fact: Extract<LineFact, { kind: K }>, line: ALineAsTheCountReadsIt, turn: ATurnAsTheCountReadsIt) => readonly number[],
+  uses: (
+    fact: Extract<LineFact, { kind: K }>,
+    line: ALineAsTheCountReadsIt,
+    turn: ATurnAsTheCountReadsIt,
+  ) => readonly number[],
   byTheHerosOwnAlignment?: true,
 ): CountedByAFact {
   const isOfTheKind = (fact: LineFact | undefined): fact is Extract<LineFact, { kind: K }> => fact?.kind === kind;
@@ -268,8 +265,7 @@ export const HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED = {
   'graves-keep-on-undead-land': {
     by: 'the state',
     uses: (turn, realm) =>
-      (turn.after.world?.provinces ?? []).filter((p) => p.owner === realm && (p.battleGraves?.length ?? 0) > 0)
-        .length,
+      (turn.after.world?.provinces ?? []).filter((p) => p.owner === realm && (p.battleGraves?.length ?? 0) > 0).length,
   },
   'war-without-warning-of-an-evil-realm': byAFact('an Evil or Undead realm declares war without warning', (fact) => [
     fact.declarer.seat,
