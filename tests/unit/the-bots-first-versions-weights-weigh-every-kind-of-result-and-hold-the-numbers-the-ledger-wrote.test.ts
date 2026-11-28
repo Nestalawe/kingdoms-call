@@ -21,7 +21,7 @@
 // and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's
 // and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a
 // leaderless host's and a slayer's lessons (bots/missions.ts, part 2), and B-17x's: a general's worth, the roles' posts
-// and the recruiting and the court's size (bots/strategy.ts, part 1), and B-17ao's: a muster's worths, a hero's practice, the bots' reach and a lair's rating (bots/strategy.ts, part 2), each in its place: a
+// and the recruiting and the court's size (bots/strategy.ts, part 1), and B-17ao's: a muster's worths, a hero's practice, the bots' reach and a lair's rating (bots/strategy.ts, part 2), and B-17z's: a fallen hero's raising, a companion's, a split's and a muster's, a hero's preparations, a column's reach and an unarmed hero's roles (bots/movement.ts), each in its place: a
 // change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -95,7 +95,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(424);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(474);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -704,5 +704,85 @@ test("strategyLairRating's weights are the numbers bots/strategy.ts wrote inline
     whatEachLevelOfTacticalAddsToAHeroesLairRating: 3,
     whatEachLevelOfArcheryAddsToAHeroesLairRating: 2,
     whatEachLevelOfElementalNecromancyAndPsychicAddsToAHeroesLairRating: 4,
+  });
+});
+
+test("movementRaisingTheFallen's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementRaisingTheFallen).toEqual({
+    theShareOfHisMostHitPointsAMageMustHaveToWalkToRaiseTheFallen: 0.5,
+    theMostHopsAMageWalksToRaiseTheFallen: 8,
+  });
+});
+
+test("movementCompanions's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementCompanions).toEqual({
+    theUnitsFromWhichAGeneralsHostGuardsTheProvinceItStandsIn: 3,
+    theMostHopsASpareHeroIsSearchedForAsAGeneralsCompanion: 6,
+    theWorthOfEachLevelOfMagicInChoosingAGeneralsCompanion: 3,
+    theMostCastsACompanionPlansForHisGeneralInOneSeason: 3,
+    theMultipleOfAProvincesDefenceAGeneralsAssaultMustHaveForHisCompanionToFollowIt: 2,
+    theMostHopsACompanionWalksToJoinHisGeneral: 6,
+  });
+});
+
+test("movementSplitsAndMusters's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementSplitsAndMusters).toEqual({
+    theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsDefenders: 8,
+    theUnitsFromWhichAGeneralSplitsHisHostWhenTheRealmPostsNoDefenders: 10,
+    theRankOfADefenderAmongTheHeroesWhoMayTakeASplitHostsWeakerHalf: -100,
+    theNumberOfPartsAHostIsDividedIntoWhenItSplits: 2,
+    theLeastUnitsAHostGivesAwayWhenItSplits: 3,
+    theLeastPhasesLeftAfterAGarrisonOrderForOneToBeAdded: 2,
+    theLeastReachFromWhichAGarrisonOrderIsAdded: 2,
+    theMostHopsAnUnarmedHeroSearchesForAProvinceToMusterIn: 4,
+    theMostHopsAGeneralSearchesForAProvinceToRaiseAHostIn: 6,
+    theWorthLostForEachHopToAProvinceToMusterIn: 2,
+    theWorthAPortAddsToAProvinceToRaiseAHostInWhenTheRealmHasAnAdmiral: 6,
+  });
+});
+
+test("movementPreparations's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementPreparations).toEqual({
+    theShareOfHisMostHitPointsBelowWhichAKingWithNoThreatRestsTheSeasonOut: 0.75,
+    theOrdersAHeroHasPlannedBelowWhichAnItemOrderIsAdded: 2,
+    theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight: 2,
+    theLeastUnitsAHostNeedsForItsHeroToPrepareForAFight: 2,
+    theMostOrdersAHeroHasPlannedForHisPreparationsForAFightToBegin: 3,
+    theMostOrdersAHeroHasPlannedForABuffCastToBeAddedBeforeAFight: 3,
+    theMostBuffCastsAHeroPlansBeforeAFight: 1,
+    theLeastUnitsAFlyingGeneralLeadsToPlanABuffCastBeforeAStrike: 3,
+    theMostOrdersAFlyingGeneralHasPlannedForABuffCastToBeAddedBeforeAStrike: 2,
+  });
+});
+
+test("movementReachAndStrength's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementReachAndStrength).toEqual({
+    theMostHopsAnyHeroIsPlannedToMarchInASeason: 3,
+    theMostHopsASeaGoingColumnSailsInASeason: 3,
+    theLeastHopsAnAirStrikeIsPlannedAcross: 1,
+    theMostHopsACasterLeadingSkeletonsStepsToAnUndefendedProvince: 1,
+    theShareOfAHostsStrengthItKeepsAfterAPlannedFight: 0.85,
+  });
+});
+
+test("movementWanderersAndWarRoles's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementWanderersAndWarRoles).toEqual({
+    theMostHopsAnUnarmedHeroSearchesForAWanderer: 5,
+    theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers: 3,
+    theShareOfHisMostHitPointsFromWhichAnUnarmedHeroTakesAWarRole: 0.7,
+    theShareOfHisMostHitPointsFromWhichAHunterSetsOut: 0.85,
+    theMostHopsAHunterSearchesForAQuarry: 4,
+    theMostHopsARaiderSearchesForALandToRaid: 5,
+    theLeastSpyLevelFromWhichAHeroGoesToSpyOnACapital: 2,
+    theMostHopsASpySearchesForACapitalToSpyOn: 5,
+    theMostSpyOrdersASpyGivesOnArrival: 2,
+    theShareOfHisMostHitPointsFromWhichAHeroChallengesARival: 0.85,
+    theShareOfHisMostHitPointsFromWhichAFighterRunsDownAnUnarmedRival: 0.85,
+    theLeastMeleeOrArcheryLevelFromWhichAFighterRunsDownAnUnarmedRival: 3,
+    theRoundsOfTheDuelForecastThatDecidesWhetherAFighterRunsDownARival: 24,
+    theLeastOddsOfWinningTheDuelFromWhichAFighterRunsDownAnUnarmedRival: 0.5,
+    theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival: 0.1,
+    theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair: 0.7,
+    theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: 0.6,
   });
 });
