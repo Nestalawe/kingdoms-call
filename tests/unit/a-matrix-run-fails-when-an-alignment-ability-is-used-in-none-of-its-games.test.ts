@@ -22,6 +22,7 @@ import {
   THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW,
   THE_SCENARIOS_THE_STAND_INS_NAME,
   theAbilitiesTheGamesFailOn,
+  whatAStandInsScenarioLacks,
   whatIsNotMeasuredYet,
   type WhyTheGamesNeedNotShowAnAbility,
 } from '../../tools/balance/the-check-that-every-alignment-ability-is-used-in-some-game.ts';
@@ -61,13 +62,13 @@ describe('the ability check', () => {
   test('fails a run whose games never use an ability, naming it and its realms', () => {
     const games = [aGameUsing(without('consecrate')), aGameUsing(without('consecrate'))];
     expect(theAbilitiesTheGamesFailOn(games)).toEqual([
-      'consecrate (of the Divine realms) was used in none of the 2 games its realms played',
+      'consecrate (of the Divine realms) was used in none of the 2 games (of all 2, bot and scripted) its realms played',
     ]);
   });
 
   test('a set-up ability counts as used when the world is made with it, and fails when no game is', () => {
     expect(theAbilitiesTheGamesFailOn([aGameUsing(without('a-divine-king-starts-with-white-magic'))])).toEqual([
-      'a divine king starts with white magic (of the Divine realms) was used in none of the 1 games its realms played',
+      'a divine king starts with white magic (of the Divine realms) was used in none of the 1 games (of all 1, bot and scripted) its realms played',
     ]);
   });
 
@@ -75,14 +76,14 @@ describe('the ability check', () => {
     expect(theAbilitiesTheGamesFailOn([aGameUsing(EVERY_ONE_BUT_THE_LIST)])).toEqual([]);
     const used = aGameUsing([...EVERY_ONE_BUT_THE_LIST, 'the-neutral-mercenary-discount']);
     expect(theAbilitiesTheGamesFailOn([used, aGameUsing(EVERY_ONE_BUT_THE_LIST)])).toEqual([
-      'the neutral mercenary discount (of the Neutral realms) was used in 1 of the 2 games its realms played: it leaves the stand-in list (KD-528)',
+      'the neutral mercenary discount (of the Neutral realms) was used in 1 of the 2 games (of all 2, bot and scripted) its realms played: it leaves the stand-in list (KD-528)',
     ]);
   });
 
   test('"cannot act" passes unused; it fails if a game shows it used, or if its rule no longer holds it back', () => {
     const used = aGameUsing([...EVERY_ONE_BUT_THE_LIST, 'zeal-of-an-undead-realm']);
     expect(theAbilitiesTheGamesFailOn([used])).toEqual([
-      'zeal of an undead realm (of the Undead realms) is listed as "cannot act", but was used in 1 of the 1 games its realms played: it leaves the list',
+      'zeal of an undead realm (of the Undead realms) is listed as "cannot act", but was used in 1 of the 1 games (of all 1, bot and scripted) its realms played: it leaves the list',
     ]);
     const itActsNow: Partial<Record<AlignmentAbilitySlug, WhyTheGamesNeedNotShowAnAbility>> = {
       ...THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW,
@@ -103,7 +104,7 @@ describe('the ability check', () => {
     );
     expect(theAbilitiesTheGamesFailOn([aGameUsing(EVERY_ONE_BUT_THE_LIST)], shorter)).toEqual([
       'righteous defence (of the Good realms) is counted by no use (not countable yet), and is not on the stand-in list',
-      'the neutral mercenary discount (of the Neutral realms) was used in none of the 1 games its realms played',
+      'the neutral mercenary discount (of the Neutral realms) was used in none of the 1 games (of all 1, bot and scripted) its realms played',
     ]);
   });
 
@@ -114,32 +115,55 @@ describe('the ability check', () => {
     );
     const fails = theAbilitiesTheGamesFailOn([{ stats: noUndead }]);
     expect(fails).toContain(
-      'harvest the field (of the Undead realms) was used in none of the 0 games its realms played',
+      'harvest the field (of the Undead realms) was used in none of the 0 games (of all 1, bot and scripted) its realms played',
     );
   });
 });
 
 describe("the check's list", () => {
-  test('only shrinks: it holds no more than the seven entries of 28 November', () => {
+  test('only shrinks: it holds no more than its seven entries (three by the answer of 28 November, five a tooling choice)', () => {
+    // by the maintainers' answer (BOT-S3, A13): the mercenary discount's scenario and the Undead zeal (the set-up
+    // abilities need no entry); by the run's tooling choice, put to a maintainer: the five with no scenario yet
     const THE_SEVEN = [
       'the-neutral-mercenary-discount',
+      'zeal-of-an-undead-realm',
       'the-risen-dead-follow-only-the-undead',
       'creatures-follow-without-a-druid',
       'monsters-follow-without-a-druid',
       'righteous-defence',
       'home-of-the-wild',
-      'zeal-of-an-undead-realm',
     ];
     const extra = Object.keys(THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW).filter((k) => !THE_SEVEN.includes(k));
     expect(extra, `entries added to the list: ${extra.join(', ')}`).toEqual([]);
   });
 
-  test('each named scenario it names is there and requires figures, so every run plays it', async () => {
-    expect(THE_SCENARIOS_THE_STAND_INS_NAME).toEqual(['a-neutral-realm-hires-a-mercenary-band-at-its-discount']);
-    for (const name of THE_SCENARIOS_THE_STAND_INS_NAME) {
-      const s = ((await import(scenarioFile(name))) as { default: Scenario }).default;
-      expect(s.requires?.length, name).toBeGreaterThan(0);
+  test("each named scenario it names is there and requires its ability's own use in every run", async () => {
+    expect(THE_SCENARIOS_THE_STAND_INS_NAME).toEqual([
+      { key: 'the-neutral-mercenary-discount', scenario: 'a-neutral-realm-hires-a-mercenary-band-at-its-discount' },
+    ]);
+    for (const standIn of THE_SCENARIOS_THE_STAND_INS_NAME) {
+      const s = ((await import(scenarioFile(standIn.scenario))) as { default: Scenario }).default;
+      expect(whatAStandInsScenarioLacks(standIn, s), standIn.scenario).toBeNull();
     }
+  });
+
+  test("a stand-in's scenario that is missing, requires another figure, or only in some run, fails", () => {
+    const standIn = {
+      key: 'the-neutral-mercenary-discount',
+      scenario: 'a-neutral-realm-hires-a-mercenary-band-at-its-discount',
+    } as const;
+    const own = `${ABILITY_USED}the-neutral-mercenary-discount`;
+    expect(whatAStandInsScenarioLacks(standIn, { requires: [{ figure: own, in: 'every run' }] })).toBeNull();
+    expect(whatAStandInsScenarioLacks(standIn, undefined)).toBe(
+      'The scenario "a-neutral-realm-hires-a-mercenary-band-at-its-discount" is to show the neutral mercenary discount used, but it isn\'t there.',
+    );
+    const lacks =
+      'The scenario "a-neutral-realm-hires-a-mercenary-band-at-its-discount" is to show the neutral mercenary discount used, but doesn\'t require "bots: ability used: the-neutral-mercenary-discount" in every run.';
+    expect(whatAStandInsScenarioLacks(standIn, { requires: [{ figure: 'chases: caught', in: 'every run' }] })).toBe(
+      lacks,
+    );
+    expect(whatAStandInsScenarioLacks(standIn, { requires: [{ figure: own, in: 'some run' }] })).toBe(lacks);
+    expect(whatAStandInsScenarioLacks(standIn, {})).toBe(lacks);
   });
 
   test("the report's 'what isn't measured yet' names every entry, the stand-ins first, each with its row", () => {

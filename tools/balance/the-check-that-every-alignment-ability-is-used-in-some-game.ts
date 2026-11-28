@@ -96,10 +96,35 @@ export const THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW = {
   },
 } as const satisfies Partial<Record<AlignmentAbilitySlug, WhyTheGamesNeedNotShowAnAbility>>;
 
-/** The named scenarios the list's stand-ins name: run.ts fails a run if one isn't a required scenario. */
-export const THE_SCENARIOS_THE_STAND_INS_NAME: readonly AStandInsScenario[] = Object.values(
-  THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW,
-).flatMap((e) => ('scenario' in e && e.scenario !== 'no scenario yet' ? [e.scenario] : []));
+/** A stand-in and the named scenario it names. */
+export interface AStandInsScenarioByItsKey {
+  readonly key: AlignmentAbilitySlug;
+  readonly scenario: AStandInsScenario;
+}
+/** The named scenarios the list's stand-ins name, each with its ability: run.ts fails a run if one isn't a required
+ *  scenario that requires the ability's own use. */
+export const THE_SCENARIOS_THE_STAND_INS_NAME: readonly AStandInsScenarioByItsKey[] = THE_ABILITY_KEYS.flatMap(
+  (key) => {
+    const e: WhyTheGamesNeedNotShowAnAbility | undefined = (
+      THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW as Partial<Record<AlignmentAbilitySlug, WhyTheGamesNeedNotShowAnAbility>>
+    )[key];
+    return e?.why === 'a stand-in' && e.scenario !== 'no scenario yet' ? [{ key, scenario: e.scenario }] : [];
+  },
+);
+
+/** What a stand-in's scenario lacks, or null: it must be there and require the ability's own figure (its use, under
+ *  the bots' statistics' base) in every run. `found`: the scenario, if it is there. */
+export function whatAStandInsScenarioLacks(
+  standIn: AStandInsScenarioByItsKey,
+  found: { readonly requires?: readonly { readonly figure: string; readonly in: string }[] } | undefined,
+): string | null {
+  const figure = ABILITY_USED + standIn.key;
+  if (!found)
+    return `The scenario "${standIn.scenario}" is to show ${anAbilityInWords(standIn.key)} used, but it isn't there.`;
+  return found.requires?.some((r) => r.figure === figure && r.in === 'every run')
+    ? null
+    : `The scenario "${standIn.scenario}" is to show ${anAbilityInWords(standIn.key)} used, but doesn't require "${figure}" in every run.`;
+}
 
 /** An ability in game terms: its name and its alignment's realms. */
 const named = (key: AlignmentAbilitySlug): string =>
@@ -130,7 +155,8 @@ export function theAbilitiesTheGamesFailOn(
 ): string[] {
   return THE_ABILITY_KEYS.flatMap((key) => {
     const { played, used } = theGamesItWasUsedIn(games, key);
-    const inGames = `in ${String(used)} of the ${String(played)} games its realms played`;
+    const ofAll = `(of all ${String(games.length)}, bot and scripted)`;
+    const inGames = `in ${String(used)} of the ${String(played)} games ${ofAll} its realms played`;
     const entry = list[key];
     if (entry?.why === 'cannot act') {
       if (!entry.stillHolds())
@@ -141,7 +167,7 @@ export function theAbilitiesTheGamesFailOn(
     const how = HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED[key].by;
     if (how === 'a stand-in from the state' || how === 'not countable yet')
       return [`${named(key)} is counted by no use (${how}), and is not on the stand-in list`];
-    return used ? [] : [`${named(key)} was used in none of the ${String(played)} games its realms played`];
+    return used ? [] : [`${named(key)} was used in none of the ${String(played)} games ${ofAll} its realms played`];
   });
 }
 

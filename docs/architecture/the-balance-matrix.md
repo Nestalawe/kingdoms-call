@@ -214,8 +214,10 @@ of its alignment; a set-up ability when the world is made with it), naming it, u
 (`THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW`): a stand-in, with its backlog row and its named scenario ("no scenario yet"
 for the three stand-ins from the state and the two not countable yet), or "cannot act" (an Undead realm's zeal, 0%:
 the maintainer's line is its reason, and the check fails if the number changes). An entry seen used in a game fails
-the run too, so it leaves the list: the list only shrinks, meant to empty (A2), and its test holds it to the seven
-of 28 November. A stand-in's scenario must be a required one, or the run fails. Not with `--only`, nor with
+the run too, so it leaves the list: the list only shrinks, meant to empty (A2), and its test holds it to its seven
+entries: three by the maintainers' answer of 28 November (BOT-S3, A13: the set-up, which needs no entry, the
+mercenary discount and the zeal), five ("no scenario yet") by the run's tooling choice, a question for a maintainer.
+A stand-in's scenario must be a required one that requires the ability's own use in every run, or the run fails. Not with `--only`, nor with
 `KC_SITE` (it reads the vm half's count). The bots' section names each entry under "what isn't measured yet".
 
 The bots' group as a whole is added or retired when no game of one side has any of it: no game differs by it, and the

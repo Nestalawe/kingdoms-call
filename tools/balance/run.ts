@@ -64,6 +64,7 @@ import { buildSite, forkPool } from './sides.ts';
 import {
   theAbilitiesTheGamesFailOn,
   THE_SCENARIOS_THE_STAND_INS_NAME,
+  whatAStandInsScenarioLacks,
 } from './the-check-that-every-alignment-ability-is-used-in-some-game.ts';
 import {
   isAnAbilitysFigure,
@@ -176,11 +177,13 @@ async function playTheRequiredScenarios(jobs: number): Promise<RequiredScenarios
       lines.push(`The scenario "${name}" is to give a scripted case, but it isn't there or requires nothing.`);
       failed = true;
     }
-  for (const name of THE_SCENARIOS_THE_STAND_INS_NAME)
-    if (!required.some((s) => s.name === name)) {
-      lines.push(`The scenario "${name}" is to show an ability used, but it isn't there or requires nothing.`);
+  for (const standIn of THE_SCENARIOS_THE_STAND_INS_NAME) {
+    const lacks = whatAStandInsScenarioLacks(standIn, required.find((s) => s.name === standIn.scenario)?.scenario);
+    if (lacks) {
+      lines.push(lacks);
       failed = true;
     }
+  }
   const where = process.env['KC_SITE'] ? ` on ${process.env['KC_SITE']}` : '';
   for (const { name, scenario } of required) {
     const played = await playRuns(name, scenario.runs, jobs);
