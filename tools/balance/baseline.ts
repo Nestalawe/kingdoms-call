@@ -10,6 +10,7 @@
 // read with that column NOT_KEPT, which no comparison counts as a difference.
 import fs from 'node:fs';
 import path from 'node:path';
+import type { AlignmentAbilitySlug } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { TURN_COLUMNS, type TurnColumn } from './hash.ts';
 import type { SeedSet } from './matrix.ts';
 import type { Cases, GameResult } from './play.ts';
@@ -168,6 +169,9 @@ export interface ReportsResult extends ReportsGame {
   reports: number;
   /** What the leak checks found, one entry per turn that broke one (describeBreaches). */
   leaks: string[];
+  /** Each alignment ability's uses in the game, by key and realm (the-count-of-each-alignment-abilitys-use-by-its-key.ts):
+   *  never kept in the baseline. */
+  abilityUses?: Partial<Record<AlignmentAbilitySlug, Record<number, number>>>;
   ms: number;
 }
 
