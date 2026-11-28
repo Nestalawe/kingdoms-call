@@ -1129,7 +1129,7 @@ export function botLairPlan(
       : null;
   }; // an assessment still good for him
   let T = botLairTiers(c);
-  // a fresh "below 80%" on the grade above: clear two more of his own grade before he asks again
+  // a fresh "below the bar" on the grade above: clear two more of his own grade before he asks again
   if (
     T.up != null &&
     T.cur >= 0 &&
@@ -1153,7 +1153,7 @@ export function botLairPlan(
   }
   const mhp0 = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
     hp0 = asItsGuardReadsIt(c.hp) ?? mhp0;
-  // option 3: a WEAK lair on a 60–80% rumour ("the odds favour you") when he stands at full health (95%+)
+  // option 3: a WEAK lair on a middling rumour ("the odds favour you") when he stands at full health
   const weakRisk = (x: ALairCandidate) =>
     x.grade === 0 && x.rumour !== null && x.rumour.band >= BOT_LAIR_WEAK_BAND && x.rumour.band < BOT_LAIR_GO_BAND;
   const searchable = (x: ALairCandidate) =>
@@ -1163,7 +1163,7 @@ export function botLairPlan(
   const askable = (x: ALairCandidate) =>
     T.up != null && x.grade === T.up && !x.rumour && !told(x.f) && L && botRumourAffordable(G, pi, L, x.price);
   if (!cands.some(searchable) && !cands.some(askable)) return null;
-  // rest first when hurt: to 75% of max HP, 30% a phase
+  // rest first when hurt: up to the health bar, a share of his hit points a phase
   const mhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
     hp = asItsGuardReadsIt(c.hp) ?? mhp;
   const per = Math.max(1, Math.ceil(mhp * 0.3));
@@ -1215,7 +1215,7 @@ export function botLairPlan(
         searches === 0 &&
         (Number(sk.illusory) || 0) >= 1 &&
         invisibilityWouldHideTheHeroNow(c) &&
-        left() >= theLairPlan.theOrdersAHeroMustHaveLeftToCastInvisibilityBeforeALair
+        left() >= theLairPlan.theOrdersAHeroMustHaveLeftToCastThePreHuntSpell
       )
         mv.push({
           action: 'cast_spell',
@@ -1232,7 +1232,7 @@ export function botLairPlan(
         prov: o.x.X.id,
       };
       if (searches > 0) so._botMinHp = BOT_LAIR_NEXT_HP;
-      if (!own && weakRisk(o.x)) so._botMinHp = BOT_LAIR_WEAK_HP; // a 60–80% Weak lair only at full health
+      if (!own && weakRisk(o.x)) so._botMinHp = BOT_LAIR_WEAK_HP; // a middling-rumour Weak lair only at full health
       mv.push(so);
       used.add(theLairsKey(o.x));
       pos = o.x.X;
@@ -1253,7 +1253,7 @@ export function botLairPlan(
       pos = a.x.X;
       asked++;
       // option 2: SEARCH IN THE SAME YEAR if the talk is good — a conditional order the engine checks against the
-      // rumour this hero heard this turn (80%+, or 60%+ on a Weak lair at full health); otherwise he rests.
+      // rumour this hero heard this turn (the top band, or the middling band on a Weak lair at full health); otherwise he rests.
       if (left() > 0 && searches < BOT_LAIR_MAX_SEARCHES) {
         const so: ALairOrder = {
           action: 'search',
@@ -1265,7 +1265,7 @@ export function botLairPlan(
           _botMinHp:
             searches > 0
               ? BOT_LAIR_NEXT_HP
-              : theLairPlan.theShareOfAHeroesHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment,
+              : theLairPlan.theShareOfAHerosHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment,
         };
         if (a.x.grade === 0) {
           so._botIfRumourLow = BOT_LAIR_WEAK_BAND;
@@ -1285,7 +1285,7 @@ export function botLairPlan(
 // Are there known, uncleared lairs within a slayer's reach that he cannot yet clear? Then training is what
 // makes them clearable — he trains; with NO lair known in reach he explores to find one (2026-09-26, Toby).
 export function botSlayerHasLairsToGrowInto(G: GameState, pi: number, c: Character) {
-  return botLairCandidates(G, pi, c, theLairPlan.theStepsFromASlayerWithinWhichAKnownLairIsOneHeMayGrowInto).some(
+  return botLairCandidates(G, pi, c, theLairPlan.theStepsFromASlayerWithinWhichALairIsOneHeMayGrowInto).some(
     (k) => k.f.monster,
   );
 }
@@ -1680,10 +1680,10 @@ export function botMasteryPre(
 // out only when he expects to win, so a challenge answered unforecast is a gamble (bot improvements, 2026-11):
 //   REFUSE — too little duelling skill, or too little health, or a forecast that falls short of the terms below (the
 //     morale cost is cheaper than a dead general).
-//   ACCEPT — a hero at 50%+ to win against each general seen; a king at 60%+ and 10% or less to fall (a fallen king
+//   ACCEPT — a hero at the accept bar to win against each general seen; a king at its higher bar and at or under its limit of falling (a fallen king
 //     costs the crown). Seeing no general: a hero accepts from a modest duelling skill, a king only from a high one.
-//   CHALLENGE — a real duellist (a high duelling skill, near full health) forecast at 65%+ against each general seen; a
-//     king also risks 10% or less of falling. Seeing no general, a hero challenges as before; a king only accepts.
+//   CHALLENGE — a real duellist (a high duelling skill, near full health) forecast above the challenge bar against each general seen; a
+//     king also risks no more than its limit of falling. Seeing no general, a hero challenges as before; a king only accepts.
 // botDuelSkill (a character's best duelling skill) is in bots/strategy.ts.
 // Each number of BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST is the bots' first version's weights' `duel` (B-17s), by name.
 export const BOT_DUEL = {
@@ -1734,7 +1734,7 @@ export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: A
     const r = I.generals[e.id];
     const loc = botSeesChar(G, pi, e)
       ? e.location
-      : r && (G.turn || 0) - r.turn <= theDuels.theTurnsAnEnemyGeneralRecordedElsewhereStillCountsAsNear
+      : r && (G.turn || 0) - r.turn <= theDuels.theTurnsAnEnemyGeneralsPlacingStillCountsAsNear
         ? r.provId
         : null;
     if (loc == null || !near.some((x) => x.id === loc)) continue;
@@ -1758,7 +1758,8 @@ export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: A
     if (fl > felled) felled = fl;
   }
   if (win == null) {
-    if (c.isKing) return d >= theDuels.theDuellingSkillFromWhichAKingAcceptsWithNoGeneralInSight ? 'accept' : 'refuse';
+    if (c.isKing)
+      return d >= theDuels.theDuellingSkillFromWhichAKingAcceptsWhenNoEnemyGeneralIsNear ? 'accept' : 'refuse';
     return fit ? 'challenge' : 'accept';
   }
   const safe = !c.isKing || felled <= BOT_DUEL.kingFelled;
@@ -1963,7 +1964,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       !theUnitsWithGapsOf(c).length &&
       (asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN)) >=
         (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) *
-          theSlayerSchool.theShareOfHitPointsAnUnarmedSlayerMustHoldToBeTaught,
+          theSlayerSchool.theShareOfHitPointsASlayerWhoLeadsNoUnitsMustHoldToBeTaught,
   );
   slayers.forEach((sl) => {
     const so = orders[sl.id] ?? [];
