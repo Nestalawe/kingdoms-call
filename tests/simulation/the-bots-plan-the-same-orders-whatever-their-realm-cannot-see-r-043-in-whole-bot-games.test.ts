@@ -4,17 +4,18 @@
 // dice for both), then again on a copy with one thing outside its realm's view changed (a variation); the realm's
 // declarations, its heroes' orders and fight plans, its Reckoning call and its concession must come out the same.
 // The game itself plays on as it would without the test (the copies are thrown away, their dice drawn apart).
-// What the realm may see is playerView (src/views/what-each-realm-may-see-of-the-world.ts) on the world as its last
-// report read it (as the turn's end readies the world for the reports). Out of sight: a
-// province none of its sight rules shows and it holds no memory of, and a hero of another realm standing there whom it
-// neither sees nor remembers.
-// The passes covered: the bots' diplomacy (before the plan, in the turn), then every pass of the plan in its order
-// (the concessions, the movement, the muster, the economy, the actions, Spring's orders, the order hygiene and the
-// Reckoning's call), each realm planned alone so that no realm's orders of the same turn feed another's.
+// What the realm may see is playerView (src/views/what-each-realm-may-see-of-the-world.ts): the view as the realm's
+// report would read it. Out of sight now: a province none of its sight rules shows now (it may remember it), and a hero
+// of another realm standing there whom it neither sees nor remembers.
+// The passes covered: the bots' diplomacy (its first call, before the phases), then every pass of the plan in its
+// order (the concessions, the movement, the muster, the economy, the actions, Spring's orders, the order hygiene and
+// the Reckoning's call); each general variation is made before both. Each copy has that realm as its only bot. The
+// diplomacy's second call (after the phases) is not compared: the bots declare before the phases, and the code calls
+// the second a no-op but for a rival first met during the phases.
 // The known list (THE_ROWS_WHOSE_VARIATIONS_STILL_CHANGE_A_PLAN): the variations that still change a plan today, each
 // under the row that fixes it (B-17g to k). A listed row's variations must still change some plan (once its fix makes
 // them hold, its row empties the entry); every other variation must change none. The list only shrinks: a static case
-// below holds it to the five rows.
+// below holds it to the five rows and pins its length (THE_KNOWN_LISTS_LENGTH), which each fix row lowers.
 // Level 3 (simulation): whole bot games on the engine's modules (tests/lib/a-staged-turn-on-the-engines-modules.ts's
 // play()), the diplomacy and the plan stood in on their modules (vi.spyOn) to run the copies first. A lower level
 // can't reach it: what the bots read is spread over every pass, on worlds a game makes, and a staged world holds none
@@ -38,6 +39,8 @@ const THE_FIX_ROWS: readonly AFixRow[] = ['B-17g', 'B-17h', 'B-17i', 'B-17j', 'B
 
 /** The known list: the rows whose variations still change a bot's plan today. Each fix row empties its own entry. */
 const THE_ROWS_WHOSE_VARIATIONS_STILL_CHANGE_A_PLAN: readonly AFixRow[] = ['B-17g', 'B-17h', 'B-17i', 'B-17j', 'B-17k'];
+/** The known list's length: each fix row lowers it with its entry, so an entry once removed can't come back. */
+const THE_KNOWN_LISTS_LENGTH = 5;
 
 type Raw = Record<string, unknown>;
 interface Hero extends Raw {
@@ -82,6 +85,12 @@ interface WhatTheRealmSees {
   realm: number;
   /** The provinces none of its sight rules shows and it holds no memory of. */
   dark: ReadonlySet<number>;
+  /** The provinces none of its sight rules shows now (it may remember them). */
+  unseenNow: ReadonlySet<number>;
+  /** Whether its report may show other realms' treasuries (the titles' standings, once public). */
+  mayReadTreasuries: boolean;
+  /** The heroes whose skills it learnt by spying (its memory). */
+  heroesItSpiedOn: ReadonlySet<number>;
   /** The heroes it sees now (on its map, beside its own, by Clairvoyance). */
   heroesItSeesNow: ReadonlySet<number>;
   /** The heroes it sees or remembers. */
@@ -93,27 +102,30 @@ interface WhatTheRealmSees {
 interface AVariation {
   name: string;
   row?: AFixRow;
-  /** 'diplomacy': changed before the bots' diplomacy runs; 'plan': before the plan runs. */
-  at: 'diplomacy' | 'plan';
+  /** 'diplomacy': changed before the bots' diplomacy runs; 'plan': before the plan runs (a general variation: both). */
+  at: readonly ('diplomacy' | 'plan')[];
   /** A change made to both copies first (false: nothing to stage), so the variation is the only difference. */
   stage?: (tc: Context, sees: WhatTheRealmSees) => boolean;
   apply: (tc: Context, sees: WhatTheRealmSees) => boolean;
 }
 
-/** The first hero of another realm, alive, out of sight in the dark (none: undefined). */
+/** The first hero of another realm, alive, out of sight now, whom it doesn't remember (none: undefined). */
 const aHeroOutOfSight = (G: State, s: WhatTheRealmSees, armed: boolean) =>
   G.characters.find(
     (c) =>
       c.alive &&
       c.player != null &&
       c.player !== s.realm &&
-      s.dark.has(c.location) &&
+      s.unseenNow.has(c.location) &&
       !s.heroesItKnows.has(c.id) &&
       (!armed || (c.armies ?? []).length > 0),
   );
 /** A dark province other than `from`, the last in the world's order. */
 const anotherDarkProvince = (G: State, s: WhatTheRealmSees, from: number) =>
   [...G.world.provinces].reverse().find((p) => p.id !== from && s.dark.has(p.id));
+/** A province it doesn't see now other than `from`, the last in the world's order. */
+const anotherProvinceUnseenNow = (G: State, s: WhatTheRealmSees, from: number) =>
+  [...G.world.provinces].reverse().find((p) => p.id !== from && s.unseenNow.has(p.id));
 const moveTheHero = (G: State, c: Hero, to: Province) => {
   for (const p of G.world.provinces) if (p.characters) p.characters = p.characters.filter((id) => id !== c.id);
   c.location = to.id;
@@ -142,7 +154,8 @@ const aHeroItRemembers = (G: State, s: WhatTheRealmSees) =>
     (h) =>
       h.alive && h.player != null && h.player !== s.realm && s.heroesItKnows.has(h.id) && !s.heroesItSeesNow.has(h.id),
   );
-/** The relations of every two other realms, turned about (none: false). */
+/** The relations of every two other realms, turned about (the view holds only its own: RealmAsSeen.relation; none:
+ *  false). */
 const theRelationsOfTwoOtherRealmsTurned = ({ G }: Context, s: WhatTheRealmSees) => {
   let any = false;
   for (const key of Object.keys(G.relations)) {
@@ -159,10 +172,10 @@ const theHeroesStaged = new Map<number, number[]>();
 const VARIATIONS: readonly AVariation[] = [
   {
     name: 'a hero of another realm out of sight, moved elsewhere out of sight',
-    at: 'plan',
+    at: ['diplomacy', 'plan'],
     apply: ({ G }, s) => {
       const c = aHeroOutOfSight(G, s, false);
-      const to = c && anotherDarkProvince(G, s, c.location);
+      const to = c && anotherProvinceUnseenNow(G, s, c.location);
       if (!c || !to) return false;
       moveTheHero(G, c, to);
       return true;
@@ -170,7 +183,7 @@ const VARIATIONS: readonly AVariation[] = [
   },
   {
     name: 'an army of another realm out of sight, its companies doubled',
-    at: 'plan',
+    at: ['diplomacy', 'plan'],
     apply: ({ G }, s) => {
       const c = aHeroOutOfSight(G, s, true);
       if (!c?.armies) return false;
@@ -181,7 +194,7 @@ const VARIATIONS: readonly AVariation[] = [
   {
     name: 'B-17g (1)',
     row: 'B-17g',
-    at: 'plan',
+    at: ['plan'],
     stage: ({ G }, s) => {
       const them = G.characters.filter(
         (h) => h.alive && h.player != null && h.player !== s.realm && s.heroesItSeesNow.has(h.id),
@@ -197,7 +210,9 @@ const VARIATIONS: readonly AVariation[] = [
       return them.length > 0;
     },
     apply: ({ G }, s) => {
-      const them = G.characters.filter((h) => theHeroesStaged.get(s.realm)?.includes(h.id));
+      const them = G.characters.filter(
+        (h) => theHeroesStaged.get(s.realm)?.includes(h.id) && !s.heroesItSeesNow.has(h.id),
+      );
       const to = them[0] && anotherDarkProvince(G, s, them[0].location);
       if (!to) return false;
       for (const c of them) moveTheHero(G, c, to);
@@ -207,20 +222,21 @@ const VARIATIONS: readonly AVariation[] = [
   {
     name: 'B-17h (1)',
     row: 'B-17h',
-    at: 'diplomacy',
+    at: ['diplomacy'],
     apply: (tc, s) => theDeclarationsOfTheOtherRealms(tc, s, true, 'treat'),
   },
   {
     name: 'B-17h (2)',
     row: 'B-17h',
-    at: 'diplomacy',
+    at: ['diplomacy'],
     apply: (tc, s) => theDeclarationsOfTheOtherRealms(tc, s, false, THE_DIPLOMACY_LADDER.aWarIsDeclaredAs),
   },
   {
     name: 'B-17i (1)',
     row: 'B-17i',
-    at: 'plan',
+    at: ['plan'],
     apply: ({ G }, s) => {
+      if (s.mayReadTreasuries) return false;
       let any = false;
       G.players.forEach((p, j) => {
         if (j === s.realm) return;
@@ -233,11 +249,11 @@ const VARIATIONS: readonly AVariation[] = [
   {
     name: 'B-17i (2)',
     row: 'B-17i',
-    at: 'plan',
+    at: ['plan'],
     apply: ({ G }, s) => {
       let any = false;
       for (const c of G.characters)
-        if (c.alive && c.player != null && c.player !== s.realm && c.skills) {
+        if (c.alive && c.player != null && c.player !== s.realm && c.skills && !s.heroesItSpiedOn.has(c.id)) {
           c.skills = Object.fromEntries(Object.entries(c.skills).map(([k, v]) => [k, v + 4]));
           any = true;
         }
@@ -247,7 +263,7 @@ const VARIATIONS: readonly AVariation[] = [
   {
     name: 'B-17j (1)',
     row: 'B-17j',
-    at: 'plan',
+    at: ['plan'],
     apply: ({ G }, s) => {
       let any = false;
       for (const p of G.world.provinces)
@@ -261,7 +277,7 @@ const VARIATIONS: readonly AVariation[] = [
   {
     name: 'B-17j (2)',
     row: 'B-17j',
-    at: 'plan',
+    at: ['plan'],
     apply: ({ G }, s) => {
       const j = aRealmAtWarWith(G, s.realm);
       let any = false;
@@ -273,12 +289,12 @@ const VARIATIONS: readonly AVariation[] = [
       return any;
     },
   },
-  { name: 'B-17k (1)', row: 'B-17k', at: 'diplomacy', apply: theRelationsOfTwoOtherRealmsTurned },
-  { name: 'B-17k (2)', row: 'B-17k', at: 'plan', apply: theRelationsOfTwoOtherRealmsTurned },
+  { name: 'B-17k (1)', row: 'B-17k', at: ['diplomacy'], apply: theRelationsOfTwoOtherRealmsTurned },
+  { name: 'B-17k (2)', row: 'B-17k', at: ['plan'], apply: theRelationsOfTwoOtherRealmsTurned },
   {
     name: 'B-17k (3)',
     row: 'B-17k',
-    at: 'plan',
+    at: ['plan'],
     apply: ({ G }, s) => {
       const c = aHeroItRemembers(G, s);
       if (!c) return false;
@@ -290,7 +306,7 @@ const VARIATIONS: readonly AVariation[] = [
   {
     name: 'B-17k (4)',
     row: 'B-17k',
-    at: 'plan',
+    at: ['plan'],
     apply: ({ G }, s) => {
       const c = aHeroItRemembers(G, s);
       if (!c) return false;
@@ -317,8 +333,9 @@ describe("R-043: a bot plans the same orders whatever its realm can't see", () =
   test('the known list holds only the rows that fix a read beyond the view, each once (it only shrinks)', () => {
     expect(
       THE_ROWS_WHOSE_VARIATIONS_STILL_CHANGE_A_PLAN.length,
-      'the known list has at most the five rows',
-    ).toBeLessThanOrEqual(5);
+      'the known list has its pinned length (each fix row lowers it)',
+    ).toBe(THE_KNOWN_LISTS_LENGTH);
+    expect(THE_KNOWN_LISTS_LENGTH, 'the known list has at most the five rows').toBeLessThanOrEqual(5);
     expect(
       THE_ROWS_WHOSE_VARIATIONS_STILL_CHANGE_A_PLAN.filter((r) => !THE_FIX_ROWS.includes(r)),
       'entries that are not a fix row',
@@ -385,31 +402,53 @@ describe("R-043: a bot plans the same orders whatever its realm can't see", () =
         const dark = new Set(
           v.provinces.filter((p) => p.remembered == null && !Object.values(p.seen).some(Boolean)).map((p) => p.id),
         );
+        const unseenNow = new Set(
+          v.provinces
+            .filter(
+              (p) =>
+                !p.seen.owned &&
+                !p.seen.heroThere &&
+                !p.seen.spied &&
+                !p.seen.spiedByItsLines &&
+                !p.seen.nextToSpied &&
+                !p.seen.nextToOwned &&
+                !p.seen.watchedHeroThere &&
+                !p.seen.aProvinceEventItReadsHappenedHere &&
+                !p.seen.witnessedABattle,
+            )
+            .map((p) => p.id),
+        );
         return {
           realm: r,
           dark,
+          unseenNow,
+          mayReadTreasuries: v.titles.public,
+          heroesItSpiedOn: new Set(Object.keys(G.players[r]?.['_spiedHeroSkills'] ?? {}).map(Number)),
           heroesItSeesNow: now,
           heroesItKnows: known,
         };
       };
       const changed = new Map<string, string[]>();
       const tried = new Map<string, number>();
-      const compare = (pass: Pass, at: AVariation['at'], tc: Context) => {
+      const compare = (pass: Pass, at: AVariation['at'][number], tc: Context) => {
         if (tc.G.turn < FIRST_TURN) return;
         for (const r of [...tc._botPlayerIdx].sort((a, b) => a - b)) {
           const first = run(pass, tc, r);
           const sees = whatItSees(tc.G, r);
           for (const v of VARIATIONS) {
-            if (v.at !== at) continue;
+            if (!v.at.includes(at)) continue;
             const stage = v.stage;
             const before = stage ? run(pass, tc, r, (copy) => stage(copy, sees)) : first;
+            // after a stage, the variation reads the view of the staged world (a hero still seen is left as he is)
+            const staged = structuredClone(tc);
+            const seesAfter = stage?.(staged, sees) ? whatItSees(staged.G, r) : sees;
             const again = stage
               ? run(
                   pass,
                   tc,
                   r,
                   (copy) => stage(copy, sees),
-                  (copy) => v.apply(copy, sees),
+                  (copy) => v.apply(copy, seesAfter),
                 )
               : run(pass, tc, r, (copy) => v.apply(copy, sees));
             if (again == null || before == null) continue;
