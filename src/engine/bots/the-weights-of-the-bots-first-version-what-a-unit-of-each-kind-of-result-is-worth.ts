@@ -254,7 +254,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theProvincesAwayASpyLooksForANewTarget: 4,
     theSpyAttemptsBeforeASpyLiesInWait: 2,
   },
-  /** What draws a thief to a mark, a vault or a hoard, and how far he looks for each (botStealTarget, botThiefOrders, botLairTarget, bots/specialists.ts). */
+  /** What draws a thief to a mark, a vault or a hoard, and how far he looks for each (botStealTarget, botThiefOrders, bots/specialists.ts). */
   specialistsTheft: {
     theWorthOfARivalKingAsAThievesMark: 6,
     theWorthOfARivalHeroAsAThievesMark: 3,
@@ -272,9 +272,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theThiefSkillFromWhichAThiefRobsAGuardiansHoard: 3,
     theChanceFromWhichAThiefRobsAGuardiansHoard: 75,
     theProvincesAwayAThiefLooksForAHoardToRob: 4,
-    theWorthOfEachRankOfAGuardianToALairTarget: 2,
-    whatEachStepAwayTakesOffALairTarget: 2,
-    theProvincesAwayAnUnarmedFighterLooksForALair: 4,
+    theStealAttemptsBeforeAThiefLiesInWait: 1,
   },
   /** The skill levels from which each role has work of its own, and the work of a scout, a spy and a thief that goes beyond a target (botRoleWork, botRoleReady, botRoleTrain, bots/specialists.ts). */
   specialistsRoleWork: {
@@ -289,6 +287,12 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theLevelOfMeleeOrArcheryFromWhichASlayerIsReady: 3,
   },
   /** Where a mage walks to cast and what draws him there (botMageOrders, bots/specialists.ts). */
+  /** Which lair an unarmed fighter goes to, and how far (botLairTarget, botLairOrders, bots/specialists.ts: called only by the plan's tests today). */
+  specialistsUnarmedFighters: {
+    theWorthOfEachRankOfAGuardianToALairTarget: 2,
+    whatEachStepAwayTakesOffALairTarget: 2,
+    theProvincesAwayAnUnarmedFighterLooksForALair: 4,
+  },
   specialistsMageWork: {
     theProvincesAwayAMageLooksForAWandererToCharm: 3,
     theTurnsAGeneralLastSeenIsStillToBeHexed: 2,
@@ -301,6 +305,9 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theShareOfAnOwnedNeighboursTaxThatAddsToAProvincesBlessingWorth: 0.8,
     theUnitsAGeneralMustLeadForAMageToJoinHim: 3,
     theProvincesAwayAMageGoesToJoinAGeneral: 4,
+    theMostCastsAMageGivesToHexAGeneral: 3,
+    theMostCastsAMageGivesBesideAGeneral: 3,
+    theMostCastsAMageGivesToBlessAProvince: 2,
   },
   /** Where a defender takes his post, how far he walks to it and what he does there (botDefenderPost, botDefenderOrders, botHomeThreat, bots/specialists.ts). */
   specialistsDefenders: {
@@ -311,11 +318,12 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     whatEachStepAwayTakesOffADefendersPost: 1.5,
     theShareOfTheBestPostsWorthWhichKeepsADefenderAtHisPost: 0.8,
     theMostStepsADefenderWalksToHisPostInASeason: 3,
-    theStepsADefenderWhoLeadsNoTroopsMayReachInASeason: 5,
     theGarrisonUnitsAnOwnedNeighbourMustHoldAboveForADefenderToGatherThem: 2,
     theLandUnitsFromWhichADefenderDrillsTactical: 3,
     theSageLevelFromWhichADefenderResearches: 2,
     theHexesFromTheCapitalWithinWhichAnEnemyHostIsAHomeThreat: 2,
+    theWorthOfARaisingPlaceToAnArmedDefender: 1,
+    theMostCastsADefenderGives: 2,
   },
   /** What a host weighs in a target's score and as it chains fights or strikes from afar (botScanTargets, botChainHops, botDistantStrike, bots/specialists.ts). */
   specialistsHostsMarch: {

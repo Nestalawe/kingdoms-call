@@ -922,7 +922,7 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
   let k = 0;
   while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     out.push(
-      k < 1
+      k < theTheft.theStealAttemptsBeforeAThiefLiesInWait
         ? { ...steal }
         : aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }),
     );
@@ -935,7 +935,7 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
 export function botLairTarget(G: GameState, pi: number, c: Character, maxD: number) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
-  const theTheft = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsTheft;
+  const theUnarmed = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsUnarmedFighters;
   let best: { readonly X: Province; readonly li: number; readonly d: number; readonly sc: number } | null = null;
   const POWER_RANK: Readonly<Partial<Record<string, number>>> = { ...GUARDIAN_POWER_RANK };
   for (const X of theProvincesOf(G)) {
@@ -948,8 +948,8 @@ export function botLairTarget(G: GameState, pi: number, c: Character, maxD: numb
     if (d == null || d > maxD) continue;
     const f = theLairAt(X, li);
     const sc =
-      (POWER_RANK[f.monster?.power ?? ''] ?? 0) * theTheft.theWorthOfEachRankOfAGuardianToALairTarget -
-      d * theTheft.whatEachStepAwayTakesOffALairTarget;
+      (POWER_RANK[f.monster?.power ?? ''] ?? 0) * theUnarmed.theWorthOfEachRankOfAGuardianToALairTarget -
+      d * theUnarmed.whatEachStepAwayTakesOffALairTarget;
     if (!best || sc > best.sc) best = { X, li, d, sc };
   }
   return best;
@@ -963,7 +963,7 @@ function theLairAt(X: Province, li: number): ProvinceFeature {
 export function botLairOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
   const theProvincesAway =
-    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsTheft.theProvincesAwayAnUnarmedFighterLooksForALair;
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsUnarmedFighters.theProvincesAwayAnUnarmedFighterLooksForALair;
   const t = botLairTarget(G, pi, c, theProvincesAway);
   if (!t) return null;
   const path = t.d > 0 ? (botPathDirs(G, pi, P, t.X.id, theProvincesAway, true) ?? []) : [];
@@ -1188,7 +1188,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
       const path =
         bestG.d > 0 ? (botPathAny(G, P, bestG.X.id, theMage.theProvincesAwayAMageGoesToHexAGeneral) ?? []) : [];
       if (path.length === bestG.d) {
-        const hexes = botCastPlan(G, pi, c, bestG.X, { max: 3 }).filter((o) =>
+        const hexes = botCastPlan(G, pi, c, bestG.X, { max: theMage.theMostCastsAMageGivesToHexAGeneral }).filter((o) =>
           [
             theNameOfTheSpell('curse'),
             theNameOfTheSpell('psychic-blast'),
@@ -1214,7 +1214,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
   );
   const siege = genHere ? botPlannedAttackTarget(G, genHere) : null;
   const casts = botCastPlan(G, pi, c, P, {
-    max: 3,
+    max: theMage.theMostCastsAMageGivesBesideAGeneral,
     siege,
     fighting: genHere && siege != null ? genHere : null,
     threat: botNearbyThreat(G, pi, c),
@@ -1281,7 +1281,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     if (bestR && bestR.d > 0) {
       const path = botPathDirs(G, pi, P, bestR.X.id, theMage.theProvincesAwayAWhiteMageGoesToBlessGround, true) ?? [];
       if (path.length === bestR.d) {
-        const bl = botCastPlan(G, pi, c, bestR.X, { max: 2 }).filter(
+        const bl = botCastPlan(G, pi, c, bestR.X, { max: theMage.theMostCastsAMageGivesToBlessAProvince }).filter(
           (o) => o.target === theNameOfTheSpell('bless-province'),
         );
         const blessed = bestR.X;
@@ -1353,7 +1353,7 @@ export function botRoleTrain(
       const pick =
         (Number(sk[s1]) || 0) < theFirstSchoolsLevel ? s1 : (Number(sk[s2]) || 0) < (Number(sk[s1]) || 0) ? s2 : s1;
       return botTrainOrders(G, pi, c, pre, pick, 'mage');
-    } // the first school to 2, then the two rise together
+    } // the first school to its level, then the two rise together
   }
   return null;
 }
@@ -1433,7 +1433,7 @@ export function botDefenderPost(G: GameState, pi: number, c: Character, covered:
   const raise = (X: Province) =>
     theArmyTypesOf(X).some((t) => !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t))
       ? armed
-        ? 1
+        ? theDefenders.theWorthOfARaisingPlaceToAnArmedDefender
         : theDefenders.theWorthOfARaisingPlaceToAnUnarmedDefender
       : 0; // an unarmed defender needs somewhere to raise a column
   const plainDef = armed ? botBattleForce(G, c, null, 'plain', { defending: true }) : 0;
@@ -1487,7 +1487,7 @@ export function botDefenderOrders(
   if (post && post.d > 0) {
     const reach = Math.min(
       theDefenders.theMostStepsADefenderWalksToHisPostInASeason,
-      armed ? botLandReach(c) || 1 : theDefenders.theStepsADefenderWhoLeadsNoTroopsMayReachInASeason,
+      armed ? botLandReach(c) || 1 : THE_ORDERS_A_HERO_GIVES_IN_A_SEASON, // botLandReach's own 5 for a hero with no troops
     );
     const path =
       botPathDirs(
@@ -1508,7 +1508,12 @@ export function botDefenderOrders(
   // Sept 2026: at his post with no hostile host near, a defender first rides one hex to an owned
   // province holding a surplus of garrison units, takes the surplus up and returns — the Defend then comes later than the
   // usual first/second phase (judgement call: only when nothing threatens).
-  if (post?.d === 0 && here.id === P.id && out.length <= 1 && !botNearbyThreat(G, pi, c)) {
+  if (
+    post?.d === 0 &&
+    here.id === P.id &&
+    out.length <= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 4 &&
+    !botNearbyThreat(G, pi, c)
+  ) {
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, P, i);
       if (
@@ -1544,7 +1549,11 @@ export function botDefenderOrders(
   }
   if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && here.id === P.id) {
     const threat = botNearbyThreat(G, pi, c);
-    const casts = botCastPlan(G, pi, c, P, { max: 2, fighting: threat && armed ? c : null, threat }).filter((o) =>
+    const casts = botCastPlan(G, pi, c, P, {
+      max: theDefenders.theMostCastsADefenderGives,
+      fighting: threat && armed ? c : null,
+      threat,
+    }).filter((o) =>
       [
         theNameOfTheSpell('bless-province'),
         theNameOfTheSpell('illusory-terrain'),
