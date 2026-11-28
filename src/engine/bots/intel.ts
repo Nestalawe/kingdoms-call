@@ -39,14 +39,7 @@ import type { TheWeightsOfABotVersion } from '../../schemas/the-weights-of-a-bot
 import type { ArmyInABattle } from '../army-tables.ts';
 import type { AUnitAnEstimateWeighs } from '../battle/lines.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
-import {
-  theConquestDoctrineOfARealmsAlignment,
-  theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy,
-  theFervourOfASide,
-  theGoldARealmsAlignmentClaimsForEachFoeDestroyed,
-  theReturnARealmsAlignmentGivesItsFallen,
-  whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite,
-} from '../rules/the-registry-of-alignment-abilities.ts';
+import { THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY } from './the-bots-valuation-of-each-alignment-ability-keyed-by-the-ability.ts';
 
 // Its types (plan P1-10b40): each parameter typed as wide as the body's guards, so each guard stays. The estimates
 // (botEffForce, botBattleForce, botDruidShortfall and the skills they read) are handed staged worlds and units (the
@@ -362,14 +355,16 @@ export function botTuning(
   // Each overlay is keyed by the ability the realm's alignment holds (its row, as the rule's runner asks it), not by the
   // creed's name (P1-19bb9); the bot's own numbers as they were. Each row is of one alignment, so at most one overlay
   // applies, as the creeds' `case`s did, in their order.
-  if (theReturnARealmsAlignmentGivesItsFallen(pl.alignment) !== null) {
+  if (THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['divine-grace'].theRunner(pl.alignment) !== null) {
     if (consecratedIds(pl).length) T.kingAttackMargin *= 0.9; // Divine grace: the grace returns a fallen king
-  } else if (whatARealmsAlignmentAddsToConvergingColumnsChanceToUnite(pl.alignment) > 0) {
+  } else if (THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['banner-of-fellowship'].theRunner(pl.alignment) > 0) {
     T.assaultMargin *= 0.9; // Banner of Fellowship +15% unify
-  } else if (theConquestDoctrineOfARealmsAlignment(pl.alignment) !== null) {
+  } else if (THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['plunder-or-enslave'].theRunner(pl.alignment) !== null) {
     T.taxScoreWeight *= 1.5;
     T.rivalBias += 3; // Plunder: half the tax on capture; Terror chains
-  } else if (theGoldARealmsAlignmentClaimsForEachFoeDestroyed(pl.alignment) !== null) {
+  } else if (
+    THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['a-pagan-victors-blood-harvest'].theRunner(pl.alignment) !== null
+  ) {
     T.rivalBias += 3; // Blood Harvest: gold per unit slain
   }
   // The race's overlay, keyed by the gift the realm's race holds (its row, as the rule's runner asks it), not by the
@@ -786,13 +781,13 @@ export function botFervourMult(
   let m = 1;
   m = Math.max(
     m,
-    theFervourOfASide(align, {
+    THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['savage-fury'].theRunner(align, {
       isItSeizedByZeal: false,
       isItLedByTheKing: Boolean(c.isKing),
       theForce: armies.flatMap((a) => (a ? [a] : [])),
     }).theFactor,
   );
-  if (defending) m *= theFactorARealmsAlignmentStrengthensItsDefenceOfItsOwnGroundBy(align) ?? 1;
+  if (defending) m *= THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['righteous-defence'].theRunner(align) ?? 1;
   return m;
 }
 // Its return type written for a typed caller (plan P1-10b32: drill-and-spoils.ts' bestNeutralMix): every path returns

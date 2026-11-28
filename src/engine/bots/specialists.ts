@@ -30,7 +30,7 @@ import {
 import { botIsLoadedFleet, botSeaCap } from './war.ts';
 import { BOT_SPECIALIST_SKILLS } from './specialist-skills.ts';
 import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
-import { whatARealmsAlignmentAddsToResearch } from '../rules/the-registry-of-alignment-abilities.ts';
+import { THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY } from './the-bots-valuation-of-each-alignment-ability-keyed-by-the-ability.ts';
 import {
   BOT_NAVAL_TYPES,
   BOT_SLAYER_FIGHTERS_ONLY,
@@ -462,7 +462,7 @@ export function botTrainOrders(
  *  research, asked of a Sage 1 scholar) gives more than nothing (the Neutral scholars' row; P1-19bb8). The alignment as
  *  the realm holds it: a realm of none's empty one adds nothing. */
 function doesARealmOfThisAlignmentAddToResearch(alignment: string | null | undefined): boolean {
-  return whatARealmsAlignmentAddsToResearch(alignment, { theSageLevel: 1 }) > 0;
+  return THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['neutral-scholars'].theRunner(alignment, { theSageLevel: 1 }) > 0;
 }
 /** The Sage level from which a realm's scholar researches, and below which he trains Sage: the bots' choice, by their
  *  weights (P1-19bb8), the lower for a realm whose alignment adds to a Research with each Sage level. */
