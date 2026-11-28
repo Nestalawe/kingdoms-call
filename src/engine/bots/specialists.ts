@@ -268,7 +268,7 @@ export function botSpecialistRoles(
     slayer:
       1 +
       (lairs >= theCourt.theLairsKnownFromWhichTheCourtWantsASecondSlayer ? 1 : 0) +
-      aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once six lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
+      aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once enough lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
     scout:
       unmapped > 0
         ? Math.min(
@@ -281,7 +281,7 @@ export function botSpecialistRoles(
       (doesARealmOfThisAlignmentAddToResearch(p?.alignment)
         ? THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.alignmentAbility.theScholarsMoreARealmWhoseAlignmentAddsToResearchWants
         : 0) +
-      aChasedTitleWantsMore('scholar'), // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only at 10+ land — gold and armies come first (12 in the first cut cost a third of the discoveries)
+      aChasedTitleWantsMore('scholar'), // Neutral scholars find twice as much   // 2026-09-26 (Toby item 4): a second scholar only in a larger realm — gold and armies come first (12 in the first cut cost a third of the discoveries)
     spy:
       (met || turn >= theCourt.theTurnFromWhichTheCourtWantsASpyWithNoRealmMet
         ? war
@@ -445,7 +445,7 @@ export function botTrainOrders(
   const H = home != null ? G.world.provinces[home] : null;
   const mv: PhaseOrder[] = [];
   // 2026-09-26 (Toby): train WITH A MENTOR. The best realm character above the trainee's level in this skill who is
-  // not marching this year and stands within three hops (own / allied / unowned land) is the rendezvous; the
+  // not marching this year and stands within a few hops (own / allied / unowned land) is the rendezvous; the
   // mentor pass in runBotEconomy then makes his filler phases Practice the same skill, and the engine's mentor
   // rule makes every such phase an automatic level. Else the capital, as before.
   let dest: number | null = null,
@@ -478,17 +478,7 @@ export function botTrainOrders(
   if (dest != null && P && c.location !== dest) {
     const D = G.world.provinces[dest];
     const path =
-      botPathDirs(
-        G,
-        pi,
-        P,
-        dest,
-        Math.max(
-          0,
-          THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork.theMostOrdersTheWayToAMentorTakes - pre.length,
-        ),
-        true,
-      ) ?? [];
+      botPathDirs(G, pi, P, dest, Math.max(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1 - pre.length), true) ?? [];
     path.forEach((d) => mv.push(aMoveOrderOnThePath(d, 'Rendezvous at ' + (D ? D.name : '') + why2)));
   }
   const pr = {
@@ -521,7 +511,7 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
   const working = sg >= theSageLevelFromWhichTheRealmsScholarResearches(G, pi);
   if (!working) {
     // Sept 2026 (Toby): the scholar studies WITH THE KING (every king starts at Sage 1) — if the king's plan this
-    // year keeps him in one province within three hops, the scholar goes there; otherwise the capital.
+    // year keeps him in one province within a few hops, the scholar goes there; otherwise the capital.
     const king = theCharactersOf(G).find((k) => k && k.alive && k.isKing && k.player === pi);
     const ko = king && theTurnsOrders(G)[king.id];
     if (
@@ -540,7 +530,7 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
             king.location,
             Math.min(
               theWork.theProvincesAwayTheKingMayBeForAScholarToJoinHim,
-              theWork.theMostOrdersTheWayToTheKingTakes - pre.length,
+              THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1 - pre.length,
             ),
             true,
           ) ?? [])
@@ -557,7 +547,7 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
   }
   const research = { action: 'research', target: '', extra: '', desc: 'Research' };
   const pr = { action: 'practice', target: 'sage', extra: '', desc: 'Practice Sage (scholar)' };
-  // a scholar still short of Sage 5 splits the year: three Research, two practices
+  // a scholar still short of the Sage level splits the year between Research and practice
   const out = [...pre];
   const theWork = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork;
   let k = 0;
@@ -614,7 +604,7 @@ export function botScoutOrders(G: GameState, pi: number, c: Character, pre: read
   return out;
 }
 // ROAM (2026-09-26, Toby item 5) — a hero sent out to FIND wandering heroes: the nearest known land
-// province (not an enemy's) that none of the realm's characters has ever stood in, up to five hops
+// province (not an enemy's) that none of the realm's characters has ever stood in, up to a few hops
 // through any land; explore on arrival so the walk maps ground too. Falls back to the scout target.
 export function botRoamOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
@@ -652,12 +642,7 @@ export function botCloakPre(
   pre: readonly AnOrderAsThePassesReadIt[],
   destProv: Province | null | undefined,
 ) {
-  if (
-    (Number(theSkillsOf(c).illusory) || 0) < 1 ||
-    pre.length >=
-      THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWork.theOrdersAlreadyGivenFromWhichASpyDoesNotCloakHimself
-  )
-    return pre;
+  if ((Number(theSkillsOf(c).illusory) || 0) < 1 || pre.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1) return pre;
   if (pre.some((o) => o?.action === THE_HERO_ORDERS.cast_spell.key && o.target === theNameOfTheSpell('invisibility')))
     return pre;
   if (destProv?.owner === pi) return pre;
@@ -689,7 +674,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
           (theUnitsWithGapsOf(a).length * theWork.theWorthOfEachUnitAMarkLeadsToSpyOn +
             (a.isKing ? theWork.theWorthOfAKingAsAMarkToSpyOn : 0)),
       )[0];
-    if (mark && pre.length < theWork.theOrdersAlreadyGivenFromWhichASpyMarksNoHero) {
+    if (mark && pre.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1) {
       const out = [
         ...pre,
         { action: 'spy', target: 'char:' + String(mark.id), extra: '', desc: 'Spy on ' + mark.name },
@@ -700,7 +685,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
       return out;
     }
   }
-  // Sept 2026: SHADOW A GENERAL — an at-war (or future-foe) general seen within two turns whose skills are
+  // Sept 2026: SHADOW A GENERAL — an at-war (or future-foe) general seen within the last few turns whose skills are
   // unreported: walk to where he was last seen and spy on him there (he may have moved; the order then fails
   // harmlessly and the spy reports the province instead).
   {
@@ -715,7 +700,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
       const X = theProvinceAt(G, r.provId);
       if (!X) continue;
       const d = botPathLenAny(G, P, X.id, theWork.theProvincesAwayASpyShadowsAGeneral);
-      if (d == null || d + pre.length > theWork.theMostOrdersAShadowingTripAndTheOrdersBeforeItTake) continue;
+      if (d == null || d + pre.length > THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 2) continue;
       const sc =
         r.units * theWork.theWorthOfEachUnitALastSeenGeneralLeads +
         (r.isKing ? theWork.theWorthOfAKingToShadow : 0) +
@@ -758,7 +743,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
     pre = pre.filter((o) => !(o?.target === theNameOfTheSpell('invisibility')));
   const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Slip into ' + t.X.name))];
   const spy = { action: 'spy', target: '', extra: '', desc: 'Spy on ' + t.X.name };
-  // two attempts, then lie in wait (a Defend with no column is an ambush watch)
+  // a few attempts, then lie in wait (a Defend with no column is an ambush watch)
   let k = 0;
   while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     out.push(

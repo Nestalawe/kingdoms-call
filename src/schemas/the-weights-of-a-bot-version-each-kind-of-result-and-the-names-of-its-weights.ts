@@ -386,7 +386,7 @@ const TheWeightsOfTheAptitudesOfASpecialistSchema = z.object({
   whatEachPointOfMagicTakesOffAnyOtherRolesCandidate: z.number(),
 });
 
-/** The work of a specialist's season: whom a hero trains with, where a scholar, scout, roaming hero and spy go, and what draws each there (bots/specialists.ts: botTrainOrders, botScholarOrders, botScoutTarget, botRoamOrders, botSpyOrders). */
+/** The work of a specialist's season: whom a hero trains with, where a scholar, scout, roaming hero and spy go, and what draws each there (bots/specialists.ts: botSpecialistRoles, botTrainOrders, botScholarOrders, botScoutTarget, botRoamOrders, botCloakPre, botSpyOrders). */
 const TheWeightsOfTheWorkOfASpecialistSchema = z.object({
   /** A thief of this skill level or more sets his encounter plan to steal and flee. */
   theThiefSkillFromWhichAThiefFightsByStealingAndFleeing: z.number(),
@@ -394,12 +394,8 @@ const TheWeightsOfTheWorkOfASpecialistSchema = z.object({
   theProvincesAwayAMentorMayStand: z.number(),
   /** Each level of a mentor's skill adds this to his worth as the one to train with, each step away taking one off. */
   theWorthOfEachLevelOfAMentorsSkill: z.number(),
-  /** The way to a mentor takes this many orders at most, the orders already given counted. */
-  theMostOrdersTheWayToAMentorTakes: z.number(),
   /** A scholar who has not reached his research level joins the king if he is this many steps away at most. */
   theProvincesAwayTheKingMayBeForAScholarToJoinHim: z.number(),
-  /** The way to the king takes this many orders at most, the orders already given counted. */
-  theMostOrdersTheWayToTheKingTakes: z.number(),
   /** A scholar of this Sage level or more researches all season. */
   theSageLevelFromWhichAScholarOnlyResearches: z.number(),
   /** Below that level a scholar researches this many orders of the season and practises the rest. */
@@ -418,20 +414,14 @@ const TheWeightsOfTheWorkOfASpecialistSchema = z.object({
   theProvincesAwayARoamingHeroLooksForNewGround: z.number(),
   /** Each step away takes this off a roaming hero's target. */
   whatEachStepAwayTakesOffARoamsTarget: z.number(),
-  /** A spy who has been given this many orders or more casts no cloak. */
-  theOrdersAlreadyGivenFromWhichASpyDoesNotCloakHimself: z.number(),
   /** Each unit a rival hero leads adds this to his worth as the one to spy on. */
   theWorthOfEachUnitAMarkLeadsToSpyOn: z.number(),
   /** A rival king adds this to his worth as the one to spy on. */
   theWorthOfAKingAsAMarkToSpyOn: z.number(),
-  /** A spy who has been given this many orders or more spies on no hero here. */
-  theOrdersAlreadyGivenFromWhichASpyMarksNoHero: z.number(),
   /** A rival general last seen within this many turns may be shadowed. */
   theTurnsAGeneralLastSeenIsStillShadowed: z.number(),
   /** A spy follows a general this many steps away at most. */
   theProvincesAwayASpyShadowsAGeneral: z.number(),
-  /** The way to a shadowed general and the orders already given come to this many orders at most. */
-  theMostOrdersAShadowingTripAndTheOrdersBeforeItTake: z.number(),
   /** Each unit a last-seen general leads adds this to his worth as the one to shadow. */
   theWorthOfEachUnitALastSeenGeneralLeads: z.number(),
   /** A king adds this to his worth as the one to shadow. */
