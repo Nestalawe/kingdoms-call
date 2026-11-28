@@ -10,8 +10,9 @@
 // wrote, and an alignment ability's (P1-19bb8), each the number botHeroCap, botSpecialistRoles and the scholar's orders
 // wrote, and a race gift's (B-06ah), each the number botTuning's race overlays wrote, a temper's (B-06aj), each the
 // number botDuelRating and the war bar's table (BOT_WAR.temper) wrote, and a point of a host's strength's (B-06bq),
-// each the number botBattleForce, botGuessDefence and botMarginFor wrote, in its place: a change of one is a change of
-// the bots' play (the balance matrix), never a refactor.
+// each the number botBattleForce, botGuessDefence and botMarginFor wrote, a war's (B-17r), each the number BOT_WAR
+// wrote, and a lair's (B-17r), each the number the BOT_LAIR_* names wrote, in its place: a change of one is a change
+// of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
 // compiler's (`npm run check`), which a lower level can't run.
@@ -84,7 +85,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(46);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(90);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7, each in its place", () => {
@@ -160,5 +161,59 @@ test("a point of a host's strength's weights are the numbers botBattleForce, bot
     theUnitsOfAHostBeforeItsStakeAddsToTheMargin: 5,
     whatEachUnitMoreOfAHostAddsToTheMargin: 0.02,
     theMostAHostsStakeAddsToTheMargin: 0.1,
+  });
+});
+
+test("a war's weights are the numbers BOT_WAR wrote before B-17r, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war).toEqual({
+    theBarTheRealmsStrengthAgainstARivalsMustClearForWar: 0.8,
+    theLowestTheBarForWarFalls: 0.75,
+    whatEachStepOfAlignmentBeyondTheSecondTakesOffTheBar: 0.1,
+    whatARealmWhoseAlignmentDeclaresWarWithoutWarningTakesOffTheBar: 0.15,
+    whatARealmStillExpandingIntoFreeLandAddsToTheBar: 0.1,
+    theTurnsGainingNoLandAfterWhichARealmNoLongerExpandsFirst: 3,
+    whatEachOpportunityTakesOffTheBar: 0.2,
+    theMostTheOpportunitiesTakeOffTheBar: 0.5,
+    theShareOfTheRivalsStrengthBelowWhichARealmAtWarSuesForPeace: 0.35,
+    theBattlesLostLatelyAtWhichARealmAtWarSuesForPeace: 3,
+    theTurnsAWarIsKeptBeforePeaceIsWeighed: 5,
+    theTurnsAPeaceIsKeptBeforeWarIsWeighedAgain: 6,
+    theShareOfAnAllysStrengthCountedOnItsSide: 0.6,
+    theShareOfEachOtherFoesStrengthTakenOffTheRealmsOwn: 0.25,
+    theTurnsASightingOfARivalsHostCountsInItsStrength: 4,
+    theTurnsTheNewsOfABattleIsKept: 4,
+    theStrengthARivalsHostsCountAtLeastForEachLandProvinceSeenHeld: 5,
+    theProvincesFromItsCapitalAtWhichARivalsHostIsFarFromHome: 3,
+    theTimesTheRealmsStrengthAtWhichAGrudgeYields: 5,
+    theTimesTheRealmsStrengthAtWhichAGrudgeComesBack: 2,
+    theProvincesFromTheRealmAPrizeMayLie: 2,
+    theShareOfAFoesStrengthBelowWhichTheRealmStartsNoNewWar: 0.6,
+    theTimesTheBarAWarWithNoPrizeInReachMustClear: 1.3,
+    theShareOfTheRivalsStrengthBelowWhichARealmAcceptsItsPeace: 0.9,
+    theShareOfTheRivalsStrengthBelowWhichARealmWithNoPrizeInReachAcceptsItsPeace: 0.7,
+  });
+});
+
+test("a lair's weights are the numbers the BOT_LAIR_* names wrote before B-17r, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair).toEqual({
+    theRumourBandFromWhichAHeroRisksAWeakLair: 80,
+    theShareOfHisHitPointsAHeroRisksAWeakLairWith: 0.95,
+    theProvincesAwayAHeroLooksForALair: 6,
+    theMostRumoursAHeroBuysAYear: 3,
+    theRumourBandThatSendsAHeroIntoAWeakLair: 90,
+    theRumourBandThatSendsAHeroIntoAStrongerLair: 90,
+    theLairsOfAGradeClearedThatMakeItAHerosOwn: 2,
+    theLairsOfHisOwnGradeClearedBeforeAHeroAsksOfTheGradeAbove: 2,
+    theLairsMoreOfHisOwnGradeAHeroClearsAfterAPoorReading: 0,
+    theShareOfHisHitPointsBelowWhichAHeroRestsBeforeAHunt: 0.75,
+    theShareOfHisHitPointsBelowWhichAHerosNextSearchBecomesARest: 0.6,
+    theMostLairsAHeroSearchesAYear: 3,
+    theItemsAHeroCarriesToAskOfModerateLairsEarly: 3,
+    theItemsAHeroCarriesToAskOfPowerfulLairsEarly: 5,
+    theItemsAHeroCarriesToAskOfLegendaryLairsEarly: 7,
+    theFightingSkillAHeroHasToAskOfModerateLairsEarly: 4,
+    theFightingSkillAHeroHasToAskOfPowerfulLairsEarly: 6,
+    theFightingSkillAHeroHasToAskOfLegendaryLairsEarly: 8,
+    theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain: 3,
   });
 });

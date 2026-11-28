@@ -138,7 +138,10 @@ makes of that gold from its version's weights file.
   a temper the fifth
   ([the bots' worth of a temper](adding-or-changing-content-units-orders-and-discoveries.md#the-bots-worth-of-a-temper)),
   a point of a host's strength the sixth
-  ([the bots' estimate of a battle](where-a-change-goes-from-an-item-in-game-terms-to-the-files.md#a-battles-or-a-fights-rule)).
+  ([the bots' estimate of a battle](where-a-change-goes-from-an-item-in-game-terms-to-the-files.md#a-battles-or-a-fights-rule)),
+  a war the seventh (the bar for war and the peace a realm sues for: `BOT_WAR`, `src/engine/bots/war.ts`, reads each
+  by name) and a lair's guardian the eighth (the slayer's ladder: the `BOT_LAIR_*` names, `src/engine/bots/missions.ts`
+  and `strategy.ts`).
 
 ## The tests
 
@@ -155,7 +158,7 @@ makes of that gold from its version's weights file.
   formula against each copy it replaced.
 - `tests/unit/the-bots-first-versions-weights-weigh-every-kind-of-result-and-hold-the-numbers-the-ledger-wrote.test.ts`:
   the weights file weighs every kind and no other (a kind with no weight, a misspelt name or a weight not a number
-  fails to compile), parses with its schema's strict version, and holds botLedger's numbers; `tests/unit/the-bots-plan-called-directly.test.ts` holds the ledger and the upkeep on what no game hands them.
+  fails to compile), parses with its schema's strict version, and holds each kind's numbers as the bots wrote them; `tests/unit/the-bots-plan-called-directly.test.ts` holds the ledger and the upkeep on what no game hands them.
 - The ratchet's `economyNumbersInEngine` and `economyNumbersInTheBots`, which only fall, and the economy's static test
   of the functions its rows have taken
   (`tests/static/the-code-the-economys-rows-have-taken-holds-no-number-and-every-listed-function-is-there.test.ts`).

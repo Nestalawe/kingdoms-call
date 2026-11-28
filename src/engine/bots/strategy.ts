@@ -1553,9 +1553,12 @@ export function botLairRating(c: Character): number {
 export const BOT_RUMOUR_FUND_PER_SLAYER = 4;
 // 2026-09-29 tuning knobs (defaults = previous behaviour): BOT_LAIR_GO_BAND_HI is the rumour band that sends a hero
 // into a Moderate-or-higher lair (BOT_LAIR_GO_BAND stays the Weak one); BOT_LAIR_REASK_GAIN > 0 lets a hero re-ask a
-// lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns).
-export const BOT_LAIR_GO_BAND_HI = 90,
-  BOT_LAIR_REASK_GAIN: ATuningKnob = 3; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
+// lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns). Both are
+// the bots' first version's weights' `lair` (B-17r).
+export const BOT_LAIR_GO_BAND_HI =
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theRumourBandThatSendsAHeroIntoAStrongerLair,
+  BOT_LAIR_REASK_GAIN: ATuningKnob =
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
 // Admirals and flying generals (bots/missions.ts's NAVAL DOCTRINE and FLYING GENERAL).
 export function botCoastalPorts(G: GameState, pi: number) {
   return (asItsGuardReadsIt(G.world.provinces) ?? []).filter(

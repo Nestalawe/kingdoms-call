@@ -117,26 +117,26 @@ function theTargetedProvince(G: GameState, id: number): Province {
 // decided before this is consulted (botDiplomacyTreatsAndWarsByAlignmentTheGrudgeAndAReckoningClaim).
 // Tuning 2026-09-29b (Toby: "I still want bloody games") — chosen over 32 fuzz games of 6 bots × 20 turns
 // against the old war-on-contact rule: realm battles ≈ the same (38 vs 38 a game), realms eliminated
-// 17 vs 12, ~7 standing wars a game at mid-game.
+// 17 vs 12, ~7 standing wars a game at mid-game. Each number is the bots' first version's weights' `war` (B-17r), by name.
 export const BOT_WAR = {
-  base: 0.8,
-  floor: 0.75,
-  farStep: 0.1,
-  dark: 0.15,
-  expand: 0.1,
-  stallFree: 3,
-  oppStep: 0.2,
-  oppCap: 0.5,
-  peaceRatio: 0.35,
-  peaceLosses: 3,
-  minWarTurns: 5,
-  peaceCooldown: 6,
-  allyWeight: 0.6,
-  burden: 0.25,
-  knowTurns: 4,
-  newsTurns: 4,
-  landUnit: 5,
-  farFromHome: 3,
+  base: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theBarTheRealmsStrengthAgainstARivalsMustClearForWar,
+  floor: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theLowestTheBarForWarFalls,
+  farStep: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.whatEachStepOfAlignmentBeyondTheSecondTakesOffTheBar,
+  dark: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.whatARealmWhoseAlignmentDeclaresWarWithoutWarningTakesOffTheBar,
+  expand: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.whatARealmStillExpandingIntoFreeLandAddsToTheBar,
+  stallFree: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsGainingNoLandAfterWhichARealmNoLongerExpandsFirst,
+  oppStep: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.whatEachOpportunityTakesOffTheBar,
+  oppCap: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theMostTheOpportunitiesTakeOffTheBar,
+  peaceRatio: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfTheRivalsStrengthBelowWhichARealmAtWarSuesForPeace,
+  peaceLosses: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theBattlesLostLatelyAtWhichARealmAtWarSuesForPeace,
+  minWarTurns: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsAWarIsKeptBeforePeaceIsWeighed,
+  peaceCooldown: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsAPeaceIsKeptBeforeWarIsWeighedAgain,
+  allyWeight: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfAnAllysStrengthCountedOnItsSide,
+  burden: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfEachOtherFoesStrengthTakenOffTheRealmsOwn,
+  knowTurns: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsASightingOfARivalsHostCountsInItsStrength,
+  newsTurns: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsTheNewsOfABattleIsKept,
+  landUnit: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theStrengthARivalsHostsCountAtLeastForEachLandProvinceSeenHeld,
+  farFromHome: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theProvincesFromItsCapitalAtWhichARivalsHostIsFarFromHome,
   // what the king's temper adds to the bar, by the temper's name: the bots' first version's weights' `temper`
   temper: {
     Berserk: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatABerserkKingAddsToTheBarForWar,
@@ -144,13 +144,15 @@ export const BOT_WAR = {
     Cautious: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatACautiousKingAddsToTheBarForWar,
     Cowardly: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.temper.whatACowardlyKingAddsToTheBarForWar,
   },
-  grudgeYield: 5,
-  grudgeRecall: 2, // a grudge yields when the human is 5× our strength, returns at 2×
-  prizeHops: 2, // a prize may lie on our border or one province beyond it
-  losingRatio: 0.6, // no new war while any foe is > 1/0.6 ≈ 1.7× our own strength
-  noPrizeMult: 1.3, // with no prize in reach, war still if the ratio clears 1.3× the bar
-  acceptRatio: 0.9,
-  acceptNoPrize: 0.7,
+  grudgeYield: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheRealmsStrengthAtWhichAGrudgeYields,
+  grudgeRecall: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheRealmsStrengthAtWhichAGrudgeComesBack, // a grudge yields when the human is 5× our strength, returns at 2×
+  prizeHops: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theProvincesFromTheRealmAPrizeMayLie, // a prize may lie on our border or one province beyond it
+  losingRatio: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfAFoesStrengthBelowWhichTheRealmStartsNoNewWar, // no new war while any foe is > 1/0.6 ≈ 1.7× our own strength
+  noPrizeMult: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTimesTheBarAWarWithNoPrizeInReachMustClear, // with no prize in reach, war still if the ratio clears 1.3× the bar
+  acceptRatio: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfTheRivalsStrengthBelowWhichARealmAcceptsItsPeace,
+  acceptNoPrize:
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war
+      .theShareOfTheRivalsStrengthBelowWhichARealmWithNoPrizeInReachAcceptsItsPeace,
 }; // accept a rival's peace below these ratios (and below the bar)
 // Battles between two realms, kept a few turns so bots can read recent fortunes (GM creditBattle).
 export function noteRealmBattle(

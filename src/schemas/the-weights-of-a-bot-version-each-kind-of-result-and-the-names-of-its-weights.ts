@@ -135,6 +135,110 @@ const TheWeightsOfAPointOfAHostsStrengthSchema = z.object({
   theMostAHostsStakeAddsToTheMargin: z.number(),
 });
 
+/** A war between two realms: the bar the realm's strength against a rival's must clear before it declares war, what
+ *  moves the bar, and when it sues for peace or accepts one (botWarAssess, bots/war.ts; the grudge's survival exception,
+ *  bots/bot-diplomacy-…ts). */
+const TheWeightsOfAWarSchema = z.object({
+  /** The bar: the realm declares war once its strength is this many times the rival's, before what moves it. */
+  theBarTheRealmsStrengthAgainstARivalsMustClearForWar: z.number(),
+  /** However far the bar falls, it stays at least this. */
+  theLowestTheBarForWarFalls: z.number(),
+  /** Each step of alignment between the two realms beyond the second takes this off the bar. */
+  whatEachStepOfAlignmentBeyondTheSecondTakesOffTheBar: z.number(),
+  /** A realm whose alignment declares war without warning takes this off the bar. */
+  whatARealmWhoseAlignmentDeclaresWarWithoutWarningTakesOffTheBar: z.number(),
+  /** While free neutral land still borders the realm, this goes on the bar: the easy land first. */
+  whatARealmStillExpandingIntoFreeLandAddsToTheBar: z.number(),
+  /** After this many turns gaining no land, the realm no longer expands first. */
+  theTurnsGainingNoLandAfterWhichARealmNoLongerExpandsFirst: z.number(),
+  /** Each opportunity (a battle the rival lost lately, its crown passed, an ally at war with it, its host far from
+   *  home, its capital empty) takes this off the bar, ... */
+  whatEachOpportunityTakesOffTheBar: z.number(),
+  /** ... and all of them together at most this. */
+  theMostTheOpportunitiesTakeOffTheBar: z.number(),
+  /** At war past its first turns, the realm sues for peace while its strength is below this share of the rival's, ... */
+  theShareOfTheRivalsStrengthBelowWhichARealmAtWarSuesForPeace: z.number(),
+  /** ... or once it has lost this many battles against the rival lately, and more than it has won. */
+  theBattlesLostLatelyAtWhichARealmAtWarSuesForPeace: z.number(),
+  /** A new war is kept this many turns before peace is weighed. */
+  theTurnsAWarIsKeptBeforePeaceIsWeighed: z.number(),
+  /** A new peace is kept this many turns before war is weighed again. */
+  theTurnsAPeaceIsKeptBeforeWarIsWeighedAgain: z.number(),
+  /** Each side counts this share of each of its allies' strength (alliances are known to all). */
+  theShareOfAnAllysStrengthCountedOnItsSide: z.number(),
+  /** The realm counts its own strength less this share of each other foe it is at war with. */
+  theShareOfEachOtherFoesStrengthTakenOffTheRealmsOwn: z.number(),
+  /** A rival's host seen within this many turns counts in the rival's strength. */
+  theTurnsASightingOfARivalsHostCountsInItsStrength: z.number(),
+  /** The news of a battle between two realms is kept this many turns. */
+  theTurnsTheNewsOfABattleIsKept: z.number(),
+  /** A rival's hosts count at least this much strength for each land province the realm has seen it hold. */
+  theStrengthARivalsHostsCountAtLeastForEachLandProvinceSeenHeld: z.number(),
+  /** A rival's host this many provinces or more from its capital is far from home (an opportunity). */
+  theProvincesFromItsCapitalAtWhichARivalsHostIsFarFromHome: z.number(),
+  /** A grudge against a human yields (the realm treats for peace) once the human is this many times its strength, ... */
+  theTimesTheRealmsStrengthAtWhichAGrudgeYields: z.number(),
+  /** ... and comes back once the human is no more than this many times it. */
+  theTimesTheRealmsStrengthAtWhichAGrudgeComesBack: z.number(),
+  /** A prize may lie this many provinces from the realm: 2 is on its border or one province beyond it. */
+  theProvincesFromTheRealmAPrizeMayLie: z.number(),
+  /** No new war while the realm's strength is below this share of any foe's it is at war with. */
+  theShareOfAFoesStrengthBelowWhichTheRealmStartsNoNewWar: z.number(),
+  /** With no prize in reach, war only once the realm's strength clears the bar this many times over. */
+  theTimesTheBarAWarWithNoPrizeInReachMustClear: z.number(),
+  /** The realm accepts a rival's peace while its strength is below this share of the rival's (and below the bar), ... */
+  theShareOfTheRivalsStrengthBelowWhichARealmAcceptsItsPeace: z.number(),
+  /** ... or, with no prize in reach, below this share. */
+  theShareOfTheRivalsStrengthBelowWhichARealmWithNoPrizeInReachAcceptsItsPeace: z.number(),
+});
+
+/** A lair's guardian: when a hero buys a rumour of a lair, when he goes in, how far he goes and when he moves up a
+ *  grade (the slayer's ladder: botLairTiers, botSlayerOrders and their kin, bots/missions.ts; botRumourFor,
+ *  bots/strategy.ts). The odds bands are the rumour's, which the bots read; these are the bots' reading of them. */
+const TheWeightsOfALairSchema = z.object({
+  /** A Weak lair whose rumour tells odds from this band (but below the band that sends him in) is a risk he takes ... */
+  theRumourBandFromWhichAHeroRisksAWeakLair: z.number(),
+  /** ... only with at least this share of his hit points. */
+  theShareOfHisHitPointsAHeroRisksAWeakLairWith: z.number(),
+  /** A hero looks for lairs this many provinces away at most. */
+  theProvincesAwayAHeroLooksForALair: z.number(),
+  /** A hero buys at most this many rumours a year. */
+  theMostRumoursAHeroBuysAYear: z.number(),
+  /** A rumour telling odds from this band sends a hero into a Weak lair, ... */
+  theRumourBandThatSendsAHeroIntoAWeakLair: z.number(),
+  /** ... and one from this band into a Moderate lair or stronger. */
+  theRumourBandThatSendsAHeroIntoAStrongerLair: z.number(),
+  /** Once a hero has cleared this many lairs of a grade, the grade is his: he searches its lairs with no rumour. */
+  theLairsOfAGradeClearedThatMakeItAHerosOwn: z.number(),
+  /** Once he has cleared this many of his own grade, he asks a rumour of the grade above. */
+  theLairsOfHisOwnGradeClearedBeforeAHeroAsksOfTheGradeAbove: z.number(),
+  /** After a poor reading of the grade above, he clears this many more of his own before he asks again. */
+  theLairsMoreOfHisOwnGradeAHeroClearsAfterAPoorReading: z.number(),
+  /** A hero rests before a hunt while he has less than this share of his hit points. */
+  theShareOfHisHitPointsBelowWhichAHeroRestsBeforeAHunt: z.number(),
+  /** Each search after his first in a year becomes a Rest if the fight before left him under this share of his hit
+   *  points. */
+  theShareOfHisHitPointsBelowWhichAHerosNextSearchBecomesARest: z.number(),
+  /** A hero searches at most this many lairs a year. */
+  theMostLairsAHeroSearchesAYear: z.number(),
+  /** A hero who owns his grade asks of the grade above, without the kills, once he carries this many items: towards
+   *  Moderate, ... */
+  theItemsAHeroCarriesToAskOfModerateLairsEarly: z.number(),
+  /** ... towards Powerful, ... */
+  theItemsAHeroCarriesToAskOfPowerfulLairsEarly: z.number(),
+  /** ... towards Legendary; ... */
+  theItemsAHeroCarriesToAskOfLegendaryLairsEarly: z.number(),
+  /** ... or once his best fighting skill is at this level: towards Moderate, ... */
+  theFightingSkillAHeroHasToAskOfModerateLairsEarly: z.number(),
+  /** ... towards Powerful, ... */
+  theFightingSkillAHeroHasToAskOfPowerfulLairsEarly: z.number(),
+  /** ... towards Legendary. */
+  theFightingSkillAHeroHasToAskOfLegendaryLairsEarly: z.number(),
+  /** A hero asks a lair's rumour again once his rating has risen this much since he was told (0: he waits out his
+   *  rumour's turns). */
+  theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -144,6 +248,8 @@ export const TheWeightsOfABotVersionSchema = z.object({
   raceGift: TheWeightsOfARaceGiftSchema,
   temper: TheWeightsOfATemperSchema,
   battleStrength: TheWeightsOfAPointOfAHostsStrengthSchema,
+  war: TheWeightsOfAWarSchema,
+  lair: TheWeightsOfALairSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;
