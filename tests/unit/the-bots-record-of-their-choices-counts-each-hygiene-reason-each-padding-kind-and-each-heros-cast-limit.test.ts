@@ -74,6 +74,13 @@ test('the record counts each of the order hygiene’s reasons, each padding kind
   record.theBotsRecordCountsAHygienesOutcome(G, 1, 'overLimit');
   record.theBotsRecordClosesARealmsTurn(G, 1, [], { schools: [], theLimitOf: () => 0, theSchoolOfACast: () => null });
   expect(kept.length, 'nothing kept once the turn is closed').toBe(1);
+  // a turn no page asks for keeps nothing, though the turn before was asked for and left open
+  const theTurnBefore: TheRecord[] = [];
+  record.theBotsRecordOpensTheTurn(G, theTurnBefore);
+  record.theBotsRecordOpensTheTurn(G, null);
+  record.theBotsRecordCountsAHygienesOutcome(G, 1, 'overLimit');
+  record.theBotsRecordClosesARealmsTurn(G, 1, [], { schools: [], theLimitOf: () => 0, theSchoolOfACast: () => null });
+  expect(theTurnBefore.length, 'nothing kept in a turn no page asks for').toBe(0);
 });
 
 test('the order hygiene counts a cast past the limit in the realm’s record, and records the hero’s limit and casts', () => {
