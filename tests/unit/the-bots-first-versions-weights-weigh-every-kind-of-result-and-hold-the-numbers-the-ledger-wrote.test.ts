@@ -95,7 +95,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(514);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(513);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -722,7 +722,6 @@ test("movementCompanions's weights are the numbers bots/movement.ts wrote inline
     theMostCastsACompanionPlansForHisGeneralInOneSeason: 3,
     theMultipleOfAProvincesDefenceAGeneralsAssaultMustHaveForHisCompanionToFollowIt: 2,
     theMostHopsACompanionWalksToJoinHisGeneral: 6,
-    theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers: 3,
   });
 });
 
@@ -745,7 +744,7 @@ test("movementSplitsAndMusters's weights are the numbers bots/movement.ts wrote 
 test("movementPreparations's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementPreparations).toEqual({
     theShareOfHisMostHitPointsBelowWhichAKingWithNoThreatRestsTheSeasonOut: 0.75,
-    theMostOrdersAHeroHasPlannedBeforeAnItemOrderIsAdded: 2,
+    theOrdersAHeroHasPlannedBelowWhichAnItemOrderIsAdded: 2,
     theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight: 2,
     theLeastUnitsAHostNeedsForItsHeroToPrepareForAFight: 2,
     theMostOrdersAHeroHasPlannedForHisPreparationsForAFightToBegin: 3,
@@ -758,11 +757,10 @@ test("movementPreparations's weights are the numbers bots/movement.ts wrote inli
 
 test("movementReachAndStrength's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementReachAndStrength).toEqual({
-    theMostHopsAnArmedColumnMarchesInASeason: 3,
-    theMostHopsAnUnarmedHeroMarchesInASeason: 5,
+    theMostHopsAnyHeroIsPlannedToMarchInASeason: 3,
     theMostHopsASeaGoingColumnSailsInASeason: 3,
-    theMostHopsAnAirStrikeFliesInASeason: 5,
     theLeastHopsAnAirStrikeIsPlannedAcross: 1,
+    theMostHopsACasterLeadingSkeletonsStepsToAnUndefendedProvince: 1,
     theShareOfAHostsStrengthItKeepsAfterAPlannedFight: 0.85,
   });
 });
@@ -770,6 +768,7 @@ test("movementReachAndStrength's weights are the numbers bots/movement.ts wrote 
 test("movementWanderersAndWarRoles's weights are the numbers bots/movement.ts wrote inline before B-17z, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.movementWanderersAndWarRoles).toEqual({
     theMostHopsAnUnarmedHeroSearchesForAWanderer: 5,
+    theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers: 3,
     theShareOfHisMostHitPointsFromWhichAnUnarmedHeroTakesAWarRole: 0.7,
     theShareOfHisMostHitPointsFromWhichAHunterSetsOut: 0.85,
     theMostHopsAHunterSearchesForAQuarry: 4,
@@ -781,7 +780,7 @@ test("movementWanderersAndWarRoles's weights are the numbers bots/movement.ts wr
     theShareOfHisMostHitPointsFromWhichAFighterRunsDownAnUnarmedRival: 0.85,
     theLeastMeleeOrArcheryLevelFromWhichAFighterRunsDownAnUnarmedRival: 3,
     theRoundsOfTheDuelForecastThatDecidesWhetherAFighterRunsDownARival: 24,
-    theLeastOddsOfAKillFromWhichAFighterRunsDownAnUnarmedRival: 0.5,
+    theLeastOddsOfWinningTheDuelFromWhichAFighterRunsDownAnUnarmedRival: 0.5,
     theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival: 0.1,
     theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair: 0.7,
     theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: 0.6,

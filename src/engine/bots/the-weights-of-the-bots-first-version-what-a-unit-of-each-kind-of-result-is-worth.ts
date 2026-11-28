@@ -587,7 +587,6 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theMostCastsACompanionPlansForHisGeneralInOneSeason: 3,
     theMultipleOfAProvincesDefenceAGeneralsAssaultMustHaveForHisCompanionToFollowIt: 2,
     theMostHopsACompanionWalksToJoinHisGeneral: 6,
-    theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers: 3,
   },
   /** When a host splits, who takes its weaker half, when a garrison is left and where a hero walks to muster (the split, the muster and the muster walks of runBotMovement, bots/movement.ts). */
   movementSplitsAndMusters: {
@@ -606,7 +605,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   /** What a hero plans before a march: a king's rest, an item, a mastery order, a rite and a buff (the passes before the march of runBotMovement, bots/movement.ts). */
   movementPreparations: {
     theShareOfHisMostHitPointsBelowWhichAKingWithNoThreatRestsTheSeasonOut: 0.75,
-    theMostOrdersAHeroHasPlannedBeforeAnItemOrderIsAdded: 2,
+    theOrdersAHeroHasPlannedBelowWhichAnItemOrderIsAdded: 2,
     theMostOrdersAHeroHasPlannedForAMasteryOrderToBeAddedBeforeAFight: 2,
     theLeastUnitsAHostNeedsForItsHeroToPrepareForAFight: 2,
     theMostOrdersAHeroHasPlannedForHisPreparationsForAFightToBegin: 3,
@@ -617,16 +616,16 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   },
   /** How far a column marches, sails and flies in a season, and the strength it is rated at after a fight (runBotMovement, bots/movement.ts). */
   movementReachAndStrength: {
-    theMostHopsAnArmedColumnMarchesInASeason: 3,
-    theMostHopsAnUnarmedHeroMarchesInASeason: 5,
+    theMostHopsAnyHeroIsPlannedToMarchInASeason: 3,
     theMostHopsASeaGoingColumnSailsInASeason: 3,
-    theMostHopsAnAirStrikeFliesInASeason: 5,
     theLeastHopsAnAirStrikeIsPlannedAcross: 1,
+    theMostHopsACasterLeadingSkeletonsStepsToAnUndefendedProvince: 1,
     theShareOfAHostsStrengthItKeepsAfterAPlannedFight: 0.85,
   },
   /** How far an unarmed hero looks for a wanderer, a quarry, a raid or a capital, and the health and skill each of his roles needs (the unarmed pass of runBotMovement, bots/movement.ts). */
   movementWanderersAndWarRoles: {
     theMostHopsAnUnarmedHeroSearchesForAWanderer: 5,
+    theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers: 3,
     theShareOfHisMostHitPointsFromWhichAnUnarmedHeroTakesAWarRole: 0.7,
     theShareOfHisMostHitPointsFromWhichAHunterSetsOut: 0.85,
     theMostHopsAHunterSearchesForAQuarry: 4,
@@ -638,7 +637,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theShareOfHisMostHitPointsFromWhichAFighterRunsDownAnUnarmedRival: 0.85,
     theLeastMeleeOrArcheryLevelFromWhichAFighterRunsDownAnUnarmedRival: 3,
     theRoundsOfTheDuelForecastThatDecidesWhetherAFighterRunsDownARival: 24,
-    theLeastOddsOfAKillFromWhichAFighterRunsDownAnUnarmedRival: 0.5,
+    theLeastOddsOfWinningTheDuelFromWhichAFighterRunsDownAnUnarmedRival: 0.5,
     theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival: 0.1,
     theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair: 0.7,
     theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: 0.6,
