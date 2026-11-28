@@ -331,7 +331,7 @@ export const BOT_DIFFICULTY: { hard: ABotDifficultysWeights } = {
   hard: {
     attackMarginMult: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theFactorTheBotsStrengthTakesTheAttackMarginsBy,
     assaultMarginMult: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theFactorTheBotsStrengthTakesTheAssaultMarginBy,
-    rivalBias: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.whatARivalsProvinceAddsToItsScoreAsATarget,
+    rivalBias: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theBiasTowardsARivalsProvinceOverNeutralLandInATargetsScore,
     upkeepCapFrac: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theShareOfTheIncomeTheWagesMayTakeInPeace,
   },
 };

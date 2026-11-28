@@ -133,9 +133,9 @@ export const BOT_WAR = {
   peaceCooldown: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsAPeaceIsKeptBeforeWarIsWeighedAgain,
   allyWeight: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfAnAllysStrengthCountedOnItsSide,
   burden: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theShareOfEachOtherFoesStrengthTakenOffTheRealmsOwn,
-  knowTurns: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsASightingOfARivalsHostCountsInItsStrength,
+  knowTurns: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsARivalsHostCountsInItsStrength,
   newsTurns: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theTurnsTheNewsOfABattleIsKept,
-  landUnit: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theStrengthARivalsHostsCountAtLeastForEachLandProvinceSeenHeld,
+  landUnit: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theStrengthARivalsHostsCountAtLeastForEachOfItsLandProvinces,
   farFromHome: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theProvincesFromItsCapitalAtWhichARivalsHostIsFarFromHome,
   // what the king's temper adds to the bar, by the temper's name: the bots' first version's weights' `temper`
   temper: {

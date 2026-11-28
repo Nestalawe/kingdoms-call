@@ -159,8 +159,7 @@ const TheWeightsOfAWarSchema = z.object({
   whatARealmStillExpandingIntoFreeLandAddsToTheBar: z.number(),
   /** After this many turns gaining no land, the realm no longer expands first. */
   theTurnsGainingNoLandAfterWhichARealmNoLongerExpandsFirst: z.number(),
-  /** Each opportunity (a battle the rival lost lately, its crown passed, an ally at war with it, its host far from
-   *  home, its capital empty) takes this off the bar, ... */
+  /** Each opportunity against the rival (bots/war.ts names them) takes this off the bar, ... */
   whatEachOpportunityTakesOffTheBar: z.number(),
   /** ... and all of them together at most this. */
   theMostTheOpportunitiesTakeOffTheBar: z.number(),
@@ -172,16 +171,16 @@ const TheWeightsOfAWarSchema = z.object({
   theTurnsAWarIsKeptBeforePeaceIsWeighed: z.number(),
   /** A new peace is kept this many turns before war is weighed again. */
   theTurnsAPeaceIsKeptBeforeWarIsWeighedAgain: z.number(),
-  /** Each side counts this share of each of its allies' strength (alliances are known to all). */
+  /** Each side counts this share of each of its allies' strength. */
   theShareOfAnAllysStrengthCountedOnItsSide: z.number(),
   /** The realm counts its own strength less this share of each other foe it is at war with. */
   theShareOfEachOtherFoesStrengthTakenOffTheRealmsOwn: z.number(),
-  /** A rival's host seen within this many turns counts in the rival's strength. */
-  theTurnsASightingOfARivalsHostCountsInItsStrength: z.number(),
+  /** A rival's host counts in the rival's strength for this many turns. */
+  theTurnsARivalsHostCountsInItsStrength: z.number(),
   /** The news of a battle between two realms is kept this many turns. */
   theTurnsTheNewsOfABattleIsKept: z.number(),
-  /** A rival's hosts count at least this much strength for each land province the realm has seen it hold. */
-  theStrengthARivalsHostsCountAtLeastForEachLandProvinceSeenHeld: z.number(),
+  /** A rival's hosts count at least this much strength for each of its land provinces. */
+  theStrengthARivalsHostsCountAtLeastForEachOfItsLandProvinces: z.number(),
   /** A rival's host this many provinces or more from its capital is far from home (an opportunity). */
   theProvincesFromItsCapitalAtWhichARivalsHostIsFarFromHome: z.number(),
   /** A grudge against a human yields (the realm treats for peace) once the human is this many times its strength, ... */
@@ -274,9 +273,9 @@ const TheWeightsOfARealmsTuningSchema = z.object({
   theFactorTheBotsStrengthTakesTheAttackMarginsBy: z.number(),
   /** ... its assault margin by this one, ... */
   theFactorTheBotsStrengthTakesTheAssaultMarginBy: z.number(),
-  /** ... a rival's province carries this bias over neutral land in its score as a target (the target's score reads
-   *  it at its own weight), ... */
-  whatARivalsProvinceAddsToItsScoreAsATarget: z.number(),
+  /** ... a rival's province carries this bias over neutral land in its score as a target (each score reads it at its
+   *  own weight, and the alignment's overlay may raise it), ... */
+  theBiasTowardsARivalsProvinceOverNeutralLandInATargetsScore: z.number(),
   /** ... and its wages may take this share of its income in peace (a war footing's: the kind `gold`'s). */
   theShareOfTheIncomeTheWagesMayTakeInPeace: z.number(),
   /** After this many fights in a turn, a host's chained march takes only unguarded ground. */
