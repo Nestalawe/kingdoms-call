@@ -27,7 +27,6 @@ import {
   botEnemyHostsIn,
   botFieldRecruitTokens,
   botGarrisonOrder,
-  botHexDist,
   botHomeId,
   botInContact,
   botIsTeach,
@@ -42,6 +41,7 @@ import {
 import { skillLevel } from '../titles/perks.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
+import { hexDistP } from '../world/map-helpers.ts';
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { ABotRealmsLedger } from './intel.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
@@ -190,7 +190,7 @@ export function botPins(G: GameState, pi: number) {
     }
     const near = hosts.some((h) => {
       const H = G.world.provinces[h.location];
-      return H && botHexDist(G, H, X) <= 2;
+      return H && hexDistP(H, X, G.world.cols) <= 2;
     });
     if (!border && !near) return;
     if (best >= s * BOT_PIN_EDGE) return; // beatable where it stands — let it come, or go and break it
@@ -263,7 +263,7 @@ export function botSafeStep(G: GameState, pi: number, P: Province, awayFrom: Pro
       (N.id === botHomeId(G, pi) ? 5 : 0) +
       (N.tax || 0) -
       near * 6 +
-      (awayFrom ? botHexDist(G, N, awayFrom) * 4 : 0);
+      (awayFrom ? hexDistP(N, awayFrom, G.world.cols) * 4 : 0);
     if (!best || sc > best.sc) best = { N, i, sc };
   }
   return best;

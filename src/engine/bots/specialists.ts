@@ -1,3 +1,4 @@
+import { hexDistP } from '../world/map-helpers.ts';
 import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
@@ -42,7 +43,6 @@ import {
   botFrontierTarget,
   botHasMetPlayers,
   botHeroCap,
-  botHexDist,
   botHomeId,
   botIsEdge,
   botIsFighter,
@@ -1410,7 +1410,7 @@ export function botHomeThreat(G: GameState, pi: number) {
       continue;
     if (!botSeesChar(G, pi, e)) continue; // only a host we can see
     const P = G.world.provinces[e.location];
-    if (!P || botHexDist(G, P, H) > 2) continue;
+    if (!P || hexDistP(P, H, G.world.cols) > 2) continue;
     const f = botForceStrength(e.armies);
     if (!best || f > best.force) best = { force: f, provId: P.id };
   }

@@ -20,6 +20,7 @@ import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-s
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { wildHuntPrice } from '../items/tiers-and-hoards.ts';
 import { consecratedIds } from '../world/the-marks-on-a-province-consecrated-ground-terror-and-enslave.ts';
+import { getFlyCapability } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { itemSlot, itemUsableBy } from '../rules-on-plain-values/items-slots-races-and-who-may-use-them.ts';
 import { featDiscovered } from '../sight/heroes-in-sight-features-discovered-and-army-size-bands.ts';
 import { ITEM_SLOT_CAP, activeItems, itemPowerScore } from '../items/equipment.ts';
@@ -47,7 +48,7 @@ import {
   botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
-import { botCanFly, botSeaCap } from './war.ts';
+import { botSeaCap } from './war.ts';
 import {
   BOT_LAIR_GO_BAND_HI,
   BOT_LAIR_REASK_GAIN,
@@ -1395,7 +1396,7 @@ export function botAirStrike(
   T: TheWeightsAStrikeReads,
   maxHops: number,
 ) {
-  if (maxHops <= 0 || !botCanFly(c.armies)) return null;
+  if (maxHops <= 0 || !getFlyCapability(c.armies)) return null;
   const margin = botMarginFor(G, pi, c, T);
   const plainStr = botBattleForce(G, c, null, 'plain', undefined);
   const k = plainStr > 0 ? myStr / plainStr : 1;

@@ -1,5 +1,6 @@
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { KC_UNIT_CLASS } from '../../content/kingdoms-call-data.ts';
+import { getFlyCapability } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
 import { alignDistP } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { doesAnAlignmentDeclareWarWithoutWarning } from '../rules-on-plain-values/the-creeds-that-war-without-warning-break-an-alliance-into-war-and-conquer-by-a-doctrine.ts';
@@ -537,43 +538,13 @@ export function botPlanAssaults(G: GameState, pi: number, chars: readonly Charac
 export const BOT_LIGHT_ARMIES = new Set(KC_UNIT_CLASS.lightFoot); // mirrors LIGHT_ARMIES in getSeaCapability
 // 'all' (empty / only flyers-or-sea), 'sea' (fleets carry every land unit aboard), or 'land' (not
 // enough hulls to put to sea). Mirrors getSeaCapability exactly.
-// bot mirror of getFlyCapability — can the humanoid flyers lift every foot soldier so the whole
-// column flies (and crosses sea without a fleet)?
-export function botCanFly(armies: TheUnitsAsTheNavalChecksReadThem) {
-  armies = armies ?? [];
-  if (!armies.length) return false;
-  let carriers = 0,
-    carried = 0,
-    selfFly = false;
-  for (const a of armies) {
-    if (!a) continue;
-    if (BOT_FLYING_TYPES.has(a.type)) {
-      carriers++;
-      selfFly = true;
-      continue;
-    }
-    if (BOT_AERIAL_TYPES.has(a.type)) {
-      selfFly = true;
-      continue;
-    }
-    if (
-      BOT_SEA_ALL.has(a.type) ||
-      BOT_CREATURE_ARMIES.has(a.type) ||
-      BOT_MONSTER_ARMIES.has(a.type) ||
-      BOT_CAVALRY_TYPES.has(a.type)
-    )
-      return false;
-    carried++;
-  }
-  return selfFly && carriers >= carried;
-}
 export function botSeaCap(armies: TheUnitsAsTheNavalChecksReadThem) {
   armies = armies ?? [];
   if (armies.length === 0) return 'all';
   const landArmies = armies.filter((a): a is Army => !!a && !BOT_AERIAL_TYPES.has(a.type) && !BOT_SEA_ALL.has(a.type));
   const hulls = armies.filter((a) => a && BOT_CARRIER_TYPES.has(a.type)).length;
   if (landArmies.length === 0) return 'all';
-  if (botCanFly(armies)) return 'sea'; // airborne column crosses sea
+  if (getFlyCapability(armies)) return 'sea'; // airborne column crosses sea
   // mirrors getSeaCapability's pooled hull+flyer lift exactly.
   const capOf = (a: Army) => (BOT_LIGHT_ARMIES.has(a.type) ? 0.5 : 1);
   const liftableB = (a: Army) =>

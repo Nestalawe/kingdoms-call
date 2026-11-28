@@ -298,7 +298,6 @@ const THE_ENGINES_FUNCTIONS_CALLED_BY_NAME = {
   botUnderAttack: theBotsStrategy.botUnderAttack,
   botUpdateIntel: theBotsStrategy.botUpdateIntel,
   botUpkeep: theBotsStrategy.botUpkeep,
-  botCanFly: theBotsWar.botCanFly,
   botHeardBattle: theBotsWar.botHeardBattle,
   botIsLoadedFleet: theBotsWar.botIsLoadedFleet,
   botOwnPower: theBotsWar.botOwnPower,
@@ -2871,14 +2870,12 @@ describe("The war's reckoning and the assaults on what no matrix game hands them
   test('the naval checks on a host of no units, or of a gap', () => {
     expect(
       results([
-        () => fn('botCanFly')(null),
-        () => fn('botCanFly')([null]),
         () => fn('botSeaCap')(undefined),
         () => fn('botSeaCap')([null]),
         () => fn('botIsLoadedFleet')(null),
         () => fn('botIsLoadedFleet')([null]),
       ]),
-    ).toBe('[false,false,"all","all",false,false]');
+    ).toBe('["all","all",false,false]');
   });
   test("a realm's strength, a rival's and its war book on a world lacking its lists, its intel or its turn", () => {
     const heroOfNoUnits = { id: 1, alive: true, player: 0, location: 0 };
