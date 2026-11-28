@@ -1014,8 +1014,8 @@ export function theBotsStatisticsSection(head: readonly { id: string; stats: Sta
     "### The bots' choices, by alignment and race",
     '',
     ...brief.flatMap((l) => [l, '']),
-    "These are this pull request's games. Their changes against the base are among the slices above, judged by the " +
-      'noise rule as any slice: a slice never reaches the overall answer; many slices are judged at the usual bar, so ' +
+    "These are this pull request's games. When a game changes, their change against the base is judged with the " +
+      "comparison's other slices, by the noise rule: a slice never reaches the overall answer; many slices are judged at the usual bar, so " +
       'a few look like a change by chance; a figure with under 20 cases is too few to tell; and each alignment or ' +
       "race rests on its own games only (the number beside it). How to read them: the balance matrix's topic file.",
     '',
