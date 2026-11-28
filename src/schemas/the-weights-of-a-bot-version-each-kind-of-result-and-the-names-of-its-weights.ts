@@ -334,6 +334,108 @@ const TheWeightsOfARivalsSkillsSchema = z.object({
   theElementalTheBotsAssumeOfARivalsHeroByDefault: z.number(),
 });
 
+/** The specialists a realm's court wants, by role: how many of each (botSpecialistRoles, bots/specialists.ts) and how many heroes it keeps free of them. */
+const TheWeightsOfTheSpecialistsACourtWantsSchema = z.object({
+  /** The court wants a second slayer once this many uncleared lairs count in its reckoning. */
+  theLairsFromWhichTheCourtWantsASecondSlayer: z.number(),
+  /** The most scouts the court wants at once, while ground is unmapped. */
+  theMostScoutsTheCourtWants: z.number(),
+  /** The court wants one scout more for each this many unmapped provinces it holds, after the first. */
+  theUnmappedProvincesAScoutIsWantedFor: z.number(),
+  /** A realm of this many provinces or more wants more scholars. */
+  theProvincesFromWhichTheCourtWantsASecondScholar: z.number(),
+  /** The scholars the court wants at that size (one below it), before an alignment's or a title's extra. */
+  theScholarsALargerCourtWants: z.number(),
+  /** From this turn the court wants a spy, though no other realm is met. */
+  theTurnFromWhichTheCourtWantsASpyWithNoRealmMet: z.number(),
+  /** The spies the court wants while its realm is at war (one otherwise). */
+  theSpiesTheCourtWantsAtWar: z.number(),
+  /** From this turn the court wants a thief, though no other realm is met. */
+  theTurnFromWhichTheCourtWantsAThiefWithNoRealmMet: z.number(),
+  /** From this turn the court wants a mage, though no hero has a level in a school of magic. */
+  theTurnFromWhichTheCourtWantsAMageWithNoHeroKnowingASchool: z.number(),
+  /** A realm of this many provinces or more wants a second mage. */
+  theProvincesFromWhichTheCourtWantsASecondMage: z.number(),
+  /** The reserve of one hero to muster troops never leaves fewer than this many heroes for the roles (the slayer and the scholar). */
+  theHeroesTheFeederReserveNeverSqueezesOut: z.number(),
+  /** A realm of this many provinces or more keeps one hero back to muster and carry troops. */
+  theProvincesFromWhichOneHeroIsKeptToMusterTroops: z.number(),
+});
+
+/** A hero's aptitude for each specialist role: what each of his skills adds to or takes off his claim to a role (botSpecialistRoles, botMageAptitude, bots/specialists.ts). */
+const TheWeightsOfTheAptitudesOfASpecialistSchema = z.object({
+  /** Each level of the mage's best school adds this to his aptitude. */
+  theWorthOfEachLevelOfAMagesBestSchool: z.number(),
+  /** Each level of his second school adds this. */
+  theWorthOfEachLevelOfAMagesSecondSchool: z.number(),
+  /** A hero who already holds a role adds this to his claim to it (a mage, a slayer or any other role). */
+  theWorthOfHoldingARoleAlready: z.number(),
+  /** For a mage and for a scholar, scout, spy or thief, each level of Melee, Archery and Tactical takes this off. */
+  whatEachLevelOfAFightingSkillTakesOffAThinkingRolesCandidate: z.number(),
+  /** Each level of Melee adds this to a slayer's aptitude. */
+  theWorthOfEachLevelOfMeleeForASlayer: z.number(),
+  /** Each level of Archery adds this to a slayer's aptitude. */
+  theWorthOfEachLevelOfArcheryForASlayer: z.number(),
+  /** Each hit point adds this to a slayer's aptitude. */
+  theWorthOfEachHitPointForASlayer: z.number(),
+  /** Each level of Elemental, Necromancy, Psychic and White adds this to a slayer's aptitude. */
+  theWorthOfEachLevelOfADuellingSchoolForASlayer: z.number(),
+  /** For a scholar, scout, spy or thief, each level of the role's own skill adds this. */
+  theWorthOfEachLevelOfTheRolesOwnSkillForAnyOtherRole: z.number(),
+  /** For a scholar, scout, spy or thief, each point of his magic score takes this off. */
+  whatEachPointOfMagicTakesOffAnyOtherRolesCandidate: z.number(),
+});
+
+/** The work of a specialist's season: whom a hero trains with, where a scholar, scout, roaming hero and spy go, and what draws each there (bots/specialists.ts: botSpecialistRoles, botTrainOrders, botScholarOrders, botScoutTarget, botRoamOrders, botCloakPre, botSpyOrders). */
+const TheWeightsOfTheWorkOfASpecialistSchema = z.object({
+  /** A thief of this skill level or more sets his encounter plan to steal and flee. */
+  theThiefSkillFromWhichAThiefFightsByStealingAndFleeing: z.number(),
+  /** A mentor to train with is looked for this many steps away at most. */
+  theProvincesAwayAMentorMayStand: z.number(),
+  /** Each level of a mentor's skill adds this to his worth as the one to train with, each step away taking one off. */
+  theWorthOfEachLevelOfAMentorsSkill: z.number(),
+  /** A scholar who has not reached his research level joins the king if he is this many steps away at most. */
+  theProvincesAwayTheKingMayBeForAScholarToJoinHim: z.number(),
+  /** A scholar of this Sage level or more researches all season. */
+  theSageLevelFromWhichAScholarOnlyResearches: z.number(),
+  /** Below that level a scholar researches this many orders of the season and practises the rest. */
+  theResearchesAScholarBelowThatLevelDoesEachSeason: z.number(),
+  /** A province of a wild race adds this to a scout's target. */
+  theWorthOfWildGroundToAScout: z.number(),
+  /** Each this many points a province is short of fully mapped add one to a scout's target. */
+  theUnmappedPointsThatMakeAPointOfAScoutsTargetScore: z.number(),
+  /** A province of the realm's own adds this to a scout's target. */
+  theWorthOfOwnGroundToAScout: z.number(),
+  /** Each step away takes this off a scout's target. */
+  whatEachStepAwayTakesOffAScoutsTarget: z.number(),
+  /** A scout looks for a target this many steps away at most. */
+  theProvincesAwayAScoutGoes: z.number(),
+  /** A roaming hero looks for unvisited ground this many steps away at most. */
+  theProvincesAwayARoamingHeroLooksForNewGround: z.number(),
+  /** Each step away takes this off a roaming hero's target. */
+  whatEachStepAwayTakesOffARoamsTarget: z.number(),
+  /** Each unit a rival hero leads adds this to his worth as the one to spy on. */
+  theWorthOfEachUnitAMarkLeadsToSpyOn: z.number(),
+  /** A rival king adds this to his worth as the one to spy on. */
+  theWorthOfAKingAsAMarkToSpyOn: z.number(),
+  /** A rival general within this many turns of his last placing may be shadowed. */
+  theTurnsAGeneralMayBeShadowedAfterHisLastPlacing: z.number(),
+  /** A spy follows a general this many steps away at most. */
+  theProvincesAwayASpyShadowsAGeneral: z.number(),
+  /** Each unit a general to shadow leads adds this to his worth as the one to shadow. */
+  theWorthOfEachUnitAGeneralToShadowLeads: z.number(),
+  /** A king adds this to his worth as the one to shadow. */
+  theWorthOfAKingToShadow: z.number(),
+  /** A general of a realm at war with the spy's adds this to his worth as the one to shadow. */
+  theWorthOfAGeneralAtWarToShadow: z.number(),
+  /** Each step away takes this off a general's worth as the one to shadow. */
+  whatEachStepAwayTakesOffAShadowedGeneral: z.number(),
+  /** A spy looks for a province to spy on this many steps away at most. */
+  theProvincesAwayASpyLooksForANewTarget: z.number(),
+  /** A spy at his target spies this many orders, then lies in wait for the rest of the season. */
+  theSpyAttemptsBeforeASpyLiesInWait: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -349,6 +451,9 @@ export const TheWeightsOfABotVersionSchema = z.object({
   duel: TheWeightsOfADuelSchema,
   springPass: TheWeightsOfTheSpringPassSchema,
   rivalsSkills: TheWeightsOfARivalsSkillsSchema,
+  specialistsWanted: TheWeightsOfTheSpecialistsACourtWantsSchema,
+  specialistsAptitude: TheWeightsOfTheAptitudesOfASpecialistSchema,
+  specialistsWork: TheWeightsOfTheWorkOfASpecialistSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;
