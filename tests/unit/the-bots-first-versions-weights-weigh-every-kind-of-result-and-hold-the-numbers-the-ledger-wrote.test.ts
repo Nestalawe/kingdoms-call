@@ -15,7 +15,9 @@
 // BOT_TUNING and BOT_DIFFICULTY wrote; then B-17s's: a duel's (BOT_DUEL, BOT_DUEL_WITHOUT_A_FORECAST), the Spring
 // pass's (BOT_P1, BOT_PIN_EDGE), a rival's hero's assumed skills' (BOT_ASSUMED_SKILLS), and the names B-17s added to the gold
 // (the fleets' caps), the war (BOT_ALLY_ALIGN_DIST), the lair (BOT_RUMOUR_FUND_PER_SLAYER) and the tuning
-// (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts, part 1), and B-17u's: a thief's targets, the roles' work, a mage's work, a defender's post and a host's march (part 2), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
+// (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts,
+// part 1), and B-17u's: a thief's targets, the roles' work, a mage's work, a defender's post and a host's march (part
+// 2), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
 // refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -89,7 +91,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(239);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(234);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -314,9 +316,7 @@ test("a specialist's work's weights are the numbers botTrainOrders, botScholarOr
     theThiefSkillFromWhichAThiefFightsByStealingAndFleeing: 3,
     theProvincesAwayAMentorMayStand: 3,
     theWorthOfEachLevelOfAMentorsSkill: 4,
-    theMostOrdersTheWayToAMentorTakes: 4,
     theProvincesAwayTheKingMayBeForAScholarToJoinHim: 3,
-    theMostOrdersTheWayToTheKingTakes: 4,
     theSageLevelFromWhichAScholarOnlyResearches: 5,
     theResearchesAScholarBelowThatLevelDoesEachSeason: 3,
     theWorthOfWildGroundToAScout: 15,
@@ -326,13 +326,10 @@ test("a specialist's work's weights are the numbers botTrainOrders, botScholarOr
     theProvincesAwayAScoutGoes: 4,
     theProvincesAwayARoamingHeroLooksForNewGround: 5,
     whatEachStepAwayTakesOffARoamsTarget: 3,
-    theOrdersAlreadyGivenFromWhichASpyDoesNotCloakHimself: 4,
     theWorthOfEachUnitAMarkLeadsToSpyOn: 2,
     theWorthOfAKingAsAMarkToSpyOn: 5,
-    theOrdersAlreadyGivenFromWhichASpyMarksNoHero: 4,
     theTurnsAGeneralLastSeenIsStillShadowed: 2,
     theProvincesAwayASpyShadowsAGeneral: 3,
-    theMostOrdersAShadowingTripAndTheOrdersBeforeItTake: 3,
     theWorthOfEachUnitALastSeenGeneralLeads: 2,
     theWorthOfAKingToShadow: 6,
     theWorthOfAGeneralAtWarToShadow: 5,
