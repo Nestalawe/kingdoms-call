@@ -82,7 +82,7 @@ a run's spare rows; their place stays here.
 | B-17v | The same: `missions.ts`, part 1. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #884 | After B-17u: `missions.ts` from the top to the end of `botLairTiers` (58 numbers, 55 weights in 4 kinds); B-17w starts at `botLairPlan` |
 | B-17w | The same: `missions.ts`, part 2. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #885 | After B-17v: `missions.ts` from `botLairPlan` to the end (53 weights in 5 kinds); the file is finished |
 | B-17x | The same: `strategy.ts`. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #886 | After B-17w: `strategy.ts` part 1, from `botGeneralship` to `botHireBias` (48 weights in 3 kinds); part 2, from `botHireOrder` to the end, is B-17ao |
-| B-17ao | The same: `strategy.ts`, part 2. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #PRNUM | The rest of B-17x's file, split at `botHireBias`: from `botHireOrder` to the end (25 weights in 4 kinds); the new row, so B-17x keeps its delivered part |
+| B-17ao | The same: `strategy.ts`, part 2. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #887 | The rest of B-17x's file, split at `botHireBias`: from `botHireOrder` to the end (25 weights in 4 kinds); the new row, so B-17x keeps its delivered part |
 | B-17y | The same: `spellcraft.ts`. `refactor-only` | The same | The ground for the redesign | Small | – | ⬜ | | After B-17x |
 | B-17z | The same: `movement.ts`. `refactor-only` | The same | The ground for the redesign | Small | – | ⬜ | | After B-17y |
 | B-17aa | The same: `war.ts` and `phase-one.ts`. `refactor-only` | The same | The ground for the redesign | Small | – | ⬜ | | After B-17z |
