@@ -458,7 +458,7 @@ const TheWeightsOfAThiefsTargetsSchema = z.object({
   theThiefSkillFromWhichAThiefAtWarBreaksIntoAVault: z.number(),
   /** A thief looks for a vault to break into this many steps away at most. */
   theProvincesAwayAThiefLooksForAVaultToBreakInto: z.number(),
-  /** A vault in a province whose garrison is seen takes this off its worth as a target. */
+  /** A vault in a province whose garrison counts takes this off its worth as a target. */
   whatAGuardedVaultTakesOffAThievesTarget: z.number(),
   /** Each this much gold a rival realm holds adds one to the worth of a vault of its. */
   theGoldThatMakesAPointOfAVaultsWorthToAThief: z.number(),
@@ -478,8 +478,8 @@ const TheWeightsOfAThiefsTargetsSchema = z.object({
 const TheWeightsOfARolesWorkSchema = z.object({
   /** A slayer of this Melee level or more, with no lair to grow into, does a scout's work. */
   theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts: z.number(),
-  /** A scout of this Explorer level or more charts the unknown ground beside him. */
-  theExplorerLevelFromWhichAScoutChartsTheUnknown: z.number(),
+  /** A scout of this Explorer level or more charts the ground beside him. */
+  theExplorerLevelFromWhichAScoutChartsGroundBesideHim: z.number(),
   /** A spy of this skill level or more has work of his own; below it he trains. */
   theSpySkillFromWhichASpyHasWork: z.number(),
   /** A spy of this skill level or more may assassinate an enemy hero in his province. */
@@ -500,8 +500,8 @@ const TheWeightsOfARolesWorkSchema = z.object({
 const TheWeightsOfAMagesWorkSchema = z.object({
   /** A mage looks for a wandering hero to charm this many steps away at most. */
   theProvincesAwayAMageLooksForAWandererToCharm: z.number(),
-  /** A rival general last seen within this many turns may be hexed. */
-  theTurnsAGeneralLastSeenIsStillToBeHexed: z.number(),
+  /** A rival general within this many turns of his last placing may be hexed. */
+  theTurnsAGeneralMayBeHexedAfterHisLastPlacing: z.number(),
   /** A mage goes to hex a general this many steps away at most. */
   theProvincesAwayAMageGoesToHexAGeneral: z.number(),
   /** Each unit a general leads adds this to his worth as the one to hex. */
@@ -560,7 +560,7 @@ const TheWeightsOfADefendersPostSchema = z.object({
   theLandUnitsFromWhichADefenderDrillsTactical: z.number(),
   /** A defender of this Sage level or more, whose skill to raise is Sage, researches. */
   theSageLevelFromWhichADefenderResearches: z.number(),
-  /** An enemy host seen within this many hexes of the capital is a threat to it. */
+  /** An enemy host within this many hexes of the capital is a threat to it. */
   theHexesFromTheCapitalWithinWhichAnEnemyHostIsAHomeThreat: z.number(),
   /** A province that raises troops adds this to its worth as a post for a defender who leads troops. */
   theWorthOfARaisingPlaceToAnArmedDefender: z.number(),

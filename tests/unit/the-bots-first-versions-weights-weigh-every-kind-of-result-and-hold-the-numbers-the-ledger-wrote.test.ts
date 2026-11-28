@@ -364,7 +364,7 @@ test("specialistsTheft's weights are the numbers bots/specialists.ts wrote inlin
 test("specialistsRoleWork's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsRoleWork).toEqual({
     theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts: 3,
-    theExplorerLevelFromWhichAScoutChartsTheUnknown: 7,
+    theExplorerLevelFromWhichAScoutChartsGroundBesideHim: 7,
     theSpySkillFromWhichASpyHasWork: 2,
     theSpySkillFromWhichASpyAssassinates: 9,
     theSpySkillFromWhichASpyAtWarSabotages: 7,
@@ -386,7 +386,7 @@ test("specialistsUnarmedFighters's weights are the numbers botLairTarget and bot
 test("specialistsMageWork's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsMageWork).toEqual({
     theProvincesAwayAMageLooksForAWandererToCharm: 3,
-    theTurnsAGeneralLastSeenIsStillToBeHexed: 2,
+    theTurnsAGeneralMayBeHexedAfterHisLastPlacing: 2,
     theProvincesAwayAMageGoesToHexAGeneral: 3,
     theWorthOfEachUnitAGeneralToHexLeads: 2,
     theWorthOfAKingToHex: 5,

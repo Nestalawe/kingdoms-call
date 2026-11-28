@@ -277,7 +277,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   /** The skill levels from which each role has work of its own, and the work of a scout, a spy and a thief that goes beyond a target (botRoleWork, botRoleReady, botRoleTrain, bots/specialists.ts). */
   specialistsRoleWork: {
     theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts: 3,
-    theExplorerLevelFromWhichAScoutChartsTheUnknown: 7,
+    theExplorerLevelFromWhichAScoutChartsGroundBesideHim: 7,
     theSpySkillFromWhichASpyHasWork: 2,
     theSpySkillFromWhichASpyAssassinates: 9,
     theSpySkillFromWhichASpyAtWarSabotages: 7,
@@ -295,7 +295,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   },
   specialistsMageWork: {
     theProvincesAwayAMageLooksForAWandererToCharm: 3,
-    theTurnsAGeneralLastSeenIsStillToBeHexed: 2,
+    theTurnsAGeneralMayBeHexedAfterHisLastPlacing: 2,
     theProvincesAwayAMageGoesToHexAGeneral: 3,
     theWorthOfEachUnitAGeneralToHexLeads: 2,
     theWorthOfAKingToHex: 5,

@@ -1004,7 +1004,7 @@ export function botRoleWork(
     }
     case 'scout': {
       if (
-        (Number(theSkillsOf(c).explorer) || 0) >= theRoles.theExplorerLevelFromWhichAScoutChartsTheUnknown &&
+        (Number(theSkillsOf(c).explorer) || 0) >= theRoles.theExplorerLevelFromWhichAScoutChartsGroundBesideHim &&
         pre.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1
       ) {
         const P = G.world.provinces[c.location];
@@ -1166,7 +1166,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     let bestG: { readonly X: Province; readonly d: number; readonly sc: number; readonly e: Character } | null = null;
     for (const [k, r] of Object.entries(I.generals)) {
       if (
-        (G.turn || 0) - r.turn > theMage.theTurnsAGeneralLastSeenIsStillToBeHexed ||
+        (G.turn || 0) - r.turn > theMage.theTurnsAGeneralMayBeHexedAfterHisLastPlacing ||
         botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar
       )
         continue;
