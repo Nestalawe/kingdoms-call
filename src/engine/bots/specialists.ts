@@ -92,6 +92,7 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, TheBotsSpecialistRoles } from './intel.ts';
+import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 // Its types (plan P1-10b46): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -1327,7 +1328,7 @@ export function botDefenderOrders(
       }
     }
   }
-  if (out.length < 5) out.push({ ...BOT_DEFEND_ORDER });
+  if (out.length < 5) out.push(aPaddingOrder(G, 'hold-the-post', { ...BOT_DEFEND_ORDER }));
   if (out.length < 5 && here.id === P.id) {
     const po = botPickupOrder(G, pi, c, P);
     if (po) out.push(po);

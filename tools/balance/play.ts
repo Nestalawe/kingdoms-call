@@ -40,6 +40,7 @@ import {
   type TheKindOfAStoredLine,
 } from './stats.ts';
 import { recordTheWritesAtTheDbsCalls } from './writes.ts';
+import type { TheBotsRecordOfARealmsTurn } from '../../src/engine/bots/the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 /** How long the page is given to boot. A fixed wait until a "boot finished" condition is found that doesn't depend on
  *  load; any replacement is proved by identical hashes at 1 and many games side by side. */
@@ -72,6 +73,10 @@ export interface GameResult {
   cases?: Cases;
   /** A replay (PlayOptions.untilTurn): the GM log lines of its last turn. */
   log?: LogEntry[];
+  /** The bots' record of their choices (B-17b), each bot realm's turn by turn, as the page kept it: what the order
+   *  hygiene dropped by its reason, the padding orders by their kind, each hero's cast limit and casts. Kept in memory
+   *  beside the game's other results, never in the baselines (run.ts's `keep` leaves it out). */
+  botChoices?: TheBotsRecordOfARealmsTurn[];
   ms: number;
 }
 
@@ -172,6 +177,8 @@ export async function playGame(
     await new Promise((r) => setTimeout(r, BOOT_WAIT_MS));
     if (errors.length) throw fail('the page failed to boot: ' + String(errors[0]));
     setupGame(W, spec, DB);
+    // the bots keep their record of their choices for the page to read (it plays nothing differently)
+    W.eval('window.__botChoices = []');
     const scripted = spec.group === 'scripted';
     const game = () => {
       const g = DB.games[0];
@@ -268,6 +275,8 @@ export async function playGame(
         unresolved,
         gameOver: final.gameOver ?? null,
       }),
+      // `as`: the page's record, as the bots wrote it (the engine's own type), copied out of the page
+      botChoices: JSON.parse(String(W.eval('JSON.stringify(window.__botChoices)'))) as TheBotsRecordOfARealmsTurn[],
       ms: Math.round(performance.now() - t0),
     };
     if (options.untilTurn != null) result.log = lastLog;

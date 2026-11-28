@@ -31,15 +31,34 @@ import type { Army, Character, GameState, Province } from '../../schemas/saved-g
 import type { ABotRealmsLedger, TheBotLedgersTally } from './intel.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
 import { theRisenDeadFollowAHandOverTo } from '../rules-on-plain-values/the-items-a-send-item-hands-over-and-the-companies-a-hand-over-or-a-pick-up-moves.ts';
+import {
+  aPaddingOrder,
+  theBotsRecordClosesARealmsTurn,
+  theBotsRecordClosesTheTurn,
+  theBotsRecordCountsAHygienesOutcome,
+  theBotsRecordOpensTheTurn,
+  type AnOrderHygienesOutcome,
+  type TheBotsRecordOfARealmsTurn,
+} from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 // Its types (plan P1-10b48): each parameter typed as wide as the body's guards, so each guard stays.
 declare global {
-  /** The bots' two hooks for the study's harness (the engine's reviewed exception to its purity, eslint.config.js),
-   *  read only where a page has set them: each bot realm's ledger a turn (`__botDiag`), the order hygiene's tally. */
+  /** The bots' hooks for the study's harness (the engine's reviewed exception to its purity, eslint.config.js),
+   *  read only where a page has set them: each bot realm's ledger a turn (`__botDiag`), the order hygiene's tally,
+   *  and the bots' record of their choices (`__botChoices`, B-17b: the balance matrix's page half sets it). */
   interface Window {
     __botDiag?: unknown;
     __botHyg?: Partial<Record<string, number>> | null | undefined;
+    __botChoices?: TheBotsRecordOfARealmsTurn[] | null | undefined;
   }
+}
+/** The bots' record of their choices opens for the turn where a page asks for it (`window.__botChoices`), and stays
+ *  off where none does (the engine alone, and the site). */
+export function theBotsRecordOpensForThePageThatAsks(G: GameState): void {
+  theBotsRecordOpensTheTurn(
+    G,
+    typeof window !== 'undefined' && Array.isArray(window.__botChoices) ? window.__botChoices : null,
+  );
 }
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
 type AnOrderAsThePassesReadIt = PhaseOrder | null | undefined;
@@ -195,10 +214,10 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
         for (let p = 0; p < 5; p++)
           orders[p] ??=
             p === ph
-              ? { action: 'defend', target: '', extra: '', desc: 'Hold' }
+              ? aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' })
               : tail
                 ? { ...tail }
-                : { action: 'defend', target: '', extra: '', desc: 'Hold' };
+                : aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' });
         theTurnsOrders(G)[c.id] = orders;
       }
     });
@@ -471,10 +490,12 @@ export function botCastLimit(G: GameState, c: Character, school: string, practis
 }
 export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>) {
   const tally = typeof window !== 'undefined' && window.__botHyg ? window.__botHyg : null;
-  const bump = (k: string) => {
-    if (tally) tally[k] = (tally[k] ?? 0) + 1;
-  };
   botIdxSet.forEach((pi) => {
+    // each outcome counted in the realm's record of the turn, and in the page's tally
+    const bump = (k: AnOrderHygienesOutcome) => {
+      theBotsRecordCountsAHygienesOutcome(G, pi, k);
+      if (tally) tally[k] = (tally[k] ?? 0) + 1;
+    };
     const P = theRealmsOf(G)[pi];
     if (!P) return;
     const mine = theCharactersOf(G).filter(
@@ -664,7 +685,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
         return { action: 'practice', target: 'tactical', extra: '', desc: 'Practice Tactical (drill the host)' };
       if (botDrillUseful(c, 'naval'))
         return { action: 'practice', target: 'naval', extra: '', desc: 'Practice Naval (drill the fleet)' };
-      return { action: 'defend', target: '', extra: '', desc: 'Hold' };
+      return aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' });
     };
     dead.forEach(([c, p]) => {
       thePlanOf(G, c)[p] = null;
@@ -728,5 +749,25 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
         }
       });
     }
+    // the realm's record of the turn closes on its heroes' plans as the hygiene leaves them
+    theBotsRecordClosesARealmsTurn(
+      G,
+      pi,
+      mine.map((hero) => ({ hero, plan: thePlanOf(G, hero) })),
+      {
+        schools: BOT_SCHOOLS,
+        theLimitOf: (hero, school) => botCastLimit(G, hero, school),
+        theSchoolOfACast: (x) => theSchoolOfACastOrder(x, spells),
+      },
+    );
   });
+  theBotsRecordClosesTheTurn(G);
+}
+/** A cast order's school, as the hygiene reads it (the spell's row's), or none for any other order. */
+function theSchoolOfACastOrder(
+  x: object | null | undefined,
+  spells: Readonly<Partial<Record<string, { readonly school?: string | null | undefined }>>>,
+): string | null {
+  if (!x || !('action' in x) || x.action !== THE_HERO_ORDERS.cast_spell.key || !('target' in x)) return null;
+  return typeof x.target === 'string' ? (spells[x.target]?.school ?? null) : null;
 }

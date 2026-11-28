@@ -1,0 +1,148 @@
+// The bots' record of their choices (B-17b, BOT-V7's first part): per bot realm and turn, each order the order hygiene
+// drops or changes, by its reason; each order a bot pads a hero's free phase with, by its kind; and each hero's cast
+// limit in each school and the casts he is given. It is kept in memory, outside the game's state: nothing of it goes
+// into the save, the telemetry or the GM log, and no choice reads it, so every game plays the same with it and without.
+// It is off unless a page asks for it (the balance matrix's page half does: tools/balance/play.ts); off, each call is
+// one look-up that finds nothing. The page's ask is read in economy.ts, the one bots' file that may read a page.
+import type { Character, GameState } from '../../schemas/saved-game-state.ts';
+
+/** What the order hygiene (economy.ts's runBotOrderHygiene) does to an order, each as it counts it: the eight reasons
+ *  it drops an order for, then the three changes it makes (a hand-over trimmed to the living, a lesson and a pairing
+ *  added). The keys are the hygiene's tally's (`window.__botHyg`). */
+export const THE_ORDER_HYGIENES_OUTCOMES = [
+  'summonTwice',
+  'overLimit',
+  'hireGone',
+  'hireTwice',
+  'hireElsewhere',
+  'hireUnaffordable',
+  'handoverAllSkeletal',
+  'practiceCapped',
+  'handoverTrimmed',
+  'teachAdded',
+  'pairAdded',
+] as const;
+export type AnOrderHygienesOutcome = (typeof THE_ORDER_HYGIENES_OUTCOMES)[number];
+
+/** The kinds of order a bot pads a hero's free phase with, as the code that writes it names it (never read from the
+ *  order's words, BOT-S6): a plain hold ('Hold'), and a specialist's hold of his post ('Hold the post'). */
+export const THE_KINDS_OF_PADDING_ORDER = ['hold', 'hold-the-post'] as const;
+export type AKindOfPaddingOrder = (typeof THE_KINDS_OF_PADDING_ORDER)[number];
+
+/** A hero's casts in a school in a turn: his limit as the turn begins (botCastLimit, before any practice of the turn),
+ *  and the cast orders in the school he is left with once the hygiene has run. */
+export interface AHerosCastsInASchool {
+  hero: number;
+  school: string;
+  limit: number;
+  casts: number;
+}
+
+/** The record of one bot realm's turn. `phasesLeftEmpty`: the phases a hero is left without an order, which the turn
+ *  fills with the engine's Defend. */
+export interface TheBotsRecordOfARealmsTurn {
+  turn: number;
+  realm: number;
+  hygiene: Partial<Record<AnOrderHygienesOutcome, number>>;
+  padding: Partial<Record<AKindOfPaddingOrder, number>>;
+  phasesLeftEmpty: number;
+  casts: AHerosCastsInASchool[];
+}
+
+/** A turn's open record: the realms' records so far, the padding orders marked by their kind, and where the page keeps
+ *  the records once each realm's is closed. */
+interface TheTurnsOpenRecord {
+  realms: Map<number, TheBotsRecordOfARealmsTurn>;
+  padding: WeakMap<object, AKindOfPaddingOrder>;
+  thePagesRecords: TheBotsRecordOfARealmsTurn[];
+}
+
+/** Each turn's open record, by the turn's state: none when no page asks for one. */
+const THE_OPEN_RECORDS = new WeakMap<GameState, TheTurnsOpenRecord>();
+
+/** The turn's record opens, afresh, where the page keeps the records (`null`: no page asks, and the record stays off). */
+export function theBotsRecordOpensTheTurn(G: GameState, thePagesRecords: TheBotsRecordOfARealmsTurn[] | null): void {
+  if (thePagesRecords) THE_OPEN_RECORDS.set(G, { realms: new Map(), padding: new WeakMap(), thePagesRecords });
+  else THE_OPEN_RECORDS.delete(G);
+}
+
+function theRealmsRecord(open: TheTurnsOpenRecord, G: GameState, realm: number): TheBotsRecordOfARealmsTurn {
+  const had = open.realms.get(realm);
+  if (had) return had;
+  const made: TheBotsRecordOfARealmsTurn = {
+    turn: G.turn,
+    realm,
+    hygiene: {},
+    padding: {},
+    phasesLeftEmpty: 0,
+    casts: [],
+  };
+  open.realms.set(realm, made);
+  return made;
+}
+
+/** The hygiene's outcome for an order of the realm, counted. */
+export function theBotsRecordCountsAHygienesOutcome(G: GameState, realm: number, outcome: AnOrderHygienesOutcome) {
+  const open = THE_OPEN_RECORDS.get(G);
+  if (!open) return;
+  const record = theRealmsRecord(open, G, realm);
+  record.hygiene[outcome] = (record.hygiene[outcome] ?? 0) + 1;
+}
+
+/** A padding order, marked with its kind while the record is open; the order itself is handed back unchanged. */
+export function aPaddingOrder<TheOrder extends object>(G: GameState, kind: AKindOfPaddingOrder, order: TheOrder) {
+  THE_OPEN_RECORDS.get(G)?.padding.set(order, kind);
+  return order;
+}
+
+/** A copy of an order (`{ ...order }`), marked as the order is if it pads. */
+export function aCopyOfAnOrderKeepingItsPaddingKind<TheOrder extends object>(G: GameState, order: TheOrder): TheOrder {
+  const copy = { ...order };
+  const open = THE_OPEN_RECORDS.get(G);
+  const kind = open?.padding.get(order);
+  if (open && kind) open.padding.set(copy, kind);
+  return copy;
+}
+
+/** What closing a realm's record reads of the hygiene: a hero's limit in a school, and a cast order's school. */
+export interface WhatTheRecordReadsOfAHerosCasts {
+  readonly schools: readonly string[];
+  readonly theLimitOf: (c: Character, school: string) => number;
+  readonly theSchoolOfACast: (order: object | null | undefined) => string | null;
+}
+
+/** A bot realm's record closes once the hygiene has run, on its heroes' plans as they stand: each padding order by its
+ *  kind, each phase left empty, and each hero's limit and casts in each school where he has either. */
+export function theBotsRecordClosesARealmsTurn(
+  G: GameState,
+  realm: number,
+  plans: readonly { readonly hero: Character; readonly plan: readonly (object | null | undefined)[] }[],
+  casts: WhatTheRecordReadsOfAHerosCasts,
+): void {
+  const open = THE_OPEN_RECORDS.get(G);
+  if (!open) return;
+  const record = theRealmsRecord(open, G, realm);
+  for (const { hero, plan } of plans) {
+    for (let p = 0; p < 5; p++) {
+      const order = plan[p];
+      if (!order) {
+        record.phasesLeftEmpty++;
+        continue;
+      }
+      const kind = open.padding.get(order);
+      if (kind) record.padding[kind] = (record.padding[kind] ?? 0) + 1;
+    }
+    for (const school of casts.schools) {
+      const limit = casts.theLimitOf(hero, school);
+      const given = plan.filter((order) => casts.theSchoolOfACast(order) === school).length;
+      if (limit > 0 || given > 0) record.casts.push({ hero: hero.id, school, limit, casts: given });
+    }
+  }
+  open.thePagesRecords.push(record);
+  open.realms.delete(realm);
+}
+
+/** The turn's record closes: what wasn't closed goes, so the next turn's opens afresh. */
+export function theBotsRecordClosesTheTurn(G: GameState): void {
+  THE_OPEN_RECORDS.delete(G);
+}

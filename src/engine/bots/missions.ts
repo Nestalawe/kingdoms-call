@@ -91,6 +91,7 @@ import type { TurnContext } from '../turn/context.ts';
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, ABotRealmsRoles, ABotRealmsSpending } from './intel.ts';
+import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 // Its types (plan P1-10b45): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -1937,7 +1938,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
                 extra: '',
                 desc: 'Practice ' + theLabelOf(solo) + ' (slayer)',
               }
-            : { action: 'defend', target: '', extra: '', desc: 'Hold' },
+            : aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' }),
         );
       orders[sl.id] = out;
       const D = botTurnCache(G).teachDiag ?? [];
@@ -1970,7 +1971,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
                 extra: '',
                 desc: 'Practice ' + theLabelOf(solo) + ' (slayer)',
               }
-            : { action: 'defend', target: '', extra: '', desc: 'Hold' },
+            : aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' }),
       );
     }
     orders[sl.id] = out;
