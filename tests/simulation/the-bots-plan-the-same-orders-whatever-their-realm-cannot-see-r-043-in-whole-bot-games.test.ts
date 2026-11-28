@@ -24,11 +24,13 @@ import { aStagedTurnOnTheEnginesModules, type World } from '../lib/a-staged-turn
 import { timeLimitForTheWork } from '../lib/time-limits.ts';
 import { THE_DIPLOMACY_LADDER } from '../../src/content/the-diplomacy-ladder-a-mutual-treats-step-a-wars-step-the-overtures-kind-and-the-small-games-alliance-limit.ts';
 
-const GAMES = 2;
+const GAMES = 3;
 const TURNS = 12;
 const FIRST_TURN = 3;
 const REALMS = 5;
-const SEED = Number(process.env['KC_SEED']) >>> 0 || 1;
+// The worlds and every die are pinned (not the run's KC_SEED), so the test gives the same answer every time: the
+// known list's half is a fact of these worlds.
+const SEED = 20261001;
 
 /** The rows that fix a read beyond a realm's view (the backlog's B-17 group: Run B). */
 type AFixRow = 'B-17g' | 'B-17h' | 'B-17i' | 'B-17j' | 'B-17k';
@@ -151,8 +153,8 @@ const theRelationsOfTwoOtherRealmsTurned = ({ G }: Context, s: WhatTheRealmSees)
   }
   return any;
 };
-/** The hero the B-17g variation moves, by realm (set by its stage). */
-const theHeroStaged = new Map<number, number>();
+/** The heroes the B-17g variation moves, by realm (set by its stage). */
+const theHeroesStaged = new Map<number, number[]>();
 
 const VARIATIONS: readonly AVariation[] = [
   {
@@ -181,20 +183,24 @@ const VARIATIONS: readonly AVariation[] = [
     row: 'B-17g',
     at: 'plan',
     stage: ({ G }, s) => {
-      const c = G.characters.find(
+      const them = G.characters.filter(
         (h) => h.alive && h.player != null && h.player !== s.realm && s.heroesItSeesNow.has(h.id),
       );
-      if (!c) return false;
-      c.armies = [];
-      c._invisTurn = G.turn - 1;
-      theHeroStaged.set(s.realm, c.id);
-      return true;
+      for (const c of them) {
+        c.armies = [];
+        c._invisTurn = G.turn - 1;
+      }
+      theHeroesStaged.set(
+        s.realm,
+        them.map((c) => c.id),
+      );
+      return them.length > 0;
     },
     apply: ({ G }, s) => {
-      const c = G.characters.find((h) => h.id === theHeroStaged.get(s.realm));
-      const to = c && anotherDarkProvince(G, s, c.location);
-      if (!c || !to) return false;
-      moveTheHero(G, c, to);
+      const them = G.characters.filter((h) => theHeroesStaged.get(s.realm)?.includes(h.id));
+      const to = them[0] && anotherDarkProvince(G, s, them[0].location);
+      if (!to) return false;
+      for (const c of them) moveTheHero(G, c, to);
       return true;
     },
   },
