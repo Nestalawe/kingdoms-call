@@ -642,4 +642,62 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair: 0.7,
     theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: 0.6,
   },
+  /** What a realm's power is rated at, its own and a rival's (botOwnPower and botRivalPower, bots/war.ts). */
+  warPowers: {
+    theWorthOfAPointOfGarrisonStrengthInARealmsOwnPower: 0.5,
+    theWorthOfAPointOfIncomeInARealmsPower: 2,
+    theWorthOfEachHeroInARealmsOwnPower: 3,
+    theMostTurnsAgoARivalsHeroCountsTowardsItsPower: 6,
+    theGarrisonAssumedInARivalsCapital: 3,
+    theWorthOfEachHostOrHeroCountedInARivalsPower: 3,
+    theLeastHostsOrHeroesCountedInARivalsPower: 1,
+  },
+  /** What a war's bar and a prize are judged by: an assault margin, the opportunities' windows and a realm's fixed lean (botWarAssess and botWarPrize, bots/war.ts). */
+  warBarAndPrize: {
+    theMarginUsedWhenARealmsAttackMarginIsNotSet: 1.2,
+    theLeastPrizeHopsFromWhichAProvinceTwoAwayFromTheBorderCounts: 2,
+    theMostTurnsAgoABattleLostByARivalCountsAsAnOpportunity: 3,
+    theMostTurnsAgoARivalsKingWasCrownedForItToCountAsAnOpportunity: 4,
+    theMostTurnsAgoAHostOfARivalWasPlacedFarFromHomeForItToCountAsAnOpportunity: 2,
+    theAlignmentDistanceBeyondWhichEachStepTakesOffTheBar: 2,
+    theMixOfARealmsPlaceInItsFixedLeanTowardsWar: 37,
+    theMixOfTheLengthOfARealmsNameInItsFixedLeanTowardsWar: 11,
+    theNumberOfStepsInARealmsFixedLeanTowardsWar: 21,
+    theStepOfARealmsFixedLeanThatLeansNeitherWay: 10,
+    theStepsInOneUnitOfARealmsFixedLeanTowardsWar: 100,
+  },
+  /** Which targets several heroes combine on and in what order (botPlanAssaults, bots/war.ts). */
+  warAssaults: {
+    theWorthOfAPointOfTaxInRankingATargetForACombinedAssault: 10,
+    theFewestCharactersWhoCombineOnOneAssault: 2,
+  },
+  /** Which orders a hero in contact keeps and when a pass acts (the muster in contact, the forced march and the feint, bots/phase-one.ts). */
+  springPassOrdersAndReach: {
+    theHopsWithinWhichAHostCountsAsNearAProvince: 2,
+    theLeastUnitsAHeroLeadsToMusterInContactWhenHeIsNotAGeneral: 2,
+    theLeastMarchLevelFromWhichAGeneralPlansAForcedMarch: 7,
+    theLeastAttacksAGeneralPlansForAForcedMarchBetweenThem: 2,
+    theLeastUnitsAGeneralLeadsToPlanAFeint: 3,
+    theLeastUnitsAGeneralLeadsToSendADetachmentToASecondFront: 4,
+    theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral: 0.7,
+    theMostUnitsAGeneralKeepsForASecondFrontsDetachmentToBeRefused: 1,
+    theFirstOrdersOfAHeroWhereStrikeCastsAreKeptWhenHeTakesASecondFront: 3,
+  },
+  /** How urgently each kind of order comes first in a hero's season (the reordering of a hero's orders, bots/phase-one.ts). */
+  springPassUrgency: {
+    theUrgencyOfAnOrderThatMustComeFirst: 5,
+    theUrgencyOfAnOrderThatEasesAFightInContact: 4,
+    theUrgencyOfAnOrderThatGuardsAHeroWithAHostNearby: 3,
+    theUrgencyOfAHire: 1,
+  },
+  /** What a safe step and a second front are worth to a hero (botSafeStep and the second front, bots/phase-one.ts). */
+  springPassSafeStepAndSecondFront: {
+    theWorthOfAnOwnProvinceAsASafeStep: 10,
+    theWorthOfTheHomeProvinceAsASafeStep: 5,
+    theWorthLostForEachNeighbourWithAnEnemyHostAsASafeStep: 6,
+    theWorthOfEachHopAwayFromAThreatenedProvinceAsASafeStep: 4,
+    theWorthOfEachPointOfTaxInChoosingASecondFrontsTarget: 2,
+    theWorthOfAProvinceSomeRealmHoldsInChoosingASecondFrontsTarget: 8,
+    theNumberByWhichADefenceIsDividedInChoosingASecondFrontsTarget: 4,
+  },
 } satisfies TheWeightsOfABotVersion;
