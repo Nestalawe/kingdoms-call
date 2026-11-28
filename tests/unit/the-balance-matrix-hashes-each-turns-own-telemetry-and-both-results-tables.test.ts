@@ -71,7 +71,7 @@ async function runTurn({ game }) {
   for (let i = 0; i < ${String(GM_LOG_ROWS_A_TURN)}; i++)
     await db.theTurnAsTheGameMasterRunsIt.writeThisLog({ game_id: 'G1', turn, player_index: -1, entries: [] });
   await db.theStatistics.writeTheseTurnRecords([MADE_UP.telemetry[turn - 1]]);
-  window.__botChoices.push(${JSON.stringify(A_RECORD).replaceAll('<', '\u003c')});
+  window.__botChoices.push(${JSON.stringify(A_RECORD)});
   const last = turn === 2;
   if (last) {
     await db.theStatistics.writeTheseResults([RESULT]);
