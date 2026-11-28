@@ -36,7 +36,12 @@ export type TheBotsValuationOfAnAlignmentAbility =
       /** The bots' functions that decide its use, and the rule they read, where they read one. */
       readonly thePass: string;
     }
-  | { readonly how: 'nothing to choose'; readonly why: 'it acts at the set-up' | 'the turn applies it by itself' }
+  | {
+      readonly how: 'nothing to choose';
+      readonly why: 'it acts at the set-up' | 'the turn applies it by itself';
+      /** Where the bots obey the rule, where they read it. */
+      readonly whereTheBotsReadIt?: string;
+    }
   | { readonly how: 'not valued yet' };
 
 const AT_THE_SET_UP = { how: 'nothing to choose', why: 'it acts at the set-up' } as const;
@@ -62,6 +67,7 @@ export const THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY = {
     whereTheBotsWeighIt:
       "botFervourMult (intel.ts): a host's strength in the estimates; botRecruitableTypes (strategy.ts): a recruit's worth",
   },
+  // the same runner as savage fury's: both places that ask it read savage fury's entry
   'skeletal-fervour': {
     how: "asked of the rule's runner, weighed by its kind",
     theRunner: theFervourOfASide,
@@ -137,7 +143,11 @@ export const THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY = {
     thePass:
       'runBotOrderHygiene (economy.ts): a hand-over keeps the risen dead from a hero they would not follow, by theRisenDeadFollowAHandOverTo',
   },
-  'an-undead-hero-is-undead-in-personal-combat': NOT_VALUED_YET,
+  'an-undead-hero-is-undead-in-personal-combat': {
+    how: 'chosen by a pass of the plan',
+    thePass:
+      "botHuntersDuelForecastFoughtOnCopiesOfBothHeroes (the duel forecast, fought through the duel's own combatant), and the choices made by its odds: botDuelStance and botMasteryPre's hunt (missions.ts)",
+  },
   'a-divine-king-starts-with-white-magic': AT_THE_SET_UP,
   'a-druidic-king-starts-with-druid': AT_THE_SET_UP,
   'an-evil-king-starts-with-druid': AT_THE_SET_UP,
@@ -148,8 +158,14 @@ export const THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY = {
   'a-druidic-capital-opens-beside-creatures': AT_THE_SET_UP,
   'an-evil-capital-opens-beside-monsters': AT_THE_SET_UP,
   'a-druidic-wanderer-knows-the-druids-craft': AT_THE_SET_UP,
-  'one-divine-realm-a-game': AT_THE_SET_UP,
-  'one-undead-realm-a-game': AT_THE_SET_UP,
+  'one-divine-realm-a-game': {
+    ...AT_THE_SET_UP,
+    whereTheBotsReadIt: "setup.ts: a bot's alignment, by BOT_UNIQUE_ALIGNS",
+  },
+  'one-undead-realm-a-game': {
+    ...AT_THE_SET_UP,
+    whereTheBotsReadIt: "setup.ts: a bot's alignment, by BOT_UNIQUE_ALIGNS",
+  },
   consecrate: {
     how: 'chosen by a pass of the plan',
     thePass: `${THE_SIGNATURE_ORDER} (botConsecrateOK), and runBotMovement (movement.ts): a Divine king walks to the province botConsecrateTarget picks`,

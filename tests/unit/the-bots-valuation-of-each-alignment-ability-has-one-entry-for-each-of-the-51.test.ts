@@ -3,7 +3,7 @@
 // ALIGNMENT_ABILITIES and no other, in the rows' order. The compiler refuses a missing key too (`satisfies
 // Record<AlignmentAbilitySlug, …>`); this test also turns red when a key is left out or added. Each entry asked of a
 // rule's runner names the registry's own runner for that ability, and the table holds what today's bots do: 9 asked of
-// a runner, 10 chosen by a pass of the plan, 15 with nothing to choose, 17 not valued yet.
+// a runner, 11 chosen by a pass of the plan, 15 with nothing to choose, 16 not valued yet.
 //
 // Level 1 (unit): the table and the registry read directly. Not lower: a static test reads the text, not which
 // function an entry holds.
@@ -56,9 +56,9 @@ describe("the bots' valuation of each alignment ability", () => {
     for (const entry of Object.values(TABLE)) theCounts[entry.how] = (theCounts[entry.how] ?? 0) + 1;
     expect(theCounts).toEqual({
       "asked of the rule's runner, weighed by its kind": 9,
-      'chosen by a pass of the plan': 10,
+      'chosen by a pass of the plan': 11,
       'nothing to choose': 15,
-      'not valued yet': 17,
+      'not valued yet': 16,
     });
   });
 });
