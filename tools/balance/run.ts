@@ -67,7 +67,6 @@ import {
 } from './the-check-that-every-alignment-ability-is-used-in-some-game.ts';
 import {
   isAnAbilitysFigure,
-  withEveryKindOfOrderInEveryGame,
   withTheAbilitiesJoined,
 } from './the-bots-statistics-by-realm-summed-by-alignment-and-race.ts';
 import type { Job, Reply } from './worker.ts';
@@ -137,14 +136,14 @@ export function statesNotThePages(page: GameResult[], vm: ReportsResult[]): stri
 }
 
 /** The page's games of set `set` with the bots' statistics joined (B-17d): each ability's figures from the vm half's
- *  game of the same id (`vm`; null: not played, KC_SITE), and every kind of order any game gave in each game. */
+ *  game of the same id (`vm`; null: not played, KC_SITE). */
 export function theGamesWithTheBotsStatisticsJoined(
   set: SeedSet,
   page: GameResult[],
   vm: readonly ReportsResult[] | null,
 ): GameResult[] {
   const specs = matrix(set);
-  return withEveryKindOfOrderInEveryGame(vm ? withTheAbilitiesJoined(page, vm, specs) : page, specs);
+  return vm ? withTheAbilitiesJoined(page, vm, specs) : page;
 }
 
 /** The scripted cases a required named scenario gives, by the scenario's name (P1-15e2b): the games still count and

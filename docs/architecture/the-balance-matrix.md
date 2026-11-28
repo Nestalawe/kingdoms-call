@@ -181,17 +181,20 @@ own starting `bots: `:
 - from the telemetry: the orders given, by kind (`bots: orders given: move`); the gold left unspent at each turn's end;
 - from the bots' record (B-17b): the orders the order hygiene dropped, in all and by reason (its changes, such as a
   hand-over trimmed to the living, aren't drops); the heroes' phases with nothing else to do, in all, by each padding
-  kind and left empty; the casts left unused (each hero's limit in a school as the hygiene applies it, less the casts
-  he is given, summed over his schools: room left, not casts meant);
+  kind and left empty; the casts left unused: each hero's room under his cast limits as the hygiene applies them,
+  summed over his schools, but no more than his phases padded or left empty (the casts he could really have made);
+  and beside it that room alone (`bots: room under the cast limits`);
 - from the count by key (B-17c): each ability's uses (`bots: ability used: consecrate`), a stand-in's figure under
   `bots: an ability's stand-in: `, and nothing for the two not countable yet.
 
 Each is sliced `| by alignment: Divine` and `| by race: Human`, a [sum, count] pair a game whose count is the realms of
-the slice (the gold's: their turns). An ability counts only for the realms of its alignment. A kind of order any game
-of the run gave counts 0 in a game that gave none, so the mean keeps every game. The page half gives the telemetry's
+the slice (the gold's: their turns). An ability counts only for the realms of its alignment. Every base is in every
+game, from fixed lists (every kind of hero order, `THE_HERO_ORDERS`; every padding kind; every drop reason; the casts'
+two; every ability), 0 where none, so the mean keeps every game and a game's figures never hang on which other games
+a run plays (`--only` too). The page half gives the telemetry's
 and the record's figures (`play.ts`), the vm half the abilities' (`every-realm.ts`): `run.ts` plays the vm half
-first and joins them by game id and seat (`theGamesWithTheBotsStatisticsJoined`); both seat realm *i* with the game's
-alignments and races by index, and the vm's states are checked to be the page's. With `KC_SITE` the vm half isn't
+first and joins them by game id and seat (`theGamesWithTheBotsStatisticsJoined`); both seat realm *i* as
+`lib/matrix-game.ts`'s `setupsOf` does (the bot realms: its `isBot`), and the vm's states are checked to be the page's. With `KC_SITE` the vm half isn't
 played, so the abilities' figures are left out of that comparison.
 
 **Reading it.** `npm run balance` prints its answer after the games; the balance report ends with a section, "The
@@ -215,9 +218,9 @@ the run too, so it leaves the list: the list only shrinks, meant to empty (A2), 
 of 28 November. A stand-in's scenario must be a required one, or the run fails. Not with `--only`, nor with
 `KC_SITE` (it reads the vm half's count). The bots' section names each entry under "what isn't measured yet".
 
-A statistic only one side has (no game of that side has its base) is added or retired, not changed: no game differs by
-it, and the report names how many (`theStatisticsOnlyOneSideHas`). So a pull request that adds one reads "no change"
-when every game played the same.
+The bots' group as a whole is added or retired when no game of one side has any of it: no game differs by it, and the
+report names how many (`theStatisticsOnlyOneSideHas`), so the pull request that added it read "no change". Within the
+group nothing is added or retired: a kind that appears in, or goes from, every game is a change, judged.
 
 ## What the games don't reach, and the proof tools
 

@@ -44,6 +44,7 @@ import {
   ABILITY_STAND_IN,
   ABILITY_USED,
   CASTS_LEFT_UNUSED,
+  ROOM_UNDER_THE_CAST_LIMITS,
   GOLD_UNSPENT,
   ORDERS_GIVEN,
   ORDERS_THE_HYGIENE_DROPPED,
@@ -108,18 +109,26 @@ const BESIDE_THE_STATE_WORDS: Readonly<Record<BesideTheState, string>> = {
   report: "the scripted realm's report",
 };
 
-/** The bases of the statistics some game of `games` has. */
-const theBasesIn = (games: readonly { stats: Stats }[]): Set<string> =>
-  new Set(games.flatMap((g) => Object.keys(g.stats).map(baseOf)));
+/** The bots' statistics some game of `games` has (B-17d's group), each with its slice. */
+const theBotsStatisticsIn = (games: readonly { stats: Stats }[]): Set<string> =>
+  new Set(games.flatMap((g) => Object.keys(g.stats).filter((k) => k.startsWith(THE_BOTS_STATISTICS))));
 
-/** The statistics only one side has, by base (none of that side's games has the base): new in the branch, or gone
- *  from it. Such a statistic is added or retired, not changed, so no game differs by it (B-17d). */
+/** The statistics only one side has: the bots' group (B-17d) as a whole, when no game of one side has any of it, by
+ *  base and in figures (with their slices). Each kind within the group is in every game (0 where none: the fixed
+ *  lists), so a kind that appears in, or goes from, every game is judged as a change, never added or retired. */
 export function theStatisticsOnlyOneSideHas(
   base: readonly { stats: Stats }[],
   head: readonly { stats: Stats }[],
-): { added: string[]; retired: string[] } {
-  const [b, h] = [theBasesIn(base), theBasesIn(head)];
-  return { added: [...h].filter((k) => !b.has(k)).sort(), retired: [...b].filter((k) => !h.has(k)).sort() };
+): { added: string[]; retired: string[]; figures: { added: number; retired: number } } {
+  const [b, h] = [theBotsStatisticsIn(base), theBotsStatisticsIn(head)];
+  const bases = (keys: Set<string>) => [...new Set([...keys].map(baseOf))].sort();
+  const added = b.size ? [] : bases(h);
+  const retired = h.size ? [] : bases(b);
+  return {
+    added,
+    retired,
+    figures: { added: added.length ? h.size : 0, retired: retired.length ? b.size : 0 },
+  };
 }
 
 /** The games that differ in anything, in the branch's order. A game missing on one side counts as played out
@@ -393,8 +402,9 @@ export interface Report {
   notCompared: TurnColumn[];
   /** Every realm's report (every-realm.ts): the branch's, against the base's committed reports.json. */
   everyRealm: EveryRealm;
-  /** The statistics only one side has, by base: added by the branch, or retired by it (not compared). */
-  statistics: { added: string[]; retired: string[] };
+  /** The statistics only one side has (the bots' group as a whole), by base and in figures: added by the branch, or
+   *  retired by it (not compared). */
+  statistics: ReturnType<typeof theStatisticsOnlyOneSideHas>;
   /** The bots' statistics of the branch's games, by alignment and race (B-17d): its markdown lines. */
   bots: string[];
 }
@@ -675,12 +685,16 @@ export function renderReport(r: Report, form: ReportForm = 'counts only'): strin
 
 function theComparison(r: Report, form: ReportForm): string {
   const out = ['## Balance report', '', `**${r.verdict}**`, '', ...everyRealmLines(r.everyRealm)];
-  const { added, retired } = r.statistics;
+  const { added, retired, figures } = r.statistics;
   if (added.length + retired.length)
     out.push(
       [
-        added.length ? `${String(added.length)} statistics are new in this pull request` : '',
-        retired.length ? `${String(retired.length)} are gone from it` : '',
+        added.length
+          ? `${String(added.length)} statistics (${String(figures.added)} figures with their slices) are new in this pull request`
+          : '',
+        retired.length
+          ? `${String(retired.length)} statistics (${String(figures.retired)} figures with their slices) are gone from it`
+          : '',
       ]
         .filter(Boolean)
         .join(', and ') + ': no game differs by them, and they are not compared.',
@@ -976,7 +990,9 @@ export function theBotsStatisticsInBrief(games: readonly { id: string; stats: St
   out.push(
     `Each bot realm, a game: ${aFigure(orders)} orders given; ${aFigure(overAll(bots, ORDERS_THE_HYGIENE_DROPPED))} ` +
       `dropped by the hygiene (most as ${reasons[0] ? THE_HYGIENES_DROPS_IN_WORDS[reasons[0].r] : '–'}); ${aFigure(overAll(bots, PHASES_WITH_NOTHING_ELSE_TO_DO))} ` +
-      `of its heroes' phases with nothing else to do; ${aFigure(overAll(bots, CASTS_LEFT_UNUSED))} casts left unused. ` +
+      `of its heroes' phases with nothing else to do; ${aFigure(overAll(bots, CASTS_LEFT_UNUSED))} casts its heroes ` +
+      `could still have made in those phases (their room under the cast limits, summed over their schools: ` +
+      `${aFigure(overAll(bots, ROOM_UNDER_THE_CAST_LIMITS))}). ` +
       `Gold unspent at a turn's end, a mean: ${aFigure(overAll(bots, GOLD_UNSPENT))}` +
       (goldBy.length > 1
         ? ` (most the ${goldBy[0]?.a ?? ''} realms, ${aFigure(goldBy[0]?.v ?? NaN)}; least the ${goldBy.at(-1)?.a ?? ''}, ${aFigure(goldBy.at(-1)?.v ?? NaN)}).`
@@ -1022,7 +1038,7 @@ export function theBotsStatisticsSection(head: readonly { id: string; stats: Sta
       "race rests on its own games only (the number beside it). How to read them: the balance matrix's topic file.",
     '',
     ...details('Each alignment ability, for the realms of its alignment', [
-      '| Alignment | Ability | How it is counted | Games it was used in | Uses per realm a game |',
+      '| Alignment | Ability | How it is counted | Games it was used in, or stood in for | Uses (or stand-ins) per realm a game |',
       '|---|---|---|---|---|',
       ...abilities.map(
         (a) =>

@@ -7,17 +7,24 @@
 // only as a whole, and a baseline can't say which sum went wrong. Every input a seed could change is pinned here.
 import { describe, expect, test } from 'vitest';
 import type { TheBotsRecordOfARealmsTurn } from '../../src/engine/bots/the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
-import type { KeptGame, ReportsResult } from '../../tools/balance/baseline.ts';
+import { readBaseline, type KeptGame, type ReportsResult } from '../../tools/balance/baseline.ts';
 import { labelOf } from '../../tools/balance/labels.ts';
 import { matrix, type GameSpec } from '../../tools/balance/matrix.ts';
-import { buildReport, compareGames, renderReport, theBotsStatisticsInBrief } from '../../tools/balance/report.ts';
-import { theGamesWithTheBotsStatisticsJoined } from '../../tools/balance/run.ts';
-import type { TelemetryRow } from '../../tools/balance/stats.ts';
 import {
+  buildReport,
+  compareGames,
+  renderReport,
+  theBotsStatisticsInBrief,
+  theStatisticsOnlyOneSideHas,
+} from '../../tools/balance/report.ts';
+import { theGamesWithTheBotsStatisticsJoined } from '../../tools/balance/run.ts';
+import { baseOf, type TelemetryRow } from '../../tools/balance/stats.ts';
+import {
+  ORDERS_GIVEN,
+  THE_KINDS_OF_ORDER,
   theBotRealmsOfAGame,
   theBotsStatisticsOfTheAbilities,
   theBotsStatisticsOfThePageHalf,
-  withEveryKindOfOrderInEveryGame,
 } from '../../tools/balance/the-bots-statistics-by-realm-summed-by-alignment-and-race.ts';
 import type { GameResult } from '../../tools/balance/play.ts';
 
@@ -54,6 +61,7 @@ const aRecord = (realm: number, over: Partial<TheBotsRecordOfARealmsTurn>): TheB
   hygiene: {},
   padding: {},
   phasesLeftEmpty: 0,
+  idle: [],
   casts: [],
   ...over,
 });
@@ -86,7 +94,15 @@ describe("the page half's figures, by alignment and race", () => {
         hygiene: { practiceCapped: 2, overLimit: 1, handoverTrimmed: 5 },
         padding: { hold: 2, 'hold-the-post': 1 },
         phasesLeftEmpty: 1,
-        casts: [{ hero: 1, school: 'Fire', limit: 2, limitTheHygieneApplies: 3, casts: 1 }],
+        idle: [
+          { hero: 1, phases: 1 },
+          { hero: 2, phases: 3 },
+        ],
+        casts: [
+          { hero: 1, school: 'Fire', limit: 2, limitTheHygieneApplies: 3, casts: 1 },
+          { hero: 1, school: 'Air', limit: 1, limitTheHygieneApplies: 1, casts: 0 },
+          { hero: 2, school: 'Fire', limit: 1, limitTheHygieneApplies: 1, casts: 0 },
+        ],
       }),
       aRecord(1, { hygiene: { hireUnaffordable: 1 } }),
       aRecord(3, { hygiene: { practiceCapped: 50 }, padding: { 'lie-low': 4 } }),
@@ -109,11 +125,27 @@ describe("the page half's figures, by alignment and race", () => {
     expect(s['bots: phases with nothing else to do: hold | by race: Human']).toEqual([2, 2]);
     expect(s['bots: phases with nothing else to do: left empty | by race: Human']).toEqual([1, 2]);
   });
-  test('a seat that is no bot adds no kind of its own: its orders and padding make no statistic', () => {
-    expect(Object.keys(s).filter((k) => k.includes('pursue') || k.includes('lie-low'))).toEqual([]);
+  test('every kind of order and of padding is in every game: 0 where none was given, a seat that is no bot counting none', () => {
+    expect(s['bots: orders given: blockade | by alignment: Divine'], 'a kind no bot gave').toEqual([0, 2]);
+    expect(s['bots: orders given: pursue | by race: Elven'], "seat 3's only").toEqual([0, 1]);
+    expect(s['bots: phases with nothing else to do: lie-low | by alignment: Neutral'], "seat 3's only").toEqual([0, 1]);
+    expect(s['bots: phases with nothing else to do: hold-with-the-host | by alignment: Divine']).toEqual([0, 2]);
+    expect(s['bots: orders the hygiene dropped: hireGone | by race: Human']).toEqual([0, 2]);
   });
-  test('the casts left unused: the limit the hygiene applies, less the casts given', () => {
+  test("the casts left unused: a hero's room under his limits, no more than his phases with nothing else to do", () => {
+    // hero 1: room 2 (Fire) + 1 (Air), 1 idle phase: 1; hero 2: room 1, 3 idle phases: 1
     expect(s['bots: casts left unused | by alignment: Divine']).toEqual([2, 2]);
+    expect(s['bots: room under the cast limits | by alignment: Divine'], 'summed over his schools').toEqual([4, 2]);
+  });
+  test('a game with no record of the bots still has every base of it, at 0 for each realm', () => {
+    const bare = theBotsStatisticsOfThePageHalf(REALMS, [aRow(0, 1, 5, ['move'])], []);
+    for (const base of [
+      'bots: phases with nothing else to do: hold',
+      'bots: orders the hygiene dropped: overLimit',
+      'bots: casts left unused',
+      'bots: room under the cast limits',
+    ])
+      expect(bare[`${base} | by alignment: Divine`], base).toEqual([0, 2]);
   });
   test("the gold unspent at a turn's end: a mean per realm and turn", () => {
     expect(s["bots: gold unspent at a turn's end | by alignment: Divine"]).toEqual([30, 3]);
@@ -122,6 +154,19 @@ describe("the page half's figures, by alignment and race", () => {
   test('every figure has a label in game terms', () => {
     for (const key of Object.keys(s)) expect(labelOf(key), key).toBeDefined();
   });
+});
+
+test('every kind of order the committed baselines hold is on the fixed list, so none hangs on the run', () => {
+  const kinds = (['A', 'B'] as const).flatMap((set) =>
+    Object.keys(readBaseline(set)[0]?.stats ?? {})
+      .filter((key) => key.startsWith(ORDERS_GIVEN))
+      .map((key) => baseOf(key).slice(ORDERS_GIVEN.length)),
+  );
+  expect(kinds.length, 'the baselines hold the kinds of order').toBeGreaterThan(0);
+  expect(
+    kinds.filter((k) => !THE_KINDS_OF_ORDER.includes(k)),
+    'kinds off the list',
+  ).toEqual([]);
 });
 
 describe("the abilities' figures, for the realms of each ability's alignment", () => {
@@ -177,13 +222,9 @@ describe("run.ts's join of the two halves", () => {
       divine,
     ]);
   });
-  test("without the vm half, no ability's figure; and a kind of order another game gave counts 0 in this one", () => {
-    const other = { ...aPageGame({ [`bots: orders given: move | by alignment: ${first.alignment}`]: [5, 1] }) };
-    const [joined] = theGamesWithTheBotsStatisticsJoined('A', [aPageGame({}), { ...other, id: 'bots-01' }], null);
+  test("without the vm half, no ability's figure", () => {
+    const [joined] = theGamesWithTheBotsStatisticsJoined('A', [aPageGame({})], null);
     expect(Object.keys(joined?.stats ?? {}).some((k) => k.startsWith('bots: ability'))).toBe(false);
-    expect(joined?.stats[`bots: orders given: move | by race: ${first.race}`]?.[0]).toBe(0);
-    const filled = withEveryKindOfOrderInEveryGame([aPageGame({})], [spec]);
-    expect(filled[0]?.stats, 'no kind given in any game: nothing to fill').toEqual({});
   });
 });
 
@@ -192,14 +233,61 @@ describe('the balance report', () => {
   const BASE = [aGame('bots-00', { 'battles: fought': [2, 1] })];
   const DIVINE = 'bots: ability used: consecrate | by alignment: Divine';
   test('a statistic only the branch has is no difference: the class stays "no change", with its bots\' section', () => {
-    const head = [aGame('bots-00', { 'battles: fought': [2, 1], [DIVINE]: [0, 1] })];
+    const head = [
+      aGame('bots-00', {
+        'battles: fought': [2, 1],
+        [DIVINE]: [0, 1],
+        'bots: ability used: consecrate | by race: Human': [0, 1],
+      }),
+    ];
     expect(compareGames(BASE, head)).toEqual([]);
     const report = buildReport({ base: BASE, head });
     expect(report.class).toBe('no change');
     expect(report.statistics.added).toEqual(['bots: ability used: consecrate']);
     const text = renderReport(report);
     expect(text).toContain("### The bots' choices, by alignment and race");
-    expect(text).toContain('1 statistics are new in this pull request');
+    expect(text).toContain('1 statistics (2 figures with their slices) are new in this pull request');
+    expect(text, "the abilities' table, its stand-ins' column named for them too").toContain(
+      'Games it was used in, or stood in for',
+    );
+  });
+  test('within the group, a kind that goes from every game is judged and reported, never retired', () => {
+    // 40 made-up bot games; the bots stop blockading in all of them (0, as the fixed list of kinds keeps it); 10 of
+    // the games played out differently
+    const BLOCKADE = 'bots: orders given: blockade | by alignment: Divine';
+    const ids = Array.from({ length: 40 }, (_, i) => `bots-${String(i).padStart(2, '0')}`);
+    const base = ids.map((id) => aGame(id, { [BLOCKADE]: [3, 1], [DIVINE]: [1, 1] }));
+    const head = ids.map((id, i) => ({
+      ...aGame(id, { [BLOCKADE]: [0, 1], [DIVINE]: [1, 1] }),
+      ...(i < 10 ? { turns: ['c b'] } : {}),
+    }));
+    const report = buildReport({ base, head });
+    expect(report.statistics.retired, 'the group is on both sides: nothing retired').toEqual([]);
+    expect(
+      compareGames(base, head).filter((c) => c.stats.includes(BLOCKADE)),
+      'every game differs by it',
+    ).toHaveLength(40);
+    expect(report.class).toBe('rule change');
+    expect(report.slices.map((l) => l.key)).toContain(BLOCKADE);
+  });
+  test('within the group, nothing is added or retired base by base: a kind one side lacks is compared', () => {
+    const BLOCKADE = 'bots: orders given: blockade | by alignment: Divine';
+    const withIt = [aGame('bots-00', { [BLOCKADE]: [3, 1], [DIVINE]: [0, 1] })];
+    const without = [aGame('bots-00', { [DIVINE]: [0, 1] })];
+    const none = { added: [], retired: [], figures: { added: 0, retired: 0 } };
+    expect(theStatisticsOnlyOneSideHas(withIt, without), 'gone from every game').toEqual(none);
+    expect(theStatisticsOnlyOneSideHas(without, withIt), 'new in every game').toEqual(none);
+    expect(compareGames(withIt, without).map((c) => c.stats)).toEqual([[BLOCKADE]]);
+  });
+  test('the whole group gone from the branch is retired, by base and in figures', () => {
+    const base = [aGame('bots-00', { 'battles: fought': [2, 1], [DIVINE]: [0, 1] })];
+    const head = [aGame('bots-00', { 'battles: fought': [2, 1] })];
+    expect(compareGames(base, head)).toEqual([]);
+    expect(buildReport({ base, head }).statistics).toEqual({
+      added: [],
+      retired: ['bots: ability used: consecrate'],
+      figures: { added: 0, retired: 1 },
+    });
   });
   test('a statistic both sides have still differs', () => {
     const base = [aGame('bots-00', { 'battles: fought': [2, 1], [DIVINE]: [0, 1] })];
