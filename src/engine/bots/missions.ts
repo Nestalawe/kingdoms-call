@@ -283,6 +283,11 @@ const theInfiltration = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsInfiltrati
 const theSignatureOrders = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsSignatureOrders;
 const theResearchAndKit = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsResearchAndKit;
 const theAlliesAndLairs = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsAlliesAndLairs;
+const theLairPlan = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsLairPlan;
+const theStrikes = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsStrikes;
+const theDuels = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsDuels;
+const theOrphanedHost = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsOrphanedHost;
+const theSlayerSchool = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsSlayerSchool;
 export const BOT_INFILTRATE_RANGE = 5; // an unarmed character's full walking reach
 export function botInfiltrateSchool(c: Character) {
   const s: Character['skills'] = asItsGuardReadsIt(c.skills) ?? {};
@@ -1097,7 +1102,16 @@ export function botLairPlan(
   const melee = Number(sk.melee) || 0,
     archery = Number(sk.archery) || 0;
   const _cs = Math.max(Number(sk.elemental) || 0, Number(sk.necromancy) || 0, Number(sk.psychic) || 0);
-  if (melee < 3 && archery < 3 && melee + archery < 5 && !(melee >= 2 && melee + archery + _cs >= 6)) return null; // a combat school counts toward the gate (the rumour still decides)
+  if (
+    melee < theLairPlan.theMeleeOrArcheryLevelBelowWhichAHeroIsNotSentHuntingAlone &&
+    archery < theLairPlan.theMeleeOrArcheryLevelBelowWhichAHeroIsNotSentHuntingAlone &&
+    melee + archery < theLairPlan.theMeleeAndArcheryLevelsTogetherBelowWhichAHeroIsNotSentHuntingAlone &&
+    !(
+      melee >= theLairPlan.theMeleeLevelFromWhichACombatSchoolCanOpenTheHuntingGate &&
+      melee + archery + _cs >= theLairPlan.theLevelsOfMeleeArcheryAndACombatSchoolTogetherThatOpenTheHuntingGate
+    )
+  )
+    return null; // a combat school counts toward the gate (the rumour still decides)
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const cands = botLairCandidates(G, pi, c, BOT_LAIR_REACH).filter((x) => x.f.monster);
@@ -1108,7 +1122,7 @@ export function botLairPlan(
   const told = (f: ProvinceFeature) => {
     const r = f._rumourOdds?.[pi];
     return r?.charId === c.id &&
-      (G.turn || 0) - r.turn <= 6 &&
+      (G.turn || 0) - r.turn <= theLairPlan.theTurnsAnAssessmentOfALairStaysGoodForTheHeroWhoAskedIt &&
       !(asItsGuardReadsIt(r.rating) != null && rating < r.rating) &&
       !(BOT_LAIR_REASK_GAIN > 0 && asItsGuardReadsIt(r.rating) != null && rating >= r.rating + BOT_LAIR_REASK_GAIN)
       ? r
@@ -1125,7 +1139,11 @@ export function botLairPlan(
         x.grade === T.up &&
         (() => {
           const r = told(x.f);
-          return r && r.band < botGoBand(x.grade) && (G.turn || 0) - r.turn <= 1;
+          return (
+            r &&
+            r.band < botGoBand(x.grade) &&
+            (G.turn || 0) - r.turn <= theLairPlan.theTurnsAFreshLowAssessmentOfTheGradeAboveHoldsBackAskingAgain
+          );
         })(),
     ) &&
     !((Number(lad.retryAt) || 0) > T.k(T.cur))
@@ -1193,7 +1211,12 @@ export function botLairPlan(
       }
       path.forEach((d) => mv.push(aMoveOrderOnThePath(d, 'Seek the lair in ' + o.x.X.name)));
       // R-158: Invisibility waits while he leads armies, so a leader doesn't cast it before the lair
-      if (searches === 0 && (Number(sk.illusory) || 0) >= 1 && invisibilityWouldHideTheHeroNow(c) && left() >= 2)
+      if (
+        searches === 0 &&
+        (Number(sk.illusory) || 0) >= 1 &&
+        invisibilityWouldHideTheHeroNow(c) &&
+        left() >= theLairPlan.theOrdersAHeroMustHaveLeftToCastInvisibilityBeforeALair
+      )
         mv.push({
           action: 'cast_spell',
           target: theNameOfTheSpell('invisibility'),
@@ -1239,7 +1262,10 @@ export function botLairPlan(
           desc: 'Search Lair (if the talk is good)',
           prov: a.x.X.id,
           _botIfRumour: botGoBand(a.x.grade),
-          _botMinHp: searches > 0 ? BOT_LAIR_NEXT_HP : 0.5,
+          _botMinHp:
+            searches > 0
+              ? BOT_LAIR_NEXT_HP
+              : theLairPlan.theShareOfAHeroesHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment,
         };
         if (a.x.grade === 0) {
           so._botIfRumourLow = BOT_LAIR_WEAK_BAND;
@@ -1259,7 +1285,9 @@ export function botLairPlan(
 // Are there known, uncleared lairs within a slayer's reach that he cannot yet clear? Then training is what
 // makes them clearable — he trains; with NO lair known in reach he explores to find one (2026-09-26, Toby).
 export function botSlayerHasLairsToGrowInto(G: GameState, pi: number, c: Character) {
-  return botLairCandidates(G, pi, c, 4).some((k) => k.f.monster);
+  return botLairCandidates(G, pi, c, theLairPlan.theStepsFromASlayerWithinWhichAKnownLairIsOneHeMayGrowInto).some(
+    (k) => k.f.monster,
+  );
 }
 // ══ NAVAL DOCTRINE (Sept 2026, Toby) ════
 // An ADMIRAL is a leader whose job is the sea: he raises carrier fleets at a coastal port, fills the hulls
@@ -1310,8 +1338,8 @@ export function botSpareBerths(c: Character | null | undefined) {
 // BFS over sea hexes from `P` (a coast or a sea hex): the best landing — an enemy or unowned land province
 // beside the water that this column can beat — or an unowned sea hex to claim. Returns {moves,N} or null.
 // 2026-09-26 (Toby item 6): SEA TARGETS ARE NOW STRENGTH-GATED — before this an admiral would sail into a
-// Kraken sea on its tax alone. Order of preference among winnable seas: OPEN water first (no defenders,
-// +40), the poor WHALE and SHARK waters next (+15), then the prosperous primal seas. Coastal land: poor before rich
+// Kraken sea on its tax alone. Order of preference among winnable seas: OPEN water first (no defenders),
+// the poor WHALE and SHARK waters next, then the prosperous primal seas. Coastal land: poor before rich
 // falls out of the same gate — a weak fleet can only take a poorly-held coast, a strong one prefers the
 // wealth. Item 7: an admiral with spare berths also sails to an owned coast where a GENERAL stands with
 // liftable troops (a rendezvous: the general hands his foot soldiers over next turn).
@@ -1353,7 +1381,15 @@ export function botSeaStrike(
           : isTheRaceOneOfTheWildsSubRaces(N.race)
             ? 'primal'
             : 'open'; // poor waters (whale or shark) score alike
-        sc = (N.tax || 1) * T.taxScoreWeight - tStr - d * 2 + (kind === 'open' ? 40 : kind === 'whale' ? 15 : 0);
+        sc =
+          (N.tax || 1) * T.taxScoreWeight -
+          tStr -
+          d * theStrikes.whatEachStepOfSailingTakesOffAnUnownedSeaAsAFleetsTarget +
+          (kind === 'open'
+            ? theStrikes.theWorthOfOpenWaterAsAFleetsTarget
+            : kind === 'whale'
+              ? theStrikes.theWorthOfPoorWatersAsAFleetsTarget
+              : 0);
         fight = tStr > 0;
       }
     } else {
@@ -1375,7 +1411,10 @@ export function botSeaStrike(
             const lift = theUnitsWithGapsOf(gen).filter(
               (a) => a && botLiftable(a.type) && !BOT_SEA_ALL.has(a.type),
             ).length;
-            sc = 20 + Math.min(spare, lift) * 4 - d * 3;
+            sc =
+              theStrikes.theWorthOfAnOwnedCoastWithAGeneralWhoseFootSoldiersAFleetMayLift +
+              Math.min(spare, lift) * theStrikes.theWorthOfEachBerthFilledAtAFleetsRendezvous -
+              d * theStrikes.whatEachStepOfSailingTakesOffAFleetsRendezvous;
             rv = true;
           }
         }
@@ -1388,16 +1427,20 @@ export function botSeaStrike(
         let tStr = botTargetDefence(G, pi, N) + (bo == null ? ec.force * BOT_DEF_BONUS : 0);
         const rem = bo != null ? botRememberedHostAt(G, pi, N.id) : { units: 0, strength: 0 };
         tStr += rem.strength * BOT_DEF_BONUS;
-        const eff = botHostMargin(ec.hasKing ? margin * 0.9 : margin, ec.units + rem.units);
-        if (tStr > 0 && strIn(N.terrain) < tStr * eff * 1.1) return; // an amphibious assault asks a little more
+        const eff = botHostMargin(
+          ec.hasKing ? margin * theStrikes.theShareOfAMarginAHostAsksWhenItsFoeHoldsAKing : margin,
+          ec.units + rem.units,
+        );
+        if (tStr > 0 && strIn(N.terrain) < tStr * eff * theStrikes.theMarginAnAmphibiousAssaultAsksBeyondALandAssault)
+          return; // an amphibious assault asks a little more
         fight = tStr > 0;
         sc =
-          (N.tax || 0) * T.taxScoreWeight * 1.5 -
+          (N.tax || 0) * T.taxScoreWeight * theStrikes.theTimesATaxPointCountsWhenAFleetChoosesALandingCoast -
           tStr +
-          (bo != null ? T.rivalBias * 2 : 0) +
+          (bo != null ? T.rivalBias * theStrikes.theTimesARivalBiasCountsInAStrikesTarget : 0) +
           ec.value +
-          ec.units * 3 -
-          d * 3;
+          ec.units * theStrikes.theWorthOfEachUnitOfAFoesHostInAStrikesTarget -
+          d * theStrikes.whatEachStepOfSailingTakesOffAFleetsLandingCoast;
       }
     }
     if (sc != null && (!top.best || sc > top.best.sc)) top.best = { N, sc, d, fight, rv };
@@ -1453,7 +1496,7 @@ export function botSeaStrike(
 // ── AIR STRIKE (2026-09-26, Toby item 8) ── the FLYING GENERAL's planner. An airborne column (humanoid
 // flyers carrying every foot soldier) crosses sea and land alike, so the BFS passes over open sea, its
 // own and allied land and unowned land it could simply take, and looks for the best winnable target within
-// its reach: an enemy province BEHIND THE FRONT (one that touches none of our land, +25 — a lightning
+// its reach: an enemy province BEHIND THE FRONT (one that touches none of our land — a lightning
 // strike on the rear), any other enemy province, or unowned land / sea to claim. Returns {moves,N} or null.
 export function botAirStrike(
   G: GameState,
@@ -1490,7 +1533,10 @@ export function botAirStrike(
     let tStr = botTargetDefence(G, pi, N) + (bo == null ? ec.force * BOT_DEF_BONUS : 0);
     const rem = bo != null ? botRememberedHostAt(G, pi, N.id) : { units: 0, strength: 0 };
     tStr += rem.strength * BOT_DEF_BONUS;
-    const eff = botHostMargin(ec.hasKing ? margin * 0.9 : margin, ec.units + rem.units);
+    const eff = botHostMargin(
+      ec.hasKing ? margin * theStrikes.theShareOfAMarginAHostAsksWhenItsFoeHoldsAKing : margin,
+      ec.units + rem.units,
+    );
     if (tStr > 0 && strIn(N.terrain) < tStr * eff) return null;
     return { tStr, ec, bo };
   };
@@ -1501,13 +1547,17 @@ export function botAirStrike(
     const enemy = w.bo != null;
     const rear = enemy && !touchesOurs(N);
     const sc =
-      (N.tax || 0) * T.taxScoreWeight * (N.terrain === 'sea' ? 0.5 : 1.2) -
+      (N.tax || 0) *
+        T.taxScoreWeight *
+        (N.terrain === 'sea'
+          ? theStrikes.theTimesATaxPointCountsWhenAnAirborneColumnChoosesASeaTarget
+          : theStrikes.theTimesATaxPointCountsWhenAnAirborneColumnChoosesALandTarget) -
       w.tStr +
-      (enemy ? T.rivalBias * 2 : 0) +
-      (rear ? 25 : 0) +
+      (enemy ? T.rivalBias * theStrikes.theTimesARivalBiasCountsInAStrikesTarget : 0) +
+      (rear ? theStrikes.theWorthOfAnEnemyProvinceBehindTheFrontToAnAirborneColumn : 0) +
       w.ec.value +
-      w.ec.units * 3 -
-      d * 2;
+      w.ec.units * theStrikes.theWorthOfEachUnitOfAFoesHostInAStrikesTarget -
+      d * theStrikes.whatEachStepOfFlyingTakesOffAnAirborneColumnsTarget;
     if (!top.best || sc > top.best.sc) top.best = { N, sc, d, fight: w.tStr > 0 };
   };
   const passable = (N: Province) =>
@@ -1612,8 +1662,12 @@ export function botMasteryPre(
       )
       .sort((a, b) => (b.isKing ? 1 : 0) - (a.isKing ? 1 : 0))[0];
     if (foe) {
-      const f = choices.duelSim(c, botAssumedChar(G, pi, foe), 24);
-      if (f && f.win >= 0.7 && f.felled <= 0.1)
+      const f = choices.duelSim(c, botAssumedChar(G, pi, foe), theDuels.theDuelsPlayedToForecastAMasteryChallenge);
+      if (
+        f &&
+        f.win >= theDuels.theChanceToWinFromWhichAMasteryChallengeIsMade &&
+        f.felled <= theDuels.theMostChanceOfFallingFromWhichAMasteryChallengeIsMade
+      )
         return { action: 'challenge', target: String(foe.id), extra: '', desc: 'Challenge ' + foe.name };
     }
   }
@@ -1624,11 +1678,11 @@ export function botMasteryPre(
 // Now every bot character carries a stance set here each turn, from the duel forecast (the engine's own personal
 // combat on copies) against every enemy general seen within two hexes, on the skills our spies know. A challenger rides
 // out only when he expects to win, so a challenge answered unforecast is a gamble (bot improvements, 2026-11):
-//   REFUSE — no duelling skill at 2+, or under 60% health, or a forecast that falls short of the terms below (the 20%
+//   REFUSE — too little duelling skill, or too little health, or a forecast that falls short of the terms below (the
 //     morale cost is cheaper than a dead general).
 //   ACCEPT — a hero at 50%+ to win against each general seen; a king at 60%+ and 10% or less to fall (a fallen king
-//     costs the crown). Seeing no general: a hero accepts from a duelling skill of 2, a king only from 4.
-//   CHALLENGE — a real duellist (a duelling skill at 4+, 80%+ health) forecast at 65%+ against each general seen; a
+//     costs the crown). Seeing no general: a hero accepts from a modest duelling skill, a king only from a high one.
+//   CHALLENGE — a real duellist (a high duelling skill, near full health) forecast at 65%+ against each general seen; a
 //     king also risks 10% or less of falling. Seeing no general, a hero challenges as before; a king only accepts.
 // botDuelSkill (a character's best duelling skill) is in bots/strategy.ts.
 // Each number of BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST is the bots' first version's weights' `duel` (B-17s), by name.
@@ -1639,7 +1693,7 @@ export const BOT_DUEL = {
   challenge: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theChanceToWinFromWhichADuellistChallenges,
 };
 // With no forecaster handed in (the plan always hands one in; a direct call may not), the duelling ratings stand in, as
-// before: a commander rated 1.3× his foe or more counts as winning 70% of the time, any other 40%. His odds of falling
+// before: a commander rated clearly above his foe counts as likely to win, any other as unlikely. His odds of falling
 // are set either side of the king's limit (BOT_DUEL.kingFelled): only the one rated clearly stronger counts as safe
 // enough for a king to answer.
 export const BOT_DUEL_WITHOUT_A_FORECAST = {
@@ -1651,8 +1705,13 @@ export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: A
   const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN),
     mhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN;
   const d = botDuelSkill(c);
-  if (d < 2 || hp < mhp * 0.6) return 'refuse';
-  const fit = d >= 4 && hp >= mhp * 0.8; // a real duellist, fit to ride out
+  if (
+    d < theDuels.theDuellingSkillBelowWhichAHeroRefusesEveryDuel ||
+    hp < mhp * theDuels.theShareOfHitPointsBelowWhichAHeroRefusesEveryDuel
+  )
+    return 'refuse';
+  const fit =
+    d >= theDuels.theDuellingSkillOfARealDuellist && hp >= mhp * theDuels.theShareOfHitPointsAFitDuellistMustHold; // a real duellist, fit to ride out
   const P = G.world.provinces[c.location];
   const near = P ? [P] : [];
   if (P)
@@ -1673,20 +1732,33 @@ export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: A
     ))
       continue;
     const r = I.generals[e.id];
-    const loc = botSeesChar(G, pi, e) ? e.location : r && (G.turn || 0) - r.turn <= 2 ? r.provId : null;
+    const loc = botSeesChar(G, pi, e)
+      ? e.location
+      : r && (G.turn || 0) - r.turn <= theDuels.theTurnsAnEnemyGeneralRecordedElsewhereStillCountsAsNear
+        ? r.provId
+        : null;
     if (loc == null || !near.some((x) => x.id === loc)) continue;
-    const f = typeof duelSim === 'function' ? duelSim(c, botAssumedChar(G, pi, e), 16) : null;
-    const w = f ? f.win : botDuelRating(c) >= botDuelRating(botAssumedChar(G, pi, e)) * 1.3 ? 0.7 : 0.4;
+    const f =
+      typeof duelSim === 'function'
+        ? duelSim(c, botAssumedChar(G, pi, e), theDuels.theDuelsPlayedToForecastAStance)
+        : null;
+    const w = f
+      ? f.win
+      : botDuelRating(c) >=
+          botDuelRating(botAssumedChar(G, pi, e)) *
+            theDuels.theRatingAHeroMustHaveOverAFoeToCountAsStrongerWithNoForecast
+        ? theDuels.theChanceToWinCountedWithNoForecastForOneRatedStronger
+        : theDuels.theChanceToWinCountedWithNoForecastForAnyOther;
     const fl = f
       ? f.felled
-      : w >= 0.7
+      : w >= theDuels.theChanceToWinCountedWithNoForecastForOneRatedStronger
         ? BOT_DUEL_WITHOUT_A_FORECAST.felledWhenStronger
         : BOT_DUEL_WITHOUT_A_FORECAST.felledOtherwise;
     if (win == null || w < win) win = w;
     if (fl > felled) felled = fl;
   }
   if (win == null) {
-    if (c.isKing) return d >= 4 ? 'accept' : 'refuse';
+    if (c.isKing) return d >= theDuels.theDuellingSkillFromWhichAKingAcceptsWithNoGeneralInSight ? 'accept' : 'refuse';
     return fit ? 'challenge' : 'accept';
   }
   const safe = !c.isKing || felled <= BOT_DUEL.kingFelled;
@@ -1745,15 +1817,20 @@ export function botOrphanHostOrders(G: GameState, pi: number, c: Character, pre:
   for (const X of theProvincesOf(G)) {
     if (X?.owner !== pi || X.terrain === 'sea' || orphan.has(X.id)) continue;
     const n = (asItsGuardReadsIt(X.garrisonArmies) ?? []).length - Math.min(2, botGarrisonTarget(G, X, pi));
-    if (n < 3) continue;
+    if (n < theOrphanedHost.theUnitsBeyondItsGarrisonTargetAProvinceMustHoldToCountAsALeaderlessHost) continue;
     const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, true);
-    if (d == null || d > 5) continue;
-    const sc = n * 3 - d * 2;
+    if (d == null || d > theOrphanedHost.theMostStepsAHeroWalksToTakeUpALeaderlessHost) continue;
+    const sc =
+      n * theOrphanedHost.theWorthOfEachUnitOfALeaderlessHost -
+      d * theOrphanedHost.whatEachStepTakesOffALeaderlessHostsWorth;
     if (!best || sc > best.sc) best = { X, d, sc, n };
   }
   if (!best) return null;
   const host = best.X;
-  const path = best.d > 0 ? (botPathDirs(G, pi, P, host.id, 5, true) ?? []) : [];
+  const path =
+    best.d > 0
+      ? (botPathDirs(G, pi, P, host.id, theOrphanedHost.theMostStepsAHeroWalksToTakeUpALeaderlessHost, true) ?? [])
+      : [];
   if (best.d > 0 && path.length !== best.d) return null;
   if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   orphan.add(host.id);
@@ -1823,11 +1900,13 @@ export function runBotConcessions(
 export const BOT_TEACH_KING = ['melee', 'archery', ...BOT_SCHOOLS];
 // botIsTeach (is this order a lesson?) is in bots/strategy.ts.
 export function botSlayerSkillPri(S: string, sk: Character['skills']) {
-  if (S === 'melee') return 0;
-  if (S === botSlayerSchool({ skills: sk })) return 1;
-  if (S === 'archery') return 2;
-  if (S === 'elemental' || S === 'necromancy' || S === 'psychic') return 3;
-  return 4;
+  if (S === 'melee') return theSlayerSchool.theRankOfMeleeAmongTheSkillsASlayerIsTaught;
+  if (S === botSlayerSchool({ skills: sk }))
+    return theSlayerSchool.theRankOfTheSlayersOwnSchoolAmongTheSkillsASlayerIsTaught;
+  if (S === 'archery') return theSlayerSchool.theRankOfArcheryAmongTheSkillsASlayerIsTaught;
+  if (S === 'elemental' || S === 'necromancy' || S === 'psychic')
+    return theSlayerSchool.theRankOfEachOtherBattleSchoolAmongTheSkillsASlayerIsTaught;
+  return theSlayerSchool.theRankOfEveryOtherSkillAmongTheSkillsASlayerIsTaught;
 }
 export function botOrderLocs(G: GameState, c: Character) {
   const o = theTurnsOrders(G)[c.id] ?? [];
@@ -1883,7 +1962,8 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       !roles.leaders.includes(c.id) &&
       !theUnitsWithGapsOf(c).length &&
       (asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN)) >=
-        (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.6,
+        (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) *
+          theSlayerSchool.theShareOfHitPointsAnUnarmedSlayerMustHoldToBeTaught,
   );
   slayers.forEach((sl) => {
     const so = orders[sl.id] ?? [];
@@ -1897,7 +1977,10 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
     const _ss: Character['skills'] = asItsGuardReadsIt(sl.skills) ?? {};
     const slMelee = Number(_ss.melee) || 0,
       slArchery = Number(_ss.archery) || 0;
-    const belowGate = slMelee < 3 && slArchery < 3 && slMelee + slArchery < 5;
+    const belowGate =
+      slMelee < theLairPlan.theMeleeOrArcheryLevelBelowWhichAHeroIsNotSentHuntingAlone &&
+      slArchery < theLairPlan.theMeleeOrArcheryLevelBelowWhichAHeroIsNotSentHuntingAlone &&
+      slMelee + slArchery < theLairPlan.theMeleeAndArcheryLevelsTogetherBelowWhichAHeroIsNotSentHuntingAlone;
     const sls: Readonly<Partial<Record<string, number>>> = asItsGuardReadsIt(sl.skills) ?? {};
     for (const m of mine) {
       if (m.id === sl.id) continue;
@@ -1947,8 +2030,11 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
         // a phase after the king, never into the fight (an enemy province is never on an unarmed path anyway)
         const arrive = locs.indexOf(X);
         if (PX.owner !== pi && !(m.isKing && (PX.owner == null || PX.owner === pi))) continue;
-        const path = X === Ps.id ? [] : botPathDirs(G, pi, Ps, X, Math.min(p0, 3), true);
-        if (!path || path.length > p0 || path.length > 3) continue; // lessons within three hops — a slayer is not drawn off to the front
+        const path =
+          X === Ps.id
+            ? []
+            : botPathDirs(G, pi, Ps, X, Math.min(p0, theSlayerSchool.theMostStepsASlayerWalksToALesson), true);
+        if (!path || path.length > p0 || path.length > theSlayerSchool.theMostStepsASlayerWalksToALesson) continue; // lessons within a few hops — a slayer is not drawn off to the front
         if (PX.owner !== pi && X !== Ps.id && path.length < arrive + 1) continue;
         const lv: Partial<Record<string, number>> = { ...asItsGuardReadsIt(sl.skills) };
         const plan: ALesson[] = [];
@@ -1975,12 +2061,18 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
             q,
             S,
             helper: free[q] ? null : (helper[q] ?? null),
-            gate: S === 'melee' && (Number(lv['melee']) || 0) < 3,
+            gate:
+              S === 'melee' &&
+              (Number(lv['melee']) || 0) < theLairPlan.theMeleeOrArcheryLevelBelowWhichAHeroIsNotSentHuntingAlone,
           });
           lv[S] = (Number(lv[S]) || 0) + 1;
         }
         if (!plan.length) continue;
-        const sc = plan.length * 10 + plan.filter((x) => x.gate).length * 6 - path.length + (m.isKing ? 1 : 0); // a Melee lesson below the hunting gate is worth most
+        const sc =
+          plan.length * theSlayerSchool.theWorthOfEachPhaseOfLessonsInATeachersPlan +
+          plan.filter((x) => x.gate).length * theSlayerSchool.theWorthOfEachLessonThatOpensTheHuntingGate -
+          path.length +
+          (m.isKing ? theSlayerSchool.theWorthOfTheKingAsTheTeacherOfAPlan : 0); // a Melee lesson below the hunting gate is worth most
         if (!best || sc > best.sc) best = { m, X, path, plan, sc };
       }
     }
@@ -2006,7 +2098,14 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       }
       if (!kEnd || kEnd.terrain === 'sea' || kEnd.id === sl.location) return;
       if (!(kEnd.owner === pi || kEnd.owner == null)) return;
-      const path = botPathDirs(G, pi, Ps, kEnd.id, 5, true);
+      const path = botPathDirs(
+        G,
+        pi,
+        Ps,
+        kEnd.id,
+        theSlayerSchool.theMostStepsASlayerWalksToWhereTheKingWillStand,
+        true,
+      );
       if (!path?.length || path.length > THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return;
       const kArr = !kl.includes(kEnd.id) ? THE_ORDERS_A_HERO_GIVES_IN_A_SEASON : kl.indexOf(kEnd.id);
       if (kEnd.owner !== pi && path.length < Math.min(THE_ORDERS_A_HERO_GIVES_IN_A_SEASON, kArr + 1)) return;
