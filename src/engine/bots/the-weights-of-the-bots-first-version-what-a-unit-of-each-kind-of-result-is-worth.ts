@@ -202,7 +202,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   },
   /** The specialists a realm's court wants, by role: how many of each (botSpecialistRoles, bots/specialists.ts) and how many heroes it keeps free of them. */
   specialistsWanted: {
-    theLairsKnownFromWhichTheCourtWantsASecondSlayer: 6,
+    theLairsFromWhichTheCourtWantsASecondSlayer: 6,
     theMostScoutsTheCourtWants: 3,
     theUnmappedProvincesAScoutIsWantedFor: 6,
     theProvincesFromWhichTheCourtWantsASecondScholar: 10,
@@ -245,9 +245,9 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     whatEachStepAwayTakesOffARoamsTarget: 3,
     theWorthOfEachUnitAMarkLeadsToSpyOn: 2,
     theWorthOfAKingAsAMarkToSpyOn: 5,
-    theTurnsAGeneralLastSeenIsStillShadowed: 2,
+    theTurnsAGeneralMayBeShadowedAfterHisLastPlacing: 2,
     theProvincesAwayASpyShadowsAGeneral: 3,
-    theWorthOfEachUnitALastSeenGeneralLeads: 2,
+    theWorthOfEachUnitAGeneralToShadowLeads: 2,
     theWorthOfAKingToShadow: 6,
     theWorthOfAGeneralAtWarToShadow: 5,
     whatEachStepAwayTakesOffAShadowedGeneral: 2,
@@ -277,7 +277,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   /** The skill levels from which each role has work of its own, and the work of a scout, a spy and a thief that goes beyond a target (botRoleWork, botRoleReady, botRoleTrain, bots/specialists.ts). */
   specialistsRoleWork: {
     theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts: 3,
-    theExplorerLevelFromWhichAScoutChartsTheUnknown: 7,
+    theExplorerLevelFromWhichAScoutChartsGroundBesideHim: 7,
     theSpySkillFromWhichASpyHasWork: 2,
     theSpySkillFromWhichASpyAssassinates: 9,
     theSpySkillFromWhichASpyAtWarSabotages: 7,
@@ -295,7 +295,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   },
   specialistsMageWork: {
     theProvincesAwayAMageLooksForAWandererToCharm: 3,
-    theTurnsAGeneralLastSeenIsStillToBeHexed: 2,
+    theTurnsAGeneralMayBeHexedAfterHisLastPlacing: 2,
     theProvincesAwayAMageGoesToHexAGeneral: 3,
     theWorthOfEachUnitAGeneralToHexLeads: 2,
     theWorthOfAKingToHex: 5,

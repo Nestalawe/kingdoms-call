@@ -285,7 +285,7 @@ test("a rival's hero's assumed skills' weights are the numbers BOT_ASSUMED_SKILL
 
 test("the court's wanted specialists' weights are the numbers botSpecialistRoles wrote for its wants and its feeder reserve before B-17t, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsWanted).toEqual({
-    theLairsKnownFromWhichTheCourtWantsASecondSlayer: 6,
+    theLairsFromWhichTheCourtWantsASecondSlayer: 6,
     theMostScoutsTheCourtWants: 3,
     theUnmappedProvincesAScoutIsWantedFor: 6,
     theProvincesFromWhichTheCourtWantsASecondScholar: 10,
@@ -332,9 +332,9 @@ test("a specialist's work's weights are the numbers botTrainOrders, botScholarOr
     whatEachStepAwayTakesOffARoamsTarget: 3,
     theWorthOfEachUnitAMarkLeadsToSpyOn: 2,
     theWorthOfAKingAsAMarkToSpyOn: 5,
-    theTurnsAGeneralLastSeenIsStillShadowed: 2,
+    theTurnsAGeneralMayBeShadowedAfterHisLastPlacing: 2,
     theProvincesAwayASpyShadowsAGeneral: 3,
-    theWorthOfEachUnitALastSeenGeneralLeads: 2,
+    theWorthOfEachUnitAGeneralToShadowLeads: 2,
     theWorthOfAKingToShadow: 6,
     theWorthOfAGeneralAtWarToShadow: 5,
     whatEachStepAwayTakesOffAShadowedGeneral: 2,
@@ -368,7 +368,7 @@ test("specialistsTheft's weights are the numbers bots/specialists.ts wrote inlin
 test("specialistsRoleWork's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsRoleWork).toEqual({
     theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts: 3,
-    theExplorerLevelFromWhichAScoutChartsTheUnknown: 7,
+    theExplorerLevelFromWhichAScoutChartsGroundBesideHim: 7,
     theSpySkillFromWhichASpyHasWork: 2,
     theSpySkillFromWhichASpyAssassinates: 9,
     theSpySkillFromWhichASpyAtWarSabotages: 7,
@@ -390,7 +390,7 @@ test("specialistsUnarmedFighters's weights are the numbers botLairTarget and bot
 test("specialistsMageWork's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsMageWork).toEqual({
     theProvincesAwayAMageLooksForAWandererToCharm: 3,
-    theTurnsAGeneralLastSeenIsStillToBeHexed: 2,
+    theTurnsAGeneralMayBeHexedAfterHisLastPlacing: 2,
     theProvincesAwayAMageGoesToHexAGeneral: 3,
     theWorthOfEachUnitAGeneralToHexLeads: 2,
     theWorthOfAKingToHex: 5,
