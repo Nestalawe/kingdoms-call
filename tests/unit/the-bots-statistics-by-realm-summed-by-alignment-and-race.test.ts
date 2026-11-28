@@ -207,14 +207,18 @@ describe('the balance report', () => {
     const games = [
       aGame('bots-00', {
         [DIVINE]: [2, 1],
+        'bots: ability used: consecrated-ground-tax | by alignment: Divine': [1, 1],
         'bots: ability used: the-neutral-mercenary-discount | by alignment: Neutral': [0, 1],
       }),
-      aGame('bots-01', { [DIVINE]: [0, 1] }),
+      aGame('bots-01', {
+        [DIVINE]: [0, 1],
+        'bots: ability used: consecrated-ground-tax | by alignment: Divine': [3, 1],
+      }),
       aGame('scripted-00', { 'bots: ability used: the-neutral-mercenary-discount | by alignment: Neutral': [9, 1] }),
     ];
     const [lead, least] = theBotsStatisticsInBrief(games);
     expect(lead).toBe(
-      'In the 2 computer-played games, the bots used 1 of the 46 alignment abilities counted by their use; never ' +
+      'In the 2 computer-played games, the bots used 2 of the 46 alignment abilities counted by their use; never ' +
         'used: the neutral mercenary discount (the Neutral realms, in none of the 1 games they played).',
     );
     expect(least).toBe("The least used of each alignment's: the Divine realms used consecrate in 1 of 2 games.");
