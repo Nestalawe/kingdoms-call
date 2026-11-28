@@ -21,7 +21,7 @@
 // and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's
 // and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a
 // leaderless host's and a slayer's lessons (bots/missions.ts, part 2), and B-17x's: a general's worth, the roles' posts
-// and the recruiting and the court's size (bots/strategy.ts, part 1), and B-17ao's: a muster's worths, a hero's practice, the bots' reach and a lair's rating (bots/strategy.ts, part 2), and B-17z's: a fallen hero's raising, a companion's, a split's and a muster's, a hero's preparations, a column's reach and an unarmed hero's roles (bots/movement.ts), each in its place: a
+// and the recruiting and the court's size (bots/strategy.ts, part 1), and B-17ao's: a muster's worths, a hero's practice, the bots' reach and a lair's rating (bots/strategy.ts, part 2), and B-17z's: a fallen hero's raising, a companion's, a split's and a muster's, a hero's preparations, a column's reach and an unarmed hero's roles (bots/movement.ts), and B-17aa's: a war's powers, bar and assaults (bots/war.ts) and the Spring pass's orders, urgencies, safe step and second front (bots/phase-one.ts), each in its place: a
 // change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -95,7 +95,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(475);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(513);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -785,5 +785,73 @@ test("movementWanderersAndWarRoles's weights are the numbers bots/movement.ts wr
     theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival: 0.1,
     theShareOfHisMostHitPointsFromWhichAnUnarmedFighterRaidsALair: 0.7,
     theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: 0.6,
+  });
+});
+
+test("warPowers's weights are the numbers bots/war.ts wrote inline before B-17aa, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warPowers).toEqual({
+    theWorthOfAPointOfGarrisonStrengthInARealmsOwnPower: 0.5,
+    theWorthOfAPointOfIncomeInARealmsPower: 2,
+    theWorthOfEachHeroInARealmsOwnPower: 3,
+    theMostTurnsAgoARivalsHeroCountsTowardsItsPower: 6,
+    theGarrisonAssumedInARivalsCapital: 3,
+    theWorthOfEachHostOrHeroCountedInARivalsPower: 3,
+  });
+});
+
+test("warBarAndPrize's weights are the numbers bots/war.ts wrote inline before B-17aa, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warBarAndPrize).toEqual({
+    theMarginUsedWhenARealmsAttackMarginIsNotSet: 1.2,
+    theLeastPrizeHopsFromWhichAProvinceTwoAwayFromTheBorderCounts: 2,
+    theMostTurnsAgoABattleLostByARivalCountsAsAnOpportunity: 3,
+    theMostTurnsAgoARivalsKingWasCrownedForItToCountAsAnOpportunity: 4,
+    theMostTurnsAgoAHostOfARivalWasPlacedFarFromHomeForItToCountAsAnOpportunity: 2,
+    theAlignmentDistanceBeyondWhichEachStepTakesOffTheBar: 2,
+    theMixOfARealmsPlaceInItsFixedLeanTowardsWar: 37,
+    theMixOfTheLengthOfARealmsNameInItsFixedLeanTowardsWar: 11,
+    theNumberOfStepsInARealmsFixedLeanTowardsWar: 21,
+    theStepOfARealmsFixedLeanThatLeansNeitherWay: 10,
+    theStepsInOneUnitOfARealmsFixedLeanTowardsWar: 100,
+  });
+});
+
+test("warAssaults's weights are the numbers bots/war.ts wrote inline before B-17aa, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warAssaults).toEqual({
+    theWorthOfAPointOfTaxInRankingATargetForACombinedAssault: 10,
+    theFewestCharactersWhoCombineOnOneAssault: 2,
+  });
+});
+
+test("springPassOrdersAndReach's weights are the numbers bots/phase-one.ts wrote inline before B-17aa, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassOrdersAndReach).toEqual({
+    theHopsWithinWhichAHostCountsAsNearAProvince: 2,
+    theLeastUnitsAHeroLeadsToMusterInContactWhenHeIsNotAGeneral: 2,
+    theLeastMarchLevelFromWhichAGeneralPlansAForcedMarch: 7,
+    theLeastAttacksAGeneralPlansForAForcedMarchBetweenThem: 2,
+    theLeastUnitsAGeneralLeadsToPlanAFeint: 3,
+    theLeastUnitsAGeneralLeadsToSendADetachmentToASecondFront: 4,
+    theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral: 0.7,
+    theFirstOrdersOfAHeroWhereStrikeCastsAreKeptWhenHeTakesASecondFront: 3,
+  });
+});
+
+test("springPassUrgency's weights are the numbers bots/phase-one.ts wrote inline before B-17aa, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassUrgency).toEqual({
+    theUrgencyOfAnOrderThatMustComeFirst: 5,
+    theUrgencyOfAnOrderThatEasesAFightInContact: 4,
+    theUrgencyOfAnOrderThatGuardsAHeroWithAHostNearby: 3,
+    theUrgencyOfAHire: 1,
+  });
+});
+
+test("springPassSafeStepAndSecondFront's weights are the numbers bots/phase-one.ts wrote inline before B-17aa, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassSafeStepAndSecondFront).toEqual({
+    theWorthOfAnOwnProvinceAsASafeStep: 10,
+    theWorthOfTheHomeProvinceAsASafeStep: 5,
+    theWorthLostForEachNeighbourWithAnEnemyHostAsASafeStep: 6,
+    theWorthOfEachHopAwayFromAThreatenedProvinceAsASafeStep: 4,
+    theWorthOfEachPointOfTaxInChoosingASecondFrontsTarget: 2,
+    theWorthOfAProvinceSomeRealmHoldsInChoosingASecondFrontsTarget: 8,
+    theNumberByWhichADefenceIsDividedInChoosingASecondFrontsTarget: 4,
   });
 });

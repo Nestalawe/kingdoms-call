@@ -1158,6 +1158,106 @@ const TheWeightsOfMovementWanderersAndWarRolesSchema = z.object({
   theShareOfHisMostHitPointsFromWhichASpecialistTakesHisOrders: z.number(),
 });
 
+/** What a realm's power is rated at, its own and a rival's (botOwnPower and botRivalPower, bots/war.ts). */
+const TheWeightsOfWarPowersSchema = z.object({
+  /** Each point of strength in a realm's own garrisons adds this to its own power. */
+  theWorthOfAPointOfGarrisonStrengthInARealmsOwnPower: z.number(),
+  /** Each point of tax a realm holds adds this to its power, for its own power and for a rival's. */
+  theWorthOfAPointOfIncomeInARealmsPower: z.number(),
+  /** Each living hero of a realm adds this to its own power. */
+  theWorthOfEachHeroInARealmsOwnPower: z.number(),
+  /** A hero of a rival placed at most this many turns ago counts as one of the rival's units in the rival's power. */
+  theMostTurnsAgoARivalsHeroCountsTowardsItsPower: z.number(),
+  /** A rival's power always includes this much for the garrison of its capital. */
+  theGarrisonAssumedInARivalsCapital: z.number(),
+  /** Each host or hero counted for a rival, and at least one, adds this to the rival's power. */
+  theWorthOfEachHostOrHeroCountedInARivalsPower: z.number(),
+});
+
+/** What a war's bar and a prize are judged by: an assault margin, the opportunities' windows and a realm's fixed lean (botWarAssess and botWarPrize, bots/war.ts). */
+const TheWeightsOfWarBarAndPrizeSchema = z.object({
+  /** The force ratio a realm needs to take a prize when its tuning sets no attack margin for its king or its heroes. */
+  theMarginUsedWhenARealmsAttackMarginIsNotSet: z.number(),
+  /** A province one further province beyond a realm's border counts as a prize only while the prize reach is at least this many hops. */
+  theLeastPrizeHopsFromWhichAProvinceTwoAwayFromTheBorderCounts: z.number(),
+  /** A battle a rival lost at most this many turns ago counts as an opportunity against it. */
+  theMostTurnsAgoABattleLostByARivalCountsAsAnOpportunity: z.number(),
+  /** A rival's king crowned at most this many turns ago counts as an opportunity against it. */
+  theMostTurnsAgoARivalsKingWasCrownedForItToCountAsAnOpportunity: z.number(),
+  /** A rival's host placed far from its capital at most this many turns ago counts as an opportunity against it. */
+  theMostTurnsAgoAHostOfARivalWasPlacedFarFromHomeForItToCountAsAnOpportunity: z.number(),
+  /** Each step of alignment distance beyond this many steps takes the farStep off the bar for war. */
+  theAlignmentDistanceBeyondWhichEachStepTakesOffTheBar: z.number(),
+  /** A realm's number in the turn order is multiplied by this in the sum that fixes its lean on the bar. */
+  theMixOfARealmsPlaceInItsFixedLeanTowardsWar: z.number(),
+  /** The number of letters in a realm's name is multiplied by this in the sum that fixes its lean on the bar. */
+  theMixOfTheLengthOfARealmsNameInItsFixedLeanTowardsWar: z.number(),
+  /** A realm's fixed lean takes one of this many values, found as the remainder of its sum divided by this. */
+  theNumberOfStepsInARealmsFixedLeanTowardsWar: z.number(),
+  /** The step of a realm's fixed lean that is no lean; each step above it adds, and each below it takes off, one step of the lean. */
+  theStepOfARealmsFixedLeanThatLeansNeitherWay: z.number(),
+  /** A realm's fixed lean is its steps from no lean divided by this. */
+  theStepsInOneUnitOfARealmsFixedLeanTowardsWar: z.number(),
+});
+
+/** Which targets several heroes combine on and in what order (botPlanAssaults, bots/war.ts). */
+const TheWeightsOfWarAssaultsSchema = z.object({
+  /** Each point of tax a province yields adds this to its score as a target for a combined assault, before its defence is taken off. */
+  theWorthOfAPointOfTaxInRankingATargetForACombinedAssault: z.number(),
+  /** A target is attacked together only when at least this many characters can reach it, and as many remain unassigned. */
+  theFewestCharactersWhoCombineOnOneAssault: z.number(),
+});
+
+/** Which orders a hero in contact keeps and when a pass acts (the muster in contact, the forced march and the feint, bots/phase-one.ts). */
+const TheWeightsOfSpringPassOrdersAndReachSchema = z.object({
+  /** A host within this many hops of a province counts as near it. */
+  theHopsWithinWhichAHostCountsAsNearAProvince: z.number(),
+  /** A hero who leads no general's host musters in contact only when he leads at least this many units. */
+  theLeastUnitsAHeroLeadsToMusterInContactWhenHeIsNotAGeneral: z.number(),
+  /** A general plans a forced march between two attacks only at this level of march or higher. */
+  theLeastMarchLevelFromWhichAGeneralPlansAForcedMarch: z.number(),
+  /** A forced march is planned between a general's attacks only when he plans at least this many. */
+  theLeastAttacksAGeneralPlansForAForcedMarchBetweenThem: z.number(),
+  /** A general leading at least this many units may plan a feint. */
+  theLeastUnitsAGeneralLeadsToPlanAFeint: z.number(),
+  /** A general leading at least this many units may send a detachment to a second front. */
+  theLeastUnitsAGeneralLeadsToSendADetachmentToASecondFront: z.number(),
+  /** A hero is handed a detachment, for a feint or a second front, only while his hit points are at least this share of his most. */
+  theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral: z.number(),
+  /** Of a hero's planned orders, only the strike casts among his first this many are kept when he takes a second front. */
+  theFirstOrdersOfAHeroWhereStrikeCastsAreKeptWhenHeTakesASecondFront: z.number(),
+});
+
+/** How urgently each kind of order comes first in a hero's season (the reordering of a hero's orders, bots/phase-one.ts). */
+const TheWeightsOfSpringPassUrgencySchema = z.object({
+  /** The urgency of a cloak, a strike cast, a challenge or a theft from a province, which goes ahead of all others. */
+  theUrgencyOfAnOrderThatMustComeFirst: z.number(),
+  /** The urgency of an order a hero in contact, or a hero guarding a province with hosts about it, gives to prepare for a fight. */
+  theUrgencyOfAnOrderThatEasesAFightInContact: z.number(),
+  /** The urgency of a guarding spell, a feigned retreat or a watch while a host is nearby. */
+  theUrgencyOfAnOrderThatGuardsAHeroWithAHostNearby: z.number(),
+  /** The urgency of a hire; the orders are reordered only when one is more urgent than this. */
+  theUrgencyOfAHire: z.number(),
+});
+
+/** What a safe step and a second front are worth to a hero (botSafeStep and the second front, bots/phase-one.ts). */
+const TheWeightsOfSpringPassSafeStepAndSecondFrontSchema = z.object({
+  /** A province the realm owns adds this to its score as a safe step. */
+  theWorthOfAnOwnProvinceAsASafeStep: z.number(),
+  /** The realm's home province adds this to its score as a safe step. */
+  theWorthOfTheHomeProvinceAsASafeStep: z.number(),
+  /** Each neighbouring province with an enemy host takes this off a safe step's score. */
+  theWorthLostForEachNeighbourWithAnEnemyHostAsASafeStep: z.number(),
+  /** Each hop of distance from the province to flee adds this to a safe step's score. */
+  theWorthOfEachHopAwayFromAThreatenedProvinceAsASafeStep: z.number(),
+  /** Each point of tax a province yields adds this to its score as a second front's target. */
+  theWorthOfEachPointOfTaxInChoosingASecondFrontsTarget: z.number(),
+  /** A province some realm holds adds this to its score as a second front's target. */
+  theWorthOfAProvinceSomeRealmHoldsInChoosingASecondFrontsTarget: z.number(),
+  /** A target's defence is divided by this and the result taken off its score as a second front's target. */
+  theNumberByWhichADefenceIsDividedInChoosingASecondFrontsTarget: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -1204,6 +1304,12 @@ export const TheWeightsOfABotVersionSchema = z.object({
   movementPreparations: TheWeightsOfMovementPreparationsSchema,
   movementReachAndStrength: TheWeightsOfMovementReachAndStrengthSchema,
   movementWanderersAndWarRoles: TheWeightsOfMovementWanderersAndWarRolesSchema,
+  warPowers: TheWeightsOfWarPowersSchema,
+  warBarAndPrize: TheWeightsOfWarBarAndPrizeSchema,
+  warAssaults: TheWeightsOfWarAssaultsSchema,
+  springPassOrdersAndReach: TheWeightsOfSpringPassOrdersAndReachSchema,
+  springPassUrgency: TheWeightsOfSpringPassUrgencySchema,
+  springPassSafeStepAndSecondFront: TheWeightsOfSpringPassSafeStepAndSecondFrontSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;

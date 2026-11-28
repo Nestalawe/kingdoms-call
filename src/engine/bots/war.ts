@@ -118,6 +118,10 @@ function theTargetedProvince(G: GameState, id: number): Province {
 // Tuning 2026-09-29b (Toby: "I still want bloody games") — chosen over 32 fuzz games of 6 bots × 20 turns
 // against the old war-on-contact rule: realm battles ≈ the same (38 vs 38 a game), realms eliminated
 // 17 vs 12, ~7 standing wars a game at mid-game. Each number is the bots' first version's weights' `war` (B-17r), by name.
+const thePowers = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warPowers;
+const theBarAndPrize = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warBarAndPrize;
+const theAssaults = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.warAssaults;
+
 export const BOT_WAR = {
   base: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theBarTheRealmsStrengthAgainstARivalsMustClearForWar,
   floor: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war.theLowestTheBarForWarFalls,
@@ -195,7 +199,12 @@ export function botOwnPower(G: GameState, pi: number) {
     inc += p.tax || 0;
     gar += botForceStrength(p.garrisonArmies);
   });
-  return field + 0.5 * gar + 2 * inc + 3 * heroes;
+  return (
+    field +
+    thePowers.theWorthOfAPointOfGarrisonStrengthInARealmsOwnPower * gar +
+    thePowers.theWorthOfAPointOfIncomeInARealmsPower * inc +
+    thePowers.theWorthOfEachHeroInARealmsOwnPower * heroes
+  );
 }
 // What realm pi BELIEVES realm j can put in the field. Hosts seen lately (their plain-ground
 // strength), or — where the realm has seen little — about one unit for each province it has seen
@@ -212,7 +221,7 @@ export function botRivalPower(G: GameState, pi: number, j: number) {
     }
   });
   Object.entries(theSightingsIn(I.heroes)).forEach(([k, r]) => {
-    if (r?.player === j && turn - r.turn <= 6) seen.add(k);
+    if (r?.player === j && turn - r.turn <= thePowers.theMostTurnsAgoARivalsHeroCountsTowardsItsPower) seen.add(k);
   });
   theCharactersOf(G).forEach((e) => {
     if (!(e?.alive && e.player === j) || seen.has(String(e.id)) || !botSeesChar(G, pi, e)) return;
@@ -229,7 +238,13 @@ export function botRivalPower(G: GameState, pi: number, j: number) {
     if (b.terrain !== 'sea') land++;
   });
   field = Math.max(field, land * BOT_WAR.landUnit);
-  return field + 3 + 2 * inc + 3 * Math.max(1, seen.size); // +3: the capital's garrison, assumed
+  // the capital's garrison, assumed
+  return (
+    field +
+    thePowers.theGarrisonAssumedInARivalsCapital +
+    thePowers.theWorthOfAPointOfIncomeInARealmsPower * inc +
+    thePowers.theWorthOfEachHostOrHeroCountedInARivalsPower * Math.max(1, seen.size)
+  );
 }
 // The realm's standing with j: {since, peaceAt} kept on the player record.
 export function botWarBook(
@@ -258,7 +273,10 @@ export function botWarPrize(G: GameState, pi: number, j: number) {
   );
   if (!hosts.length) return false;
   const T = botTuning(G, pi);
-  const margin = Math.min(T.kingAttackMargin || 1.2, T.heroAttackMargin || 1.2);
+  const margin = Math.min(
+    T.kingAttackMargin || theBarAndPrize.theMarginUsedWhenARealmsAttackMarginIsNotSet,
+    T.heroAttackMargin || theBarAndPrize.theMarginUsedWhenARealmsAttackMarginIsNotSet,
+  );
   return theProvincesOf(G).some((X) => {
     if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id) || botBelievedOwner(G, pi, X) !== j) return false;
     // on our border — or, with prizeHops 2, one province beyond it
@@ -270,7 +288,7 @@ export function botWarPrize(G: GameState, pi: number, j: number) {
         border = true;
         break;
       }
-      if (BOT_WAR.prizeHops >= 2)
+      if (BOT_WAR.prizeHops >= theBarAndPrize.theLeastPrizeHopsFromWhichAProvinceTwoAwayFromTheBorderCounts)
         for (let k = 0; k < 6; k++) {
           const M = botNeighbourProv(G, N, k);
           if (M?.owner === pi && M.terrain !== 'sea') {
@@ -328,12 +346,20 @@ export function botWarAssess(
   // 3: opportunities
   const opp: string[] = [];
   const news = (theNewsHolder(G)._battleNews ?? []).filter(
-    (x): x is ABattlesNews => !!x && turn - x.t <= 3 && botHeardBattle(G, pi, x),
+    (x): x is ABattlesNews =>
+      !!x &&
+      turn - x.t <= theBarAndPrize.theMostTurnsAgoABattleLostByARivalCountsAsAnOpportunity &&
+      botHeardBattle(G, pi, x),
   );
   if (news.some((x) => (x.a === j && !x.w) || (x.d === j && x.w))) opp.push('lost a battle');
   if (
     theCharactersOf(G).some(
-      (c) => c?.alive && c.isKing && c.player === j && c._crownedTurn != null && turn - c._crownedTurn <= 4,
+      (c) =>
+        c?.alive &&
+        c.isKing &&
+        c.player === j &&
+        c._crownedTurn != null &&
+        turn - c._crownedTurn <= theBarAndPrize.theMostTurnsAgoARivalsKingWasCrownedForItToCountAsAnOpportunity,
     )
   )
     opp.push('new heir');
@@ -354,7 +380,13 @@ export function botWarAssess(
     const I = botEnemyIntel(G, pi);
     if (
       Object.entries(theSightingsIn(I.generals)).some(([, r]) => {
-        if (!(r?.player === j && turn - r.turn <= 2 && r.provId != null && r.provId !== H.id)) return false;
+        if (!(
+          r?.player === j &&
+          turn - r.turn <= theBarAndPrize.theMostTurnsAgoAHostOfARivalWasPlacedFarFromHomeForItToCountAsAnOpportunity &&
+          r.provId != null &&
+          r.provId !== H.id
+        ))
+          return false;
         const P = G.world.provinces[r.provId];
         if (!P) return false;
         const d = botPathLenAny(G, P, H.id, BOT_WAR.farFromHome);
@@ -372,7 +404,12 @@ export function botWarAssess(
   }
   // 5 + 8 + alignment: the bar
   const king = theCharactersOf(G).find((c) => c?.alive && c.isKing && c.player === pi);
-  const lean = (((pi * 37 + (pls[pi]?.name ?? '').length * 11) % 21) - 10) / 100; // fixed per realm, −0.10…+0.10
+  const lean =
+    (((pi * theBarAndPrize.theMixOfARealmsPlaceInItsFixedLeanTowardsWar +
+      (pls[pi]?.name ?? '').length * theBarAndPrize.theMixOfTheLengthOfARealmsNameInItsFixedLeanTowardsWar) %
+      theBarAndPrize.theNumberOfStepsInARealmsFixedLeanTowardsWar) -
+      theBarAndPrize.theStepOfARealmsFixedLeanThatLeansNeitherWay) /
+    theBarAndPrize.theStepsInOneUnitOfARealmsFixedLeanTowardsWar; // fixed per realm
   // the tempers' table read by any temper's name, as JavaScript read it (a king of none: the key 'undefined')
   const tempers: Readonly<Partial<Record<string, number>>> = BOT_WAR.temper;
   const dist = alignDistP(botAlignOf(G, pi), botAlignOf(G, j));
@@ -383,7 +420,7 @@ export function botWarAssess(
     (tempers[String(king?.temper)] ?? 0) +
     lean -
     (doesAnAlignmentDeclareWarWithoutWarning(botAlignOf(G, pi)) ? BOT_WAR.dark : 0) -
-    Math.max(0, dist - 2) * BOT_WAR.farStep +
+    Math.max(0, dist - theBarAndPrize.theAlignmentDistanceBeyondWhichEachStepTakesOffTheBar) * BOT_WAR.farStep +
     (expanding ? BOT_WAR.expand : 0) -
     Math.min(BOT_WAR.oppCap, opp.length * BOT_WAR.oppStep);
   thr = Math.max(BOT_WAR.floor, thr);
@@ -502,13 +539,18 @@ export function botPlanAssaults(G: GameState, pi: number, chars: readonly Charac
     .map(([tid, list]) => {
       const X = theTargetedProvince(G, +tid),
         def = botTargetDefence(G, pi, X);
-      return { X, list, def, score: (X.tax || 0) * 10 - def };
+      return {
+        X,
+        list,
+        def,
+        score: (X.tax || 0) * theAssaults.theWorthOfAPointOfTaxInRankingATargetForACombinedAssault - def,
+      };
     })
-    .filter((o) => o.list.length >= 2)
+    .filter((o) => o.list.length >= theAssaults.theFewestCharactersWhoCombineOnOneAssault)
     .sort((a, b) => b.score - a.score);
   cands.forEach(({ X, list, def }) => {
     const free = list.filter(({ c }) => !assigned.has(c.id));
-    if (free.length < 2) return;
+    if (free.length < theAssaults.theFewestCharactersWhoCombineOnOneAssault) return;
     const soloWinner = free.some(
       ({ c }) => botBattleForce(G, c, null, X.terrain, undefined) >= def * botMarginFor(G, pi, c, T),
     );

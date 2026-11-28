@@ -47,6 +47,10 @@ import type { ABotRealmsLedger } from './intel.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
+
+const theOrdersAndReach = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassOrdersAndReach;
+const theUrgencies = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassUrgency;
+const theSteps = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPassSafeStepAndSecondFront;
 import {
   THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
   THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
@@ -197,7 +201,7 @@ export function botPins(G: GameState, pi: number) {
     }
     const near = hosts.some((h) => {
       const H = G.world.provinces[h.location];
-      return H && hexDistP(H, X, G.world.cols) <= 2;
+      return H && hexDistP(H, X, G.world.cols) <= theOrdersAndReach.theHopsWithinWhichAHostCountsAsNearAProvince;
     });
     if (!border && !near) return;
     if (best >= s * BOT_PIN_EDGE) return; // beatable where it stands — let it come, or go and break it
@@ -245,7 +249,7 @@ export function botPutSpring(o: AnOrderAsThePassReadsIt[], order: PhaseOrder) {
     return true;
   }
   if (botIsFiller(o[THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1])) {
-    o.splice(4, 1);
+    o.splice(THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1, 1);
     o.unshift(order);
     return true;
   }
@@ -266,11 +270,13 @@ export function botSafeStep(G: GameState, pi: number, P: Province, awayFrom: Pro
       if (K && botEnemyHostsIn(G, pi, K).length) near++;
     }
     const sc =
-      (own ? 10 : 0) +
-      (N.id === botHomeId(G, pi) ? 5 : 0) +
+      (own ? theSteps.theWorthOfAnOwnProvinceAsASafeStep : 0) +
+      (N.id === botHomeId(G, pi) ? theSteps.theWorthOfTheHomeProvinceAsASafeStep : 0) +
       (N.tax || 0) -
-      near * 6 +
-      (awayFrom ? hexDistP(N, awayFrom, G.world.cols) * 4 : 0);
+      near * theSteps.theWorthLostForEachNeighbourWithAnEnemyHostAsASafeStep +
+      (awayFrom
+        ? hexDistP(N, awayFrom, G.world.cols) * theSteps.theWorthOfEachHopAwayFromAThreatenedProvinceAsASafeStep
+        : 0);
     if (!best || sc > best.sc) best = { N, i, sc };
   }
   return best;
@@ -543,7 +549,11 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         const o = thePlanOf(turnOrders, c.id);
         const P = G.world.provinces[c.location];
         if (P?.owner !== pi || !(asItsGuardReadsIt(P.armyTypes) ?? []).length) return; // only in a province we control — a battle there does not stop it
-        if (!(leaderIds.has(c.id) || theUnitsOf(c).length >= 2)) return;
+        if (!(
+          leaderIds.has(c.id) ||
+          theUnitsOf(c).length >= theOrdersAndReach.theLeastUnitsAHeroLeadsToMusterInContactWhenHeIsNotAGeneral
+        ))
+          return;
         let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
         if (end < 0) end = THE_ORDERS_A_HERO_GIVES_IN_A_SEASON;
         if (end === 0 && /^(Attack|Assault|Lightning strike)/.test(o[0]?.desc ?? '')) return; // striking first outranks mustering
@@ -744,10 +754,13 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           });
         });
         // T2 forced march
-        if (skillLevel(g, 'march') >= 7) {
+        if (skillLevel(g, 'march') >= theOrdersAndReach.theLeastMarchLevelFromWhichAGeneralPlansAForcedMarch) {
           const atk = attacksOf(g);
           const o = thePlanOf(turnOrders, g.id);
-          if (atk.length >= 2 && !o.some((x) => x?.action === THE_HERO_ORDERS.forced_march.key)) {
+          if (
+            atk.length >= theOrdersAndReach.theLeastAttacksAGeneralPlansForAForcedMarchBetweenThem &&
+            !o.some((x) => x?.action === THE_HERO_ORDERS.forced_march.key)
+          ) {
             let j = -1;
             for (let i = theAttackAt(atk, 0).i + 1; i < theAttackAt(atk, atk.length - 1).i; i++) {
               if (o[i]?.action === THE_HERO_ORDERS.move.key) {
@@ -788,21 +801,28 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       const urgency = (x: AnOrderAsThePassReadsIt) => {
         if (!x) return 0;
         const a = x.action;
-        if (a === THE_HERO_ORDERS.cast_spell.key && x.target === theNameOfTheSpell('invisibility')) return 5; // the cloak stays ahead of the strikes it covers
+        if (a === THE_HERO_ORDERS.cast_spell.key && x.target === theNameOfTheSpell('invisibility'))
+          return theUrgencies.theUrgencyOfAnOrderThatMustComeFirst; // the cloak stays ahead of the strikes it covers
         if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.strike.has(x.target))
-          return x.target === theNameOfTheSpell('charm') && !isEnemyChar(x.extra) ? 1 : 5; // a wanderer's Charm is a hire
-        if (a === THE_HERO_ORDERS.challenge.key) return 5;
-        if (a === THE_HERO_ORDERS.steal.key && x.target !== 'garrison') return 5;
+          return x.target === theNameOfTheSpell('charm') && !isEnemyChar(x.extra)
+            ? theUrgencies.theUrgencyOfAHire
+            : theUrgencies.theUrgencyOfAnOrderThatMustComeFirst; // a wanderer's Charm is a hire
+        if (a === THE_HERO_ORDERS.challenge.key) return theUrgencies.theUrgencyOfAnOrderThatMustComeFirst;
+        if (a === THE_HERO_ORDERS.steal.key && x.target !== 'garrison')
+          return theUrgencies.theUrgencyOfAnOrderThatMustComeFirst;
         if (contact) {
-          if (a === THE_HERO_ORDERS.recruit.key && !theTargetAsWords(x).includes('to:garrison')) return 4;
+          if (a === THE_HERO_ORDERS.recruit.key && !theTargetAsWords(x).includes('to:garrison'))
+            return theUrgencies.theUrgencyOfAnOrderThatEasesAFightInContact;
           if (
             a === THE_HERO_ORDERS.pickup_army.key ||
             a === THE_ALIGNMENT_ORDERS['harvest-the-field'].key ||
             a === THE_ALIGNMENT_ORDERS['perform-rite'].key
           )
-            return 4;
-          if (a === THE_HERO_ORDERS.leave_army.key && leaderIds.has(Number(x.extra))) return 4;
-          if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.gainSpell.has(x.target)) return 4;
+            return theUrgencies.theUrgencyOfAnOrderThatEasesAFightInContact;
+          if (a === THE_HERO_ORDERS.leave_army.key && leaderIds.has(Number(x.extra)))
+            return theUrgencies.theUrgencyOfAnOrderThatEasesAFightInContact;
+          if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.gainSpell.has(x.target))
+            return theUrgencies.theUrgencyOfAnOrderThatEasesAFightInContact;
         }
         if (
           a === THE_HERO_ORDERS.recruit.key &&
@@ -810,17 +830,20 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           P.owner === pi &&
           (hostsHere.length || hostsAdj)
         )
-          return 4;
+          return theUrgencies.theUrgencyOfAnOrderThatEasesAFightInContact;
         if (nearby) {
-          if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.guard.has(x.target)) return 3;
-          if (a === THE_HERO_ORDERS.feigned_retreat.key) return 3;
-          if (a === THE_HERO_ORDERS.defend.key && x.desc === 'Watch') return 3;
+          if (a === THE_HERO_ORDERS.cast_spell.key && BOT_P1.guard.has(x.target))
+            return theUrgencies.theUrgencyOfAnOrderThatGuardsAHeroWithAHostNearby;
+          if (a === THE_HERO_ORDERS.feigned_retreat.key)
+            return theUrgencies.theUrgencyOfAnOrderThatGuardsAHeroWithAHostNearby;
+          if (a === THE_HERO_ORDERS.defend.key && x.desc === 'Watch')
+            return theUrgencies.theUrgencyOfAnOrderThatGuardsAHeroWithAHostNearby;
         }
-        if (a === THE_HERO_ORDERS.hire.key) return 1;
+        if (a === THE_HERO_ORDERS.hire.key) return theUrgencies.theUrgencyOfAHire;
         return 0;
       };
       const block = o.slice(0, end).map((x, i) => ({ x, i, u: urgency(x) }));
-      if (block.some((b) => b.u > 1)) {
+      if (block.some((b) => b.u > theUrgencies.theUrgencyOfAHire)) {
         block.sort((a, b) => b.u - a.u || a.i - b.i);
         block.forEach((b, k) => {
           o[k] = b.x;
@@ -831,7 +854,10 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
     {
       const T = botTuning(G, pi);
       mine
-        .filter((g) => leaderIds.has(g.id) && theUnitsOf(g).length >= 3)
+        .filter(
+          (g) =>
+            leaderIds.has(g.id) && theUnitsOf(g).length >= theOrdersAndReach.theLeastUnitsAGeneralLeadsToPlanAFeint,
+        )
         .forEach((g) => {
           const S = G.world.provinces[g.location];
           if (!S || S._battleUnresolved) return;
@@ -862,7 +888,8 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               !spring.has(h.id) &&
               !pinCasters.has(h.id) &&
               (asItsGuardReadsIt(h.hp) ?? (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN)) >=
-                (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.7 &&
+                (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) *
+                  theOrdersAndReach.theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral &&
               !(turnOrders[h.id] ?? []).some(
                 (x) => x && theErrandsThatKeepABotHeroFromAFeintOrASecondFront.includes(x.action),
               ),
@@ -930,7 +957,12 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       const T = botTuning(G, pi),
         taken = new Set(entered);
       mine
-        .filter((g) => leaderIds.has(g.id) && theUnitsOf(g).length >= 4 && !spring.has(g.id))
+        .filter(
+          (g) =>
+            leaderIds.has(g.id) &&
+            theUnitsOf(g).length >= theOrdersAndReach.theLeastUnitsAGeneralLeadsToSendADetachmentToASecondFront &&
+            !spring.has(g.id),
+        )
         .forEach((g) => {
           const o = thePlanOf(turnOrders, g.id);
           const P = G.world.provinces[g.location];
@@ -958,7 +990,8 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               !spring.has(h.id) &&
               !pinCasters.has(h.id) &&
               (asItsGuardReadsIt(h.hp) ?? (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN)) >=
-                (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.7 &&
+                (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) *
+                  theOrdersAndReach.theShareOfHisMostHitPointsFromWhichAHeroTakesADetachmentFromAGeneral &&
               !(turnOrders[h.id] ?? []).some(
                 (x) => x && theErrandsThatKeepABotHeroFromAFeintOrASecondFront.includes(x.action),
               ),
@@ -981,7 +1014,10 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               continue;
             if (N.owner != null && botRelationRaw(G, pi, N.owner) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
             const d = botTargetDefence(G, pi, N) + botEnemyChars(G, N, pi).force * BOT_DEF_BONUS;
-            const sc = (N.tax || 0) * 2 + (N.owner != null ? 8 : 0) - d / 4;
+            const sc =
+              (N.tax || 0) * theSteps.theWorthOfEachPointOfTaxInChoosingASecondFrontsTarget +
+              (N.owner != null ? theSteps.theWorthOfAProvinceSomeRealmHoldsInChoosingASecondFrontsTarget : 0) -
+              d / theSteps.theNumberByWhichADefenceIsDividedInChoosingASecondFrontsTarget;
             if (!best || sc > best.sc) best = { N, i, d, sc };
           }
           if (!best) return;
@@ -1020,7 +1056,10 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           const li = o.indexOf(lv);
           const ho = turnOrders[hero.id] ?? [];
           const keepCasts = ho.filter(
-            (x, i) => x?.action === THE_HERO_ORDERS.cast_spell.key && BOT_P1.strike.has(x.target) && i < 3,
+            (x, i) =>
+              x?.action === THE_HERO_ORDERS.cast_spell.key &&
+              BOT_P1.strike.has(x.target) &&
+              i < theOrdersAndReach.theFirstOrdersOfAHeroWhereStrikeCastsAreKeptWhenHeTakesASecondFront,
           );
           const out: AnOrderAsThePassReadsIt[] = [...keepCasts];
           while (out.length < li) out.push(hold('Wait for the column'));
