@@ -774,6 +774,7 @@ type AThiefsTarget =
 export function botStealTarget(G: GameState, pi: number, c: Character, maxD: number) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
+  const theTheft = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsTheft;
   let best: AThiefsTarget | null = null;
   const hostile = (j: number | null | undefined) =>
     j != null &&
@@ -786,11 +787,11 @@ export function botStealTarget(G: GameState, pi: number, c: Character, maxD: num
     const d = e.location === from.id ? 0 : botPathLenAny(G, from, e.location, maxD);
     if (d == null) continue;
     const sc =
-      (e.isKing ? 6 : 3) +
-      theItemsWithGapsOf(e).length * 2 -
-      (theUnitsWithGapsOf(e).length ? 5 : 0) -
-      d * 2 +
-      (theRealmsOf(G)[e.player]?.homeProvinceId === e.location ? 3 : 0); // idea 7: a rival crown's capital is where the purses are
+      (e.isKing ? theTheft.theWorthOfARivalKingAsAThievesMark : theTheft.theWorthOfARivalHeroAsAThievesMark) +
+      theItemsWithGapsOf(e).length * theTheft.theWorthOfEachItemAMarkCarriesToAThief -
+      (theUnitsWithGapsOf(e).length ? theTheft.whatALeadingMarkTakesOffAThievesTarget : 0) -
+      d * theTheft.whatEachStepAwayTakesOffAThievesTarget +
+      (theRealmsOf(G)[e.player]?.homeProvinceId === e.location ? theTheft.theWorthOfARivalCapitalAsAThievesMark : 0); // idea 7: a rival crown's capital is where the purses are
     if (!best || sc > best.sc) best = { kind: 'char', e, provId: e.location, d, sc };
   }
   for (const X of theProvincesOf(G)) {
@@ -798,16 +799,23 @@ export function botStealTarget(G: GameState, pi: number, c: Character, maxD: num
     if (!hostile(X.owner) || !(asItsGuardReadsIt(X.garrisonArmies) ?? []).length) continue;
     const d = X.id === from.id ? 0 : botPathLenAny(G, from, X.id, maxD);
     if (d == null) continue;
-    const sc = Math.min(4, (asItsGuardReadsIt(X.garrisonArmies) ?? []).length) - d * 2;
+    const sc =
+      Math.min(theTheft.theMostGarrisonsThatAddToAThievesTarget, (asItsGuardReadsIt(X.garrisonArmies) ?? []).length) -
+      d * theTheft.whatEachStepAwayTakesOffAThievesTarget;
     if (!best || sc > best.sc) best = { kind: 'garrison', provId: X.id, d, sc, X };
   }
   return best;
 }
 export function botThiefOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
-  // 2026-09-26 (idea 7): GRAND HEIST — a Thief 7+ at war walks (cloaked) into the richest seen enemy capital or
-  // Rich province within four hops and breaks into its vaults; the attempt is once a turn.
-  if ((Number(theSkillsOf(c).thief) || 0) >= 7 && botAtWar(G, pi) && P) {
+  const theTheft = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsTheft;
+  // 2026-09-26 (idea 7): GRAND HEIST — a master Thief at war walks (cloaked) into the richest seen enemy capital or
+  // Rich province in reach and breaks into its vaults; the attempt is once a turn.
+  if (
+    (Number(theSkillsOf(c).thief) || 0) >= theTheft.theThiefSkillFromWhichAThiefAtWarBreaksIntoAVault &&
+    botAtWar(G, pi) &&
+    P
+  ) {
     let best: { readonly X: Province; readonly d: number; readonly sc: number } | null = null;
     for (const X of theProvincesOf(G)) {
       if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) continue;
@@ -816,15 +824,23 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
       const home = theRealmsOf(G)[bo]?.homeProvinceId === X.id;
       const b = botBelief(G, pi, X);
       if (!home && (Number(b?.tax) || 0) < GRAND_HEIST_RICH_TAX) continue;
-      const d = X.id === P.id ? 0 : botPathLenAny(G, P, X.id, 4);
+      const d = X.id === P.id ? 0 : botPathLenAny(G, P, X.id, theTheft.theProvincesAwayAThiefLooksForAVaultToBreakInto);
       if (d == null) continue;
-      const guarded = (asItsGuardReadsIt(X.garrisonArmies) ?? []).length > 0 && botSees(G, pi, X.id) ? 6 : 0;
-      const sc = (Number(theRealmsOf(G)[bo]?.gold) || 0) / 4 + (home ? 4 : 0) - guarded - d * 2;
+      const guarded =
+        (asItsGuardReadsIt(X.garrisonArmies) ?? []).length > 0 && botSees(G, pi, X.id)
+          ? theTheft.whatAGuardedVaultTakesOffAThievesTarget
+          : 0;
+      const sc =
+        (Number(theRealmsOf(G)[bo]?.gold) || 0) / theTheft.theGoldThatMakesAPointOfAVaultsWorthToAThief +
+        (home ? theTheft.theWorthOfARivalCapitalAsAVaultToAThief : 0) -
+        guarded -
+        d * theTheft.whatEachStepAwayTakesOffAThievesTarget;
       if (!best || sc > best.sc) best = { X, d, sc };
     }
     if (best) {
       const vaults = best.X;
-      const path = best.d > 0 ? (botPathAny(G, P, best.X.id, 4) ?? []) : [];
+      const path =
+        best.d > 0 ? (botPathAny(G, P, best.X.id, theTheft.theProvincesAwayAThiefLooksForAVaultToBreakInto) ?? []) : [];
       let pre2 = botCloakPre(G, pi, c, pre, best.X);
       if (pre2.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) pre2 = pre;
       if (path.length === best.d && pre2.length + path.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
@@ -839,31 +855,35 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
       }
     }
   }
-  // review II A11: a Thief 3+ robs a guardian's hoard by the STEAL tactic (50 + 10×Thief − tier penalty, Weak 0 /
-  // Moderate 15 / Powerful 30 / Legendary 45) when that reads 75%+ — his encounter plan is Steal-then-flee
+  // review II A11: a skilled Thief robs a guardian's hoard by the STEAL tactic (50 + 10×Thief − tier penalty, Weak 0 /
+  // Moderate 15 / Powerful 30 / Legendary 45) when that reads high enough — his encounter plan is Steal-then-flee
   // (set in botSpecialistRoles), so a failed steal ends in flight rather than a fight.
   {
     const th = Math.min(5, Number(theSkillsOf(c).thief) || 0);
-    if (th >= 3) {
+    if (th >= theTheft.theThiefSkillFromWhichAThiefRobsAGuardiansHoard) {
       const PEN: Readonly<Partial<Record<string, number>>> = { ...STEAL_TIER_PEN };
-      const lair = botLairCandidates(G, pi, c, 4)
+      const lair = botLairCandidates(G, pi, c, theTheft.theProvincesAwayAThiefLooksForAHoardToRob)
         .filter(
           (k) =>
             k.f.monster &&
-            50 + 10 * th - (PEN[k.f.monster.power || 'Weak'] ?? 0) >= 75 &&
+            50 + 10 * th - (PEN[k.f.monster.power || 'Weak'] ?? 0) >=
+              theTheft.theChanceFromWhichAThiefRobsAGuardiansHoard &&
             !(k.rumour && k.rumour.band >= 101) &&
             !(asItsGuardReadsIt(k.f._pickedCleanBy) ?? []).includes(pi),
         )
         .sort((a, b) => b.grade - a.grade || a.d - b.d)[0]; // 2026-09-29: never a hoard this realm has already emptied
       if (lair) {
-        const path = lair.d > 0 ? (botPathDirs(G, pi, P, lair.X.id, 4, true) ?? []) : [];
+        const path =
+          lair.d > 0
+            ? (botPathDirs(G, pi, P, lair.X.id, theTheft.theProvincesAwayAThiefLooksForAHoardToRob, true) ?? [])
+            : [];
         if (
           (lair.d === 0 || path.length === lair.d) &&
           pre.length + path.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON
         ) {
           // 2026-09-29 (Toby, lair study): the robber goes in to STEAL AND RUN. The steal-then-flee plan was set
           // only for a hero whose PRIMARY role is thief (botSpecialistRoles), but this order also reaches a hero
-          // with Thief 3+ working his secondary role — who then walked into a Moderate guardian with an ordinary
+          // with a skilled Thief working his secondary role — who then walked into a Moderate guardian with an ordinary
           // melee plan and fought it (40 bot games: every "untrained" Moderate death was one of these). The plan
           // now travels with the order; the role pass resets `_botTactics` plans next turn as before.
           c.encounterPlan = {
@@ -883,9 +903,9 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
       }
     }
   }
-  const t = botStealTarget(G, pi, c, 4);
+  const t = botStealTarget(G, pi, c, theTheft.theProvincesAwayAThiefLooksForAMarkToRob);
   if (!t) return null;
-  const path = t.d > 0 ? (botPathAny(G, P, t.provId, 4) ?? []) : [];
+  const path = t.d > 0 ? (botPathAny(G, P, t.provId, theTheft.theProvincesAwayAThiefLooksForAMarkToRob) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
   if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const X = G.world.provinces[t.provId];
@@ -900,7 +920,7 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
   let k = 0;
   while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     out.push(
-      k < 1
+      k < theTheft.theStealAttemptsBeforeAThiefLiesInWait
         ? { ...steal }
         : aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }),
     );
@@ -909,10 +929,11 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
   return out;
 }
 // LAIR TRAVEL — a beatable, discovered, uncleared lair in ground that is ours, unowned or an ally's,
-// within reach of an unarmed fighter (Melee/Archery 3+ — botCanBeatGuardian's own floor).
+// within reach of an unarmed fighter (botCanBeatGuardian's own floor of Melee or Archery).
 export function botLairTarget(G: GameState, pi: number, c: Character, maxD: number) {
   const from = G.world.provinces[c.location];
   if (!from) return null;
+  const theUnarmed = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsUnarmedFighters;
   let best: { readonly X: Province; readonly li: number; readonly d: number; readonly sc: number } | null = null;
   const POWER_RANK: Readonly<Partial<Record<string, number>>> = { ...GUARDIAN_POWER_RANK };
   for (const X of theProvincesOf(G)) {
@@ -924,7 +945,9 @@ export function botLairTarget(G: GameState, pi: number, c: Character, maxD: numb
     const d = X.id === from.id ? 0 : botPathLen(G, pi, from, X.id, true);
     if (d == null || d > maxD) continue;
     const f = theLairAt(X, li);
-    const sc = (POWER_RANK[f.monster?.power ?? ''] ?? 0) * 2 - d * 2;
+    const sc =
+      (POWER_RANK[f.monster?.power ?? ''] ?? 0) * theUnarmed.theWorthOfEachRankOfAGuardianToALairTarget -
+      d * theUnarmed.whatEachStepAwayTakesOffALairTarget;
     if (!best || sc > best.sc) best = { X, li, d, sc };
   }
   return best;
@@ -937,9 +960,11 @@ function theLairAt(X: Province, li: number): ProvinceFeature {
 }
 export function botLairOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
-  const t = botLairTarget(G, pi, c, 4);
+  const theProvincesAway =
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsUnarmedFighters.theProvincesAwayAnUnarmedFighterLooksForALair;
+  const t = botLairTarget(G, pi, c, theProvincesAway);
   if (!t) return null;
-  const path = t.d > 0 ? (botPathDirs(G, pi, P, t.X.id, 4, true) ?? []) : [];
+  const path = t.d > 0 ? (botPathDirs(G, pi, P, t.X.id, theProvincesAway, true) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
   if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const mv = [
@@ -958,11 +983,15 @@ export function botRoleWork(
   role: string | null | undefined,
   L: ABotRealmsLedger | null | undefined,
 ) {
+  const theRoles = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsRoleWork;
   switch (role) {
     case 'slayer': {
       const lp = botLairPlan(G, pi, c, pre, L);
       if (lp) return lp;
-      if ((Number(theSkillsOf(c).melee) || 0) >= 3 && !botSlayerHasLairsToGrowInto(G, pi, c)) {
+      if (
+        (Number(theSkillsOf(c).melee) || 0) >= theRoles.theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts &&
+        !botSlayerHasLairsToGrowInto(G, pi, c)
+      ) {
         const so = botScoutOrders(G, pi, c, pre);
         if (so) return so;
       }
@@ -974,7 +1003,10 @@ export function botRoleWork(
       return botScholarOrders(G, pi, c, pre);
     }
     case 'scout': {
-      if ((Number(theSkillsOf(c).explorer) || 0) >= 7 && pre.length < 4) {
+      if (
+        (Number(theSkillsOf(c).explorer) || 0) >= theRoles.theExplorerLevelFromWhichAScoutChartsGroundBesideHim &&
+        pre.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1
+      ) {
         const P = G.world.provinces[c.location];
         const cand = [P];
         for (let i = 0; i < 6; i++) {
@@ -1002,8 +1034,8 @@ export function botRoleWork(
     }
     case 'spy': {
       const lvl = Number(theSkillsOf(c).spy) || 0;
-      if (lvl < 2) return null;
-      if (lvl >= 9) {
+      if (lvl < theRoles.theSpySkillFromWhichASpyHasWork) return null;
+      if (lvl >= theRoles.theSpySkillFromWhichASpyAssassinates) {
         const P = G.world.provinces[c.location];
         const mark = botVisibleCharsIn(G, pi, P)
           .filter(
@@ -1024,14 +1056,16 @@ export function botRoleWork(
           return out;
         }
       }
-      if (lvl >= 7 && botAtWar(G, pi)) {
+      if (lvl >= theRoles.theSpySkillFromWhichASpyAtWarSabotages && botAtWar(G, pi)) {
         let best: { readonly X: Province; readonly v: number } | null = null;
         for (const X of theProvincesOf(G)) {
           if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id)) continue;
           const bo = botBelievedOwner(G, pi, X);
           if (bo == null || bo === pi || botRelationRaw(G, pi, bo) !== THE_STATES_TWO_REALMS_STAND_IN.atWar) continue;
           const b = botBelief(G, pi, X);
-          const v = (Number(b?.tax) || 0) + (theRealmsOf(G)[bo]?.homeProvinceId === X.id ? 3 : 0);
+          const v =
+            (Number(b?.tax) || 0) +
+            (theRealmsOf(G)[bo]?.homeProvinceId === X.id ? theRoles.theWorthOfARivalCapitalToSabotage : 0);
           if (!best || v > best.v) best = { X, v };
         }
         if (best) {
@@ -1048,7 +1082,7 @@ export function botRoleWork(
     }
     case 'thief': {
       const lvl = Number(theSkillsOf(c).thief) || 0;
-      if (lvl < 2) return null;
+      if (lvl < theRoles.theThiefSkillFromWhichAThiefHasWork) return null;
       return botThiefOrders(G, pi, c, pre);
     }
     case 'mage':
@@ -1064,12 +1098,13 @@ function theNeighbourOfAPlaceHeMayNotStand(G: GameState, P: Province | undefined
 }
 // MAGE WORK: every cast worth making from where he stands (up to three, both schools, offence first — the plan
 // already refuses spells the situation cannot use), then practice the weaker school; with nothing to cast, walk
-// to the nearest general leading a host (≤4 hops through any land) to be his caster next year; else null (train).
+// to the nearest general leading a host (a few hops through any land) to be his caster next year; else null (train).
 export function botMageOrders(G: GameState, pi: number, c: Character, pre: readonly AnOrderAsThePassesReadIt[]) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const [s1, s2] = botMageSchools(c);
   const sk = theSkillsOf(c);
+  const theMage = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsMageWork;
   const weakSch = (Number(sk[s1]) || 0) <= (Number(sk[s2]) || 0) ? s1 : s2;
   const prac = {
     action: 'practice',
@@ -1077,7 +1112,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     extra: '',
     desc: 'Practice ' + theLabelOf(weakSch) + ' (mage)',
   };
-  // idea 6: CHARM a seen wanderer within three hops instead of paying his wage (court under the cap)
+  // idea 6: CHARM a seen wanderer in reach instead of paying his wage (court under the cap)
   if ((Number(sk.psychic) || 0) >= 1) {
     const heroesNow = theCharactersOf(G).filter(
       (x) => x && x.alive && x.player === pi && !x.isKing && !x._isHeir,
@@ -1096,12 +1131,18 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
           botSeesChar(G, pi, h)
         ))
           continue;
-        const d = h.location === c.location ? 0 : botPathLenAny(G, P, h.location, 3);
+        const d =
+          h.location === c.location
+            ? 0
+            : botPathLenAny(G, P, h.location, theMage.theProvincesAwayAMageLooksForAWandererToCharm);
         if (d == null) continue;
         if (!bestW || d < bestW.d) bestW = { h, d };
       }
     if (bestW && pre.length + bestW.d < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
-      const path = bestW.d > 0 ? (botPathAny(G, P, bestW.h.location, 3) ?? []) : [];
+      const path =
+        bestW.d > 0
+          ? (botPathAny(G, P, bestW.h.location, theMage.theProvincesAwayAMageLooksForAWandererToCharm) ?? [])
+          : [];
       if (path.length === bestW.d) {
         const wanderer = bestW.h;
         const out = [
@@ -1119,26 +1160,33 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
       }
     }
   }
-  // idea 5: HEX THE ENEMY GENERAL — a rival host seen within two turns, within three hops, and a school to hurt him
+  // idea 5: HEX THE ENEMY GENERAL — a rival host seen lately and in reach, and a school to hurt him
   if ((Number(sk.psychic) || 0) >= 1 || (Number(sk.necromancy) || 0) >= 1) {
     const I = botEnemyIntel(G, pi);
     let bestG: { readonly X: Province; readonly d: number; readonly sc: number; readonly e: Character } | null = null;
     for (const [k, r] of Object.entries(I.generals)) {
-      if ((G.turn || 0) - r.turn > 2 || botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar)
+      if (
+        (G.turn || 0) - r.turn > theMage.theTurnsAGeneralMayBeHexedAfterHisLastPlacing ||
+        botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar
+      )
         continue;
       const e = theCharactersOf(G).find((x) => x?.id === +k && x.alive);
       if (e?.location !== r.provId) continue;
       const X = theProvinceAt(G, r.provId);
       if (!X) continue;
-      const d = X.id === P.id ? 0 : botPathLenAny(G, P, X.id, 3);
-      if (d == null || pre.length + d >= 4) continue;
-      const sc = r.units * 2 + (r.isKing ? 5 : 0) - d * 2;
+      const d = X.id === P.id ? 0 : botPathLenAny(G, P, X.id, theMage.theProvincesAwayAMageGoesToHexAGeneral);
+      if (d == null || pre.length + d >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1) continue;
+      const sc =
+        r.units * theMage.theWorthOfEachUnitAGeneralToHexLeads +
+        (r.isKing ? theMage.theWorthOfAKingToHex : 0) -
+        d * theMage.whatEachStepAwayTakesOffAGeneralToHex;
       if (!bestG || sc > bestG.sc) bestG = { X, d, sc, e };
     }
     if (bestG) {
-      const path = bestG.d > 0 ? (botPathAny(G, P, bestG.X.id, 3) ?? []) : [];
+      const path =
+        bestG.d > 0 ? (botPathAny(G, P, bestG.X.id, theMage.theProvincesAwayAMageGoesToHexAGeneral) ?? []) : [];
       if (path.length === bestG.d) {
-        const hexes = botCastPlan(G, pi, c, bestG.X, { max: 3 }).filter((o) =>
+        const hexes = botCastPlan(G, pi, c, bestG.X, { max: theMage.theMostCastsAMageGivesToHexAGeneral }).filter((o) =>
           [
             theNameOfTheSpell('curse'),
             theNameOfTheSpell('psychic-blast'),
@@ -1164,7 +1212,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
   );
   const siege = genHere ? botPlannedAttackTarget(G, genHere) : null;
   const casts = botCastPlan(G, pi, c, P, {
-    max: 3,
+    max: theMage.theMostCastsAMageGivesBesideAGeneral,
     siege,
     fighting: genHere && siege != null ? genHere : null,
     threat: botNearbyThreat(G, pi, c),
@@ -1174,19 +1222,19 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...prac });
     return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
   }
-  // idea 9: a NECROMANCER walks to the nearest known battlefield graves in our own or unowned ground (three hops)
+  // idea 9: a NECROMANCER walks to the nearest known battlefield graves in our own or unowned ground (in reach)
   // and raises them — Skeletal Armies needs him standing on the dead.
   if ((Number(sk.necromancy) || 0) >= 1) {
     let bestX: { readonly X: Province; readonly d: number } | null = null;
     for (const X of theProvincesOf(G)) {
       if (!X || X.id === P.id || X.terrain === 'sea' || !botKnowsGraves(G, pi, X.id)) continue;
       if (X.owner != null && X.owner !== pi) continue;
-      const d = botPathLenAny(G, P, X.id, 3);
+      const d = botPathLenAny(G, P, X.id, theMage.theProvincesAwayANecromancerGoesToBattlefieldDead);
       if (d == null || pre.length + d >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) continue;
       if (!bestX || d < bestX.d) bestX = { X, d };
     }
     if (bestX) {
-      const path = botPathAny(G, P, bestX.X.id, 3) ?? [];
+      const path = botPathAny(G, P, bestX.X.id, theMage.theProvincesAwayANecromancerGoesToBattlefieldDead) ?? [];
       if (path.length === bestX.d) {
         const graves = bestX.X;
         const out = [...pre, ...path.map((d) => botMoveOrder(d, 'To the battlefield dead of ' + graves.name))];
@@ -1204,25 +1252,34 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     }
   }
   // idea 10: a WHITE mage with nothing better to do keeps the realm's richest province blessed — he walks there
-  // (three hops) and Blesses it and its richest neighbour every year (Bless reaches the adjacent province too).
+  // (in reach) and Blesses it and its richest neighbour every year (Bless reaches the adjacent province too).
   if ((Number(sk.white) || 0) >= 1) {
     let bestR: { readonly X: Province; readonly d: number; readonly sc: number } | null = null;
     for (const X of theProvincesOf(G)) {
       if (X?.owner !== pi || X.terrain === 'sea') continue;
       const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, true);
-      if (d == null || d > 3 || pre.length + d >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) continue;
+      if (
+        d == null ||
+        d > theMage.theProvincesAwayAWhiteMageGoesToBlessGround ||
+        pre.length + d >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON
+      )
+        continue;
       let v = X.tax || 0;
       for (let i = 0; i < 6; i++) {
         const N = botNeighbourProv(G, X, i);
-        if (N?.owner === pi && N.terrain !== 'sea') v = Math.max(v, (X.tax || 0) + (N.tax || 0) * 0.8);
+        if (N?.owner === pi && N.terrain !== 'sea')
+          v = Math.max(
+            v,
+            (X.tax || 0) + (N.tax || 0) * theMage.theShareOfAnOwnedNeighboursTaxThatAddsToAProvincesBlessingWorth,
+          );
       }
       const sc = v - d;
       if (!bestR || sc > bestR.sc) bestR = { X, d, sc };
     }
     if (bestR && bestR.d > 0) {
-      const path = botPathDirs(G, pi, P, bestR.X.id, 3, true) ?? [];
+      const path = botPathDirs(G, pi, P, bestR.X.id, theMage.theProvincesAwayAWhiteMageGoesToBlessGround, true) ?? [];
       if (path.length === bestR.d) {
-        const bl = botCastPlan(G, pi, c, bestR.X, { max: 2 }).filter(
+        const bl = botCastPlan(G, pi, c, bestR.X, { max: theMage.theMostCastsAMageGivesToBlessAProvince }).filter(
           (o) => o.target === theNameOfTheSpell('bless-province'),
         );
         const blessed = bestR.X;
@@ -1240,16 +1297,16 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
       l.alive &&
       l.player === pi &&
       roles.leaders.includes(l.id) &&
-      theUnitsWithGapsOf(l).length >= 3 &&
+      theUnitsWithGapsOf(l).length >= theMage.theUnitsAGeneralMustLeadForAMageToJoinHim &&
       l.location !== c.location
     ))
       continue;
-    const d = botPathLenAny(G, P, l.location, 4);
+    const d = botPathLenAny(G, P, l.location, theMage.theProvincesAwayAMageGoesToJoinAGeneral);
     if (d == null) continue;
     if (!best || d < best.d) best = { l, d };
   }
   if (best && pre.length + best.d < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
-    const path = botPathAny(G, P, best.l.location, 4) ?? [];
+    const path = botPathAny(G, P, best.l.location, theMage.theProvincesAwayAMageGoesToJoinAGeneral) ?? [];
     if (path.length === best.d) {
       const general = best.l;
       const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Join ' + general.name + ' as his caster'))];
@@ -1289,9 +1346,12 @@ export function botRoleTrain(
     case 'mage': {
       const [s1, s2] = botMageSchools(c);
       const sk = theSkillsOf(c);
-      const pick = (Number(sk[s1]) || 0) < 2 ? s1 : (Number(sk[s2]) || 0) < (Number(sk[s1]) || 0) ? s2 : s1;
+      const theFirstSchoolsLevel =
+        THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsRoleWork.theLevelOfAMagesFirstSchoolBeforeTheTwoRiseTogether;
+      const pick =
+        (Number(sk[s1]) || 0) < theFirstSchoolsLevel ? s1 : (Number(sk[s2]) || 0) < (Number(sk[s1]) || 0) ? s2 : s1;
       return botTrainOrders(G, pi, c, pre, pick, 'mage');
-    } // the first school to 2, then the two rise together
+    } // the first school to its level, then the two rise together
   }
   return null;
 }
@@ -1299,20 +1359,24 @@ export function botRoleTrain(
 // the secondary role waits (the first cut let secondaries starve slayers of Melee: 1.8 average at game end).
 export function botRoleReady(G: GameState, pi: number, c: AHeroOfSkills, role: string | null | undefined) {
   const s = theSkillsOf(c);
+  const theRoles = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsRoleWork;
   switch (role) {
     case 'slayer':
-      return (Number(s.melee) || 0) >= 3 || (Number(s.archery) || 0) >= 3;
+      return (
+        (Number(s.melee) || 0) >= theRoles.theLevelOfMeleeOrArcheryFromWhichASlayerIsReady ||
+        (Number(s.archery) || 0) >= theRoles.theLevelOfMeleeOrArcheryFromWhichASlayerIsReady
+      );
     case 'scholar':
       return (Number(s.sage) || 0) >= theSageLevelFromWhichTheRealmsScholarResearches(G, pi);
     case 'spy':
-      return (Number(s.spy) || 0) >= 2;
+      return (Number(s.spy) || 0) >= theRoles.theSpySkillFromWhichASpyHasWork;
     case 'thief':
-      return (Number(s.thief) || 0) >= 2;
+      return (Number(s.thief) || 0) >= theRoles.theThiefSkillFromWhichAThiefHasWork;
     case 'scout':
       return true;
     case 'mage': {
       const [s1] = botMageSchools(c);
-      return (Number(s[s1]) || 0) >= 2;
+      return (Number(s[s1]) || 0) >= theRoles.theLevelOfAMagesFirstSchoolBeforeTheTwoRiseTogether;
     }
   }
   return true;
@@ -1345,14 +1409,18 @@ export function botSpecialistOrders(
 }
 // DEFENDER POST — the owned land province whose Defend zone covers the most owned tax not already
 // covered (`covered`: provinces a field host stands on plus earlier defenders' zones). Sticky: the
-// current post is kept while it scores at least 80% of the best. Returns {X,d,sc} or null.
+// current post is kept while it scores well against the best. Returns {X,d,sc} or null.
 export function botDefenderPost(G: GameState, pi: number, c: Character, covered: ReadonlySet<number>) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
   const home = botHomeId(G, pi);
+  const theDefenders = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsDefenders;
   const armed = theUnitsWithGapsOf(c).length > 0;
   const owned = theProvincesOf(G).filter((p): p is Province => !!p && p.owner === pi && p.terrain !== 'sea');
-  const val = (q: Province) => (q.tax || 0) + (q.id === home ? 6 : 0) + (botIsEdge(G, pi, q) ? 2 : 0);
+  const val = (q: Province) =>
+    (q.tax || 0) +
+    (q.id === home ? theDefenders.theWorthOfTheCapitalToADefendersPost : 0) +
+    (botIsEdge(G, pi, q) ? theDefenders.theWorthOfAFrontierProvinceToADefendersPost : 0);
   const cover = (X: Province) => {
     let sc = 0;
     botZoneOf(G, X).forEach((q) => {
@@ -1361,23 +1429,35 @@ export function botDefenderPost(G: GameState, pi: number, c: Character, covered:
     return sc;
   };
   const raise = (X: Province) =>
-    theArmyTypesOf(X).some((t) => !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) ? (armed ? 1 : 4) : 0; // an unarmed defender needs somewhere to raise a column
+    theArmyTypesOf(X).some((t) => !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t))
+      ? armed
+        ? theDefenders.theWorthOfARaisingPlaceToAnArmedDefender
+        : theDefenders.theWorthOfARaisingPlaceToAnUnarmedDefender
+      : 0; // an unarmed defender needs somewhere to raise a column
   const plainDef = armed ? botBattleForce(G, c, null, 'plain', { defending: true }) : 0;
   const ground = (X: Province) =>
-    armed && plainDef > 0 ? (botBattleForce(G, c, null, X.terrain, { defending: true }) / plainDef - 1) * 8 : 0; // Sept 2026: hold ground where our troops fight best
+    armed && plainDef > 0
+      ? (botBattleForce(G, c, null, X.terrain, { defending: true }) / plainDef - 1) *
+        theDefenders.theWorthOfTheShareByWhichAProvincesGroundRaisesADefendersForce
+      : 0; // Sept 2026: hold ground where our troops fight best
   let best: { readonly X: Province; readonly d: number; readonly sc: number } | null = null;
   for (const X of owned) {
     const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, !armed);
     if (d == null) continue;
-    const sc = cover(X) + raise(X) + ground(X) - d * 1.5;
+    const sc = cover(X) + raise(X) + ground(X) - d * theDefenders.whatEachStepAwayTakesOffADefendersPost;
     if (!best || sc > best.sc) best = { X, d, sc };
   }
   if (best && c._botPost != null && c._botPost !== best.X.id) {
     const cur = owned.find((x) => x.id === c._botPost);
     if (cur) {
       const d = cur.id === P.id ? 0 : botPathLen(G, pi, P, cur.id, !armed);
-      const sc = cover(cur) + raise(cur) + ground(cur) - (d == null ? 99 : d * 1.5);
-      if (d != null && sc >= best.sc * 0.8) best = { X: cur, d, sc };
+      const sc =
+        cover(cur) +
+        raise(cur) +
+        ground(cur) -
+        (d == null ? 99 : d * theDefenders.whatEachStepAwayTakesOffADefendersPost);
+      if (d != null && sc >= best.sc * theDefenders.theShareOfTheBestPostsWorthWhichKeepsADefenderAtHisPost)
+        best = { X: cur, d, sc };
     }
   }
   return best;
@@ -1387,8 +1467,7 @@ function theArmyTypesOf(X: Province): readonly string[] {
   return asItsGuardReadsIt(X.armyTypes) ?? [];
 }
 // DEFENDER ORDERS — hire, walk to the post (if not there), ONE Defend, recruit to self at an owned post,
-// then the useful tail: Bless / Illusory Terrain / Resurrect (and Oratory while a hostile host is within
-// two hexes), cross-training with anyone standing here, else Tactical drill / the best skill to raise.
+// then the useful tail: Bless / Illusory Terrain / Resurrect (and Oratory while a hostile host is near), cross-training with anyone standing here, else Tactical drill / the best skill to raise.
 export function botDefenderOrders(
   G: GameState,
   pi: number,
@@ -1399,12 +1478,24 @@ export function botDefenderOrders(
 ) {
   const P = G.world.provinces[c.location];
   if (!P) return null;
+  const theDefenders = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsDefenders;
   const armed = theUnitsWithGapsOf(c).length > 0;
   const out = [...pre];
   let here = P;
   if (post && post.d > 0) {
-    const reach = Math.min(3, armed ? botLandReach(c) || 1 : 5);
-    const path = botPathDirs(G, pi, P, post.X.id, Math.min(reach, Math.max(0, 4 - out.length)), !armed) ?? [];
+    const reach = Math.min(
+      theDefenders.theMostStepsADefenderWalksToHisPostInASeason,
+      armed ? botLandReach(c) || 1 : THE_ORDERS_A_HERO_GIVES_IN_A_SEASON, // botLandReach's own 5 for a hero with no troops
+    );
+    const path =
+      botPathDirs(
+        G,
+        pi,
+        P,
+        post.X.id,
+        Math.min(reach, Math.max(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1 - out.length)),
+        !armed,
+      ) ?? [];
     for (const d of path) {
       const N = botNeighbourProv(G, here, theWayOnThePath(d));
       if (!N) break;
@@ -1412,13 +1503,24 @@ export function botDefenderOrders(
       here = N;
     }
   }
-  // Sept 2026: at his post with no hostile host within two hexes, a defender first rides one hex to an owned
-  // province holding 3+ garrison units, takes the surplus up and returns — the Defend then comes later than the
+  // Sept 2026: at his post with no hostile host near, a defender first rides one hex to an owned
+  // province holding a surplus of garrison units, takes the surplus up and returns — the Defend then comes later than the
   // usual first/second phase (judgement call: only when nothing threatens).
-  if (post?.d === 0 && here.id === P.id && out.length <= 1 && !botNearbyThreat(G, pi, c)) {
+  if (
+    post?.d === 0 &&
+    here.id === P.id &&
+    out.length <= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 4 &&
+    !botNearbyThreat(G, pi, c)
+  ) {
     for (let i = 0; i < 6; i++) {
       const N = botNeighbourProv(G, P, i);
-      if (N?.owner !== pi || N.terrain === 'sea' || (asItsGuardReadsIt(N.garrisonArmies) ?? []).length <= 2) continue;
+      if (
+        N?.owner !== pi ||
+        N.terrain === 'sea' ||
+        (asItsGuardReadsIt(N.garrisonArmies) ?? []).length <=
+          theDefenders.theGarrisonUnitsAnOwnedNeighbourMustHoldAboveForADefenderToGatherThem
+      )
+        continue;
       const po = botPickupOrder(G, pi, c, N);
       if (po) {
         out.push(botMoveOrder(i, 'Gather the garrison of ' + N.name));
@@ -1445,7 +1547,11 @@ export function botDefenderOrders(
   }
   if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && here.id === P.id) {
     const threat = botNearbyThreat(G, pi, c);
-    const casts = botCastPlan(G, pi, c, P, { max: 2, fighting: threat && armed ? c : null, threat }).filter((o) =>
+    const casts = botCastPlan(G, pi, c, P, {
+      max: theDefenders.theMostCastsADefenderGives,
+      fighting: threat && armed ? c : null,
+      threat,
+    }).filter((o) =>
       [
         theNameOfTheSpell('bless-province'),
         theNameOfTheSpell('illusory-terrain'),
@@ -1462,9 +1568,12 @@ export function botDefenderOrders(
   }
   const land = theUnitsWithGapsOf(c).filter((a) => a && !BOT_SEA_ALL.has(a.type) && !a._isSkeletal).length;
   const sk =
-    (botCrossTrainSkill(G, c, pi) ?? '') || (land >= 3 ? 'tactical' : '') || (botPracticeSkill(c) ?? '') || 'tactical';
+    (botCrossTrainSkill(G, c, pi) ?? '') ||
+    (land >= theDefenders.theLandUnitsFromWhichADefenderDrillsTactical ? 'tactical' : '') ||
+    (botPracticeSkill(c) ?? '') ||
+    'tactical';
   const pr =
-    sk === 'sage' && (Number(theSkillsOf(c).sage) || 0) >= 2
+    sk === 'sage' && (Number(theSkillsOf(c).sage) || 0) >= theDefenders.theSageLevelFromWhichADefenderResearches
       ? { action: 'research', target: '', extra: '', desc: 'Research' }
       : { action: 'practice', target: sk, extra: '', desc: 'Practice ' + theLabelOf(sk) };
   while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...pr });
@@ -1478,7 +1587,7 @@ function theWayOnThePath(d: number | undefined): number {
 // Filling a character's five phases: botFillOrders and its practice fallback are in bots/spellcraft.ts; the drill, the
 // role skill, the contact tests, botMoveOrder, the pathing (botPathDirs, botPathLen) and the frontier (botIsEdge,
 // botFrontierTarget) in bots/strategy.ts.
-// HOME THREAT — the strongest at-war enemy host standing within 2 hops of the capital (a human
+// HOME THREAT — the strongest at-war enemy host standing near the capital (a human
 // massing on the border). {force, provId} or null.
 export function botHomeThreat(G: GameState, pi: number) {
   const hid = botHomeId(G, pi);
@@ -1497,7 +1606,13 @@ export function botHomeThreat(G: GameState, pi: number) {
       continue;
     if (!botSeesChar(G, pi, e)) continue; // only a host we can see
     const P = G.world.provinces[e.location];
-    if (!P || hexDistP(P, H, G.world.cols) > 2) continue;
+    if (
+      !P ||
+      hexDistP(P, H, G.world.cols) >
+        THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsDefenders
+          .theHexesFromTheCapitalWithinWhichAnEnemyHostIsAHomeThreat
+    )
+      continue;
     const f = botForceStrength(e.armies);
     if (!best || f > best.force) best = { force: f, provId: P.id };
   }
@@ -1550,6 +1665,7 @@ export function botScanTargets(
   visited: ReadonlySet<number> | null | undefined,
 ) {
   const margin = botMarginFor(G, pi, c, T);
+  const theMarch = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsHostsMarch;
   // `myStr` is the column's plain-ground battle force (possibly discounted for fights already
   // chained this turn); re-project it onto each target's terrain so a mountain front line is read
   // honestly.
@@ -1607,10 +1723,13 @@ export function botScanTargets(
       ? botHostsBesideATargetThatRideToItsDefence(G, pi, N, P.id, _pins)
       : { force: 0, units: 0 };
     targetStr += ride.force * BOT_DEF_BONUS; // 2026-11: the owner's hosts beside it ride in
-    let effMargin = ec.hasKing ? margin * 0.9 : margin;
+    let effMargin = ec.hasKing ? margin * theMarch.theShareOfTheMarginAHostFacesWhenTheFoeHasAKing : margin;
     effMargin = botHostMargin(effMargin, ec.units + rem.units + ride.units); // 1.5–2× against a general
     if (targetStr > 0 && strIn(N.terrain) < targetStr * effMargin) continue;
-    const terrainEdge = plainStr > 0 ? (strIn(N.terrain) / (plainStr * k) - 1) * 15 : 0; // fight where OUR troops stand tallest
+    const terrainEdge =
+      plainStr > 0
+        ? (strIn(N.terrain) / (plainStr * k) - 1) * theMarch.theWorthOfTheShareByWhichATargetsGroundRaisesAHostsForce
+        : 0; // fight where OUR troops stand tallest
     // a winnable enemy HOST is the prize — the bigger the stack we can smash, the better.
     // 2026-09-12: an ally's enemy is the enemy to press — a shared front ends the war sooner.
     // Sept 2026 (Toby: avoid stronger armies): a province standing beside an enemy host we could not beat is a trap
@@ -1622,8 +1741,11 @@ export function botScanTargets(
         const kc = botEnemyChars(G, K, pi);
         /* a pinned host cannot come to its neighbour's aid */ const kr = botRememberedHostAt(G, pi, K.id);
         const f = kc.force + kr.strength;
-        if (f > 0 && strIn(N.terrain) < f * 1.2) {
-          trap = -25;
+        if (
+          f > 0 &&
+          strIn(N.terrain) < f * theMarch.theTimesAHostBesideATargetsStrengthTheColumnMustReachToAvoidATrap
+        ) {
+          trap = -theMarch.whatATargetBesideAnUnbeatableHostTakesOffItsScore;
           break;
         }
       }
@@ -1633,14 +1755,16 @@ export function botScanTargets(
       targetStr +
       (enemyTarget ? T.rivalBias : 0) +
       ec.value +
-      ec.units * 3 +
+      ec.units * theMarch.theWorthOfEachUnitATargetsDefendersLead +
       terrainEdge +
       (ec.units > 0 ? T.rivalBias : 0) +
       trap +
       (enemyTarget && botMutualFoe(G, pi, N.owner) ? T.rivalBias : 0) +
-      (enemyTarget && botAllyNear(G, pi, N) ? T.rivalBias / 2 : 0); // Sept 2026 (R7): press the front an ally is already on
+      (enemyTarget && botAllyNear(G, pi, N)
+        ? T.rivalBias / theMarch.theNumberTheRivalBiasIsDividedByWhenAnAllyIsNearATarget
+        : 0); // Sept 2026 (R7): press the front an ally is already on
     if (N.terrain === 'sea') {
-      score -= c._botRole === 'admiral' ? 0 : 40; // sea is the ADMIRAL's front; others claim it only when land is exhausted
+      score -= c._botRole === 'admiral' ? 0 : theMarch.whatSeaTakesOffATargetsScoreForAHostThatIsNotAnAdmirals; // sea is the ADMIRAL's front; others claim it only when land is exhausted
       if (botIsLoadedFleet(c.armies))
         for (let j = 0; j < 6; j++) {
           const K = botNeighbourProv(G, N, j);
@@ -1651,7 +1775,9 @@ export function botScanTargets(
             K.owner !== pi &&
             botRelationRaw(G, pi, K.owner) === THE_STATES_TWO_REALMS_STAND_IN.atWar
           ) {
-            score += 40 + T.rivalBias * 2;
+            score +=
+              theMarch.theWorthOfASeaTargetBesideAnEnemyShoreToALoadedFleet +
+              T.rivalBias * theMarch.theTimesTheRivalBiasASeaTargetBesideAnEnemyShoreAdds;
             break;
           }
         }
@@ -1661,7 +1787,7 @@ export function botScanTargets(
   return { best, reinforce, maxThreat, threatDir };
 }
 // CHAINED HOPS — continue a march from a predicted position: attack the next winnable neighbour,
-// else walk toward the frontier. Strength is discounted 15% per fight fought (losses) and each
+// else walk toward the frontier. Strength is discounted for each fight fought (losses) and each
 // extra hop that fights demands a stiffer margin; at most three (BOT_MAX_FIGHTS) per turn are chained.
 // The bots' first version's weights' `tuning` (B-17s).
 export const BOT_MAX_FIGHTS =
@@ -1678,11 +1804,20 @@ export function botChainHops(
   fights: number | null | undefined,
 ) {
   const moves: PhaseOrder[] = [];
+  const theMarch = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsHostsMarch;
   let cur = startProv,
     str = myStr,
     fought = Number(fights) || 0;
   while (hopsLeft > 0 && cur) {
-    const scan = botScanTargets(G, pi, c, cur, str / (fought ? 1.2 : 1), T, visited);
+    const scan = botScanTargets(
+      G,
+      pi,
+      c,
+      cur,
+      str / (fought ? theMarch.theFactorEachFightFoughtDividesAHostsStrengthBy : 1),
+      T,
+      visited,
+    );
     if (scan.best && str === 0 && scan.best.targetStr > 0) scan.best = null; // exhausted host: no third fight
     if (scan.best) {
       moves.push(botMoveOrder(scan.best.dirIdx, scan.best.targetStr > 0 ? 'Attack' : 'Advance'));
@@ -1690,7 +1825,7 @@ export function botChainHops(
       cur = scan.best.N;
       hopsLeft--;
       if (scan.best.targetStr > 0) {
-        str *= 0.85;
+        str *= theMarch.theShareOfAHostsStrengthLeftAfterAFight;
         fought++;
         if (fought >= BOT_MAX_FIGHTS) str = 0;
       } // 2026-09-29 (Toby: attack more than one enemy province a year): three fights a year (was two), then only unguarded ground — every hop is used
@@ -1711,8 +1846,8 @@ export function botChainHops(
   }
   return moves;
 }
-// DISTANT STRIKE: BFS through the bot's own (and allied) land up to 8 hops from P for the staging
-// province whose winnable neighbour scores best (tax, weakness, rival bias, minus 4/hop of
+// DISTANT STRIKE: BFS through the bot's own (and allied) land a long way from P for the staging
+// province whose winnable neighbour scores best (tax, weakness, rival bias, minus each hop of
 // marching). Returns the move list: the path as far as this turn's hops allow, then — if a hop
 // remains on arrival — the attack itself and any chained follow-ups. null when nothing winnable
 // exists in reach.
@@ -1728,6 +1863,7 @@ export function botDistantStrike(
   if (maxHops <= 0) return null;
   const _pins = botPins(G, pi);
   const margin = botMarginFor(G, pi, c, T);
+  const theMarch = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsHostsMarch;
   const plainStr = botBattleForce(G, c, null, 'plain', undefined);
   const k = plainStr > 0 ? myStr / plainStr : 1;
   const strIn = (t: string) => botBattleForce(G, c, null, t, undefined) * k;
@@ -1735,7 +1871,7 @@ export function botDistantStrike(
   let q = [P],
     depth = 0,
     best: { readonly id: number; readonly sc: number } | null = null;
-  while (q.length && depth < 8) {
+  while (q.length && depth < theMarch.theMostStepsAStrikeLooksAcrossForAStagingProvince) {
     const next: Province[] = [];
     depth++;
     for (const cur of q) {
@@ -1767,21 +1903,27 @@ export function botDistantStrike(
             ? botHostsBesideATargetThatRideToItsDefence(G, pi, X, N.id, _pins)
             : { force: 0, units: 0 };
           tStr += ride.force * BOT_DEF_BONUS; // 2026-11: the owner's hosts beside it ride in
-          let effMargin = ec.hasKing ? margin * 0.9 : margin;
+          let effMargin = ec.hasKing ? margin * theMarch.theShareOfTheMarginAHostFacesWhenTheFoeHasAKing : margin;
           effMargin = botHostMargin(effMargin, ec.units + rem.units + ride.units);
           if (tStr > 0 && strIn(X.terrain) < tStr * effMargin) continue;
-          const terrainEdge = plainStr > 0 ? (strIn(X.terrain) / (plainStr * k) - 1) * 15 : 0;
+          const terrainEdge =
+            plainStr > 0
+              ? (strIn(X.terrain) / (plainStr * k) - 1) *
+                theMarch.theWorthOfTheShareByWhichATargetsGroundRaisesAHostsForce
+              : 0;
           const v =
             (X.tax || 0) * T.taxScoreWeight -
             tStr +
             (enemyTarget ? T.rivalBias : 0) +
             ec.value +
-            ec.units * 3 -
-            depth * 4 +
+            ec.units * theMarch.theWorthOfEachUnitATargetsDefendersLead -
+            depth * theMarch.whatEachStepOfMarchingTakesOffAStrikesTarget +
             terrainEdge +
             (ec.units > 0 ? T.rivalBias : 0) +
             (enemyTarget && botMutualFoe(G, pi, X.owner) ? T.rivalBias : 0) +
-            (enemyTarget && botAllyNear(G, pi, X) ? T.rivalBias / 2 : 0);
+            (enemyTarget && botAllyNear(G, pi, X)
+              ? T.rivalBias / theMarch.theNumberTheRivalBiasIsDividedByWhenAnAllyIsNearATarget
+              : 0);
           if (sc == null || v > sc) sc = v;
         }
         if (sc != null && (!best || sc > best.sc)) best = { id: N.id, sc };

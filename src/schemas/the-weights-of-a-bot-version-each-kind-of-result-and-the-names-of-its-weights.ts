@@ -436,6 +436,168 @@ const TheWeightsOfTheWorkOfASpecialistSchema = z.object({
   theSpyAttemptsBeforeASpyLiesInWait: z.number(),
 });
 
+/** What draws a thief to a mark, a vault or a hoard, and how far he looks for each (botStealTarget, botThiefOrders, bots/specialists.ts). */
+const TheWeightsOfAThiefsTargetsSchema = z.object({
+  /** A rival king adds this to his worth as a mark to rob. */
+  theWorthOfARivalKingAsAThievesMark: z.number(),
+  /** Any other rival hero adds this to his worth as a mark to rob. */
+  theWorthOfARivalHeroAsAThievesMark: z.number(),
+  /** Each item a mark carries adds this to his worth as a mark to rob. */
+  theWorthOfEachItemAMarkCarriesToAThief: z.number(),
+  /** A mark who leads a company takes this off his worth as a mark to rob. */
+  whatALeadingMarkTakesOffAThievesTarget: z.number(),
+  /** A mark standing in his realm's capital adds this to his worth as a mark to rob. */
+  theWorthOfARivalCapitalAsAThievesMark: z.number(),
+  /** A rival province's garrison adds one to its worth as a target to rob for each company in it, this many at most. */
+  theMostGarrisonsThatAddToAThievesTarget: z.number(),
+  /** Each step away takes this off a thief's target: a mark, a garrison or a vault. */
+  whatEachStepAwayTakesOffAThievesTarget: z.number(),
+  /** A thief looks for a mark or a garrison to rob this many steps away at most. */
+  theProvincesAwayAThiefLooksForAMarkToRob: z.number(),
+  /** A thief of this skill level or more, his realm at war, looks for a vault to break into. */
+  theThiefSkillFromWhichAThiefAtWarBreaksIntoAVault: z.number(),
+  /** A thief looks for a vault to break into this many steps away at most. */
+  theProvincesAwayAThiefLooksForAVaultToBreakInto: z.number(),
+  /** A vault in a province whose garrison counts takes this off its worth as a target. */
+  whatAGuardedVaultTakesOffAThievesTarget: z.number(),
+  /** Each this much gold a rival realm holds adds one to the worth of a vault of its. */
+  theGoldThatMakesAPointOfAVaultsWorthToAThief: z.number(),
+  /** A rival's capital adds this to its worth as a vault to break into. */
+  theWorthOfARivalCapitalAsAVaultToAThief: z.number(),
+  /** A thief of this skill level or more may go to rob a guardian's hoard. */
+  theThiefSkillFromWhichAThiefRobsAGuardiansHoard: z.number(),
+  /** A thief goes to rob a guardian's hoard when his chance to steal from it is this many in a hundred or more. */
+  theChanceFromWhichAThiefRobsAGuardiansHoard: z.number(),
+  /** A thief looks for a guardian's hoard to rob this many steps away at most. */
+  theProvincesAwayAThiefLooksForAHoardToRob: z.number(),
+  /** A thief who has stolen this many times in a season lies in wait for the rest of it. */
+  theStealAttemptsBeforeAThiefLiesInWait: z.number(),
+});
+
+/** The skill levels from which each role has work of its own, and the work of a scout, a spy and a thief that goes beyond a target (botRoleWork, botRoleReady, botRoleTrain, bots/specialists.ts). */
+const TheWeightsOfARolesWorkSchema = z.object({
+  /** A slayer of this Melee level or more, with no lair to grow into, does a scout's work. */
+  theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts: z.number(),
+  /** A scout of this Explorer level or more charts the ground beside him. */
+  theExplorerLevelFromWhichAScoutChartsGroundBesideHim: z.number(),
+  /** A spy of this skill level or more has work of his own; below it he trains. */
+  theSpySkillFromWhichASpyHasWork: z.number(),
+  /** A spy of this skill level or more may assassinate an enemy hero in his province. */
+  theSpySkillFromWhichASpyAssassinates: z.number(),
+  /** A spy of this skill level or more, his realm at war, may sabotage an enemy province. */
+  theSpySkillFromWhichASpyAtWarSabotages: z.number(),
+  /** An enemy capital adds this to the tax of a province as its worth to sabotage. */
+  theWorthOfARivalCapitalToSabotage: z.number(),
+  /** A thief of this skill level or more has work of his own; below it he trains. */
+  theThiefSkillFromWhichAThiefHasWork: z.number(),
+  /** A mage trains his first school up to this level before he trains the weaker of the two; he is ready for his work at this level. */
+  theLevelOfAMagesFirstSchoolBeforeTheTwoRiseTogether: z.number(),
+  /** A slayer of this level of Melee or Archery or more is ready for his role's work. */
+  theLevelOfMeleeOrArcheryFromWhichASlayerIsReady: z.number(),
+});
+
+/** Where a mage walks to cast and what draws him there (botMageOrders, bots/specialists.ts). */
+const TheWeightsOfAMagesWorkSchema = z.object({
+  /** A mage looks for a wandering hero to charm this many steps away at most. */
+  theProvincesAwayAMageLooksForAWandererToCharm: z.number(),
+  /** A rival general within this many turns of his last placing may be hexed. */
+  theTurnsAGeneralMayBeHexedAfterHisLastPlacing: z.number(),
+  /** A mage goes to hex a general this many steps away at most. */
+  theProvincesAwayAMageGoesToHexAGeneral: z.number(),
+  /** Each unit a general leads adds this to his worth as the one to hex. */
+  theWorthOfEachUnitAGeneralToHexLeads: z.number(),
+  /** A king adds this to his worth as the one to hex. */
+  theWorthOfAKingToHex: z.number(),
+  /** Each step away takes this off a general's worth as the one to hex. */
+  whatEachStepAwayTakesOffAGeneralToHex: z.number(),
+  /** A necromancer goes to raise battlefield dead this many steps away at most. */
+  theProvincesAwayANecromancerGoesToBattlefieldDead: z.number(),
+  /** A white mage goes to bless a province this many steps away at most. */
+  theProvincesAwayAWhiteMageGoesToBlessGround: z.number(),
+  /** Each owned neighbour adds this share of its tax to the worth of blessing a province. */
+  theShareOfAnOwnedNeighboursTaxThatAddsToAProvincesBlessingWorth: z.number(),
+  /** A mage with nothing to cast joins a general who leads this many units or more. */
+  theUnitsAGeneralMustLeadForAMageToJoinHim: z.number(),
+  /** A mage goes to join a general this many steps away at most. */
+  theProvincesAwayAMageGoesToJoinAGeneral: z.number(),
+  /** A mage plans this many casts at most to hex a general. */
+  theMostCastsAMageGivesToHexAGeneral: z.number(),
+  /** A mage with a general at his side plans this many casts at most. */
+  theMostCastsAMageGivesBesideAGeneral: z.number(),
+  /** A mage plans this many casts at most to bless a province. */
+  theMostCastsAMageGivesToBlessAProvince: z.number(),
+});
+
+/** Which lair an unarmed fighter goes to, and how far (botLairTarget, botLairOrders, bots/specialists.ts: called only by the plan's tests today). */
+const TheWeightsOfAnUnarmedFightersLairSchema = z.object({
+  /** Each rank of a guardian's power adds this to the worth of its lair as a target for an unarmed fighter. */
+  theWorthOfEachRankOfAGuardianToALairTarget: z.number(),
+  /** Each step away takes this off the worth of a lair as a target for an unarmed fighter. */
+  whatEachStepAwayTakesOffALairTarget: z.number(),
+  /** An unarmed fighter looks for a lair this many steps away at most. */
+  theProvincesAwayAnUnarmedFighterLooksForALair: z.number(),
+});
+
+/** Where a defender takes his post, how far he walks to it and what he does there (botDefenderPost, botDefenderOrders, botHomeThreat, bots/specialists.ts). */
+const TheWeightsOfADefendersPostSchema = z.object({
+  /** The realm's capital adds this to the worth of a province a post covers. */
+  theWorthOfTheCapitalToADefendersPost: z.number(),
+  /** A province on the frontier adds this to the worth of a province a post covers. */
+  theWorthOfAFrontierProvinceToADefendersPost: z.number(),
+  /** A province that raises troops adds this to its worth as a post for a defender who leads none. */
+  theWorthOfARaisingPlaceToAnUnarmedDefender: z.number(),
+  /** Each whole multiple by which a province's ground raises a defender's force above his force on the plain adds this to its worth as a post. */
+  theWorthOfTheShareByWhichAProvincesGroundRaisesADefendersForce: z.number(),
+  /** Each step away takes this off the worth of a post. */
+  whatEachStepAwayTakesOffADefendersPost: z.number(),
+  /** A defender keeps his post while its worth is this share of the best post's, or more. */
+  theShareOfTheBestPostsWorthWhichKeepsADefenderAtHisPost: z.number(),
+  /** A defender walks this many steps to his post in a season at most. */
+  theMostStepsADefenderWalksToHisPostInASeason: z.number(),
+  /** A defender at his post gathers the garrison of an owned neighbour that holds more than this many units. */
+  theGarrisonUnitsAnOwnedNeighbourMustHoldAboveForADefenderToGatherThem: z.number(),
+  /** A defender who leads this many land units or more, with no better skill to raise, practises Tactical. */
+  theLandUnitsFromWhichADefenderDrillsTactical: z.number(),
+  /** A defender of this Sage level or more, whose skill to raise is Sage, researches. */
+  theSageLevelFromWhichADefenderResearches: z.number(),
+  /** An enemy host within this many hexes of the capital is a threat to it. */
+  theHexesFromTheCapitalWithinWhichAnEnemyHostIsAHomeThreat: z.number(),
+  /** A province that raises troops adds this to its worth as a post for a defender who leads troops. */
+  theWorthOfARaisingPlaceToAnArmedDefender: z.number(),
+  /** A defender at his post plans this many casts at most. */
+  theMostCastsADefenderGives: z.number(),
+});
+
+/** What a host weighs in a target's score and as it chains fights or strikes from afar (botScanTargets, botChainHops, botDistantStrike, bots/specialists.ts). */
+const TheWeightsOfAHostsMarchSchema = z.object({
+  /** A host facing a target where an enemy king stands asks this share of its usual margin. */
+  theShareOfTheMarginAHostFacesWhenTheFoeHasAKing: z.number(),
+  /** Each whole multiple by which a target's ground raises a host's force above its force on the plain adds this to the target's score. */
+  theWorthOfTheShareByWhichATargetsGroundRaisesAHostsForce: z.number(),
+  /** A target is a trap when the column's force on its ground is below this many times the strength of a host beside it. */
+  theTimesAHostBesideATargetsStrengthTheColumnMustReachToAvoidATrap: z.number(),
+  /** A trap takes this off the target's score. */
+  whatATargetBesideAnUnbeatableHostTakesOffItsScore: z.number(),
+  /** Each unit the defenders of a target lead adds this to its score. */
+  theWorthOfEachUnitATargetsDefendersLead: z.number(),
+  /** The rival bias is divided by this where an ally already stands near the target, and that share is added to its score. */
+  theNumberTheRivalBiasIsDividedByWhenAnAllyIsNearATarget: z.number(),
+  /** A sea province takes this off a target's score for any host that is not an admiral's. */
+  whatSeaTakesOffATargetsScoreForAHostThatIsNotAnAdmirals: z.number(),
+  /** A sea province beside the shore of an enemy at war adds this to its score for a loaded fleet. */
+  theWorthOfASeaTargetBesideAnEnemyShoreToALoadedFleet: z.number(),
+  /** The rival bias, this many times over, is added to a sea target's score beside the shore of an enemy at war. */
+  theTimesTheRivalBiasASeaTargetBesideAnEnemyShoreAdds: z.number(),
+  /** A host that has fought this turn reads its strength divided by this when it looks for its next target. */
+  theFactorEachFightFoughtDividesAHostsStrengthBy: z.number(),
+  /** A host keeps this share of its strength after each fight it chains. */
+  theShareOfAHostsStrengthLeftAfterAFight: z.number(),
+  /** A strike from afar looks for a staging province this many steps away at most. */
+  theMostStepsAStrikeLooksAcrossForAStagingProvince: z.number(),
+  /** Each step of marching to the staging province takes this off the strike's target score. */
+  whatEachStepOfMarchingTakesOffAStrikesTarget: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -454,6 +616,12 @@ export const TheWeightsOfABotVersionSchema = z.object({
   specialistsWanted: TheWeightsOfTheSpecialistsACourtWantsSchema,
   specialistsAptitude: TheWeightsOfTheAptitudesOfASpecialistSchema,
   specialistsWork: TheWeightsOfTheWorkOfASpecialistSchema,
+  specialistsTheft: TheWeightsOfAThiefsTargetsSchema,
+  specialistsRoleWork: TheWeightsOfARolesWorkSchema,
+  specialistsUnarmedFighters: TheWeightsOfAnUnarmedFightersLairSchema,
+  specialistsMageWork: TheWeightsOfAMagesWorkSchema,
+  specialistsDefenders: TheWeightsOfADefendersPostSchema,
+  specialistsHostsMarch: TheWeightsOfAHostsMarchSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;
