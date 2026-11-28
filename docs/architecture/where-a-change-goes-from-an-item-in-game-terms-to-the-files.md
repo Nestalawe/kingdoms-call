@@ -118,7 +118,7 @@ How a turn runs, and what `resolveTurn` calls in order: [the turn engine](the-tu
   rise, Tactical's most, the defender's edge, a Druid shortfall's step: `KC_THE_STRENGTH_A_DRUID_SHORTFALL_LEAVES_A_UNIT`,
   which `strengthLeftByADruidShortfall` reads too). The rest is the bots' own (B-06bq): the `battleStrength` kind of
   the bots' weights, a point of a host's strength, holds the levels of Tactical and Naval they weigh (each to 5, where
-  the battle differs: KD-477), their guess at a defence they can't see (a unit's strength, the tax bands, a rival's
+  the battle differs: KD-477), their guess at a defence they can't see (a unit's strength, a rival's
   factor) and their attack margin's floors, ease and stake. For example, a bot weighs a Naval 7 admiral's fleet at ×2.0.
 - **The tests:** a battle or a fight called on its own (`tests/lib/a-battle-called-directly.ts`,
   `tests/lib/personal-combat.ts`), or a staged turn. Fix the dice so the outcome is certain

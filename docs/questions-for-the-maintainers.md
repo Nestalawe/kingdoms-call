@@ -1,7 +1,7 @@
 # The questions waiting for the maintainers
 
 These are the questions about the game's rules that wait for a maintainer's answer. Each one names what its answer
-unlocks. None waits today.
+unlocks.
 
 **To answer on the GitHub website:** open this file, click the pencil icon, and write your answer on a new line under
 the question (for example "2026-11-20: (1)"). Then click **Commit changes**.
@@ -39,3 +39,13 @@ the question (for example "2026-11-20: (1)"). Then click **Commit changes**.
 Also open: the one point each ruling marked "(open question)" in [the rulings' index](rulings/README.md) leaves, in its
 "Open" line. For example, [R-082](rulings/R-082-run-them-down.md) leaves open whether +15% is the right figure.
 
+## 178. What hit points does a hero have when no maximum is written on him?
+
+Found on 2026-11-28 (B-17m, #876). *Unlocks:* one named default for the engine's 13 places and the bots' 19, and a row that stops the others differing.
+
+1. **20 (as built in the bots and 13 engine places).** A hero with no written maximum counts as 20; a new hero starts at 15 (18 if Orcish), so a missing maximum reads a hardier hero than a new one.
+2. **15 (`HPGAIN_START`, which a grave record also falls back to).** One default for all; the bots' plans and the engine's rest and heal read a hero a fifth lighter where a maximum is missing.
+
+*Assessment:* (2), a hero that has no maximum is a hero the game has not yet given one, and that is a new hero. *Example:* a hired hero of the made-up Eastmark realm arrives without a maximum: the portal shows 14, a rest heals him as if he had 20.
+
+*Touches:* none
