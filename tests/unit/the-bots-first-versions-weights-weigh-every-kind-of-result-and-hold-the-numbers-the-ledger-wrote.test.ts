@@ -181,9 +181,9 @@ test("a war's weights are the numbers BOT_WAR wrote before B-17r, each in its pl
     theTurnsAPeaceIsKeptBeforeWarIsWeighedAgain: 6,
     theShareOfAnAllysStrengthCountedOnItsSide: 0.6,
     theShareOfEachOtherFoesStrengthTakenOffTheRealmsOwn: 0.25,
-    theTurnsASightingOfARivalsHostCountsInItsStrength: 4,
+    theTurnsARivalsHostCountsInItsStrength: 4,
     theTurnsTheNewsOfABattleIsKept: 4,
-    theStrengthARivalsHostsCountAtLeastForEachLandProvinceSeenHeld: 5,
+    theStrengthARivalsHostsCountAtLeastForEachOfItsLandProvinces: 5,
     theProvincesFromItsCapitalAtWhichARivalsHostIsFarFromHome: 3,
     theTimesTheRealmsStrengthAtWhichAGrudgeYields: 5,
     theTimesTheRealmsStrengthAtWhichAGrudgeComesBack: 2,
@@ -230,7 +230,7 @@ test("a realm's tuning's weights are the numbers BOT_TUNING and BOT_DIFFICULTY w
     theShareOfTheFreeTreasuryTheWagesMayLeanOn: 0.35,
     theFactorTheBotsStrengthTakesTheAttackMarginsBy: 0.92,
     theFactorTheBotsStrengthTakesTheAssaultMarginBy: 0.9,
-    whatARivalsProvinceAddsToItsScoreAsATarget: 12,
+    theBiasTowardsARivalsProvinceOverNeutralLandInATargetsScore: 12,
     theShareOfTheIncomeTheWagesMayTakeInPeace: 0.97,
   });
 });
