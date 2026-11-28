@@ -80,7 +80,7 @@ a run's spare rows; their place stays here.
 | B-17t | The inline judgement numbers into the weights file: `specialists.ts`, part 1. `refactor-only` | The maintainers: the bots' judgement named, so it can be tuned | The ground for the redesign | Small | – | 🟦 | #882 | After B-17p: 675 inline numbers, file by file; `specialists.ts` down to the end of `botSpyOrders` (60 numbers, 50 weights in 3 kinds) |
 | B-17u | The same: `specialists.ts`, part 2. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #883 | After B-17t: from `botStealTarget` on to the end of the file (89 numbers, 64 weights in 5 kinds; the file is done) |
 | B-17v | The same: `missions.ts`, part 1. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #884 | After B-17u: `missions.ts` from the top to the end of `botLairTiers` (58 numbers, 55 weights in 4 kinds); B-17w starts at `botLairPlan` |
-| B-17w | The same: `missions.ts`, part 2. `refactor-only` | The same | The ground for the redesign | Small | – | ⬜ | | After B-17v |
+| B-17w | The same: `missions.ts`, part 2. `refactor-only` | The same | The ground for the redesign | Small | – | 🟦 | #885 | After B-17v: `missions.ts` from `botLairPlan` to the end (53 weights in 5 kinds); the file is finished |
 | B-17x | The same: `strategy.ts`. `refactor-only` | The same | The ground for the redesign | Small | – | ⬜ | | After B-17w |
 | B-17y | The same: `spellcraft.ts`. `refactor-only` | The same | The ground for the redesign | Small | – | ⬜ | | After B-17x |
 | B-17z | The same: `movement.ts`. `refactor-only` | The same | The ground for the redesign | Small | – | ⬜ | | After B-17y |
