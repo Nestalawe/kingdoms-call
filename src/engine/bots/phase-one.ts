@@ -46,6 +46,7 @@ import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { ABotRealmsLedger } from './intel.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import {
   THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
   THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
@@ -157,7 +158,9 @@ export function botIsFiller(o: AnOrderAsThePassReadsIt) {
 // given to one of our Elemental casters standing NEXT to it (never in it) with a casting to spare.
 // The planner treats a pinned province as sea this year — no attack into it, and no longer a "trap"
 // beside a target — so the generals strike the unflooded provinces around it instead.
-export const BOT_PIN_EDGE = 1.2;
+// The bots' first version's weights' `springPass` (B-17s).
+export const BOT_PIN_EDGE =
+  THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theTimesAnEnemyHostsStrengthAtWhichItIsBeatableWhereItStands;
 export function botPins(G: GameState, pi: number) {
   const cache = botTurnCache(G);
   cache.pins ??= {};

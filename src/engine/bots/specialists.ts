@@ -1601,7 +1601,9 @@ export function botScanTargets(
 // CHAINED HOPS — continue a march from a predicted position: attack the next winnable neighbour,
 // else walk toward the frontier. Strength is discounted 15% per fight fought (losses) and each
 // extra hop that fights demands a stiffer margin; at most two fights per turn are chained.
-export const BOT_MAX_FIGHTS = 3;
+// The bots' first version's weights' `tuning` (B-17s).
+export const BOT_MAX_FIGHTS =
+  THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theFightsAHostChainsInATurnBeforeItTakesOnlyUnguardedGround;
 export function botChainHops(
   G: GameState,
   pi: number,

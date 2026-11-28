@@ -12,8 +12,11 @@
 // number botDuelRating and the war bar's table (BOT_WAR.temper) wrote, and a point of a host's strength's (B-06bq),
 // each the number botBattleForce, botGuessDefence and botMarginFor wrote, a war's (B-17r), each the number BOT_WAR
 // wrote, a lair's (B-17r), each the number the BOT_LAIR_* names wrote, and a realm's tuning (B-17r), each the number
-// BOT_TUNING and BOT_DIFFICULTY wrote, in its place: a change of one is a change
-// of the bots' play (the balance matrix), never a refactor.
+// BOT_TUNING and BOT_DIFFICULTY wrote; then B-17s's: a duel's (BOT_DUEL, BOT_DUEL_WITHOUT_A_FORECAST), the Spring
+// pass's (BOT_P1, BOT_PIN_EDGE), a rival's unknown skills' (BOT_ASSUMED_SKILLS), and the names B-17s added to the gold
+// (the fleets' caps), the war (BOT_ALLY_ALIGN_DIST), the lair (BOT_RUMOUR_FUND_PER_SLAYER) and the tuning
+// (BOT_MAX_FIGHTS), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
+// refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
 // compiler's (`npm run check`), which a lower level can't run.
@@ -86,7 +89,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(101);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(125);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7, each in its place", () => {
@@ -100,6 +103,10 @@ test("a gold's weights are the numbers botLedger wrote before T7, each in its pl
     theShareOfTheFreeTreasuryASmallRealmsWagesMayLeanOn: 0.6,
     theUnitsEachDefenderLeadsAtFullStrength: 3,
     theShareOfTheWageCeilingHeldBackForTheDefenders: 0.2,
+    theShareOfTheWageCeilingTheAdmiralsFleetMayTake: 0.2,
+    theShareOfTheWageCeilingTheSkyGeneralsHostMayTake: 0.15,
+    theLeastWagesTheAdmiralsFleetMayTake: 4,
+    theLeastWagesTheSkyGeneralsHostMayTake: 4,
   });
 });
 
@@ -192,6 +199,7 @@ test("a war's weights are the numbers BOT_WAR wrote before B-17r, each in its pl
     theTimesTheBarAWarWithNoPrizeInReachMustClear: 1.3,
     theShareOfTheRivalsStrengthBelowWhichARealmAcceptsItsPeace: 0.9,
     theShareOfTheRivalsStrengthBelowWhichARealmWithNoPrizeInReachAcceptsItsPeace: 0.7,
+    theStepsOfAlignmentWithinWhichARealmCourtsAnotherRatherThanFightsIt: 1,
   });
 });
 
@@ -216,6 +224,7 @@ test("a lair's weights are the numbers the BOT_LAIR_* names wrote before B-17r, 
     theFightingSkillAHeroHasToAskOfPowerfulLairsEarly: 6,
     theFightingSkillAHeroHasToAskOfLegendaryLairsEarly: 8,
     theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain: 3,
+    theGoldSetAsideForEachSlayersRumours: 4,
   });
 });
 
@@ -232,5 +241,38 @@ test("a realm's tuning's weights are the numbers BOT_TUNING and BOT_DIFFICULTY w
     theFactorTheBotsStrengthTakesTheAssaultMarginBy: 0.9,
     whatARivalsProvinceAddsToItsScoreAsATarget: 12,
     theShareOfTheIncomeTheWagesMayTakeInPeace: 0.97,
+    theFightsAHostChainsInATurnBeforeItTakesOnlyUnguardedGround: 3,
+  });
+});
+
+test("a duel's weights are the numbers BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST wrote before B-17s, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel).toEqual({
+    theChanceToWinFromWhichAHeroAcceptsADuel: 0.5,
+    theChanceToWinFromWhichAKingAcceptsADuel: 0.6,
+    theMostChanceOfFallingAKingRisksInADuel: 0.1,
+    theChanceToWinFromWhichADuellistChallenges: 0.65,
+    theChanceOfFallingCountedWithNoForecastByOneRatedClearlyStronger: 0.05,
+    theChanceOfFallingCountedWithNoForecastByAnyOther: 0.3,
+  });
+});
+
+test("the Spring pass's weights are the numbers BOT_P1 and BOT_PIN_EDGE wrote before B-17s, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass).toEqual({
+    theStrengthAgainstTheFoeBelowWhichAHostInContactFallsBack: 0.75,
+    theStrengthAgainstTheFoeBelowWhichAHostNotPinningItsFoeFlees: 0.5,
+    theFactorTheEmergencyLevyRaisesTheWageCeilingBy: 1.2,
+    theLeastWagesTheEmergencyLevyRaisesTheCeilingAboveWhatTheRealmPays: 8,
+    theGoldTheWarChestHoldsForEachHostInContact: 10,
+    theMostShareOfTheFreeTreasuryTheWarChestHolds: 0.5,
+    theTimesAnEnemyHostsStrengthAtWhichItIsBeatableWhereItStands: 1.2,
+  });
+});
+
+test("a rival's unknown skills' weights are the numbers BOT_ASSUMED_SKILLS wrote before B-17s, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills).toEqual({
+    theMeleeAssumedOfARivalsHeroWhoseSkillsAreUnknown: 3,
+    theArcheryAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
+    theTacticalAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
+    theElementalAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
   });
 });

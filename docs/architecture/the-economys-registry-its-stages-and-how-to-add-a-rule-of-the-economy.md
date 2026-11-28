@@ -140,9 +140,16 @@ makes of that gold from its version's weights file.
   a point of a host's strength the sixth
   ([the bots' estimate of a battle](where-a-change-goes-from-an-item-in-game-terms-to-the-files.md#a-battles-or-a-fights-rule)),
   a war the seventh (the bar for war and the peace a realm sues for: `BOT_WAR`, `src/engine/bots/war.ts`, reads each
-  by name) and a lair's guardian the eighth (the slayer's ladder: the `BOT_LAIR_*` names, `src/engine/bots/missions.ts`
-  and `strategy.ts`), and a realm's tuning the ninth (its attack margins, its targets' scores and its wages before its
-  alignment's and race's overlays: `BOT_TUNING` and `BOT_DIFFICULTY`, `src/engine/bots/intel.ts`).
+  by name, and whom a realm courts: `BOT_ALLY_ALIGN_DIST`) and a lair's guardian the eighth (the slayer's ladder: the
+  `BOT_LAIR_*` names, `src/engine/bots/missions.ts` and `strategy.ts`, and the slayers' rumour fund), a realm's tuning
+  the ninth (its attack margins, its targets' scores and its wages before its alignment's and race's overlays:
+  `BOT_TUNING` and `BOT_DIFFICULTY`, `src/engine/bots/intel.ts`, and a march's chained fights: `BOT_MAX_FIGHTS`), a
+  duel the tenth (when a general accepts or challenges: `BOT_DUEL`, `missions.ts`), the Spring pass the eleventh (a
+  host in contact holding, falling back or fleeing, the levy, the war chest and the pins: `BOT_P1`, `strategy.ts`, and
+  `BOT_PIN_EDGE`, `phase-one.ts`) and a rival's unknown skills the twelfth (`BOT_ASSUMED_SKILLS`, `intel.ts`). The
+  gold's names hold the fleets' caps too (`BOT_NAV_CAP_*`, `BOT_AIR_CAP_*`). Every named table of the bots now reads
+  the file, but for the hex grid's offsets (`BOT_OFF_EVEN`, `BOT_OFF_ODD`: a rule's values), a lair's grades
+  (`BOT_LAIR_GRADE`: their order) and the infiltration's reach (`BOT_INFILTRATE_RANGE`: KD-523).
 
 ## The tests
 
