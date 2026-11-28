@@ -39,6 +39,7 @@ import { anAbilityInWords, label, THE_HYGIENES_DROPS_IN_WORDS } from './labels.t
 import { compareRuns, meaningfulChanges, type Change, type Verdict } from './paired.ts';
 import type { LogEntry } from './play.ts';
 import { baseOf, isShare, valueOf, type Stats } from './stats.ts';
+import { whatIsNotMeasuredYet } from './the-check-that-every-alignment-ability-is-used-in-some-game.ts';
 import {
   ABILITY_STAND_IN,
   ABILITY_USED,
@@ -957,7 +958,7 @@ export function theBotsStatisticsInBrief(games: readonly { id: string; stats: St
     `In the ${String(bots.length)} computer-played games, the bots used ${String(counts.length - never.length)} of the ` +
       `${String(counted.length)} alignment abilities counted by their use` +
       (never.length
-        ? `; never used: ${aList(never.map((a) => `${anAbilityInWords(a.key)} (the ${a.alignment} realms, in none of the ${String(a.games)} games they played)`))}.`
+        ? `; never used: ${aList(never.map((a) => `${anAbilityInWords(a.key)} (the ${a.alignment} realms, in none of the ${String(a.games)} bot games they played)`))}.`
         : ', every one at least once.'),
   ];
   const least = KC_ALIGNMENTS.flatMap((alignment) => {
@@ -971,7 +972,8 @@ export function theBotsStatisticsInBrief(games: readonly { id: string; stats: St
   });
   if (least.length) out.push(`The least used of each alignment's: ${aList(least)}.`);
   out.push(
-    `Not counted as a use: ${String(standIns.length)} stand-ins (what the world holds where the ability could act): ` +
+    `What isn't measured yet (the ability check passes each, by name): ${whatIsNotMeasuredYet().join('; ')}. ` +
+      `Not counted as a use: ${String(standIns.length)} stand-ins (what the world holds where the ability could act): ` +
       `${aList(standIns.map((a) => anAbilityInWords(a.key)))}; and ${String(notYet.length)} not countable yet: ` +
       `${aList(notYet.map((a) => anAbilityInWords(a.key)))}.`,
   );

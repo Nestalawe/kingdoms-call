@@ -118,9 +118,20 @@ export interface Province {
 }
 export interface World {
   world: { cols: number; rows: number; provinces: Province[] };
-  players: { provinces?: number[]; homeProvinceId?: number }[];
+  players: { provinces?: number[]; homeProvinceId?: number; gold?: number }[];
   characters: Hero[];
   relations?: Record<string, string>;
+  mercenaries?: Band[];
+}
+/** A mercenary band roaming a province. */
+export interface Band {
+  id: string;
+  type: string;
+  quality: string;
+  race: string;
+  unitName: string;
+  location: number;
+  isSea: boolean;
 }
 
 /** The first living hero of realm `pi` who isn't its king. */

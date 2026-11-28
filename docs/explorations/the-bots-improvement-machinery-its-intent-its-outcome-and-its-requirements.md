@@ -132,6 +132,7 @@ can answer "does the Undead bot raise its dead, how often, and does it waste ord
     the state;
   - the Neutral mercenary discount stands in a named scenario, with its row, until the bots hire mercenaries;
   - the Undead realm's zeal, 0%, is listed as "cannot act", its reason a maintainer's line.
+  Built by B-17e: [the ability check](../architecture/the-balance-matrix.md#the-bots-statistics-by-alignment-and-race).
 - **BOT-S4 (should).** A profile per alignment, set against BOT-D: wars declared, treaties made and broken, doctrine
   chosen, and the share of the treasury spent on armies, heroes and spells.
 - **BOT-S5 (must).** The statistics only read: every game plays the same with them and without them.

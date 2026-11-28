@@ -1,8 +1,11 @@
 // npm run balance: play the balance matrix (plan P1-02) and compare it with the committed baseline, game by game. It
 // fails if any game differs, if a game fails, or if a scripted case never happens. First it plays every named scenario
-// that requires figures (P1-15e2b: scenario.ts's `requires`; today a-chase-held-by-an-unresolved-battle), on this site
-// or KC_SITE's, and fails if one misses a requirement: it stages a case the games meet only by luck, so the games no
-// longer have to (CASES_A_REQUIRED_SCENARIO_GIVES). Not with --only, nor when a scenario is named.
+// that requires figures (P1-15e2b: scenario.ts's `requires`; today a-chase-held-by-an-unresolved-battle and
+// a-neutral-realm-hires-a-mercenary-band-at-its-discount), on this site or KC_SITE's, and fails if one misses a
+// requirement: it stages a case the games meet only by luck or never, so the games no longer have to
+// (CASES_A_REQUIRED_SCENARIO_GIVES, and the ability check's stand-ins). Not with --only, nor when a scenario is named.
+// It fails too if an alignment ability is used in none of the set's games and isn't on the ability check's list
+// (B-17e: the-check-that-every-alignment-ability-is-used-in-some-game.ts); not with --only, nor with KC_SITE.
 // npm run balance:update: play set A and set B and rewrite both baselines (tests/balance/baseline/), in the PR that
 // changes play.
 //
@@ -58,6 +61,11 @@ import { show, showDiff, showRange, theBotsStatisticsInBrief } from './report.ts
 import { playRuns, playScenario } from './scenario-run.ts';
 import { scenarioFile, scenarioNames, whatAScenariosRunsMissed, type Scenario } from './scenario.ts';
 import { buildSite, forkPool } from './sides.ts';
+import {
+  theAbilitiesTheGamesFailOn,
+  THE_SCENARIOS_THE_STAND_INS_NAME,
+  whatAStandInsScenarioLacks,
+} from './the-check-that-every-alignment-ability-is-used-in-some-game.ts';
 import {
   isAnAbilitysFigure,
   withTheAbilitiesJoined,
@@ -169,6 +177,13 @@ async function playTheRequiredScenarios(jobs: number): Promise<RequiredScenarios
       lines.push(`The scenario "${name}" is to give a scripted case, but it isn't there or requires nothing.`);
       failed = true;
     }
+  for (const standIn of THE_SCENARIOS_THE_STAND_INS_NAME) {
+    const lacks = whatAStandInsScenarioLacks(standIn, required.find((s) => s.name === standIn.scenario)?.scenario);
+    if (lacks) {
+      lines.push(lacks);
+      failed = true;
+    }
+  }
   const where = process.env['KC_SITE'] ? ` on ${process.env['KC_SITE']}` : '';
   for (const { name, scenario } of required) {
     const played = await playRuns(name, scenario.runs, jobs);
@@ -398,6 +413,7 @@ async function judgeTheSet(
   const played = await playEveryRealm();
   const joined = theGamesWithTheBotsStatisticsJoined(set, results, played?.results ?? null);
   for (const line of theBotsStatisticsInBrief(joined)) console.log(line);
+  if (!values.only) failed = theAbilityCheck(joined, played != null) || failed;
   const kept = joined.map(keep);
   if (values.out) writeRun(values.out, kept);
   if (values.update) {
@@ -464,6 +480,24 @@ async function judgeTheSet(
     console.log('\nIf this change is meant to change play: npm run balance:update, and commit the baseline.');
   }
   return everyRealm(set, results, played, values) || failed;
+}
+
+/** The ability check (B-17e, BOT-S3) on a set's games, its lines printed: true if it fails. Not made without the vm
+ *  half (KC_SITE), whose count of each ability's use it reads. */
+function theAbilityCheck(games: readonly GameResult[], withTheVmHalf: boolean): boolean {
+  if (!withTheVmHalf) {
+    console.log(
+      "The ability check: not made, because every realm's half isn't played, and it reads that half's count.",
+    );
+    return false;
+  }
+  const fails = theAbilitiesTheGamesFailOn(games);
+  console.log(
+    fails.length
+      ? `The ability check failed: an alignment ability is used in none of the games, or its entry on the list no longer holds:\n  ${fails.join('\n  ')}`
+      : 'The ability check: every alignment ability is used in some game, or is on its list (a stand-in, or cannot act).',
+  );
+  return fails.length > 0;
 }
 
 /** The second half: the games with every realm's report (`played`: played now, or a joined run's; null: not played),
