@@ -192,13 +192,12 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theMostShareOfTheFreeTreasuryTheWarChestHolds: 0.5,
     theTimesAnEnemyHostsStrengthAtWhichItIsBeatableWhereItStands: 1.2,
   },
-  /** A rival's hero whose skills the realm's spies don't know (botSkillsFor, bots/intel.ts: the table
-   *  BOT_ASSUMED_SKILLS reads these): the profile the bots plan against, as a player would guess from the report's
-   *  silence (Toby, September 2026). */
+  /** A rival's hero: the skills the bots' estimates assume of him by default (botSkillsFor, bots/intel.ts: the table
+   *  BOT_ASSUMED_SKILLS reads these; Toby, September 2026). */
   rivalsSkills: {
-    theMeleeAssumedOfARivalsHeroWhoseSkillsAreUnknown: 3,
-    theArcheryAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
-    theTacticalAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
-    theElementalAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
+    theMeleeTheBotsAssumeOfARivalsHeroByDefault: 3,
+    theArcheryTheBotsAssumeOfARivalsHeroByDefault: 2,
+    theTacticalTheBotsAssumeOfARivalsHeroByDefault: 2,
+    theElementalTheBotsAssumeOfARivalsHeroByDefault: 2,
   },
 } satisfies TheWeightsOfABotVersion;

@@ -13,7 +13,7 @@
 // each the number botBattleForce, botGuessDefence and botMarginFor wrote, a war's (B-17r), each the number BOT_WAR
 // wrote, a lair's (B-17r), each the number the BOT_LAIR_* names wrote, and a realm's tuning (B-17r), each the number
 // BOT_TUNING and BOT_DIFFICULTY wrote; then B-17s's: a duel's (BOT_DUEL, BOT_DUEL_WITHOUT_A_FORECAST), the Spring
-// pass's (BOT_P1, BOT_PIN_EDGE), a rival's unknown skills' (BOT_ASSUMED_SKILLS), and the names B-17s added to the gold
+// pass's (BOT_P1, BOT_PIN_EDGE), a rival's hero's assumed skills' (BOT_ASSUMED_SKILLS), and the names B-17s added to the gold
 // (the fleets' caps), the war (BOT_ALLY_ALIGN_DIST), the lair (BOT_RUMOUR_FUND_PER_SLAYER) and the tuning
 // (BOT_MAX_FIGHTS), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
 // refactor.
@@ -92,7 +92,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
   expect(theNamesChecked, 'the names checked, every kind').toBe(125);
 });
 
-test("a gold's weights are the numbers botLedger wrote before T7, each in its place", () => {
+test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold).toEqual({
     theMostUnitsOfAnEnemyHostThatLeaveTheRealmAtPeace: 5,
     theShareOfTheIncomeTheWagesMayTakeOnAWarFooting: 1,
@@ -172,7 +172,7 @@ test("a point of a host's strength's weights are the numbers botBattleForce, bot
   });
 });
 
-test("a war's weights are the numbers BOT_WAR wrote before B-17r, each in its place", () => {
+test("a war's weights are the numbers BOT_WAR wrote before B-17r and BOT_ALLY_ALIGN_DIST before B-17s, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.war).toEqual({
     theBarTheRealmsStrengthAgainstARivalsMustClearForWar: 0.8,
     theLowestTheBarForWarFalls: 0.75,
@@ -203,7 +203,7 @@ test("a war's weights are the numbers BOT_WAR wrote before B-17r, each in its pl
   });
 });
 
-test("a lair's weights are the numbers the BOT_LAIR_* names wrote before B-17r, each in its place", () => {
+test("a lair's weights are the numbers the BOT_LAIR_* names wrote before B-17r and the rumour fund before B-17s, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair).toEqual({
     theRumourBandFromWhichAHeroRisksAWeakLair: 80,
     theShareOfHisHitPointsAHeroRisksAWeakLairWith: 0.95,
@@ -228,7 +228,7 @@ test("a lair's weights are the numbers the BOT_LAIR_* names wrote before B-17r, 
   });
 });
 
-test("a realm's tuning's weights are the numbers BOT_TUNING and BOT_DIFFICULTY wrote before B-17r, each in its place", () => {
+test("a realm's tuning's weights are the numbers BOT_TUNING and BOT_DIFFICULTY wrote before B-17r and BOT_MAX_FIGHTS before B-17s", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning).toEqual({
     theStrengthRatioAKingsAttackWants: 1.35,
     theStrengthRatioAHerosAttackWants: 1.2,
@@ -268,11 +268,11 @@ test("the Spring pass's weights are the numbers BOT_P1 and BOT_PIN_EDGE wrote be
   });
 });
 
-test("a rival's unknown skills' weights are the numbers BOT_ASSUMED_SKILLS wrote before B-17s, each in its place", () => {
+test("a rival's hero's assumed skills' weights are the numbers BOT_ASSUMED_SKILLS wrote before B-17s, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills).toEqual({
-    theMeleeAssumedOfARivalsHeroWhoseSkillsAreUnknown: 3,
-    theArcheryAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
-    theTacticalAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
-    theElementalAssumedOfARivalsHeroWhoseSkillsAreUnknown: 2,
+    theMeleeTheBotsAssumeOfARivalsHeroByDefault: 3,
+    theArcheryTheBotsAssumeOfARivalsHeroByDefault: 2,
+    theTacticalTheBotsAssumeOfARivalsHeroByDefault: 2,
+    theElementalTheBotsAssumeOfARivalsHeroByDefault: 2,
   });
 });

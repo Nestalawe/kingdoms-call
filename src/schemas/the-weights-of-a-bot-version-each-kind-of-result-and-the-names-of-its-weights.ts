@@ -286,13 +286,13 @@ const TheWeightsOfARealmsTuningSchema = z.object({
 /** A duel: the odds a bot's general wants before he accepts or challenges, on the duel's forecast (botDuelStance,
  *  bots/missions.ts: the tables BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST read these). */
 const TheWeightsOfADuelSchema = z.object({
-  /** A hero accepts a duel from this chance to win against each general seen, ... */
+  /** A hero accepts a duel from this chance to win against each enemy general in reach, ... */
   theChanceToWinFromWhichAHeroAcceptsADuel: z.number(),
   /** ... a king from this one, ... */
   theChanceToWinFromWhichAKingAcceptsADuel: z.number(),
   /** ... and only while his chance of falling is this or less (a challenge's too). */
   theMostChanceOfFallingAKingRisksInADuel: z.number(),
-  /** A real duellist challenges from this chance to win against each general seen. */
+  /** A real duellist challenges from this chance to win against each enemy general in reach. */
   theChanceToWinFromWhichADuellistChallenges: z.number(),
   /** With no forecast handed in, a commander rated clearly stronger than his foe counts this chance of falling, ... */
   theChanceOfFallingCountedWithNoForecastByOneRatedClearlyStronger: z.number(),
@@ -321,17 +321,17 @@ const TheWeightsOfTheSpringPassSchema = z.object({
   theTimesAnEnemyHostsStrengthAtWhichItIsBeatableWhereItStands: z.number(),
 });
 
-/** A rival's hero whose skills the realm's spies don't know: the profile the bots plan against (botSkillsFor,
- *  bots/intel.ts: the table BOT_ASSUMED_SKILLS reads these). */
+/** A rival's hero: the skills the bots' estimates assume of him by default (botSkillsFor, bots/intel.ts: the table
+ *  BOT_ASSUMED_SKILLS reads these). */
 const TheWeightsOfARivalsSkillsSchema = z.object({
   /** The Melee assumed, ... */
-  theMeleeAssumedOfARivalsHeroWhoseSkillsAreUnknown: z.number(),
+  theMeleeTheBotsAssumeOfARivalsHeroByDefault: z.number(),
   /** ... the Archery, ... */
-  theArcheryAssumedOfARivalsHeroWhoseSkillsAreUnknown: z.number(),
+  theArcheryTheBotsAssumeOfARivalsHeroByDefault: z.number(),
   /** ... the Tactical ... */
-  theTacticalAssumedOfARivalsHeroWhoseSkillsAreUnknown: z.number(),
+  theTacticalTheBotsAssumeOfARivalsHeroByDefault: z.number(),
   /** ... and a school's (Elemental). */
-  theElementalAssumedOfARivalsHeroWhoseSkillsAreUnknown: z.number(),
+  theElementalTheBotsAssumeOfARivalsHeroByDefault: z.number(),
 });
 
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the

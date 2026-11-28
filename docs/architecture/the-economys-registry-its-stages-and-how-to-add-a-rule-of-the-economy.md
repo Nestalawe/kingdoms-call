@@ -146,7 +146,7 @@ makes of that gold from its version's weights file.
   `BOT_TUNING` and `BOT_DIFFICULTY`, `src/engine/bots/intel.ts`, and a march's chained fights: `BOT_MAX_FIGHTS`), a
   duel the tenth (when a general accepts or challenges: `BOT_DUEL`, `missions.ts`), the Spring pass the eleventh (a
   host in contact holding, falling back or fleeing, the levy, the war chest and the pins: `BOT_P1`, `strategy.ts`, and
-  `BOT_PIN_EDGE`, `phase-one.ts`) and a rival's unknown skills the twelfth (`BOT_ASSUMED_SKILLS`, `intel.ts`). The
+  `BOT_PIN_EDGE`, `phase-one.ts`) and the skills assumed of a rival's hero the twelfth (`BOT_ASSUMED_SKILLS`, `intel.ts`). The
   gold's names hold the fleets' caps too (`BOT_NAV_CAP_*`, `BOT_AIR_CAP_*`). Every named table of the bots now reads
   the file, but for the hex grid's offsets (`BOT_OFF_EVEN`, `BOT_OFF_ODD`: a rule's values), a lair's grades
   (`BOT_LAIR_GRADE`: their order) and the infiltration's reach (`BOT_INFILTRATE_RANGE`: KD-523).

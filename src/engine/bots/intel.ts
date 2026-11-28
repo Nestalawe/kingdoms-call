@@ -100,12 +100,12 @@ interface AHeroWhoseSkillsAreKnown {
 // races' (a race's gift, B-06ah) the fourth, the tempers' (a temper, B-06aj) the fifth, the battles' (a point of a
 // host's strength, B-06bq) the sixth; a war, a lair's guardian and a realm's tuning (B-17r: the bots' named tables
 // BOT_WAR, BOT_LAIR_*, BOT_TUNING and BOT_DIFFICULTY read them by name) the seventh to the ninth; a duel, the Spring
-// pass and a rival's unknown skills (B-17s: BOT_DUEL, BOT_P1 and BOT_ASSUMED_SKILLS, the rest by name) the tenth to
+// pass and a rival's hero's assumed skills (B-17s: BOT_DUEL, BOT_P1 and BOT_ASSUMED_SKILLS, the rest by name) the tenth to
 // the twelfth. The weights are the bots', never content's: content holds the rules only.
 /** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
  *  Imperial Title (held, or chased by what its row measures), what an ability of a realm's alignment gives it, what a
  *  gift of its race gives it, what a temper gives a hero or a king, a point of a host's strength, a war between two
- *  realms, a lair's guardian, a realm's tuning, a duel, the Spring pass, and a rival's hero whose skills are unknown. */
+ *  realms, a lair's guardian, a realm's tuning, a duel, the Spring pass, and the skills assumed of a rival's hero. */
 export type AKindOfResultABotWeighs = keyof TheWeightsOfABotVersion;
 /** The bots' weights at a difficulty. */
 interface ABotDifficultysWeights {
@@ -660,10 +660,10 @@ export function botKnowsGraves(G: GameState, pi: number, provId: number | null |
 // would guess from the report's silence. Spies therefore spy on generals and hunters' marks first.
 // Each number is the bots' first version's weights' `rivalsSkills` (B-17s), by name.
 export const BOT_ASSUMED_SKILLS = {
-  melee: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theMeleeAssumedOfARivalsHeroWhoseSkillsAreUnknown,
-  archery: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theArcheryAssumedOfARivalsHeroWhoseSkillsAreUnknown,
-  tactical: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theTacticalAssumedOfARivalsHeroWhoseSkillsAreUnknown,
-  elemental: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theElementalAssumedOfARivalsHeroWhoseSkillsAreUnknown,
+  melee: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theMeleeTheBotsAssumeOfARivalsHeroByDefault,
+  archery: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theArcheryTheBotsAssumeOfARivalsHeroByDefault,
+  tactical: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theTacticalTheBotsAssumeOfARivalsHeroByDefault,
+  elemental: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theElementalTheBotsAssumeOfARivalsHeroByDefault,
 };
 export function botKnownSkills(
   G: Pick<TheStateAsTheEstimatesReadIt, 'players' | 'turn'>,
