@@ -5,7 +5,7 @@
 // declarations, its heroes' orders and fight plans, its Reckoning call and its concession must come out the same.
 // The game itself plays on as it would without the test (the copies are thrown away, their dice drawn apart).
 // What the realm may see is playerView (src/views/what-each-realm-may-see-of-the-world.ts) on the world as its last
-// report read it (each Invisibility stamped for the report's turn, as the turn's end stamps it). Out of sight: a
+// report read it (as the turn's end readies the world for the reports). Out of sight: a
 // province none of its sight rules shows and it holds no memory of, and a hero of another realm standing there whom it
 // neither sees nor remembers.
 // The passes covered: the bots' diplomacy (before the plan, in the turn), then every pass of the plan in its order
