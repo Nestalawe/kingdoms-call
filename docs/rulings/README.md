@@ -113,7 +113,7 @@ at once.
 | [R-040](R-040-raid-the-coast.md) | Raid the Coast and Reaver Crews in a landing | 2026-09-23 | Confirmed | no test yet |
 | [R-041](R-041-battle-timing.md) | Every modifier first, pre-battle damage last | 2026-09-24 | Confirmed | no test yet |
 | [R-042](R-042-encounter-catch-chance.md) | Catching a quarry with Encounter Character | 2026-09-24 | Confirmed | no test yet |
-| [R-043](R-043-bots-know-what-a-player-knows.md) | Bots know only what a player in their seat could know | 2026-09-24 | Confirmed | no test yet |
+| [R-043](R-043-bots-know-what-a-player-knows.md) | Bots know only what a player in their seat could know | 2026-09-24 | Confirmed | [`the-bots-plan-the-same-orders-whatever-their-realm-cannot-see-r-043-in-whole-bot-games`](../../tests/simulation/the-bots-plan-the-same-orders-whatever-their-realm-cannot-see-r-043-in-whole-bot-games.test.ts) (in part: B-17g to k) |
 | [R-044](R-044-breaking-an-alliance.md) | Breaking an alliance makes realms neutral | 2026-09-24 | Confirmed | no test yet |
 | [R-045](R-045-consecration-capture-experience.md) | Taking holy ground: experience by the conqueror's crown | 2026-09-24 | Confirmed | no test yet |
 | [R-046](R-046-unmet-realms-are-nameless.md) | Realms you have not met are nameless | 2026-09-24 | Confirmed | [`whole-all-bot-games-pay-whole-wages-and-no-realms-titles-name-a-realm-it-has-not-met`](../../tests/simulation/whole-all-bot-games-pay-whole-wages-and-no-realms-titles-name-a-realm-it-has-not-met.test.ts), [`what-each-realm-may-see-of-the-world`](../../tests/unit/what-each-realm-may-see-of-the-world.test.ts), [`realm-reports`](../../tests/unit/realm-reports.test.ts) |
