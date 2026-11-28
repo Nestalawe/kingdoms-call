@@ -1585,12 +1585,22 @@ export function botMasteryPre(
 //   CHALLENGE — a real duellist (a duelling skill at 4+, 80%+ health) forecast at 65%+ against each general seen; a
 //     king also risks 10% or less of falling. Seeing no general, a hero challenges as before; a king only accepts.
 // botDuelSkill (a character's best duelling skill) is in bots/strategy.ts.
-export const BOT_DUEL = { heroAccept: 0.5, kingAccept: 0.6, kingFelled: 0.1, challenge: 0.65 };
+// Each number of BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST is the bots' first version's weights' `duel` (B-17s), by name.
+export const BOT_DUEL = {
+  heroAccept: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theChanceToWinFromWhichAHeroAcceptsADuel,
+  kingAccept: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theChanceToWinFromWhichAKingAcceptsADuel,
+  kingFelled: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theMostChanceOfFallingAKingRisksInADuel,
+  challenge: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theChanceToWinFromWhichADuellistChallenges,
+};
 // With no forecaster handed in (the plan always hands one in; a direct call may not), the duelling ratings stand in, as
 // before: a commander rated 1.3× his foe or more counts as winning 70% of the time, any other 40%. His odds of falling
 // are set either side of the king's limit (BOT_DUEL.kingFelled): only the one rated clearly stronger counts as safe
 // enough for a king to answer.
-export const BOT_DUEL_WITHOUT_A_FORECAST = { felledWhenStronger: 0.05, felledOtherwise: 0.3 };
+export const BOT_DUEL_WITHOUT_A_FORECAST = {
+  felledWhenStronger:
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theChanceOfFallingCountedWithNoForecastByOneRatedClearlyStronger,
+  felledOtherwise: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theChanceOfFallingCountedWithNoForecastByAnyOther,
+};
 export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: ADuelForecaster | null | undefined) {
   const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN),
     mhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN;

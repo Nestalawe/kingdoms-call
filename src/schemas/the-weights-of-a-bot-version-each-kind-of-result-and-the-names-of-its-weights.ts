@@ -30,6 +30,14 @@ const TheWeightsOfAGoldSchema = z.object({
   /** While its defenders stand under strength, the share of the land's wage ceiling held back for their muster,
    *  rounded down. */
   theShareOfTheWageCeilingHeldBackForTheDefenders: z.number(),
+  /** The share of the land's wage ceiling the admiral's fleet may take, at least ... */
+  theShareOfTheWageCeilingTheAdmiralsFleetMayTake: z.number(),
+  /** ... and the sky general's host's, at least ... */
+  theShareOfTheWageCeilingTheSkyGeneralsHostMayTake: z.number(),
+  /** ... these wages for the fleet ... */
+  theLeastWagesTheAdmiralsFleetMayTake: z.number(),
+  /** ... and these for the sky general's host. */
+  theLeastWagesTheSkyGeneralsHostMayTake: z.number(),
 });
 
 /** An Imperial Title: which titles the realm chases, the skill each hero trains towards them and the specialists they
@@ -189,6 +197,10 @@ const TheWeightsOfAWarSchema = z.object({
   theShareOfTheRivalsStrengthBelowWhichARealmAcceptsItsPeace: z.number(),
   /** ... or, with no prize in reach, below this share. */
   theShareOfTheRivalsStrengthBelowWhichARealmWithNoPrizeInReachAcceptsItsPeace: z.number(),
+  /** A realm courts another whose alignment is this many steps away or fewer, and fights one further (the bots'
+   *  diplomacy); and, at the set-up, which alignments the bots' realms are given, friendly or hostile to the
+   *  players. */
+  theStepsOfAlignmentWithinWhichARealmCourtsAnotherRatherThanFightsIt: z.number(),
 });
 
 /** A lair's guardian: when a hero buys a rumour of a lair, when he goes in, how far he goes and when he moves up a
@@ -236,6 +248,8 @@ const TheWeightsOfALairSchema = z.object({
   /** A hero asks a lair's rumour again once his rating has risen this much since he was told (0: he waits out his
    *  rumour's turns). */
   theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain: z.number(),
+  /** The gold set aside for each slayer's rumours before any muster can spend it. */
+  theGoldSetAsideForEachSlayersRumours: z.number(),
 });
 
 /** A realm's tuning: the margins of strength its attacks want, the pull of a province's tax, the gold it keeps and the
@@ -265,6 +279,59 @@ const TheWeightsOfARealmsTuningSchema = z.object({
   theBiasTowardsARivalsProvinceOverNeutralLandInATargetsScore: z.number(),
   /** ... and its wages may take this share of its income in peace (a war footing's: the kind `gold`'s). */
   theShareOfTheIncomeTheWagesMayTakeInPeace: z.number(),
+  /** After this many fights in a turn, a host's chained march takes only unguarded ground. */
+  theFightsAHostChainsInATurnBeforeItTakesOnlyUnguardedGround: z.number(),
+});
+
+/** A duel: the odds a bot's general wants before he accepts or challenges, on the duel's forecast (botDuelStance,
+ *  bots/missions.ts: the tables BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST read these). */
+const TheWeightsOfADuelSchema = z.object({
+  /** A hero accepts a duel from this chance to win against each enemy general in reach, ... */
+  theChanceToWinFromWhichAHeroAcceptsADuel: z.number(),
+  /** ... a king from this one, ... */
+  theChanceToWinFromWhichAKingAcceptsADuel: z.number(),
+  /** ... and only while his chance of falling is this or less (a challenge's too). */
+  theMostChanceOfFallingAKingRisksInADuel: z.number(),
+  /** A real duellist challenges from this chance to win against each enemy general in reach. */
+  theChanceToWinFromWhichADuellistChallenges: z.number(),
+  /** With no forecast handed in, a commander rated clearly stronger than his foe counts this chance of falling, ... */
+  theChanceOfFallingCountedWithNoForecastByOneRatedClearlyStronger: z.number(),
+  /** ... and any other this one. */
+  theChanceOfFallingCountedWithNoForecastByAnyOther: z.number(),
+});
+
+/** The Spring pass: a host in contact holding, falling back or fleeing, the emergency levy, the war chest and the
+ *  pins (bots/phase-one.ts: the table BOT_P1, bots/strategy.ts, and BOT_PIN_EDGE read these). */
+const TheWeightsOfTheSpringPassSchema = z.object({
+  /** A host in contact whose strength is below this share of its foe's falls back (the capital and Rich land
+   *  hold), ... */
+  theStrengthAgainstTheFoeBelowWhichAHostInContactFallsBack: z.number(),
+  /** ... and, when no flood pins its foe, flees below this share. */
+  theStrengthAgainstTheFoeBelowWhichAHostWhoseFoeNoFloodPinsFlees: z.number(),
+  /** The emergency levy raises the wage ceiling by this factor, ... */
+  theFactorTheEmergencyLevyRaisesTheWageCeilingBy: z.number(),
+  /** ... and to at least this many wages above what the realm pays now. */
+  theLeastWagesTheEmergencyLevyRaisesTheCeilingAboveWhatTheRealmPays: z.number(),
+  /** The war chest holds this gold for each host in contact, ... */
+  theGoldTheWarChestHoldsForEachHostInContact: z.number(),
+  /** ... up to this share of the free treasury. */
+  theMostShareOfTheFreeTreasuryTheWarChestHolds: z.number(),
+  /** An enemy host the realm could meet at this many times its strength is beatable where it stands: no caster pins
+   *  it. */
+  theTimesAnEnemyHostsStrengthAtWhichItIsBeatableWhereItStands: z.number(),
+});
+
+/** A rival's hero: the skills the bots' estimates assume of him by default (botSkillsFor, bots/intel.ts: the table
+ *  BOT_ASSUMED_SKILLS reads these). */
+const TheWeightsOfARivalsSkillsSchema = z.object({
+  /** The Melee assumed, ... */
+  theMeleeTheBotsAssumeOfARivalsHeroByDefault: z.number(),
+  /** ... the Archery, ... */
+  theArcheryTheBotsAssumeOfARivalsHeroByDefault: z.number(),
+  /** ... the Tactical ... */
+  theTacticalTheBotsAssumeOfARivalsHeroByDefault: z.number(),
+  /** ... and a school's (Elemental). */
+  theElementalTheBotsAssumeOfARivalsHeroByDefault: z.number(),
 });
 
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
@@ -279,6 +346,9 @@ export const TheWeightsOfABotVersionSchema = z.object({
   war: TheWeightsOfAWarSchema,
   lair: TheWeightsOfALairSchema,
   tuning: TheWeightsOfARealmsTuningSchema,
+  duel: TheWeightsOfADuelSchema,
+  springPass: TheWeightsOfTheSpringPassSchema,
+  rivalsSkills: TheWeightsOfARivalsSkillsSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;

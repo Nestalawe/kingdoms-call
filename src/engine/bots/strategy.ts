@@ -493,10 +493,12 @@ export function botLedger(G: GameState, pi: number): ABotRealmsLedger {
   cache.ledger[pi] = L;
   return L;
 }
-export const BOT_NAV_CAP_FRAC = 0.2,
-  BOT_AIR_CAP_FRAC = 0.15,
-  BOT_NAV_CAP_MIN = 4,
-  BOT_AIR_CAP_MIN = 4; // 2026-09-28: see botLedger
+// 2026-09-28: see botLedger. Each is the bots' first version's weights' `gold` (B-17s), by name.
+export const BOT_NAV_CAP_FRAC =
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold.theShareOfTheWageCeilingTheAdmiralsFleetMayTake,
+  BOT_AIR_CAP_FRAC = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold.theShareOfTheWageCeilingTheSkyGeneralsHostMayTake,
+  BOT_NAV_CAP_MIN = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold.theLeastWagesTheAdmiralsFleetMayTake,
+  BOT_AIR_CAP_MIN = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.gold.theLeastWagesTheSkyGeneralsHostMayTake;
 export function botCanAfford(L: ABotRealmsSpending, cost: number) {
   return L.budget >= cost && L.upkeep + cost <= L.upkeepCap;
 }
@@ -968,13 +970,17 @@ const whatTheBotsCountAsAMarch: ReadonlySet<string> = new Set([
   THE_HERO_ORDERS.forced_march.key,
   THE_HERO_ORDERS.lightning_advance.key,
 ]);
+// Each number is the bots' first version's weights' `springPass` (B-17s), by name.
 export const BOT_P1 = {
-  retreatRatio: 0.75,
-  fleeRatio: 0.5,
-  levyCap: 1.2,
-  levyWages: 8,
-  chestPerHost: 10,
-  chestShare: 0.5,
+  retreatRatio:
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theStrengthAgainstTheFoeBelowWhichAHostInContactFallsBack,
+  fleeRatio:
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theStrengthAgainstTheFoeBelowWhichAHostWhoseFoeNoFloodPinsFlees,
+  levyCap: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theFactorTheEmergencyLevyRaisesTheWageCeilingBy,
+  levyWages:
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theLeastWagesTheEmergencyLevyRaisesTheCeilingAboveWhatTheRealmPays,
+  chestPerHost: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theGoldTheWarChestHoldsForEachHostInContact,
+  chestShare: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theMostShareOfTheFreeTreasuryTheWarChestHolds,
   strike: new Set([
     theNameOfTheSpell('flood'),
     theNameOfTheSpell('plague'),
@@ -1550,7 +1556,9 @@ export function botLairRating(c: Character): number {
     (asItsGuardReadsIt(c.items) ?? []).length
   );
 }
-export const BOT_RUMOUR_FUND_PER_SLAYER = 4;
+// The bots' first version's weights' `lair` (B-17s).
+export const BOT_RUMOUR_FUND_PER_SLAYER =
+  THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theGoldSetAsideForEachSlayersRumours;
 // 2026-09-29 tuning knobs (defaults = previous behaviour): BOT_LAIR_GO_BAND_HI is the rumour band that sends a hero
 // into a Moderate-or-higher lair (BOT_LAIR_GO_BAND stays the Weak one); BOT_LAIR_REASK_GAIN > 0 lets a hero re-ask a
 // lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns). Both are
