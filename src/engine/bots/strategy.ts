@@ -9,7 +9,7 @@ import { isTheRaceTheWildsOrOneOfItsSubRaces } from '../rules-on-plain-values/wh
 import { ARMY_COST_MASTER, ARMY_SPEED_MASTER, botSafeWindow, SKILL_LABELS } from '../army-tables.ts';
 import { marchSpeedBonus, navalSpeedBonus } from '../units/movement.ts';
 import { ALIGNMENTS_P, heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
-import { theFervourOfASide } from '../rules/the-registry-of-alignment-abilities.ts';
+import { THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY } from './the-bots-valuation-of-each-alignment-ability-keyed-by-the-ability.ts';
 import {
   thePriceOfACompanyOfAType,
   theWageOfACompany,
@@ -1064,7 +1064,7 @@ export function botRecruitableTypes(
     );
     // the fervour a host of this one unit fights at, as the battles weigh it (savage fury's row: an Evil realm's
     // Monster, ×1.25), taken for each unit, not once a host (KD-435; P1-19bb8)
-    m *= theFervourOfASide(align, {
+    m *= THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['savage-fury'].theRunner(align, {
       isItSeizedByZeal: false,
       isItLedByTheKing: false,
       theForce: [{ type: t }],

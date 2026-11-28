@@ -46,7 +46,7 @@ import {
   botSkillsUnknown,
 } from './strategy.ts';
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
-import { theYieldOfABlessARealmsAlignmentGives } from '../rules/the-registry-of-alignment-abilities.ts';
+import { THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY } from './the-bots-valuation-of-each-alignment-ability-keyed-by-the-ability.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
@@ -327,9 +327,12 @@ export function botCastPlan(
     const kingHere =
       !c.isKing &&
       // the realm's alignment raises its king's Bless (the Divine blessing's row, as the spell asks it: P1-19bb7)
-      theYieldOfABlessARealmsAlignmentGives((asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment, {
-        isTheCasterTheKing: true,
-      }) !== null &&
+      THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['the-divine-blessing'].theRunner(
+        (asItsGuardReadsIt(G.players) ?? [])[pi]?.alignment,
+        {
+          isTheCasterTheKing: true,
+        },
+      ) !== null &&
       theCharactersOf(G).some(
         (k) =>
           k?.alive &&
