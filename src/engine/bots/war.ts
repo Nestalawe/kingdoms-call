@@ -243,7 +243,8 @@ export function botRivalPower(G: GameState, pi: number, j: number) {
     field +
     thePowers.theGarrisonAssumedInARivalsCapital +
     thePowers.theWorthOfAPointOfIncomeInARealmsPower * inc +
-    thePowers.theWorthOfEachHostOrHeroCountedInARivalsPower * Math.max(1, seen.size)
+    thePowers.theWorthOfEachHostOrHeroCountedInARivalsPower *
+      Math.max(thePowers.theLeastHostsOrHeroesCountedInARivalsPower, seen.size)
   );
 }
 // The realm's standing with j: {since, peaceAt} kept on the player record.
@@ -279,7 +280,7 @@ export function botWarPrize(G: GameState, pi: number, j: number) {
   );
   return theProvincesOf(G).some((X) => {
     if (!X || X.terrain === 'sea' || !botKnows(G, pi, X.id) || botBelievedOwner(G, pi, X) !== j) return false;
-    // on our border — or, with prizeHops 2, one province beyond it
+    // on our border — or, with a long enough prize reach, one province beyond it
     let border = false;
     for (let i = 0; i < 6 && !border; i++) {
       const N = botNeighbourProv(G, X, i);

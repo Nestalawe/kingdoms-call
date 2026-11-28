@@ -651,6 +651,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theMostTurnsAgoARivalsHeroCountsTowardsItsPower: 6,
     theGarrisonAssumedInARivalsCapital: 3,
     theWorthOfEachHostOrHeroCountedInARivalsPower: 3,
+    theLeastHostsOrHeroesCountedInARivalsPower: 1,
   },
   /** What a war's bar and a prize are judged by: an assault margin, the opportunities' windows and a realm's fixed lean (botWarAssess and botWarPrize, bots/war.ts). */
   warBarAndPrize: {

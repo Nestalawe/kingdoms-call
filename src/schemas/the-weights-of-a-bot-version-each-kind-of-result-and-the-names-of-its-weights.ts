@@ -1172,6 +1172,8 @@ const TheWeightsOfWarPowersSchema = z.object({
   theGarrisonAssumedInARivalsCapital: z.number(),
   /** Each host or hero counted for a rival, and at least one, adds this to the rival's power. */
   theWorthOfEachHostOrHeroCountedInARivalsPower: z.number(),
+  /** A rival's power counts at least this many hosts or heroes, however few are counted for it. */
+  theLeastHostsOrHeroesCountedInARivalsPower: z.number(),
 });
 
 /** What a war's bar and a prize are judged by: an assault margin, the opportunities' windows and a realm's fixed lean (botWarAssess and botWarPrize, bots/war.ts). */
