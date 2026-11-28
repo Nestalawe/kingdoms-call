@@ -65,6 +65,10 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 const theGeneralship = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyGeneralship;
 const theRoles = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyRoles;
 const theRecruiting = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyRecruiting;
+const theMusters = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyHostsAndMusters;
+const thePractice = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyPractice;
+const theReach = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyReach;
+const theLairRating = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyLairRating;
 
 // Its types (plan P1-10b41): each parameter typed as wide as the body's guards, so each guard stays; the ledger's and
 // the roles' shapes are bots/intel.ts', beside the turn's cache that holds them.
@@ -992,7 +996,9 @@ export function botEnemyChars(G: GameState, prov: Province | null | undefined, p
       botRelationRaw(G, pi, e.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
     ) {
       force += botEffForce(G, e, undefined);
-      value += e.isKing ? 50 : 15;
+      value += e.isKing
+        ? theMusters.theWorthOfAnEnemyKingInAProvince
+        : theMusters.theWorthOfAnEnemyHeroWhoIsNotAKingInAProvince;
       if (e.isKing) hasKing = true;
       units += (asItsGuardReadsIt(e.armies) ?? []).length;
     }
@@ -1019,7 +1025,7 @@ export function botRaiseTargets(G: GameState, pi: number) {
       g,
       loc: g.location,
       val:
-        (g._monarch ? 100 : 0) +
+        (g._monarch ? theMusters.theWorthOfAMonarchsBodyAmongTheFallenToRaise : 0) +
         Object.values(theSkillsOfTheGrave(g)).reduce((a: number, b) => a + (Number(b) || 0), 0),
     }))
     .filter((x) => asItsGuardReadsIt(x.loc) != null)
@@ -1104,7 +1110,7 @@ export function botRecruitableTypes(
   // = the province's race as the engine assigns it), not the raw table value — a Druid-0 king
   // buying Cave Trolls at −60% was throwing gold away.
   const effOf = (t: string) => {
-    const base = (UNIT_BASE_STR[t] ?? 0) || 4;
+    const base = (UNIT_BASE_STR[t] ?? 0) || theMusters.theStrengthAUnitOfNoWrittenStrengthIsRankedBy;
     if (!G || !cmdr) return base;
     const align = theAlignmentARealmReadsAs(
       cmdr.player != null ? (asItsGuardReadsIt(G.players) ?? [])[cmdr.player]?.alignment : undefined,
@@ -1160,19 +1166,24 @@ export function botRecruitableTypes(
             (t) => asItsGuardReadsIt(t) && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t),
           ) &&
           RIV[(x.race ?? '') || THE_RACE_A_COMPANY_OR_PROVINCE_OF_NO_RACE_READS_AS] !== cmdr.race &&
-          ((botPathLen(G, pi2, prov, x.id, false) ?? 0) || 99) <= 2,
+          ((botPathLen(G, pi2, prov, x.id, false) ?? 0) || 99) <=
+            theMusters.theHopsWithinWhichAProvinceOfKinLetsAGeneralPassOverAGrudgeRaceMuster,
       );
       if (near) return [];
     }
-  } // "when possible": only while kin can be raised within two hops
+  } // "when possible": only while kin can be raised within reach
   const all = (asItsGuardReadsIt(prov.armyTypes) ?? [])
     .filter((t) => asItsGuardReadsIt(t) && !/garrison/i.test(t) && !BOT_NAVAL_TYPES.has(t)) // land field units only (v1)
     .sort((a, b) => effOf(b) - effOf(a)); // strongest FOR THIS COMMANDER first (kinship already in effOf)
-  // Sept 2026 (bot strategy): a speed-1 unit (Mountain Guns, Stone Giants…) pins the whole host to
+  // Sept 2026 (bot strategy): a slow unit (Mountain Guns, Stone Giants…) pins the whole host to
   // one hop a turn, which costs far more conquest than its strength buys. Skip them when anything
   // else exists.
   if (cmdr?._botRole === 'defender') return all; // a posted defender never marches: Mountain Guns are welcome
-  const mobile = all.filter((t) => ((ARMY_SPEED_MASTER[t] ?? 0) || 3) >= 2);
+  const mobile = all.filter(
+    (t) =>
+      ((ARMY_SPEED_MASTER[t] ?? 0) || theMusters.theSpeedAUnitOfNoWrittenSpeedIsTakenToHave) >=
+      theMusters.theLeastSpeedFromWhichAUnitCountsAsMobile,
+  );
   return mobile.length ? mobile : all;
 }
 // The bots' upkeep asks the wage rules where they agree with it (B-06h): a company that draws no wage, and a company's
@@ -1301,7 +1312,7 @@ export function botLandCount(G: GameState, pi: number) {
     (p) => asItsGuardReadsIt(p) && p.owner === pi && p.terrain !== 'sea',
   ).length;
 }
-// DRILL: a commander leading 3+ land/air units practises Tactical in every spare phase (levels the
+// DRILL: a commander leading enough land/air units practises Tactical in every spare phase (levels the
 // skill AND promotes unit quality); a fleet commander drills Naval. Else the phase is a Hold.
 export function botDrillOrder(G: GameState, pi: number, c: Character) {
   const land = (asItsGuardReadsIt(c.armies) ?? []).filter(
@@ -1317,11 +1328,12 @@ export function botDrillOrder(G: GameState, pi: number, c: Character) {
   )
     return { action: 'practice', target: 'druid', extra: '', desc: 'Practice Druid (lead the host cleanly)' };
   // Sept 2026 (Toby): a general who cannot win a duel trains for one — his best of Melee / Archery / a battle
-  // school — until it stands at 3; Tactical drill then resumes. He must be able to fight the duel his host invites.
+  // school — until it stands high enough; Tactical drill then resumes. He must be able to fight the duel his host invites.
   if (
     (asItsGuardReadsIt(c.armies) ?? []).length &&
-    botDuelSkill(c) < 3 &&
-    (Number(asItsGuardReadsIt(c.skills)?.tactical) || 0) >= 2
+    botDuelSkill(c) < thePractice.theBestDuelSkillLevelBelowWhichAGeneralPractisesForADuel &&
+    (Number(asItsGuardReadsIt(c.skills)?.tactical) || 0) >=
+      thePractice.theLevelOfTacticalFromWhichAGeneralWhoCannotWinADuelPractisesForOne
   ) {
     const s = asItsGuardReadsIt(c.skills) ?? {};
     const duelSkills: TheDuelSkillsAndTheirLevels = [
@@ -1340,17 +1352,22 @@ export function botDrillOrder(G: GameState, pi: number, c: Character) {
       desc: 'Practice ' + ((labels[pick] ?? '') || pick) + ' (fit for a duel)',
     };
   }
-  if (land >= 3)
+  if (land >= thePractice.theLandUnitsFromWhichACommanderDrillsTactical)
     return { action: 'practice', target: 'tactical', extra: '', desc: 'Practice Tactical (drill the host)' };
-  if (sea >= 3) return { action: 'practice', target: 'naval', extra: '', desc: 'Practice Naval (drill the fleet)' };
+  if (sea >= thePractice.theSeaUnitsFromWhichACommanderDrillsNaval)
+    return { action: 'practice', target: 'naval', extra: '', desc: 'Practice Naval (drill the fleet)' };
   return null;
 }
 // 2026-09-26 (study): an officer below his role's working level trains THAT skill in every filler phase — an
-// admiral to Naval 3. (The flying general trained Druid 3 while the winged riders were beasts; since 2026-10-11
+// admiral to his working Naval level. (The flying general trained Druid 3 while the winged riders were beasts; since 2026-10-11
 // they are soldiers of their race and need none.) Without this the explore-first filler left admirals at Naval 1.
 export function botRoleTrainSkill(c: Character) {
   const s: Readonly<Partial<Record<string, number>>> = asItsGuardReadsIt(c.skills) ?? {};
-  if (c._botRole === 'admiral' && (Number(s['naval']) || 0) < 3) return 'naval';
+  if (
+    c._botRole === 'admiral' &&
+    (Number(s['naval']) || 0) < thePractice.theLevelOfNavalBelowWhichAnAdmiralPractisesNaval
+  )
+    return 'naval';
   // 2026-09-26 (idea 8): the holder of a craft keeps at it to MASTERY 7 in his filler phases — Sabotage,
   // Grand Heist, Chart the Unknown, Research Breakthrough and the rest are level-7 orders nobody reached.
   const crafts: Readonly<Partial<Record<string, string>>> = {
@@ -1360,7 +1377,12 @@ export function botRoleTrainSkill(c: Character) {
     thief: 'thief',
   };
   const k = crafts[String(c._botRole)];
-  if (k && (Number(s[k]) || 0) >= 5 && (Number(s[k]) || 0) < 7) return k;
+  if (
+    k &&
+    (Number(s[k]) || 0) >= thePractice.theLevelOfACraftFromWhichItsHolderPractisesItOnTowardsMastery &&
+    (Number(s[k]) || 0) < 7
+  )
+    return k;
   return null;
 }
 // CONTACT: until another crown has been met — a non-neutral relation, or any other player's land or
@@ -1390,11 +1412,11 @@ export function botHasMetPlayers(G: GameState, pi: number) {
   metBefore[pi] = met;
   return met;
 }
-// A non-allied player's armed host within 2 hexes of this character — reason for an early watch.
+// A non-allied player's armed host near this character — reason for an early watch.
 export function botNearbyThreat(G: GameState, pi: number, c: Character) {
   const P = G.world.provinces[c.location];
   if (!P) return false;
-  // a host two hexes away sets a watch only if the realm can see it standing there.
+  // a host nearby sets a watch only if the realm can see it standing there.
   return (asItsGuardReadsIt(G.characters) ?? []).some(
     (e) =>
       asItsGuardReadsIt(e) &&
@@ -1406,7 +1428,7 @@ export function botNearbyThreat(G: GameState, pi: number, c: Character) {
       botSeesChar(G, pi, e) &&
       (() => {
         const X = G.world.provinces[e.location];
-        return X && hexDistP(P, X, G.world.cols) <= 2;
+        return X && hexDistP(P, X, G.world.cols) <= theReach.theHexesWithinWhichAnArmedHostSetsAWatch;
       })(),
   );
 }
@@ -1471,7 +1493,7 @@ export function botPathLen(
   toId: number | null | undefined,
   unarmed?: boolean,
 ) {
-  const d = botPathDirs(G, pi, from, toId, 99, unarmed);
+  const d = botPathDirs(G, pi, from, toId, theReach.theMostHopsAPathIsSearchedAcross, unarmed);
   return d ? d.length : null;
 }
 // FRONTIER — nearest own/allied land province that borders unowned or at-war-enemy land (ties → the one
@@ -1498,7 +1520,12 @@ export function botFrontierTarget(G: GameState, pi: number, P: Province) {
       if (ko === undefined) continue;
       if (ko == null || (ko !== pi && botRelationRaw(G, pi, ko) === THE_STATES_TWO_REALMS_STAND_IN.atWar)) {
         const b = botBelief(G, pi, K);
-        n += 1 + Math.min(3, (Number(b?.tax) || 0) / 3);
+        n +=
+          theReach.theWorthOfAnOpenNeighbourOfAFrontierSearchBeforeItsTaxAdds +
+          Math.min(
+            theReach.theMostThatAnOpenNeighboursTaxAddsToItsWorthInAFrontierSearch,
+            (Number(b?.tax) || 0) / theReach.theTaxThatAddsOnePointToAnOpenNeighboursWorthInAFrontierSearch,
+          );
       }
     }
     return n;
@@ -1507,7 +1534,7 @@ export function botFrontierTarget(G: GameState, pi: number, P: Province) {
   let q: Province[] = [P],
     depth = 0;
   const best: { id: Province['id'] | null; oc: number } = { id: null, oc: 0 };
-  while (q.length && depth < 8) {
+  while (q.length && depth < theReach.theMostHopsTheSearchForAFrontierProvinceGoes) {
     const next: Province[] = [];
     depth++;
     for (const cur of q) {
@@ -1565,7 +1592,7 @@ export function botUpdateIntel(G: GameState, pi: number) {
   });
   [I.generals, I.heroes].forEach((M) => {
     Object.entries(M).forEach(([k, rec]) => {
-      if (turn - rec.turn > 6) delete M[k];
+      if (turn - rec.turn > theReach.theTurnsANoteOnAnEnemyCharacterIsKept) delete M[k];
     });
   });
   // review II A10: allied realms exchange reports — what an ally saw this turn is copied in (never overwriting fresher news)
@@ -1605,7 +1632,7 @@ export function botRumourFor(
 ) {
   const r = f?._rumourOdds?.[String(pi)]; // a realm of no index reads the odds under its key's words, as before
   if (r?.charId !== c.id) return null;
-  if ((G.turn || 0) - r.turn > 3) return null;
+  if ((G.turn || 0) - r.turn > theReach.theTurnsALairsRumourOddsHoldForTheHeroWhoAskedIt) return null;
   if (asItsGuardReadsIt(r.rating) != null && botLairRating(c) < r.rating) return null;
   if (
     BOT_LAIR_REASK_GAIN > 0 &&
@@ -1620,10 +1647,11 @@ export function botLairRating(c: Character): number {
   const sk = asItsGuardReadsIt(c.skills) ?? {};
   return (
     (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) +
-    (Number(sk.melee) || 0) * 6 +
-    (Number(sk.tactical) || 0) * 3 +
-    (Number(sk.archery) || 0) * 2 +
-    ((Number(sk.elemental) || 0) + (Number(sk.necromancy) || 0) + (Number(sk.psychic) || 0)) * 4 +
+    (Number(sk.melee) || 0) * theLairRating.whatEachLevelOfMeleeAddsToAHeroesLairRating +
+    (Number(sk.tactical) || 0) * theLairRating.whatEachLevelOfTacticalAddsToAHeroesLairRating +
+    (Number(sk.archery) || 0) * theLairRating.whatEachLevelOfArcheryAddsToAHeroesLairRating +
+    ((Number(sk.elemental) || 0) + (Number(sk.necromancy) || 0) + (Number(sk.psychic) || 0)) *
+      theLairRating.whatEachLevelOfElementalNecromancyAndPsychicAddsToAHeroesLairRating +
     (asItsGuardReadsIt(c.items) ?? []).length
   );
 }
@@ -1632,12 +1660,12 @@ export const BOT_RUMOUR_FUND_PER_SLAYER =
   THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theGoldSetAsideForEachSlayersRumours;
 // 2026-09-29 tuning knobs (defaults = previous behaviour): BOT_LAIR_GO_BAND_HI is the rumour band that sends a hero
 // into a Moderate-or-higher lair (BOT_LAIR_GO_BAND stays the Weak one); BOT_LAIR_REASK_GAIN > 0 lets a hero re-ask a
-// lair once his botLairRating has risen that much since he was told (0 = off: he waits out the six turns). Both are
+// lair once his botLairRating has risen that much since he was told (0 = off: he waits out the rumour's turns). Both are
 // the bots' first version's weights' `lair` (B-17r).
 export const BOT_LAIR_GO_BAND_HI =
     THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theRumourBandThatSendsAHeroIntoAStrongerLair,
   BOT_LAIR_REASK_GAIN: ATuningKnob =
-    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen 3
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain; // 2026-09-29 (Toby, study C4): re-ask once his rating has risen enough
 // Admirals and flying generals (bots/missions.ts's NAVAL DOCTRINE and FLYING GENERAL).
 export function botCoastalPorts(G: GameState, pi: number) {
   return (asItsGuardReadsIt(G.world.provinces) ?? []).filter(

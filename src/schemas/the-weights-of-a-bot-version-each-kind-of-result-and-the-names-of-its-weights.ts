@@ -958,6 +958,72 @@ const TheWeightsOfStrategyRecruitingSchema = z.object({
   theWorthOfAFightingWandererToARealmWithNoFightingSlayer: z.number(),
 });
 
+/** What an enemy character, a body among the fallen and a unit are worth, and how a muster ranks its units (botEnemyChars, botRaiseTargets, botRecruitableTypes, bots/strategy.ts). */
+const TheWeightsOfStrategyHostsAndMustersSchema = z.object({
+  /** An enemy king standing in a province adds this to its worth when the province is weighed as a target. */
+  theWorthOfAnEnemyKingInAProvince: z.number(),
+  /** Each enemy character standing in a province who is not a king adds this to its worth when the province is weighed as a target. */
+  theWorthOfAnEnemyHeroWhoIsNotAKingInAProvince: z.number(),
+  /** The body of a realm's own fallen monarch counts this much more than any other when the bodies to raise are ranked, before the levels of his skills. */
+  theWorthOfAMonarchsBodyAmongTheFallenToRaise: z.number(),
+  /** A kind of unit with no strength in the table is ranked as if it had this much base strength when a muster picks its units. */
+  theStrengthAUnitOfNoWrittenStrengthIsRankedBy: z.number(),
+  /** A general passes over a muster of a grudge race only when a province of his own realm that can raise other units lies within this many hops of it. */
+  theHopsWithinWhichAProvinceOfKinLetsAGeneralPassOverAGrudgeRaceMuster: z.number(),
+  /** A kind of unit with no speed in the table is taken to move this fast when a muster is sorted into mobile and slow units. */
+  theSpeedAUnitOfNoWrittenSpeedIsTakenToHave: z.number(),
+  /** A unit with at least this speed counts as mobile; a muster keeps the mobile units whenever any exist. */
+  theLeastSpeedFromWhichAUnitCountsAsMobile: z.number(),
+});
+
+/** Which skill a hero practises in a spare phase and the levels at which he changes it (botDrillOrder, botRoleTrainSkill, botPracticeSkill, bots/strategy.ts). */
+const TheWeightsOfStrategyPracticeSchema = z.object({
+  /** A general whose best duelling skill is below this level practises it, once his Tactical is high enough. */
+  theBestDuelSkillLevelBelowWhichAGeneralPractisesForADuel: z.number(),
+  /** A general practises for a duel only once his Tactical is at this level or more. */
+  theLevelOfTacticalFromWhichAGeneralWhoCannotWinADuelPractisesForOne: z.number(),
+  /** A commander leading this many land or air units or more drills Tactical in a spare phase. */
+  theLandUnitsFromWhichACommanderDrillsTactical: z.number(),
+  /** A commander leading this many ships or more drills Naval in a spare phase. */
+  theSeaUnitsFromWhichACommanderDrillsNaval: z.number(),
+  /** An admiral practises Naval in his spare phases while it is below this level. */
+  theLevelOfNavalBelowWhichAnAdmiralPractisesNaval: z.number(),
+  /** A scholar, scout, spy or thief practises his craft in his spare phases once it stands at this level or more. */
+  theLevelOfACraftFromWhichItsHolderPractisesItOnTowardsMastery: z.number(),
+});
+
+/** How far the bots look for a threat, a path and a frontier province, and how long they keep their notes on an enemy and a lair (botNearbyThreat, botPathLen, botFrontierTarget, botUpdateIntel, botRumourFor, bots/strategy.ts). */
+const TheWeightsOfStrategyReachSchema = z.object({
+  /** A hero keeps a watch when an armed host of a realm that is not an ally stands within this many hexes of him. */
+  theHexesWithinWhichAnArmedHostSetsAWatch: z.number(),
+  /** The most hops a search for the shortest path between two provinces goes across. */
+  theMostHopsAPathIsSearchedAcross: z.number(),
+  /** Each open neighbour of a province adds this to its count in the search for the nearest frontier province, before its tax adds to it. */
+  theWorthOfAnOpenNeighbourOfAFrontierSearchBeforeItsTaxAdds: z.number(),
+  /** The tax of an open neighbour adds no more than this to its worth in the search for the nearest frontier province. */
+  theMostThatAnOpenNeighboursTaxAddsToItsWorthInAFrontierSearch: z.number(),
+  /** Each this much tax of an open neighbour adds one point to its worth in the search for the nearest frontier province. */
+  theTaxThatAddsOnePointToAnOpenNeighboursWorthInAFrontierSearch: z.number(),
+  /** The search for the nearest province with open country beside it goes no further than this many hops. */
+  theMostHopsTheSearchForAFrontierProvinceGoes: z.number(),
+  /** A note on an enemy character is dropped when it is older than this many turns. */
+  theTurnsANoteOnAnEnemyCharacterIsKept: z.number(),
+  /** The odds a hero was told of a lair no longer count once they are older than this many turns. */
+  theTurnsALairsRumourOddsHoldForTheHeroWhoAskedIt: z.number(),
+});
+
+/** What each of a hero's skills adds to his rating against a lair (botLairRating, bots/strategy.ts). */
+const TheWeightsOfStrategyLairRatingSchema = z.object({
+  /** Each level of Melee adds this to a hero's rating against a lair. */
+  whatEachLevelOfMeleeAddsToAHeroesLairRating: z.number(),
+  /** Each level of Tactical adds this to a hero's rating against a lair. */
+  whatEachLevelOfTacticalAddsToAHeroesLairRating: z.number(),
+  /** Each level of Archery adds this to a hero's rating against a lair. */
+  whatEachLevelOfArcheryAddsToAHeroesLairRating: z.number(),
+  /** Each level of Elemental, Necromancy and Psychic taken together adds this to a hero's rating against a lair. */
+  whatEachLevelOfElementalNecromancyAndPsychicAddsToAHeroesLairRating: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -994,6 +1060,10 @@ export const TheWeightsOfABotVersionSchema = z.object({
   strategyGeneralship: TheWeightsOfStrategyGeneralshipSchema,
   strategyRoles: TheWeightsOfStrategyRolesSchema,
   strategyRecruiting: TheWeightsOfStrategyRecruitingSchema,
+  strategyHostsAndMusters: TheWeightsOfStrategyHostsAndMustersSchema,
+  strategyPractice: TheWeightsOfStrategyPracticeSchema,
+  strategyReach: TheWeightsOfStrategyReachSchema,
+  strategyLairRating: TheWeightsOfStrategyLairRatingSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;
