@@ -238,7 +238,7 @@ module.exports = defineConfig(
   {
     // The engine's three reviewed exceptions to its purity (plan P1-13, Decision 7; tests/static/harness.test.ts pins
     // exactly these). The names it reads from a page, each only when it's there: window for the bots' test hooks
-    // (__botDiag and __botHyg), behind typeof; and the dice's seed, KC_RNG_SEED (behind typeof), or without one the
+    // (__botDiag, __botHyg and __botChoices), behind typeof; and the dice's seed, KC_RNG_SEED (behind typeof), or without one the
     // browser's crypto. And the engine's clock, the one place it reads the time.
     files: ['src/engine/bots/economy.ts'],
     languageOptions: { globals: { window: 'readonly' } },
