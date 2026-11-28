@@ -12,10 +12,10 @@ A group, not a row ([how to read a row](README.md#how-to-read-a-row)): one repea
 badly, change them, and prove the change made them better, as [its requirements](../explorations/the-bots-improvement-machinery-its-intent-its-outcome-and-its-requirements.md)
 say (the ids BOT-S1 and so on are theirs). Impact: the maintainers get a bot change judged better or worse on the same
 seeds, and a balance verdict that holds because the bots play every alignment well. Outcome: the ground for the
-redesign. Planned on 27 November (its plan is in B-17a's pull request); its decisions in force, a maintainer's
-answers of 28 November:
+redesign. Its plan (27 November) is in B-17a's pull request, #868; its decisions in force, a maintainer's answers of
+28 November:
 - **The order:** Run A (B-17a to f, l, m, q, r, s) next, before the rest of the rulings; then KD-498; then Run B
-  (B-17g to k) by day with a maintainer; Runs C and D (B-17n to ai, aj, ak) after the rulings.
+  (B-17g to k) by day with a maintainer; Runs C and D (B-17n, o, p, t to ai, aj, ak) after the rulings.
 - **Each alignment ability's bot valuation lives in the bots,** in one table keyed by the ability (BOT-V5): content
   holds rules only.
 - **BOT-S3's exceptions:** a set-up ability counts as used when the world is made with it; the Neutral mercenary
@@ -92,9 +92,9 @@ a run's spare rows; their place stays here.
 | B-17af | The league's report (BOT-L3, X7): by version and by alignment, the win share, the Reckoning's score, survival to turns 10 and 20, and BOT-S's figures, under the noise rule. A tool | The maintainers: a bot change gets its verdict | The ground for the redesign | Small | – | ⬜ | | After B-17ae |
 | B-17ag | The competence bar (BOT-L4): a maintainer's figures, set after Run A's first report, checked by the league. A tool | The maintainers: each alignment's bot held to a bar | The ground for the redesign | Small | ✓ (the figures) | ⬜ | | After B-17af |
 | B-17ah | The tuning tool (BOT-W4): a fixed search seed, judged by the league, the aims in order; local only | The maintainers: a better weights file proposed with its league report | The ground for the redesign | Small | – | ⬜ | | After B-17ag |
-| B-17ai | Outside opponents take seats in the league (BOT-L8): the scripted realm, then Claude's recordings. After B-17ak | The maintainers: a bot never judged only against copies of itself | The ground for the redesign | Small | – | ⬜ | | After B-17ah and B-17ak, Run D's last row |
-| B-17aj | The tool for Claude's turns (BOT-C1, C6): a seeded, synthetic game; for a realm and a turn, its report, its view and the orders its form offers. After B-17n | The maintainers: Claude can read a bot realm's turn; unblocks B-17ak | The ground for the redesign | Small | – | ⬜ | | In Run D, after B-17n |
+| B-17aj | The tool for Claude's turns (BOT-C1, C6): a seeded, synthetic game; for a realm and a turn, its report, its view and the orders its form offers. After B-17n | The maintainers: Claude can read a bot realm's turn; unblocks B-17ak | The ground for the redesign | Small | – | ⬜ | | After B-17ah: Claude's tools (B-17n is in already), needed by B-17ai |
 | B-17ak | The tool reads an orders file (BOT-C2, C5): checks it against the typed orders, refuses an order with its reason, plays the turn; each recording replays exactly (its test) | The maintainers: a Claude-played game kept and replayed without Claude | The ground for the redesign | Small | – | ⬜ | | After B-17aj |
-| B-17al | The skill that reviews the bots' turns (BOT-C3, C8): findings become proposals a maintainer accepts, then rows. By hand | The maintainers: the bots' poor moves found, each with its game, turn and realm | The ground for the redesign | Small | – | ⬜ | | By hand, after B-17ak |
+| B-17ai | Outside opponents take seats in the league (BOT-L8): the scripted realm, then Claude's recordings. After B-17ak | The maintainers: a bot never judged only against copies of itself | The ground for the redesign | Small | – | ⬜ | | After B-17ak, Run D's last row: it seats Claude's recordings |
+| B-17al | The skill that reviews the bots' turns (BOT-C3, C8): findings become proposals a maintainer accepts, then rows. By hand | The maintainers: the bots' poor moves found, each with its game, turn and realm | The ground for the redesign | Small | – | ⬜ | | By hand, after B-17ai: it reads turns through B-17ak's tool |
 | B-17am | The skill that plays a realm (BOT-C4, C7): it states its size first and stops at the maintainer's limit. By hand | The maintainers: realms played by Claude, recorded for the league | The ground for the redesign | Small | – | ⬜ | | By hand, after B-17al |
 | B-17an | The profile per alignment (BOT-S4), set against each alignment's flavour (BOT-D: Claude drafts it, the owner corrects it, answer 2). A tool. After BOT-D | The maintainers: aim 2 measured, alignment by alignment | The ground for the redesign | Small | – | ⬜ | | Last: it needs BOT-D, after Runs A to D (answer 2) |
