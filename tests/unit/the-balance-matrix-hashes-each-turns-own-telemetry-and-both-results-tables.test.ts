@@ -48,6 +48,7 @@ const A_RECORD = {
   hygiene: { practiceCapped: 2 },
   padding: { hold: 1 },
   phasesLeftEmpty: 3,
+  idle: [{ hero: 7, phases: 4 }],
   casts: [{ hero: 7, school: 'Fire', limit: 1, limitTheHygieneApplies: 1, casts: 0 }],
 };
 /** The GM log rows the page writes a turn: one more than its telemetry rows. */
@@ -130,6 +131,7 @@ test(
     expect(stats['bots: orders the hygiene dropped: practiceCapped | by race: Human'], 'the record').toEqual([4, 3]);
     expect(stats['bots: phases with nothing else to do | by alignment: Neutral'], 'padded and empty').toEqual([8, 3]);
     expect(stats['bots: casts left unused | by alignment: Neutral'], 'the casts').toEqual([2, 3]);
+    expect(stats['bots: room under the cast limits | by alignment: Neutral'], 'the room').toEqual([2, 3]);
     expect(stats["bots: gold unspent at a turn's end | by alignment: Neutral"], 'realm 0 alone has turns').toEqual([
       40, 2,
     ]);

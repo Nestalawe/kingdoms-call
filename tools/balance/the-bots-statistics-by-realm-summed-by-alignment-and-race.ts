@@ -20,9 +20,14 @@ import {
   ALIGNMENT_ABILITIES,
   type AlignmentAbilitySlug,
 } from '../../src/content/alignment-abilities-their-keys-names-numbers-and-words.ts';
-import type { TheBotsRecordOfARealmsTurn } from '../../src/engine/bots/the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
-import { SCRIPTED_REALM, type GameSpec } from './matrix.ts';
-import { baseOf, type Stats, type TelemetryRow } from './stats.ts';
+import { THE_HERO_ORDERS } from '../../src/content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
+import {
+  THE_KINDS_OF_PADDING_ORDER,
+  type TheBotsRecordOfARealmsTurn,
+} from '../../src/engine/bots/the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import { setupsOf } from '../../tests/lib/matrix-game.ts';
+import type { GameSpec } from './matrix.ts';
+import type { Stats, TelemetryRow } from './stats.ts';
 import {
   HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED,
   type HowAnAbilitysUseIsCounted,
@@ -34,6 +39,7 @@ export const ORDERS_GIVEN = 'bots: orders given: ';
 export const ORDERS_THE_HYGIENE_DROPPED = 'bots: orders the hygiene dropped';
 export const PHASES_WITH_NOTHING_ELSE_TO_DO = 'bots: phases with nothing else to do';
 export const CASTS_LEFT_UNUSED = 'bots: casts left unused';
+export const ROOM_UNDER_THE_CAST_LIMITS = 'bots: room under the cast limits';
 export const GOLD_UNSPENT = "bots: gold unspent at a turn's end";
 export const ABILITY_USED = 'bots: ability used: ';
 export const ABILITY_STAND_IN = "bots: an ability's stand-in: ";
@@ -57,14 +63,30 @@ export interface ABotRealm {
   race: string;
 }
 
-/** The bot realms of a game, as both halves seat them (the scripted realm of a scripted game is no bot). */
+/** The bot realms of a game, as both halves seat them (tests/lib/matrix-game.ts's setupsOf: the scripted realm of a
+ *  scripted game is no bot). */
 export function theBotRealmsOfAGame(spec: GameSpec): ABotRealm[] {
-  return Array.from({ length: spec.realms }, (_, realm) => ({
-    realm,
-    alignment: spec.alignments[realm % spec.alignments.length] ?? '',
-    race: spec.races[realm % spec.races.length] ?? '',
-  })).filter((r) => !(spec.group === 'scripted' && r.realm === SCRIPTED_REALM));
+  return setupsOf(spec)
+    .filter((s) => s.isBot)
+    .map((s) => ({ realm: s.id, alignment: s.alignment ?? '', race: s.race ?? '' }));
 }
+
+/** Every kind of order a hero can be given (the hero orders' keys, Pursue's among them): each is a base in every game,
+ *  0 where none was given, so a game's figures never hang on which other games a run plays. */
+export const THE_KINDS_OF_ORDER: readonly string[] = Object.values(THE_HERO_ORDERS).map((o) => o.key);
+
+/** Every base of the page half, each in every game (0 where it didn't happen): a statistic a game lacks would leave
+ *  the game out of the mean (stats.ts's valueOf). The gold's apart: its count is the realm's turns. */
+export const THE_PAGE_HALFS_BASES: readonly string[] = [
+  ...THE_KINDS_OF_ORDER.map((k) => ORDERS_GIVEN + k),
+  ORDERS_THE_HYGIENE_DROPPED,
+  ...THE_HYGIENES_DROPS.map((r) => `${ORDERS_THE_HYGIENE_DROPPED}: ${r}`),
+  PHASES_WITH_NOTHING_ELSE_TO_DO,
+  ...THE_KINDS_OF_PADDING_ORDER.map((k) => `${PHASES_WITH_NOTHING_ELSE_TO_DO}: ${k}`),
+  `${PHASES_WITH_NOTHING_ELSE_TO_DO}: left empty`,
+  CASTS_LEFT_UNUSED,
+  ROOM_UNDER_THE_CAST_LIMITS,
+];
 
 /** A figure per realm: [sum, count] for each realm that has it. */
 type PerRealm = Map<number, [number, number]>;
@@ -89,7 +111,7 @@ export function theBotsStatisticsOfThePageHalf(
   telemetry: readonly TelemetryRow[],
   botChoices: readonly TheBotsRecordOfARealmsTurn[],
 ): Stats {
-  const bases = new Map<string, PerRealm>();
+  const bases = new Map<string, PerRealm>(THE_PAGE_HALFS_BASES.map((b) => [b, new Map()]));
   const add = (base: string, realm: number, sum: number, count = 0) => {
     const perRealm = bases.get(base) ?? new Map<number, [number, number]>();
     const v = perRealm.get(realm) ?? [0, 1];
@@ -117,13 +139,22 @@ export function theBotsStatisticsOfThePageHalf(
       add(`${ORDERS_THE_HYGIENE_DROPPED}: ${reason}`, turn.realm, n);
       add(ORDERS_THE_HYGIENE_DROPPED, turn.realm, n);
     }
-    for (const [kind, n] of Object.entries(turn.padding)) {
+    for (const kind of THE_KINDS_OF_PADDING_ORDER) {
+      const n = turn.padding[kind] ?? 0;
       add(`${PHASES_WITH_NOTHING_ELSE_TO_DO}: ${kind}`, turn.realm, n);
       add(PHASES_WITH_NOTHING_ELSE_TO_DO, turn.realm, n);
     }
     add(`${PHASES_WITH_NOTHING_ELSE_TO_DO}: left empty`, turn.realm, turn.phasesLeftEmpty);
     add(PHASES_WITH_NOTHING_ELSE_TO_DO, turn.realm, turn.phasesLeftEmpty);
-    for (const c of turn.casts) add(CASTS_LEFT_UNUSED, turn.realm, c.limitTheHygieneApplies - c.casts);
+    // a hero's room under his cast limits, summed over his schools; the casts he could really have made: that room, no
+    // more than his phases with nothing else to do
+    const room = new Map<number, number>();
+    for (const c of turn.casts) room.set(c.hero, (room.get(c.hero) ?? 0) + c.limitTheHygieneApplies - c.casts);
+    for (const [hero, r] of room) {
+      add(ROOM_UNDER_THE_CAST_LIMITS, turn.realm, r);
+      const idle = turn.idle.find((h) => h.hero === hero)?.phases ?? 0;
+      add(CASTS_LEFT_UNUSED, turn.realm, Math.min(r, idle));
+    }
   }
   const s: Stats = {};
   for (const [base, perRealm] of bases) sliced(s, base, perRealm, realms);
@@ -186,27 +217,3 @@ export function withTheAbilitiesJoined<TheGame extends { id: string; stats: Stat
 /** A statistic of the abilities (the vm half's): left out of a comparison when the vm half isn't played. */
 export const isAnAbilitysFigure = (key: string): boolean =>
   key.startsWith(ABILITY_USED) || key.startsWith(ABILITY_STAND_IN);
-
-/** Each game's statistics with every kind of order any game of the run gave: a game whose bots gave none of a kind
- *  counts 0 for each of its bot realms, so the mean over the games keeps it (a statistic a game lacks would leave the
- *  game out: stats.ts's valueOf). */
-export function withEveryKindOfOrderInEveryGame<TheGame extends { id: string; stats: Stats }>(
-  games: readonly TheGame[],
-  specs: readonly GameSpec[],
-): TheGame[] {
-  const kinds = new Set(
-    games.flatMap((g) => Object.keys(g.stats)).flatMap((k) => (k.startsWith(ORDERS_GIVEN) ? [baseOf(k)] : [])),
-  );
-  const spec = new Map(specs.map((g) => [g.id, g]));
-  return games.map((g) => {
-    const theSpec = spec.get(g.id);
-    if (!theSpec) return g;
-    const realms = theBotRealmsOfAGame(theSpec);
-    const stats: Stats = { ...g.stats };
-    for (const base of [...kinds].sort()) {
-      if (Object.keys(stats).some((k) => baseOf(k) === base)) continue;
-      sliced(stats, base, new Map(), realms);
-    }
-    return { ...g, stats };
-  });
-}

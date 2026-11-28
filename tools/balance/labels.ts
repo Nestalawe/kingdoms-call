@@ -8,6 +8,7 @@ import {
   ABILITY_STAND_IN,
   ABILITY_USED,
   CASTS_LEFT_UNUSED,
+  ROOM_UNDER_THE_CAST_LIMITS,
   GOLD_UNSPENT,
   ORDERS_GIVEN,
   ORDERS_THE_HYGIENE_DROPPED,
@@ -86,7 +87,10 @@ function theBotsBaseLabel(base: string): string | undefined {
     return kind === 'left empty'
       ? "Heroes' phases left empty (the turn's Defend), per realm a game"
       : `Heroes' phases padded with "${kind.replaceAll('-', ' ')}", per realm a game`;
-  if (base === CASTS_LEFT_UNUSED) return "Casts a hero's limit allowed and he wasn't given, per realm a game";
+  if (base === CASTS_LEFT_UNUSED)
+    return 'Casts its heroes could still have made in their phases with nothing else to do, per realm a game';
+  if (base === ROOM_UNDER_THE_CAST_LIMITS)
+    return "Room under its heroes' cast limits, summed over each hero's schools, per realm a game";
   if (base === GOLD_UNSPENT) return "Gold unspent at a turn's end, per realm a turn";
   return undefined;
 }
