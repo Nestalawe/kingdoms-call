@@ -537,4 +537,41 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theFlyersMoreThanHisFootSoldiersAFlyingGeneralRaises: 1,
     theLeastFlyersAFlyingGeneralRaisesInOneSeason: 1,
   },
+  /** What an enemy character, a body among the fallen and a unit are worth, and how a muster ranks its units (botEnemyChars, botRaiseTargets, botRecruitableTypes, bots/strategy.ts). */
+  strategyHostsAndMusters: {
+    theWorthOfAnEnemyKingInAProvince: 50,
+    theWorthOfAnEnemyHeroWhoIsNotAKingInAProvince: 15,
+    theWorthOfAMonarchsBodyAmongTheFallenToRaise: 100,
+    theStrengthAUnitOfNoWrittenStrengthIsRankedBy: 4,
+    theHopsWithinWhichAProvinceOfKinLetsAGeneralPassOverAGrudgeRaceMuster: 2,
+    theSpeedAUnitOfNoWrittenSpeedIsTakenToHave: 3,
+    theLeastSpeedFromWhichAUnitCountsAsMobile: 2,
+  },
+  /** Which skill a hero practises in a spare phase and the levels at which he changes it (botDrillOrder, botRoleTrainSkill, bots/strategy.ts). */
+  strategyPractice: {
+    theBestDuelSkillLevelBelowWhichAGeneralPractisesForADuel: 3,
+    theLevelOfTacticalFromWhichAGeneralWhoCannotWinADuelPractisesForOne: 2,
+    theLandUnitsFromWhichACommanderDrillsTactical: 3,
+    theSeaUnitsFromWhichACommanderDrillsNaval: 3,
+    theLevelOfNavalBelowWhichAnAdmiralPractisesNaval: 3,
+    theLevelOfACraftFromWhichItsHolderPractisesItOnTowardsMastery: 5,
+  },
+  /** How far the bots look for a threat, a path and a frontier province, and how long they keep their notes on an enemy and a lair (botNearbyThreat, botPathLen, botFrontierTarget, botUpdateIntel, botRumourFor, bots/strategy.ts). */
+  strategyReach: {
+    theHexesWithinWhichAnArmedHostSetsAWatch: 2,
+    theMostHopsAPathIsSearchedAcross: 99,
+    theWorthOfAnOpenNeighbourOfAFrontierSearchBeforeItsTaxAdds: 1,
+    theMostThatAnOpenNeighboursTaxAddsToItsWorthInAFrontierSearch: 3,
+    theTaxThatAddsOnePointToAnOpenNeighboursWorthInAFrontierSearch: 3,
+    theMostHopsTheSearchForAFrontierProvinceGoes: 8,
+    theTurnsANoteOnAnEnemyCharacterIsKept: 6,
+    theTurnsALairsRumourOddsHoldForTheHeroWhoAskedIt: 3,
+  },
+  /** What each of a hero's skills adds to his rating against a lair (botLairRating, bots/strategy.ts). */
+  strategyLairRating: {
+    whatEachLevelOfMeleeAddsToAHeroesLairRating: 6,
+    whatEachLevelOfTacticalAddsToAHeroesLairRating: 3,
+    whatEachLevelOfArcheryAddsToAHeroesLairRating: 2,
+    whatEachLevelOfElementalNecromancyAndPsychicAddsToAHeroesLairRating: 4,
+  },
 } satisfies TheWeightsOfABotVersion;

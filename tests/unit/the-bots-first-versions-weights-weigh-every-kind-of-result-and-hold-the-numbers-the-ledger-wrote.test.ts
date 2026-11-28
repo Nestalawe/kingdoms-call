@@ -21,7 +21,7 @@
 // and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's
 // and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a
 // leaderless host's and a slayer's lessons (bots/missions.ts, part 2), and B-17x's: a general's worth, the roles' posts
-// and the recruiting and the court's size (bots/strategy.ts, part 1), each in its place: a
+// and the recruiting and the court's size (bots/strategy.ts, part 1), and B-17ao's: a muster's worths, a hero's practice, the bots' reach and a lair's rating (bots/strategy.ts, part 2), each in its place: a
 // change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -95,7 +95,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(399);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(424);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -659,5 +659,50 @@ test("strategyRecruiting's weights are the numbers bots/strategy.ts wrote inline
     theHullsAHostOtherThanTheAdmiralsBuysInOneSeason: 1,
     theFlyersMoreThanHisFootSoldiersAFlyingGeneralRaises: 1,
     theLeastFlyersAFlyingGeneralRaisesInOneSeason: 1,
+  });
+});
+
+test("strategyHostsAndMusters's weights are the numbers bots/strategy.ts wrote inline before B-17ao, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyHostsAndMusters).toEqual({
+    theWorthOfAnEnemyKingInAProvince: 50,
+    theWorthOfAnEnemyHeroWhoIsNotAKingInAProvince: 15,
+    theWorthOfAMonarchsBodyAmongTheFallenToRaise: 100,
+    theStrengthAUnitOfNoWrittenStrengthIsRankedBy: 4,
+    theHopsWithinWhichAProvinceOfKinLetsAGeneralPassOverAGrudgeRaceMuster: 2,
+    theSpeedAUnitOfNoWrittenSpeedIsTakenToHave: 3,
+    theLeastSpeedFromWhichAUnitCountsAsMobile: 2,
+  });
+});
+
+test("strategyPractice's weights are the numbers bots/strategy.ts wrote inline before B-17ao, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyPractice).toEqual({
+    theBestDuelSkillLevelBelowWhichAGeneralPractisesForADuel: 3,
+    theLevelOfTacticalFromWhichAGeneralWhoCannotWinADuelPractisesForOne: 2,
+    theLandUnitsFromWhichACommanderDrillsTactical: 3,
+    theSeaUnitsFromWhichACommanderDrillsNaval: 3,
+    theLevelOfNavalBelowWhichAnAdmiralPractisesNaval: 3,
+    theLevelOfACraftFromWhichItsHolderPractisesItOnTowardsMastery: 5,
+  });
+});
+
+test("strategyReach's weights are the numbers bots/strategy.ts wrote inline before B-17ao, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyReach).toEqual({
+    theHexesWithinWhichAnArmedHostSetsAWatch: 2,
+    theMostHopsAPathIsSearchedAcross: 99,
+    theWorthOfAnOpenNeighbourOfAFrontierSearchBeforeItsTaxAdds: 1,
+    theMostThatAnOpenNeighboursTaxAddsToItsWorthInAFrontierSearch: 3,
+    theTaxThatAddsOnePointToAnOpenNeighboursWorthInAFrontierSearch: 3,
+    theMostHopsTheSearchForAFrontierProvinceGoes: 8,
+    theTurnsANoteOnAnEnemyCharacterIsKept: 6,
+    theTurnsALairsRumourOddsHoldForTheHeroWhoAskedIt: 3,
+  });
+});
+
+test("strategyLairRating's weights are the numbers bots/strategy.ts wrote inline before B-17ao, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.strategyLairRating).toEqual({
+    whatEachLevelOfMeleeAddsToAHeroesLairRating: 6,
+    whatEachLevelOfTacticalAddsToAHeroesLairRating: 3,
+    whatEachLevelOfArcheryAddsToAHeroesLairRating: 2,
+    whatEachLevelOfElementalNecromancyAndPsychicAddsToAHeroesLairRating: 4,
   });
 });
