@@ -336,8 +336,8 @@ const TheWeightsOfARivalsSkillsSchema = z.object({
 
 /** The specialists a realm's court wants, by role: how many of each (botSpecialistRoles, bots/specialists.ts) and how many heroes it keeps free of them. */
 const TheWeightsOfTheSpecialistsACourtWantsSchema = z.object({
-  /** The court wants a second slayer once this many lairs, uncleared, are known. */
-  theLairsKnownFromWhichTheCourtWantsASecondSlayer: z.number(),
+  /** The court wants a second slayer once this many uncleared lairs count in its reckoning. */
+  theLairsFromWhichTheCourtWantsASecondSlayer: z.number(),
   /** The most scouts the court wants at once, while ground is unmapped. */
   theMostScoutsTheCourtWants: z.number(),
   /** The court wants one scout more for each this many unmapped provinces it holds, after the first. */
@@ -352,7 +352,7 @@ const TheWeightsOfTheSpecialistsACourtWantsSchema = z.object({
   theSpiesTheCourtWantsAtWar: z.number(),
   /** From this turn the court wants a thief, though no other realm is met. */
   theTurnFromWhichTheCourtWantsAThiefWithNoRealmMet: z.number(),
-  /** From this turn the court wants a mage, though no hero knows a school of magic. */
+  /** From this turn the court wants a mage, though no hero has a level in a school of magic. */
   theTurnFromWhichTheCourtWantsAMageWithNoHeroKnowingASchool: z.number(),
   /** A realm of this many provinces or more wants a second mage. */
   theProvincesFromWhichTheCourtWantsASecondMage: z.number(),
@@ -418,12 +418,12 @@ const TheWeightsOfTheWorkOfASpecialistSchema = z.object({
   theWorthOfEachUnitAMarkLeadsToSpyOn: z.number(),
   /** A rival king adds this to his worth as the one to spy on. */
   theWorthOfAKingAsAMarkToSpyOn: z.number(),
-  /** A rival general last seen within this many turns may be shadowed. */
-  theTurnsAGeneralLastSeenIsStillShadowed: z.number(),
+  /** A rival general within this many turns of his last placing may be shadowed. */
+  theTurnsAGeneralMayBeShadowedAfterHisLastPlacing: z.number(),
   /** A spy follows a general this many steps away at most. */
   theProvincesAwayASpyShadowsAGeneral: z.number(),
-  /** Each unit a last-seen general leads adds this to his worth as the one to shadow. */
-  theWorthOfEachUnitALastSeenGeneralLeads: z.number(),
+  /** Each unit a general to shadow leads adds this to his worth as the one to shadow. */
+  theWorthOfEachUnitAGeneralToShadowLeads: z.number(),
   /** A king adds this to his worth as the one to shadow. */
   theWorthOfAKingToShadow: z.number(),
   /** A general of a realm at war with the spy's adds this to his worth as the one to shadow. */
