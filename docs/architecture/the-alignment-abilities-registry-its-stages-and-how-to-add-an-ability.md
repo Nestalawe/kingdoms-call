@@ -225,7 +225,7 @@ and [of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk
 - **One table, keyed by the ability** (B-17p, BOT-V5): `THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY`
   (`src/engine/bots/the-bots-valuation-of-each-alignment-ability-keyed-by-the-ability.ts`) holds each ability's
   valuation as the bots make it today, of four kinds: asked of the registry's runner (9: the places that ask it read the
-  runner from the table), chosen by a pass of the plan (10), nothing to choose (15) and not valued yet (17: the bots'
+  runner from the table), chosen by a pass of the plan (11), nothing to choose (15) and not valued yet (16: the bots'
   gaps). It ends `satisfies Record<AlignmentAbilitySlug, …>`, so a new ability with no entry doesn't compile.
 - **What the rules say:** a host's fervour in the bots' estimates (`botFervourMult`) is `theFervourOfASide` (savage
   fury's and skeletal fervour's rows, the strongest counting) and, on a defence, Righteous Defence's factor
@@ -280,4 +280,5 @@ and [of a title](the-minor-titles-registry-its-hook-points-and-how-to-add-a-perk
    `orderOutcome`, `fate`, `turnEnd`, …), its runner into the registry, and the resolver asks the runner. A stage no
    live rule uses isn't declared.
 4. **Its test**: a unit case of the effect and the runner, and the function it takes listed in the static test above.
-5. **Its entry in the bots' table** (above): "not valued yet" until a row gives the bots their judgement of it.
+5. **Its entry in the bots' table** (above), of its kind (a gap, "not valued yet", until a row gives the bots their
+   judgement of it).
