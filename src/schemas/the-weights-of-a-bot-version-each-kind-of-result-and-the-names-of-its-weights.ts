@@ -984,7 +984,7 @@ const TheWeightsOfStrategyHostsAndMustersSchema = z.object({
   theLeastSpeedFromWhichAUnitCountsAsMobile: z.number(),
 });
 
-/** Which skill a hero practises in a spare phase and the levels at which he changes it (botDrillOrder, botRoleTrainSkill, botPracticeSkill, bots/strategy.ts). */
+/** Which skill a hero practises in a spare phase and the levels at which he changes it (botDrillOrder, botRoleTrainSkill, bots/strategy.ts). */
 const TheWeightsOfStrategyPracticeSchema = z.object({
   /** A general whose best duelling skill is below this level practises it, once his Tactical is high enough. */
   theBestDuelSkillLevelBelowWhichAGeneralPractisesForADuel: z.number(),

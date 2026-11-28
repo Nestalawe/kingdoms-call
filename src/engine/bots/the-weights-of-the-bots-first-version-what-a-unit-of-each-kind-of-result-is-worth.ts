@@ -547,7 +547,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theSpeedAUnitOfNoWrittenSpeedIsTakenToHave: 3,
     theLeastSpeedFromWhichAUnitCountsAsMobile: 2,
   },
-  /** Which skill a hero practises in a spare phase and the levels at which he changes it (botDrillOrder, botRoleTrainSkill, botPracticeSkill, bots/strategy.ts). */
+  /** Which skill a hero practises in a spare phase and the levels at which he changes it (botDrillOrder, botRoleTrainSkill, bots/strategy.ts). */
   strategyPractice: {
     theBestDuelSkillLevelBelowWhichAGeneralPractisesForADuel: 3,
     theLevelOfTacticalFromWhichAGeneralWhoCannotWinADuelPractisesForOne: 2,
