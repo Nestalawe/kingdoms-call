@@ -266,9 +266,7 @@ export function botSpecialistRoles(
     aTitleTheRealmChasesCountsTheDeedsOfTheRole(titles, theRole) ? theMoreAChasedTitleWants : 0;
   const want = {
     slayer:
-      1 +
-      (lairs >= theCourt.theLairsKnownFromWhichTheCourtWantsASecondSlayer ? 1 : 0) +
-      aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once enough lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
+      1 + (lairs >= theCourt.theLairsFromWhichTheCourtWantsASecondSlayer ? 1 : 0) + aChasedTitleWantsMore('slayer'), // Sept 2026 (Toby): EVERY realm trains a guardian-killer from turn 1; a second once enough lairs are known   // Sept 2026 (Toby): guardian-killers, trained for the lairs on the map
     scout:
       unmapped > 0
         ? Math.min(
@@ -692,7 +690,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
     const I = botEnemyIntel(G, pi);
     let best: { readonly e: Character; readonly X: Province; readonly d: number; readonly sc: number } | null = null;
     for (const [k, r] of Object.entries(I.generals)) {
-      if ((G.turn || 0) - r.turn > theWork.theTurnsAGeneralLastSeenIsStillShadowed) continue;
+      if ((G.turn || 0) - r.turn > theWork.theTurnsAGeneralMayBeShadowedAfterHisLastPlacing) continue;
       const e = theCharactersOf(G).find((x) => x?.id === +k);
       if (!e || !e.alive || !botSkillsUnknown(G, pi, e)) continue;
       if (botRelationRaw(G, pi, r.player) === THE_STATES_TWO_REALMS_STAND_IN.allied) continue;
@@ -702,7 +700,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
       const d = botPathLenAny(G, P, X.id, theWork.theProvincesAwayASpyShadowsAGeneral);
       if (d == null || d + pre.length > THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 2) continue;
       const sc =
-        r.units * theWork.theWorthOfEachUnitALastSeenGeneralLeads +
+        r.units * theWork.theWorthOfEachUnitAGeneralToShadowLeads +
         (r.isKing ? theWork.theWorthOfAKingToShadow : 0) +
         (botRelationRaw(G, pi, r.player) === THE_STATES_TWO_REALMS_STAND_IN.atWar
           ? theWork.theWorthOfAGeneralAtWarToShadow
@@ -1006,7 +1004,7 @@ export function botRoleWork(
     }
     case 'scout': {
       if (
-        (Number(theSkillsOf(c).explorer) || 0) >= theRoles.theExplorerLevelFromWhichAScoutChartsTheUnknown &&
+        (Number(theSkillsOf(c).explorer) || 0) >= theRoles.theExplorerLevelFromWhichAScoutChartsGroundBesideHim &&
         pre.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1
       ) {
         const P = G.world.provinces[c.location];
@@ -1168,7 +1166,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     let bestG: { readonly X: Province; readonly d: number; readonly sc: number; readonly e: Character } | null = null;
     for (const [k, r] of Object.entries(I.generals)) {
       if (
-        (G.turn || 0) - r.turn > theMage.theTurnsAGeneralLastSeenIsStillToBeHexed ||
+        (G.turn || 0) - r.turn > theMage.theTurnsAGeneralMayBeHexedAfterHisLastPlacing ||
         botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar
       )
         continue;
