@@ -734,16 +734,16 @@ const TheWeightsOfALairPlanAndTheHuntingGateSchema = z.object({
   theMeleeLevelFromWhichACombatSchoolCanOpenTheHuntingGate: z.number(),
   /** A hero with Melee at the level of the weight before this is sent hunting when his Melee, Archery and best combat school added together reach this. */
   theLevelsOfMeleeArcheryAndACombatSchoolTogetherThatOpenTheHuntingGate: z.number(),
-  /** A lair assessment recorded this many turns ago or fewer is still treated as good for the hero who asked for it. */
+  /** A lair assessment made this many turns ago or fewer is still treated as good for the hero who asked for it. */
   theTurnsAnAssessmentOfALairStaysGoodForTheHeroWhoAskedIt: z.number(),
   /** A below-the-bar assessment of the grade above his own, heard this many turns ago or fewer, holds a hero back from asking again until he has cleared more of his own grade. */
   theTurnsAFreshLowAssessmentOfTheGradeAboveHoldsBackAskingAgain: z.number(),
-  /** A hero casts Invisibility before a lair only when this many orders or more are still free in the season. */
-  theOrdersAHeroMustHaveLeftToCastInvisibilityBeforeALair: z.number(),
-  /** A hero's first search of the season, ordered on a lair assessment he has just recorded, goes ahead only with at least this share of his hit points. */
-  theShareOfAHeroesHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment: z.number(),
-  /** A lair known within this many steps of a slayer is one he trains to clear. */
-  theStepsFromASlayerWithinWhichAKnownLairIsOneHeMayGrowInto: z.number(),
+  /** A hero casts the spell he casts before a lair only when this many orders or more are still free in the season. */
+  theOrdersAHeroMustHaveLeftToCastThePreHuntSpell: z.number(),
+  /** A hero's first search of the season, ordered on a lair assessment he has just made, goes ahead only with at least this share of his hit points. */
+  theShareOfAHerosHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment: z.number(),
+  /** A lair within this many steps of a slayer is one he trains to clear. */
+  theStepsFromASlayerWithinWhichALairIsOneHeMayGrowInto: z.number(),
 });
 
 /** What makes a target worth a fleet's or an airborne column's strike (botSeaStrike, botAirStrike, bots/missions.ts). */
@@ -798,10 +798,10 @@ const TheWeightsOfAMasteryChallengeAndADuelStanceSchema = z.object({
   theDuellingSkillOfARealDuellist: z.number(),
   /** A real duellist holding at least this share of his hit points is fit to ride out. */
   theShareOfHitPointsAFitDuellistMustHold: z.number(),
-  /** With no enemy general near, a king accepts a duel only with a duelling skill at this level or more. */
-  theDuellingSkillFromWhichAKingAcceptsWithNoGeneralInSight: z.number(),
-  /** A recorded enemy general whose record is this many turns old or fewer counts as near, where it places him. */
-  theTurnsAnEnemyGeneralRecordedElsewhereStillCountsAsNear: z.number(),
+  /** When no enemy general is near, a king accepts a duel only with a duelling skill at this level or more. */
+  theDuellingSkillFromWhichAKingAcceptsWhenNoEnemyGeneralIsNear: z.number(),
+  /** An enemy general placed in a province this many turns ago or fewer counts as being there. */
+  theTurnsAnEnemyGeneralsPlacingStillCountsAsNear: z.number(),
   /** The forecast of a duel stance plays this many duels. */
   theDuelsPlayedToForecastAStance: z.number(),
   /** With no forecast, a hero rated at this multiple of his foe's rating or more counts as the stronger. */
@@ -836,8 +836,8 @@ const TheWeightsOfASlayersLessonsSchema = z.object({
   theRankOfEachOtherBattleSchoolAmongTheSkillsASlayerIsTaught: z.number(),
   /** Every other skill has this rank among the skills a slayer is taught. */
   theRankOfEveryOtherSkillAmongTheSkillsASlayerIsTaught: z.number(),
-  /** A slayer is sent to a teacher only with at least this share of his hit points. */
-  theShareOfHitPointsAnUnarmedSlayerMustHoldToBeTaught: z.number(),
+  /** A slayer who leads no units is sent to a teacher only with at least this share of his hit points. */
+  theShareOfHitPointsASlayerWhoLeadsNoUnitsMustHoldToBeTaught: z.number(),
   /** A slayer walks no more than this many steps to a lesson. */
   theMostStepsASlayerWalksToALesson: z.number(),
   /** Each phase of lessons in a plan adds this to its worth. */

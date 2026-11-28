@@ -18,7 +18,9 @@
 // (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts,
 // part 1), and B-17u's: a thief's targets, the roles' work, a mage's work, a defender's post and a host's march (part
 // 2), and B-17v's: an infiltration's and a consecration's, the signature orders', a research pick's and a slayer's kit,
-// and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a leaderless host's and a slayer's lessons (bots/missions.ts, part 2), each in its place: a
+// and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's
+// and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a
+// leaderless host's and a slayer's lessons (bots/missions.ts, part 2), each in its place: a
 // change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -522,9 +524,9 @@ test("missionsLairPlan's weights are the numbers bots/missions.ts wrote inline b
     theLevelsOfMeleeArcheryAndACombatSchoolTogetherThatOpenTheHuntingGate: 6,
     theTurnsAnAssessmentOfALairStaysGoodForTheHeroWhoAskedIt: 6,
     theTurnsAFreshLowAssessmentOfTheGradeAboveHoldsBackAskingAgain: 1,
-    theOrdersAHeroMustHaveLeftToCastInvisibilityBeforeALair: 2,
-    theShareOfAHeroesHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment: 0.5,
-    theStepsFromASlayerWithinWhichAKnownLairIsOneHeMayGrowInto: 4,
+    theOrdersAHeroMustHaveLeftToCastThePreHuntSpell: 2,
+    theShareOfAHerosHitPointsHeMustHoldForAFirstSearchOrderedOnAFreshAssessment: 0.5,
+    theStepsFromASlayerWithinWhichALairIsOneHeMayGrowInto: 4,
   });
 });
 
@@ -558,8 +560,8 @@ test("missionsDuels's weights are the numbers bots/missions.ts wrote inline befo
     theShareOfHitPointsBelowWhichAHeroRefusesEveryDuel: 0.6,
     theDuellingSkillOfARealDuellist: 4,
     theShareOfHitPointsAFitDuellistMustHold: 0.8,
-    theDuellingSkillFromWhichAKingAcceptsWithNoGeneralInSight: 4,
-    theTurnsAnEnemyGeneralRecordedElsewhereStillCountsAsNear: 2,
+    theDuellingSkillFromWhichAKingAcceptsWhenNoEnemyGeneralIsNear: 4,
+    theTurnsAnEnemyGeneralsPlacingStillCountsAsNear: 2,
     theDuelsPlayedToForecastAStance: 16,
     theRatingAHeroMustHaveOverAFoeToCountAsStrongerWithNoForecast: 1.3,
     theChanceToWinCountedWithNoForecastForOneRatedStronger: 0.7,
@@ -583,7 +585,7 @@ test("missionsSlayerSchool's weights are the numbers bots/missions.ts wrote inli
     theRankOfArcheryAmongTheSkillsASlayerIsTaught: 2,
     theRankOfEachOtherBattleSchoolAmongTheSkillsASlayerIsTaught: 3,
     theRankOfEveryOtherSkillAmongTheSkillsASlayerIsTaught: 4,
-    theShareOfHitPointsAnUnarmedSlayerMustHoldToBeTaught: 0.6,
+    theShareOfHitPointsASlayerWhoLeadsNoUnitsMustHoldToBeTaught: 0.6,
     theMostStepsASlayerWalksToALesson: 3,
     theWorthOfEachPhaseOfLessonsInATeachersPlan: 10,
     theWorthOfEachLessonThatOpensTheHuntingGate: 6,
