@@ -17,6 +17,7 @@ import {
 import { aCompanyDrawsNoWage } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { aRealmsDiscoveriesLetABeastFollowWithoutItsDruid } from '../rules/the-registry-of-discovery-effects.ts';
 import { druIdPenaltyMult } from '../world/tables.ts';
+import { hexDistP } from '../world/map-helpers.ts';
 import { actionSpellsAllowedPerSchoolEachTurn } from '../rules-on-plain-values/spells-each-school-allows-a-turn-and-a-fight.ts';
 import { graveServedOther } from '../heroes/charms-and-neutrals.ts';
 import { UNIT_BASE_STR, unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
@@ -116,18 +117,6 @@ export function botPassable(G: GameState, pi: number | null, N: Province | null 
     (N.owner === pi || (N.owner != null && botRelationRaw(G, pi, N.owner) === THE_STATES_TWO_REALMS_STAND_IN.allied))
   );
 }
-// Hex distance with the map's east-west wrap — mirrors generateNewGame's cellDistRC.
-export function botHexDist(
-  G: Pick<GameState, 'world'>,
-  a: Pick<Province, 'col' | 'row'>,
-  b: Pick<Province, 'col' | 'row'>,
-) {
-  const cols = G.world.cols;
-  let dc = Math.abs(a.col - b.col);
-  dc = Math.min(dc, cols - dc);
-  const dr = Math.abs(a.row - b.row);
-  return Math.max(dc, dr, (dc + dr) >> 1);
-}
 export function botHomeId(G: GameState, pi: number) {
   const home = G.players[pi]?.homeProvinceId;
   const h = G.world.provinces[home ?? -1]; // a realm of no home reads no province, as `provinces[undefined]` did
@@ -189,7 +178,7 @@ export function botEmpireDiameter(G: GameState, pi: number) {
   let d = 0;
   for (const [i, a] of own.entries())
     for (const b of own.slice(i + 1)) {
-      const x = botHexDist(G, a, b);
+      const x = hexDistP(a, b, G.world.cols);
       if (x > d) d = x;
     }
   return d;
@@ -1339,7 +1328,7 @@ export function botNearbyThreat(G: GameState, pi: number, c: Character) {
       botSeesChar(G, pi, e) &&
       (() => {
         const X = G.world.provinces[e.location];
-        return X && botHexDist(G, P, X) <= 2;
+        return X && hexDistP(P, X, G.world.cols) <= 2;
       })(),
   );
 }

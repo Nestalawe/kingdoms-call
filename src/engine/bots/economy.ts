@@ -1,6 +1,7 @@
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { KC_UNIT_CLASS, SPELL_DEFS_P } from '../../content/kingdoms-call-data.ts';
 import { SKILL_LABELS } from '../army-tables.ts';
+import { theBaseChanceAPracticeAloneRaisesASkill } from '../rules-on-plain-values/the-chance-a-practice-alone-raises-a-skill-and-the-price-and-wage-a-druid-or-a-host-leader-cuts.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import { effSkillOf } from '../heroes/skills-and-hp.ts';
 import { UNIT_DRILL_BASE } from '../units/drill-and-spoils.ts';
@@ -450,12 +451,11 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
 // Tactical / Naval, to drill troops that can still improve). Heroes still train TOGETHER: a phase freed here is
 // first offered to a comrade training in the same place (learn from him, teach him, or pair at equal level for
 // +50% each), and a final pass pulls a free hero standing with a trainee into teaching or pairing with him.
-export const BOT_PRACTICE_BASE = [0.25, 0.2, 0.15, 0.1, 0.05]; // the engine's solo chance by level (case 'practice')
 export const BOT_HYG_CRAFT = new Set(['sage', 'explorer', 'spy', 'thief']);
-/** The engine's solo chance at a level (`BOT_PRACTICE_BASE[Math.min(4, l)]`): for a level below 0, none, read as a
- *  number (`NaN`, as `undefined * 1.5` and `x >= undefined` read it). */
-function theSoloChanceAt(l: number): number {
-  return Number(BOT_PRACTICE_BASE[Math.min(4, l)]);
+/** The engine's solo chance at a level, asked of the rule itself: for a level below 0, none, read as a number (`NaN`,
+ *  as `undefined * 1.5` and `x >= undefined` read it). */
+export function theSoloChanceAt(l: number): number {
+  return theBaseChanceAPracticeAloneRaisesASkill(l);
 }
 export function botDrillUseful(c: Character, S: string) {
   if (S !== 'tactical' && S !== 'naval') return false;

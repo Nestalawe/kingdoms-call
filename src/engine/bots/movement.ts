@@ -6,6 +6,7 @@ import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-betw
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
 import { THE_ALIGNMENT_ORDERS } from '../../content/alignment-abilities-their-keys-names-numbers-and-words.ts';
 import { unitBaseStrength } from '../rules-on-plain-values/unit-types-and-base-strength.ts';
+import { getFlyCapability } from '../rules-on-plain-values/units-that-fly-sail-or-can-be-carried-through-the-air.ts';
 import { heroHireWage } from '../rules-on-plain-values/alignments-and-a-wandering-heros-hire-wage.ts';
 import {
   BOT_AERIAL_TYPES,
@@ -24,7 +25,7 @@ import {
   botTurnCache,
   botVisibleCharsIn,
 } from './intel.ts';
-import { botCanFly, botLairDir, botPlanAssaults, botSeaCap } from './war.ts';
+import { botLairDir, botPlanAssaults, botSeaCap } from './war.ts';
 import {
   BOT_FLYING_TYPES,
   BOT_NAVAL_TYPES,
@@ -1011,7 +1012,7 @@ export function runBotMovement(
       // ── FLYING GENERAL (2026-09-26, Toby item 8): airborne, he strikes over sea and behind the front; grounded
       // (too few flyers for the foot he leads), he goes to the nearest eyrie and musters flyers there. ──
       if (c._botRole === 'skygeneral') {
-        if (botCanFly(c.armies)) {
+        if (getFlyCapability(c.armies)) {
           const as = botAirStrike(G, pi, c, P, myStr, T, Math.max(1, Math.min(5, botAirReach(c), 5 - pre.length)));
           if (as?.moves.length) {
             const buff =
