@@ -1,4 +1,5 @@
 import { hexDistP } from '../world/map-helpers.ts';
+import { inDefendZone } from '../units/defend-ride-outs-ambushes-and-reinforcements.ts';
 import { theHerosInvisibilityHidesHimNow } from '../rules-on-plain-values/whether-a-heros-invisibility-hides-him-now.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { THE_HERO_ORDERS } from '../../content/the-hero-orders-their-keys-the-names-the-turn-reads-them-by-and-their-tiers.ts';
@@ -93,6 +94,10 @@ import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, TheBotsSpecialistRoles } from './intel.ts';
 import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import {
+  THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
+  THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
+} from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b46): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -171,14 +176,24 @@ export function botMageAptitude(c: AHeroOfSkills) {
 }
 // BOT_SPECIALIST_ROLES, botMagicScore and botLandCount are in bots/strategy.ts.
 export const BOT_DEFEND_ORDER = { action: 'defend', target: '', extra: '', desc: 'Hold the post' };
-// The six-hex Defend zone about a province (the engine's inDefendZone, in engine/units/defend-ride-outs-ambushes-and-reinforcements.ts, takes the turn's context).
+/** The provinces (by id) a watch kept from each province covers, per map: the rule's answer for every province of the
+ *  map, worked out once (the map's shape never changes in a game). */
+// Keyed by the province list alone: nothing changes a game's columns, rows or list after the world is handed on (a save, a new game and each matrix game get a new list); owners and terrain are read fresh by id.
+const theZonesOfAMap = new WeakMap<readonly unknown[], Map<number, readonly number[]>>();
+// The six-hex Defend zone about a province: the provinces the rule (inDefendZone, in
+// engine/units/defend-ride-outs-ambushes-and-reinforcements.ts) says a hero holding the post there watches over.
 export function botZoneOf(G: GameState, X: Province) {
-  const z = [X];
-  for (let i = 0; i < 6; i++) {
-    const N = botNeighbourProv(G, X, i);
-    if (N) z.push(N);
+  const provinces = G.world.provinces;
+  const zones = theZonesOfAMap.get(provinces) ?? new Map<number, readonly number[]>();
+  theZonesOfAMap.set(provinces, zones);
+  let ids = zones.get(X.id);
+  if (!ids) {
+    const watch = { centre: X.id, active: true, setPhase: 0, carried: false };
+    const watcher = { _defend: watch, location: X.id };
+    ids = provinces.flatMap((q) => (inDefendZone({ G }, watcher, q) ? [q.id] : []));
+    zones.set(X.id, ids);
   }
-  return z;
+  return ids.map((id) => provinces[id]).filter((q): q is Province => !!q);
 }
 /** A province's features, where the code tests the list for a gap. */
 function theFeaturesWithGapsOf(X: Province): readonly (ProvinceFeature | null | undefined)[] {
@@ -291,7 +306,7 @@ export function botSpecialistRoles(
       return (
         (Number(s.melee) || 0) * 4 +
         (Number(s.archery) || 0) * 3 +
-        (c.maxHp || 20) * 0.3 +
+        (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.3 +
         (c._botRole === role ? 3 : 0) +
         ((Number(s.elemental) || 0) + (Number(s.necromancy) || 0) + (Number(s.psychic) || 0) + (Number(s.white) || 0)) *
           0.5
@@ -440,8 +455,8 @@ export function botTrainOrders(
     desc: 'Practice ' + theLabelOf(skill) + (why ? ' (' + why + ')' : ''),
   };
   const out = [...pre, ...mv];
-  while (out.length < 5) out.push({ ...pr });
-  return out.slice(0, 5);
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...pr });
+  return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
 }
 /** Whether a realm of this alignment adds to a Research's chance with each Sage level: the rule (its alignment's
  *  research, asked of a Sage 1 scholar) gives more than nothing (the Neutral scholars' row; P1-19bb8). The alignment as
@@ -477,9 +492,9 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
       const d = P ? botPathLen(G, pi, P, king.location, true) : null;
       if (d != null && path.length === d && d <= 3) {
         const out = [...pre, ...path.map((x) => aMoveOrderOnThePath(x, 'Study with the king'))];
-        while (out.length < 5)
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
           out.push({ action: 'practice', target: 'sage', extra: '', desc: 'Practice Sage (scholar)' });
-        return out.slice(0, 5);
+        return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
       }
     }
     return botTrainOrders(G, pi, c, pre, 'sage', 'scholar');
@@ -489,7 +504,7 @@ export function botScholarOrders(G: GameState, pi: number, c: Character, pre: re
   // a scholar still short of Sage 5 splits the year: three Research, two practices
   const out = [...pre];
   let k = 0;
-  while (out.length < 5) {
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     out.push(sg >= 5 || k < 3 ? { ...research } : { ...pr });
     k++;
   }
@@ -524,9 +539,10 @@ export function botScoutOrders(G: GameState, pi: number, c: Character, pre: read
   if (!t) return null;
   const path = t.d > 0 ? (botPathDirs(G, pi, P, t.X.id, 4, true) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
-  if (pre.length + path.length >= 5) return null;
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const out = [...pre, ...path.map((d) => aMoveOrderOnThePath(d, 'Scout ' + t.X.name))];
-  while (out.length < 5) out.push({ action: 'explore', target: '', extra: '', desc: 'Explore ' + t.X.name });
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+    out.push({ action: 'explore', target: '', extra: '', desc: 'Explore ' + t.X.name });
   return out;
 }
 // ROAM (2026-09-26, Toby item 5) — a hero sent out to FIND wandering heroes: the nearest known land
@@ -548,10 +564,12 @@ export function botRoamOrders(G: GameState, pi: number, c: Character, pre: reado
   }
   if (!best) return botScoutOrders(G, pi, c, pre);
   const path = botPathAny(G, P, best.X.id, 5) ?? [];
-  if (path.length !== best.d || pre.length + path.length >= 5) return botScoutOrders(G, pi, c, pre);
+  if (path.length !== best.d || pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+    return botScoutOrders(G, pi, c, pre);
   const to = best.X;
   const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Roam to ' + to.name + ' (seek heroes)'))];
-  while (out.length < 5) out.push({ action: 'explore', target: '', extra: '', desc: 'Explore ' + to.name });
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+    out.push({ action: 'explore', target: '', extra: '', desc: 'Explore ' + to.name });
   return out;
 }
 // botSpyTarget (the rival province a spy goes to) is in bots/spellcraft.ts.
@@ -600,7 +618,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
         { action: 'spy', target: 'char:' + String(mark.id), extra: '', desc: 'Spy on ' + mark.name },
         { action: 'spy', target: '', extra: '', desc: 'Spy on ' + (P ? P.name : '') },
       ];
-      while (out.length < 5)
+      while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
         out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
       return out;
     }
@@ -637,8 +655,9 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
           ...path.map((d) => botMoveOrder(d, 'Shadow ' + shadowed.name)),
           { action: 'spy', target: 'char:' + String(best.e.id), extra: '', desc: 'Spy on ' + best.e.name },
         ];
-        if (out.length < 5) out.push({ action: 'spy', target: '', extra: '', desc: 'Spy on ' + best.X.name });
-        while (out.length < 5)
+        if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+          out.push({ action: 'spy', target: '', extra: '', desc: 'Spy on ' + best.X.name });
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
           out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
         return out;
       }
@@ -648,7 +667,7 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
   if (!t) return null;
   const path = t.d > 0 ? (botPathAny(G, P, t.X.id, 4) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
-  if (pre.length + path.length >= 5) return null;
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const p = theRealmsOf(G)[pi];
   if (p) {
     const memo = p._botSpyMemo ?? {};
@@ -656,12 +675,13 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
     memo[t.X.id] = G.turn;
   }
   pre = botCloakPre(G, pi, c, pre, t.X);
-  if (pre.length + path.length >= 5) pre = pre.filter((o) => !(o?.target === theNameOfTheSpell('invisibility')));
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+    pre = pre.filter((o) => !(o?.target === theNameOfTheSpell('invisibility')));
   const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Slip into ' + t.X.name))];
   const spy = { action: 'spy', target: '', extra: '', desc: 'Spy on ' + t.X.name };
   // two attempts, then lie in wait (a Defend with no column is an ambush watch)
   let k = 0;
-  while (out.length < 5) {
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     out.push(
       k < 2
         ? { ...spy }
@@ -744,14 +764,14 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
       const vaults = best.X;
       const path = best.d > 0 ? (botPathAny(G, P, best.X.id, 4) ?? []) : [];
       let pre2 = botCloakPre(G, pi, c, pre, best.X);
-      if (pre2.length + path.length >= 5) pre2 = pre;
-      if (path.length === best.d && pre2.length + path.length < 5) {
+      if (pre2.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) pre2 = pre;
+      if (path.length === best.d && pre2.length + path.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
         const out = [
           ...pre2,
           ...path.map((d) => botMoveOrder(d, 'Creep toward the vaults of ' + vaults.name)),
           { action: 'grand_heist', target: '', extra: '', desc: 'Grand Heist — ' + best.X.name },
         ];
-        while (out.length < 5)
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
           out.push(aPaddingOrder(G, 'lie-low', { action: 'defend', target: '', extra: '', desc: 'Lie low' }));
         return out;
       }
@@ -775,7 +795,10 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
         .sort((a, b) => b.grade - a.grade || a.d - b.d)[0]; // 2026-09-29: never a hoard this realm has already emptied
       if (lair) {
         const path = lair.d > 0 ? (botPathDirs(G, pi, P, lair.X.id, 4, true) ?? []) : [];
-        if ((lair.d === 0 || path.length === lair.d) && pre.length + path.length < 5) {
+        if (
+          (lair.d === 0 || path.length === lair.d) &&
+          pre.length + path.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON
+        ) {
           // 2026-09-29 (Toby, lair study): the robber goes in to STEAL AND RUN. The steal-then-flee plan was set
           // only for a hero whose PRIMARY role is thief (botSpecialistRoles), but this order also reaches a hero
           // with Thief 3+ working his secondary role — who then walked into a Moderate guardian with an ordinary
@@ -791,7 +814,7 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
             ...path.map((d) => aMoveOrderOnThePath(d, 'Creep toward the lair in ' + lair.X.name)),
             { action: 'search', target: String(lair.li), extra: '', desc: 'Rob the hoard', prov: lair.X.id },
           ];
-          while (out.length < 5)
+          while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
             out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
           return out;
         }
@@ -802,17 +825,18 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
   if (!t) return null;
   const path = t.d > 0 ? (botPathAny(G, P, t.provId, 4) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
-  if (pre.length + path.length >= 5) return null;
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const X = G.world.provinces[t.provId];
   pre = botCloakPre(G, pi, c, pre, X);
-  if (pre.length + path.length >= 5) pre = pre.filter((o) => !(o?.target === theNameOfTheSpell('invisibility')));
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+    pre = pre.filter((o) => !(o?.target === theNameOfTheSpell('invisibility')));
   const steal =
     t.kind === 'char'
       ? { action: 'steal', target: String(t.e.id), extra: '', desc: 'Rob ' + t.e.name }
       : { action: 'steal', target: 'garrison', extra: '', desc: 'Rob the paymaster of ' + (X ? X.name : '') };
   const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Creep toward ' + (X ? X.name : '')))];
   let k = 0;
-  while (out.length < 5) {
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     out.push(
       k < 1
         ? { ...steal }
@@ -855,7 +879,7 @@ export function botLairOrders(G: GameState, pi: number, c: Character, pre: reado
   if (!t) return null;
   const path = t.d > 0 ? (botPathDirs(G, pi, P, t.X.id, 4, true) ?? []) : [];
   if (t.d > 0 && path.length !== t.d) return null;
-  if (pre.length + path.length >= 5) return null;
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   const mv = [
     ...path.map((d) => aMoveOrderOnThePath(d, 'Seek the lair in ' + t.X.name)),
     { action: 'search', target: String(t.li), extra: '', desc: 'Search Lair', prov: t.X.id },
@@ -933,7 +957,7 @@ export function botRoleWork(
             ...pre,
             { action: 'assassinate', target: String(mark.id), extra: '', desc: 'Assassinate ' + mark.name },
           ];
-          while (out.length < 5)
+          while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
             out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
           return out;
         }
@@ -953,7 +977,7 @@ export function botRoleWork(
             ...pre,
             { action: 'sabotage', target: String(best.X.id), extra: '', desc: 'Sabotage ' + best.X.name },
           ];
-          while (out.length < 5)
+          while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
             out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
           return out;
         }
@@ -1014,7 +1038,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
         if (d == null) continue;
         if (!bestW || d < bestW.d) bestW = { h, d };
       }
-    if (bestW && pre.length + bestW.d < 5) {
+    if (bestW && pre.length + bestW.d < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
       const path = bestW.d > 0 ? (botPathAny(G, P, bestW.h.location, 3) ?? []) : [];
       if (path.length === bestW.d) {
         const wanderer = bestW.h;
@@ -1028,8 +1052,8 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
             desc: 'Charm ' + bestW.h.name,
           },
         ];
-        while (out.length < 5) out.push({ ...prac });
-        return out.slice(0, 5);
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...prac });
+        return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
       }
     }
   }
@@ -1064,8 +1088,8 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
           if (bestG.X.owner !== pi) pre2 = botCloakPre(G, pi, c, pre, bestG.X);
           const general = bestG.e;
           const out = [...pre2, ...path.map((d) => botMoveOrder(d, 'Close on ' + general.name)), ...hexes];
-          while (out.length < 5) out.push({ ...prac });
-          return out.slice(0, 5);
+          while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...prac });
+          return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
         }
       }
     }
@@ -1085,8 +1109,8 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
   });
   if (casts.length) {
     const out = [...pre, ...casts];
-    while (out.length < 5) out.push({ ...prac });
-    return out.slice(0, 5);
+    while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...prac });
+    return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
   }
   // idea 9: a NECROMANCER walks to the nearest known battlefield graves in our own or unowned ground (three hops)
   // and raises them — Skeletal Armies needs him standing on the dead.
@@ -1096,7 +1120,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
       if (!X || X.id === P.id || X.terrain === 'sea' || !botKnowsGraves(G, pi, X.id)) continue;
       if (X.owner != null && X.owner !== pi) continue;
       const d = botPathLenAny(G, P, X.id, 3);
-      if (d == null || pre.length + d >= 5) continue;
+      if (d == null || pre.length + d >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) continue;
       if (!bestX || d < bestX.d) bestX = { X, d };
     }
     if (bestX) {
@@ -1105,14 +1129,14 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
         const graves = bestX.X;
         const out = [...pre, ...path.map((d) => botMoveOrder(d, 'To the battlefield dead of ' + graves.name))];
         const lim = botSchoolLimit(Number(sk.necromancy) || 0);
-        for (let i = 0; i < lim && out.length < 5; i++)
+        for (let i = 0; i < lim && out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; i++)
           out.push({
             action: 'cast_spell',
             target: theNameOfTheSpell('skeletal-armies'),
             extra: '',
             desc: 'Cast Skeletal Armies',
           });
-        while (out.length < 5) out.push({ ...prac });
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...prac });
         return out;
       }
     }
@@ -1124,7 +1148,7 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     for (const X of theProvincesOf(G)) {
       if (X?.owner !== pi || X.terrain === 'sea') continue;
       const d = X.id === P.id ? 0 : botPathLen(G, pi, P, X.id, true);
-      if (d == null || d > 3 || pre.length + d >= 5) continue;
+      if (d == null || d > 3 || pre.length + d >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) continue;
       let v = X.tax || 0;
       for (let i = 0; i < 6; i++) {
         const N = botNeighbourProv(G, X, i);
@@ -1141,8 +1165,8 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
         );
         const blessed = bestR.X;
         const out = [...pre, ...path.map((d) => aMoveOrderOnThePath(d, 'To bless ' + blessed.name)), ...bl];
-        while (out.length < 5) out.push({ ...prac });
-        return out.slice(0, 5);
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...prac });
+        return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
       }
     }
   }
@@ -1162,13 +1186,13 @@ export function botMageOrders(G: GameState, pi: number, c: Character, pre: reado
     if (d == null) continue;
     if (!best || d < best.d) best = { l, d };
   }
-  if (best && pre.length + best.d < 5) {
+  if (best && pre.length + best.d < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     const path = botPathAny(G, P, best.l.location, 4) ?? [];
     if (path.length === best.d) {
       const general = best.l;
       const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Join ' + general.name + ' as his caster'))];
       const weak = (Number(sk[s1]) || 0) <= (Number(sk[s2]) || 0) ? s1 : s2;
-      while (out.length < 5)
+      while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
         out.push({
           action: 'practice',
           target: weak,
@@ -1342,21 +1366,22 @@ export function botDefenderOrders(
       }
     }
   }
-  if (out.length < 5) out.push(aPaddingOrder(G, 'hold-the-post', { ...BOT_DEFEND_ORDER }));
-  if (out.length < 5 && here.id === P.id) {
+  if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+    out.push(aPaddingOrder(G, 'hold-the-post', { ...BOT_DEFEND_ORDER }));
+  if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && here.id === P.id) {
     const po = botPickupOrder(G, pi, c, P);
     if (po) out.push(po);
   } // review II A2: the post's surplus garrison joins the defender
-  if (out.length < 5 && here.id === P.id && armed) {
+  if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && here.id === P.id && armed) {
     const mo = botMasteryPre(G, pi, c, P, { holding: true, threat: botNearbyThreat(G, pi, c) });
     if (mo) out.push(mo);
   } // review II A7: a Tactical-7 defender lays a Feigned Retreat
-  if (here.id === P.id && P.owner === pi && L && out.length < 5) {
+  if (here.id === P.id && P.owner === pi && L && out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
     const toks = botFieldRecruitTokens(G, pi, c, P, L).filter((t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? ''));
     const ro = botRecruitOrder(toks, null);
     if (ro) out.push(ro);
   }
-  if (out.length < 5 && here.id === P.id) {
+  if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && here.id === P.id) {
     const threat = botNearbyThreat(G, pi, c);
     const casts = botCastPlan(G, pi, c, P, { max: 2, fighting: threat && armed ? c : null, threat }).filter((o) =>
       [
@@ -1370,7 +1395,7 @@ export function botDefenderOrders(
       ].includes(o.target),
     );
     casts.forEach((o) => {
-      if (out.length < 5) out.push(o);
+      if (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push(o);
     });
   }
   const land = theUnitsWithGapsOf(c).filter((a) => a && !BOT_SEA_ALL.has(a.type) && !a._isSkeletal).length;
@@ -1380,8 +1405,8 @@ export function botDefenderOrders(
     sk === 'sage' && (Number(theSkillsOf(c).sage) || 0) >= 2
       ? { action: 'research', target: '', extra: '', desc: 'Research' }
       : { action: 'practice', target: sk, extra: '', desc: 'Practice ' + theLabelOf(sk) };
-  while (out.length < 5) out.push({ ...pr });
-  return out.slice(0, 5);
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push({ ...pr });
+  return out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
 }
 /** A step of a path botPathDirs found, whose steps may hold a gap, as the neighbour's read takes it: a gap reads no
  *  way (`BOT_OFF_EVEN[undefined]`, as `-1` does), which botNeighbourProv's read of it throws for. */

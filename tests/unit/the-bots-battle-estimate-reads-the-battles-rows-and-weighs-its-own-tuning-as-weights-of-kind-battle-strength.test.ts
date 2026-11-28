@@ -4,12 +4,10 @@
 // a Druid shortfall's step (0.2, the row the rule itself reads, strengthLeftByADruidShortfall). Where the bots' figure
 // differs, or the battle has no rule, it is the first version's weights, each as the bot wrote it: Tactical and Naval
 // each weighed to level 5 (KD-477: a commander of Naval 7 lifts his fleets ×2.0, where the battle lifts them ×2.4);
-// the guess at a defence it can't see (an average unit of strength 6; Rich from tax 7, Prosperous from tax 4, with
-// 3.5, 2.5 or 1.5 units; a rival's province ×1.25); and the margin it wants before an attack (its floors, a king's 1.15
+// the guess at a defence it can't see (an average unit of strength 6, and a rival's province ×1.25; the units by
+// tax are the middle of neutralDefBand's band, which the guess asks); and the margin it wants before an attack (its floors, a king's 1.15
 // and a hero's 1.0, eased 0.08 a turn without land to at least 0.6 of it, and 0.02 more for each unit of a host past 5,
-// at most 0.1). The guess's tax cuts and units copy neutralDefBand's (units/drill-and-spoils.ts), its cuts and the
-// middles of its bands: a case holds the two copies together. No matrix game shows which figure reads which: the
-// balance games hold the bots' plans only as a whole.
+// at most 0.1). No matrix game shows which figure reads which: the balance games hold the bots' plans only as a whole.
 // Tactical's most binds from level 5, so the bots' Tactical level shows only lowered (a plant that raises it stays
 // green, as the rule is written).
 //
@@ -27,7 +25,6 @@ import {
   botGuessDefence,
   botMarginFor,
 } from '../../src/engine/bots/intel.ts';
-import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from '../../src/engine/bots/the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import { neutralDefBand } from '../../src/engine/units/drill-and-spoils.ts';
 import { strengthLeftByADruidShortfall } from '../../src/engine/rules-on-plain-values/beasts-a-hero-may-lead-and-the-druid-each-unit-needs.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
@@ -114,33 +111,20 @@ describe("botGuessDefence: a defence the bot can't see, by the weights, times th
   });
 });
 
-describe("the guess's tax cuts and units copy neutralDefBand's, which the world deals its neutral defenders by", () => {
-  test('the bots guess Prosperous and Rich from the taxes the bands change at, each guess the middle of its band', () => {
-    const W = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.battleStrength;
-    const theTaxes = Array.from({ length: 21 }, (_, tax) => tax);
-    const theCuts = theTaxes.filter(
-      (tax) => tax > 0 && String(neutralDefBand(tax)) !== String(neutralDefBand(tax - 1)),
-    );
-    expect(theCuts, "the taxes neutralDefBand's band changes at, against the bots' cuts").toEqual([
-      W.theTaxFromWhichTheBotsGuessALandProsperous,
-      W.theTaxFromWhichTheBotsGuessALandRich,
-    ]);
-    const theMiddle = (tax: number) => {
-      const [lo, hi] = neutralDefBand(tax);
-      return (lo + hi) / 2;
-    };
-    expect(
-      [
-        theMiddle(0),
-        theMiddle(W.theTaxFromWhichTheBotsGuessALandProsperous),
-        theMiddle(W.theTaxFromWhichTheBotsGuessALandRich),
-      ],
-      "the middles of the Poor, Prosperous and Rich bands, against the bots' units",
-    ).toEqual([
-      W.theUnitsTheBotsGuessInAPoorLand,
-      W.theUnitsTheBotsGuessInAProsperousLand,
-      W.theUnitsTheBotsGuessInARichLand,
-    ]);
+describe('the guess at neutral ground asks neutralDefBand, which the world deals its neutral defenders by', () => {
+  test('at every tax from 0 to 20 the bots guess the middle of the tax\u2019s band, of strength 6, times the defender\u2019s edge', () => {
+    const b = aBotBoard(SEED);
+    b.own(b.X, 0);
+    const ground = b.must(b.ring1[0], 'a province of no owner');
+    const G: GameState = b.state();
+    for (let tax = 0; tax <= 20; tax++) {
+      ground.tax = tax;
+      const [fewest, most] = neutralDefBand(tax);
+      expect(botGuessDefence(G, 0, G.world.provinces[ground.id]), `tax ${String(tax)}`).toBeCloseTo(
+        ((fewest + most) / 2) * 6 * BOT_DEF_BONUS,
+        10,
+      );
+    }
   });
 });
 

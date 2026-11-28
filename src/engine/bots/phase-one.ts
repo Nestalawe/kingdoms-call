@@ -46,6 +46,10 @@ import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { ABotRealmsLedger } from './intel.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import {
+  THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
+  THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
+} from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b42): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the pass reads a plan: an order, or a gap the plan holds. */
@@ -230,14 +234,14 @@ export function botAdj(G: GameState, A: Province | null | undefined, B: Province
 }
 export function botPutSpring(o: AnOrderAsThePassReadsIt[], order: PhaseOrder) {
   let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
-  if (end < 0) end = 5;
+  if (end < 0) end = THE_ORDERS_A_HERO_GIVES_IN_A_SEASON;
   const fi = o.findIndex((x, i) => i < end && botIsFiller(x));
   if (fi >= 0) {
     o.splice(fi, 1);
     o.unshift(order);
     return true;
   }
-  if (botIsFiller(o[4])) {
+  if (botIsFiller(o[THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1])) {
     o.splice(4, 1);
     o.unshift(order);
     return true;
@@ -360,7 +364,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
                 );
                 if (ro) out.push(ro);
               }
-              while (out.length < 5) out.push(aPaddingHold());
+              while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push(aPaddingHold());
               turnOrders[c.id] = out;
               spring.add(c.id);
             }
@@ -394,7 +398,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         if (!st) return;
         const mv = botMoveOrder(st.i, 'Withdraw to ' + st.N.name + (pinned ? ' behind the flood' : ' (outmatched)'));
         const out: PhaseOrder[] = pinned ? [hold('Stand while the flood rises'), mv] : [mv];
-        while (out.length < 5) out.push(aPaddingHold());
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push(aPaddingHold());
         turnOrders[c.id] = out;
         spring.add(c.id);
         if (pinned) {
@@ -409,7 +413,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               desc: 'Flood ' + worst.N.name + ' — strand the enemy host',
             };
             const ko: PhaseOrder[] = [fl, { ...mv, desc: 'Withdraw with ' + c.name }];
-            while (ko.length < 5) ko.push(aPaddingHold());
+            while (ko.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) ko.push(aPaddingHold());
             turnOrders[k.id] = ko;
             spring.add(k.id);
           } else if (k?.id === c.id) {
@@ -458,7 +462,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
                 extra: String(h.id),
                 desc: 'Hand the column to ' + h.name,
               });
-            while (out.length < 5) out.push(aPaddingHold());
+            while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push(aPaddingHold());
             turnOrders[x.id] = out;
             spring.add(x.id);
           });
@@ -516,7 +520,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
             desc: 'Cast Invisibility (evacuate: an enemy host is at hand)',
           });
           if (levy) o.unshift(levy);
-          o.length = 5;
+          o.length = THE_ORDERS_A_HERO_GIVES_IN_A_SEASON;
           spring.add(c.id);
           return;
         }
@@ -526,7 +530,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           ...(levy ? [levy] : []),
           botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)'),
         ];
-        while (out.length < 5) out.push(aPaddingHold());
+        while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push(aPaddingHold());
         turnOrders[c.id] = out;
         spring.add(c.id);
       });
@@ -538,7 +542,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         if (P?.owner !== pi || !(asItsGuardReadsIt(P.armyTypes) ?? []).length) return; // only in a province we control — a battle there does not stop it
         if (!(leaderIds.has(c.id) || theUnitsOf(c).length >= 2)) return;
         let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
-        if (end < 0) end = 5;
+        if (end < 0) end = THE_ORDERS_A_HERO_GIVES_IN_A_SEASON;
         if (end === 0 && /^(Attack|Assault|Lightning strike)/.test(o[0]?.desc ?? '')) return; // striking first outranks mustering
         if (
           o
@@ -769,7 +773,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
       const contact = botInContact(G, pi, c),
         nearby = contact || botNearbyThreat(G, pi, c);
       let end = o.findIndex((x) => x && BOT_P1.reloc.has(x.action));
-      if (end < 0) end = 5;
+      if (end < 0) end = THE_ORDERS_A_HERO_GIVES_IN_A_SEASON;
       const isEnemyChar = (id: string) => {
         const e = (asItsGuardReadsIt(G.characters) ?? []).find((x) => asItsGuardReadsIt(x) && x.id === Number(id));
         return (
@@ -854,7 +858,8 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               !theUnitsOf(h).length &&
               !spring.has(h.id) &&
               !pinCasters.has(h.id) &&
-              (asItsGuardReadsIt(h.hp) ?? (h.maxHp || 20)) >= (h.maxHp || 20) * 0.7 &&
+              (asItsGuardReadsIt(h.hp) ?? (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN)) >=
+                (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.7 &&
               !(turnOrders[h.id] ?? []).some(
                 (x) => x && theErrandsThatKeepABotHeroFromAFeintOrASecondFront.includes(x.action),
               ),
@@ -902,14 +907,14 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           const blow = attacksOf(g)[0];
           if (blow && blow.i <= li) {
             o.splice(li, 1);
-            while (o.length < 5) o.push(aPaddingHold());
+            while (o.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) o.push(aPaddingHold());
             return;
           } // the feint must go in before the blow falls
           const out: PhaseOrder[] = [];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(A.i, 'Feint on ' + A.N.name + ' (draw ' + foe.e.name + ' away from ' + t1.name + ')'));
-          while (out.length < 5) out.push(aPaddingHold());
-          turnOrders[hero.id] = out.slice(0, 5);
+          while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) out.push(aPaddingHold());
+          turnOrders[hero.id] = out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
           spring.add(hero.id);
           entered.add(A.N.id);
         });
@@ -949,7 +954,8 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               !theUnitsOf(h).length &&
               !spring.has(h.id) &&
               !pinCasters.has(h.id) &&
-              (asItsGuardReadsIt(h.hp) ?? (h.maxHp || 20)) >= (h.maxHp || 20) * 0.7 &&
+              (asItsGuardReadsIt(h.hp) ?? (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN)) >=
+                (h.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.7 &&
               !(turnOrders[h.id] ?? []).some(
                 (x) => x && theErrandsThatKeepABotHeroFromAFeintOrASecondFront.includes(x.action),
               ),
@@ -1016,8 +1022,9 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           const out: AnOrderAsThePassReadsIt[] = [...keepCasts];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(best.i, (best.d > 0 ? 'Attack ' : 'Advance on ') + best.N.name + ' (second front)'));
-          while (out.length < 5) out.push(aPaddingOrder(G, 'hold-the-ground-won', hold('Hold ' + best.N.name)));
-          turnOrders[hero.id] = out.slice(0, 5);
+          while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+            out.push(aPaddingOrder(G, 'hold-the-ground-won', hold('Hold ' + best.N.name)));
+          turnOrders[hero.id] = out.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
           spring.add(hero.id);
           taken.add(best.N.id);
         });

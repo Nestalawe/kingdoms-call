@@ -54,6 +54,11 @@ import {
   aCopyOfAnOrderKeepingItsPaddingKind,
   aPaddingOrder,
 } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import {
+  THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
+  THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
+  THE_PHASES_OF_A_SEASON,
+} from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b43): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -167,7 +172,7 @@ export function botCastPlan(
   opts: TheCastPlansChoices | null | undefined,
 ) {
   const choices = opts ?? {};
-  const max = (choices.max ?? 0) || 5;
+  const max = (choices.max ?? 0) || THE_ORDERS_A_HERO_GIVES_IN_A_SEASON;
   const sk = theSkillsByName(c);
   const out: PhaseOrder[] = [];
   const used: Partial<Record<string, number>> = {};
@@ -392,7 +397,7 @@ export function botDuelRating(c: Character) {
   const tb = Object.hasOwn(THE_DUEL_WORTH_OF_A_HERO_BY_HIS_TEMPER, t)
     ? (THE_DUEL_WORTH_OF_A_HERO_BY_HIS_TEMPER[t] ?? 0)
     : 0;
-  const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20);
+  const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN);
   return (
     hp +
     (Number(s.melee) || 0) * 6 +
@@ -895,7 +900,7 @@ export function botCanBeatGuardian(
   }; // skills on the 1–9 ladder + passives — demand more of a bot hero
   const monRating = (m.hp || 10) + (POWER[m.power] ?? 0);
   const charRating =
-    (c.maxHp || 20) +
+    (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) +
     (Number(sk.melee) || 0) * 6 +
     (Number(sk.tactical) || 0) * 3 +
     (Number(sk.archery) || 0) * 2 +
@@ -953,7 +958,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
   const overlay = (cid: number, plan: readonly PhaseOrder[]) => {
     const o = theTurnsOrders(G)[cid] ?? [null, null, null, null, null];
     let k = 0;
-    for (let p = 0; p < 5 && k < plan.length; p++) {
+    for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && k < plan.length; p++) {
       const held = o[p];
       if (held == null || held.action === THE_HERO_ORDERS.defend.key) {
         o[p] = aCopyOfAnOrderKeepingItsPaddingKind(G, theOrderOfThePlan(plan, k++));
@@ -964,7 +969,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
   const fill = (cid: number, order: PhaseOrder) => {
     overlay(
       cid,
-      [0, 1, 2, 3, 4].map(() => aCopyOfAnOrderKeepingItsPaddingKind(G, order)),
+      THE_PHASES_OF_A_SEASON.map(() => aCopyOfAnOrderKeepingItsPaddingKind(G, order)),
     );
   };
   botIdxSet.forEach((pi) => {
@@ -972,7 +977,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
     theCharactersOf(G)
       .filter((c): c is Character => c != null && c.alive && c.player === pi && !c._isHeir && isFillable(c))
       .forEach((c) => {
-        const maxHp = c.maxHp || 20,
+        const maxHp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
           hp = asItsGuardReadsIt(c.hp) ?? maxHp;
         if (hp < maxHp * 0.6) {
           fill(c.id, { action: 'rest', target: '', extra: '', desc: 'Rest & heal' });
@@ -1049,7 +1054,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
               aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
               aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
               aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
-            ].slice(0, 5),
+            ].slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON),
           );
           return;
         }
@@ -1082,7 +1087,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
               aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
               aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
               aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
-            ].slice(0, 5),
+            ].slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON),
           );
           return;
         }
@@ -1232,11 +1237,11 @@ export function botFillOrders(
     moves.length
       ? [...watch, ...pre, ...moves]
       : [...pre, ...(met ? [aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' })] : [])]
-  ).slice(0, 5);
+  ).slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
   const tail = botPracticeFallback(G, pi, c, {
     moving: out.some((o) => o && (o.action === THE_HERO_ORDERS.move.key || o.action === THE_HERO_ORDERS.encounter.key)),
   });
-  while (out.length < 5)
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
     out.push(
       tail
         ? aCopyOfAnOrderKeepingItsPaddingKind(G, tail)
