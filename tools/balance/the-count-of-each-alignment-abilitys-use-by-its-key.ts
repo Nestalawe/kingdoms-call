@@ -5,10 +5,13 @@
 // - by a line's kind: each line of one of its kinds, for the realm the line names in a given place;
 // - by an order: each phase a hero of the realm gives the order (the telemetry's orders, `orders[realm].chars[id].ph[].a`);
 // - by a fact: what a line's fact records (a gold sum, the realm that declared, the heroes who fought);
-// - from the state: what the saved world holds at the turn's end, or how it moved over the turn;
+// - from the state: the ability's effect as the saved world shows it at the turn's end, or how it moved over the turn;
+// - a stand-in from the state: what the world holds where the ability could act (companies held, beasts led), not its
+//   use: B-17e treats it as not used, by name;
 // - at the set-up: once for each realm the world is made with it;
 // - not countable yet: the events and the state don't show its use (the reason given).
-// Only the realms of the ability's alignment count (the undead hero in a duel: his own alignment). The count reads the
+// A use is an act or the ability's own effect taking place (the run's decision, 28 November). Only the realms of the
+// ability's alignment count (the undead hero in a duel: his own alignment). The count reads the
 // kinds, the facts, the orders and the state, never the words players read (BOT-S6), and it changes nothing: every-
 // realm.ts gathers it beside each game's reports, outside the baselines (the statistics report is B-17d's).
 import {
@@ -33,6 +36,7 @@ interface ACompany {
 /** A hero as the count reads him. */
 interface AHero {
   readonly id: number;
+  readonly name?: string;
   readonly player?: number | null;
   readonly alive?: boolean;
   readonly alignment?: string;
@@ -71,9 +75,8 @@ export interface ATurnAsTheCountReadsIt {
 /** Where a line names the realm whose use it is: its actor, its first or its second target (a battle's lines name the
  *  attacker's realm first and the defender's second), or each realm it names. */
 type WhereALineNamesTheRealm = 'its actor' | 'its first target' | 'its second target' | 'each realm it names';
-/** The order keys the count reads: the five alignment orders' own, a Research and a hand-over. */
-type AnOrderTheCountReads =
-  (typeof THE_ALIGNMENT_ORDERS)[keyof typeof THE_ALIGNMENT_ORDERS]['key'] | 'research' | 'leave_army';
+/** The order keys the count reads: the five alignment orders' own, and a Research. */
+type AnOrderTheCountReads = (typeof THE_ALIGNMENT_ORDERS)[keyof typeof THE_ALIGNMENT_ORDERS]['key'] | 'research';
 
 interface CountedByALinesKind {
   readonly by: "a line's kind";
@@ -82,6 +85,8 @@ interface CountedByALinesKind {
 interface CountedByAnOrder {
   readonly by: 'an order';
   readonly order: AnOrderTheCountReads;
+  /** Only an order given by a hero with at least a level of this skill (the scholars: Sage). */
+  readonly byAHeroWithTheSkill?: 'sage';
 }
 interface CountedByAFact {
   readonly by: 'a fact';
@@ -96,6 +101,13 @@ interface CountedFromTheState {
   /** The realm's uses in the turn. */
   readonly uses: (turn: ATurnAsTheCountReadsIt, realm: number) => number;
 }
+interface AStandInFromTheState {
+  readonly by: 'a stand-in from the state';
+  /** What the world holds where the ability could act, in the turn. */
+  readonly holds: (turn: ATurnAsTheCountReadsIt, realm: number) => number;
+  /** Why it is a stand-in, and what its use would be. */
+  readonly why: string;
+}
 interface CountedAtTheSetUp {
   readonly by: 'the set-up';
   /** What the world is made with. */
@@ -107,7 +119,13 @@ interface NotCountableYet {
 }
 /** How an ability's use is counted. */
 export type HowAnAbilitysUseIsCounted =
-  CountedByALinesKind | CountedByAnOrder | CountedByAFact | CountedFromTheState | CountedAtTheSetUp | NotCountableYet;
+  | CountedByALinesKind
+  | CountedByAnOrder
+  | CountedByAFact
+  | CountedFromTheState
+  | AStandInFromTheState
+  | CountedAtTheSetUp
+  | NotCountableYet;
 
 /** A fact rule over the lines of one kind, its fact typed as that kind's. */
 function byAFact<K extends LineFact['kind']>(
@@ -159,7 +177,8 @@ const theBeastsLedWithoutTheDruid =
         getDruidLevel(company.type) > (hero.skills?.['druid'] ?? 0),
     ).length;
 
-/** The pairs allied before the turn and at war after it, the realm one of them. */
+/** The pairs allied before the turn and at war after it, the realm one of them (both realms Evil or Undead: both
+ *  counted, whichever broke it). */
 const theAlliancesBrokenIntoWar = (turn: ATurnAsTheCountReadsIt, realm: number): number =>
   Object.entries(turn.after.relations ?? {}).filter(
     ([pair, state]) =>
@@ -168,11 +187,18 @@ const theAlliancesBrokenIntoWar = (turn: ATurnAsTheCountReadsIt, realm: number):
       pair.split('-').map(Number).includes(realm),
   ).length;
 
-/** The duels' lines (before a battle, and a battle's personal encounter): each Undead hero who fights in one. */
-const theUndeadHeroesInADuel = (line: ALineAsTheCountReadsIt, turn: ATurnAsTheCountReadsIt): readonly number[] =>
+/** A duel before a battle: each Undead hero of the two who fight it (the fact's challenger and challenged, found among
+ *  the heroes the battle's line lists). Personal combat in a lair or an encounter (no duel before a battle) isn't
+ *  counted. */
+const theUndeadHeroesInADuel = (
+  fact: Extract<LineFact, { kind: 'a personal duel before the battle begins' }>,
+  line: ALineAsTheCountReadsIt,
+  turn: ATurnAsTheCountReadsIt,
+): readonly number[] =>
   (line.charIds ?? []).flatMap((id) => {
     const hero = (turn.before.characters ?? []).find((c) => c.id === id);
-    return hero?.alignment === 'Undead' && typeof hero.player === 'number' ? [hero.player] : [];
+    const duels = hero?.name !== undefined && (hero.name === fact.challengerName || hero.name === fact.challengedName);
+    return duels && hero.alignment === 'Undead' && typeof hero.player === 'number' ? [hero.player] : [];
   });
 
 /** How each alignment ability's use is counted, by its key. */
@@ -194,6 +220,7 @@ export const HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED = {
     by: "a line's kind",
     lines: [{ kind: 'the defenders fight with fanatical zeal on consecrated ground', realm: 'its second target' }],
   },
+  // a side's lines name both realms of the battle: an Evil realm against an Evil realm, both counted
   'savage-fury': {
     by: "a line's kind",
     lines: [
@@ -218,12 +245,19 @@ export const HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED = {
   },
   'banner-of-fellowship': {
     by: "a line's kind",
-    lines: [{ kind: "companies muster to a comrade's banner", realm: 'its first target' }],
+    // each roll of converging columns to unite, which the Banner raises: joined or missed
+    lines: [
+      { kind: "a contingent joins a hero's assault on a guarded province", realm: 'its actor' },
+      { kind: 'a contingent cannot link up in time against a guarded province', realm: 'its actor' },
+      { kind: "a contingent joins a hero's assault on a rival's province", realm: 'its actor' },
+      { kind: "a contingent misses the timing against a rival's province", realm: 'its actor' },
+    ],
   },
   'home-of-the-wild': {
     by: 'not countable yet',
     why: "a battle factor with no line of its own: it shows only in the battle's strength record, which no event keeps",
   },
+  // as savage fury's: an Evil realm against an Evil realm, both counted
   'reign-of-fear': {
     by: "a line's kind",
     lines: [{ kind: 'the province still cowers under a reign of fear', realm: 'each realm it names' }],
@@ -240,20 +274,32 @@ export const HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED = {
     by: "a line's kind",
     lines: [{ kind: 'a province is blessed and warded', realm: 'its actor' }],
   },
-  'creatures-follow-without-a-druid': { by: 'the state', uses: theBeastsLedWithoutTheDruid(CREATURE_ARMIES) },
-  'monsters-follow-without-a-druid': { by: 'the state', uses: theBeastsLedWithoutTheDruid(MONSTER_ARMIES) },
-  'neutral-scholars': { by: 'an order', order: 'research' },
+  'creatures-follow-without-a-druid': {
+    by: 'a stand-in from the state',
+    holds: theBeastsLedWithoutTheDruid(CREATURE_ARMIES),
+    why: "the Creatures its heroes lead with less Druid than they need; its use is the Druid's penalty waived in a battle, which no event keeps",
+  },
+  'monsters-follow-without-a-druid': {
+    by: 'a stand-in from the state',
+    holds: theBeastsLedWithoutTheDruid(MONSTER_ARMIES),
+    why: "the Monsters its heroes lead with less Druid than they need; its use is the Druid's penalty waived in a battle, which no event keeps",
+  },
+  'neutral-scholars': { by: 'an order', order: 'research', byAHeroWithTheSkill: 'sage' },
   'divine-grace': {
     by: "a line's kind",
     lines: [
+      // at the return, a king's too (his death's line, "will rise again", is no use)
       { kind: 'a Divine hero returns to life on the nearest consecrated ground', realm: 'its actor' },
-      { kind: 'a fallen Divine monarch will rise again on holy ground', realm: 'its actor' },
     ],
   },
-  'the-divine-rest': { by: "a line's kind", lines: [{ kind: 'a hero rests and recovers', realm: 'its actor' }] },
+  'the-divine-rest': byAFact('a hero rests and recovers', (fact, line) =>
+    fact.isDivine ? theRealmOfALinesActor(line) : [],
+  ),
   'a-pagan-victors-blood-harvest': {
     by: "a line's kind",
-    lines: [{ kind: 'the blood harvest claims offerings from the fallen enemy units', realm: 'its actor' }],
+    // the attacker's harvest and the defender's: the line, in the battle's narrative, names both realms (a Pagan against
+    // a Pagan: both counted, whichever harvests)
+    lines: [{ kind: 'the blood harvest claims offerings from the fallen enemy units', realm: 'each realm it names' }],
   },
   'plunder-or-enslave': {
     by: "a line's kind",
@@ -276,15 +322,16 @@ export const HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED = {
   'a-broken-alliance-means-war-for-an-evil-realm': { by: 'the state', uses: theAlliancesBrokenIntoWar },
   'a-broken-alliance-means-war-for-an-undead-realm': { by: 'the state', uses: theAlliancesBrokenIntoWar },
   'the-risen-dead-follow-only-the-undead': {
-    by: 'the state',
-    uses: (turn, realm) =>
+    by: 'a stand-in from the state',
+    holds: (turn, realm) =>
       theCompaniesARealmLeads(turn.after, realm).filter(
         ({ company }) => company.race === THE_RACE_THE_RISEN_DEAD_ARE_MADE_AS,
       ).length,
+    why: 'the companies of the risen dead its heroes lead; its use is a hand-over of them, which no line names (the bots record the ones their check strikes out)',
   },
   'an-undead-hero-is-undead-in-personal-combat': byAFact(
     'a personal duel before the battle begins',
-    (_fact, line, turn) => theUndeadHeroesInADuel(line, turn),
+    theUndeadHeroesInADuel,
     true,
   ),
   'a-divine-king-starts-with-white-magic': { by: 'the set-up', what: "the king's White magic" },
@@ -349,7 +396,11 @@ export function countTheSetUp(world: TheWorldAsTheCountReadsIt, into: TheUsesOfE
   }
 }
 
-/** Counts one turn's uses of every ability, by realm. */
+/** A hero's level in a skill as the turn begins (0: none, or no such hero). */
+const theSkillOf = (turn: ATurnAsTheCountReadsIt, id: number, skill: string): number =>
+  (turn.before.characters ?? []).find((c) => c.id === id)?.skills?.[skill] ?? 0;
+
+/** Counts one turn's uses of every ability, by realm (a stand-in's figure too). */
 export function countATurn(turn: ATurnAsTheCountReadsIt, into: TheUsesOfEachAlignmentAbility): void {
   for (const key of THE_KEYS) {
     const rule: HowAnAbilitysUseIsCounted = HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED[key];
@@ -365,8 +416,9 @@ export function countATurn(turn: ATurnAsTheCountReadsIt, into: TheUsesOfEachAlig
       case 'an order':
         for (const [realm, theirs] of Object.entries(turn.orders))
           if (ofTheAlignment(Number(realm)))
-            for (const hero of Object.values(theirs.chars ?? {}))
-              add(into, key, Number(realm), (hero.ph ?? []).filter((p) => p.a === rule.order).length);
+            for (const [id, hero] of Object.entries(theirs.chars ?? {}))
+              if (rule.byAHeroWithTheSkill === undefined || theSkillOf(turn, Number(id), rule.byAHeroWithTheSkill) > 0)
+                add(into, key, Number(realm), (hero.ph ?? []).filter((p) => p.a === rule.order).length);
         break;
       case 'a fact':
         for (const line of turn.lines)
@@ -378,6 +430,10 @@ export function countATurn(turn: ATurnAsTheCountReadsIt, into: TheUsesOfEachAlig
         for (const realm of theRealms(turn.before))
           if (ofTheAlignment(realm)) add(into, key, realm, rule.uses(turn, realm));
         break;
+      case 'a stand-in from the state':
+        for (const realm of theRealms(turn.before))
+          if (ofTheAlignment(realm)) add(into, key, realm, rule.holds(turn, realm));
+        break;
       case 'the set-up':
       case 'not countable yet':
         break;
@@ -385,7 +441,12 @@ export function countATurn(turn: ATurnAsTheCountReadsIt, into: TheUsesOfEachAlig
   }
 }
 
-/** The keys counted, and those not countable yet. */
+/** The keys not countable yet. */
 export const THE_KEYS_NOT_COUNTABLE_YET = THE_KEYS.filter(
   (key) => HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED[key].by === 'not countable yet',
+);
+
+/** The keys counted by a stand-in from the state: not a use (B-17e treats them as not used). */
+export const THE_KEYS_COUNTED_BY_A_STAND_IN = THE_KEYS.filter(
+  (key) => HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED[key].by === 'a stand-in from the state',
 );
