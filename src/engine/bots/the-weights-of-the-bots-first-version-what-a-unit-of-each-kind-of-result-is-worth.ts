@@ -179,6 +179,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theChanceToWinFromWhichADuellistChallenges: 0.65,
     theChanceOfFallingCountedWithNoForecastByOneRatedClearlyStronger: 0.05,
     theChanceOfFallingCountedWithNoForecastByAnyOther: 0.3,
+    theFightsFoughtOnCopiesToForecastADuelWhenNoCountIsAsked: 20,
   },
   /** The Spring pass (bots/phase-one.ts: the table BOT_P1, bots/strategy.ts, and BOT_PIN_EDGE read these): when a host
    *  in contact holds, falls back or flees, the emergency levy, the war chest (botLedger) and when an enemy host is
@@ -199,6 +200,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theArcheryTheBotsAssumeOfARivalsHeroByDefault: 2,
     theTacticalTheBotsAssumeOfARivalsHeroByDefault: 2,
     theElementalTheBotsAssumeOfARivalsHeroByDefault: 2,
+    theMostTurnsAgoAnEstimateOfARivalsHeroSkillsStillStands: 8,
   },
   /** The specialists a realm's court wants, by role: how many of each (botSpecialistRoles, bots/specialists.ts) and how many heroes it keeps free of them. */
   specialistsWanted: {
@@ -699,5 +701,28 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theWorthOfEachPointOfTaxInChoosingASecondFrontsTarget: 2,
     theWorthOfAProvinceSomeRealmHoldsInChoosingASecondFrontsTarget: 8,
     theNumberByWhichADefenceIsDividedInChoosingASecondFrontsTarget: 4,
+  },
+  /** How a realm's alignment moves its tuning's margins and biases (botTuning, bots/intel.ts); what each alignment's
+   *  ability does is its row's, asked through the rules. */
+  tuningOfAnAlignment: {
+    theFactorAKingsAttackMarginIsTakenByWhenARealmHoldsTheAbilityThatReturnsAFallenKingAndAHeroStandsConsecrated: 0.9,
+    theFactorTheAssaultMarginIsTakenByWhenARealmHoldsTheAbilityThatAddsToUnifying: 0.9,
+    theFactorTheTaxScoreWeightIsTakenByWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture: 1.5,
+    theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture: 3,
+    theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatGainsGoldForEachUnitSlain: 3,
+  },
+  /** When a hero's idle phases are spent on a muster and how a practice is paired with a comrade's (runBotEconomy: the
+   *  filler musters, the practice pairing and its refill, bots/economy.ts). What a practice does is the rules'. */
+  economyMusterAndPractice: {
+    theLeastBudgetFromWhichAHeroInAnIdlePhaseMustersMen: 2,
+    theBudgetFromWhichHeroesTrainingPhasesGiveWayToAMuster: 20,
+    theWorthOfJoiningAComradeWhoTeachesTheHeroInARefilledPhase: 3,
+    theWorthOfTeachingAComradeBelowTheHeroInARefilledPhase: 2,
+    theWorthOfTrainingBesideAComradeOfTheHerosLevelInARefilledPhase: 1,
+    theFactorATraineesSoloChanceIsTakenByToSetItAgainstAPeersWhenPairingThem: 1.5,
+  },
+  /** How the bots' realms are named when set up (bots/setup.ts). */
+  botRealmsSetUp: {
+    theNumeralFromWhichARepeatedRealmNameIsNumbered: 2,
   },
 } satisfies TheWeightsOfABotVersion;

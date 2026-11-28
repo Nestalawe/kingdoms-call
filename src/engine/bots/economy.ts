@@ -46,6 +46,9 @@ import {
   THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
   THE_PHASES_OF_A_SEASON,
 } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
+
+const theEconomy = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.economyMusterAndPractice;
 
 // Its types (plan P1-10b48): each parameter typed as wide as the body's guards, so each guard stays.
 declare global {
@@ -286,7 +289,13 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
           cur = N;
           continue;
         }
-        if (filler(x) && cur.owner === pi && theArmyTypesOf(cur).length && L.budget >= 2 && L.upkeep < L.upkeepCap) {
+        if (
+          filler(x) &&
+          cur.owner === pi &&
+          theArmyTypesOf(cur).length &&
+          L.budget >= theEconomy.theLeastBudgetFromWhichAHeroInAnIdlePhaseMustersMen &&
+          L.upkeep < L.upkeepCap
+        ) {
           const toks = botFieldRecruitTokens(G, pi, c, cur, L).filter(
             (t) => !BOT_SEA_ALL.has(t.split('|')[0] ?? '') || c._botRole === 'admiral',
           );
@@ -410,10 +419,11 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
           }
         });
     }
-    if (L.budget >= 20) {
+    if (L.budget >= theEconomy.theBudgetFromWhichHeroesTrainingPhasesGiveWayToAMuster) {
       theCharactersOf(G).forEach((c) => {
         if (!(c?.alive && c.player === pi && !c.isKing && !c._isHeir && !theUnitsWithGapsOf(c).length)) return;
-        if (L.budget < 2 || L.upkeep >= L.upkeepCap) return;
+        if (L.budget < theEconomy.theLeastBudgetFromWhichAHeroInAnIdlePhaseMustersMen || L.upkeep >= L.upkeepCap)
+          return;
         const o = theTurnsOrders(G)[c.id];
         if (!o?.length || o.some((x) => x?.action === THE_HERO_ORDERS.move.key)) return;
         const training = o.some(
@@ -668,9 +678,9 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
         const me = lv(c, S),
           him = lv(t, S);
         let sc = 0;
-        if (me < 5 && him > me) sc = 3;
-        else if (him < me) sc = 2;
-        else if (me < 5 && him === me) sc = 1;
+        if (me < 5 && him > me) sc = theEconomy.theWorthOfJoiningAComradeWhoTeachesTheHeroInARefilledPhase;
+        else if (him < me) sc = theEconomy.theWorthOfTeachingAComradeBelowTheHeroInARefilledPhase;
+        else if (me < 5 && him === me) sc = theEconomy.theWorthOfTrainingBesideAComradeOfTheHerosLevelInARefilledPhase;
         if (sc && (!best || sc > best.sc)) best = { S, sc, t };
       }
       if (best)
@@ -682,7 +692,11 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
             'Practice ' +
             theLabelOf(best.S) +
             ' (' +
-            (best.sc === 3 ? 'taught by ' : best.sc === 2 ? 'teach ' : 'with ') +
+            (best.sc === theEconomy.theWorthOfJoiningAComradeWhoTeachesTheHeroInARefilledPhase
+              ? 'taught by '
+              : best.sc === theEconomy.theWorthOfTeachingAComradeBelowTheHeroInARefilledPhase
+                ? 'teach '
+                : 'with ') +
             best.t.name +
             ')',
         };
@@ -743,7 +757,11 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
           if (peer || m.id === t.id || !here(m, t, p) || !free(m, p) || lv(m, S) !== tl) continue;
           const k = ord(m, p);
           const own = isPr(k) ? (lv(m, k.target) < 5 ? theSoloChanceAt(lv(m, k.target)) : 0) : 0;
-          if (theSoloChanceAt(tl) * 1.5 >= own) peer = m;
+          if (
+            theSoloChanceAt(tl) * theEconomy.theFactorATraineesSoloChanceIsTakenByToSetItAgainstAPeersWhenPairingThem >=
+            own
+          )
+            peer = m;
         }
         if (peer) {
           thePlanOf(G, peer)[p] = {

@@ -9,6 +9,7 @@ import { seaPenalty, terrainMod } from '../battle/terrain-and-unit-strength.ts';
 import { autoEncounterPlan, pcCharCombatant } from '../personal-combat/speed-encounter-plans-and-combatants.ts';
 import { resolvePersonalCombat } from '../personal-combat/resolve-personal-combat.ts';
 import { aCopyMadeThroughJson } from '../rules-on-plain-values/a-copy-made-through-json-and-typed-as-its-original.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import type { CharacterId } from '../../schemas/ids-of-provinces-heroes-and-realms.ts';
 import type { Character } from '../../schemas/saved-game-state.ts';
 import type { TurnContext } from '../turn/context.ts';
@@ -52,7 +53,8 @@ export function botHuntersDuelForecastFoughtOnCopiesOfBothHeroes(
   try {
     let win = 0,
       felled = 0;
-    const rounds = (n ?? 0) || 20;
+    const rounds =
+      (n ?? 0) || THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.duel.theFightsFoughtOnCopiesToForecastADuelWhenNoCountIsAsked;
     for (let i = 0; i < rounds; i++) {
       const a = aCopyMadeThroughJson(hunter),
         b = aCopyMadeThroughJson(quarry);
