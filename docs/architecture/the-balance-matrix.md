@@ -152,8 +152,8 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   A scenario may also **require** figures (`requires`, P1-15e2b): each in every run or in some run. Such a scenario is
   played by every `npm run balance` too, before the games (once with `--update`), on this site only, with every core,
   and prints one line: its runs, its seconds, and "every requirement met" or each requirement missed with how many runs
-  showed it; a miss, or a run that fails (it couldn't be staged, or the page reported an error), fails the run. One is
-  required today (about 3 s); the rest are played by hand.
+  showed it; a miss, or a run that fails (it couldn't be staged, or the page reported an error), fails the run. Two
+  are required today (about 3 s each); the rest are played by hand.
   - `a-chase-held-by-an-unresolved-battle` (required, 20 runs): an enemy king with 12 Elite Heavy Infantry besieges a
     province held by two hosts of one Green Light Infantry each, in a ring of the hunter's realm's provinces; the
     hunter, with 4 Veteran Heavy Infantry, rides after him (Encounter Character) in Spring. The siege can't end in
@@ -162,6 +162,11 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
     catch in Spring whenever the catch roll succeeds ("the reckoning must wait"; 70%). It checks its own staging
     ("could not stage" if the siege isn't more than four to one, or a Spy isn't 0). Required: held in Early Summer in
     every run, held on the catch in some run;
+  - `a-neutral-realm-hires-a-mercenary-band-at-its-discount` (required, 20 runs; B-17e): a Neutral king stands where a
+    band of Veteran Gilded Lances roams, his treasury holding exactly its price after the Neutral discount (4g less
+    2g), and hires it (Recruit Armies) in Spring; no die is rolled. At the full price he couldn't, so the hire is the
+    discount used, counted by the line's kind as the matrix's count reads it. Required: in every run. It stands in
+    for the discount in the ability check (below) until the bots hire mercenary bands (KD-528);
   - `battle`: 6 Elite Yeoman Longbows (a Human realm) attack 6 Average Dwarven Guard (a Dwarven realm) in the hills,
     plain commanders on both sides, measured on the first clash: attacker win %, units lost on each side;
   - `lair`: a young hero (Melee 2, 20 HP, no items) searches the Weak lair in their home: cleared, fled, killed;
@@ -199,6 +204,16 @@ base is judged where any slice's is, in "The slices that moved". Its limits:
 - hundreds of slices are judged at the usual bar, so a few look like a change by chance: read a single one as a hint;
 - a figure with under 20 cases in either run is "too few to tell" (a rare ability's: try a scenario);
 - each alignment's figures rest on its own games, about 30 of the 48 bot games.
+
+**The ability check** (`tools/balance/the-check-that-every-alignment-ability-is-used-in-some-game.ts`, B-17e,
+BOT-S3): after the games, a run fails if an alignment ability is used in none of the set's games (by the bot realms
+of its alignment; a set-up ability when the world is made with it), naming it, unless it is on the check's list
+(`THE_ABILITIES_THE_GAMES_NEED_NOT_SHOW`): a stand-in, with its backlog row and its named scenario ("no scenario yet"
+for the three stand-ins from the state and the two not countable yet), or "cannot act" (an Undead realm's zeal, 0%:
+the maintainer's line is its reason, and the check fails if the number changes). An entry seen used in a game fails
+the run too, so it leaves the list: the list only shrinks, meant to empty (A2), and its test holds it to the seven
+of 28 November. A stand-in's scenario must be a required one, or the run fails. Not with `--only`, nor with
+`KC_SITE` (it reads the vm half's count). The bots' section names each entry under "what isn't measured yet".
 
 A statistic only one side has (no game of that side has its base) is added or retired, not changed: no game differs by
 it, and the report names how many (`theStatisticsOnlyOneSideHas`). So a pull request that adds one reads "no change"
