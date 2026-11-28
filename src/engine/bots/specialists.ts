@@ -178,6 +178,7 @@ export function botMageAptitude(c: AHeroOfSkills) {
 export const BOT_DEFEND_ORDER = { action: 'defend', target: '', extra: '', desc: 'Hold the post' };
 /** The provinces (by id) a watch kept from each province covers, per map: the rule's answer for every province of the
  *  map, worked out once (the map's shape never changes in a game). */
+// Keyed by the province list alone: nothing changes a game's columns, rows or list after the world is handed on (a save, a new game and each matrix game get a new list); owners and terrain are read fresh by id.
 const theZonesOfAMap = new WeakMap<readonly unknown[], Map<number, readonly number[]>>();
 // The six-hex Defend zone about a province: the provinces the rule (inDefendZone, in
 // engine/units/defend-ride-outs-ambushes-and-reinforcements.ts) says a hero holding the post there watches over.

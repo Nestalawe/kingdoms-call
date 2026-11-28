@@ -5,3 +5,10 @@
 export function neutralDefBand(tax: number): [number, number] {
   return tax >= 7 ? [3, 4] : tax >= 4 ? [2, 3] : [1, 2];
 }
+
+/** The middle of the band a tax deals its defenders in: what the bots guess a province holds (Rich 3.5, Prosperous 2.5,
+ *  Poor 1.5). */
+export function theMiddleOfTheGarrisonBand(tax: number): number {
+  const [fewest, most] = neutralDefBand(tax);
+  return (fewest + most) / 2;
+}

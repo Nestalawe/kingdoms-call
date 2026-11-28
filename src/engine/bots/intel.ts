@@ -1,4 +1,4 @@
-import { neutralDefBand } from '../rules-on-plain-values/the-garrison-band-a-neutral-provinces-tax-deals-its-defenders-in.ts';
+import { theMiddleOfTheGarrisonBand } from '../rules-on-plain-values/the-garrison-band-a-neutral-provinces-tax-deals-its-defenders-in.ts';
 import { THE_STATES_TWO_REALMS_STAND_IN } from '../../content/the-relations-between-two-realms-the-three-states-a-pair-stands-in-and-the-treat-declaration.ts';
 import { theStateThePairsEntryHolds } from '../rules-on-plain-values/how-two-realms-stand-the-key-of-the-pair-and-the-state-its-entry-holds.ts';
 import {
@@ -625,8 +625,7 @@ export function botGuessDefence(G: GameState, pi: number, prov: Province | null 
   // province is assumed a shade more heavily held than neutral ground of the same wealth.
   const tax = b.tax || 0;
   // the middle of the band the world deals its neutral defenders in (neutralDefBand: Rich 3-4, Prosperous 2-3, Poor 1-2)
-  const band = neutralDefBand(tax);
-  const units = (band[0] + band[1]) / band.length;
+  const units = theMiddleOfTheGarrisonBand(tax);
   const owned = b.owner != null && b.owner !== pi;
   return (
     units * AVG_UNIT * (owned ? theWeights.theFactorTheBotsGuessARivalsProvinceHeldMoreHeavilyBy : 1) * BOT_DEF_BONUS

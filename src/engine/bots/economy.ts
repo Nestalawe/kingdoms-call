@@ -42,7 +42,10 @@ import {
   type AnOrderHygienesOutcome,
   type TheBotsRecordOfARealmsTurn,
 } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
-import { THE_ORDERS_A_HERO_GIVES_IN_A_SEASON } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
+import {
+  THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
+  THE_PHASES_OF_A_SEASON,
+} from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b48): each parameter typed as wide as the body's guards, so each guard stays.
 declare global {
@@ -199,7 +202,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
       if (go && ph < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) orders[ph++] = go;
       {
         const prev = theTurnsOrders(G)[c.id] ?? [];
-        const tp = [0, 1, 2, 3, 4].filter((p) => botIsTeach(prev[p])); // 2026-09-28: teaching phases stay where the slayer school put them
+        const tp = THE_PHASES_OF_A_SEASON.filter((p) => botIsTeach(prev[p])); // 2026-09-28: teaching phases stay where the slayer school put them
         if (tp.length && orders.some((o) => o)) {
           const q = orders.filter((o) => o);
           const merged: AnOrderAsThePassesReadIt[] = [null, null, null, null, null];

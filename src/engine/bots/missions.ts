@@ -96,6 +96,7 @@ import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-
 import {
   THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
   THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
+  THE_PHASES_OF_A_SEASON,
 } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b45): each parameter typed as wide as the body's guards, so each guard stays.
@@ -1841,7 +1842,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       const mo = orders[m.id] ?? [];
       const r = res[m.id] ?? {};
       // the king teaches in his drill phases too (a drill is not a march — Toby: teaching must not slow the conquest)
-      const free = [0, 1, 2, 3, 4].map(
+      const free = THE_PHASES_OF_A_SEASON.map(
         (p) =>
           botTeachFree(G, pi, m, p) ||
           (m.isKing &&
@@ -1849,7 +1850,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
             /drill the host|lead the host cleanly/.test(mo[p].desc || '')),
       );
       // the KING's recruit phase can be handed to a hero standing with him who has that phase spare
-      const helper = [0, 1, 2, 3, 4].map((p) => {
+      const helper = THE_PHASES_OF_A_SEASON.map((p) => {
         if (!m.isKing || mo[p]?.action !== THE_HERO_ORDERS.recruit.key) return null;
         return (
           mine.find(
@@ -1920,9 +1921,9 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       if (!belowGate || !['melee', 'archery'].some((S) => (Number(ks[S]) || 0) > (Number(ss[S]) || 0))) return; // only to open the hunting gate
       const kl = botOrderLocs(G, king);
       const ko = orders[king.id] ?? [];
-      let kEnd: Province | null | undefined = G.world.provinces[kl[4] ?? -1];
+      let kEnd: Province | null | undefined = G.world.provinces[kl[THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1] ?? -1];
       {
-        const x = ko[4];
+        const x = ko[THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1];
         if (x?.action === THE_HERO_ORDERS.move.key && kEnd) {
           const N: Province | null | undefined = theTargetAsWords(x).startsWith('dir:')
             ? botNeighbourProv(G, kEnd, BOT_HEX_DIRS.indexOf(theTargetAsWords(x).slice(4)))
@@ -1934,8 +1935,8 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       if (!(kEnd.owner === pi || kEnd.owner == null)) return;
       const path = botPathDirs(G, pi, Ps, kEnd.id, 5, true);
       if (!path?.length || path.length > THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return;
-      const kArr = !kl.includes(kEnd.id) ? 5 : kl.indexOf(kEnd.id);
-      if (kEnd.owner !== pi && path.length < Math.min(5, kArr + 1)) return;
+      const kArr = !kl.includes(kEnd.id) ? THE_ORDERS_A_HERO_GIVES_IN_A_SEASON : kl.indexOf(kEnd.id);
+      if (kEnd.owner !== pi && path.length < Math.min(THE_ORDERS_A_HERO_GIVES_IN_A_SEASON, kArr + 1)) return;
       const solo = botSlayerTrainSkill(sl);
       const out: PhaseOrder[] = path.map((d) => aMoveOrderOnThePath(d, 'Join ' + king.name + ' for training'));
       while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)

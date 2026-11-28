@@ -583,7 +583,7 @@ export function runBotMovement(
           if (c.location === gen.location) {
             const firstMovePh = (() => {
               const i = lo.findIndex((o) => o?.action === THE_HERO_ORDERS.move.key);
-              return i < 0 ? 5 : i;
+              return i < 0 ? THE_ORDERS_A_HERO_GIVES_IN_A_SEASON : i;
             })();
             const genAttacks = lo.some(
               (o) => o?.action === THE_HERO_ORDERS.move.key && /^(Attack|Assault)/.test(o.desc || ''),

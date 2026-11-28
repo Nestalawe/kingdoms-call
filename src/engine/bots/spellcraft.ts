@@ -57,6 +57,7 @@ import {
 import {
   THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
   THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
+  THE_PHASES_OF_A_SEASON,
 } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b43): each parameter typed as wide as the body's guards, so each guard stays.
@@ -968,7 +969,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
   const fill = (cid: number, order: PhaseOrder) => {
     overlay(
       cid,
-      [0, 1, 2, 3, 4].map(() => aCopyOfAnOrderKeepingItsPaddingKind(G, order)),
+      THE_PHASES_OF_A_SEASON.map(() => aCopyOfAnOrderKeepingItsPaddingKind(G, order)),
     );
   };
   botIdxSet.forEach((pi) => {

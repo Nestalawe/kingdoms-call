@@ -241,7 +241,7 @@ export function botPutSpring(o: AnOrderAsThePassReadsIt[], order: PhaseOrder) {
     o.unshift(order);
     return true;
   }
-  if (botIsFiller(o[4])) {
+  if (botIsFiller(o[THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - 1])) {
     o.splice(4, 1);
     o.unshift(order);
     return true;
