@@ -143,4 +143,20 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theFightingSkillAHeroHasToAskOfLegendaryLairsEarly: 8,
     theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain: 3,
   },
+  /** A realm's tuning, before its alignment's and its race's overlays (botTuning, bots/intel.ts: the tables BOT_TUNING
+   *  and BOT_DIFFICULTY read these; a province's worth to hold, bots/strategy.ts). Every bot realm plays at what was the
+   *  Hard setting (Toby, 2026-09-26). */
+  tuning: {
+    theStrengthRatioAKingsAttackWants: 1.35,
+    theStrengthRatioAHerosAttackWants: 1.2,
+    theStrengthRatioAConcentratedAssaultWants: 1.4,
+    theTaxFromWhichAProvinceIsValuableToHold: 7,
+    whatEachGoldOfATargetProvincesTaxAddsToItsScore: 10,
+    theGoldKeptInHandBeforeAnyRecruiting: 3,
+    theShareOfTheFreeTreasuryTheWagesMayLeanOn: 0.35,
+    theFactorTheBotsStrengthTakesTheAttackMarginsBy: 0.92,
+    theFactorTheBotsStrengthTakesTheAssaultMarginBy: 0.9,
+    whatARivalsProvinceAddsToItsScoreAsATarget: 12,
+    theShareOfTheIncomeTheWagesMayTakeInPeace: 0.97,
+  },
 } satisfies TheWeightsOfABotVersion;

@@ -239,6 +239,35 @@ const TheWeightsOfALairSchema = z.object({
   theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain: z.number(),
 });
 
+/** A realm's tuning: the margins of strength its attacks want, the pull of a province's tax, the gold it keeps and the
+ *  share of its income its wages take, before its alignment's and its race's overlays (botTuning, bots/intel.ts: the
+ *  tables BOT_TUNING and BOT_DIFFICULTY read these). Every bot realm plays at one strength (the old Hard). */
+const TheWeightsOfARealmsTuningSchema = z.object({
+  /** The strength a king's attack wants, as times the defence's (before the strength's factor below), ... */
+  theStrengthRatioAKingsAttackWants: z.number(),
+  /** ... a hero's, ... */
+  theStrengthRatioAHerosAttackWants: z.number(),
+  /** ... and a concentrated assault's, combined (it buffers the columns' chance to unite). */
+  theStrengthRatioAConcentratedAssaultWants: z.number(),
+  /** A province of this tax or more is valuable to hold and reinforce (the home capital always is). */
+  theTaxFromWhichAProvinceIsValuableToHold: z.number(),
+  /** Each gold of a target province's tax adds this to its score as a target. */
+  whatEachGoldOfATargetProvincesTaxAddsToItsScore: z.number(),
+  /** The gold the realm keeps in hand before any recruiting. */
+  theGoldKeptInHandBeforeAnyRecruiting: z.number(),
+  /** The share of the free treasury the wages may lean on (a small realm's: the kind `gold`'s). */
+  theShareOfTheFreeTreasuryTheWagesMayLeanOn: z.number(),
+  /** Every bot realm's strength: its king's and its heroes' attack margins are taken by this factor, ... */
+  theFactorTheBotsStrengthTakesTheAttackMarginsBy: z.number(),
+  /** ... its assault margin by this one, ... */
+  theFactorTheBotsStrengthTakesTheAssaultMarginBy: z.number(),
+  /** ... a rival's province carries this bias over neutral land in its score as a target (the target's score reads
+   *  it at its own weight), ... */
+  whatARivalsProvinceAddsToItsScoreAsATarget: z.number(),
+  /** ... and its wages may take this share of its income in peace (a war footing's: the kind `gold`'s). */
+  theShareOfTheIncomeTheWagesMayTakeInPeace: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -250,6 +279,7 @@ export const TheWeightsOfABotVersionSchema = z.object({
   battleStrength: TheWeightsOfAPointOfAHostsStrengthSchema,
   war: TheWeightsOfAWarSchema,
   lair: TheWeightsOfALairSchema,
+  tuning: TheWeightsOfARealmsTuningSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;

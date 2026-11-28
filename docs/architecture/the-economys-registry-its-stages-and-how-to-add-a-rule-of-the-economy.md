@@ -141,7 +141,8 @@ makes of that gold from its version's weights file.
   ([the bots' estimate of a battle](where-a-change-goes-from-an-item-in-game-terms-to-the-files.md#a-battles-or-a-fights-rule)),
   a war the seventh (the bar for war and the peace a realm sues for: `BOT_WAR`, `src/engine/bots/war.ts`, reads each
   by name) and a lair's guardian the eighth (the slayer's ladder: the `BOT_LAIR_*` names, `src/engine/bots/missions.ts`
-  and `strategy.ts`).
+  and `strategy.ts`), and a realm's tuning the ninth (its attack margins, its targets' scores and its wages before its
+  alignment's and race's overlays: `BOT_TUNING` and `BOT_DIFFICULTY`, `src/engine/bots/intel.ts`).
 
 ## The tests
 

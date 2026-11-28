@@ -11,7 +11,8 @@
 // wrote, and a race gift's (B-06ah), each the number botTuning's race overlays wrote, a temper's (B-06aj), each the
 // number botDuelRating and the war bar's table (BOT_WAR.temper) wrote, and a point of a host's strength's (B-06bq),
 // each the number botBattleForce, botGuessDefence and botMarginFor wrote, a war's (B-17r), each the number BOT_WAR
-// wrote, and a lair's (B-17r), each the number the BOT_LAIR_* names wrote, in its place: a change of one is a change
+// wrote, a lair's (B-17r), each the number the BOT_LAIR_* names wrote, and a realm's tuning (B-17r), each the number
+// BOT_TUNING and BOT_DIFFICULTY wrote, in its place: a change of one is a change
 // of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -85,7 +86,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(90);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(101);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7, each in its place", () => {
@@ -215,5 +216,21 @@ test("a lair's weights are the numbers the BOT_LAIR_* names wrote before B-17r, 
     theFightingSkillAHeroHasToAskOfPowerfulLairsEarly: 6,
     theFightingSkillAHeroHasToAskOfLegendaryLairsEarly: 8,
     theRiseInHisRatingAfterWhichAHeroAsksALairsRumourAgain: 3,
+  });
+});
+
+test("a realm's tuning's weights are the numbers BOT_TUNING and BOT_DIFFICULTY wrote before B-17r, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning).toEqual({
+    theStrengthRatioAKingsAttackWants: 1.35,
+    theStrengthRatioAHerosAttackWants: 1.2,
+    theStrengthRatioAConcentratedAssaultWants: 1.4,
+    theTaxFromWhichAProvinceIsValuableToHold: 7,
+    whatEachGoldOfATargetProvincesTaxAddsToItsScore: 10,
+    theGoldKeptInHandBeforeAnyRecruiting: 3,
+    theShareOfTheFreeTreasuryTheWagesMayLeanOn: 0.35,
+    theFactorTheBotsStrengthTakesTheAttackMarginsBy: 0.92,
+    theFactorTheBotsStrengthTakesTheAssaultMarginBy: 0.9,
+    whatARivalsProvinceAddsToItsScoreAsATarget: 12,
+    theShareOfTheIncomeTheWagesMayTakeInPeace: 0.97,
   });
 });
