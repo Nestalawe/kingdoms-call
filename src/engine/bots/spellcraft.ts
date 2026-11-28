@@ -50,6 +50,10 @@ import { theYieldOfABlessARealmsAlignmentGives } from '../rules/the-registry-of-
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
+import {
+  aCopyOfAnOrderKeepingItsPaddingKind,
+  aPaddingOrder,
+} from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 // Its types (plan P1-10b43): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -952,7 +956,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
     for (let p = 0; p < 5 && k < plan.length; p++) {
       const held = o[p];
       if (held == null || held.action === THE_HERO_ORDERS.defend.key) {
-        o[p] = { ...theOrderOfThePlan(plan, k++) };
+        o[p] = aCopyOfAnOrderKeepingItsPaddingKind(G, theOrderOfThePlan(plan, k++));
       }
     }
     theTurnsOrders(G)[cid] = o;
@@ -960,7 +964,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
   const fill = (cid: number, order: PhaseOrder) => {
     overlay(
       cid,
-      [0, 1, 2, 3, 4].map(() => ({ ...order })),
+      [0, 1, 2, 3, 4].map(() => aCopyOfAnOrderKeepingItsPaddingKind(G, order)),
     );
   };
   botIdxSet.forEach((pi) => {
@@ -1009,7 +1013,7 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
             return { action: 'research', target: '', extra: '', desc: 'Research' };
           return sk
             ? { action: 'practice', target: sk, extra: '', desc: 'Practice ' + theLabelOf(sk) }
-            : { action: 'defend', target: '', extra: '', desc: 'Hold' };
+            : aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' });
         };
         // 2026-09-26 (Toby item 1): unmapped ground under a character who is standing still is explored before any
         // practice — Practice is the last resort, not the default (a host's commander still drills it).
@@ -1037,7 +1041,16 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
         // Offensive casts fire first — hexing a nearby enemy beats anything peaceful.
         if (castOrder && OFFENSIVE_CAST.has(castOrder.target)) {
           const tail = practiceTail();
-          overlay(c.id, [..._castPlan, { ...tail }, { ...tail }, { ...tail }, { ...tail }].slice(0, 5));
+          overlay(
+            c.id,
+            [
+              ..._castPlan,
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+            ].slice(0, 5),
+          );
           return;
         }
         // the commander of a HOST (5+ land/air units) drills it every spare phase.
@@ -1052,16 +1065,25 @@ export function runBotActions(G: GameState, botIdxSet: ReadonlySet<number> | nul
           const tail = practiceTail();
           overlay(c.id, [
             { action: 'search', target: String(li), extra: '', desc: 'Search Lair', prov: c.location },
-            { ...tail },
-            { ...tail },
-            { ...tail },
-            { ...tail },
+            aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+            aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+            aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+            aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
           ]);
           return;
         }
         if (castOrder) {
           const tail = practiceTail();
-          overlay(c.id, [..._castPlan, { ...tail }, { ...tail }, { ...tail }, { ...tail }].slice(0, 5));
+          overlay(
+            c.id,
+            [
+              ..._castPlan,
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+              aCopyOfAnOrderKeepingItsPaddingKind(G, tail),
+            ].slice(0, 5),
+          );
           return;
         }
         if (_exploreHere) {
@@ -1209,11 +1231,16 @@ export function botFillOrders(
   const out: AnOrderAsThePassesReadIt[] = (
     moves.length
       ? [...watch, ...pre, ...moves]
-      : [...pre, ...(met ? [{ action: 'defend', target: '', extra: '', desc: 'Hold' }] : [])]
+      : [...pre, ...(met ? [aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' })] : [])]
   ).slice(0, 5);
   const tail = botPracticeFallback(G, pi, c, {
     moving: out.some((o) => o && (o.action === THE_HERO_ORDERS.move.key || o.action === THE_HERO_ORDERS.encounter.key)),
   });
-  while (out.length < 5) out.push(tail ? { ...tail } : { action: 'defend', target: '', extra: '', desc: 'Hold' });
+  while (out.length < 5)
+    out.push(
+      tail
+        ? aCopyOfAnOrderKeepingItsPaddingKind(G, tail)
+        : aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' }),
+    );
   return out;
 }

@@ -45,6 +45,7 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { ABotRealmsLedger } from './intel.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
+import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 // Its types (plan P1-10b42): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the pass reads a plan: an order, or a gap the plan holds. */
@@ -322,6 +323,8 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
     const spring = new Set<number>(); // characters whose plans this pass rewrote outright
     const valuable = (P: Province) => P.owner === pi && botIsValuable(G, P, pi);
     const hold = (d?: string): PhaseOrder => ({ action: 'defend', target: '', extra: '', desc: (d ?? '') || 'Hold' });
+    /** A plain hold, a hero's free phase padded (marked in the bots' record of their choices). */
+    const aPaddingHold = () => aPaddingOrder(G, 'hold', hold());
     if (MUSTER) {
       // ── A: triage ──
       mine.forEach((c) => {
@@ -357,7 +360,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
                 );
                 if (ro) out.push(ro);
               }
-              while (out.length < 5) out.push(hold());
+              while (out.length < 5) out.push(aPaddingHold());
               turnOrders[c.id] = out;
               spring.add(c.id);
             }
@@ -391,7 +394,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
         if (!st) return;
         const mv = botMoveOrder(st.i, 'Withdraw to ' + st.N.name + (pinned ? ' behind the flood' : ' (outmatched)'));
         const out: PhaseOrder[] = pinned ? [hold('Stand while the flood rises'), mv] : [mv];
-        while (out.length < 5) out.push(hold());
+        while (out.length < 5) out.push(aPaddingHold());
         turnOrders[c.id] = out;
         spring.add(c.id);
         if (pinned) {
@@ -406,7 +409,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
               desc: 'Flood ' + worst.N.name + ' — strand the enemy host',
             };
             const ko: PhaseOrder[] = [fl, { ...mv, desc: 'Withdraw with ' + c.name }];
-            while (ko.length < 5) ko.push(hold());
+            while (ko.length < 5) ko.push(aPaddingHold());
             turnOrders[k.id] = ko;
             spring.add(k.id);
           } else if (k?.id === c.id) {
@@ -455,7 +458,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
                 extra: String(h.id),
                 desc: 'Hand the column to ' + h.name,
               });
-            while (out.length < 5) out.push(hold());
+            while (out.length < 5) out.push(aPaddingHold());
             turnOrders[x.id] = out;
             spring.add(x.id);
           });
@@ -523,7 +526,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           ...(levy ? [levy] : []),
           botMoveOrder(st.i, 'Evacuate to ' + st.N.name + ' (an enemy host is at hand)'),
         ];
-        while (out.length < 5) out.push(hold());
+        while (out.length < 5) out.push(aPaddingHold());
         turnOrders[c.id] = out;
         spring.add(c.id);
       });
@@ -585,7 +588,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           x.target === theNameOfTheSpell('flood') &&
           entered.has(Number(x.extra))
         )
-          o[i] = hold();
+          o[i] = aPaddingHold();
       });
     });
     // P: every pin is cast in Spring by its caster
@@ -609,7 +612,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           x.target === theNameOfTheSpell('flood') &&
           Number(x.extra) === Xid
         )
-          o[i] = hold();
+          o[i] = aPaddingHold();
       });
       const lim = botSchoolLimit(Number(asItsGuardReadsIt(k.skills)?.elemental) || 0),
         EL = new Set([
@@ -625,7 +628,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           EL.has(x.target) &&
           !(x.target === theNameOfTheSpell('flood') && pins.has(Number(x.extra)))
         ) {
-          o[i] = hold();
+          o[i] = aPaddingHold();
           n--;
         }
       }
@@ -899,13 +902,13 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           const blow = attacksOf(g)[0];
           if (blow && blow.i <= li) {
             o.splice(li, 1);
-            while (o.length < 5) o.push(hold());
+            while (o.length < 5) o.push(aPaddingHold());
             return;
           } // the feint must go in before the blow falls
           const out: PhaseOrder[] = [];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(A.i, 'Feint on ' + A.N.name + ' (draw ' + foe.e.name + ' away from ' + t1.name + ')'));
-          while (out.length < 5) out.push(hold('Hold'));
+          while (out.length < 5) out.push(aPaddingHold());
           turnOrders[hero.id] = out.slice(0, 5);
           spring.add(hero.id);
           entered.add(A.N.id);
@@ -1013,7 +1016,7 @@ export function runBotPhaseOne(G: GameState, botIdxSet: ReadonlySet<number> | nu
           const out: AnOrderAsThePassReadsIt[] = [...keepCasts];
           while (out.length < li) out.push(hold('Wait for the column'));
           out.push(botMoveOrder(best.i, (best.d > 0 ? 'Attack ' : 'Advance on ') + best.N.name + ' (second front)'));
-          while (out.length < 5) out.push(hold('Hold ' + best.N.name));
+          while (out.length < 5) out.push(aPaddingOrder(G, 'hold-the-ground-won', hold('Hold ' + best.N.name)));
           turnOrders[hero.id] = out.slice(0, 5);
           spring.add(hero.id);
           taken.add(best.N.id);

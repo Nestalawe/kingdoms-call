@@ -109,6 +109,10 @@ import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsRoles } from './intel.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
+import {
+  aCopyOfAnOrderKeepingItsPaddingKind,
+  aPaddingOrder,
+} from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 // Its types (plan P1-10b47): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -436,7 +440,7 @@ export function runBotMovement(
               G,
               pi,
               proxy,
-              [{ action: 'defend', target: '', extra: '', desc: 'Hold' }],
+              [aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' })],
               [],
             );
             assigned.add(rcpt.id);
@@ -607,13 +611,16 @@ export function runBotMovement(
               cur = N;
             }
             const lead = [...pre, ...casts];
-            const lag = botPracticeFallback(G, pi, c, { moving: follow.length > 0 }) ?? {
-              action: 'defend',
-              target: '',
-              extra: '',
-              desc: 'Hold',
-            };
-            while (follow.length && lead.length < firstMovePh + 1 && lead.length < 5) lead.push({ ...lag });
+            const lag =
+              botPracticeFallback(G, pi, c, { moving: follow.length > 0 }) ??
+              aPaddingOrder(G, 'hold', {
+                action: 'defend',
+                target: '',
+                extra: '',
+                desc: 'Hold',
+              });
+            while (follow.length && lead.length < firstMovePh + 1 && lead.length < 5)
+              lead.push(aCopyOfAnOrderKeepingItsPaddingKind(G, lag));
             theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, lead, follow);
             assigned.add(c.id);
             return;
@@ -646,7 +653,14 @@ export function runBotMovement(
               if (path.length) {
                 const o = [...pre, ...path.map((d) => aMoveOrderOnThePath(d, 'Stalk ' + hunt.e.name))];
                 while (o.length < 5)
-                  o.push({ action: 'defend', target: '', extra: '', desc: 'Lie in wait for ' + hunt.e.name });
+                  o.push(
+                    aPaddingOrder(G, 'lie-in-wait-for-a-quarry', {
+                      action: 'defend',
+                      target: '',
+                      extra: '',
+                      desc: 'Lie in wait for ' + hunt.e.name,
+                    }),
+                  );
                 theTurnsOrders(G)[c.id] = o;
                 assigned.add(c.id);
                 return;

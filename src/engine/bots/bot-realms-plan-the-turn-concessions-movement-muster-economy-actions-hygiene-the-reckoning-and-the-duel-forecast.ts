@@ -1,7 +1,7 @@
 import { COMBAT_ONLY_TACTICS } from '../army-tables.ts';
 import { runBotConcessions } from './missions.ts';
 import { runBotMovement } from './movement.ts';
-import { runBotEconomy, runBotOrderHygiene } from './economy.ts';
+import { runBotEconomy, runBotOrderHygiene, theBotsRecordOpensForThePageThatAsks } from './economy.ts';
 import { runBotActions } from './spellcraft.ts';
 import { runBotPhaseOne } from './phase-one.ts';
 import { runBotReckoning } from '../titles/reckoning.ts';
@@ -88,6 +88,8 @@ export function botRealmsPlanTheTurnConcessionsMovementMusterEconomyActionsSprin
   turnContext: TurnContext,
 ) {
   const { G, _botPlayerIdx, reckoningCalls } = turnContext;
+  // the bots' record of their choices opens for the turn, where a page asks for it (the order hygiene closes it)
+  theBotsRecordOpensForThePageThatAsks(G);
   // Phase 3 (pre) — item 2: any bot realm that has lost its last province concedes before it plans
   // a turn.
   runBotConcessions(G, _botPlayerIdx, turnContext);

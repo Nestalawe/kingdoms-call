@@ -92,6 +92,7 @@ import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read
 import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, TheBotsSpecialistRoles } from './intel.ts';
+import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 // Its types (plan P1-10b46): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -599,7 +600,8 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
         { action: 'spy', target: 'char:' + String(mark.id), extra: '', desc: 'Spy on ' + mark.name },
         { action: 'spy', target: '', extra: '', desc: 'Spy on ' + (P ? P.name : '') },
       ];
-      while (out.length < 5) out.push({ action: 'defend', target: '', extra: '', desc: 'Lie in wait' });
+      while (out.length < 5)
+        out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
       return out;
     }
   }
@@ -636,7 +638,8 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
           { action: 'spy', target: 'char:' + String(best.e.id), extra: '', desc: 'Spy on ' + best.e.name },
         ];
         if (out.length < 5) out.push({ action: 'spy', target: '', extra: '', desc: 'Spy on ' + best.X.name });
-        while (out.length < 5) out.push({ action: 'defend', target: '', extra: '', desc: 'Lie in wait' });
+        while (out.length < 5)
+          out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
         return out;
       }
     }
@@ -659,7 +662,11 @@ export function botSpyOrders(G: GameState, pi: number, c: Character, pre: readon
   // two attempts, then lie in wait (a Defend with no column is an ambush watch)
   let k = 0;
   while (out.length < 5) {
-    out.push(k < 2 ? { ...spy } : { action: 'defend', target: '', extra: '', desc: 'Lie in wait' });
+    out.push(
+      k < 2
+        ? { ...spy }
+        : aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }),
+    );
     k++;
   }
   return out;
@@ -744,7 +751,8 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
           ...path.map((d) => botMoveOrder(d, 'Creep toward the vaults of ' + vaults.name)),
           { action: 'grand_heist', target: '', extra: '', desc: 'Grand Heist — ' + best.X.name },
         ];
-        while (out.length < 5) out.push({ action: 'defend', target: '', extra: '', desc: 'Lie low' });
+        while (out.length < 5)
+          out.push(aPaddingOrder(G, 'lie-low', { action: 'defend', target: '', extra: '', desc: 'Lie low' }));
         return out;
       }
     }
@@ -783,7 +791,8 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
             ...path.map((d) => aMoveOrderOnThePath(d, 'Creep toward the lair in ' + lair.X.name)),
             { action: 'search', target: String(lair.li), extra: '', desc: 'Rob the hoard', prov: lair.X.id },
           ];
-          while (out.length < 5) out.push({ action: 'defend', target: '', extra: '', desc: 'Lie in wait' });
+          while (out.length < 5)
+            out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
           return out;
         }
       }
@@ -804,7 +813,11 @@ export function botThiefOrders(G: GameState, pi: number, c: Character, pre: read
   const out = [...pre, ...path.map((d) => botMoveOrder(d, 'Creep toward ' + (X ? X.name : '')))];
   let k = 0;
   while (out.length < 5) {
-    out.push(k < 1 ? { ...steal } : { action: 'defend', target: '', extra: '', desc: 'Lie in wait' });
+    out.push(
+      k < 1
+        ? { ...steal }
+        : aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }),
+    );
     k++;
   }
   return out;
@@ -920,7 +933,8 @@ export function botRoleWork(
             ...pre,
             { action: 'assassinate', target: String(mark.id), extra: '', desc: 'Assassinate ' + mark.name },
           ];
-          while (out.length < 5) out.push({ action: 'defend', target: '', extra: '', desc: 'Lie in wait' });
+          while (out.length < 5)
+            out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
           return out;
         }
       }
@@ -939,7 +953,8 @@ export function botRoleWork(
             ...pre,
             { action: 'sabotage', target: String(best.X.id), extra: '', desc: 'Sabotage ' + best.X.name },
           ];
-          while (out.length < 5) out.push({ action: 'defend', target: '', extra: '', desc: 'Lie in wait' });
+          while (out.length < 5)
+            out.push(aPaddingOrder(G, 'lie-in-wait', { action: 'defend', target: '', extra: '', desc: 'Lie in wait' }));
           return out;
         }
       }
@@ -1327,7 +1342,7 @@ export function botDefenderOrders(
       }
     }
   }
-  if (out.length < 5) out.push({ ...BOT_DEFEND_ORDER });
+  if (out.length < 5) out.push(aPaddingOrder(G, 'hold-the-post', { ...BOT_DEFEND_ORDER }));
   if (out.length < 5 && here.id === P.id) {
     const po = botPickupOrder(G, pi, c, P);
     if (po) out.push(po);

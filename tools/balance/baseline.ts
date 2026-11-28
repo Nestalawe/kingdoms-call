@@ -21,8 +21,8 @@ export const BASELINE_FILE: Record<SeedSet, string> = {
   B: path.join(BASELINE_DIR, 'noise.json'),
 };
 
-/** A game as kept in a baseline: a GameResult without its time. Set B keeps only `id` and `stats`. */
-export type KeptGame = Omit<GameResult, 'ms'>;
+/** A game as kept in a baseline: a GameResult without its time and the bots' record. Set B keeps only `id` and `stats`. */
+export type KeptGame = Omit<GameResult, 'ms' | 'botChoices'>;
 
 interface File {
   about: string;
