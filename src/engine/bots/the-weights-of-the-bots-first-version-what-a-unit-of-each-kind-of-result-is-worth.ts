@@ -123,17 +123,6 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theHighestLevelOfNavalTheBotsWeigh: 5,
     /** The strength the bots give a defending unit they can't see: about an average line unit's base strength. */
     theStrengthOfAUnitTheBotsCantSee: 6,
-    /** A province they can't see is guessed by its tax: Rich from this tax, ... */
-    theTaxFromWhichTheBotsGuessALandRich: 7,
-    /** ... Prosperous from this one (both neutralDefBand's cuts, written in its function: no row holds them; a unit
-     *  case holds the two copies together), ... */
-    theTaxFromWhichTheBotsGuessALandProsperous: 4,
-    /** ... with this many units in a Rich land (the middle of the band its neutral defenders are dealt in), ... */
-    theUnitsTheBotsGuessInARichLand: 3.5,
-    /** ... this many in a Prosperous land, ... */
-    theUnitsTheBotsGuessInAProsperousLand: 2.5,
-    /** ... and this many in a Poor one. */
-    theUnitsTheBotsGuessInAPoorLand: 1.5,
     /** A rival's province is guessed this many times more heavily held than neutral ground of the same tax. */
     theFactorTheBotsGuessARivalsProvinceHeldMoreHeavilyBy: 1.25,
     /** The least margin a king's attack wants, however long his realm gains no land, ... */

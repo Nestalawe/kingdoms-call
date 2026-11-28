@@ -50,7 +50,7 @@ import { unitTypeOf } from '../../engine/rules-on-plain-values/unit-types-and-ba
 import { pickLairNameP } from '../../engine/names.ts';
 import { itemEffectKey, lairItemTier } from '../../engine/items/tiers-and-hoards.ts';
 import { migrateLairGuardiansV2 } from '../../engine/heroes/skills-and-hp.ts';
-import { neutralDefBand } from '../../engine/units/drill-and-spoils.ts';
+import { neutralDefBand } from '../../engine/rules-on-plain-values/the-garrison-band-a-neutral-provinces-tax-deals-its-defenders-in.ts';
 import { setGameArchived, toggleArchivedView } from './game-list.ts';
 import {
   gameArchived,
@@ -164,7 +164,7 @@ Object.assign(window, {
   migrateLairGuardiansV2, // engine/heroes/skills-and-hp.ts
   migrateLegacyUnitNames, // engine/army-tables.ts
   MONSTERS_P, // content/kingdoms-call-data.ts
-  neutralDefBand, // engine/units/drill-and-spoils.ts
+  neutralDefBand, // engine/rules-on-plain-values/the-garrison-band-a-neutral-provinces-tax-deals-its-defenders-in.ts
   pickLairNameP, // engine/names.ts
   playerView, // views/what-each-realm-may-see-of-the-world.ts
   PRIMAL_ARMY_DEFS_P, // content/kingdoms-call-data.ts

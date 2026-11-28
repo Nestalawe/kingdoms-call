@@ -93,6 +93,10 @@ import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, ABotRealmsRoles, ABotRealmsSpending } from './intel.ts';
 import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import {
+  THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
+  THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
+} from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b45): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -356,10 +360,10 @@ export function botInfiltrateOrders(
   const spell = school === 'necromancy' ? theNameOfTheSpell('skeletal-armies') : theNameOfTheSpell('elemental-summon');
   const path = tgt.d > 0 ? (botPathAny(G, P, tgt.P.id, range) ?? []) : [];
   if (tgt.d > 0 && path.length !== tgt.d) return null; // could not reconstruct the walk
-  if (pre.length + path.length >= 5) return null; // no phase left to cast in
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null; // no phase left to cast in
   const mv = path.map((d) => botMoveOrder(d, 'Infiltrate ' + tgt.P.name));
   const casts: PhaseOrder[] = [];
-  while (pre.length + mv.length + casts.length < 5)
+  while (pre.length + mv.length + casts.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
     casts.push({ action: 'cast_spell', target: spell, extra: '', desc: 'Cast ' + spell });
   if (!casts.length) return null;
   return botFillOrders(G, pi, c, [...pre, ...mv, ...casts], []);
@@ -1065,7 +1069,7 @@ export function botLairPlan(
     lad.retryAt = T.k(T.cur) + BOT_LAIR_RETRY_EXTRA;
     T = botLairTiers(c);
   }
-  const mhp0 = c.maxHp || 20,
+  const mhp0 = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
     hp0 = asItsGuardReadsIt(c.hp) ?? mhp0;
   // option 3: a WEAK lair on a 60–80% rumour ("the odds favour you") when he stands at full health (95%+)
   const weakRisk = (x: ALairCandidate) =>
@@ -1078,14 +1082,14 @@ export function botLairPlan(
     T.up != null && x.grade === T.up && !x.rumour && !told(x.f) && L && botRumourAffordable(G, pi, L, x.price);
   if (!cands.some(searchable) && !cands.some(askable)) return null;
   // rest first when hurt: to 75% of max HP, 30% a phase
-  const mhp = c.maxHp || 20,
+  const mhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
     hp = asItsGuardReadsIt(c.hp) ?? mhp;
   const per = Math.max(1, Math.ceil(mhp * 0.3));
   const restN = hp < mhp * BOT_LAIR_MIN_HP ? Math.ceil((mhp * BOT_LAIR_MIN_HP - hp) / per) : 0;
   const mv: ALairOrder[] = [];
-  for (let i = 0; i < restN && pre.length + mv.length < 5; i++)
+  for (let i = 0; i < restN && pre.length + mv.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; i++)
     mv.push({ action: 'rest', target: '', extra: '', desc: 'Rest before the hunt' });
-  const left = () => 5 - pre.length - mv.length;
+  const left = () => THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length - mv.length;
   let pos = P,
     searches = 0,
     asked = 0;
@@ -1570,8 +1574,8 @@ export const BOT_DUEL = { heroAccept: 0.5, kingAccept: 0.6, kingFelled: 0.1, cha
 // enough for a king to answer.
 export const BOT_DUEL_WITHOUT_A_FORECAST = { felledWhenStronger: 0.05, felledOtherwise: 0.3 };
 export function botDuelStance(G: GameState, pi: number, c: Character, duelSim: ADuelForecaster | null | undefined) {
-  const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20),
-    mhp = c.maxHp || 20;
+  const hp = asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN),
+    mhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN;
   const d = botDuelSkill(c);
   if (d < 2 || hp < mhp * 0.6) return 'refuse';
   const fit = d >= 4 && hp >= mhp * 0.8; // a real duellist, fit to ride out
@@ -1677,7 +1681,7 @@ export function botOrphanHostOrders(G: GameState, pi: number, c: Character, pre:
   const host = best.X;
   const path = best.d > 0 ? (botPathDirs(G, pi, P, host.id, 5, true) ?? []) : [];
   if (best.d > 0 && path.length !== best.d) return null;
-  if (pre.length + path.length >= 5) return null;
+  if (pre.length + path.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return null;
   orphan.add(host.id);
   const out: AnOrderAsThePassesReadIt[] = [
     ...pre,
@@ -1686,7 +1690,7 @@ export function botOrphanHostOrders(G: GameState, pi: number, c: Character, pre:
   const po = botPickupOrder(G, pi, { ...c, location: host.id }, host);
   if (!po) return null;
   out.push(po);
-  while (out.length < 5)
+  while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
     out.push(
       aPaddingOrder(G, 'hold-with-the-host', { action: 'defend', target: '', extra: '', desc: 'Hold with the host' }),
     );
@@ -1755,7 +1759,7 @@ export function botOrderLocs(G: GameState, c: Character) {
   const o = theTurnsOrders(G)[c.id] ?? [];
   const out: (number | null)[] = [];
   let cur: Province | null | undefined = G.world.provinces[c.location];
-  for (let p = 0; p < 5; p++) {
+  for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
     out.push(cur ? cur.id : null);
     const x = o[p];
     if (x?.action === THE_HERO_ORDERS.move.key && cur) {
@@ -1804,7 +1808,8 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       !c.isKing &&
       !roles.leaders.includes(c.id) &&
       !theUnitsWithGapsOf(c).length &&
-      (asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20)) >= (c.maxHp || 20) * 0.6,
+      (asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN)) >=
+        (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.6,
   );
   slayers.forEach((sl) => {
     const so = orders[sl.id] ?? [];
@@ -1858,7 +1863,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
           ) ?? null
         );
       });
-      for (let p0 = 0; p0 < 5; p0++) {
+      for (let p0 = 0; p0 < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p0++) {
         const X = locs[p0];
         if (X == null) continue;
         if (!(free[p0] || helper[p0])) continue;
@@ -1873,7 +1878,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
         if (PX.owner !== pi && X !== Ps.id && path.length < arrive + 1) continue;
         const lv: Partial<Record<string, number>> = { ...asItsGuardReadsIt(sl.skills) };
         const plan: ALesson[] = [];
-        for (let q = path.length; q < 5; q++) {
+        for (let q = path.length; q < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; q++) {
           if (locs[q] !== X || !(free[q] || helper[q])) continue;
           const ok = (S: string) => (Number(ms[S]) || 0) > (Number(lv[S]) || 0) && (Number(lv[S]) || 0) < 5;
           let S: string | null = null;
@@ -1928,12 +1933,12 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       if (!kEnd || kEnd.terrain === 'sea' || kEnd.id === sl.location) return;
       if (!(kEnd.owner === pi || kEnd.owner == null)) return;
       const path = botPathDirs(G, pi, Ps, kEnd.id, 5, true);
-      if (!path?.length || path.length > 5) return;
+      if (!path?.length || path.length > THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) return;
       const kArr = !kl.includes(kEnd.id) ? 5 : kl.indexOf(kEnd.id);
       if (kEnd.owner !== pi && path.length < Math.min(5, kArr + 1)) return;
       const solo = botSlayerTrainSkill(sl);
       const out: PhaseOrder[] = path.map((d) => aMoveOrderOnThePath(d, 'Join ' + king.name + ' for training'));
-      while (out.length < 5)
+      while (out.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
         out.push(
           solo
             ? {
@@ -1958,7 +1963,7 @@ export function botRunSlayerSchool(G: GameState, pi: number, roles: ABotRealmsRo
       byQ[x.q] = x;
     });
     best.path.forEach((d) => out.push(aMoveOrderOnThePath(d, 'To ' + best.m.name + ' for training')));
-    for (let q = out.length; q < 5; q++) {
+    for (let q = out.length; q < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; q++) {
       const x = byQ[q];
       out.push(
         x

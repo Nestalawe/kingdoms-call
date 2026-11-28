@@ -9,6 +9,7 @@ import { SEA_TYPES_GEN } from '../world/tables.ts';
 import { armyUnitName } from '../dice-and-army-names.ts';
 import { botBattleForce } from '../bots/intel.ts';
 import { narrate } from '../turn/events-and-their-audiences.ts';
+import { neutralDefBand } from '../rules-on-plain-values/the-garrison-band-a-neutral-provinces-tax-deals-its-defenders-in.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import type { NarrativeLine } from '../turn/events-and-their-audiences.ts';
 import type { Army, Character, GameState, Province } from '../../schemas/saved-game-state.ts';
@@ -97,9 +98,8 @@ export function rP(a: number, b: number) {
 // Single source of truth used by every world-gen defender pass (land, sea, primal, home-race
 // conversion). 2026-09-13: the BAND is split out so the count and the audit sweep can never drift
 // apart. neutralDefBand returns [lo,hi] for a tax value; neutralDefCount rolls inside it.
-export function neutralDefBand(tax: number): [number, number] {
-  return tax >= 7 ? [3, 4] : tax >= 4 ? [2, 3] : [1, 2];
-}
+// neutralDefBand itself is in rules-on-plain-values/ (a leaf, so the bots can ask it): it is re-exported here.
+export { neutralDefBand };
 export function neutralDefCount(tax: number) {
   const b = neutralDefBand(tax);
   return rP(b[0], b[1]);

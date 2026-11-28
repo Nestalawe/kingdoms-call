@@ -114,6 +114,10 @@ import {
   aCopyOfAnOrderKeepingItsPaddingKind,
   aPaddingOrder,
 } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import {
+  THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
+  THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
+} from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b47): each parameter typed as wide as the body's guards, so each guard stays.
 /** A phase's order as the passes read a plan: an order, or a gap the plan holds. */
@@ -172,7 +176,7 @@ function theSkillsOf(c: Character): TheSkillsByName {
 }
 /** A hero's hit points, where the code reads them as if they may be missing (his most, else 20). */
 function theHitPointsOf(c: Character): number {
-  return asItsGuardReadsIt(c.hp) ?? (c.maxHp || 20);
+  return asItsGuardReadsIt(c.hp) ?? (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN);
 }
 /** A move along a path botPathDirs found, whose steps may hold a gap: a gap reads no way, as `BOT_HEX_DIRS[undefined]`
  *  did (`-1` names none either). */
@@ -219,7 +223,7 @@ export function botResurrectErrands(
       if (assigned.has(c.id) || c._isHeir || (Number(theSkillsOf(c).white) || 0) < 1) continue;
       if (roles.leaders.includes(c.id) && theUnitsWithGapsOf(c).length) continue; // a general with a host keeps to the war
       const hp = theHitPointsOf(c);
-      if (hp < (c.maxHp || 20) * 0.5) continue;
+      if (hp < (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) * 0.5) continue;
       const P = G.world.provinces[c.location];
       if (!P) continue;
       const path = P.id === X.id ? [] : botPathDirs(G, pi, P, X.id, 8, true);
@@ -232,9 +236,14 @@ export function botResurrectErrands(
     }
     const c = best.c;
     const mv: AnOrderAsThePassesReadIt[] = [];
-    best.path.slice(0, 5).forEach((d) => mv.push(aMoveOrderOnThePath(d, 'To raise ' + g.name)));
+    best.path
+      .slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+      .forEach((d) => mv.push(aMoveOrderOnThePath(d, 'To raise ' + g.name)));
     if (best.path.length <= 4) {
-      const casts = Math.min(botSchoolLimit(Number(theSkillsOf(c).white) || 0), 5 - mv.length);
+      const casts = Math.min(
+        botSchoolLimit(Number(theSkillsOf(c).white) || 0),
+        THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - mv.length,
+      );
       for (let i = 0; i < casts; i++)
         mv.push({
           action: 'cast_spell',
@@ -336,10 +345,11 @@ export function runBotMovement(
       // Sept 2026 (review R10): a king under 75% health with no host on the doorstep rests the year out.
       if (c.isKing && !homeThreat && !botUnderAttack(G, pi)) {
         const _khp = theHitPointsOf(c),
-          _kmhp = c.maxHp || 20;
+          _kmhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN;
         if (_khp < _kmhp * 0.75) {
           const o = [...pre];
-          while (o.length < 5) o.push({ action: 'rest', target: '', extra: '', desc: 'Rest & heal (the crown)' });
+          while (o.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
+            o.push({ action: 'rest', target: '', extra: '', desc: 'Rest & heal (the crown)' });
           theTurnsOrders(G)[c.id] = o;
           assigned.add(c.id);
           return;
@@ -462,21 +472,23 @@ export function runBotMovement(
         }
       }
       const reach = Math.min(3, armed ? botLandReach(c, recruitTypes) : 5);
-      if (P.owner === pi && 5 - pre.length - 1 >= 2 && reach >= 2) {
+      if (P.owner === pi && THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length - 1 >= 2 && reach >= 2) {
         const go = botGarrisonOrder(G, pi, P, L);
         if (go) pre.push(go);
       }
-      const maxHops = Math.max(0, Math.min(reach, 5 - pre.length));
+      const maxHops = Math.max(0, Math.min(reach, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length));
       // 2026-09-28: the hops a SEA-GOING column may sail — its ships set the pace, not the foot they carry.
       const seaHops =
-        armed && botSeaCap(c.armies) !== 'land' ? Math.max(0, Math.min(3, botSeaReach(c) || reach, 5 - pre.length)) : 0;
+        armed && botSeaCap(c.armies) !== 'land'
+          ? Math.max(0, Math.min(3, botSeaReach(c) || reach, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length))
+          : 0;
       const myStr = botBattleForce(G, c, null, 'plain', undefined); // battle-model strength on open ground (Druid, front line, Tactical)
       // ── UNARMED: chase a wandering hero within 3 hops (hire on arrival); an unarmed LEADER goes
       // home to
       // raise a host; a feeder with nothing to do here walks to a free muster province. ──
       if (!armed) {
         const hp = theHitPointsOf(c),
-          mhp = c.maxHp || 20;
+          mhp = c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN;
         // ── SEEK A WANDERER first — a new hero outranks a
         // turn of escort duty; the recruit becomes the next companion. ──
         let bestH: { h: Character; d: number; de: number } | null = null;
@@ -506,7 +518,7 @@ export function runBotMovement(
           if (path?.length === bestH.d) {
             heroClaimed.add(wanderer.id);
             const mv = path.map((d) => aMoveOrderOnThePath(d, 'Seek ' + wanderer.name));
-            if (pre.length + mv.length < 5)
+            if (pre.length + mv.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
               mv.push({ action: 'hire', target: String(wanderer.id), extra: '', desc: 'Hire ' + wanderer.name });
             theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, pre, mv);
             return;
@@ -620,14 +632,14 @@ export function runBotMovement(
                 extra: '',
                 desc: 'Hold',
               });
-            while (follow.length && lead.length < firstMovePh + 1 && lead.length < 5)
+            while (follow.length && lead.length < firstMovePh + 1 && lead.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
               lead.push(aCopyOfAnOrderKeepingItsPaddingKind(G, lag));
             theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, lead, follow);
             assigned.add(c.id);
             return;
           } else {
             const path = (botPathAny(G, P, gen.location, 6) ?? [])
-              .slice(0, Math.max(0, 5 - pre.length))
+              .slice(0, Math.max(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length))
               .map((d) => aMoveOrderOnThePath(d, 'Join ' + gen.name));
             if (path.length) {
               theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, pre, path);
@@ -653,7 +665,7 @@ export function runBotMovement(
               const path = (botPathAny(G, P, hunt.loc, 4) ?? []).slice(0, Math.max(0, 4 - pre.length));
               if (path.length) {
                 const o = [...pre, ...path.map((d) => aMoveOrderOnThePath(d, 'Stalk ' + hunt.e.name))];
-                while (o.length < 5)
+                while (o.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON)
                   o.push(
                     aPaddingOrder(G, 'lie-in-wait-for-a-quarry', {
                       action: 'defend',
@@ -700,7 +712,7 @@ export function runBotMovement(
                   inEnemy &&
                   (Number(theSkillsOf(c).illusory) || 0) >= 1 &&
                   invisibilityWouldHideTheHeroNow(c) && // R-158: it waits while he leads armies
-                  pre.length + mv.length < 5
+                  pre.length + mv.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON
                     ? [
                         {
                           action: 'cast_spell',
@@ -710,7 +722,9 @@ export function runBotMovement(
                         },
                       ]
                     : [];
-                const casts = botCastPlan(G, pi, c, dest, { max: 5 - pre.length - mv.length - cloak.length });
+                const casts = botCastPlan(G, pi, c, dest, {
+                  max: THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length - mv.length - cloak.length,
+                });
                 if (casts.length || mv.length) {
                   theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, [...pre, ...cloak, ...mv, ...casts], []);
                   assigned.add(c.id);
@@ -739,7 +753,8 @@ export function runBotMovement(
                   .map((d) => aMoveOrderOnThePath(d, 'Infiltrate ' + capitalsRealm));
                 const spy = { action: 'spy', target: '', extra: '', desc: 'Spy on ' + bestK.name };
                 const rest: PhaseOrder[] = [];
-                while (pre.length + path.length + rest.length < 5 && rest.length < 2) rest.push({ ...spy });
+                while (pre.length + path.length + rest.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && rest.length < 2)
+                  rest.push({ ...spy });
                 theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, [...pre, ...path, ...rest], []);
                 assigned.add(c.id);
                 return;
@@ -1013,7 +1028,15 @@ export function runBotMovement(
       // (too few flyers for the foot he leads), he goes to the nearest eyrie and musters flyers there. ──
       if (c._botRole === 'skygeneral') {
         if (getFlyCapability(c.armies)) {
-          const as = botAirStrike(G, pi, c, P, myStr, T, Math.max(1, Math.min(5, botAirReach(c), 5 - pre.length)));
+          const as = botAirStrike(
+            G,
+            pi,
+            c,
+            P,
+            myStr,
+            T,
+            Math.max(1, Math.min(5, botAirReach(c), THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length)),
+          );
           if (as?.moves.length) {
             const buff =
               theUnitsWithGapsOf(c).length >= 3 && pre.length <= 2
@@ -1048,7 +1071,7 @@ export function runBotMovement(
             const _fly =
               theUnitsWithGapsOf(c).filter((a) => a != null && BOT_FLYING_TYPES.has(a.type)).length +
               (recruitTypes.some((t) => BOT_FLYING_TYPES.has(t)) ? 1 : 0);
-            if (_fly > 0 && pre.length < 5) {
+            if (_fly > 0 && pre.length < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
               const ground = theUnitsWithGapsOf(c).filter((a): a is Army => a != null && !BOT_AERIAL_TYPES.has(a.type));
               const lift = ground
                 .filter((a) => botLiftable(a.type))
@@ -1099,7 +1122,13 @@ export function runBotMovement(
         });
         return true;
       };
-      if (best && best.N.terrain !== 'sea' && P.terrain !== 'sea' && shedFleet() && pre.length >= 5) {
+      if (
+        best &&
+        best.N.terrain !== 'sea' &&
+        P.terrain !== 'sea' &&
+        shedFleet() &&
+        pre.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON
+      ) {
         theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, pre, []);
         return;
       }
@@ -1187,7 +1216,7 @@ export function runBotMovement(
           }) &&
           P.terrain !== 'sea' &&
           shedFleet() &&
-          pre.length >= 5
+          pre.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON
         ) {
           theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, pre, []);
           return;
@@ -1278,7 +1307,7 @@ export function runBotMovement(
       // there if hops remain.
       const ft = botFrontierTarget(G, pi, P);
       if (ft != null) {
-        if (P.terrain !== 'sea' && shedFleet() && pre.length >= 5) {
+        if (P.terrain !== 'sea' && shedFleet() && pre.length >= THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) {
           theTurnsOrders(G)[c.id] = botFillOrders(G, pi, c, pre, []);
           return;
         }

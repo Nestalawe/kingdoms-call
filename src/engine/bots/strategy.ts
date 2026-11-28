@@ -87,6 +87,7 @@ function theSkillsOfTheGrave(g: Grave): Grave['skills'] {
 }
 import { theNameOfTheSpell } from './the-name-of-a-spell-by-its-slug.ts';
 import { theAlignmentARealmReadsAs } from '../rules-on-plain-values/the-alignment-a-realm-reads-as-its-own-or-the-one-a-realm-of-none-reads-as.ts';
+import { THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // ══ BOT STRATEGY (Sept 2026 batch) — shared helpers ════
 // Design (BOT_PLAYERS_DESIGN §8, v2.4): ONE big field army under the bot's BEST GENERAL is both its
@@ -1541,7 +1542,7 @@ export function botRumourFor(
 export function botLairRating(c: Character): number {
   const sk = asItsGuardReadsIt(c.skills) ?? {};
   return (
-    (c.maxHp || 20) +
+    (c.maxHp || THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN) +
     (Number(sk.melee) || 0) * 6 +
     (Number(sk.tactical) || 0) * 3 +
     (Number(sk.archery) || 0) * 2 +

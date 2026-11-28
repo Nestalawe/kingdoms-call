@@ -42,6 +42,7 @@ import {
   type AnOrderHygienesOutcome,
   type TheBotsRecordOfARealmsTurn,
 } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import { THE_ORDERS_A_HERO_GIVES_IN_A_SEASON } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 // Its types (plan P1-10b48): each parameter typed as wide as the body's guards, so each guard stays.
 declare global {
@@ -191,11 +192,11 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
       const dest = ld && ld.id !== c.id ? ld.id : null;
       const toks = botFieldRecruitTokens(G, pi, c, prov, L);
       const ro = botRecruitOrder(toks, dest);
-      if (ro && ph < 5) orders[ph++] = ro;
+      if (ro && ph < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) orders[ph++] = ro;
       // keep a single-unit garrison in every province (2/3 for valuable land / the capital once a
       // player is on our doorstep) — cheap tripwires, never a substitute for the field army.
       const go = botGarrisonOrder(G, pi, prov, L);
-      if (go && ph < 5) orders[ph++] = go;
+      if (go && ph < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON) orders[ph++] = go;
       {
         const prev = theTurnsOrders(G)[c.id] ?? [];
         const tp = [0, 1, 2, 3, 4].filter((p) => botIsTeach(prev[p])); // 2026-09-28: teaching phases stay where the slayer school put them
@@ -206,16 +207,16 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
             merged[p] = prev[p];
           });
           let k = 0;
-          for (let p = 0; p < 5 && k < q.length; p++) {
+          for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON && k < q.length; p++) {
             merged[p] ??= q[k++];
           }
-          orders.splice(0, 5, ...merged);
+          orders.splice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON, ...merged);
           ph = merged.filter(Boolean).length;
         }
       }
       if (orders.some((o) => o)) {
         const tail = botPracticeFallback(G, pi, c);
-        for (let p = 0; p < 5; p++)
+        for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++)
           orders[p] ??=
             p === ph
               ? aPaddingOrder(G, 'hold', { action: 'defend', target: '', extra: '', desc: 'Hold' })
@@ -241,7 +242,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
       if (!Array.isArray(o)) return;
       let cur = G.world.provinces[c.location];
       if (!cur) return;
-      for (let p = 0; p < 5; p++) {
+      for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
         const x = o[p];
         if (x?.action === THE_HERO_ORDERS.move.key) {
           let N: Province | null | undefined;
@@ -270,7 +271,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
       if (!roles.leaders.includes(c.id)) return;
       let cur = G.world.provinces[c.location];
       if (!cur) return;
-      for (let p = 0; p < 5; p++) {
+      for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
         const x = o[p];
         if (x?.action === THE_HERO_ORDERS.move.key) {
           let N: Province | null | undefined;
@@ -306,7 +307,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
         const o = theTurnsOrders(G)[ch.id] ?? [];
         const out: (number | null)[] = [];
         let cur: Province | null | undefined = G.world.provinces[ch.location];
-        for (let p = 0; p < 5; p++) {
+        for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
           out.push(cur ? cur.id : null);
           const x = o[p];
           if (x?.action === THE_HERO_ORDERS.move.key && cur) {
@@ -341,7 +342,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
       mine.forEach((t) => {
         const to = thePlanOf(G, t);
         const tl = placesOf(t);
-        for (let p = 0; p < 5; p++) {
+        for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
           const x = to[p];
           if (!(x?.action === THE_HERO_ORDERS.practice.key && x.target)) continue;
           const S = x.target;
@@ -381,7 +382,7 @@ export function runBotEconomy(G: GameState, botIdxSet: ReadonlySet<number> | nul
           const to = theTurnsOrders(G)[t.id];
           const tl = L_.get(t.id);
           if (!Array.isArray(to) || !tl) return;
-          for (let p = 0; p < 5; p++) {
+          for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
             const x = to[p];
             if (!(x?.action === THE_HERO_ORDERS.practice.key && PARTNER_SK.has(x.target))) continue;
             const S = x.target;
@@ -531,7 +532,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
       const o = thePlanOf(G, c);
       const used: Partial<Record<string, number>> = {};
       let summoned = false;
-      for (let p = 0; p < 5; p++) {
+      for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
         const x = o[p];
         if (x?.action !== THE_HERO_ORDERS.cast_spell.key) continue;
         const d = spells[x.target];
@@ -568,7 +569,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
       const H: [Character, number, PhaseOrder][] = [];
       mine.forEach((c) => {
         const o = thePlanOf(G, c);
-        for (let p = 0; p < 5; p++) {
+        for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
           const x = o[p];
           if (x?.action === THE_HERO_ORDERS.hire.key) H.push([c, p, x]);
         }
@@ -604,7 +605,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
     // ── 3. HAND-OVERS: Skeletal Armies follow only an Undead commander — keep them, pass on the rest
     mine.forEach((c) => {
       const o = thePlanOf(G, c);
-      for (let p = 0; p < 5; p++) {
+      for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
         const x = o[p];
         if (!(x?.action === THE_HERO_ORDERS.leave_army.key && x.extra)) continue;
         const r = theCharactersOf(G).find((z) => z?.id === parseInt(x.extra));
@@ -641,7 +642,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
     // ── 4. PRACTICE at the drill cap: only to teach, or to drill troops that can still improve
     mine.forEach((c) => {
       const o = thePlanOf(G, c);
-      for (let p = 0; p < 5; p++) {
+      for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
         const x = o[p];
         if (!isPr(x)) continue;
         const S = x.target;
@@ -710,7 +711,7 @@ export function runBotOrderHygiene(G: GameState, botIdxSet: ReadonlySet<number>)
       if (BOT_HYG_CRAFT.has(k.target) && m._botRole !== undefined && BOT_SPECIALIST_ROLES.has(m._botRole)) return false;
       return true;
     };
-    for (let p = 0; p < 5; p++) {
+    for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
       mine.forEach((t) => {
         const x = ord(t, p);
         if (!isPr(x) || isDrill(x)) return;

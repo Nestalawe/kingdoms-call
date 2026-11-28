@@ -5,6 +5,7 @@
 // It is off unless a page asks for it (the balance matrix's page half does: tools/balance/play.ts); off, each call is
 // one look-up that finds nothing. The page's ask is read in economy.ts, the one bots' file that may read a page.
 import type { Character, GameState } from '../../schemas/saved-game-state.ts';
+import { THE_ORDERS_A_HERO_GIVES_IN_A_SEASON } from '../rules-on-plain-values/the-orders-a-hero-gives-in-a-season-and-the-hit-points-he-has-when-his-maximum-is-not-written.ts';
 
 /** What the order hygiene (economy.ts's runBotOrderHygiene) does to an order, each as it counts it: the eight reasons
  *  it drops an order for, then the three changes it makes (a hand-over trimmed to the living, a lesson and a pairing
@@ -154,7 +155,7 @@ export function theBotsRecordClosesARealmsTurn(
   const record = theRealmsRecord(open, G, realm);
   for (const { hero, plan } of plans) {
     let idle = 0;
-    for (let p = 0; p < 5; p++) {
+    for (let p = 0; p < THE_ORDERS_A_HERO_GIVES_IN_A_SEASON; p++) {
       const order = plan[p];
       if (!order) {
         record.phasesLeftEmpty++;
@@ -170,7 +171,7 @@ export function theBotsRecordClosesARealmsTurn(
     record.idle.push({ hero: hero.id, phases: idle });
     for (const school of casts.schools) {
       const limit = casts.theLimitOf(hero, school, 0);
-      const phases = plan.slice(0, 5);
+      const phases = plan.slice(0, THE_ORDERS_A_HERO_GIVES_IN_A_SEASON);
       const given = phases.filter((order) => casts.theSchoolOfACast(order) === school).length;
       const last = phases.findLastIndex((order) => casts.theSchoolOfACast(order) === school);
       const practisedBefore = phases.slice(0, Math.max(0, last)).filter((o) => casts.practises(o, school)).length;
