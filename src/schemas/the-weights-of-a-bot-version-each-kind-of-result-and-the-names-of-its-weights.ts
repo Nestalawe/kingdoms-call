@@ -198,7 +198,8 @@ const TheWeightsOfAWarSchema = z.object({
   /** ... or, with no prize in reach, below this share. */
   theShareOfTheRivalsStrengthBelowWhichARealmWithNoPrizeInReachAcceptsItsPeace: z.number(),
   /** A realm courts another whose alignment is this many steps away or fewer, and fights one further (the bots'
-   *  diplomacy, and the realms' seats at the set-up). */
+   *  diplomacy); and, at the set-up, which alignments the bots' realms are given, friendly or hostile to the
+   *  players. */
   theStepsOfAlignmentWithinWhichARealmCourtsAnotherRatherThanFightsIt: z.number(),
 });
 
@@ -305,8 +306,8 @@ const TheWeightsOfTheSpringPassSchema = z.object({
   /** A host in contact whose strength is below this share of its foe's falls back (the capital and Rich land
    *  hold), ... */
   theStrengthAgainstTheFoeBelowWhichAHostInContactFallsBack: z.number(),
-  /** ... and, when it pins no foe, flees below this share. */
-  theStrengthAgainstTheFoeBelowWhichAHostNotPinningItsFoeFlees: z.number(),
+  /** ... and, when no flood pins its foe, flees below this share. */
+  theStrengthAgainstTheFoeBelowWhichAHostWhoseFoeNoFloodPinsFlees: z.number(),
   /** The emergency levy raises the wage ceiling by this factor, ... */
   theFactorTheEmergencyLevyRaisesTheWageCeilingBy: z.number(),
   /** ... and to at least this many wages above what the realm pays now. */

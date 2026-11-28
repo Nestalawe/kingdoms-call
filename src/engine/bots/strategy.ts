@@ -975,7 +975,7 @@ export const BOT_P1 = {
   retreatRatio:
     THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theStrengthAgainstTheFoeBelowWhichAHostInContactFallsBack,
   fleeRatio:
-    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theStrengthAgainstTheFoeBelowWhichAHostNotPinningItsFoeFlees,
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theStrengthAgainstTheFoeBelowWhichAHostWhoseFoeNoFloodPinsFlees,
   levyCap: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theFactorTheEmergencyLevyRaisesTheWageCeilingBy,
   levyWages:
     THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass.theLeastWagesTheEmergencyLevyRaisesTheCeilingAboveWhatTheRealmPays,

@@ -185,7 +185,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
    *  beatable where it stands rather than pinned. What a season's orders do is the rules'. */
   springPass: {
     theStrengthAgainstTheFoeBelowWhichAHostInContactFallsBack: 0.75,
-    theStrengthAgainstTheFoeBelowWhichAHostNotPinningItsFoeFlees: 0.5,
+    theStrengthAgainstTheFoeBelowWhichAHostWhoseFoeNoFloodPinsFlees: 0.5,
     theFactorTheEmergencyLevyRaisesTheWageCeilingBy: 1.2,
     theLeastWagesTheEmergencyLevyRaisesTheCeilingAboveWhatTheRealmPays: 8,
     theGoldTheWarChestHoldsForEachHostInContact: 10,

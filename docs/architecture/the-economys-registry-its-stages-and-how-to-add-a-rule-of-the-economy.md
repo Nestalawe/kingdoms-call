@@ -140,7 +140,8 @@ makes of that gold from its version's weights file.
   a point of a host's strength the sixth
   ([the bots' estimate of a battle](where-a-change-goes-from-an-item-in-game-terms-to-the-files.md#a-battles-or-a-fights-rule)),
   a war the seventh (the bar for war and the peace a realm sues for: `BOT_WAR`, `src/engine/bots/war.ts`, reads each
-  by name, and whom a realm courts: `BOT_ALLY_ALIGN_DIST`), a lair's guardian the eighth (the slayer's ladder: the
+  by name, and whom a realm courts and, at the set-up, which alignments the bots' realms are given, friendly or
+  hostile to the players: `BOT_ALLY_ALIGN_DIST`), a lair's guardian the eighth (the slayer's ladder: the
   `BOT_LAIR_*` names, `src/engine/bots/missions.ts` and `strategy.ts`, and the slayers' rumour fund), a realm's tuning
   the ninth (its attack margins, its targets' scores and its wages before its alignment's and race's overlays:
   `BOT_TUNING` and `BOT_DIFFICULTY`, `src/engine/bots/intel.ts`, and a march's chained fights: `BOT_MAX_FIGHTS`), a
@@ -149,7 +150,8 @@ makes of that gold from its version's weights file.
   `BOT_PIN_EDGE`, `phase-one.ts`) and the skills assumed of a rival's hero the twelfth (`BOT_ASSUMED_SKILLS`, `intel.ts`). The
   gold's names hold the fleets' caps too (`BOT_NAV_CAP_*`, `BOT_AIR_CAP_*`). Every named table of the bots now reads
   the file, but for the hex grid's offsets (`BOT_OFF_EVEN`, `BOT_OFF_ODD`: a rule's values), a lair's grades
-  (`BOT_LAIR_GRADE`: their order) and the infiltration's reach (`BOT_INFILTRATE_RANGE`: KD-523).
+  (`BOT_LAIR_GRADE`: their order), the unread first entries of `BOT_LAIR_STRONG_ITEMS` and `BOT_LAIR_STRONG_SKILL`
+  (placeholders) and the infiltration's reach (`BOT_INFILTRATE_RANGE`: KD-523).
 
 ## The tests
 
