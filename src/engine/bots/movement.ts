@@ -653,7 +653,14 @@ export function runBotMovement(
               if (path.length) {
                 const o = [...pre, ...path.map((d) => aMoveOrderOnThePath(d, 'Stalk ' + hunt.e.name))];
                 while (o.length < 5)
-                  o.push({ action: 'defend', target: '', extra: '', desc: 'Lie in wait for ' + hunt.e.name });
+                  o.push(
+                    aPaddingOrder(G, 'lie-in-wait-for-a-quarry', {
+                      action: 'defend',
+                      target: '',
+                      extra: '',
+                      desc: 'Lie in wait for ' + hunt.e.name,
+                    }),
+                  );
                 theTurnsOrders(G)[c.id] = o;
                 assigned.add(c.id);
                 return;
