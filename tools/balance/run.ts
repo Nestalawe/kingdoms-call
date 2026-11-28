@@ -54,10 +54,14 @@ import { matrix, type GameSpec, type SeedSet } from './matrix.ts';
 import { compareRuns, meaningfulChanges, type Change } from './paired.ts';
 import { joinParts, parseShard, readParts, theShare, writePart, type RequiredScenarios, type Shard } from './parts.ts';
 import { CASE_NAMES, type Cases, type GameResult } from './play.ts';
-import { show, showDiff, showRange } from './report.ts';
+import { show, showDiff, showRange, theBotsStatisticsInBrief } from './report.ts';
 import { playRuns, playScenario } from './scenario-run.ts';
 import { scenarioFile, scenarioNames, whatAScenariosRunsMissed, type Scenario } from './scenario.ts';
 import { buildSite, forkPool } from './sides.ts';
+import {
+  isAnAbilitysFigure,
+  withTheAbilitiesJoined,
+} from './the-bots-statistics-by-realm-summed-by-alignment-and-race.ts';
 import type { Job, Reply } from './worker.ts';
 
 const WORKER = path.join(import.meta.dirname, 'worker.ts');
@@ -122,6 +126,17 @@ export function statesNotThePages(page: GameResult[], vm: ReportsResult[]): stri
       `${g.id}: from turn ${String((t < 0 ? Math.min(g.states.length, states.length) : t) + 1)} (${String(states.length)} turns on the page, ${String(g.states.length)} in the vm)`,
     ];
   });
+}
+
+/** The page's games of set `set` with the bots' statistics joined (B-17d): each ability's figures from the vm half's
+ *  game of the same id (`vm`; null: not played, KC_SITE). */
+export function theGamesWithTheBotsStatisticsJoined(
+  set: SeedSet,
+  page: GameResult[],
+  vm: readonly ReportsResult[] | null,
+): GameResult[] {
+  const specs = matrix(set);
+  return vm ? withTheAbilitiesJoined(page, vm, specs) : page;
 }
 
 /** The scripted cases a required named scenario gives, by the scenario's name (P1-15e2b): the games still count and
@@ -379,16 +394,23 @@ async function judgeTheSet(
       failed = true;
     }
   }
-  const kept = results.map(keep);
+  // The vm half first: its count of each ability's use joins the page's statistics (B-17d), by game and seat.
+  const played = await playEveryRealm();
+  const joined = theGamesWithTheBotsStatisticsJoined(set, results, played?.results ?? null);
+  for (const line of theBotsStatisticsInBrief(joined)) console.log(line);
+  const kept = joined.map(keep);
   if (values.out) writeRun(values.out, kept);
   if (values.update) {
     writeBaseline(set, kept);
     console.log(`Rewrote ${path.relative(process.cwd(), BASELINE_FILE[set])}: commit it with the change.\n`);
-    return (await everyRealm(set, results, playEveryRealm, values)) || failed;
+    return everyRealm(set, results, played, values) || failed;
   }
 
   // Game by game against the baseline.
-  const baseline = readBaseline(set);
+  // Without the vm half (KC_SITE), the abilities' figures aren't there to compare.
+  const baseline = readBaseline(set).map((g) =>
+    played ? g : { ...g, stats: Object.fromEntries(Object.entries(g.stats).filter(([k]) => !isAnAbilitysFigure(k))) },
+  );
   const notKept = columnsNotKept(baseline);
   if (notKept.length) {
     console.log(
@@ -441,18 +463,18 @@ async function judgeTheSet(
     );
     console.log('\nIf this change is meant to change play: npm run balance:update, and commit the baseline.');
   }
-  return (await everyRealm(set, results, playEveryRealm, values)) || failed;
+  return everyRealm(set, results, played, values) || failed;
 }
 
-/** The second half: the games with every realm's report (`play`: played now, or a joined run's), against
- *  reports.json's set `set` (or rewriting it), and their saved states against the page's `page`. True if it fails. */
-async function everyRealm(
+/** The second half: the games with every realm's report (`played`: played now, or a joined run's; null: not played),
+ *  against reports.json's set `set` (or rewriting it), and their saved states against the page's `page`. True if it
+ *  fails. */
+function everyRealm(
   set: SeedSet,
   page: GameResult[],
-  play: PlayedSet['everyRealm'],
+  played: Awaited<ReturnType<PlayedSet['everyRealm']>>,
   values: { update: boolean; out?: string | undefined },
-): Promise<boolean> {
-  const played = await play();
+): boolean {
   if (!played) {
     console.log(
       "\nEvery realm's report: not played, because KC_SITE names another copy of the site and this half reads src/ (prove it on a planted copy of the branch).",

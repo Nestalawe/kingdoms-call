@@ -268,4 +268,4 @@ export function gameStats(g: GameRecord): Stats {
 
 /** A share (shown as a percentage), rather than a count per game or a mean. */
 export const isShare = (key: string): boolean =>
-  !PER_GAME.has(baseOf(key)) && !/^(realms: |battles: units lost |game: length )/.test(baseOf(key));
+  !PER_GAME.has(baseOf(key)) && !/^(realms: |battles: units lost |game: length |bots: )/.test(baseOf(key));

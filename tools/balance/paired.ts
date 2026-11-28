@@ -47,15 +47,30 @@ function seeded(seed: number): () => number {
   };
 }
 
-const figure = (games: Stats[], key: string, pick: number[]): number => {
+/** A statistic's [sum, count] in each game, read once: the resampling sums them thousands of times (B-17d's hundreds
+ *  of slices made a look-up a game and a draw too slow). */
+interface OneStatisticGameByGame {
+  sums: Float64Array;
+  counts: Float64Array;
+}
+const gameByGame = (games: Stats[], key: string): OneStatisticGameByGame => {
+  const sums = new Float64Array(games.length);
+  const counts = new Float64Array(games.length);
+  games.forEach((g, i) => {
+    const [s, c] = valueOf(g, key);
+    sums[i] = s;
+    counts[i] = c;
+  });
+  return { sums, counts };
+};
+
+const figure = ({ sums, counts }: OneStatisticGameByGame, pick: number[]): number => {
   let sum = 0;
   let count = 0;
   for (const i of pick) {
-    const g = games[i];
-    if (!g) continue;
-    const [s, c] = valueOf(g, key);
-    sum += s;
-    count += c;
+    if (i >= sums.length) continue;
+    sum += sums[i] ?? 0;
+    count += counts[i] ?? 0;
   }
   return count ? sum / count : NaN;
 };
@@ -72,12 +87,13 @@ function resamples(n: number): number[][] {
 /** One run's figure for `key` over its games, with the 95% range of the figure itself from resampling the games, and
  *  the cases behind it: how sure one side's figure is, apart from any comparison (a named scenario quotes both). */
 export function figureRange(games: Stats[], key: string): { value: number; range95: [number, number]; cases: number } {
+  const theStatistic = gameByGame(games, key);
   const values = resamples(games.length)
-    .map((p) => figure(games, key, p))
+    .map((p) => figure(theStatistic, p))
     .filter((v) => Number.isFinite(v))
     .sort((x, y) => x - y);
   return {
-    value: figure(games, key, [...games.keys()]),
+    value: figure(theStatistic, [...games.keys()]),
     range95: [quantile(values, 0.025), quantile(values, 0.975)],
     cases: games.reduce((t, g) => t + valueOf(g, key)[1], 0),
   };
@@ -96,10 +112,11 @@ export function compareRuns(base: Stats[], head: Stats[]): Change[] {
     const cases: [number, number] = [0, 1].map((r) =>
       (r ? head : base).reduce((t, g) => t + valueOf(g, key)[1], 0),
     ) as [number, number];
-    const b = figure(base, key, all);
-    const hd = figure(head, key, all);
+    const [ofTheBase, ofTheHead] = [gameByGame(base, key), gameByGame(head, key)];
+    const b = figure(ofTheBase, all);
+    const hd = figure(ofTheHead, all);
     const diffs = picks
-      .map((p) => figure(head, key, p) - figure(base, key, p))
+      .map((p) => figure(ofTheHead, p) - figure(ofTheBase, p))
       .filter((d) => Number.isFinite(d))
       .sort((x, y) => x - y);
     const range95: [number, number] = [quantile(diffs, 0.025), quantile(diffs, 0.975)];

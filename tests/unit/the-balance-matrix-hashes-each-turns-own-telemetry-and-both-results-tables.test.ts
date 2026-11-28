@@ -27,6 +27,7 @@ const aTelemetryRow = (turn: number) => ({
   turn,
   player_index: 0,
   is_bot: true,
+  orders: { chars: { '7': { ph: [{ a: 'move' }, { a: 'defend' }] } } },
   pre: { gold: 10 * turn, provinces: 1, str: 0 },
   post: { gold: 10 * turn + 5, provinces: 1, str: 0, titles: [] },
   outcomes: {
@@ -40,6 +41,16 @@ const aTelemetryRow = (turn: number) => ({
 /** The statistics' result and the Hall of Fame's entry the made-up page writes when its game ends. */
 const A_RESULT = { game_id: 'G1', player_index: 0, is_bot: true, place: 1 };
 const AN_ENTRY = { game_id: 'G1', game_name: 'Made-up Matrix', winner_name: 'Realm0' };
+/** The bots' record the made-up page keeps each turn for its realm 0 (B-17b's, as the bots' page keeps it). */
+const A_RECORD = {
+  turn: 1,
+  realm: 0,
+  hygiene: { practiceCapped: 2 },
+  padding: { hold: 1 },
+  phasesLeftEmpty: 3,
+  idle: [{ hero: 7, phases: 4 }],
+  casts: [{ hero: 7, school: 'Fire', limit: 1, limitTheHygieneApplies: 1, casts: 0 }],
+};
 /** The GM log rows the page writes a turn: one more than its telemetry rows. */
 const GM_LOG_ROWS_A_TURN = 2;
 
@@ -61,6 +72,7 @@ async function runTurn({ game }) {
   for (let i = 0; i < ${String(GM_LOG_ROWS_A_TURN)}; i++)
     await db.theTurnAsTheGameMasterRunsIt.writeThisLog({ game_id: 'G1', turn, player_index: -1, entries: [] });
   await db.theStatistics.writeTheseTurnRecords([MADE_UP.telemetry[turn - 1]]);
+  window.__botChoices.push(${JSON.stringify(A_RECORD)});
   const last = turn === 2;
   if (last) {
     await db.theStatistics.writeTheseResults([RESULT]);
@@ -103,5 +115,25 @@ test(
     expect(game.results, "the results column: the statistics' result, then the Hall of Fame's entry").toBe(
       playHash([A_RESULT, AN_ENTRY].map(withoutStamps)),
     );
+  },
+);
+
+// B-17d: the runner sums the page's telemetry and the bots' record into the bots' statistics, by the game's alignments
+// and races (its three realms all Neutral Humans: each slice counts the three, realm 0's figures over two turns)
+test(
+  "the bots' statistics are the page's telemetry and record, summed by alignment and race",
+  timeLimitForTheWork({ matrixGamesPlayed: 1 }),
+  async () => {
+    const { stats } = await playGame(A_BOT_GAME, aMadeUpGmPage());
+    expect(stats['bots: orders given: move | by alignment: Neutral'], 'the telemetry: a move each turn').toEqual([
+      2, 3,
+    ]);
+    expect(stats['bots: orders the hygiene dropped: practiceCapped | by race: Human'], 'the record').toEqual([4, 3]);
+    expect(stats['bots: phases with nothing else to do | by alignment: Neutral'], 'padded and empty').toEqual([8, 3]);
+    expect(stats['bots: casts left unused | by alignment: Neutral'], 'the casts').toEqual([2, 3]);
+    expect(stats['bots: room under the cast limits | by alignment: Neutral'], 'the room').toEqual([2, 3]);
+    expect(stats["bots: gold unspent at a turn's end | by alignment: Neutral"], 'realm 0 alone has turns').toEqual([
+      40, 2,
+    ]);
   },
 );

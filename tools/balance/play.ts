@@ -40,6 +40,10 @@ import {
   type TheKindOfAStoredLine,
 } from './stats.ts';
 import { recordTheWritesAtTheDbsCalls } from './writes.ts';
+import {
+  theBotRealmsOfAGame,
+  theBotsStatisticsOfThePageHalf,
+} from './the-bots-statistics-by-realm-summed-by-alignment-and-race.ts';
 import type { TheBotsRecordOfARealmsTurn } from '../../src/engine/bots/the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
 
 /** How long the page is given to boot. A fixed wait until a "boot finished" condition is found that doesn't depend on
@@ -265,18 +269,21 @@ export async function playGame(
       );
     const final = JSON.parse(lastSave) as { gameOver?: GameOver };
     const resultRows = [...DB.game_results, ...DB.game_records].map(withoutStamps);
+    const telemetry = DB.turn_events as unknown as TelemetryRow[];
+    // `as`: the page's record, as the bots wrote it (the engine's own type), copied out of the page
+    const botChoices = JSON.parse(
+      String(W.eval('JSON.stringify(window.__botChoices)')),
+    ) as TheBotsRecordOfARealmsTurn[];
     const result: GameResult = {
       id: spec.id,
       turns,
       results: resultRows.length ? playHash(resultRows) : '',
-      stats: gameStats({
-        telemetry: DB.turn_events as unknown as TelemetryRow[],
-        gmLog,
-        unresolved,
-        gameOver: final.gameOver ?? null,
-      }),
-      // `as`: the page's record, as the bots wrote it (the engine's own type), copied out of the page
-      botChoices: JSON.parse(String(W.eval('JSON.stringify(window.__botChoices)'))) as TheBotsRecordOfARealmsTurn[],
+      stats: {
+        ...gameStats({ telemetry, gmLog, unresolved, gameOver: final.gameOver ?? null }),
+        // the bots' statistics of the page half (B-17d): the abilities' join the vm half's (run.ts)
+        ...theBotsStatisticsOfThePageHalf(theBotRealmsOfAGame(spec), telemetry, botChoices),
+      },
+      botChoices,
       ms: Math.round(performance.now() - t0),
     };
     if (options.untilTurn != null) result.log = lastLog;

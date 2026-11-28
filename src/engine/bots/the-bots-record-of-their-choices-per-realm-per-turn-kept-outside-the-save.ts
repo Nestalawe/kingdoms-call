@@ -52,14 +52,22 @@ export interface AHerosCastsInASchool {
   casts: number;
 }
 
+/** A hero's phases with nothing else to do in a turn: padded (any kind) or left empty. */
+export interface AHerosPhasesWithNothingElseToDo {
+  hero: number;
+  phases: number;
+}
+
 /** The record of one bot realm's turn. `phasesLeftEmpty`: the phases a hero is left without an order, which the turn
- *  fills with the engine's Defend. */
+ *  fills with the engine's Defend. `idle`: each hero's phases padded or left empty (B-17d's casts left unused read
+ *  them against his room under the cast limits). */
 export interface TheBotsRecordOfARealmsTurn {
   turn: number;
   realm: number;
   hygiene: Partial<Record<AnOrderHygienesOutcome, number>>;
   padding: Partial<Record<AKindOfPaddingOrder, number>>;
   phasesLeftEmpty: number;
+  idle: AHerosPhasesWithNothingElseToDo[];
   casts: AHerosCastsInASchool[];
 }
 
@@ -89,6 +97,7 @@ function theRealmsRecord(open: TheTurnsOpenRecord, G: GameState, realm: number):
     hygiene: {},
     padding: {},
     phasesLeftEmpty: 0,
+    idle: [],
     casts: [],
   };
   open.realms.set(realm, made);
@@ -144,15 +153,21 @@ export function theBotsRecordClosesARealmsTurn(
   if (!open) return;
   const record = theRealmsRecord(open, G, realm);
   for (const { hero, plan } of plans) {
+    let idle = 0;
     for (let p = 0; p < 5; p++) {
       const order = plan[p];
       if (!order) {
         record.phasesLeftEmpty++;
+        idle++;
         continue;
       }
       const kind = open.padding.get(order);
-      if (kind) record.padding[kind] = (record.padding[kind] ?? 0) + 1;
+      if (kind) {
+        record.padding[kind] = (record.padding[kind] ?? 0) + 1;
+        idle++;
+      }
     }
+    record.idle.push({ hero: hero.id, phases: idle });
     for (const school of casts.schools) {
       const limit = casts.theLimitOf(hero, school, 0);
       const phases = plan.slice(0, 5);

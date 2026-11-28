@@ -86,6 +86,11 @@ test('the record counts each of the order hygiene’s reasons, each padding kind
   for (const k of others) expect(r?.padding[k], `the padding of kind ${k}`).toBe(1);
   expect(others.length, 'five kinds beside the two holds').toBe(5);
   expect(r?.phasesLeftEmpty, 'the phases left empty').toBe(1);
+  // B-17d: each hero's phases with nothing else to do, padded or empty (the plain order with a padding's words isn't)
+  expect(r?.idle, 'each hero: his padded and empty phases').toEqual([
+    { hero: bot.id, phases: 4 },
+    { hero: theOtherHero().id, phases: 5 },
+  ]);
   expect(r?.casts, 'his Psychic limit, with no cast; no White').toEqual([
     { hero: bot.id, school: 'psychic', limit: 2, limitTheHygieneApplies: 2, casts: 0 },
   ]);

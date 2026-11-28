@@ -4,6 +4,17 @@
 // every figure of a named scenario, has a label (tests/unit/balance-report.test.ts, balance-scenario.test.ts): a new
 // statistic needs its label here.
 import { baseOf } from './stats.ts';
+import {
+  ABILITY_STAND_IN,
+  ABILITY_USED,
+  CASTS_LEFT_UNUSED,
+  ROOM_UNDER_THE_CAST_LIMITS,
+  GOLD_UNSPENT,
+  ORDERS_GIVEN,
+  ORDERS_THE_HYGIENE_DROPPED,
+  PHASES_WITH_NOTHING_ELSE_TO_DO,
+  THE_HYGIENES_DROPS,
+} from './the-bots-statistics-by-realm-summed-by-alignment-and-race.ts';
 
 /** The label of each base, and whether a figure is per battle, per game, a share…: "Lair fights per game". */
 export const BASE_LABELS: Readonly<Record<string, string>> = {
@@ -37,6 +48,52 @@ export const BASE_LABELS: Readonly<Record<string, string>> = {
   'chases: caught': 'Chases that caught their quarry',
   'chases: waited for a battle': 'Chases held up by a battle, per game',
 };
+
+/** Why the order hygiene drops a bot's order (economy.ts's runBotOrderHygiene), by its reason's key. */
+export const THE_HYGIENES_DROPS_IN_WORDS: Readonly<Record<(typeof THE_HYGIENES_DROPS)[number], string>> = {
+  summonTwice: 'a second summoning in a turn',
+  overLimit: "a cast beyond the hero's limit in its school",
+  hireGone: 'a hire of a hero no longer free',
+  hireTwice: 'a second hire of one hero',
+  hireElsewhere: 'a hire away from the hero',
+  hireUnaffordable: 'a hire the realm could not pay for',
+  handoverAllSkeletal: 'a hand-over of skeletal units only',
+  practiceCapped: 'practice at the cap, with no one to teach',
+};
+const isADrop = (v: string): v is (typeof THE_HYGIENES_DROPS)[number] => v in THE_HYGIENES_DROPS_IN_WORDS;
+
+/** An ability's key in words: 'the-neutral-mercenary-discount' as "the neutral mercenary discount". */
+export const anAbilityInWords = (key: string): string => key.replaceAll('-', ' ');
+
+/** The label of a base of the bots' statistics (B-17d), each a figure per bot realm of the slice; undefined if none. */
+function theBotsBaseLabel(base: string): string | undefined {
+  const after = (start: string) => (base.startsWith(start) ? base.slice(start.length) : null);
+  const order = after(ORDERS_GIVEN);
+  if (order) return `Orders given of the kind "${order}", per realm a game`;
+  const used = after(ABILITY_USED);
+  if (used) return `Uses of ${anAbilityInWords(used)}, per realm a game`;
+  const standIn = after(ABILITY_STAND_IN);
+  if (standIn)
+    return `What the world holds where ${anAbilityInWords(standIn)} could act (a stand-in, not a use), per realm a game`;
+  if (base === ORDERS_THE_HYGIENE_DROPPED) return 'Orders the hygiene dropped, per realm a game';
+  const drop = after(ORDERS_THE_HYGIENE_DROPPED + ': ');
+  if (drop)
+    return isADrop(drop)
+      ? `Orders the hygiene dropped as ${THE_HYGIENES_DROPS_IN_WORDS[drop]}, per realm a game`
+      : undefined;
+  if (base === PHASES_WITH_NOTHING_ELSE_TO_DO) return "Heroes' phases with nothing else to do, per realm a game";
+  const kind = after(PHASES_WITH_NOTHING_ELSE_TO_DO + ': ');
+  if (kind)
+    return kind === 'left empty'
+      ? "Heroes' phases left empty (the turn's Defend), per realm a game"
+      : `Heroes' phases padded with "${kind.replaceAll('-', ' ')}", per realm a game`;
+  if (base === CASTS_LEFT_UNUSED)
+    return 'Casts its heroes could still have made in their phases with nothing else to do, per realm a game';
+  if (base === ROOM_UNDER_THE_CAST_LIMITS)
+    return "Room under its heroes' cast limits, summed over each hero's schools, per realm a game";
+  if (base === GOLD_UNSPENT) return "Gold unspent at a turn's end, per realm a turn";
+  return undefined;
+}
 
 /** Battle kinds in the GM portal's words (its statistics page, `kindLab`). */
 const BATTLE_KINDS: Readonly<Record<string, string>> = {
@@ -79,13 +136,16 @@ const SLICES: Readonly<Record<string, (value: string) => string | undefined>> = 
   // A named scenario's slice (tests/balance/scenarios/a-chase-held-by-an-unresolved-battle.ts):
   // 'chases: waited for a battle | when: in Early Summer'.
   when: (v) => (v === 'on the catch in Spring' || v === 'in Early Summer' ? v : undefined),
+  // The bots' statistics (B-17d): 'bots: casts left unused | by alignment: Divine'.
+  'by alignment': (v) => `of the ${v} realms`,
+  'by race': (v) => `of the ${v} realms`,
   // 'game: ended | by: the Reckoning': the share of the games that ended, ended this way.
   by: (v) => `by ${v}`,
 };
 
 /** The plain-words label of a statistic, or undefined if it has none (the test makes that an error). */
 export function labelOf(key: string): string | undefined {
-  const base = BASE_LABELS[baseOf(key)];
+  const base = BASE_LABELS[baseOf(key)] ?? theBotsBaseLabel(baseOf(key));
   const slice = key.split(' | ')[1];
   if (base == null || slice == null) return base;
   const [kind = '', value = ''] = slice.split(/: (.*)/);

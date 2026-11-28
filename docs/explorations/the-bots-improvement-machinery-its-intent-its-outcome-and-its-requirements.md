@@ -124,6 +124,7 @@ can answer "does the Undead bot raise its dead, how often, and does it waste ord
   alignment abilities' registry; orders the order hygiene dropped as unworkable, by reason; heroes left on Defend with
   nothing else to do; gold unspent at each turn's end; casts left unused.
 - **BOT-S2 (must).** Summed per alignment and per race across the run, each figure with the noise rule.
+  Built by B-17d: how to read it is in [the balance matrix's topic file](../architecture/the-balance-matrix.md#the-bots-statistics-by-alignment-and-race).
 - **BOT-S3 (must).** Every alignment ability is used in at least one of the matrix's games; a missing one fails the run
   and names the ability. While the bots' use of one is still to be built, a named scenario may stand in for it,
   listed by name with its backlog row; the list is meant to empty (A2). Its exceptions (A13):

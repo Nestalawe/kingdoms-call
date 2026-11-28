@@ -91,8 +91,10 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   own effect; three are typed stand-ins (what the world holds where the ability could act: the risen dead held, beasts
   led without the Druid), not uses. Only a realm of the ability's alignment counts (an Undead hero in a duel: his own).
   It reads kinds, facts, orders and state, never words (BOT-S6). Two are "not countable yet": righteous defence and the
-  home of the wild show only in a battle's strength record. The counts ride on each game's result (`abilityUses`) and
-  its `--out` run, never in a baseline.
+  home of the wild show only in a battle's strength record. The counts ride on each game's result (`abilityUses`);
+  the bots' statistics (below) take them into the baselines.
+- **The bots' statistics** (B-17d, BOT-S1 and S2: [below](#the-bots-statistics-by-alignment-and-race)): each bot
+  realm's figures a game, summed by its alignment and by its race, as slices the noise rule judges.
 - `KC_SITE` plays another copy of the site. `-- --set B` plays the noise set; `-- --only bots-03,scripted-01` plays
   some games; `-- --out <file>` writes the run in the baseline's form, e.g. to compare two runs.
 - When a change is meant to change play, or a realm's report, `npm run balance:update` rewrites the baselines (both
@@ -165,6 +167,45 @@ takes about 40 s on 14 cores (20 s for the page's games, 17 s for every realm's 
   - `lair`: a young hero (Melee 2, 20 HP, no items) searches the Weak lair in their home: cleared, fled, killed;
   - `encounter`: Encounter Character on an enemy hero in the same province, catch rolls by Spy level (0 or 3 each
     side, 100 runs each).
+
+## The bots' statistics, by alignment and race
+
+`tools/balance/the-bots-statistics-by-realm-summed-by-alignment-and-race.ts` (B-17d) gives each game, for each bot realm
+(a scripted game's scripted realm is none), these figures, each a statistic in `stats.ts`'s form under a base of its
+own starting `bots: `:
+- from the telemetry: the orders given, by kind (`bots: orders given: move`); the gold left unspent at each turn's end;
+- from the bots' record (B-17b): the orders the order hygiene dropped, in all and by reason (its changes, such as a
+  hand-over trimmed to the living, aren't drops); the heroes' phases with nothing else to do, in all, by each padding
+  kind and left empty; the casts left unused: each hero's room under his cast limits as the hygiene applies them,
+  summed over his schools, but no more than his phases padded or left empty (the casts he could really have made);
+  and beside it that room alone (`bots: room under the cast limits`);
+- from the count by key (B-17c): each ability's uses (`bots: ability used: consecrate`), a stand-in's figure under
+  `bots: an ability's stand-in: `, and nothing for the two not countable yet.
+
+Each is sliced `| by alignment: Divine` and `| by race: Human`, a [sum, count] pair a game whose count is the realms of
+the slice (the gold's: their turns). An ability counts only for the realms of its alignment. Every base is in every
+game, from fixed lists (every kind of hero order, `THE_HERO_ORDERS`; every padding kind; every drop reason; the casts'
+two; every ability), 0 where none, so the mean keeps every game and a game's figures never hang on which other games
+a run plays (`--only` too). The page half gives the telemetry's
+and the record's figures (`play.ts`), the vm half the abilities' (`every-realm.ts`): `run.ts` plays the vm half
+first and joins them by game id and seat (`theGamesWithTheBotsStatisticsJoined`); both seat realm *i* as
+`lib/matrix-game.ts`'s `setupsOf` does (the bot realms: its `isBot`), and the vm's states are checked to be the page's. With `KC_SITE` the vm half isn't
+played, so the abilities' figures are left out of that comparison.
+
+**Reading it.** `npm run balance` prints its answer after the games; the balance report ends with a section, "The
+bots' choices, by alignment and race", from the branch's bot games: its answer in game terms first (the abilities used
+and those never used, by name, the least used of each alignment, the stand-ins and those not countable yet, then
+each realm's orders, drops, idle phases, unused casts and gold), then three tables in folds (each ability, for its
+alignment's realms; the other figures by alignment; by race), each column with its games. Their change against the
+base is judged where any slice's is, in "The slices that moved". Its limits:
+- a slice never reaches the overall answer, and none of these is a headline figure;
+- hundreds of slices are judged at the usual bar, so a few look like a change by chance: read a single one as a hint;
+- a figure with under 20 cases in either run is "too few to tell" (a rare ability's: try a scenario);
+- each alignment's figures rest on its own games, about 30 of the 48 bot games.
+
+The bots' group as a whole is added or retired when no game of one side has any of it: no game differs by it, and the
+report names how many (`theStatisticsOnlyOneSideHas`), so the pull request that added it read "no change". Within the
+group nothing is added or retired: a kind that appears in, or goes from, every game is a change, judged.
 
 ## What the games don't reach, and the proof tools
 
