@@ -93,6 +93,7 @@ import type { PhaseOrder } from '../../schemas/orders-a-realm-submits.ts';
 import type { Army, Character, GameState, Item, Province, ProvinceFeature } from '../../schemas/saved-game-state.ts';
 import type { ABotRealmsLedger, ABotRealmsRoles, ABotRealmsSpending } from './intel.ts';
 import { aPaddingOrder } from './the-bots-record-of-their-choices-per-realm-per-turn-kept-outside-the-save.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import {
   THE_ORDERS_A_HERO_GIVES_IN_A_SEASON,
   THE_HIT_POINTS_A_HERO_HAS_WHEN_HIS_MAXIMUM_IS_NOT_WRITTEN,
@@ -962,41 +963,57 @@ export function botSpendRumour(L: ABotRealmsLedger, price: number) {
   L.budget -= price - f;
 }
 // ══ THE SLAYER'S LADDER (2026-09-28, Toby) ════
-// • He searches a lair on a rumour of 80%+ (bands "the odds favour you… confident / certain": band.max ≥ 90).
-// • Two lairs cleared of a grade and that grade is his: he searches its lairs with no rumour at all (and any
-//   grade below), until six are cleared.
-// • At six he hunts a rumour of the grade above. 80%+ → he goes; below → he clears two more of his own grade
-//   before asking again (c._botLadder.retryAt). One clear of the grade above keeps him asking about it until
-//   the second makes it his.
-// • He rests before a hunt when hurt (to 75% of max HP — Rest heals 30% a phase), and searches every lair he
-//   can reach in the year, up to three; every search after the first carries `_botMinHp` (0.6): the engine
-//   turns it into a Rest if the earlier fight left him under 60%.
-export const BOT_LAIR_WEAK_BAND = 80,
-  BOT_LAIR_WEAK_HP = 0.95,
-  BOT_LAIR_REACH = 6,
-  BOT_LAIR_MAX_RUMOURS = 3; // 2026-09-28 (options 3, 5)
-// 2026-09-29 (Toby): PROMOTE_AT 6 → 4 → 2 (study C4; RETRY_EXTRA 2 → 0: no hold after a poor reading) — the rumour (80%+) still decides whether he goes in, so asking sooner
-// costs a few gold, not a life.
+// Each of the ladder's numbers is named, with what it weighs, in the schema's `lair` kind
+// (src/schemas/the-weights-of-a-bot-version-…ts); its value is the weights file's.
+// • He searches a lair on a rumour from the band that sends him in.
+// • Enough lairs cleared of a grade and that grade is his: he searches its lairs with no rumour at all (and any
+//   grade below).
+// • Enough more cleared of his own grade and he hunts a rumour of the grade above. A good reading → he goes;
+//   a poor one → he clears more of his own grade before asking again (c._botLadder.retryAt). One clear of the
+//   grade above keeps him asking about it until it is his.
+// • He rests before a hunt when hurt (Rest heals 30% a phase), and searches the lairs he can reach in the year,
+//   up to his most; every search after the first carries `_botMinHp`: the engine turns it into a Rest if the
+//   earlier fight left him under that share of his hit points.
+// Each number of the ladder is the bots' first version's weights' `lair` (B-17r), by name.
+export const BOT_LAIR_WEAK_BAND = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theRumourBandFromWhichAHeroRisksAWeakLair,
+  BOT_LAIR_WEAK_HP = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theShareOfHisHitPointsAHeroRisksAWeakLairWith,
+  BOT_LAIR_REACH = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theProvincesAwayAHeroLooksForALair,
+  BOT_LAIR_MAX_RUMOURS = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theMostRumoursAHeroBuysAYear; // 2026-09-28 (options 3, 5)
+// 2026-09-29 (Toby, study C4): PROMOTE_AT and RETRY_EXTRA lowered — the rumour still decides whether he goes in, so
+// asking sooner costs a few gold, not a life.
 // The tuning knobs BOT_LAIR_GO_BAND_HI and BOT_LAIR_REASK_GAIN are in bots/strategy.ts.
 export function botGoBand(g: number) {
   return g > 0 ? BOT_LAIR_GO_BAND_HI : BOT_LAIR_GO_BAND;
 }
-export const BOT_LAIR_GO_BAND = 90,
-  BOT_LAIR_OWN_AFTER = 2,
-  BOT_LAIR_PROMOTE_AT = 2,
-  BOT_LAIR_RETRY_EXTRA = 0,
-  BOT_LAIR_MIN_HP = 0.75,
-  BOT_LAIR_NEXT_HP = 0.6,
-  BOT_LAIR_MAX_SEARCHES = 3;
+export const BOT_LAIR_GO_BAND = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theRumourBandThatSendsAHeroIntoAWeakLair,
+  BOT_LAIR_OWN_AFTER = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theLairsOfAGradeClearedThatMakeItAHerosOwn,
+  BOT_LAIR_PROMOTE_AT =
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theLairsOfHisOwnGradeClearedBeforeAHeroAsksOfTheGradeAbove,
+  BOT_LAIR_RETRY_EXTRA =
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theLairsMoreOfHisOwnGradeAHeroClearsAfterAPoorReading,
+  BOT_LAIR_MIN_HP = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theShareOfHisHitPointsBelowWhichAHeroRestsBeforeAHunt,
+  BOT_LAIR_NEXT_HP =
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theShareOfHisHitPointsBelowWhichAHerosNextSearchBecomesARest,
+  BOT_LAIR_MAX_SEARCHES = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theMostLairsAHeroSearchesAYear;
 export const BOT_LAIR_GN = ['Weak', 'Moderate', 'Powerful', 'Legendary'];
 // 2026-09-29 (Toby): PROMOTION ON STRENGTH as well as kills. A hero who owns his grade and is already
 // kitted or trained for the grade above asks about it without waiting for the kill count: equipped items
 // at least BOT_LAIR_STRONG_ITEMS[g], OR his best fighting skill (Melee, Archery or a duelling school,
-// items included) at least BOT_LAIR_STRONG_SKILL[g]. Indexed by the grade he would move UP to. Moderate
-// 4 items / skill 5, Powerful 6 / 7, Legendary 8 / 9 — the guardian-ladder benchmark heroes carry 5
-// tier-1 items for Moderate.
-export const BOT_LAIR_STRONG_ITEMS = [0, 3, 5, 7],
-  BOT_LAIR_STRONG_SKILL = [0, 4, 6, 8]; // 2026-09-29 (Toby, study C4): was [0,4,6,8] / [0,5,7,9]
+// items included) at least BOT_LAIR_STRONG_SKILL[g]. Indexed by the grade he would move UP to; each value is the
+// schema's `lair` kind's, named there.
+// The first of each (towards Weak) is never read: no hero moves up to the weakest grade (botLairStrongFor).
+export const BOT_LAIR_STRONG_ITEMS = [
+    0,
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theItemsAHeroCarriesToAskOfModerateLairsEarly,
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theItemsAHeroCarriesToAskOfPowerfulLairsEarly,
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theItemsAHeroCarriesToAskOfLegendaryLairsEarly,
+  ],
+  BOT_LAIR_STRONG_SKILL = [
+    0,
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theFightingSkillAHeroHasToAskOfModerateLairsEarly,
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theFightingSkillAHeroHasToAskOfPowerfulLairsEarly,
+    THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.lair.theFightingSkillAHeroHasToAskOfLegendaryLairsEarly,
+  ]; // 2026-09-29 (Toby, study C4): lowered
 export function botLairStrongFor(c: Character | null | undefined, g: number) {
   if (!c || g < 1 || g > 3) return false;
   const n = activeItems(c).length;

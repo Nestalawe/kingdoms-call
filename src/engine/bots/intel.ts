@@ -98,10 +98,13 @@ interface AHeroWhoseSkillsAreKnown {
 // so a kind it gives no weights, or a name misspelt, missing or more, fails to compile. The economy's (a gold) is the
 // first kind, the titles' (a title, B-06r) the second, the alignments' (an alignment ability, P1-19bb8) the third, the
 // races' (a race's gift, B-06ah) the fourth, the tempers' (a temper, B-06aj) the fifth, the battles' (a point of a
-// host's strength, B-06bq) the sixth. The weights are the bots', never content's: content holds the rules only.
+// host's strength, B-06bq) the sixth; a war, a lair's guardian and a realm's tuning (B-17r: the bots' named tables
+// BOT_WAR, BOT_LAIR_*, BOT_TUNING and BOT_DIFFICULTY read them by name) the seventh to the ninth. The weights are the
+// bots', never content's: content holds the rules only.
 /** The kinds of result a rule's what-if hands a bot, each of which a bot version's weights file weighs: a gold, an
  *  Imperial Title (held, or chased by what its row measures), what an ability of a realm's alignment gives it, what a
- *  gift of its race gives it, what a temper gives a hero or a king, and a point of a host's strength. */
+ *  gift of its race gives it, what a temper gives a hero or a king, a point of a host's strength, a war between two
+ *  realms, a lair's guardian, and a realm's tuning. */
 export type AKindOfResultABotWeighs = keyof TheWeightsOfABotVersion;
 /** The bots' weights at a difficulty. */
 interface ABotDifficultysWeights {
@@ -309,21 +312,27 @@ export const REALM_COLOURS: readonly string[] = [
 ];
 export const REALM_COLOUR_FALLBACK = '#c8b48c'; // an 11th seat should never happen; parchment-tan if it does
 
+// Each number is the bots' first version's weights' `tuning` (B-17r), by name.
 export const BOT_TUNING = {
-  kingAttackMargin: 1.35, // battle-model force ratio a bot KING needs before attacking (≈63% on the fortune curve; kings play safer — a king's death is costly)
-  heroAttackMargin: 1.2, // battle-model force ratio a bot HERO needs before attacking (≈58%)
-  assaultMargin: 1.4, // combined force ratio needed to launch a concentrated assault (buffers the contingent-unify roll)
-  valuableTax: 7, // tax at/above which a province is "valuable" to hold/reinforce (home capital always is); read here, as no difficulty or realm changes it
-  taxScoreWeight: 10, // how strongly a target province's tax pulls target selection
-  goldReserve: 3, // gold kept in hand before any recruiting
-  chestShare: 0.35, // share of the free treasury the upkeep cap may lean on (a chest carries a wage deficit until conquests pay it back)
+  kingAttackMargin: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theStrengthRatioAKingsAttackWants, // battle-model force ratio a bot KING needs before attacking (≈63% on the fortune curve; kings play safer — a king's death is costly)
+  heroAttackMargin: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theStrengthRatioAHerosAttackWants, // battle-model force ratio a bot HERO needs before attacking (≈58%)
+  assaultMargin: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theStrengthRatioAConcentratedAssaultWants, // combined force ratio needed to launch a concentrated assault (buffers the contingent-unify roll)
+  valuableTax: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theTaxFromWhichAProvinceIsValuableToHold, // tax at/above which a province is "valuable" to hold/reinforce (home capital always is); read here, as no difficulty or realm changes it
+  taxScoreWeight: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.whatEachGoldOfATargetProvincesTaxAddsToItsScore, // how strongly a target province's tax pulls target selection
+  goldReserve: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theGoldKeptInHandBeforeAnyRecruiting, // gold kept in hand before any recruiting
+  chestShare: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theShareOfTheFreeTreasuryTheWagesMayLeanOn, // share of the free treasury the upkeep cap may lean on (a chest carries a wage deficit until conquests pay it back)
 };
 // ── BOT STRENGTH ── 2026-09-26 (Toby item 9): the Easy / Normal / Hard tiers are retired. Every bot realm
 // plays at what was the Hard setting — bolder attack margins, the strongest rival bias, and 97% of income
 // on wages. The table keeps one row so botTuning reads the same shape; a game saved with 'easy' or
 // 'normal' (G.botDifficulty) finds no row and resolves to it too, and telemetry keeps recording the word it finds.
 export const BOT_DIFFICULTY: { hard: ABotDifficultysWeights } = {
-  hard: { attackMarginMult: 0.92, assaultMarginMult: 0.9, rivalBias: 12, upkeepCapFrac: 0.97 },
+  hard: {
+    attackMarginMult: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theFactorTheBotsStrengthTakesTheAttackMarginsBy,
+    assaultMarginMult: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theFactorTheBotsStrengthTakesTheAssaultMarginBy,
+    rivalBias: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theBiasTowardsARivalsProvinceOverNeutralLandInATargetsScore,
+    upkeepCapFrac: THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuning.theShareOfTheIncomeTheWagesMayTakeInPeace,
+  },
 };
 export const BOT_DIFFICULTY_DEFAULT = 'hard';
 // Effective weights for this game. Bot decision functions read these instead of BOT_TUNING directly.
