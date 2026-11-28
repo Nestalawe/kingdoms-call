@@ -157,10 +157,16 @@ describe("the page half's figures, by alignment and race", () => {
 });
 
 test('every kind of order the committed baselines hold is on the fixed list, so none hangs on the run', () => {
-  for (const set of ['A', 'B'] as const)
-    for (const key of Object.keys(readBaseline(set)[0]?.stats ?? {}))
-      if (key.startsWith(ORDERS_GIVEN))
-        expect(THE_KINDS_OF_ORDER, `set ${set}: ${key}`).toContain(baseOf(key).slice(ORDERS_GIVEN.length));
+  const kinds = (['A', 'B'] as const).flatMap((set) =>
+    Object.keys(readBaseline(set)[0]?.stats ?? {})
+      .filter((key) => key.startsWith(ORDERS_GIVEN))
+      .map((key) => baseOf(key).slice(ORDERS_GIVEN.length)),
+  );
+  expect(kinds.length, 'the baselines hold the kinds of order').toBeGreaterThan(0);
+  expect(
+    kinds.filter((k) => !THE_KINDS_OF_ORDER.includes(k)),
+    'kinds off the list',
+  ).toEqual([]);
 });
 
 describe("the abilities' figures, for the realms of each ability's alignment", () => {
