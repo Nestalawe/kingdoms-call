@@ -238,8 +238,8 @@ Claude can each take any seat.
 - **BOT-V1 (must).** A bot's input is its realm's view: what its report and the player portal show, plus what it
   remembers from earlier turns within R-043's limits. Nothing else from the saved game.
 - **BOT-V2 (must).** Its output is the orders and plans the player portal sends, in the typed shape of
-  `tools/balance/the-orders-the-player-portal-sends.ts` (moved to where the engine can use it), checked as a
-  player's are.
+  `tools/balance/the-orders-the-player-portal-sends.ts` (its types in `src/schemas/`, where the engine can use them:
+  B-17n), checked as a player's are.
 - **BOT-V3 (must).** A test fails if a bot reads hidden state: the same view with a different army hidden from it gives
   the same orders.
 - **BOT-V4 (must).** The bots keep no copy of a rule: to predict a battle, a spell or a sea lift, a bot asks the rule

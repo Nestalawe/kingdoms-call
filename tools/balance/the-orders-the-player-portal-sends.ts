@@ -1,7 +1,9 @@
 // The orders the player portal sends (plan P1-15e2; P1-15e's Decision 2): a typed copy of what `doSubmitOrders`
 // (src/ui/player/briefing-and-submit.ts) writes to the realm's row, built from the saved state the turn will load and
 // what the realm chose in the form. The balance matrix's scripted realm (scripted.ts) makes the choices; this builds
-// the payload from them as the form does, so the matrix's games save what a human realm's orders save.
+// the payload from them as the form does, so the matrix's games save what a human realm's orders save. The choices'
+// and the state's types are in src/schemas/what-a-realm-chooses-in-the-orders-form-and-the-parts-of-the-saved-state-
+// the-form-reads.ts (B-17n), where the engine and the bots can use them; the copy of the form stays here.
 //
 // The form is built from the realm's turn report, which the views write from the same world (src/views/turn-report.ts):
 // so the heroes it lists, their order in the column, an heir's skills and the plans it starts from are read here from
@@ -30,64 +32,16 @@
 // What it doesn't copy, as the scripted realm never gives it: the raise and charm cards, a Search Lair after a Move,
 // a hire card's own orders, a draft (doSaveOrders).
 import type { EncounterPlan, OrdersARealmSubmits, PhaseOrder } from '../../src/schemas/orders-a-realm-submits.ts';
+import type {
+  AnOrderPicked,
+  APlanSet,
+  HeroTheFormLists,
+  StateTheFormReads,
+  WhatTheRealmChose,
+} from '../../src/schemas/what-a-realm-chooses-in-the-orders-form-and-the-parts-of-the-saved-state-the-form-reads.ts';
 
 /** The phases of a turn: the form's five seasons. */
 export const PHASES = 5;
-
-/** The parts of a hero the form reads (the report's own heroes, from the saved state). */
-export interface HeroTheFormLists {
-  id: number;
-  player: number | null;
-  alive: boolean;
-  isKing?: boolean;
-  /** Where he stands: a Search Lair order's province. */
-  location?: number;
-  /** Fell this turn: the report lists him, with no form. */
-  killedThisTurn?: boolean;
-  /** The phase he was hired in this turn: the phases up to it are locked. */
-  hiredInPhase?: number;
-  /** A newly crowned heir, whose skills the player sets. */
-  _isHeir?: boolean;
-  _pendingSkillAllocation?: number;
-  name?: string;
-  temper?: string;
-  skills?: Record<string, number>;
-  encounterPlan?: { tactics?: string[]; notes?: string; duelStance?: string; evilMode?: string };
-}
-/** The parts of the saved state the form reads. */
-export interface StateTheFormReads {
-  characters: HeroTheFormLists[];
-  players: { alignment?: string; heroOrder?: string[] }[];
-}
-
-/** One phase's order as the player picks it: the order's name in the form and the value of its target field. */
-export interface AnOrderPicked {
-  action: string;
-  target: string;
-}
-/** A hero's plan as the player sets it: the tactics in order (the form's codes), the pre-battle school (`''` for none),
- *  the battle cry, the duel stance, and an Evil realm's conquest doctrine. */
-export interface APlanSet {
-  tactics: string[];
-  school: string;
-  notes: string;
-  duelStance: string;
-  evilMode?: string;
-}
-/** What a realm chose in the form for one turn. */
-export interface WhatTheRealmChose {
-  /** Each hero's orders by his id, phase by phase; a phase left at "— Choose —" is null or absent. */
-  orders: Record<string, (AnOrderPicked | null)[]>;
-  /** Each hero's plan by his id, and a hired hero's by his card's id; a hero not named keeps the plan the report
-   *  shows, and a card the plan it starts with. */
-  plans: Record<string, APlanSet>;
-  /** An heir's points by his id, one skill a point, in the order spent. */
-  heirPoints: Record<string, string[]>;
-  /** Which lead of each pending research pair to keep: the pair's key → the lead's id. */
-  discoveryChoices: Record<string, string>;
-  /** The king's declarations: a realm's index → `'enemy'` or `'treat'`. */
-  diplomacy: Record<string, string>;
-}
 
 /** The orders whose `desc` names no target (doSubmitOrders). */
 const NO_TARGET_IN_THE_DESC = new Set(['Move', 'Defend', 'Rest', 'Spy', 'Explore']);

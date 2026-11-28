@@ -39,15 +39,17 @@ import {
 import { perkTier } from '../../src/engine/titles/perks.ts';
 import type { OrdersARealmSubmits } from '../../src/schemas/orders-a-realm-submits.ts';
 import type { GameState } from '../../src/schemas/saved-game-state.ts';
+import type {
+  AnOrderPicked,
+  APlanSet,
+  HeroTheFormLists,
+  WhatTheRealmChose,
+} from '../../src/schemas/what-a-realm-chooses-in-the-orders-form-and-the-parts-of-the-saved-state-the-form-reads.ts';
 import {
   hireCardId,
   PHASES,
   theHeroesTheFormLists,
   theOrdersThePlayerPortalSends,
-  type AnOrderPicked,
-  type APlanSet,
-  type HeroTheFormLists,
-  type WhatTheRealmChose,
 } from './the-orders-the-player-portal-sends.ts';
 
 /** The parts of a saved game state the script reads. */
