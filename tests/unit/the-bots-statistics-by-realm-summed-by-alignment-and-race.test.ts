@@ -79,7 +79,7 @@ describe("the page half's figures, by alignment and race", () => {
       aRow(1, 1, 30, ['broker']),
       aRow(2, 1, 0, []),
       // seat 3 is no bot here: its row counts for nothing
-      aRow(3, 1, 999, ['move']),
+      aRow(3, 1, 999, ['move', 'pursue']),
     ],
     [
       aRecord(0, {
@@ -89,7 +89,7 @@ describe("the page half's figures, by alignment and race", () => {
         casts: [{ hero: 1, school: 'Fire', limit: 2, limitTheHygieneApplies: 3, casts: 1 }],
       }),
       aRecord(1, { hygiene: { hireUnaffordable: 1 } }),
-      aRecord(3, { hygiene: { practiceCapped: 50 } }),
+      aRecord(3, { hygiene: { practiceCapped: 50 }, padding: { 'lie-low': 4 } }),
     ],
   );
   test('the orders given, by kind: a realm of the slice without one counts 0', () => {
@@ -108,6 +108,9 @@ describe("the page half's figures, by alignment and race", () => {
     expect(s['bots: phases with nothing else to do | by alignment: Divine']).toEqual([4, 2]);
     expect(s['bots: phases with nothing else to do: hold | by race: Human']).toEqual([2, 2]);
     expect(s['bots: phases with nothing else to do: left empty | by race: Human']).toEqual([1, 2]);
+  });
+  test('a seat that is no bot adds no kind of its own: its orders and padding make no statistic', () => {
+    expect(Object.keys(s).filter((k) => k.includes('pursue') || k.includes('lie-low'))).toEqual([]);
   });
   test('the casts left unused: the limit the hygiene applies, less the casts given', () => {
     expect(s['bots: casts left unused | by alignment: Divine']).toEqual([2, 2]);

@@ -98,8 +98,11 @@ export function theBotsStatisticsOfThePageHalf(
     perRealm.set(realm, v);
     bases.set(base, perRealm);
   };
+  // only a bot realm's rows and records count: another seat's would add the bases of its own kinds of order
+  const isABot = new Set(realms.map((r) => r.realm));
   const gold = new Map<number, [number, number]>();
   for (const row of telemetry) {
+    if (!isABot.has(row.player_index)) continue;
     for (const hero of Object.values(row.orders?.chars ?? {}))
       for (const phase of hero.ph ?? []) if (phase?.a) add(ORDERS_GIVEN + phase.a, row.player_index, 1);
     const g = gold.get(row.player_index) ?? [0, 0];
@@ -108,6 +111,7 @@ export function theBotsStatisticsOfThePageHalf(
     gold.set(row.player_index, g);
   }
   for (const turn of botChoices) {
+    if (!isABot.has(turn.realm)) continue;
     for (const reason of THE_HYGIENES_DROPS) {
       const n = turn.hygiene[reason] ?? 0;
       add(`${ORDERS_THE_HYGIENE_DROPPED}: ${reason}`, turn.realm, n);
@@ -121,7 +125,6 @@ export function theBotsStatisticsOfThePageHalf(
     add(PHASES_WITH_NOTHING_ELSE_TO_DO, turn.realm, turn.phasesLeftEmpty);
     for (const c of turn.casts) add(CASTS_LEFT_UNUSED, turn.realm, c.limitTheHygieneApplies - c.casts);
   }
-  // only the bot realms' figures are summed: another seat's rows and records count for nothing
   const s: Stats = {};
   for (const [base, perRealm] of bases) sliced(s, base, perRealm, realms);
   // every bot realm played a turn: a realm with no row has no turn to count
