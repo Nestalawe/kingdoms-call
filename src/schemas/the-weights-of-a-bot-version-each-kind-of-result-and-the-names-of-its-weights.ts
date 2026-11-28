@@ -598,19 +598,17 @@ const TheWeightsOfAHostsMarchSchema = z.object({
   whatEachStepOfMarchingTakesOffAStrikesTarget: z.number(),
 });
 
-/** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
- *  effect. */
 /** What draws a conjurer to a province to raise a host in and a king to a province to consecrate (botProvUndefended, botInfiltrateTarget, botConsecrateTarget, bots/missions.ts). */
 const TheWeightsOfAnInfiltrationAndAConsecrationSchema = z.object({
-  /** Unseen, unowned ground whose believed tax is below this is taken to hold nothing that could fight for it. */
-  theTaxBelowWhichUnseenUnownedGroundIsBelievedEmpty: z.number(),
-  /** A province not in sight, whose graves the realm knows of, counts this many graves toward its worth as a place to conjure. */
-  theGravesAnUnseenProvinceIsBelievedToHold: z.number(),
-  /** Each point of a province's believed tax adds this to its worth as a place to conjure a host. */
+  /** Unowned ground whose tax is below this counts as holding nothing that could fight for it. */
+  theTaxBelowWhichUnownedGroundCountsAsEmpty: z.number(),
+  /** A province whose graves are known only in part counts this many graves toward its worth as a place to conjure. */
+  theGravesCountedForAProvinceWhoseGravesAreKnownOnlyInPart: z.number(),
+  /** Each point of a province's tax adds this to its worth as a place to conjure a host. */
   theWorthOfEachPointOfTaxToAnInfiltrationTarget: z.number(),
-  /** Each neighbouring province believed held by a realm at war with this one adds this to a province's worth as a place to conjure a host. */
+  /** Each neighbouring province held by a realm at war with this one adds this to a province's worth as a place to conjure a host. */
   theWorthOfEachNeighbourAtWarToAnInfiltrationTarget: z.number(),
-  /** A province believed held by a realm at war with this one adds this to its worth as a place to conjure a host. */
+  /** A province held by a realm at war with this one adds this to its worth as a place to conjure a host. */
   theWorthOfEnemyLandToAnInfiltrationTarget: z.number(),
   /** A province's graves add to its worth as a place to conjure a host up to this many. */
   theMostGravesThatAddToAnInfiltrationTarget: z.number(),
@@ -627,7 +625,7 @@ const TheWeightsOfAnInfiltrationAndAConsecrationSchema = z.object({
 /** Where a Call to Arms goes, what a Broker's hire weighs and when a host makes a Blood Offering (botSignaturePre, botRitePre, bots/missions.ts). */
 const TheWeightsOfTheSignatureOrdersSchema = z.object({
   /** A province already holding this many garrison companies or more is passed over for a Call to Arms. */
-  theGarrisonsAProvinceMayHoldForACallToArmsToRaiseOneThere: z.number(),
+  theGarrisonsThatTurnACallToArmsAway: z.number(),
   /** A province on the frontier adds this to its worth as the place for a Call to Arms. */
   theWorthOfAFrontierProvinceToACallToArms: z.number(),
   /** The realm's capital adds this to its worth as the place for a Call to Arms. */
@@ -684,19 +682,19 @@ const TheWeightsOfAResearchPickAndTheKitASlayerGetsSchema = z.object({
   theMostKitSentToOneComradeInATurn: z.number(),
 });
 
-/** What counts as an allied front, how long a remembered host counts, the margin a host asks of a foe's host and the slayer's ladder of skills (botAllyNear, botRememberedHostAt, botHostMargin, botSlayerTrainSkill, botRumourAffordable, botLairTiers, bots/missions.ts). */
+/** What counts as an allied front, how long a recorded host counts, the margin a host asks of a foe's host and the slayer's ladder of skills (botAllyNear, botRememberedHostAt, botHostMargin, botSlayerTrainSkill, botRumourAffordable, botLairTiers, bots/missions.ts). */
 const TheWeightsOfAnAlliedFrontAHostsMarginAndTheSlayersLadderSchema = z.object({
-  /** An allied hero leading this many units or more, seen near a target, makes it part of an allied front. */
+  /** An allied hero leading this many units or more, near a target, makes it part of an allied front. */
   theUnitsAnAlliedHostMustLeadToCountAsAnAlliedFront: z.number(),
-  /** A host last seen in a province no more than this many turns ago still counts against it. */
-  theTurnsARememberedHostStillCountsAgainstATarget: z.number(),
+  /** A host recorded in a province no more than this many turns ago still counts against it. */
+  theTurnsARecordedHostStillCountsAgainstATarget: z.number(),
   /** A host asks no more than this margin of strength of a foe's host. */
   theMostMarginAHostAsksOfAFoesHost: z.number(),
-  /** A host asks this margin of strength of a foe's column of five units or fewer. */
-  theMarginAHostAsksOfAFoesColumnOfFiveUnitsOrFewer: z.number(),
-  /** Each unit of a foe's host beyond five adds this to the margin a host asks. */
-  theMarginEachUnitBeyondFiveAddsToWhatAHostAsks: z.number(),
-  /** A foe's host of more units than this raises the margin a host asks; a column of five or fewer does not. */
+  /** A host asks this margin of strength of a foe's column at or below the margin's threshold. */
+  theMarginAHostAsksOfAFoesColumnAtOrBelowTheMarginsThreshold: z.number(),
+  /** Each unit of a foe's host beyond the margin's threshold adds this to the margin a host asks. */
+  theMarginEachUnitBeyondTheMarginsThresholdAddsToWhatAHostAsks: z.number(),
+  /** A foe's host of more units than this raises the margin a host asks; a column at or below it does not. */
   theUnitsOfAFoesHostBeyondWhichTheMarginRises: z.number(),
   /** The first rung of the slayer's ladder trains Melee to this level. */
   theLevelOfMeleeTheSlayersLadderFirstAsksOf: z.number(),
@@ -726,6 +724,8 @@ const TheWeightsOfAnAlliedFrontAHostsMarginAndTheSlayersLadderSchema = z.object(
   theLairsOfTheGradeAboveClearedThatKeepAHeroAskingAboutIt: z.number(),
 });
 
+/** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
+ *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
   gold: TheWeightsOfAGoldSchema,
   title: TheWeightsOfATitleSchema,

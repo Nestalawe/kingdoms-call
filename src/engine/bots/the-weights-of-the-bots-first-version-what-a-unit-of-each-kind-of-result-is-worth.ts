@@ -343,8 +343,8 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   },
   /** What draws a conjurer to a province to raise a host in and a king to a province to consecrate (botProvUndefended, botInfiltrateTarget, botConsecrateTarget, bots/missions.ts). */
   missionsInfiltration: {
-    theTaxBelowWhichUnseenUnownedGroundIsBelievedEmpty: 3,
-    theGravesAnUnseenProvinceIsBelievedToHold: 2,
+    theTaxBelowWhichUnownedGroundCountsAsEmpty: 3,
+    theGravesCountedForAProvinceWhoseGravesAreKnownOnlyInPart: 2,
     theWorthOfEachPointOfTaxToAnInfiltrationTarget: 2,
     theWorthOfEachNeighbourAtWarToAnInfiltrationTarget: 4,
     theWorthOfEnemyLandToAnInfiltrationTarget: 10,
@@ -356,7 +356,7 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
   },
   /** Where a Call to Arms goes, what a Broker's hire weighs and when a host makes a Blood Offering (botSignaturePre, botRitePre, bots/missions.ts). */
   missionsSignatureOrders: {
-    theGarrisonsAProvinceMayHoldForACallToArmsToRaiseOneThere: 2,
+    theGarrisonsThatTurnACallToArmsAway: 2,
     theWorthOfAFrontierProvinceToACallToArms: 4,
     theWorthOfTheCapitalToACallToArms: 2,
     whatEachGarrisonTakesOffACallToArmsTarget: 3,
@@ -386,13 +386,13 @@ export const THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION = {
     theWorthOfASlayerAsTheComradeToGetDuellingKit: 5,
     theMostKitSentToOneComradeInATurn: 2,
   },
-  /** What counts as an allied front, how long a remembered host counts, the margin a host asks of a foe's host and the slayer's ladder of skills (botAllyNear, botRememberedHostAt, botHostMargin, botSlayerTrainSkill, botRumourAffordable, botLairTiers, bots/missions.ts). */
+  /** What counts as an allied front, how long a recorded host counts, the margin a host asks of a foe's host and the slayer's ladder of skills (botAllyNear, botRememberedHostAt, botHostMargin, botSlayerTrainSkill, botRumourAffordable, botLairTiers, bots/missions.ts). */
   missionsAlliesAndLairs: {
     theUnitsAnAlliedHostMustLeadToCountAsAnAlliedFront: 3,
-    theTurnsARememberedHostStillCountsAgainstATarget: 3,
+    theTurnsARecordedHostStillCountsAgainstATarget: 3,
     theMostMarginAHostAsksOfAFoesHost: 2,
-    theMarginAHostAsksOfAFoesColumnOfFiveUnitsOrFewer: 1.5,
-    theMarginEachUnitBeyondFiveAddsToWhatAHostAsks: 0.05,
+    theMarginAHostAsksOfAFoesColumnAtOrBelowTheMarginsThreshold: 1.5,
+    theMarginEachUnitBeyondTheMarginsThresholdAddsToWhatAHostAsks: 0.05,
     theUnitsOfAFoesHostBeyondWhichTheMarginRises: 5,
     theLevelOfMeleeTheSlayersLadderFirstAsksOf: 3,
     theLevelOfArcheryTheSlayersLadderFirstAsksOf: 2,

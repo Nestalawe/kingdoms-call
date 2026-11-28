@@ -277,7 +277,7 @@ function theItemsWithGapsOf(c: Character): readonly (Item | null | undefined)[] 
 // TARGETING — "undefended" means nothing present can contest the province: no foreign armed
 // character, no garrison, no neutral defenders. Scoring prefers ground DEEP inside enemy land
 // (counted as enemy-owned neighbours: that is the "behind the front line" test), rich ground, and —
-// for a necromancer — graves, less 3 per hop of walking. Unowned undefended land is a legal
+// for a necromancer — graves, less so much per hop of walking. Unowned undefended land is a legal
 // secondary target and needs no war.
 const theInfiltration = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsInfiltration;
 const theSignatureOrders = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsSignatureOrders;
@@ -306,7 +306,7 @@ export function botProvUndefended(G: GameState, prov: Province | null | undefine
   if (!botKnows(G, pi, prov.id)) return false; // never seen — not a plan, a guess in the dark
   if (!botSees(G, pi, prov.id)) {
     const b = botBelief(G, pi, prov);
-    return !!b && (b.tax || 0) < theInfiltration.theTaxBelowWhichUnseenUnownedGroundIsBelievedEmpty && b.owner == null; // only poor, unowned ground is ASSUMED empty
+    return !!b && (b.tax || 0) < theInfiltration.theTaxBelowWhichUnownedGroundCountsAsEmpty && b.owner == null; // only poor, unowned ground is ASSUMED empty
   }
   if ((asItsGuardReadsIt(prov.garrisonArmies) ?? []).length > 0) return false;
   if ((asItsGuardReadsIt(prov.neutralDefenders) ?? []).length > 0 || (asItsGuardReadsIt(prov.npcArmies) ?? 0) > 0)
@@ -328,7 +328,7 @@ export function botInfiltrateTarget(G: GameState, pi: number, c: Character, scho
     botSees(G, pi, X.id)
       ? (asItsGuardReadsIt(X.battleGraves) ?? []).length
       : gravesKnown(X)
-        ? theInfiltration.theGravesAnUnseenProvinceIsBelievedToHold
+        ? theInfiltration.theGravesCountedForAProvinceWhoseGravesAreKnownOnlyInPart
         : 0;
   let best: { readonly P: Province; readonly d: number; readonly sc: number } | null = null;
   for (const X of theProvincesOf(G)) {
@@ -460,7 +460,7 @@ export function botSignaturePre(
       if (isTheRaceTheWildsOrOneOfItsSubRaces(asItsGuardReadsIt(X.race))) continue; // the engine falls back to GARRISON_BY_RACE_CTA
       if ((X.tax || 0) < 4 && X.id !== botHomeId(G, pi)) continue; // Toby's garrison rule: Prosperous+ land (and the capital) only
       const g = (asItsGuardReadsIt(X.garrisonArmies) ?? []).length;
-      if (g >= theSignatureOrders.theGarrisonsAProvinceMayHoldForACallToArmsToRaiseOneThere) continue;
+      if (g >= theSignatureOrders.theGarrisonsThatTurnACallToArmsAway) continue;
       const sc =
         (X.tax || 0) +
         (botIsEdge(G, pi, X) ? theSignatureOrders.theWorthOfAFrontierProvinceToACallToArms : 0) +
@@ -549,7 +549,7 @@ export function botSignaturePre(
   return null;
 }
 // PERFORM RITE (Pagan): only for an armed host standing at a ritual site with a fight ahead. The Wild
-// Hunt binds two wage-free Veterans of the province's wild kind for the price of one; a host of 6+ that
+// Hunt binds two wage-free Veterans of the province's wild kind for the price of one; a large enough host that
 // cannot hunt makes a Blood Offering — its two weakest for two tiers on its two strongest.
 export function botRitePre(
   G: GameState,
@@ -882,7 +882,7 @@ export function botRememberedHostAt(G: GameState, pi: number, provId: number, on
   Object.entries(I.generals).forEach(([k, r]) => {
     if (
       r.provId !== provId ||
-      turn - r.turn > theAlliesAndLairs.theTurnsARememberedHostStillCountsAgainstATarget ||
+      turn - r.turn > theAlliesAndLairs.theTurnsARecordedHostStillCountsAgainstATarget ||
       botRelationRaw(G, pi, r.player) !== THE_STATES_TWO_REALMS_STAND_IN.atWar
     )
       return;
@@ -895,15 +895,15 @@ export function botRememberedHostAt(G: GameState, pi: number, provId: number, on
   });
   return { units, strength };
 }
-// The margin demanded against an enemy HOST (Toby): 1.5× a five-unit column, rising 0.05 per unit to 2×.
+// The margin demanded against an enemy HOST (Toby): a base margin for a small column, rising per unit to a ceiling (the schema's `missionsAlliesAndLairs`).
 export function botHostMargin(base: number, hostUnits: number) {
   if (!(hostUnits > 0)) return base;
   return Math.max(
     base,
     Math.min(
       theAlliesAndLairs.theMostMarginAHostAsksOfAFoesHost,
-      theAlliesAndLairs.theMarginAHostAsksOfAFoesColumnOfFiveUnitsOrFewer +
-        theAlliesAndLairs.theMarginEachUnitBeyondFiveAddsToWhatAHostAsks *
+      theAlliesAndLairs.theMarginAHostAsksOfAFoesColumnAtOrBelowTheMarginsThreshold +
+        theAlliesAndLairs.theMarginEachUnitBeyondTheMarginsThresholdAddsToWhatAHostAsks *
           Math.max(0, hostUnits - theAlliesAndLairs.theUnitsOfAFoesHostBeyondWhichTheMarginRises),
     ),
   );
@@ -948,13 +948,12 @@ export function botLairCandidates(G: GameState, pi: number, c: Character, maxD: 
 // The slayer's (or any fighter's) year: search a lair his rumour rates 80%+; else buy the rumour on the
 // weakest lair he has not assessed; else null (train). Fighters only: Melee or Archery 3+.
 // Sept 2026 (Toby): the guardian-killer's LADDER. The guardian ladder is tuned to a benchmark hero per grade
-// (Weak: 15 HP, Melee 3 / Archery 2 or Melee 4 / Archery 1 + a school at 1; Moderate: 30 HP, 5 tier-1 items,
-// Melee 6 + a school at 3 …), so the slayer trains toward Melee 3 / Archery 2 first, then Melee 4+, a battle
-// school, and on. He clears a lair only on his own fresh top-band rumour (80%+), takes the lowest grade on the
+// (each grade has the hit points, items and skills its guardians ask), so the slayer trains Melee and Archery
+// first, then Melee further, a battle school, and on. He clears a lair only on his own fresh top-band rumour (80%+), takes the lowest grade on the
 // map first, and does not buy a rumour on a grade above one his current rating has already been told is too
 // hard — he trains until the rating changes (a level, an item) and asks again.
-// 2026-09-26 (Toby): the slayer's ladder now carries a BATTLE SCHOOL from the start — Melee 3, Archery 2, a
-// school at 1, Melee 4, school 2, Melee 5, school 3, Melee 6, then Archery. The school is Elemental unless
+// 2026-09-26 (Toby): the slayer's ladder now carries a BATTLE SCHOOL from the start, rung by rung
+// between Melee, Archery and the school (the rungs' levels are the schema's). The school is Elemental unless
 // another duelling school (Necromancy, Psychic, White) is already the hero's strongest: the auto encounter
 // plan casts that school's spell in every lair fight (autoEncounterPlan → CA:), so every level is used.
 export function botSlayerSchool(c: { readonly skills?: Character['skills'] | null | undefined } | null | undefined) {
@@ -968,8 +967,8 @@ export function botSlayerTrainSkill(c: Character) {
   const s: Readonly<Partial<Record<string, number>>> = { ...asItsGuardReadsIt(c.skills) };
   const sch = botSlayerSchool(c);
   // 2026-09-28 (Toby): never a skill already at 5 — Practice cannot take it further (levels 6–9 come only from
-  // experience). The ladder: Melee 3, Archery 2, school 1, Melee 4, school 2, Melee 5, school 3→5, Archery 5,
-  // then his other combat schools; null when all are at 5.
+  // experience). The ladder's rungs are the schema's
+  // `missionsAlliesAndLairs`, then his other combat schools; null when all are at 5.
   const L: readonly (readonly [skill: string, to: number])[] = [
     ['melee', theAlliesAndLairs.theLevelOfMeleeTheSlayersLadderFirstAsksOf],
     ['archery', theAlliesAndLairs.theLevelOfArcheryTheSlayersLadderFirstAsksOf],

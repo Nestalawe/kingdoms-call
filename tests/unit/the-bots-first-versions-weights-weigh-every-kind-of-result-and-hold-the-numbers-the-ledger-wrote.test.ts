@@ -17,8 +17,9 @@
 // (the fleets' caps), the war (BOT_ALLY_ALIGN_DIST), the lair (BOT_RUMOUR_FUND_PER_SLAYER) and the tuning
 // (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts,
 // part 1), and B-17u's: a thief's targets, the roles' work, a mage's work, a defender's post and a host's march (part
-// 2), and B-17v's: an infiltration's and a consecration's, the signature orders', a research pick's and a slayer's kit, and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
-// refactor.
+// 2), and B-17v's: an infiltration's and a consecration's, the signature orders', a research pick's and a slayer's kit,
+// and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), each in its place: a
+// change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
 // compiler's (`npm run check`), which a lower level can't run.
@@ -440,8 +441,8 @@ test("specialistsHostsMarch's weights are the numbers bots/specialists.ts wrote 
 
 test("missionsInfiltration's weights are the numbers bots/missions.ts wrote inline before B-17v, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsInfiltration).toEqual({
-    theTaxBelowWhichUnseenUnownedGroundIsBelievedEmpty: 3,
-    theGravesAnUnseenProvinceIsBelievedToHold: 2,
+    theTaxBelowWhichUnownedGroundCountsAsEmpty: 3,
+    theGravesCountedForAProvinceWhoseGravesAreKnownOnlyInPart: 2,
     theWorthOfEachPointOfTaxToAnInfiltrationTarget: 2,
     theWorthOfEachNeighbourAtWarToAnInfiltrationTarget: 4,
     theWorthOfEnemyLandToAnInfiltrationTarget: 10,
@@ -455,7 +456,7 @@ test("missionsInfiltration's weights are the numbers bots/missions.ts wrote inli
 
 test("missionsSignatureOrders's weights are the numbers bots/missions.ts wrote inline before B-17v, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsSignatureOrders).toEqual({
-    theGarrisonsAProvinceMayHoldForACallToArmsToRaiseOneThere: 2,
+    theGarrisonsThatTurnACallToArmsAway: 2,
     theWorthOfAFrontierProvinceToACallToArms: 4,
     theWorthOfTheCapitalToACallToArms: 2,
     whatEachGarrisonTakesOffACallToArmsTarget: 3,
@@ -492,10 +493,10 @@ test("missionsResearchAndKit's weights are the numbers bots/missions.ts wrote in
 test("missionsAlliesAndLairs's weights are the numbers bots/missions.ts wrote inline before B-17v, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsAlliesAndLairs).toEqual({
     theUnitsAnAlliedHostMustLeadToCountAsAnAlliedFront: 3,
-    theTurnsARememberedHostStillCountsAgainstATarget: 3,
+    theTurnsARecordedHostStillCountsAgainstATarget: 3,
     theMostMarginAHostAsksOfAFoesHost: 2,
-    theMarginAHostAsksOfAFoesColumnOfFiveUnitsOrFewer: 1.5,
-    theMarginEachUnitBeyondFiveAddsToWhatAHostAsks: 0.05,
+    theMarginAHostAsksOfAFoesColumnAtOrBelowTheMarginsThreshold: 1.5,
+    theMarginEachUnitBeyondTheMarginsThresholdAddsToWhatAHostAsks: 0.05,
     theUnitsOfAFoesHostBeyondWhichTheMarginRises: 5,
     theLevelOfMeleeTheSlayersLadderFirstAsksOf: 3,
     theLevelOfArcheryTheSlayersLadderFirstAsksOf: 2,
