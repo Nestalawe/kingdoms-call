@@ -298,6 +298,8 @@ const TheWeightsOfADuelSchema = z.object({
   theChanceOfFallingCountedWithNoForecastByOneRatedClearlyStronger: z.number(),
   /** ... and any other this one. */
   theChanceOfFallingCountedWithNoForecastByAnyOther: z.number(),
+  /** A duel's forecast is fought this many times on copies of both heroes when the caller gives no count. */
+  theFightsFoughtOnCopiesToForecastADuelWhenNoCountIsAsked: z.number(),
 });
 
 /** The Spring pass: a host in contact holding, falling back or fleeing, the emergency levy, the war chest and the
@@ -332,6 +334,8 @@ const TheWeightsOfARivalsSkillsSchema = z.object({
   theTacticalTheBotsAssumeOfARivalsHeroByDefault: z.number(),
   /** ... and a school's (Elemental). */
   theElementalTheBotsAssumeOfARivalsHeroByDefault: z.number(),
+  /** An estimate of a rival's hero's skills stands for this many turns, then the default is assumed. */
+  theMostTurnsAgoAnEstimateOfARivalsHeroSkillsStillStands: z.number(),
 });
 
 /** The specialists a realm's court wants, by role: how many of each (botSpecialistRoles, bots/specialists.ts) and how many heroes it keeps free of them. */
@@ -1258,6 +1262,48 @@ const TheWeightsOfSpringPassSafeStepAndSecondFrontSchema = z.object({
   theNumberByWhichADefenceIsDividedInChoosingASecondFrontsTarget: z.number(),
 });
 
+/** How a realm's alignment moves its tuning's margins and biases (botTuning, bots/intel.ts). */
+const TheWeightsOfATuningOfAnAlignmentSchema = z.object({
+  /** A realm that holds the ability that returns a fallen king, and has a hero consecrated, multiplies its king's attack
+   *  margin by this (below one: it attacks at a lower bar). */
+  theFactorAKingsAttackMarginIsTakenByWhenARealmHoldsTheAbilityThatReturnsAFallenKingAndAHeroStandsConsecrated:
+    z.number(),
+  /** A realm that holds the ability that adds to unifying multiplies its assault margin by this (below one: a lower
+   *  bar). */
+  theFactorTheAssaultMarginIsTakenByWhenARealmHoldsTheAbilityThatAddsToUnifying: z.number(),
+  /** A realm that holds the ability that takes a share of the tax on capture multiplies the weight of a target's tax in
+   *  its score by this. */
+  theFactorTheTaxScoreWeightIsTakenByWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture: z.number(),
+  /** The same realm adds this to the bias towards a rival's province over neutral land. */
+  theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture: z.number(),
+  /** A realm that holds the ability that gains gold for each unit slain adds this to the bias towards a rival's
+   *  province over neutral land. */
+  theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatGainsGoldForEachUnitSlain: z.number(),
+});
+
+/** When a hero's idle phases are spent on a muster and how a practice is paired with a comrade's (runBotEconomy, bots/economy.ts). */
+const TheWeightsOfEconomyMusterAndPracticeSchema = z.object({
+  /** A hero's idle phase is spent on a muster of men only while the budget holds at least this much. */
+  theLeastBudgetFromWhichAHeroInAnIdlePhaseMustersMen: z.number(),
+  /** From this budget, heroes whose phases are given to training give a phase to a muster of men for the host. */
+  theBudgetFromWhichHeroesTrainingPhasesGiveWayToAMuster: z.number(),
+  /** A refilled phase scores this to join a comrade who stands at a higher level and teaches the hero (it also words the
+   *  order). */
+  theWorthOfJoiningAComradeWhoTeachesTheHeroInARefilledPhase: z.number(),
+  /** ... this to teach a comrade at a lower level (it also words the order) ... */
+  theWorthOfTeachingAComradeBelowTheHeroInARefilledPhase: z.number(),
+  /** ... and this to train beside a comrade of the hero's own level. */
+  theWorthOfTrainingBesideAComradeOfTheHerosLevelInARefilledPhase: z.number(),
+  /** A trainee's solo chance is multiplied by this and set against a peer's own to decide whether the peer joins him. */
+  theFactorATraineesSoloChanceIsTakenByToSetItAgainstAPeersWhenPairingThem: z.number(),
+});
+
+/** How the bots' realms are named when set up (bots/setup.ts). */
+const TheWeightsOfBotRealmsSetUpSchema = z.object({
+  /** A realm whose name is taken is numbered from this numeral (as a Roman numeral). */
+  theNumeralFromWhichARepeatedRealmNameIsNumbered: z.number(),
+});
+
 /** A bot version's weights: what a unit of each kind of result is worth to it, keyed by the kind, never by the
  *  effect. */
 export const TheWeightsOfABotVersionSchema = z.object({
@@ -1310,6 +1356,9 @@ export const TheWeightsOfABotVersionSchema = z.object({
   springPassOrdersAndReach: TheWeightsOfSpringPassOrdersAndReachSchema,
   springPassUrgency: TheWeightsOfSpringPassUrgencySchema,
   springPassSafeStepAndSecondFront: TheWeightsOfSpringPassSafeStepAndSecondFrontSchema,
+  tuningOfAnAlignment: TheWeightsOfATuningOfAnAlignmentSchema,
+  economyMusterAndPractice: TheWeightsOfEconomyMusterAndPracticeSchema,
+  botRealmsSetUp: TheWeightsOfBotRealmsSetUpSchema,
 });
 /** A bot version's weights, as its weights file holds them: every kind, and in each every name, each a number. */
 export type TheWeightsOfABotVersion = z.infer<typeof TheWeightsOfABotVersionSchema>;

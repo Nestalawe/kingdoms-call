@@ -21,7 +21,7 @@
 // and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), and B-17w's: a lair plan's
 // and the hunting gate's, a fleet's and an airborne column's strikes, a mastery challenge's and a duel stance's, a
 // leaderless host's and a slayer's lessons (bots/missions.ts, part 2), and B-17x's: a general's worth, the roles' posts
-// and the recruiting and the court's size (bots/strategy.ts, part 1), and B-17ao's: a muster's worths, a hero's practice, the bots' reach and a lair's rating (bots/strategy.ts, part 2), and B-17z's: a fallen hero's raising, a companion's, a split's and a muster's, a hero's preparations, a column's reach and an unarmed hero's roles (bots/movement.ts), and B-17aa's: a war's powers, bar and assaults (bots/war.ts) and the Spring pass's orders, urgencies, safe step and second front (bots/phase-one.ts), each in its place: a
+// and the recruiting and the court's size (bots/strategy.ts, part 1), and B-17ao's: a muster's worths, a hero's practice, the bots' reach and a lair's rating (bots/strategy.ts, part 2), and B-17z's: a fallen hero's raising, a companion's, a split's and a muster's, a hero's preparations, a column's reach and an unarmed hero's roles (bots/movement.ts), and B-17aa's: a war's powers, bar and assaults (bots/war.ts) and the Spring pass's orders, urgencies, safe step and second front (bots/phase-one.ts), and B-17ab's: an alignment's overlay of the tuning (bots/intel.ts), a muster's and a practice pairing's (bots/economy.ts), the numeral of a repeated realm name (bots/setup.ts), and the names added to a duel's and a rival's hero's skills' (bots/intel.ts, the plan), each in its place: a
 // change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -95,7 +95,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(513);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(527);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -259,6 +259,7 @@ test("a duel's weights are the numbers BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST 
     theChanceToWinFromWhichADuellistChallenges: 0.65,
     theChanceOfFallingCountedWithNoForecastByOneRatedClearlyStronger: 0.05,
     theChanceOfFallingCountedWithNoForecastByAnyOther: 0.3,
+    theFightsFoughtOnCopiesToForecastADuelWhenNoCountIsAsked: 20,
   });
 });
 
@@ -280,6 +281,7 @@ test("a rival's hero's assumed skills' weights are the numbers BOT_ASSUMED_SKILL
     theArcheryTheBotsAssumeOfARivalsHeroByDefault: 2,
     theTacticalTheBotsAssumeOfARivalsHeroByDefault: 2,
     theElementalTheBotsAssumeOfARivalsHeroByDefault: 2,
+    theMostTurnsAgoAnEstimateOfARivalsHeroSkillsStillStands: 8,
   });
 });
 
@@ -853,5 +855,32 @@ test("springPassSafeStepAndSecondFront's weights are the numbers bots/phase-one.
     theWorthOfEachPointOfTaxInChoosingASecondFrontsTarget: 2,
     theWorthOfAProvinceSomeRealmHoldsInChoosingASecondFrontsTarget: 8,
     theNumberByWhichADefenceIsDividedInChoosingASecondFrontsTarget: 4,
+  });
+});
+
+test("tuningOfAnAlignment's weights are the numbers botTuning wrote inline before B-17ab, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuningOfAnAlignment).toEqual({
+    theFactorAKingsAttackMarginIsTakenByWhenARealmHoldsTheAbilityThatReturnsAFallenKingAndAHeroStandsConsecrated: 0.9,
+    theFactorTheAssaultMarginIsTakenByWhenARealmHoldsTheAbilityThatAddsToUnifying: 0.9,
+    theFactorTheTaxScoreWeightIsTakenByWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture: 1.5,
+    theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture: 3,
+    theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatGainsGoldForEachUnitSlain: 3,
+  });
+});
+
+test("economyMusterAndPractice's weights are the numbers bots/economy.ts wrote inline before B-17ab, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.economyMusterAndPractice).toEqual({
+    theLeastBudgetFromWhichAHeroInAnIdlePhaseMustersMen: 2,
+    theBudgetFromWhichHeroesTrainingPhasesGiveWayToAMuster: 20,
+    theWorthOfJoiningAComradeWhoTeachesTheHeroInARefilledPhase: 3,
+    theWorthOfTeachingAComradeBelowTheHeroInARefilledPhase: 2,
+    theWorthOfTrainingBesideAComradeOfTheHerosLevelInARefilledPhase: 1,
+    theFactorATraineesSoloChanceIsTakenByToSetItAgainstAPeersWhenPairingThem: 1.5,
+  });
+});
+
+test("botRealmsSetUp's weights are the numbers bots/setup.ts wrote inline before B-17ab, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.botRealmsSetUp).toEqual({
+    theNumeralFromWhichARepeatedRealmNameIsNumbered: 2,
   });
 });

@@ -355,17 +355,21 @@ export function botTuning(
   // Each overlay is keyed by the ability the realm's alignment holds (its row, as the rule's runner asks it), not by the
   // creed's name (P1-19bb9); the bot's own numbers as they were. Each row is of one alignment, so at most one overlay
   // applies, as the creeds' `case`s did, in their order.
+  const theOverlays = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.tuningOfAnAlignment;
   if (THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['divine-grace'].theRunner(pl.alignment) !== null) {
-    if (consecratedIds(pl).length) T.kingAttackMargin *= 0.9; // Divine grace: the grace returns a fallen king
+    if (consecratedIds(pl).length)
+      T.kingAttackMargin *=
+        theOverlays.theFactorAKingsAttackMarginIsTakenByWhenARealmHoldsTheAbilityThatReturnsAFallenKingAndAHeroStandsConsecrated; // Divine grace: the grace returns a fallen king
   } else if (THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['banner-of-fellowship'].theRunner(pl.alignment) > 0) {
-    T.assaultMargin *= 0.9; // Banner of Fellowship +15% unify
+    T.assaultMargin *= theOverlays.theFactorTheAssaultMarginIsTakenByWhenARealmHoldsTheAbilityThatAddsToUnifying; // Banner of Fellowship: unify
   } else if (THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['plunder-or-enslave'].theRunner(pl.alignment) !== null) {
-    T.taxScoreWeight *= 1.5;
-    T.rivalBias += 3; // Plunder: half the tax on capture; Terror chains
+    T.taxScoreWeight *=
+      theOverlays.theFactorTheTaxScoreWeightIsTakenByWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture;
+    T.rivalBias += theOverlays.theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatTakesAShareOfTheTaxOnCapture; // Plunder: the tax on capture
   } else if (
     THE_BOTS_VALUATION_OF_EACH_ALIGNMENT_ABILITY['a-pagan-victors-blood-harvest'].theRunner(pl.alignment) !== null
   ) {
-    T.rivalBias += 3; // Blood Harvest: gold per unit slain
+    T.rivalBias += theOverlays.theBiasAddedToARivalsProvinceWhenARealmHoldsTheAbilityThatGainsGoldForEachUnitSlain; // Blood Harvest: gold per unit slain
   }
   // The race's overlay, keyed by the gift the realm's race holds (its row, as the rule's runner asks it), not by the
   // race's name (B-06ah); the bot's numbers are the first version's raceGift weights, as they were. Each gift is of
@@ -669,7 +673,12 @@ export function botKnownSkills(
   if (e.player === pi || e.player == null) return e.skills ?? {}; // our own; wanderers are hired on sight of their skills
   const p = (G.players ?? [])[pi];
   const r = p?._spiedHeroSkills?.[String(e.id)];
-  if (r && (Number(G.turn) || 0) - (Number(r.turn) || 0) <= 8) return r.skills ?? {};
+  if (
+    r &&
+    (Number(G.turn) || 0) - (Number(r.turn) || 0) <=
+      THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.rivalsSkills.theMostTurnsAgoAnEstimateOfARivalsHeroSkillsStillStands
+  )
+    return r.skills ?? {};
   return null;
 }
 export function botSkillsFor(

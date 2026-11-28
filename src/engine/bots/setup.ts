@@ -11,6 +11,7 @@ import { theAlignmentsOnlyOneRealmAGameMayHold } from '../rules-on-plain-values/
 import { _toRoman, nextHeroName } from '../names.ts';
 import { asItsGuardReadsIt } from '../rules-on-plain-values/a-guarded-value-read-as-it-is-and-a-skill-held-above-nothing.ts';
 import { BOT_ALLY_ALIGN_DIST } from './intel.ts';
+import { THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION } from './the-weights-of-the-bots-first-version-what-a-unit-of-each-kind-of-result-is-worth.ts';
 import { gameMetaOf } from '../rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import type { GamesRowWithSettings } from '../rules-on-plain-values/a-games-settings-read-from-its-row.ts';
 import { theOneThePickFell } from '../orders/spells/what-an-action-spell-of-the-cast-spell-order-is-handed.ts';
@@ -128,7 +129,7 @@ export function botKingdomName(race: string) {
     }
   }
   const base = theOneThePickFell(pool[Math.floor(kcRng() * pool.length)]);
-  let n = 2,
+  let n = THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.botRealmsSetUp.theNumeralFromWhichARepeatedRealmNameIsNumbered,
     nm: string;
   do {
     nm = `${base} ${_toRoman(n)}`;
