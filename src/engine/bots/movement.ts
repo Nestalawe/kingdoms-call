@@ -386,7 +386,7 @@ export function runBotMovement(
       }
       {
         const ip = botItemPre(G, pi, c, roles);
-        if (ip && pre.length < thePreparations.theMostOrdersAHeroHasPlannedBeforeAnItemOrderIsAdded) pre.push(ip);
+        if (ip && pre.length < thePreparations.theOrdersAHeroHasPlannedBelowWhichAnItemOrderIsAdded) pre.push(ip);
       } // Sept 2026 (review R3): kit
       // ── INFILTRATOR: a Necromancy / Elemental caster who is not running a
       // field army goes behind the enemy line and conjures a host in undefended ground, taking the
@@ -397,7 +397,14 @@ export function runBotMovement(
       if (!isLeader && !c.isKing && !c._isHeir) {
         const _infSchool = !armed || botOnlySkeletal(c) ? botInfiltrateSchool(c) : null;
         if (_infSchool) {
-          const _inf = botInfiltrateOrders(G, pi, c, pre, _infSchool, armed ? 1 : BOT_INFILTRATE_RANGE);
+          const _inf = botInfiltrateOrders(
+            G,
+            pi,
+            c,
+            pre,
+            _infSchool,
+            armed ? theColumns.theMostHopsACasterLeadingSkeletonsStepsToAnUndefendedProvince : BOT_INFILTRATE_RANGE,
+          );
           if (_inf) {
             theTurnsOrders(G)[c.id] = _inf;
             assigned.add(c.id);
@@ -513,8 +520,8 @@ export function runBotMovement(
         }
       }
       const reach = Math.min(
-        theColumns.theMostHopsAnArmedColumnMarchesInASeason,
-        armed ? botLandReach(c, recruitTypes) : theColumns.theMostHopsAnUnarmedHeroMarchesInASeason,
+        theColumns.theMostHopsAnyHeroIsPlannedToMarchInASeason,
+        armed ? botLandReach(c, recruitTypes) : 5,
       );
       if (
         P.owner === pi &&
@@ -587,7 +594,7 @@ export function runBotMovement(
         if (
           !c.isKing &&
           !isLeader &&
-          _heroesNow < theCompanions.theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers &&
+          _heroesNow < theUnarmed.theHeroesBelowWhichACourtSendsItsHeroesOutToFindWanderers &&
           maxHops > 0
         ) {
           const rm = botRoamOrders(G, pi, c, pre);
@@ -876,7 +883,7 @@ export function runBotMovement(
             );
             if (
               f &&
-              f.win >= theUnarmed.theLeastOddsOfAKillFromWhichAFighterRunsDownAnUnarmedRival &&
+              f.win >= theUnarmed.theLeastOddsOfWinningTheDuelFromWhichAFighterRunsDownAnUnarmedRival &&
               f.felled <= theUnarmed.theMostOddsOfBeingFelledAtWhichAFighterRunsDownAnUnarmedRival
             ) {
               theTurnsOrders(G)[c.id] = botFillOrders(
@@ -1126,11 +1133,7 @@ export function runBotMovement(
             T,
             Math.max(
               theColumns.theLeastHopsAnAirStrikeIsPlannedAcross,
-              Math.min(
-                theColumns.theMostHopsAnAirStrikeFliesInASeason,
-                botAirReach(c),
-                THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length,
-              ),
+              Math.min(5, botAirReach(c), THE_ORDERS_A_HERO_GIVES_IN_A_SEASON - pre.length),
             ),
           );
           if (as?.moves.length) {
