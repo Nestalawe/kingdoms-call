@@ -15,7 +15,7 @@
 // BOT_TUNING and BOT_DIFFICULTY wrote; then B-17s's: a duel's (BOT_DUEL, BOT_DUEL_WITHOUT_A_FORECAST), the Spring
 // pass's (BOT_P1, BOT_PIN_EDGE), a rival's hero's assumed skills' (BOT_ASSUMED_SKILLS), and the names B-17s added to the gold
 // (the fleets' caps), the war (BOT_ALLY_ALIGN_DIST), the lair (BOT_RUMOUR_FUND_PER_SLAYER) and the tuning
-// (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts, part 1), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
+// (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts, part 1), and B-17u's: a thief's targets, the roles' work, a mage's work, a defender's post and a host's march (part 2), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
 // refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
@@ -89,7 +89,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(175);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(239);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -339,5 +339,94 @@ test("a specialist's work's weights are the numbers botTrainOrders, botScholarOr
     whatEachStepAwayTakesOffAShadowedGeneral: 2,
     theProvincesAwayASpyLooksForANewTarget: 4,
     theSpyAttemptsBeforeASpyLiesInWait: 2,
+  });
+});
+
+test("specialistsTheft's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsTheft).toEqual({
+    theWorthOfARivalKingAsAThievesMark: 6,
+    theWorthOfARivalHeroAsAThievesMark: 3,
+    theWorthOfEachItemAMarkCarriesToAThief: 2,
+    whatALeadingMarkTakesOffAThievesTarget: 5,
+    theWorthOfARivalCapitalAsAThievesMark: 3,
+    theMostGarrisonsThatAddToAThievesTarget: 4,
+    whatEachStepAwayTakesOffAThievesTarget: 2,
+    theProvincesAwayAThiefLooksForAMarkToRob: 4,
+    theThiefSkillFromWhichAThiefAtWarBreaksIntoAVault: 7,
+    theProvincesAwayAThiefLooksForAVaultToBreakInto: 4,
+    whatAGuardedVaultTakesOffAThievesTarget: 6,
+    theGoldThatMakesAPointOfAVaultsWorthToAThief: 4,
+    theWorthOfARivalCapitalAsAVaultToAThief: 4,
+    theThiefSkillFromWhichAThiefRobsAGuardiansHoard: 3,
+    theChanceFromWhichAThiefRobsAGuardiansHoard: 75,
+    theProvincesAwayAThiefLooksForAHoardToRob: 4,
+    theWorthOfEachRankOfAGuardianToALairTarget: 2,
+    whatEachStepAwayTakesOffALairTarget: 2,
+    theProvincesAwayAnUnarmedFighterLooksForALair: 4,
+  });
+});
+
+test("specialistsRoleWork's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsRoleWork).toEqual({
+    theMeleeFromWhichASlayerWithNoLairsToGrowIntoScouts: 3,
+    theExplorerLevelFromWhichAScoutChartsTheUnknown: 7,
+    theSpySkillFromWhichASpyHasWork: 2,
+    theSpySkillFromWhichASpyAssassinates: 9,
+    theSpySkillFromWhichASpyAtWarSabotages: 7,
+    theWorthOfARivalCapitalToSabotage: 3,
+    theThiefSkillFromWhichAThiefHasWork: 2,
+    theLevelOfAMagesFirstSchoolBeforeTheTwoRiseTogether: 2,
+    theLevelOfMeleeOrArcheryFromWhichASlayerIsReady: 3,
+  });
+});
+
+test("specialistsMageWork's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsMageWork).toEqual({
+    theProvincesAwayAMageLooksForAWandererToCharm: 3,
+    theTurnsAGeneralLastSeenIsStillToBeHexed: 2,
+    theProvincesAwayAMageGoesToHexAGeneral: 3,
+    theWorthOfEachUnitAGeneralToHexLeads: 2,
+    theWorthOfAKingToHex: 5,
+    whatEachStepAwayTakesOffAGeneralToHex: 2,
+    theProvincesAwayANecromancerGoesToBattlefieldDead: 3,
+    theProvincesAwayAWhiteMageGoesToBlessGround: 3,
+    theShareOfAnOwnedNeighboursTaxThatAddsToAProvincesBlessingWorth: 0.8,
+    theUnitsAGeneralMustLeadForAMageToJoinHim: 3,
+    theProvincesAwayAMageGoesToJoinAGeneral: 4,
+  });
+});
+
+test("specialistsDefenders's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsDefenders).toEqual({
+    theWorthOfTheCapitalToADefendersPost: 6,
+    theWorthOfAFrontierProvinceToADefendersPost: 2,
+    theWorthOfARaisingPlaceToAnUnarmedDefender: 4,
+    theWorthOfTheShareByWhichAProvincesGroundRaisesADefendersForce: 8,
+    whatEachStepAwayTakesOffADefendersPost: 1.5,
+    theShareOfTheBestPostsWorthWhichKeepsADefenderAtHisPost: 0.8,
+    theMostStepsADefenderWalksToHisPostInASeason: 3,
+    theStepsADefenderWhoLeadsNoTroopsMayReachInASeason: 5,
+    theGarrisonUnitsAnOwnedNeighbourMustHoldAboveForADefenderToGatherThem: 2,
+    theLandUnitsFromWhichADefenderDrillsTactical: 3,
+    theSageLevelFromWhichADefenderResearches: 2,
+    theHexesFromTheCapitalWithinWhichAnEnemyHostIsAHomeThreat: 2,
+  });
+});
+
+test("specialistsHostsMarch's weights are the numbers bots/specialists.ts wrote inline before B-17u, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.specialistsHostsMarch).toEqual({
+    theShareOfTheMarginAHostFacesWhenTheFoeHasAKing: 0.9,
+    theWorthOfTheShareByWhichATargetsGroundRaisesAHostsForce: 15,
+    theTimesAHostBesideATargetsStrengthTheColumnMustReachToAvoidATrap: 1.2,
+    whatATargetBesideAnUnbeatableHostTakesOffItsScore: 25,
+    theWorthOfEachUnitATargetsDefendersLead: 3,
+    theNumberTheRivalBiasIsDividedByWhenAnAllyIsNearATarget: 2,
+    whatSeaTakesOffATargetsScoreForAHostThatIsNotAnAdmirals: 40,
+    theWorthOfASeaTargetBesideAnEnemyShoreToALoadedFleet: 40,
+    theTimesTheRivalBiasASeaTargetBesideAnEnemyShoreAdds: 2,
+    theFactorEachFightFoughtDividesAHostsStrengthBy: 1.2,
+    theShareOfAHostsStrengthLeftAfterAFight: 0.85,
+    theMostStepsAStrikeLooksAcrossForAStagingProvince: 8,
+    whatEachStepOfMarchingTakesOffAStrikesTarget: 4,
   });
 });
