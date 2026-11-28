@@ -310,7 +310,7 @@ describe('the balance report', () => {
     const [lead, least] = theBotsStatisticsInBrief(games);
     expect(lead).toBe(
       'In the 2 computer-played games, the bots used 2 of the 46 alignment abilities counted by their use; never ' +
-        'used: the neutral mercenary discount (the Neutral realms, in none of the 1 games they played).',
+        'used: the neutral mercenary discount (the Neutral realms, in none of the 1 bot games they played).',
     );
     expect(least).toBe("The least used of each alignment's: the Divine realms used consecrate in 1 of 2 games.");
     expect(theBotsStatisticsInBrief([aGame('bots-00', { 'battles: fought': [1, 1] })]), 'no bots statistics').toEqual(

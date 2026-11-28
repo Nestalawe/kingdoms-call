@@ -30,6 +30,9 @@ import { HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED } from '../../../tools/balan
 export const HIRED_AT_THE_DISCOUNT = `${ABILITY_USED}the-neutral-mercenary-discount`;
 const THE_BAND = { id: 'merc_scenario', type: 'Gilded Lances', quality: 'Veteran', race: 'Human', isSea: false };
 
+// The figure reads the count's own rule (its kinds), not its countATurn: that reads a vm turn (the lines with their
+// facts, the worlds before and after, the telemetry's orders), and a scenario has only the stored GM log, whose lines
+// keep their kind but not their fact. The rule's realm is the line's actor: here the king's own line (his charId).
 /** The line kinds the matrix's count reads the discount's use from (a rule of another kind fails to compile here). */
 const THE_KINDS_OF_THE_DISCOUNTS_USE: ReadonlySet<unknown> = new Set(
   HOW_EACH_ALIGNMENT_ABILITYS_USE_IS_COUNTED['the-neutral-mercenary-discount'].lines.map((l) => l.kind),

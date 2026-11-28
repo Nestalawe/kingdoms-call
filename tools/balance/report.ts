@@ -958,7 +958,7 @@ export function theBotsStatisticsInBrief(games: readonly { id: string; stats: St
     `In the ${String(bots.length)} computer-played games, the bots used ${String(counts.length - never.length)} of the ` +
       `${String(counted.length)} alignment abilities counted by their use` +
       (never.length
-        ? `; never used: ${aList(never.map((a) => `${anAbilityInWords(a.key)} (the ${a.alignment} realms, in none of the ${String(a.games)} games they played)`))}.`
+        ? `; never used: ${aList(never.map((a) => `${anAbilityInWords(a.key)} (the ${a.alignment} realms, in none of the ${String(a.games)} bot games they played)`))}.`
         : ', every one at least once.'),
   ];
   const least = KC_ALIGNMENTS.flatMap((alignment) => {
