@@ -17,8 +17,9 @@
 // (the fleets' caps), the war (BOT_ALLY_ALIGN_DIST), the lair (BOT_RUMOUR_FUND_PER_SLAYER) and the tuning
 // (BOT_MAX_FIGHTS), and B-17t's: the court's wants, a hero's aptitudes and a specialist's work (bots/specialists.ts,
 // part 1), and B-17u's: a thief's targets, the roles' work, a mage's work, a defender's post and a host's march (part
-// 2), each in its place: a change of one is a change of the bots' play (the balance matrix), never a
-// refactor.
+// 2), and B-17v's: an infiltration's and a consecration's, the signature orders', a research pick's and a slayer's kit,
+// and an allied front's, a host's margin and the slayer's ladder (bots/missions.ts, part 1), each in its place: a
+// change of one is a change of the bots' play (the balance matrix), never a refactor.
 //
 // Level 1 (unit): the weights module and its schema are imported, its numbers read and parsed; its types are the
 // compiler's (`npm run check`), which a lower level can't run.
@@ -91,7 +92,7 @@ test("the schema's strict version refuses, in every kind, each name missing, eac
     const withOneMoreName = { ...theWeights, [kind]: { ...names, aWeightTheSchemaDoesNotName: 1 } };
     expect(theIssues(withOneMoreName), `${kind} with one more name`).toEqual([`${kind}: unrecognized_keys`]);
   }
-  expect(theNamesChecked, 'the names checked, every kind').toBe(239);
+  expect(theNamesChecked, 'the names checked, every kind').toBe(294);
 });
 
 test("a gold's weights are the numbers botLedger wrote before T7 and the fleets' caps before B-17s, each in its place", () => {
@@ -435,5 +436,80 @@ test("specialistsHostsMarch's weights are the numbers bots/specialists.ts wrote 
     theShareOfAHostsStrengthLeftAfterAFight: 0.85,
     theMostStepsAStrikeLooksAcrossForAStagingProvince: 8,
     whatEachStepOfMarchingTakesOffAStrikesTarget: 4,
+  });
+});
+
+test("missionsInfiltration's weights are the numbers bots/missions.ts wrote inline before B-17v, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsInfiltration).toEqual({
+    theTaxBelowWhichUnownedGroundCountsAsEmpty: 3,
+    theGravesCountedForAProvinceWhoseGravesAreKnownOnlyInPart: 2,
+    theWorthOfEachPointOfTaxToAnInfiltrationTarget: 2,
+    theWorthOfEachNeighbourAtWarToAnInfiltrationTarget: 4,
+    theWorthOfEnemyLandToAnInfiltrationTarget: 10,
+    theMostGravesThatAddToAnInfiltrationTarget: 3,
+    theWorthOfEachGraveToAnInfiltrationTarget: 2,
+    whatEachStepAwayTakesOffAnInfiltrationTarget: 3,
+    theWorthOfEachPointOfTaxToAConsecrationTarget: 2,
+    whatEachStepAwayTakesOffAConsecrationTarget: 3,
+  });
+});
+
+test("missionsSignatureOrders's weights are the numbers bots/missions.ts wrote inline before B-17v, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsSignatureOrders).toEqual({
+    theGarrisonsThatTurnACallToArmsAway: 2,
+    theWorthOfAFrontierProvinceToACallToArms: 4,
+    theWorthOfTheCapitalToACallToArms: 2,
+    whatEachGarrisonTakesOffACallToArmsTarget: 3,
+    theWorthOfEachPointOfHireBiasToABrokersHire: 3,
+    theUnitsAHostMustHoldToMakeABloodOffering: 6,
+  });
+});
+
+test("missionsResearchAndKit's weights are the numbers bots/missions.ts wrote inline before B-17v, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsResearchAndKit).toEqual({
+    theWorthOfAMilitaryDiscoveryAtWar: 4,
+    theWorthOfAMilitaryDiscoveryAtPeace: 2,
+    theWorthOfAnEconomicDiscoveryAtWar: 2,
+    theWorthOfAnEconomicDiscoveryAtPeace: 4,
+    theWorthOfAnEspionageDiscoveryOnceOtherCrownsAreMet: 3,
+    theWorthOfAnEspionageDiscoveryBeforeOtherCrownsAreMet: 1,
+    theWorthOfAScholarshipDiscovery: 2,
+    theWorthOfAHeroicDiscovery: 3,
+    theWorthOfASpecialDiscovery: 3,
+    theTimesACategorysWorthCountsInADiscoverysWorth: 2,
+    theWorthOfAWarlikeWordingAtWar: 4,
+    theWorthOfAWarlikeWordingAtPeace: 2,
+    theWorthOfAWordingOfWealthAtWar: 1,
+    theWorthOfAWordingOfWealthAtPeace: 3,
+    theWorthOfAWordingOfEspionageOnceOtherCrownsAreMet: 2,
+    theWorthOfAWordingOfLore: 1,
+    theUnitsTheRealmMustHoldForThePhilosophersStoneToBeUsed: 8,
+    theWorthOfTheComradeWhoseRoleMostUsesAKitsStat: 10,
+    theWorthOfASlayerAsTheComradeToGetDuellingKit: 5,
+    theMostKitSentToOneComradeInATurn: 2,
+  });
+});
+
+test("missionsAlliesAndLairs's weights are the numbers bots/missions.ts wrote inline before B-17v, each in its place", () => {
+  expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.missionsAlliesAndLairs).toEqual({
+    theUnitsAnAlliedHostMustLeadToCountAsAnAlliedFront: 3,
+    theTurnsARecordedHostStillCountsAgainstATarget: 3,
+    theMostMarginAHostAsksOfAFoesHost: 2,
+    theMarginAHostAsksOfAFoesColumnAtOrBelowTheMarginsThreshold: 1.5,
+    theMarginEachUnitBeyondTheMarginsThresholdAddsToWhatAHostAsks: 0.05,
+    theUnitsOfAFoesHostBeyondWhichTheMarginRises: 5,
+    theLevelOfMeleeTheSlayersLadderFirstAsksOf: 3,
+    theLevelOfArcheryTheSlayersLadderFirstAsksOf: 2,
+    theLevelOfASchoolTheSlayersLadderFirstAsksOf: 1,
+    theLevelOfMeleeTheSlayersLadderNextAsksOf: 4,
+    theLevelOfASchoolTheSlayersLadderNextAsksOf: 2,
+    theLevelOfMeleeTheSlayersLadderThenAsksOf: 5,
+    theLevelOfASchoolTheSlayersLadderThenAsksOf: 3,
+    theLevelOfASchoolTheSlayersLadderFinallyAsksOf: 5,
+    theLevelOfArcheryTheSlayersLadderFinallyAsksOf: 5,
+    theLevelOfEachOtherBattleSchoolTheSlayersLadderEndsWith: 5,
+    theGoldAboveARumoursPriceTheMusterBudgetMustHold: 1,
+    theGoldAboveARumoursPriceTheTreasuryMustHold: 3,
+    theLairsOfTheGradeAboveClearedThatKeepAHeroAskingAboutIt: 1,
   });
 });
