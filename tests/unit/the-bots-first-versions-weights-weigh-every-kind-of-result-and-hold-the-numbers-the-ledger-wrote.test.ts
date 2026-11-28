@@ -259,7 +259,7 @@ test("a duel's weights are the numbers BOT_DUEL and BOT_DUEL_WITHOUT_A_FORECAST 
 test("the Spring pass's weights are the numbers BOT_P1 and BOT_PIN_EDGE wrote before B-17s, each in its place", () => {
   expect(THE_WEIGHTS_OF_THE_BOTS_FIRST_VERSION.springPass).toEqual({
     theStrengthAgainstTheFoeBelowWhichAHostInContactFallsBack: 0.75,
-    theStrengthAgainstTheFoeBelowWhichAHostNotPinningItsFoeFlees: 0.5,
+    theStrengthAgainstTheFoeBelowWhichAHostWhoseFoeNoFloodPinsFlees: 0.5,
     theFactorTheEmergencyLevyRaisesTheWageCeilingBy: 1.2,
     theLeastWagesTheEmergencyLevyRaisesTheCeilingAboveWhatTheRealmPays: 8,
     theGoldTheWarChestHoldsForEachHostInContact: 10,
